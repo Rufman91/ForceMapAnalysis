@@ -15,10 +15,10 @@ for i=1:Nmaps
     FM{i} = ForceMap();
 end
 for i=1:Nmaps
-    FM{i}.level_height_map();
+    FM{i}.choose_fibril(0.8);
 end
 for i=1:Nmaps
-    FM{i}.choose_fibril(0.8);
+    FM{i}.level_height_map();
 end
 for i=1:Nmaps
     FM{i}.base_and_tilt();

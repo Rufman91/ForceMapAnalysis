@@ -29,7 +29,7 @@ classdef ForceMap < handle
         GoF = {}        % goodness of fit curve for each selected curve
         CPCombo = {}    % combination of the various metrics for contact point estimation
         CP              % chosen contact point (CP) for every selected curve, which is then used in E module fitting
-        Man_CP          % manually chosen contact point
+        Man_CP          % manually chosen contact points
         deltaE = {}     % 
         tip_radius = -1 % (nomianl) tip radius for the chosen type of tip model
         poisson_r = 0.5 % standard Poisson ratio for most mechanical models
@@ -443,23 +443,22 @@ classdef ForceMap < handle
             fig = figure();
             for j=jRange'
                 fig.WindowState = 'fullscreen';
-%                 Btn_disc=uicontrol('Parent',fig,...
-%                     'Style','pushbutton',...
-%                     'String','Discard Curve',...
-%                     'Units','normalized',...
-%                     'Position',[0.9 0.95 0.14 0.05],...
-%                     'Visible','on',...
-%                     'Callback',{@obj.disc,j,obj});
+                Btn_disc=uicontrol('Parent',fig,...
+                    'Style','pushbutton',...
+                    'String','Discard Curve',...
+                    'Units','normalized',...
+                    'Position',[0.9 0.95 0.14 0.05],...
+                    'Visible','on',...
+                    'Callback',{@obj.disc,j,obj});
                 plot(obj.thapp{j},obj.basedapp{j});
                 plottitle = sprintf('Curve Nr.%i/%i\n Click and drag the point to the contact point\n Confirm with any key press',j,obj.n_curves);
                 title(plottitle);
                 [~, domainidx] = ForceMap.no_contact_domain(obj.app{j});
                 axis([obj.thapp{j}(floor(domainidx*0.4)) inf -inf inf])
                 CP_point = drawpoint();
-%                 w = 0;
-%                 while w == 0
-%                     w = waitforbuttonpress;
-%                 end
+                while obj.btnprss.wait == 0
+                end
+                obj.btnprss.wait = 0;
                 obj.Man_CP(j,1) = CP_point.Position(1);
                 obj.Man_CP(j,2) = CP_point.Position(2);
             end
