@@ -440,7 +440,7 @@ classdef ForceMap < handle
             % Manual contact point selection for NN training on plotted force curves
             % returning a position vector in meters.
             jRange = find(obj.selected_curves);
-            fig = figure();
+            fig = figure('Name',obj.name);
             for j=jRange'
                 fig.WindowState = 'fullscreen';
 %                 Btn_disc=uicontrol('Parent',fig,...
@@ -454,7 +454,7 @@ classdef ForceMap < handle
                 plottitle = sprintf('Curve Nr.%i/%i\n Click and drag the point to the contact point\n Confirm with any key press',j,obj.n_curves);
                 title(plottitle);
                 [~, domainidx] = ForceMap.no_contact_domain(obj.app{j});
-                axis([obj.thapp{j}(floor(domainidx*0.4)) inf -inf inf])
+                axis([obj.thapp{j}(floor(domainidx*0.2)) inf -inf inf])
                 CP_point = drawpoint();
 %                 w = 0;
 %                 while w == 0
@@ -492,7 +492,7 @@ classdef ForceMap < handle
                end
            end
            f = figure();
-%            imshowpair(imresize(mat2gray(obj.height_map(:,:,1)),[1024 1024]),imresize(mask(:,:,1),[1024 1024]),'montage')
+           imshowpair(imresize(mat2gray(obj.height_map(:,:,1)),[1024 1024]),imresize(mask(:,:,1),[1024 1024]),'montage')
 %            pause(5)
            close(f)
         end

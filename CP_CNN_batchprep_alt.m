@@ -40,12 +40,14 @@ for i=1:Nmaps
 end
 
 
+fig = figure();
 k = 1;
 for i=1:Nmaps
     jRange = find(objcell{i}.selected_curves);
     for j=jRange'
         % Save the plots as images and convert them into cropped [0
         % 1]-range grayscale images
+        fig.Name = sprintf('%s curve nr.%i',objcell{i}.name,j);
         plot(objcell{i}.thapp{j},objcell{i}.basedapp{j},'color','black');
         axis([min(objcell{i}.thapp{j}) max(objcell{i}.thapp{j}) min(objcell{i}.basedapp{j}) max(objcell{i}.basedapp{j})])
         axis off
@@ -79,6 +81,6 @@ for i=1:Nmaps
         k = k + 1;
     end
 end
-close gcf
+close(fig);
 
 end
