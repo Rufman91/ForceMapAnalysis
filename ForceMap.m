@@ -40,7 +40,7 @@ classdef ForceMap < handle
     end
     methods
         
-        function obj = ForceMap()
+        function obj = ForceMap(mapfilepath)
             %%% Constructor of the class
             
             % Specify the folder where the files live. And import them.
@@ -52,19 +52,33 @@ classdef ForceMap < handle
            
             current = what();
             
+            % determine if ForceMap is given a loadpath for existing .mat
+            if nargin==1
+                cd(mapfilepath);
+                file = dir('*.mat');
+                load(file.name);
+                cd(current.path);
+                msg = sprintf('loading %s',obj.name);
+                disp(msg);
+                disp('loading successfull')
+                return
+            end
+            
             quest = 'Do you want to load an already existing .mat file of the force map?';
             answer = questdlg(quest,'Load map...','...from .mat-file','...from .cvs-folder','...from .cvs-folder');
-            if isequal(answer, 'Yes')
+            if isequal(answer, '...from .mat-file')
                 [mapfile, mapfilepath] = uigetfile();
                 cd(mapfilepath);
                 load(mapfile,'-mat');
                 cd(current.path);
                 msg = sprintf('loading %s',obj.name);
-                display(msg);
+                disp(msg);
                 disp('loading successfull')
+                obj.folder = mapfilepath;
                 return
             else
             end
+            
             
             obj.folder = uigetdir;
             cd(obj.folder);
@@ -542,6 +556,15 @@ classdef ForceMap < handle
             obj.height_map(:,:,1) = obj.height_map(:,:,1) - Plane;
         end
         
+        function save(obj)
+            current = what();
+            cd(obj.folder)
+            savename = sprintf('%s.mat',obj.name);
+            save(savename,'obj')
+            cd(current.path)
+            savemsg = sprintf('Changes to ForceMap:%s saved to %s',obj.name,obj.folder);
+            disp(savemsg);
+        end
     end
     
     methods (Static)

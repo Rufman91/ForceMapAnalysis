@@ -114,7 +114,7 @@ manual = drawpoint('Position',FM{i}.Man_CP(randidx,:),'Color','green');
 net = drawpoint('Position',FM{i}.CP(randidx,:),'Color','red');
 
 YPredicted = predict(CP_CNN,XValidation); 
-fig = figure('Name','Evaluate the model','Position',[949 79 971 915])
+fig = figure('Name','Control Training data','Position',[949 79 971 915])
 idx = randi(length(XValidation));
 imshow(XValidation(:,:,1,idx),'InitialMagnification','fit');
 manpoint =drawpoint('Position',[YValidation(idx,1)*ImgSize , (1-YValidation(idx,2))*ImgSize],'Color','green');

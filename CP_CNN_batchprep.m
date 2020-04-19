@@ -36,7 +36,7 @@ for i=1:Nmaps
         Norm_CP{i}(k,1) = (objcell{i}.Man_CP(j,1)-min(objcell{i}.thapp{j}))/...
             range(objcell{i}.thapp{j})*length(objcell{i}.thapp{j})/objcell{i}.header{2,2};
         Norm_CP{i}(k,2) = (objcell{i}.Man_CP(j,2)-min(objcell{i}.basedapp{j}))/...
-            range(objcell{i}.thapp{j})*length(objcell{i}.basedapp{j})/objcell{i}.header{2,2};
+            range(objcell{i}.basedapp{j})*length(objcell{i}.basedapp{j})/objcell{i}.header{2,2};
         k = k + 1;
     end
 end

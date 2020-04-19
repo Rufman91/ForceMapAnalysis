@@ -35,12 +35,12 @@ for i=1:Nmaps
         Norm_CP{i}(j,1) = (objcell{i}.Man_CP(j,1)-min(objcell{i}.thapp{j}))/...
             range(objcell{i}.thapp{j});
         Norm_CP{i}(j,2) = (objcell{i}.Man_CP(j,2)-min(objcell{i}.basedapp{j}))/...
-            range(objcell{i}.thapp{j});
+            range(objcell{i}.basedapp{j});
     end
 end
 
 
-fig = figure();
+fig = figure('Color','w');
 k = 1;
 for i=1:Nmaps
     jRange = find(objcell{i}.selected_curves);
