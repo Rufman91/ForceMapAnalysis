@@ -81,12 +81,131 @@ layers = [
     fullyConnectedLayer(2,"Name","fc_3")
     regressionLayer("Name","regressionoutput")];
 
+lgraph = layerGraph();
 
+tempLayers = [
+    imageInputLayer([128 128 1],"Name","imageinput","Normalization","zscore")
+    convolution2dLayer([7 7],64,"Name","conv_11","Padding","same","Stride",[2 2])
+    batchNormalizationLayer("Name","batchnorm_9")
+    reluLayer("Name","relu_9")
+    maxPooling2dLayer([3 3],"Name","maxpool","Padding","same","Stride",[2 2])];
+lgraph = addLayers(lgraph,tempLayers);
+
+tempLayers = [
+    batchNormalizationLayer("Name","batchnorm_1")
+    reluLayer("Name","relu_1")
+    convolution2dLayer([3 3],64,"Name","conv_1","Padding","same")
+    batchNormalizationLayer("Name","batchnorm_2")
+    reluLayer("Name","relu_2")
+    convolution2dLayer([3 3],64,"Name","conv_2","Padding","same")];
+lgraph = addLayers(lgraph,tempLayers);
+
+tempLayers = additionLayer(2,"Name","addition_1");
+lgraph = addLayers(lgraph,tempLayers);
+
+tempLayers = [
+    batchNormalizationLayer("Name","batchnorm_3")
+    reluLayer("Name","relu_3")
+    convolution2dLayer([3 3],64,"Name","conv_3","Padding","same")
+    batchNormalizationLayer("Name","batchnorm_4")
+    reluLayer("Name","relu_4")
+    convolution2dLayer([3 3],64,"Name","conv_4","Padding","same")];
+lgraph = addLayers(lgraph,tempLayers);
+
+tempLayers = additionLayer(2,"Name","addition_2");
+lgraph = addLayers(lgraph,tempLayers);
+
+tempLayers = [
+    batchNormalizationLayer("Name","batchnorm_5")
+    reluLayer("Name","relu_5")
+    convolution2dLayer([3 3],128,"Name","conv_5","Padding","same","Stride",[2 2])
+    batchNormalizationLayer("Name","batchnorm_6")
+    reluLayer("Name","relu_6")
+    convolution2dLayer([3 3],128,"Name","conv_6","Padding","same")];
+lgraph = addLayers(lgraph,tempLayers);
+
+tempLayers = convolution2dLayer([1 1],128,"Name","conv_9","Padding","same","Stride",[2 2]);
+lgraph = addLayers(lgraph,tempLayers);
+
+tempLayers = additionLayer(2,"Name","addition_3");
+lgraph = addLayers(lgraph,tempLayers);
+
+tempLayers = convolution2dLayer([1 1],128,"Name","conv_10","Padding","same");
+lgraph = addLayers(lgraph,tempLayers);
+
+tempLayers = [
+    batchNormalizationLayer("Name","batchnorm_7")
+    reluLayer("Name","relu_7")
+    convolution2dLayer([3 3],128,"Name","conv_7","Padding","same")
+    batchNormalizationLayer("Name","batchnorm_8")
+    reluLayer("Name","relu_8")
+    convolution2dLayer([3 3],128,"Name","conv_8","Padding","same")];
+lgraph = addLayers(lgraph,tempLayers);
+
+tempLayers = additionLayer(2,"Name","addition_4");
+lgraph = addLayers(lgraph,tempLayers);
+
+tempLayers = [
+    batchNormalizationLayer("Name","batchnorm_10")
+    reluLayer("Name","relu_10")
+    convolution2dLayer([3 3],256,"Name","conv_12","Padding","same","Stride",[2 2])
+    batchNormalizationLayer("Name","batchnorm_11")
+    reluLayer("Name","relu_11")
+    convolution2dLayer([3 3],256,"Name","conv_13","Padding","same")];
+lgraph = addLayers(lgraph,tempLayers);
+
+tempLayers = convolution2dLayer([1 1],256,"Name","conv_16","Padding","same","Stride",[2 2]);
+lgraph = addLayers(lgraph,tempLayers);
+
+tempLayers = additionLayer(2,"Name","addition_5");
+lgraph = addLayers(lgraph,tempLayers);
+
+tempLayers = [
+    batchNormalizationLayer("Name","batchnorm_12")
+    reluLayer("Name","relu_12")
+    convolution2dLayer([3 3],256,"Name","conv_14","Padding","same")
+    batchNormalizationLayer("Name","batchnorm_13")
+    reluLayer("Name","relu_13")
+    convolution2dLayer([3 3],256,"Name","conv_15","Padding","same")];
+lgraph = addLayers(lgraph,tempLayers);
+
+tempLayers = convolution2dLayer([1 1],256,"Name","conv_17","Padding","same");
+lgraph = addLayers(lgraph,tempLayers);
+
+tempLayers = [
+    additionLayer(2,"Name","addition_6")
+    globalAveragePooling2dLayer("Name","gapool")
+    fullyConnectedLayer(2,"Name","fc")
+    regressionLayer("Name","regressionoutput")];
+lgraph = addLayers(lgraph,tempLayers);
+
+lgraph = connectLayers(lgraph,"maxpool","batchnorm_1");
+lgraph = connectLayers(lgraph,"maxpool","addition_1/in2");
+lgraph = connectLayers(lgraph,"conv_2","addition_1/in1");
+lgraph = connectLayers(lgraph,"addition_1","batchnorm_3");
+lgraph = connectLayers(lgraph,"addition_1","addition_2/in2");
+lgraph = connectLayers(lgraph,"conv_4","addition_2/in1");
+lgraph = connectLayers(lgraph,"addition_2","batchnorm_5");
+lgraph = connectLayers(lgraph,"addition_2","conv_9");
+lgraph = connectLayers(lgraph,"conv_6","addition_3/in1");
+lgraph = connectLayers(lgraph,"conv_9","addition_3/in2");
+lgraph = connectLayers(lgraph,"addition_3","conv_10");
+lgraph = connectLayers(lgraph,"addition_3","batchnorm_7");
+lgraph = connectLayers(lgraph,"conv_10","addition_4/in2");
+lgraph = connectLayers(lgraph,"conv_8","addition_4/in1");
+lgraph = connectLayers(lgraph,"addition_4","batchnorm_10");
+lgraph = connectLayers(lgraph,"addition_4","conv_16");
+lgraph = connectLayers(lgraph,"conv_16","addition_5/in2");
+lgraph = connectLayers(lgraph,"conv_13","addition_5/in1");
+lgraph = connectLayers(lgraph,"addition_5","batchnorm_12");
+lgraph = connectLayers(lgraph,"addition_5","conv_17");
+lgraph = connectLayers(lgraph,"conv_15","addition_6/in1");
+lgraph = connectLayers(lgraph,"conv_17","addition_6/in2");
 
 options = trainingOptions('adam','Plots','training-progress',...
     'ValidationData',{XValidation,YValidation},...
     'ValidationFrequency',50,...
-    'MiniBatchSize',60,...
+    'MiniBatchSize',90,...
     'MaxEpochs',1000,...
     'InitialLearnRate',0.002,...
     'LearnRateSchedule','piecewise',...
@@ -98,7 +217,7 @@ options = trainingOptions('adam','Plots','training-progress',...
 %  For this option to be available, the Parallel-Computing-Toolbox has to be
 %  installed in MATLAB
 
-CP_CNN = trainNetwork(XTrain,YTrain,layers,options);
+CP_CNN = trainNetwork(XTrain,YTrain,lgraph,options);
 
 %% Evaluate your model looking at the models predictions
 
