@@ -33,7 +33,7 @@ classdef ForceMap < handle
         deltaE = {}     % 
         tip_radius = -1 % (nomianl) tip radius for the chosen type of tip model
         poisson_r = 0.5 % standard Poisson ratio for most mechanical models
-        btnprss = struct('disc',0,...    % struct to handle buttonpresses that need to communicate outside of their own callback functions
+        btnprss = struct('disc',0,...    % struct to handle buttonpresses that need to communicate outside of their own callback functions (currently dead end development)
                         'prev',0,...
                         'save',0,...
                         'wait',0)
@@ -382,39 +382,6 @@ classdef ForceMap < handle
                 obj.CPCombo{i} = obj.RoV{i}.*obj.GoF{i};
                 [~,obj.CP(i)] = max(obj.CPCombo{i});
             end
-            current = what();
-            cd(obj.folder)
-            savename = sprintf('%s.mat',obj.name);
-            save(savename,'obj')
-            cd(current.path)
-        end
-        
-        function CP_RoVTH(obj,batchsize)
-            % find contact point with the method of ratio of variances. The method
-            % iterates though every point and builds the ratio of the variance of a
-            % bunch of points before and after the current point. the point with the
-            % biggest ratio is the returned contact point [Nuria Gavara, 2016]
-            if nargin<2
-                batchsize = 10;
-            end
-            Range = find(obj.selected_curves);
-            h = waitbar(0,'Setting up...');
-            for i=Range'
-                prog = i/obj.n_curves;
-                waitbar(prog,h,'applying ratio of variances method...');
-                obj.RoVTH{i} = zeros(length(obj.thapp{i}),1);
-                
-                % loop through points and calculate the RoV
-                for j=(batchsize+1):(length(obj.thapp{i})-batchsize)
-                    obj.RoVTH{i}(j,1) = var(smoothdata(obj.thapp{i}((j+1):(j+batchsize))))/...
-                        var(smoothdata(obj.thapp{i}((j-batchsize):(j-1))));
-                end
-                % normalize RoVTH-curve
-                obj.RoVTH{i} = obj.RoVTH{i}/range(obj.RoVTH{i});
-                minrov = min(obj.RoVTH{i}(batchsize+1:length(obj.RoVTH{i})-batchsize));
-                obj.RoVTH{i}(obj.RoVTH{i}==0) = minrov;
-            end
-            close(h)
             current = what();
             cd(obj.folder)
             savename = sprintf('%s.mat',obj.name);

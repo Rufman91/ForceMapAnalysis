@@ -8,7 +8,5 @@ k = 1;
 for i=iRange'
     obj.CP(i,1) = Ypredicted(k,1)*range(obj.thapp{i})+min(obj.thapp{i});
     obj.CP(i,2) = Ypredicted(k,2)*range(obj.basedapp{i})+min(obj.basedapp{i});
+    k = k + 1;
 end
-
-
-
