@@ -468,14 +468,9 @@ classdef ForceMap < handle
                     unload(end-(j-1),1) = obj.hhret{i}(j);
                     unload(j,2) = obj.ret{i}(j);
                 end
-                [obj.load_old{i},obj.unload_old{i},Position,obj.CP_old(i,2)] = ContactPoint_sort(load,unload);
-                obj.CP_old(i,1) = obj.thapp{i}(Position);
+                [obj.load_old{i},obj.unload_old{i},position,obj.CP_old(i,2)] = ContactPoint_sort(load,unload);
+                obj.CP_old(i,1) = obj.;
             end
-            current = what();
-            cd(obj.folder)
-            savename = sprintf('%s.mat',obj.name);
-            save(savename,'obj')
-            cd(current.path)
         end
         
         function choose_fibril(obj,pth_quantile)

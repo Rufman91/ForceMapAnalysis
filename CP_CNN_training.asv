@@ -56,7 +56,7 @@ end
 
 ImgSize = 128; %bigger sizes improve results marginally but significantly
                %increase traning time. The trainer might even run out
-               %of GPU memory... not really worth it
+               %of GPU memory...
 
 %[X,Y] = CP_CNN_batchprep(FM,ImgSize);
 [X,Y] = CP_CNN_batchprep_alt(FM,ImgSize);

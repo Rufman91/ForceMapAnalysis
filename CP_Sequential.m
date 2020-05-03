@@ -127,8 +127,9 @@ RoV = drawpoint('Position',CP_RoV,'Color','blue');
 YPredicted = predict(CP_Seq,XValidation); 
 fig = figure('Name','Evaluate the model','Position',[949 79 971 915])
 idx = randi(length(XValidation));
-imshow(XValidation(:,:,1,idx),'InitialMagnification','fit');
-manpoint =drawpoint('Position',[YValidation(idx,1)*ImgSize,...
-    (1-YValidation(idx,2))*ImgSize],'Color','green');
-predpoint = drawpoint('Position',[YPredicted(idx,1)*ImgSize,...
-    (1-YPredicted(idx,2))*ImgSize],'Color','red');
+plot(XValidation(:,1,1,idx));
+axis([1 SeqLen 0 1]);
+manpoint =drawpoint('Position',[YValidation(idx,1)*SeqLen,...
+    (YValidation(idx,2))],'Color','green');
+predpoint = drawpoint('Position',[YPredicted(idx,1)*SeqLen,...
+    (YPredicted(idx,2))],'Color','red');
