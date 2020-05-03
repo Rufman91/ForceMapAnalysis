@@ -1,9 +1,10 @@
-function [X,Y] = CP_CNN_batchprep_alt(objcell,ImgSize)
+function [X,Y] = CP_Sequential_batchprep(objcell,SeqLen)
 % This function takes as input a 1xN objcell of N objects of the class
 % 'ForceMap' and combines them into the matrizes needed for NN-training
 if nargin < 2
-    ImgSize = 128;
+    SeqLen = 1024;
 end
+h = waitbar(0,'setting up');
 Nmaps = length(objcell);
 % First check, if manual CPs are already given in the input class instance. If
 % not, start manual CP selection.
@@ -22,7 +23,7 @@ Nimgs = 0;
 for i=1:Nmaps
     Nimgs = Nimgs + sum(objcell{i}.selected_curves);
 end
-X = zeros(ImgSize,ImgSize,1,Nimgs);
+X = zeros(SeqLen,1,1,Nimgs);
 Y = zeros(Nimgs,2);
 
 % Transform the values for the CP such that they correspond to the correct
@@ -39,48 +40,28 @@ for i=1:Nmaps
     end
 end
 
-
-fig = figure('Color','w');
 k = 1;
 for i=1:Nmaps
+    waitbar(i/Nmaps,h,sprintf('Batch Preparation for Force Map %i/%i',i,Nmaps));
     jRange = find(objcell{i}.selected_curves);
     for j=jRange'
-        % Save the plots as images and convert them into cropped [0
-        % 1]-range grayscale images
-        fig.Name = sprintf('%s curve nr.%i',objcell{i}.name,j);
-        plot(objcell{i}.thapp{j},objcell{i}.basedapp{j},'color','black');
-        axis([min(objcell{i}.thapp{j}) max(objcell{i}.thapp{j}) min(objcell{i}.basedapp{j}) max(objcell{i}.basedapp{j})])
-        axis off
-        graytest = imcomplement(rgb2gray(frame2im(getframe(fig))));
-        grayscaled = double(graytest)/255;
-        % Crop off the rows and columns of the image only containing zeros
-        crop = [1 size(grayscaled,2) 1 size(grayscaled,1)];
-        while sum(grayscaled(:,crop(1)))== 0
-            crop(1) = crop(1) + 1;
+        % Map the basedapp sequences to a length of SeqLen regardless of
+        % initial length and normalize its values
+        Norm_Force = (objcell{i}.basedapp{j}-min(objcell{i}.basedapp{j}))/range(objcell{i}.basedapp{j});
+        Sequence = zeros(SeqLen,1);
+        for m=1:SeqLen
+            Idx_Prev = floor((m-1)/(SeqLen-1)*(length(objcell{i}.basedapp{j})-1)+1);
+            Idx_Next = ceil((m-1)/(SeqLen-1)*(length(objcell{i}.basedapp{j})-1)+1);
+            Dist_Prev = 1-(Idx_Prev-(m-1)/(SeqLen-1)*(length(objcell{i}.basedapp{j})-1));
+            Dist_Next = -((m-1)/(SeqLen-1)*(length(objcell{i}.basedapp{j})-1)-(Idx_Next));
+            Sequence(m) = (Dist_Next*Norm_Force(Idx_Prev)+Dist_Prev*Norm_Force(Idx_Next))/(1+(Idx_Next-Idx_Prev));
         end
-        crop(1) = crop(1) - 1;
-        while sum(grayscaled(:,crop(2)))== 0
-            crop(2) = crop(2) - 1;
-        end
-        crop(2) = crop(2) + 1;
-        while sum(grayscaled(crop(3),:))== 0
-            crop(3) = crop(3) + 1;
-        end
-        crop(3) = crop(3) - 1;
-        while sum(grayscaled(crop(4),:))== 0
-            crop(4) = crop(4) - 1;
-        end
-        crop(4) = crop(4) + 1;
-        grayscaled(:,[1:crop(1) crop(2):size(grayscaled,2)]) = [];
-        grayscaled([1:crop(3) crop(4):size(grayscaled,1)],:) = [];
-        grayfinal = imresize(grayscaled,[ImgSize ImgSize],'bilinear');
         % Fill the output varables X and Y
-        X(:,:,1,k) = grayfinal;
+        X(:,1,1,k) = Sequence;
         Y(k,1) = Norm_CP{i}(j,1);
         Y(k,2) = Norm_CP{i}(j,2);
         k = k + 1;
     end
 end
-close(fig);
-
+close(h);
 end

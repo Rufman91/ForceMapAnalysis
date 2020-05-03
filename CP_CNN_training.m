@@ -76,8 +76,10 @@ layers = [
     convolution2dLayer([3 3],32,"Name","conv_2","Padding","same")
     reluLayer("Name","relu_2")
     maxPooling2dLayer([5 5],"Name","maxpool_2","Padding","same","Stride",[3 3])
+    dropoutLayer(0.01,'Name','dropout_1')
     fullyConnectedLayer(2048,"Name","fc_1")
     reluLayer('Name','relu_3')
+    dropoutLayer(0.01,'Name','dropout_2')
     fullyConnectedLayer(1024,'Name','fc_2')
     reluLayer('Name','relu_4')
     fullyConnectedLayer(2,"Name","fc_3")
@@ -86,7 +88,7 @@ layers = [
 resnet14 = layerGraph();
 
 tempLayers = [
-    imageInputLayer([128 128 1],"Name","imageinput","Normalization","zscore")
+    imageInputLayer([ImgSize ImgSize 1],"Name","imageinput","Normalization","zscore")
     convolution2dLayer([7 7],64,"Name","conv_11","Padding","same","Stride",[2 2])
     batchNormalizationLayer("Name","batchnorm_9")
     reluLayer("Name","relu_9")
@@ -211,16 +213,16 @@ options = trainingOptions('adam','Plots','training-progress',...
     'MaxEpochs',1000,...
     'InitialLearnRate',0.002,...
     'LearnRateSchedule','piecewise',...
-    'LearnRateDropPeriod',100,...
+    'LearnRateDropPeriod',50,...
     'LearnRateDropFactor',0.5,...
     'Shuffle','every-epoch');
 
-analyzeNetwork(resnet14);
+% analyzeNetwork(resnet14);
 %% Start actual training of the NN. GPU usage for training is recommended.
 %  For this option to be available, the Parallel-Computing-Toolbox has to be
 %  installed in MATLAB
 
-CP_CNN = trainNetwork(XTrain,YTrain,resnet14,options);
+CP_CNN = trainNetwork(XTrain,YTrain,layers,options);
 
 %% Evaluate your model looking at the models predictions
 
@@ -246,5 +248,7 @@ YPredicted = predict(CP_CNN,XValidation);
 fig = figure('Name','Evaluate the model','Position',[949 79 971 915])
 idx = randi(length(XValidation));
 imshow(XValidation(:,:,1,idx),'InitialMagnification','fit');
-manpoint =drawpoint('Position',[YValidation(idx,1)*ImgSize , (1-YValidation(idx,2))*ImgSize],'Color','green');
-predpoint = drawpoint('Position',[YPredicted(idx,1)*ImgSize , (1-YPredicted(idx,2))*ImgSize],'Color','red');
+manpoint =drawpoint('Position',[YValidation(idx,1)*ImgSize,...
+    (1-YValidation(idx,2))*ImgSize],'Color','green');
+predpoint = drawpoint('Position',[YPredicted(idx,1)*ImgSize,...
+    (1-YPredicted(idx,2))*ImgSize],'Color','red');
