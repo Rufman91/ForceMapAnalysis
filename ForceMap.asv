@@ -15,10 +15,10 @@ classdef ForceMap < handle
         basedret = {}   % retraction force data with subtracted base line and tilt in Newton
         basefit = {}    % fit model used for the baseline fit
         height_map      % height profile map taken from the inverted maximum head-height from approach max(hhapp)
-                        % the additional dimension in the height map holds
-                        % the index from the corresponding 1-D lists of
-                        % force curves, so one can easily identify the
-                        % right curves
+        % the additional dimension in the height map holds
+        % the index from the corresponding 1-D lists of
+        % force curves, so one can easily identify the
+        % right curves
         sensitivity
         n_curves        % number of curves on the force map
         pix_app
@@ -29,17 +29,18 @@ classdef ForceMap < handle
         GoF = {}        % goodness of fit curve for each selected curve
         CPCombo = {}    % combination of the various metrics for contact point estimation
         CP              % chosen contact point (CP) for every selected curve, which is then used in E module fitting
+        CP_CNN          % Convolutional Neural Network for CP-estimation used in CP_CNN_predict
         Man_CP          % manually chosen contact point
         CP_old          % contact point estimation from old script 'A_nIAFM_analysis_main'
         load_old        % comes from same script as CP_old
         unload_old      % comes from same script as CP_old
-        deltaE = {}     % 
+        deltaE = {}     %
         tip_radius = -1 % (nomianl) tip radius for the chosen type of tip model
         poisson_r = 0.5 % standard Poisson ratio for most mechanical models
         btnprss = struct('disc',0,...    % struct to handle buttonpresses that need to communicate outside of their own callback functions (currently dead end development)
-                        'prev',0,...
-                        'save',0,...
-                        'wait',0)
+            'prev',0,...
+            'save',0,...
+            'wait',0)
     end
     methods
         
@@ -52,7 +53,7 @@ classdef ForceMap < handle
             % Assigns the properties: name, folder, header, app, ret,
             % hhapp, hhret, height_map, sensitivity, n_curves, pix_app,
             % pix_ret and initiates selected_curves with ones (all curves chosen)
-           
+            
             current = what();
             
             % determine if ForceMap is given a loadpath for existing .mat
@@ -162,6 +163,18 @@ classdef ForceMap < handle
                 end
             end
             obj.Man_CP = zeros(obj.n_curves,2);
+            try
+                temp = load('CP_CNN');
+                obj.CP_CNN = temp.CP_CNN;
+            catch ME1
+                disp("Can't find Neural Network named 'CP_CNN' in Folder. Trying to load from Workspace instead...")
+                try
+                    obj.CP_CNN = CP_CNN;
+                catch ME2
+                    disp("Can't find Neural Network named 'CP_CNN' in Workspace. Loading ForceMap without it")
+                    rethrow(ME2);
+                end
+            end
             cd(current.path);
             current = what();
             cd(obj.folder)
@@ -236,24 +249,24 @@ classdef ForceMap < handle
                     ncd(ncidx+1:length(ext_range)) = feval(obj.basefit{i},ext_range(ncidx+1:length(ext_range)));
                     [obj.basefit{i},gof] =  fit(ext_range,smooth(ncd),'poly9','Normalize','on');
                 end
-%                 if gof.rsquare < 0.5
-%                     f = figure('Name','Base and tilt','Position',[10000 10000 800 600]);
-%                     movegui(f);
-%                     plot(obj.hhapp{i},feval(obj.basefit{i},obj.hhapp{i}),obj.hhapp{i},obj.app{i});
-%                     legend('Fit','Data');
-%                     plottitle = sprintf('Curve Nr. %i',i);
-%                     title(plottitle);
-%                     answ = questdlg('Quality of base line fit is very low. consider excluding this force curve',...
-%                         'Base line and tilt','Exclude it',...
-%                         'Keep current fit','Keep current fit');
-%                     if isequal(answ,'Exclude it')
-%                         obj.selected_curves(i) = 0;
-%                         continue
-%                     else
-%                         return
-%                     end
-%                     close(gcf)
-%                 end
+                %                 if gof.rsquare < 0.5
+                %                     f = figure('Name','Base and tilt','Position',[10000 10000 800 600]);
+                %                     movegui(f);
+                %                     plot(obj.hhapp{i},feval(obj.basefit{i},obj.hhapp{i}),obj.hhapp{i},obj.app{i});
+                %                     legend('Fit','Data');
+                %                     plottitle = sprintf('Curve Nr. %i',i);
+                %                     title(plottitle);
+                %                     answ = questdlg('Quality of base line fit is very low. consider excluding this force curve',...
+                %                         'Base line and tilt','Exclude it',...
+                %                         'Keep current fit','Keep current fit');
+                %                     if isequal(answ,'Exclude it')
+                %                         obj.selected_curves(i) = 0;
+                %                         continue
+                %                     else
+                %                         return
+                %                     end
+                %                     close(gcf)
+                %                 end
                 obj.basedapp{i} = (obj.app{i}-feval(obj.basefit{i},obj.hhapp{i}));
                 obj.basedret{i} = (obj.ret{i}-feval(obj.basefit{i},obj.hhret{i}));
             end
@@ -427,23 +440,23 @@ classdef ForceMap < handle
             fig = figure('Name',obj.name);
             for j=jRange'
                 fig.WindowState = 'fullscreen';
-%                 Btn_disc=uicontrol('Parent',fig,...
-%                     'Style','pushbutton',...
-%                     'String','Discard Curve',...
-%                     'Units','normalized',...
-%                     'Position',[0.9 0.95 0.14 0.05],...
-%                     'Visible','on',...
-%                     'Callback',{@obj.disc,j,obj});
+                %                 Btn_disc=uicontrol('Parent',fig,...
+                %                     'Style','pushbutton',...
+                %                     'String','Discard Curve',...
+                %                     'Units','normalized',...
+                %                     'Position',[0.9 0.95 0.14 0.05],...
+                %                     'Visible','on',...
+                %                     'Callback',{@obj.disc,j,obj});
                 plot(obj.thapp{j},obj.basedapp{j});
                 plottitle = sprintf('Curve Nr.%i/%i\n Click and drag the point to the contact point\n Confirm with any key press',j,obj.n_curves);
                 title(plottitle);
                 [~, domainidx] = ForceMap.no_contact_domain(obj.app{j});
                 axis([obj.thapp{j}(floor(domainidx*0.2)) inf -inf inf])
                 CP_point = drawpoint();
-%                 w = 0;
-%                 while w == 0
-%                     w = waitforbuttonpress;
-%                 end
+                %                 w = 0;
+                %                 while w == 0
+                %                     w = waitforbuttonpress;
+                %                 end
                 obj.Man_CP(j,1) = CP_point.Position(1);
                 obj.Man_CP(j,2) = CP_point.Position(2);
             end
@@ -468,35 +481,40 @@ classdef ForceMap < handle
                     unload(end-(j-1),1) = obj.hhret{i}(j);
                     unload(j,2) = obj.ret{i}(j);
                 end
-                [obj.load_old{i},obj.unload_old{i},position,obj.CP_old(i,2)] = ContactPoint_sort(load,unload);
-                obj.CP_old(i,1) = obj.;
+                [obj.load_old{i},obj.unload_old{i},Position,obj.CP_old(i,2)] = ContactPoint_sort(load,unload);
+                obj.CP_old(i,1) = obj.thapp{i}(Position);
             end
+            current = what();
+            cd(obj.folder)
+            savename = sprintf('%s.mat',obj.name);
+            save(savename,'obj')
+            cd(current.path)
         end
         
         function choose_fibril(obj,pth_quantile)
-           % sets every forcecurve below a certain threshold to zero in
-           % obj.selected_curves. Note that curves on the fibril already
-           % chosen to be disregarded will keep that status!.This function
-           % is a crude way to find fibril areas and should not be used, if
-           % its important to select exclusively indentations on the fibril
-           % or ,in the more general case,other elevated region of interest
-           if nargin < 2
-               pth_quantile = 0.8;
-           end
-           q = quantile(obj.height_map(:,:,1),pth_quantile,'All');
-           mask = ones(size(obj.height_map));
-           for i=1:obj.header{6,2}
-               for j=1:obj.header{5,2}
-                   if obj.height_map(i,j,1) < q
-                       obj.selected_curves(obj.height_map(i,j,2)) = 0;
-                       mask(i,j,1) = 0;
-                   end
-               end
-           end
-           f = figure();
-           imshowpair(imresize(mat2gray(obj.height_map(:,:,1)),[1024 1024]),imresize(mask(:,:,1),[1024 1024]),'montage')
-%            pause(5)
-           close(f)
+            % sets every forcecurve below a certain threshold to zero in
+            % obj.selected_curves. Note that curves on the fibril already
+            % chosen to be disregarded will keep that status!.This function
+            % is a crude way to find fibril areas and should not be used, if
+            % its important to select exclusively indentations on the fibril
+            % or ,in the more general case,other elevated region of interest
+            if nargin < 2
+                pth_quantile = 0.8;
+            end
+            q = quantile(obj.height_map(:,:,1),pth_quantile,'All');
+            mask = ones(size(obj.height_map));
+            for i=1:obj.header{6,2}
+                for j=1:obj.header{5,2}
+                    if obj.height_map(i,j,1) < q
+                        obj.selected_curves(obj.height_map(i,j,2)) = 0;
+                        mask(i,j,1) = 0;
+                    end
+                end
+            end
+            f = figure();
+            imshowpair(imresize(mat2gray(obj.height_map(:,:,1)),[1024 1024]),imresize(mask(:,:,1),[1024 1024]),'montage')
+            %            pause(5)
+            close(f)
         end
         
         function level_height_map(obj)
@@ -553,7 +571,37 @@ classdef ForceMap < handle
             savemsg = sprintf('Changes to ForceMap:%s saved to %s',obj.name,obj.folder);
             disp(savemsg);
         end
+        
+        function CP_CNN_predict(obj)
+            ImgSize = Network.Layers(1).InputSize;
+            if isempty(obj.CP_CNN)
+                try
+                    temp = load('CP_CNN');
+                    obj.CP_CNN = temp.CP_CNN;
+                catch ME1
+                    disp("Can't find Neural Network named 'CP_CNN' in Folder. Trying to load from Workspace instead...")
+                    try
+                        obj.CP_CNN = CP_CNN;
+                    catch ME2
+                        disp("Can't find Neural Network named 'CP_CNN' in Workspace. Loading ForceMap without it")
+                        rethrow(ME2);
+                    end
+                end
+            end
+            objcell{1,1} = obj;
+            X = CP_CNN_batchprep_alt(objcell,ImgSize(1));
+            Ypredicted = predict(Network,X);
+            iRange = find(obj.selected_curves);
+            k = 1;
+            for i=iRange'
+                obj.CP(i,1) = Ypredicted(k,1)*range(obj.thapp{i})+min(obj.thapp{i});
+                obj.CP(i,2) = Ypredicted(k,2)*range(obj.basedapp{i})+min(obj.basedapp{i});
+                k = k + 1;
+            end
+        end
+        
     end
+    
     
     methods (Static)
         % Auxilliary functions

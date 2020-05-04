@@ -56,7 +56,7 @@ end
 
 ImgSize = 128; %bigger sizes improve results marginally but significantly
                %increase traning time. The trainer might even run out
-               %of GPU memory...
+               %of GPU memory... not really worth it
 
 %[X,Y] = CP_CNN_batchprep(FM,ImgSize);
 [X,Y] = CP_CNN_batchprep_alt(FM,ImgSize);
@@ -229,11 +229,14 @@ CP_CNN = trainNetwork(XTrain,YTrain,layers,options);
 
 %% Evaluate your model looking at the models predictions
 
+% predict outcome of XValidation
+YPredicted = predict(CP_CNN,XValidation); 
+
 % show random curve out of force map i and draw the manual CP in green and
 % the CNNs CP in red
 
 for i=1:Nmaps
-CP_CNN_predict(FM{i},CP_CNN);
+FM{i}.CP_CNN_predict;
 end
 
 i = randi(Nmaps);
@@ -247,11 +250,64 @@ net = drawpoint('Position',FM{i}.CP(randidx,:),'Color','red');
 CP_RoV(1,2) = FM{i}.basedapp{randidx}(RoVidx);
 RoV = drawpoint('Position',CP_RoV,'Color','blue');
 
-YPredicted = predict(CP_CNN,XValidation); 
-fig = figure('Name','Evaluate the model','Position',[949 79 971 915])
+fig = figure('Name','Evaluate the model','Position',[949 79 971 915]);
 idx = randi(length(XValidation));
 imshow(XValidation(:,:,1,idx),'InitialMagnification','fit');
 manpoint =drawpoint('Position',[YValidation(idx,1)*ImgSize,...
     (1-YValidation(idx,2))*ImgSize],'Color','green');
 predpoint = drawpoint('Position',[YPredicted(idx,1)*ImgSize,...
     (1-YPredicted(idx,2))*ImgSize],'Color','red');
+
+%% Define and train CNN, that tries to predict the regression error 
+%  from the previous Network in order to get some kind of confidence metric
+%  for our Network
+
+% predict outcome of XValidation
+YTrainPredicted = predict(CP_CNN,XTrain);
+YValidationPredicted = predict(CP_CNN,XValidation);
+
+% Define new target-values ConfY instead of Y. X stayes the same
+ConfXTrain = XTrain;
+ConfXValidation = XValidation;
+ConfYTrain = zeros(size(YTrain))
+for i=1:length(YTrain)
+    ConfYTrain(i,:) = norm(YTrain(i,:)-YTrainPredicted(i,:));
+end
+for i=1:length(YValidation)
+    ConfYValidation = norm(YValidation-YValidationPredicted);
+end
+
+
+% Defining shape of the CNN. This is the same architecture as the first one
+% used above
+ConfLayers = [
+    imageInputLayer([ImgSize ImgSize 1],"Name","imageinput",...
+    'Normalization','zscore')
+    convolution2dLayer([5 5],32,"Name","conv_1","Padding","same","Stride",[1 1])
+    reluLayer("Name","relu_1")
+    maxPooling2dLayer([5 5],"Name","maxpool_1","Padding","same","Stride",[3 3])
+    convolution2dLayer([3 3],32,"Name","conv_2","Padding","same")
+    reluLayer("Name","relu_2")
+    maxPooling2dLayer([5 5],"Name","maxpool_2","Padding","same","Stride",[3 3])
+    dropoutLayer(0.01,'Name','dropout_1')
+    fullyConnectedLayer(2048,"Name","fc_1")
+    reluLayer('Name','relu_3')
+    dropoutLayer(0.01,'Name','dropout_2')
+    fullyConnectedLayer(1024,'Name','fc_2')
+    reluLayer('Name','relu_4')
+    fullyConnectedLayer(1,"Name","fc_3")
+    regressionLayer("Name","regressionoutput")];
+
+options = trainingOptions('adam','Plots','training-progress',...
+    'ValidationData',{ConfXValidation,ConfYValidation},...
+    'ValidationFrequency',50,...
+    'MiniBatchSize',90,...
+    'MaxEpochs',1000,...
+    'InitialLearnRate',0.002,...
+    'LearnRateSchedule','piecewise',...
+    'LearnRateDropPeriod',50,...
+    'LearnRateDropFactor',0.5,...
+    'Shuffle','every-epoch');
+
+
+Confidence_CP_CNN = trainNetwork(ConfXTrain,ConfYTrain,ConfLayers,options);

@@ -229,11 +229,14 @@ CP_CNN = trainNetwork(XTrain,YTrain,layers,options);
 
 %% Evaluate your model looking at the models predictions
 
+% predict outcome of XValidation
+YPredicted = predict(CP_CNN,XValidation); 
+
 % show random curve out of force map i and draw the manual CP in green and
 % the CNNs CP in red
 
 for i=1:Nmaps
-CP_CNN_predict(FM{i},CP_CNN);
+FM{i}.CP_CNN_predict;
 end
 
 i = randi(Nmaps);
@@ -247,11 +250,186 @@ net = drawpoint('Position',FM{i}.CP(randidx,:),'Color','red');
 CP_RoV(1,2) = FM{i}.basedapp{randidx}(RoVidx);
 RoV = drawpoint('Position',CP_RoV,'Color','blue');
 
-YPredicted = predict(CP_CNN,XValidation); 
-fig = figure('Name','Evaluate the model','Position',[949 79 971 915])
+fig = figure('Name','Evaluate the model','Position',[949 79 971 915]);
 idx = randi(length(XValidation));
 imshow(XValidation(:,:,1,idx),'InitialMagnification','fit');
 manpoint =drawpoint('Position',[YValidation(idx,1)*ImgSize,...
     (1-YValidation(idx,2))*ImgSize],'Color','green');
 predpoint = drawpoint('Position',[YPredicted(idx,1)*ImgSize,...
     (1-YPredicted(idx,2))*ImgSize],'Color','red');
+
+%% Define and train CNN, that tries to predict the regression error 
+%  from the previous Network in order to get some kind of confidence metric
+%  for our Network
+
+% predict outcome of XValidation
+YTrainPredicted = predict(CP_CNN,XTrain);
+YValidationPredicted = predict(CP_CNN,XValidation);
+
+% Define new target-values ConfY instead of Y. X stayes the same
+ConfXTrain = XTrain;
+ConfXValidation = XValidation;
+ConfYTrain = zeros(length(YTrain),1);
+ConfYValidation = zeros(length(YValidation),1);
+for i=1:length(YTrain)
+    ConfYTrain(i) = norm(YTrain(i,:)-YTrainPredicted(i,:));
+end
+for i=1:length(YValidation)
+    ConfYValidation(i) = norm(YValidation(i,:)-YValidationPredicted(i,:));
+end
+
+
+% Defining shape of the CNN. This is the same architecture as the first one
+% used above
+ConfLayers = [
+    imageInputLayer([ImgSize ImgSize 1],"Name","imageinput",...
+    'Normalization','zscore')
+    convolution2dLayer([5 5],32,"Name","conv_1","Padding","same","Stride",[1 1])
+    reluLayer("Name","relu_1")
+    maxPooling2dLayer([5 5],"Name","maxpool_1","Padding","same","Stride",[3 3])
+    convolution2dLayer([3 3],32,"Name","conv_2","Padding","same")
+    reluLayer("Name","relu_2")
+    maxPooling2dLayer([5 5],"Name","maxpool_2","Padding","same","Stride",[3 3])
+    dropoutLayer(0.5,'Name','dropout_1')
+    fullyConnectedLayer(2048,"Name","fc_1")
+    reluLayer('Name','relu_3')
+    dropoutLayer(0.5,'Name','dropout_2')
+    fullyConnectedLayer(1024,'Name','fc_2')
+    reluLayer('Name','relu_4')
+    fullyConnectedLayer(1,"Name","fc_3")
+    regressionLayer("Name","regressionoutput")];
+
+ConfResnet14 = layerGraph();
+
+tempLayers = [
+    imageInputLayer([ImgSize ImgSize 1],"Name","imageinput","Normalization","zscore")
+    convolution2dLayer([7 7],64,"Name","conv_11","Padding","same","Stride",[2 2])
+    batchNormalizationLayer("Name","batchnorm_9")
+    reluLayer("Name","relu_9")
+    maxPooling2dLayer([3 3],"Name","maxpool","Padding","same","Stride",[2 2])];
+ConfResnet14 = addLayers(ConfResnet14,tempLayers);
+
+tempLayers = [
+    batchNormalizationLayer("Name","batchnorm_1")
+    reluLayer("Name","relu_1")
+    convolution2dLayer([3 3],64,"Name","conv_1","Padding","same")
+    batchNormalizationLayer("Name","batchnorm_2")
+    reluLayer("Name","relu_2")
+    convolution2dLayer([3 3],64,"Name","conv_2","Padding","same")];
+ConfResnet14 = addLayers(ConfResnet14,tempLayers);
+
+tempLayers = additionLayer(2,"Name","addition_1");
+ConfResnet14 = addLayers(ConfResnet14,tempLayers);
+
+tempLayers = [
+    batchNormalizationLayer("Name","batchnorm_3")
+    reluLayer("Name","relu_3")
+    convolution2dLayer([3 3],64,"Name","conv_3","Padding","same")
+    batchNormalizationLayer("Name","batchnorm_4")
+    reluLayer("Name","relu_4")
+    convolution2dLayer([3 3],64,"Name","conv_4","Padding","same")];
+ConfResnet14 = addLayers(ConfResnet14,tempLayers);
+
+tempLayers = additionLayer(2,"Name","addition_2");
+ConfResnet14 = addLayers(ConfResnet14,tempLayers);
+
+tempLayers = [
+    batchNormalizationLayer("Name","batchnorm_5")
+    reluLayer("Name","relu_5")
+    convolution2dLayer([3 3],128,"Name","conv_5","Padding","same","Stride",[2 2])
+    batchNormalizationLayer("Name","batchnorm_6")
+    reluLayer("Name","relu_6")
+    convolution2dLayer([3 3],128,"Name","conv_6","Padding","same")];
+ConfResnet14 = addLayers(ConfResnet14,tempLayers);
+
+tempLayers = convolution2dLayer([1 1],128,"Name","conv_9","Padding","same","Stride",[2 2]);
+ConfResnet14 = addLayers(ConfResnet14,tempLayers);
+
+tempLayers = additionLayer(2,"Name","addition_3");
+ConfResnet14 = addLayers(ConfResnet14,tempLayers);
+
+tempLayers = convolution2dLayer([1 1],128,"Name","conv_10","Padding","same");
+ConfResnet14 = addLayers(ConfResnet14,tempLayers);
+
+tempLayers = [
+    batchNormalizationLayer("Name","batchnorm_7")
+    reluLayer("Name","relu_7")
+    convolution2dLayer([3 3],128,"Name","conv_7","Padding","same")
+    batchNormalizationLayer("Name","batchnorm_8")
+    reluLayer("Name","relu_8")
+    convolution2dLayer([3 3],128,"Name","conv_8","Padding","same")];
+ConfResnet14 = addLayers(ConfResnet14,tempLayers);
+
+tempLayers = additionLayer(2,"Name","addition_4");
+ConfResnet14 = addLayers(ConfResnet14,tempLayers);
+
+tempLayers = [
+    batchNormalizationLayer("Name","batchnorm_10")
+    reluLayer("Name","relu_10")
+    convolution2dLayer([3 3],256,"Name","conv_12","Padding","same","Stride",[2 2])
+    batchNormalizationLayer("Name","batchnorm_11")
+    reluLayer("Name","relu_11")
+    convolution2dLayer([3 3],256,"Name","conv_13","Padding","same")];
+ConfResnet14 = addLayers(ConfResnet14,tempLayers);
+
+tempLayers = convolution2dLayer([1 1],256,"Name","conv_16","Padding","same","Stride",[2 2]);
+ConfResnet14 = addLayers(ConfResnet14,tempLayers);
+
+tempLayers = additionLayer(2,"Name","addition_5");
+ConfResnet14 = addLayers(ConfResnet14,tempLayers);
+
+tempLayers = [
+    batchNormalizationLayer("Name","batchnorm_12")
+    reluLayer("Name","relu_12")
+    convolution2dLayer([3 3],256,"Name","conv_14","Padding","same")
+    batchNormalizationLayer("Name","batchnorm_13")
+    reluLayer("Name","relu_13")
+    convolution2dLayer([3 3],256,"Name","conv_15","Padding","same")];
+ConfResnet14 = addLayers(ConfResnet14,tempLayers);
+
+tempLayers = convolution2dLayer([1 1],256,"Name","conv_17","Padding","same");
+ConfResnet14 = addLayers(ConfResnet14,tempLayers);
+
+tempLayers = [
+    additionLayer(2,"Name","addition_6")
+    globalAveragePooling2dLayer("Name","gapool")
+    fullyConnectedLayer(1,"Name","fc")
+    regressionLayer("Name","regressionoutput")];
+ConfResnet14 = addLayers(ConfResnet14,tempLayers);
+
+ConfResnet14 = connectLayers(ConfResnet14,"maxpool","batchnorm_1");
+ConfResnet14 = connectLayers(ConfResnet14,"maxpool","addition_1/in2");
+ConfResnet14 = connectLayers(ConfResnet14,"conv_2","addition_1/in1");
+ConfResnet14 = connectLayers(ConfResnet14,"addition_1","batchnorm_3");
+ConfResnet14 = connectLayers(ConfResnet14,"addition_1","addition_2/in2");
+ConfResnet14 = connectLayers(ConfResnet14,"conv_4","addition_2/in1");
+ConfResnet14 = connectLayers(ConfResnet14,"addition_2","batchnorm_5");
+ConfResnet14 = connectLayers(ConfResnet14,"addition_2","conv_9");
+ConfResnet14 = connectLayers(ConfResnet14,"conv_6","addition_3/in1");
+ConfResnet14 = connectLayers(ConfResnet14,"conv_9","addition_3/in2");
+ConfResnet14 = connectLayers(ConfResnet14,"addition_3","conv_10");
+ConfResnet14 = connectLayers(ConfResnet14,"addition_3","batchnorm_7");
+ConfResnet14 = connectLayers(ConfResnet14,"conv_10","addition_4/in2");
+ConfResnet14 = connectLayers(ConfResnet14,"conv_8","addition_4/in1");
+ConfResnet14 = connectLayers(ConfResnet14,"addition_4","batchnorm_10");
+ConfResnet14 = connectLayers(ConfResnet14,"addition_4","conv_16");
+ConfResnet14 = connectLayers(ConfResnet14,"conv_16","addition_5/in2");
+ConfResnet14 = connectLayers(ConfResnet14,"conv_13","addition_5/in1");
+ConfResnet14 = connectLayers(ConfResnet14,"addition_5","batchnorm_12");
+ConfResnet14 = connectLayers(ConfResnet14,"addition_5","conv_17");
+ConfResnet14 = connectLayers(ConfResnet14,"conv_15","addition_6/in1");
+ConfResnet14 = connectLayers(ConfResnet14,"conv_17","addition_6/in2");
+
+options = trainingOptions('adam','Plots','training-progress',...
+    'ValidationData',{ConfXValidation,ConfYValidation},...
+    'ValidationFrequency',50,...
+    'MiniBatchSize',50,...
+    'MaxEpochs',1000,...
+    'InitialLearnRate',0.002,...
+    'LearnRateSchedule','piecewise',...
+    'LearnRateDropPeriod',50,...
+    'LearnRateDropFactor',0.5,...
+    'Shuffle','every-epoch');
+
+
+Confidence_CP_CNN = trainNetwork(ConfXTrain,ConfYTrain,ConfResnet14,options);
