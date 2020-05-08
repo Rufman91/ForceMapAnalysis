@@ -261,7 +261,7 @@ predpoint = drawpoint('Position',[YPredicted(idx,1)*ImgSize,...
 %% Create dropout model for uncertainty estimation during inference. Extract and apply weights
 %  from previously trained model
 
-DropParam = 0.2;
+DropParam = 0.1;
 
 DropoutNet = layerGraph();
 

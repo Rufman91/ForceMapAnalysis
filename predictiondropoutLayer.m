@@ -17,23 +17,14 @@ classdef predictiondropoutLayer < nnet.layer.Layer
         end
         
         function Z = predict(layer,X)
-            Dim(1) = size(X,1);
-            Dim(2) = size(X,2);
-            Dim(3) = size(X,3);
-            Dim(4) = size(X,4);
-            Z = zeros(Dim);
-            for i=1:Dim(1)
-                for j=1:Dim(2)
-                    for k=1:Dim(3)
-                        for l=1:Dim(4)
-                            if layer.p < rand
-                                Z(i,j,k,l) = 1/(1-layer.p);
-                            end
-                        end
-                    end
-                end
+            if ~isa(X, 'dlarray')
+                superfloatOfX = superiorfloat(X);
+            else
+                superfloatOfX = superiorfloat(extractdata(X));
             end
-            Z = X.*Z;
+            dropoutScaleFactor = cast( 1 - layer.p, superfloatOfX );
+            dropoutMask = ( rand(size(X), 'like', X) > layer.p ) / dropoutScaleFactor;
+            Z = X.*dropoutMask;
         end
     end
 end

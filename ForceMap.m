@@ -571,7 +571,7 @@ classdef ForceMap < handle
             disp(savemsg);
         end
         
-        function CP_CNN_predict(obj)
+        function CP_CNN_predict(obj,CP_CNN)
             if isempty(obj.CP_CNN)
                 try
                     temp = load('CP_CNN');
