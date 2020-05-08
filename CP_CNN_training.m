@@ -211,12 +211,12 @@ resnet14 = connectLayers(resnet14,"conv_17","addition_6/in2");
 
 options = trainingOptions('adam','Plots','training-progress',...
     'ValidationData',{XValidation,YValidation},...
-    'ValidationFrequency',50,...
-    'MiniBatchSize',90,...
-    'MaxEpochs',1000,...
+    'ValidationFrequency',20,...
+    'MiniBatchSize',20,...
+    'MaxEpochs',500,...
     'InitialLearnRate',0.002,...
     'LearnRateSchedule','piecewise',...
-    'LearnRateDropPeriod',50,...
+    'LearnRateDropPeriod',10,...
     'LearnRateDropFactor',0.5,...
     'Shuffle','every-epoch');
 
@@ -225,7 +225,7 @@ options = trainingOptions('adam','Plots','training-progress',...
 %  For this option to be available, the Parallel-Computing-Toolbox has to be
 %  installed in MATLAB
 
-CP_CNN = trainNetwork(XTrain,YTrain,layers,options);
+CP_CNN = trainNetwork(XTrain,YTrain,lgraph_2,options);
 
 %% Evaluate your model looking at the models predictions
 
@@ -257,6 +257,152 @@ manpoint =drawpoint('Position',[YValidation(idx,1)*ImgSize,...
     (1-YValidation(idx,2))*ImgSize],'Color','green');
 predpoint = drawpoint('Position',[YPredicted(idx,1)*ImgSize,...
     (1-YPredicted(idx,2))*ImgSize],'Color','red');
+
+%% Create dropout model for uncertainty estimation during inference. Extract and apply weights
+%  from previously trained model
+
+DropParam = 0.2;
+
+DropoutNet = layerGraph();
+
+tempLayers = [
+    CP_CNN.Layers(1)
+    dropoutLayer(DropParam,"Name","dropout_1")
+    CP_CNN.Layers(2)
+    CP_CNN.Layers(3)
+    reluLayer("Name","relu_9")
+    CP_CNN.Layers(5)];
+DropoutNet = addLayers(DropoutNet,tempLayers);
+
+tempLayers = [
+    CP_CNN.Layers(6)
+    reluLayer("Name","relu_1")
+    dropoutLayer(DropParam,"Name","dropout_2")
+    CP_CNN.Layers(8)
+    CP_CNN.Layers(9)
+    reluLayer("Name","relu_2")
+    dropoutLayer(DropParam,"Name","dropout_3")
+    CP_CNN.Layers(11)];
+DropoutNet = addLayers(DropoutNet,tempLayers);
+
+tempLayers = additionLayer(2,"Name","addition_1");
+DropoutNet = addLayers(DropoutNet,tempLayers);
+
+tempLayers = [
+    CP_CNN.Layers(13)
+    reluLayer("Name","relu_3")
+    dropoutLayer(DropParam,"Name","dropout_4")
+    CP_CNN.Layers(15)
+    CP_CNN.Layers(16)
+    reluLayer("Name","relu_4")
+    dropoutLayer(DropParam,"Name","dropout_5")
+    CP_CNN.Layers(18)];
+DropoutNet = addLayers(DropoutNet,tempLayers);
+
+tempLayers = additionLayer(2,"Name","addition_2");
+DropoutNet = addLayers(DropoutNet,tempLayers);
+
+tempLayers = CP_CNN.Layers(26);
+DropoutNet = addLayers(DropoutNet,tempLayers);
+
+tempLayers = [
+    CP_CNN.Layers(20)
+    reluLayer("Name","relu_5")
+    dropoutLayer(DropParam,"Name","dropout_6")
+    CP_CNN.Layers(22)
+    CP_CNN.Layers(23)
+    reluLayer("Name","relu_6")
+    dropoutLayer(DropParam,"Name","dropout_7")
+    CP_CNN.Layers(25)];
+DropoutNet = addLayers(DropoutNet,tempLayers);
+
+tempLayers = additionLayer(2,"Name","addition_3");
+DropoutNet = addLayers(DropoutNet,tempLayers);
+
+tempLayers = CP_CNN.Layers(28);
+DropoutNet = addLayers(DropoutNet,tempLayers);
+
+tempLayers = [
+    CP_CNN.Layers(29)
+    reluLayer("Name","relu_7")
+    dropoutLayer(DropParam,"Name","dropout_8")
+    CP_CNN.Layers(31)
+    CP_CNN.Layers(32)
+    reluLayer("Name","relu_8")
+    dropoutLayer(DropParam,"Name","dropout_9")
+    CP_CNN.Layers(34)];
+DropoutNet = addLayers(DropoutNet,tempLayers);
+
+tempLayers = additionLayer(2,"Name","addition_4");
+DropoutNet = addLayers(DropoutNet,tempLayers);
+
+tempLayers = CP_CNN.Layers(42);
+DropoutNet = addLayers(DropoutNet,tempLayers);
+
+tempLayers = [
+    CP_CNN.Layers(36)
+    reluLayer("Name","relu_10")
+    dropoutLayer(DropParam,"Name","dropout_10")
+    CP_CNN.Layers(38)
+    CP_CNN.Layers(39)
+    reluLayer("Name","relu_11")
+    dropoutLayer(DropParam,"Name","dropout_11")
+    CP_CNN.Layers(41)];
+DropoutNet = addLayers(DropoutNet,tempLayers);
+
+tempLayers = additionLayer(2,"Name","addition_5");
+DropoutNet = addLayers(DropoutNet,tempLayers);
+
+tempLayers = [
+    CP_CNN.Layers(44)
+    reluLayer("Name","relu_12")
+    dropoutLayer(DropParam,"Name","dropout_12")
+    CP_CNN.Layers(46)
+    CP_CNN.Layers(47)
+    reluLayer("Name","relu_13")
+    dropoutLayer(DropParam,"Name","dropout_13")
+    CP_CNN.Layers(49)];
+DropoutNet = addLayers(DropoutNet,tempLayers);
+
+tempLayers = CP_CNN.Layers(50);
+DropoutNet = addLayers(DropoutNet,tempLayers);
+
+tempLayers = [
+    additionLayer(2,"Name","addition_6")
+    globalAveragePooling2dLayer("Name","gapool")
+    CP_CNN.Layers(53)];
+DropoutNet = addLayers(DropoutNet,tempLayers);
+
+% clean up helper variable
+clear tempLayers;
+
+DropoutNet = connectLayers(DropoutNet,"maxpool","batchnorm_1");
+DropoutNet = connectLayers(DropoutNet,"maxpool","addition_1/in2");
+DropoutNet = connectLayers(DropoutNet,"conv_2","addition_1/in1");
+DropoutNet = connectLayers(DropoutNet,"addition_1","batchnorm_3");
+DropoutNet = connectLayers(DropoutNet,"addition_1","addition_2/in2");
+DropoutNet = connectLayers(DropoutNet,"conv_4","addition_2/in1");
+DropoutNet = connectLayers(DropoutNet,"addition_2","conv_9");
+DropoutNet = connectLayers(DropoutNet,"addition_2","batchnorm_5");
+DropoutNet = connectLayers(DropoutNet,"conv_9","addition_3/in2");
+DropoutNet = connectLayers(DropoutNet,"conv_6","addition_3/in1");
+DropoutNet = connectLayers(DropoutNet,"addition_3","conv_10");
+DropoutNet = connectLayers(DropoutNet,"addition_3","batchnorm_7");
+DropoutNet = connectLayers(DropoutNet,"conv_10","addition_4/in2");
+DropoutNet = connectLayers(DropoutNet,"conv_8","addition_4/in1");
+DropoutNet = connectLayers(DropoutNet,"addition_4","conv_16");
+DropoutNet = connectLayers(DropoutNet,"addition_4","batchnorm_10");
+DropoutNet = connectLayers(DropoutNet,"conv_16","addition_5/in2");
+DropoutNet = connectLayers(DropoutNet,"conv_13","addition_5/in1");
+DropoutNet = connectLayers(DropoutNet,"addition_5","batchnorm_12");
+DropoutNet = connectLayers(DropoutNet,"addition_5","conv_17");
+DropoutNet = connectLayers(DropoutNet,"conv_17","addition_6/in2");
+DropoutNet = connectLayers(DropoutNet,"conv_15","addition_6/in1");
+
+dlXValidation = dlarray(XValidation,'SSCB');
+DropoutNet = dlnetwork(DropoutNet);
+forward(DropoutNet,dlXValidation(:,:,:,1));
+predict(CP_CNN,dlXValidation(:,:,:,1));
 
 %% Define and train CNN, that tries to predict the regression error 
 %  from the previous Network in order to get some kind of confidence metric
@@ -290,10 +436,10 @@ ConfLayers = [
     convolution2dLayer([3 3],32,"Name","conv_2","Padding","same")
     reluLayer("Name","relu_2")
     maxPooling2dLayer([5 5],"Name","maxpool_2","Padding","same","Stride",[3 3])
-    dropoutLayer(0.5,'Name','dropout_1')
+    dropoutLayer(DropParam,'Name','dropout_1')
     fullyConnectedLayer(2048,"Name","fc_1")
     reluLayer('Name','relu_3')
-    dropoutLayer(0.5,'Name','dropout_2')
+    dropoutLayer(DropParam,'Name','dropout_2')
     fullyConnectedLayer(1024,'Name','fc_2')
     reluLayer('Name','relu_4')
     fullyConnectedLayer(1,"Name","fc_3")

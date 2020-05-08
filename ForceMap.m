@@ -642,4 +642,14 @@ classdef ForceMap < handle
         
     end
     
+    methods 
+        % non-static auxilliary methods
+        
+        function show_height_map(obj)
+            title = sprintf('Height Map of %s',obj.name);
+            figure('Name',title);
+            imshow(imresize(mat2gray(obj.height_map(:,:,1)),[1024 1024]));
+        end
+    end
+        
 end
