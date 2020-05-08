@@ -267,7 +267,7 @@ DropoutNet = layerGraph();
 
 tempLayers = [
     CP_CNN.Layers(1)
-    dropoutLayer(DropParam,"Name","dropout_1")
+    predictiondropoutLayer(DropParam,'preddrop_1')
     CP_CNN.Layers(2)
     CP_CNN.Layers(3)
     reluLayer("Name","relu_9")
@@ -277,11 +277,11 @@ DropoutNet = addLayers(DropoutNet,tempLayers);
 tempLayers = [
     CP_CNN.Layers(6)
     reluLayer("Name","relu_1")
-    dropoutLayer(DropParam,"Name","dropout_2")
+    predictiondropoutLayer(DropParam,'preddrop_2')
     CP_CNN.Layers(8)
     CP_CNN.Layers(9)
     reluLayer("Name","relu_2")
-    dropoutLayer(DropParam,"Name","dropout_3")
+    predictiondropoutLayer(DropParam,'preddrop_3')
     CP_CNN.Layers(11)];
 DropoutNet = addLayers(DropoutNet,tempLayers);
 
@@ -291,11 +291,11 @@ DropoutNet = addLayers(DropoutNet,tempLayers);
 tempLayers = [
     CP_CNN.Layers(13)
     reluLayer("Name","relu_3")
-    dropoutLayer(DropParam,"Name","dropout_4")
+    predictiondropoutLayer(DropParam,'preddrop_4')
     CP_CNN.Layers(15)
     CP_CNN.Layers(16)
     reluLayer("Name","relu_4")
-    dropoutLayer(DropParam,"Name","dropout_5")
+    predictiondropoutLayer(DropParam,'preddrop_5')
     CP_CNN.Layers(18)];
 DropoutNet = addLayers(DropoutNet,tempLayers);
 
@@ -308,11 +308,11 @@ DropoutNet = addLayers(DropoutNet,tempLayers);
 tempLayers = [
     CP_CNN.Layers(20)
     reluLayer("Name","relu_5")
-    dropoutLayer(DropParam,"Name","dropout_6")
+    predictiondropoutLayer(DropParam,'preddrop_6')
     CP_CNN.Layers(22)
     CP_CNN.Layers(23)
     reluLayer("Name","relu_6")
-    dropoutLayer(DropParam,"Name","dropout_7")
+    predictiondropoutLayer(DropParam,'preddrop_7')
     CP_CNN.Layers(25)];
 DropoutNet = addLayers(DropoutNet,tempLayers);
 
@@ -325,11 +325,11 @@ DropoutNet = addLayers(DropoutNet,tempLayers);
 tempLayers = [
     CP_CNN.Layers(29)
     reluLayer("Name","relu_7")
-    dropoutLayer(DropParam,"Name","dropout_8")
+    predictiondropoutLayer(DropParam,'preddrop_8')
     CP_CNN.Layers(31)
     CP_CNN.Layers(32)
     reluLayer("Name","relu_8")
-    dropoutLayer(DropParam,"Name","dropout_9")
+    predictiondropoutLayer(DropParam,'preddrop_9')
     CP_CNN.Layers(34)];
 DropoutNet = addLayers(DropoutNet,tempLayers);
 
@@ -342,11 +342,11 @@ DropoutNet = addLayers(DropoutNet,tempLayers);
 tempLayers = [
     CP_CNN.Layers(36)
     reluLayer("Name","relu_10")
-    dropoutLayer(DropParam,"Name","dropout_10")
+    predictiondropoutLayer(DropParam,'preddrop_10')
     CP_CNN.Layers(38)
     CP_CNN.Layers(39)
     reluLayer("Name","relu_11")
-    dropoutLayer(DropParam,"Name","dropout_11")
+    predictiondropoutLayer(DropParam,'preddrop_11')
     CP_CNN.Layers(41)];
 DropoutNet = addLayers(DropoutNet,tempLayers);
 
@@ -356,11 +356,11 @@ DropoutNet = addLayers(DropoutNet,tempLayers);
 tempLayers = [
     CP_CNN.Layers(44)
     reluLayer("Name","relu_12")
-    dropoutLayer(DropParam,"Name","dropout_12")
+    predictiondropoutLayer(DropParam,'preddrop_12')
     CP_CNN.Layers(46)
     CP_CNN.Layers(47)
     reluLayer("Name","relu_13")
-    dropoutLayer(DropParam,"Name","dropout_13")
+    predictiondropoutLayer(DropParam,'preddrop_13')
     CP_CNN.Layers(49)];
 DropoutNet = addLayers(DropoutNet,tempLayers);
 
@@ -370,7 +370,8 @@ DropoutNet = addLayers(DropoutNet,tempLayers);
 tempLayers = [
     additionLayer(2,"Name","addition_6")
     globalAveragePooling2dLayer("Name","gapool")
-    CP_CNN.Layers(53)];
+    CP_CNN.Layers(53)
+    CP_CNN.Layers(54)];
 DropoutNet = addLayers(DropoutNet,tempLayers);
 
 % clean up helper variable
@@ -399,10 +400,9 @@ DropoutNet = connectLayers(DropoutNet,"addition_5","conv_17");
 DropoutNet = connectLayers(DropoutNet,"conv_17","addition_6/in2");
 DropoutNet = connectLayers(DropoutNet,"conv_15","addition_6/in1");
 
-dlXValidation = dlarray(XValidation,'SSCB');
-DropoutNet = dlnetwork(DropoutNet);
-forward(DropoutNet,dlXValidation(:,:,:,1));
-predict(CP_CNN,dlXValidation(:,:,:,1));
+DropoutNet = assembleNetwork(DropoutNet);
+predict(DropoutNet,X(:,:,:,1))
+predict(CP_CNN,X(:,:,:,1))
 
 %% Define and train CNN, that tries to predict the regression error 
 %  from the previous Network in order to get some kind of confidence metric

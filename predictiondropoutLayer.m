@@ -7,28 +7,33 @@ classdef predictiondropoutLayer < nnet.layer.Layer
     % not the usual procedure. This will lead to untested behaviour.
     
     properties
-        Name % Layer Name
         p   % Dropout probability
     end
     
     methods
-        function layer = predictiondropoutLayer(p,name)
+        function layer = predictiondropoutLayer(p,Name)
             layer.p = p;
-            layer.Name = name;
+            layer.Name = Name;
         end
         
         function Z = predict(layer,X)
-            Dim = size(X);
-            X = reshape(X,[],1);
-            Z = zeros(size(X));
-            for i=1:length(X)
-                if layer.p < rand
-                    Z(i) = X(i)*1/(1-layer.p);
-                else
-                    Z(i) = 0;
+            Dim(1) = size(X,1);
+            Dim(2) = size(X,2);
+            Dim(3) = size(X,3);
+            Dim(4) = size(X,4);
+            Z = zeros(Dim);
+            for i=1:Dim(1)
+                for j=1:Dim(2)
+                    for k=1:Dim(3)
+                        for l=1:Dim(4)
+                            if layer.p < rand
+                                Z(i,j,k,l) = 1/(1-layer.p);
+                            end
+                        end
+                    end
                 end
             end
-            Z = reshape(Z,Dim);
+            Z = X.*Z;
         end
     end
 end
