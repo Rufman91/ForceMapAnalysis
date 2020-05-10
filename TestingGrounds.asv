@@ -1,0 +1,40 @@
+for k=1:21
+%     FM{k}.CP_RoV
+%     FM{k}.CP_CNN_predict('Fast')
+%     FM{k}.CP_CNN_predict('Dropout',100)
+%     FM{k}.old_CP
+%     FM{k}.DropoutNet = DropoutNet;
+    FM{k}.SelectedCurves = FM{k}.selected_curves ;
+    FM{k}.Name = FM{k}.name ;
+    FM{k}.Folder = FM{k}.folder ;
+    FM{k}.Header = FM{k}.header ;
+    FM{k}.App = FM{k}.app ;
+    FM{k}.Ret = FM{k}.ret ;
+    FM{k}.HHApp = FM{k}.hhapp ;
+    FM{k}.HHRet = FM{k}.hhret ;
+    FM{k}.THApp = FM{k}.thapp ;
+    FM{k}.THRet = FM{k}.thret ;
+    FM{k}.BasedApp = FM{k}.basedapp ;
+    FM{k}.BasedRet = FM{k}.basedret ;
+    FM{k}.Basefit = FM{k}.basefit ;
+    FM{k}.HeightMap = FM{k}.height_map ;
+    FM{k}.Sensitivity = FM{k}.sensitivity ;
+    FM{k}.NCurves = FM{k}.n_curves ;
+    FM{k}.PixApp = FM{k}.pix_app ;
+    FM{k}.PixRet = FM{k}.pix_ret ;
+    FM{k}.SelectedCurves = FM{k}.selected_curves ;
+    FM{k}.LoadOld = FM{k}.load_old ;
+    FM{k}.UnloadOld = FM{k}.unload_old ;
+    FM{k}.DeltaE = FM{k}.deltaE ;
+    FM{k}.TipRadius = FM{k}.tip_radius ;
+    FM{k}.PoissonR = FM{k}.poisson_r ;
+    FM{k}. = FM{k}. ;
+end
+k = randi(21);
+Curves = find(FM{k}.SelectedCurves);
+i = Curves(randi(length(Curves)));
+f = figure('Name','Look at it!');
+plot(FM{k}.THApp{i},FM{k}.BasedApp{i})
+drawpoint('Position',[FM{k}.Man_CP(i,1) FM{k}.Man_CP(i,2)],'Color','green')
+drawpoint('Position',[FM{k}.CP(i,1) FM{k}.CP(i,2)],'Color','blue')
+drawpoint('Position',[FM{k}.CP_old(i,1) FM{k}.CP_old(i,2)],'Color','black')

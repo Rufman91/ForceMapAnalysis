@@ -1,3 +1,5 @@
+%% OUTDATED FUNCTION! USE THE ASSOCIATED ForceMap.CP_CNN_predict!
+
 function CP_CNN_predict(obj,Network)
 ImgSize = Network.Layers(1).InputSize;
 objcell{1,1} = obj;
