@@ -591,7 +591,7 @@ classdef ForceMap < handle
         function cp_cnn_predict(obj,String,NumPasses)
             % String = 'Fast' just predict with one forwardpass using
             % CP_CNN
-            % String = 'Dropout' predict through multiple forwardpasses
+            % String = 'Dropout' predict through n=NumPasses forwardpasses
             % through DropoutNet and additionally gain a metric for
             % uncertainty of the CP estimate
             if nargin < 2
@@ -622,19 +622,19 @@ classdef ForceMap < handle
                 try
                     temp = load('DropoutNet.mat');
                     obj.DropoutNet = temp.DropoutNet;
-                catch ME1
-                    disp("Can't find Neural Network named 'CP_CNN' in Folder. Trying to load from Workspace instead...")
+                catch
+                    disp("Can't find Neural Network named 'DropoutNet' in Folder. Trying to load from Workspace instead...")
                     try
-                        obj.CP_CNN = CP_CNN;
+                        obj.CP_CNN = DropoutNet;
                     catch ME2
-                        disp("Can't find Neural Network named 'CP_CNN' in Workspace. Can't compute Contact Points")
+                        disp("Can't find Neural Network named 'DropoutNet' in Workspace. Can't compute Contact Points")
                         rethrow(ME2);
                     end
                 end
             end
             ImgSize = obj.CP_CNN.Layers(1).InputSize;
             objcell{1,1} = obj;
-            X = CP_CNN_batchprep_alt(objcell,ImgSize(1));
+            X = CP_CNN_batchprep(objcell,ImgSize(1));
             len = length(X);
             h = waitbar(0,'Setting up','Name',obj.Name);
             switch runmode
@@ -643,14 +643,6 @@ classdef ForceMap < handle
                     Ypredicted = predict(obj.CP_CNN,X);
                 case 1
                     obj.YDropPred = zeros(NumPasses,2,len);
-                    %                    Ypredicted = zeros(len,2);
-                    %                     for i=1:len
-                    %                         for j=1:NumPasses
-                    %                             waitbar(j/NumPasses,h,sprintf('Predicting CP for curve %i/%i',i,len));
-                    %                             obj.YDropPred(j,:,i) = predict(obj.DropoutNet,X(:,:,:,i));
-                    %                         end
-                    %                         Ypredicted(i,:) = [mean(obj.YDropPred(:,1,i)) mean(obj.YDropPred(:,2,i))];
-                    %                     end
                     Ypredicted = zeros(len,2);
                     CantHandle = false;
                     for j=1:NumPasses
@@ -678,9 +670,7 @@ classdef ForceMap < handle
                         end
                         obj.YDropPred(j,:,:) = Temp';
                     end
-                    for i=1:len
-                        Ypredicted(i,:) = [mean(obj.YDropPred(:,1,i)) mean(obj.YDropPred(:,2,i))];
-                    end
+                    Ypredicted = predict(obj.CP_CNN,X);
             end
             waitbar(1,h,'Wrapping up');
             iRange = find(obj.SelectedCurves);

@@ -22,7 +22,7 @@ classdef ForceMap < handle
     properties
         Name            % name of the force map. taken as the name of the folder, containing the .csv files
         Folder          % location of the .csv files of the force map
-        Header     % header properties taken from the JPK force map container file
+        Header          % header properties taken from the JPK force map container file
         App = {}        % approach force data in Newton
         Ret = {}        % retraction force data in Newton
         HHApp = {}      % head-height approach data in meters
@@ -32,16 +32,16 @@ classdef ForceMap < handle
         BasedApp = {}   % approach force data with subtracted base line and tilt in Newton
         BasedRet = {}   % retraction force data with subtracted base line and tilt in Newton
         Basefit = {}    % fit model used for the baseline fit
-        HeightMap      % height profile map taken from the inverted maximum head-height from approach max(hhapp)
-                       % the additional dimension in the height map holds
-                       % the index from the corresponding 1-D lists of
-                       % force curves, so one can easily identify the
-                       % right curves
+        HeightMap       % height profile map taken from the inverted maximum head-height from approach max(hhapp)
+                        % the additional dimension in the height map holds
+                        % the index from the corresponding 1-D lists of
+                        % force curves, so one can easily identify the
+                        % right curves
         Sensitivity
-        NCurves        % number of curves on the force map
-        PixApp
+        NCurves         % number of curves on the force map
+        PixApp 
         PixRet
-        SelectedCurves % logical vector of length n_curves with 0s for excluded and 1s for included curves. gets initialized with ones
+        SelectedCurves  % logical vector of length n_curves with 0s for excluded and 1s for included curves. gets initialized with ones
         RoV = {}        % ratio of variance curve for CP estiamation
         RoVTH = {}      % ratio of variance curve, based on the vertical tip position. [does not work well/experimental development stage]
         GoF = {}        % goodness of fit curve for each selected curve
@@ -52,11 +52,11 @@ classdef ForceMap < handle
         YDropPred       % Contains the Dropoutpredictions for every curve in the forcemap
         Man_CP          % manually chosen contact point
         CP_old          % contact point estimation from old script 'A_nIAFM_analysis_main'
-        LoadOld        % comes from same script as CP_old
-        UnloadOld      % comes from same script as CP_old
+        LoadOld         % comes from same script as CP_old
+        UnloadOld       % comes from same script as CP_old
         DeltaE = {}     %
-        TipRadius = -1 % (nominal) tip radius in nm for the chosen type of tip model
-        PoissonR = 0.5 % standard Poisson ratio for most mechanical models
+        TipRadius = -1  % (nominal) tip radius in nm for the chosen type of tip model
+        PoissonR = 0.5  % standard Poisson ratio for most mechanical models
         
     end
     methods
@@ -300,7 +300,7 @@ classdef ForceMap < handle
             cd(current.path)
         end
         
-        function CP_RoV(obj,batchsize)
+        function cp_rov(obj,batchsize)
             % find contact point with the method of ratio of variances. The method
             % iterates though every point and builds the ratio of the variance of a
             % bunch of points before and after the current point. the point with the
@@ -333,7 +333,7 @@ classdef ForceMap < handle
             cd(current.path)
         end
         
-        function [E_mod,GoF,Hertzfit] = Hertz_fit(obj,tip_h,force,CP,curve_percent,shape)
+        function [E_mod,GoF,Hertzfit] = hertz_fit(obj,tip_h,force,CP,curve_percent,shape)
             
             if obj.TipRadius == -1
                 prompt = {'What is the nominal tip radius of the used cantilever in nm?'};
@@ -378,7 +378,7 @@ classdef ForceMap < handle
             cd(current.path)
         end
         
-        function CP_GoF_deltaE(obj)
+        function cp_gof(obj)
             Range = find(obj.SelectedCurves);
             for i=Range'
                 smoothx =obj.THApp{i};
@@ -392,7 +392,7 @@ classdef ForceMap < handle
                 for j=testrange
                     prog = (j-testrange(1))/length(testrange);
                     waitbar(prog,h,msg);
-                    [emod,gof] = obj.Hertz_fit(smoothx,smoothy,j,1,'parabolic');
+                    [emod,gof] = obj.hertz_fit(smoothx,smoothy,j,1,'parabolic');
                     Rsquare(j) = gof.rsquare;
                     E(j) = emod;
                 end
@@ -408,7 +408,7 @@ classdef ForceMap < handle
             cd(current.path)
         end
         
-        function CP_combine(obj)
+        function cp_combine(obj)
             Range = find(obj.SelectedCurves);
             for i=Range'
                 obj.CPCombo{i} = obj.RoV{i}.*obj.GoF{i};
@@ -449,7 +449,7 @@ classdef ForceMap < handle
             close(h)
         end
         
-        function manual_CP(obj)
+        function manual_cp(obj)
             % Manual contact point selection for NN training on plotted force curves
             % returning a position vector in meters.
             jRange = find(obj.SelectedCurves);
@@ -484,7 +484,7 @@ classdef ForceMap < handle
             cd(current.path)
         end
         
-        function old_CP(obj)
+        function old_cp(obj)
             iRange = find(obj.SelectedCurves);
             for i=iRange'
                 load = zeros(length(obj.BasedApp{i}),2);
@@ -588,10 +588,10 @@ classdef ForceMap < handle
             disp(savemsg);
         end
         
-        function CP_CNN_predict(obj,String,NumPasses)
+        function cp_cnn_predict(obj,String,NumPasses)
             % String = 'Fast' just predict with one forwardpass using
             % CP_CNN
-            % String = 'Dropout' predict through multiple forwardpasses
+            % String = 'Dropout' predict through n=NumPasses forwardpasses
             % through DropoutNet and additionally gain a metric for
             % uncertainty of the CP estimate
             if nargin < 2
@@ -622,19 +622,19 @@ classdef ForceMap < handle
                 try
                     temp = load('DropoutNet.mat');
                     obj.DropoutNet = temp.DropoutNet;
-                catch ME1
-                    disp("Can't find Neural Network named 'CP_CNN' in Folder. Trying to load from Workspace instead...")
+                catch
+                    disp("Can't find Neural Network named 'DropoutNet' in Folder. Trying to load from Workspace instead...")
                     try
-                        obj.CP_CNN = CP_CNN;
+                        obj.CP_CNN = DropoutNet;
                     catch ME2
-                        disp("Can't find Neural Network named 'CP_CNN' in Workspace. Can't compute Contact Points")
+                        disp("Can't find Neural Network named 'DropoutNet' in Workspace. Can't compute Contact Points")
                         rethrow(ME2);
                     end
                 end
             end
             ImgSize = obj.CP_CNN.Layers(1).InputSize;
             objcell{1,1} = obj;
-            X = CP_CNN_batchprep_alt(objcell,ImgSize(1));
+            X = CP_CNN_batchprep(objcell,ImgSize(1));
             len = length(X);
             h = waitbar(0,'Setting up','Name',obj.Name);
             switch runmode
@@ -643,14 +643,6 @@ classdef ForceMap < handle
                     Ypredicted = predict(obj.CP_CNN,X);
                 case 1
                     obj.YDropPred = zeros(NumPasses,2,len);
-                    %                    Ypredicted = zeros(len,2);
-                    %                     for i=1:len
-                    %                         for j=1:NumPasses
-                    %                             waitbar(j/NumPasses,h,sprintf('Predicting CP for curve %i/%i',i,len));
-                    %                             obj.YDropPred(j,:,i) = predict(obj.DropoutNet,X(:,:,:,i));
-                    %                         end
-                    %                         Ypredicted(i,:) = [mean(obj.YDropPred(:,1,i)) mean(obj.YDropPred(:,2,i))];
-                    %                     end
                     Ypredicted = zeros(len,2);
                     CantHandle = false;
                     for j=1:NumPasses
@@ -678,9 +670,7 @@ classdef ForceMap < handle
                         end
                         obj.YDropPred(j,:,:) = Temp';
                     end
-                    for i=1:len
-                        Ypredicted(i,:) = [mean(obj.YDropPred(:,1,i)) mean(obj.YDropPred(:,2,i))];
-                    end
+                    Ypredicted = predict(obj.CP_CNN,X);
             end
             waitbar(1,h,'Wrapping up');
             iRange = find(obj.SelectedCurves);

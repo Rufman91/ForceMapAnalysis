@@ -3,7 +3,7 @@
 function CP_CNN_predict(obj,Network)
 ImgSize = Network.Layers(1).InputSize;
 objcell{1,1} = obj;
-X = CP_CNN_batchprep_alt(objcell,ImgSize(1));
+X = CP_CNN_batchprep(objcell,ImgSize(1));
 Ypredicted = predict(Network,X);
 iRange = find(obj.selected_curves);
 k = 1;

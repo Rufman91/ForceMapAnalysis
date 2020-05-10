@@ -58,8 +58,7 @@ ImgSize = 128; %bigger sizes improve results marginally but significantly
                %increase traning time. The trainer might even run out
                %of GPU memory... not really worth it
 
-%[X,Y] = CP_CNN_batchprep(FM,ImgSize);
-[X,Y] = CP_CNN_batchprep_alt(FM,ImgSize);
+[X,Y] = CP_CNN_batchprep(FM,ImgSize);
 
 Val_idx = randperm(size(X,4),floor(size(X,4)/4));
 XTrain = X;
