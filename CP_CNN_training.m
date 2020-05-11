@@ -235,7 +235,7 @@ YPredicted = predict(CP_CNN,XValidation);
 % the CNNs CP in red
 
 for i=1:Nmaps
-FM{i}.cp_cnn_predict;
+FM{i}.estimate_cp_cnn('Fast');
 end
 
 i = randi(Nmaps);

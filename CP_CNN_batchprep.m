@@ -9,7 +9,7 @@ Nmaps = length(objcell);
 % not, start manual CP selection.
 for i=1:Nmaps
     if isempty(objcell{i}.Man_CP)
-        objcell{i}.manual_CP();
+        objcell{i}.estimate_cp_manually();
     end
 end
 
@@ -20,7 +20,7 @@ end
 % Numberofimages-by-Numberofresponses array
 Nimgs = 0;
 for i=1:Nmaps
-    Nimgs = Nimgs + sum(objcell{i}.selected_curves);
+    Nimgs = Nimgs + sum(objcell{i}.SelectedCurves);
 end
 X = zeros(ImgSize,ImgSize,1,Nimgs);
 Y = zeros(Nimgs,2);
@@ -29,13 +29,13 @@ Y = zeros(Nimgs,2);
 % positions in the force-images.
 Norm_CP = cell(Nmaps,1);
 for i=1:Nmaps
-    jRange = find(objcell{i}.selected_curves);
-    Norm_CP{i} = zeros(length(objcell{i}.basedapp),2);
+    jRange = find(objcell{i}.SelectedCurves);
+    Norm_CP{i} = zeros(length(objcell{i}.BasedApp),2);
     for j=jRange'
-        Norm_CP{i}(j,1) = (objcell{i}.Man_CP(j,1)-min(objcell{i}.thapp{j}))/...
-            range(objcell{i}.thapp{j});
-        Norm_CP{i}(j,2) = (objcell{i}.Man_CP(j,2)-min(objcell{i}.basedapp{j}))/...
-            range(objcell{i}.basedapp{j});
+        Norm_CP{i}(j,1) = (objcell{i}.Man_CP(j,1)-min(objcell{i}.THApp{j}))/...
+            range(objcell{i}.THApp{j});
+        Norm_CP{i}(j,2) = (objcell{i}.Man_CP(j,2)-min(objcell{i}.BasedApp{j}))/...
+            range(objcell{i}.BasedApp{j});
     end
 end
 
@@ -43,13 +43,13 @@ end
 fig = figure('Color','w');
 k = 1;
 for i=1:Nmaps
-    jRange = find(objcell{i}.selected_curves);
+    jRange = find(objcell{i}.SelectedCurves);
     for j=jRange'
         % Save the plots as images and convert them into cropped [0
         % 1]-range grayscale images
-        fig.Name = sprintf('%s curve nr.%i',objcell{i}.name,j);
-        plot(objcell{i}.thapp{j},objcell{i}.basedapp{j},'color','black');
-        axis([min(objcell{i}.thapp{j}) max(objcell{i}.thapp{j}) min(objcell{i}.basedapp{j}) max(objcell{i}.basedapp{j})])
+        fig.Name = sprintf('%s curve nr.%i',objcell{i}.Name,j);
+        plot(objcell{i}.THApp{j},objcell{i}.BasedApp{j},'color','black');
+        axis([min(objcell{i}.THApp{j}) max(objcell{i}.THApp{j}) min(objcell{i}.BasedApp{j}) max(objcell{i}.BasedApp{j})])
         axis off
         graytest = imcomplement(rgb2gray(frame2im(getframe(fig))));
         grayscaled = double(graytest)/255;

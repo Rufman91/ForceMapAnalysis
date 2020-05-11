@@ -31,6 +31,10 @@ classdef ForceMap < handle
         THRet = {}      % vertical tip height retract data in meters
         BasedApp = {}   % approach force data with subtracted base line and tilt in Newton
         BasedRet = {}   % retraction force data with subtracted base line and tilt in Newton
+        FinalApp        % approach force data centered at the chosen CP-estimate
+        FinalRet        % retraction force data centered at the chosen CP-estimate
+        FinalTHApp      % approach tip height data centered at the chosen CP-estimate
+        FinalTHRet      % retraction tip height data centered at the chosen CP-estimate
         Basefit = {}    % fit model used for the baseline fit
         HeightMap       % height profile map taken from the inverted maximum head-height from approach max(hhapp)
                         % the additional dimension in the height map holds
@@ -43,15 +47,20 @@ classdef ForceMap < handle
         PixRet
         SelectedCurves  % logical vector of length n_curves with 0s for excluded and 1s for included curves. gets initialized with ones
         RoV = {}        % ratio of variance curve for CP estiamation
-        RoVTH = {}      % ratio of variance curve, based on the vertical tip position. [does not work well/experimental development stage]
         GoF = {}        % goodness of fit curve for each selected curve
-        CPCombo = {}    % combination of the various metrics for contact point estimation
+        CPComboCurve    % combination of the various metrics for contact point estimation
         CP              % chosen contact point (CP) for every selected curve, which is then used in E module fitting
+        CP_RoV          % CP estimated with the ratio of variance method
+        CP_GoF          % CP estimated with the goodness of fit method
+        CP_Combo        % CP estimated with a combination of the GoF and RoV methods
         CP_CNN          % Convolutional Neural Network for CP-estimation used in CP_CNN_predict
         DropoutNet      % Convolutional Neural Network for uncertainty estimation
         YDropPred       % Contains the Dropoutpredictions for every curve in the forcemap
+        CP_CNN_Error    % Contains the estimated uncertainty of the CP_CNN
         Man_CP          % manually chosen contact point
         CP_old          % contact point estimation from old script 'A_nIAFM_analysis_main'
+        EMod            % reduced E modulus based on the chosen contact point and tip shape
+        HertzFit        % HertzFit model generated in the calculate_e_mod method
         LoadOld         % comes from same script as CP_old
         UnloadOld       % comes from same script as CP_old
         DeltaE = {}     %
@@ -300,30 +309,35 @@ classdef ForceMap < handle
             cd(current.path)
         end
         
-        function cp_rov(obj,batchsize)
+        function CP_RoV = estimate_cp_rov(obj,batchsize)
             % find contact point with the method of ratio of variances. The method
             % iterates though every point and builds the ratio of the variance of a
             % bunch of points before and after the current point. the point with the
             % biggest ratio is the returned contact point [Nuria Gavara, 2016]
             if nargin<2
-                batchsize = 10;
+                batchsize = 20;
             end
             Range = find(obj.SelectedCurves);
             h = waitbar(0,'Setting up...','Name',obj.Name);
+            CP_RoV = zeros(obj.NCurves,2);
+            obj.CP_RoV = CP_RoV;
             for i=Range'
                 prog = i/obj.NCurves;
                 waitbar(prog,h,'applying ratio of variances method...');
                 obj.RoV{i} = zeros(length(obj.BasedApp{i}),1);
-                
+                SmoothedApp = smoothdata(obj.BasedApp{i});
                 % loop through points and calculate the RoV
                 for j=(batchsize+1):(length(obj.BasedApp{i})-batchsize)
                     obj.RoV{i}(j,1) = var(smoothdata(obj.BasedApp{i}((j+1):(j+batchsize))))/...
-                        var(smoothdata(obj.BasedApp{i}((j-batchsize):(j-1))));
+                        var(SmoothedApp((j-batchsize):(j-1)));
                 end
                 % normalize RoV-curve
                 obj.RoV{i} = obj.RoV{i}/range(obj.RoV{i});
                 minrov = min(obj.RoV{i}(batchsize+1:length(obj.RoV{i})-batchsize));
                 obj.RoV{i}(obj.RoV{i}==0) = minrov;
+                [~,CPidx] = max(obj.RoV{i});
+                obj.CP_RoV(i,:) = [obj.THApp{i}(CPidx) obj.BasedApp{i}(CPidx)];
+                CP_RoV = obj.CP_RoV;
             end
             close(h)
             current = what();
@@ -333,150 +347,32 @@ classdef ForceMap < handle
             cd(current.path)
         end
         
-        function [E_mod,GoF,Hertzfit] = hertz_fit(obj,tip_h,force,CP,curve_percent,shape)
-            
-            if obj.TipRadius == -1
-                prompt = {'What is the nominal tip radius of the used cantilever in nm?'};
-                dlgtitle = 'Cantilever tip';
-                dims = [1 35];
-                definput = {'10'};
-                obj.TipRadius = str2double(inputdlg(prompt,dlgtitle,dims,definput));
-            end
-            
-            if nargin < 6
-                shape = 'parabolic';
-            end
-            % define fitrange as the lower 'curve_percent' of the curve and
-            % normalize the data for optimal fitting.
-            fitrange = [CP:(CP+floor(curve_percent*(length(tip_h)-CP)))];
-            CPforce = force(fitrange) - force(CP);
-            CPtip_h = tip_h(fitrange) - tip_h(CP);
-            ranf = range(CPforce);
-            rant = range(CPtip_h);
-            CPforce = CPforce/ranf;
-            CPtip_h = CPtip_h/rant;
-            
-            if isequal(shape,'parabolic')
-                s = fitoptions('Method','NonlinearLeastSquares',...
-                    'Lower',10^(-30),...
-                    'Upper',inf,...
-                    'Startpoint',1);
-                f = fittype('a*(x)^(3/2)','options',s);
-                [Hertzfit,GoF] = fit(CPtip_h,...
-                    CPforce,f);
-                % calculate E module based on the Hertz model. Be careful
-                % to convert to unnormalized data again
-                E_mod = 3*(Hertzfit.a*ranf/rant^(3/2))/(4*sqrt(obj.TipRadius*10^(-9)))*(1-obj.PoissonR^2);
-            elseif isequal(shape,'spherical')
-            elseif isequal(shape,'conical')
-            elseif isequal(shape,'pyramid')
-            end
-            current = what();
-            cd(obj.Folder)
-            savename = sprintf('%s.mat',obj.Name);
-            save(savename,'obj')
-            cd(current.path)
-        end
-        
-        function cp_gof(obj)
+        function estimate_cp_gof(obj)
+            obj.CP_GoF = zeros(obj.NCurves,2);
             Range = find(obj.SelectedCurves);
+            h = waitbar(0,'Setting up...','Name',obj.Name);
             for i=Range'
-                smoothx =obj.THApp{i};
-                smoothy =obj.BasedApp{i};
+                smoothx = smoothdata(obj.THApp{i});
+                smoothy = smoothdata(obj.BasedApp{i});
                 Rsquare = 2*ones(length(obj.BasedApp{i}),1);
                 E = ones(length(obj.BasedApp{i}),1);
-                deltaE = ones(length(obj.BasedApp{i}),1);
+                obj.DeltaE = ones(length(obj.BasedApp{i}),1);
                 testrange = floor(0.5*length(obj.BasedApp{i})):(length(obj.BasedApp{i})-5);
-                h = waitbar(0,'Setting up...');
                 msg = sprintf('applying goodness of fit method on curve Nr.%i/%i',i,obj.NCurves);
                 for j=testrange
                     prog = (j-testrange(1))/length(testrange);
                     waitbar(prog,h,msg);
-                    [emod,gof] = obj.hertz_fit(smoothx,smoothy,j,1,'parabolic');
+                    [emod,gof] = obj.hertz_fit_gof(smoothx,smoothy,j,1,'parabolic');
                     Rsquare(j) = gof.rsquare;
                     E(j) = emod;
                 end
                 Rsquare(Rsquare==2) = min(Rsquare);
                 obj.GoF{i} = normalize(Rsquare,'range');
+                [~,CPidx] = max(obj.GoF{i});
+                obj.CP_GoF(i,:) = [obj.THApp{i}(CPidx) obj.BasedApp{i}(CPidx)];
                 %deltaE(floor(0.5*length(obj.BasedApp{i})):(length(obj.BasedApp{i})-6)) = -diff(log(E));
-                close(h)
-            end
-            current = what();
-            cd(obj.Folder)
-            savename = sprintf('%s.mat',obj.Name);
-            save(savename,'obj')
-            cd(current.path)
-        end
-        
-        function cp_combine(obj)
-            Range = find(obj.SelectedCurves);
-            for i=Range'
-                obj.CPCombo{i} = obj.RoV{i}.*obj.GoF{i};
-                [~,obj.CP(i)] = max(obj.CPCombo{i});
-            end
-            current = what();
-            cd(obj.Folder)
-            savename = sprintf('%s.mat',obj.Name);
-            save(savename,'obj')
-            cd(current.path)
-        end
-        
-        function [img,imgorsize] = force2img(obj,ImgSize)
-            % Generate a 2D image of the forcecurve and scale to a
-            % ImgSizexImgSize grayscale image. Returns a
-            % sum(obj.selcted_curves)x1 cell array of binary images
-            if nargin<2
-                ImgSize = 128;
-            end
-            Range = find(obj.SelectedCurves);
-            imres = obj.Header{2,2};
-            k = 1;
-            img = cell(sum(obj.SelectedCurves),1);
-            imgorsize = cell(sum(obj.SelectedCurves),1);
-            h = waitbar(0,'Setting up...');
-            for i=Range'
-                prog = i/obj.NCurves;
-                waitbar(prog,h,'Converting force curves to images...');
-                norm =  round(normalize(obj.BasedApp{i},'range',[1 imres]));
-                mat = zeros(imres,imres);
-                for m=1:length(norm)
-                    mat(m,norm(m)) = 1;
-                end
-                imgorsize{k} = imrotate(mat,90);
-                img{k} = imresize(imgorsize{k},[ImgSize ImgSize],'bilinear');
-                k = k + 1;
             end
             close(h)
-        end
-        
-        function manual_cp(obj)
-            % Manual contact point selection for NN training on plotted force curves
-            % returning a position vector in meters.
-            jRange = find(obj.SelectedCurves);
-            fig = figure('Name',obj.Name);
-            for j=jRange'
-                fig.WindowState = 'fullscreen';
-                %                 Btn_disc=uicontrol('Parent',fig,...
-                %                     'Style','pushbutton',...
-                %                     'String','Discard Curve',...
-                %                     'Units','normalized',...
-                %                     'Position',[0.9 0.95 0.14 0.05],...
-                %                     'Visible','on',...
-                %                     'Callback',{@obj.disc,j,obj});
-                plot(obj.THApp{j},obj.BasedApp{j});
-                plottitle = sprintf('Curve Nr.%i/%i\n Click and drag the point to the contact point\n Confirm with any key press',j,obj.NCurves);
-                title(plottitle);
-                [~, domainidx] = ForceMap.no_contact_domain(obj.App{j});
-                axis([obj.THApp{j}(floor(domainidx*0.2)) inf -inf inf])
-                CP_point = drawpoint();
-                %                 w = 0;
-                %                 while w == 0
-                %                     w = waitforbuttonpress;
-                %                 end
-                obj.Man_CP(j,1) = CP_point.Position(1);
-                obj.Man_CP(j,2) = CP_point.Position(2);
-            end
-            close(fig);
             current = what();
             cd(obj.Folder)
             savename = sprintf('%s.mat',obj.Name);
@@ -484,21 +380,14 @@ classdef ForceMap < handle
             cd(current.path)
         end
         
-        function old_cp(obj)
-            iRange = find(obj.SelectedCurves);
-            for i=iRange'
-                load = zeros(length(obj.BasedApp{i}),2);
-                unload = zeros(length(obj.Ret{i}),2);
-                for j=1:length(obj.BasedApp{i})
-                    load(end-(j-1),1) = obj.THApp{i}(j);
-                    load(j,2) = obj.BasedApp{i}(j);
-                end
-                for j=1:length(obj.Ret{i})
-                    unload(end-(j-1),1) = obj.HHRet{i}(j);
-                    unload(j,2) = obj.Ret{i}(j);
-                end
-                [obj.LoadOld{i},obj.UnloadOld{i},Position,obj.CP_old(i,2)] = ContactPoint_sort(load,unload);
-                obj.CP_old(i,1) = obj.THApp{i}(Position);
+        function estimate_cp_combined(obj)
+            Range = find(obj.SelectedCurves);
+            obj.CP_Combo = zeros(obj.NCurves,2);
+            obj.CPComboCurve = cell(obj.NCurves,1);
+            for i=Range'
+                obj.CPComboCurve{i} = obj.RoV{i}.*obj.GoF{i};
+                [~,CPidx] = max(obj.CPComboCurve{i});
+                obj.CP_Combo(i,:) = [obj.THApp{i}(CPidx) obj.BasedApp{i}(CPidx)];
             end
             current = what();
             cd(obj.Folder)
@@ -506,89 +395,8 @@ classdef ForceMap < handle
             save(savename,'obj')
             cd(current.path)
         end
-        
-        function choose_fibril(obj,pth_quantile)
-            % sets every forcecurve below a certain threshold to zero in
-            % obj.SelectedCurves. Note that curves on the fibril already
-            % chosen to be disregarded will keep that status!.This function
-            % is a crude way to find fibril areas and should not be used, if
-            % its important to select exclusively indentations on the fibril
-            % or ,in the more general case,other elevated region of interest
-            if nargin < 2
-                pth_quantile = 0.8;
-            end
-            q = quantile(obj.HeightMap(:,:,1),pth_quantile,'All');
-            mask = ones(size(obj.HeightMap));
-            for i=1:obj.Header{6,2}
-                for j=1:obj.Header{5,2}
-                    if obj.HeightMap(i,j,1) < q
-                        obj.SelectedCurves(obj.HeightMap(i,j,2)) = 0;
-                        mask(i,j,1) = 0;
-                    end
-                end
-            end
-            f = figure();
-            imshowpair(imresize(mat2gray(obj.HeightMap(:,:,1)),[1024 1024]),imresize(mask(:,:,1),[1024 1024]),'montage')
-            %            pause(5)
-            close(f)
-        end
-        
-        function level_height_map(obj)
-            % Do a plane fit on the elevationwise lower 40%-quantile of the height_map
-            % and subtract the plane from the map. Only works properly on
-            % force maps, where 40% or more of the curves are from the glass slide
-            % and the plane tilt isn't too big to begin with.
-            % (the latter conditions will in practice almost always be fulfilled)
-            
-            % create a mask that contains the lower 40%-quantile
-            pth_quantile = 0.5;
-            q = quantile(obj.HeightMap(:,:,1),pth_quantile,'All');
-            mask = zeros(size(obj.HeightMap,[1,2]));
-            for i=1:obj.Header{6,2}
-                for j=1:obj.Header{5,2}
-                    if obj.HeightMap(i,j,1) < q
-                        mask(i,j,1) = 1;
-                    end
-                end
-            end
-            masked_map = mask(:,:,1).*obj.HeightMap(:,:,1);
-            % create a N-by-3 matrix with each column being a point in
-            % 3D-space
-            k = 1;
-            HghtVctr = zeros(sum(mask,'all'),3);
-            for i=1:size(masked_map,1)
-                for j=1:size(masked_map,2)
-                    if mask(i,j) == 0
-                    else
-                        HghtVctr(k,:) = [size(masked_map,2)/size(masked_map,1)*i,size(masked_map,1)/size(masked_map,2)*j,masked_map(i,j)];
-                        k = k + 1 ;
-                    end
-                end
-            end
-            % fit a plane to the glass part
-            [Norm,~,Point] = affine_fit(HghtVctr);
-            Plane = zeros(size(masked_map,1),size(masked_map,2));
-            % Create the plane that can then be subtracted from the
-            % complete height data to generate the leveled height data.
-            for i=1:size(masked_map,1)
-                for j=1:size(masked_map,2)
-                    Plane(i,j) = (Point(3)-Norm(1)/Norm(3)*(size(masked_map,2)/size(masked_map,1)*i)-Norm(2)/Norm(3)*(size(masked_map,1)/size(masked_map,2)*j));
-                end
-            end
-            obj.HeightMap(:,:,1) = obj.HeightMap(:,:,1) - Plane;
-        end
-        
-        function save(obj)
-            current = what();
-            cd(obj.Folder)
-            savename = sprintf('%s.mat',obj.Name);
-            save(savename,'obj')
-            cd(current.path)
-            savemsg = sprintf('Changes to ForceMap:%s saved to %s',obj.Name,obj.Folder);
-            disp(savemsg);
-        end
-        
-        function cp_cnn_predict(obj,String,NumPasses)
+                
+        function estimate_cp_cnn(obj,String,NumPasses)
             % String = 'Fast' just predict with one forwardpass using
             % CP_CNN
             % String = 'Dropout' predict through n=NumPasses forwardpasses
@@ -688,11 +496,284 @@ classdef ForceMap < handle
             cd(current.path)
         end
         
+        function estimate_cp_old(obj)
+            % CP estimation using the the approach from the old fibril
+            % analysis script 'A_nIAFM_analysis_main.m'
+            iRange = find(obj.SelectedCurves);
+            for i=iRange'
+                load = zeros(length(obj.BasedApp{i}),2);
+                unload = zeros(length(obj.Ret{i}),2);
+                for j=1:length(obj.BasedApp{i})
+                    load(end-(j-1),1) = obj.THApp{i}(j);
+                    load(j,2) = obj.BasedApp{i}(j);
+                end
+                for j=1:length(obj.Ret{i})
+                    unload(end-(j-1),1) = obj.HHRet{i}(j);
+                    unload(j,2) = obj.Ret{i}(j);
+                end
+                [obj.LoadOld{i},obj.UnloadOld{i},Position,obj.CP_old(i,2)] = ContactPoint_sort(load,unload);
+                obj.CP_old(i,1) = obj.THApp{i}(Position);
+            end
+            current = what();
+            cd(obj.Folder)
+            savename = sprintf('%s.mat',obj.Name);
+            save(savename,'obj')
+            cd(current.path)
+        end
+        
+        function estimate_cp_manually(obj)
+            % Manual contact point selection for NN training on plotted force curves
+            % returning a position vector in meters.
+            jRange = find(obj.SelectedCurves);
+            fig = figure('Name',obj.Name);
+            for j=jRange'
+                fig.WindowState = 'fullscreen';
+                %                 Btn_disc=uicontrol('Parent',fig,...
+                %                     'Style','pushbutton',...
+                %                     'String','Discard Curve',...
+                %                     'Units','normalized',...
+                %                     'Position',[0.9 0.95 0.14 0.05],...
+                %                     'Visible','on',...
+                %                     'Callback',{@obj.disc,j,obj});
+                plot(obj.THApp{j},obj.BasedApp{j});
+                plottitle = sprintf('Curve Nr.%i/%i\n Click and drag the point to the contact point\n Confirm with any key press',j,obj.NCurves);
+                title(plottitle);
+                [~, domainidx] = ForceMap.no_contact_domain(obj.App{j});
+                axis([obj.THApp{j}(floor(domainidx*0.2)) inf -inf inf])
+                CP_point = drawpoint();
+                %                 w = 0;
+                %                 while w == 0
+                %                     w = waitforbuttonpress;
+                %                 end
+                obj.Man_CP(j,1) = CP_point.Position(1);
+                obj.Man_CP(j,2) = CP_point.Position(2);
+            end
+            close(fig);
+            current = what();
+            cd(obj.Folder)
+            savename = sprintf('%s.mat',obj.Name);
+            save(savename,'obj')
+            cd(current.path)
+        end
+        
+        function [E_mod,GoF,Hertzfit] = hertz_fit_gof(obj,tip_h,force,CP,curve_percent,shape)
+            
+            if obj.TipRadius == -1
+                prompt = {'What is the nominal tip radius of the used cantilever in nm?'};
+                dlgtitle = 'Cantilever tip';
+                dims = [1 35];
+                definput = {'10'};
+                obj.TipRadius = str2double(inputdlg(prompt,dlgtitle,dims,definput));
+            end
+            
+            if nargin < 6
+                shape = 'parabolic';
+            end
+            % define fitrange as the lower 'curve_percent' of the curve and
+            % normalize the data for optimal fitting.
+            fitrange = [CP:(CP+floor(curve_percent*(length(tip_h)-CP)))];
+            CPforce = force(fitrange) - force(CP);
+            CPtip_h = tip_h(fitrange) - tip_h(CP);
+            ranf = range(CPforce);
+            rant = range(CPtip_h);
+            CPforce = CPforce/ranf;
+            CPtip_h = CPtip_h/rant;
+            
+            if isequal(shape,'parabolic')
+                s = fitoptions('Method','NonlinearLeastSquares',...
+                    'Lower',10^(-30),...
+                    'Upper',inf,...
+                    'Startpoint',1);
+                f = fittype('a*(x)^(3/2)','options',s);
+                [Hertzfit,GoF] = fit(CPtip_h,...
+                    CPforce,f);
+                % calculate E module based on the Hertz model. Be careful
+                % to convert to unnormalized data again
+                E_mod = 3*(Hertzfit.a*ranf/rant^(3/2))/(4*sqrt(obj.TipRadius*10^(-9)))*(1-obj.PoissonR^2);
+            elseif isequal(shape,'spherical')
+            elseif isequal(shape,'conical')
+            elseif isequal(shape,'pyramid')
+            end
+        end
+        
+        function [E,HertzFit] = calculate_e_mod(obj,CPType,TipShape,curve_percent)
+            % calculate the E modulus of the chosen curves using the CP
+            % type chosen in the arguments fitting the lower curve_percent
+            % part of the curves
+            if ~exist('curve_percent','var') && ischar('curve_percent')
+                curve_percent = 1;
+            end
+            if ~exist('TipShape','var') && ~ischar(TipShape)
+                TipShape = 'parabolic';
+            end
+            iRange = find(obj.SelectedCurves);
+            obj.EMod = zeros(obj.NCurves,1);
+            for i=iRange'
+                if isequal(lower(CPType),'cnn')
+                    CP = obj.CP(i,:);
+                elseif isequal(lower(CPType),'old')
+                    CP = obj.CP_old(i,:);
+                elseif isequal(lower(CPType),'rov')
+                    CP = obj.CP_RoV(i,:);
+                elseif isequal(lower(CPType),'gof')
+                    CP = obj.CP_GoF(i,:);
+                elseif isequal(lower(CPType),'combo')
+                    CP = obj.CP_Combo(i,:);
+                elseif isequal(lower(CPType),'manual')
+                    CP = obj.Man_CP(i,:);
+                else
+                    CP = obj.CP(i,:);
+                end
+                tip_h = obj.THApp{i} - CP(1);
+                tip_h(tip_h < 0) = [];
+                force = obj.BasedApp{i} - CP(2);
+                force(1:(length(force)-length(tip_h))) = [];
+                try
+                    tip_h(floor(curve_percent*length(tip_h)):end-1) = [];
+                    force(floor(curve_percent*length(force)):end-1) = [];
+                catch
+                end
+                RangeF = range(force);
+                RangeTH = range(tip_h);
+                force = force/RangeF;
+                tip_h = tip_h/RangeTH;
+                if isequal(TipShape,'parabolic')
+                    s = fitoptions('Method','NonlinearLeastSquares',...
+                        'Lower',10^(-30),...
+                        'Upper',inf,...
+                        'Startpoint',1);
+                    f = fittype('a*(x)^(3/2)','options',s);
+                    Hertzfit = fit(tip_h,...
+                        force,f);
+                    % calculate E module based on the Hertz model. Be careful
+                    % to convert to unnormalized data again
+                    EMod = 3*(Hertzfit.a*RangeF/RangeTH^(3/2))/(4*sqrt(obj.TipRadius*10^(-9)))*(1-obj.PoissonR^2);
+                elseif isequal(shape,'spherical')
+                elseif isequal(shape,'conical')
+                elseif isequal(shape,'pyramid')
+                end
+                obj.EMod(i) = EMod;
+                obj.HertzFit{i} = Hertzfit;
+                
+            end
+            E = obj.EMod;
+            HertzFit = obj.HertzFit;
+        end
+        
+        function [img,imgorsize] = force2img(obj,ImgSize)
+            % Generate a 2D image of the forcecurve and scale to a
+            % ImgSizexImgSize grayscale image. Returns a
+            % sum(obj.selcted_curves)x1 cell array of binary images
+            if nargin<2
+                ImgSize = 128;
+            end
+            Range = find(obj.SelectedCurves);
+            imres = obj.Header{2,2};
+            k = 1;
+            img = cell(sum(obj.SelectedCurves),1);
+            imgorsize = cell(sum(obj.SelectedCurves),1);
+            h = waitbar(0,'Setting up...');
+            for i=Range'
+                prog = i/obj.NCurves;
+                waitbar(prog,h,'Converting force curves to images...');
+                norm =  round(normalize(obj.BasedApp{i},'range',[1 imres]));
+                mat = zeros(imres,imres);
+                for m=1:length(norm)
+                    mat(m,norm(m)) = 1;
+                end
+                imgorsize{k} = imrotate(mat,90);
+                img{k} = imresize(imgorsize{k},[ImgSize ImgSize],'bilinear');
+                k = k + 1;
+            end
+            close(h)
+        end
+        
+        function choose_fibril(obj,pth_quantile)
+            % sets every forcecurve below a certain threshold to zero in
+            % obj.SelectedCurves. Note that curves on the fibril already
+            % chosen to be disregarded will keep that status!.This function
+            % is a crude way to find fibril areas and should not be used, if
+            % its important to select exclusively indentations on the fibril
+            % or ,in the more general case,other elevated region of interest
+            if nargin < 2
+                pth_quantile = 0.8;
+            end
+            q = quantile(obj.HeightMap(:,:,1),pth_quantile,'All');
+            mask = ones(size(obj.HeightMap));
+            for i=1:obj.Header{6,2}
+                for j=1:obj.Header{5,2}
+                    if obj.HeightMap(i,j,1) < q
+                        obj.SelectedCurves(obj.HeightMap(i,j,2)) = 0;
+                        mask(i,j,1) = 0;
+                    end
+                end
+            end
+            f = figure();
+            imshowpair(imresize(mat2gray(obj.HeightMap(:,:,1)),[1024 1024]),imresize(mask(:,:,1),[1024 1024]),'montage')
+            %            pause(5)
+            close(f)
+        end
+        
+        function level_height_map(obj)
+            % Do a plane fit on the elevationwise lower 40%-quantile of the height_map
+            % and subtract the plane from the map. Only works properly on
+            % force maps, where 40% or more of the curves are from the glass slide
+            % and the plane tilt isn't too big to begin with.
+            % (the latter conditions will in practice almost always be fulfilled)
+            
+            % create a mask that contains the lower 40%-quantile
+            pth_quantile = 0.5;
+            q = quantile(obj.HeightMap(:,:,1),pth_quantile,'All');
+            mask = zeros(size(obj.HeightMap,[1,2]));
+            for i=1:obj.Header{6,2}
+                for j=1:obj.Header{5,2}
+                    if obj.HeightMap(i,j,1) < q
+                        mask(i,j,1) = 1;
+                    end
+                end
+            end
+            masked_map = mask(:,:,1).*obj.HeightMap(:,:,1);
+            % create a N-by-3 matrix with each column being a point in
+            % 3D-space
+            k = 1;
+            HghtVctr = zeros(sum(mask,'all'),3);
+            for i=1:size(masked_map,1)
+                for j=1:size(masked_map,2)
+                    if mask(i,j) == 0
+                    else
+                        HghtVctr(k,:) = [size(masked_map,2)/size(masked_map,1)*i,size(masked_map,1)/size(masked_map,2)*j,masked_map(i,j)];
+                        k = k + 1 ;
+                    end
+                end
+            end
+            % fit a plane to the glass part
+            [Norm,~,Point] = affine_fit(HghtVctr);
+            Plane = zeros(size(masked_map,1),size(masked_map,2));
+            % Create the plane that can then be subtracted from the
+            % complete height data to generate the leveled height data.
+            for i=1:size(masked_map,1)
+                for j=1:size(masked_map,2)
+                    Plane(i,j) = (Point(3)-Norm(1)/Norm(3)*(size(masked_map,2)/size(masked_map,1)*i)-Norm(2)/Norm(3)*(size(masked_map,1)/size(masked_map,2)*j));
+                end
+            end
+            obj.HeightMap(:,:,1) = obj.HeightMap(:,:,1) - Plane;
+        end
+        
+        function save(obj)
+            current = what();
+            cd(obj.Folder)
+            savename = sprintf('%s.mat',obj.Name);
+            save(savename,'obj')
+            cd(current.path)
+            savemsg = sprintf('Changes to ForceMap:%s saved to %s',obj.Name,obj.Folder);
+            disp(savemsg);
+        end
+
     end
     
     
     methods (Static)
-        % Auxilliary functions
+        % Auxilliary methods
         
         function [nocontvDef,domainidx] = no_contact_domain(vDef)
             % finds the index of a point in the curve well before contact point and
