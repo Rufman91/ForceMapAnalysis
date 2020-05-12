@@ -5,7 +5,7 @@ for k=1:Nmaps
 %     FM{k}.estimate_cp_rov(20);
 %     FM{k}.CP_CNN_predict('Fast')
 %     FM{k}.estimate_cp_cnn('Dropout',100);
-%     FM{k}.old_CP
+%     FM{k}.estimate_cp_old
 %     FM{k}.DropoutNet = DropoutNet;
 %     FM{k}.estimate_cp_gof;
 %     FM{k}.estimate_cp_combined;
@@ -29,10 +29,69 @@ for k=1:Nmaps
     STD(k,6) = std(E_Manual{k}(find(FM{k}.SelectedCurves)));
 end
 close(h);
-f = figure('Name','Look at it!');
+f = figure('Name','Look at it!','Color','w');
+%GoF
 k = randi(21);
 Curves = find(FM{k}.SelectedCurves);
 i = Curves(randi(length(Curves)));
+subplot(2,1,1)
+plot(FM{k}.BasedApp{i})
+drawpoint('Position',[260 0],'Color','w')
+title('Force')
+subplot(2,1,2)
+plot(FM{k}.RoV{i})
+title('R-Squared - GoF')
+
+% RoV
+k = randi(21);
+Curves = find(FM{k}.SelectedCurves);
+i = Curves(randi(length(Curves)));
+subplot(2,1,1)
+plot(FM{k}.BasedApp{i})
+drawpoint('Position',[250 0],'Color','y')
+title('Force')
+subplot(2,1,2)
+plot(FM{k}.RoV{i})
+title('RoV')
+
+% Combined
+f = figure('Name','Look at it!','Color','w');
+k = randi(21);
+Curves = find(FM{k}.SelectedCurves);
+i = Curves(randi(length(Curves)));
+subplot(2,1,1)
+plot(FM{k}.BasedApp{i})
+drawpoint('Position',[356 0],'Color','red')
+title('Force')
+subplot(2,1,2)
+plot([1:length(FM{k}.BasedApp{i})],FM{k}.CPComboCurve{i},[1:length(FM{k}.BasedApp{i})],FM{k}.RoV{i},[1:length(FM{k}.BasedApp{i})],FM{k}.GoF{i})
+legend('RoV*GoF','RoV','GoF')
+title('RoV*GoF')
+
+% Old
+k = randi(21);
+Curves = find(FM{k}.SelectedCurves);
+i = Curves(randi(length(Curves)));
+subplot(2,1,1)
+plot(FM{k}.BasedApp{i})
+drawpoint('Position',[250 0],'Color','y')
+title('Force')
+subplot(2,1,2)
+plot(FM{k}.RoV{i})
+title('RoV')
+
+% Force curve with labels
+f = figure('Name','Look at it!','Color','w');
+k = randi(21);
+Curves = find(FM{k}.SelectedCurves);
+i = Curves(randi(length(Curves)));
+plot(FM{k}.THApp{i},FM{k}.BasedApp{i},FM{k}.THRet{i},FM{k}.BasedRet{i})
+xlabel('Cantilever Tip Height in [m]');
+ylabel('Force in [N]');
+legend('Approach','Retract')
+title('Typical AFM Force Curves')
+drawpoint('Position',[-1.3e-6 0],'Color','red','Label','Contact Point???')
+
 plot(FM{k}.THApp{i},FM{k}.BasedApp{i})
 drawpoint('Position',[FM{k}.Man_CP(i,1) FM{k}.Man_CP(i,2)],'Color','green');
 drawpoint('Position',[FM{k}.CP(i,1) FM{k}.CP(i,2)],'Color','blue');
@@ -41,7 +100,16 @@ drawpoint('Position',[FM{k}.CP_RoV(i,1) FM{k}.CP_RoV(i,2)],'Color','yellow');
 drawpoint('Position',[FM{k}.CP_GoF(i,1) FM{k}.CP_GoF(i,2)],'Color','white');
 drawpoint('Position',[FM{k}.CP_Combo(i,1) FM{k}.CP_Combo(i,2)],'Color','red');
 
-scatter(find(FM{k}.SelectedCurves),E_CNN{k}(find(FM{k}.SelectedCurves)));
-errorbar([1:6],Mean(k,:),STD(k,:))
-xticklabels({'A','B','C','D'})
+errorbar([1:6],Mean(k,:),STD(k,:),'O')
+axis([0 7 (min(Mean(k,:)-1.2*max(STD(k,:)))) (max(Mean(k,:)+1.2*max(STD(k,:))))])
+ylabel('Mean E-Modulus [MPa]')
+xticks([1:6])
+title(FM{k}.Name)
+xticklabels({'CNN','Derivative STD','RoV','GoF','Combo','Manual'})
 k = k + 1;
+m = 1;
+for i=1:21
+    while Val_idx(m) < FM{k}.NCurves
+        ValCurves(m,1) = Val_idx(i);
+    end
+end
