@@ -88,6 +88,7 @@ layers = [
     regressionLayer("Name","regressionoutput")];
 
 resnet14 = layerGraph();
+DropParam = 0.2;
 
 tempLayers = [
     imageInputLayer([ImgSize ImgSize 1],"Name","imageinput","Normalization","zscore")
@@ -208,14 +209,170 @@ resnet14 = connectLayers(resnet14,"addition_5","conv_17");
 resnet14 = connectLayers(resnet14,"conv_15","addition_6/in1");
 resnet14 = connectLayers(resnet14,"conv_17","addition_6/in2");
 
+MonteCarlo14 =  layerGraph();
+DropParam = 0.2;
+
+tempLayers = [
+    imageInputLayer([128 128 1],"Name","imageinput","Normalization","zscore")
+    dropoutLayer(DropParam,"Name","dropout_1")
+    convolution2dLayer([7 7],64,"Name","conv_11","Padding","same","Stride",[2 2])
+    batchNormalizationLayer("Name","batchnorm_9")
+    reluLayer("Name","relu_9")
+    maxPooling2dLayer([3 3],"Name","maxpool","Padding","same","Stride",[2 2])];
+MonteCarlo14 = addLayers(MonteCarlo14,tempLayers);
+
+tempLayers = [
+    reluLayer("Name","relu_1")
+    dropoutLayer(DropParam,"Name","dropout_2")
+    convolution2dLayer([3 3],64,"Name","conv_1","Padding","same")
+    batchNormalizationLayer("Name","batchnorm_2")
+    reluLayer("Name","relu_2")
+    dropoutLayer(DropParam,"Name","dropout_3")
+    convolution2dLayer([3 3],64,"Name","conv_2","Padding","same")
+    ];
+MonteCarlo14 = addLayers(MonteCarlo14,tempLayers);
+
+tempLayers = additionLayer(2,"Name","addition_1");
+MonteCarlo14 = addLayers(MonteCarlo14,tempLayers);
+
+tempLayers = [
+    batchNormalizationLayer("Name","batchnorm_3")
+    reluLayer("Name","relu_3")
+    dropoutLayer(DropParam,"Name","dropout_4")
+    convolution2dLayer([3 3],64,"Name","conv_3","Padding","same")
+    batchNormalizationLayer("Name","batchnorm_4")
+    reluLayer("Name","relu_4")
+    dropoutLayer(DropParam,"Name","dropout_5")
+    convolution2dLayer([3 3],64,"Name","conv_4","Padding","same")
+    ];
+MonteCarlo14 = addLayers(MonteCarlo14,tempLayers);
+
+tempLayers = additionLayer(2,"Name","addition_2");
+MonteCarlo14 = addLayers(MonteCarlo14,tempLayers);
+
+tempLayers = [
+    batchNormalizationLayer("Name","batchnorm_5")
+    reluLayer("Name","relu_5")
+    dropoutLayer(DropParam,"Name","dropout_6")
+    convolution2dLayer([3 3],128,"Name","conv_5","Padding","same","Stride",[2 2])
+    batchNormalizationLayer("Name","batchnorm_6")
+    reluLayer("Name","relu_6")
+    dropoutLayer(DropParam,"Name","dropout_7")
+    convolution2dLayer([3 3],128,"Name","conv_6","Padding","same")
+    ];
+MonteCarlo14 = addLayers(MonteCarlo14,tempLayers);
+
+tempLayers = [
+    dropoutLayer(DropParam,"Name","dropout_8")
+    convolution2dLayer([1 1],128,"Name","conv_9","Padding","same","Stride",[2 2])
+    ];
+MonteCarlo14 = addLayers(MonteCarlo14,tempLayers);
+
+tempLayers = additionLayer(2,"Name","addition_3");
+MonteCarlo14 = addLayers(MonteCarlo14,tempLayers);
+
+tempLayers = [
+    batchNormalizationLayer("Name","batchnorm_7")
+    reluLayer("Name","relu_7")
+    dropoutLayer(DropParam,"Name","dropout_9")
+    convolution2dLayer([3 3],128,"Name","conv_7","Padding","same")
+    batchNormalizationLayer("Name","batchnorm_8")
+    reluLayer("Name","relu_8")
+    dropoutLayer(DropParam,"Name","dropout_10")
+    convolution2dLayer([3 3],128,"Name","conv_8","Padding","same")
+    ];
+MonteCarlo14 = addLayers(MonteCarlo14,tempLayers);
+
+tempLayers = [
+    dropoutLayer(DropParam,"Name","dropout_11")
+    convolution2dLayer([1 1],128,"Name","conv_10","Padding","same")
+    ];
+MonteCarlo14 = addLayers(MonteCarlo14,tempLayers);
+
+tempLayers = additionLayer(2,"Name","addition_4");
+MonteCarlo14 = addLayers(MonteCarlo14,tempLayers);
+
+tempLayers = [
+    batchNormalizationLayer("Name","batchnorm_10")
+    reluLayer("Name","relu_10")
+    dropoutLayer(DropParam,"Name","dropout_12")
+    convolution2dLayer([3 3],256,"Name","conv_12","Padding","same","Stride",[2 2])
+    batchNormalizationLayer("Name","batchnorm_11")
+    reluLayer("Name","relu_11")
+    dropoutLayer(DropParam,"Name","dropout_14")
+    convolution2dLayer([3 3],256,"Name","conv_13","Padding","same")
+    ];
+MonteCarlo14 = addLayers(MonteCarlo14,tempLayers);
+
+tempLayers = [
+    dropoutLayer(DropParam,"Name","dropout_13")
+    convolution2dLayer([1 1],256,"Name","conv_16","Padding","same","Stride",[2 2])
+    ];
+MonteCarlo14 = addLayers(MonteCarlo14,tempLayers);
+
+tempLayers = additionLayer(2,"Name","addition_5");
+MonteCarlo14 = addLayers(MonteCarlo14,tempLayers);
+
+tempLayers = [
+    dropoutLayer(DropParam,"Name","dropout_16")
+    convolution2dLayer([1 1],256,"Name","conv_17","Padding","same")];
+MonteCarlo14 = addLayers(MonteCarlo14,tempLayers);
+
+tempLayers = [
+    batchNormalizationLayer("Name","batchnorm_12")
+    reluLayer("Name","relu_12")
+    dropoutLayer(DropParam,"Name","dropout_15")
+    convolution2dLayer([3 3],256,"Name","conv_14","Padding","same")
+    batchNormalizationLayer("Name","batchnorm_13")
+    reluLayer("Name","relu_13")
+    dropoutLayer(DropParam,"Name","dropout_17")
+    convolution2dLayer([3 3],256,"Name","conv_15","Padding","same")
+    ];
+MonteCarlo14 = addLayers(MonteCarlo14,tempLayers);
+
+tempLayers = [
+    additionLayer(2,"Name","addition_6")
+    globalAveragePooling2dLayer("Name","gapool")
+    dropoutLayer(DropParam,"Name","dropout_18")
+    fullyConnectedLayer(2,"Name","fc")
+    regressionLayer("Name","regressionoutput")];
+MonteCarlo14 = addLayers(MonteCarlo14,tempLayers);
+
+% clean up helper variable
+clear tempLayers;
+
+MonteCarlo14 = connectLayers(MonteCarlo14,"maxpool","relu_1");
+MonteCarlo14 = connectLayers(MonteCarlo14,"maxpool","addition_1/in1");
+MonteCarlo14 = connectLayers(MonteCarlo14,"conv_2","addition_1/in2");
+MonteCarlo14 = connectLayers(MonteCarlo14,"addition_1","batchnorm_3");
+MonteCarlo14 = connectLayers(MonteCarlo14,"addition_1","addition_2/in1");
+MonteCarlo14 = connectLayers(MonteCarlo14,"conv_4","addition_2/in2");
+MonteCarlo14 = connectLayers(MonteCarlo14,"addition_2","dropout_8");
+MonteCarlo14 = connectLayers(MonteCarlo14,"addition_2","batchnorm_5");
+MonteCarlo14 = connectLayers(MonteCarlo14,"conv_9","addition_3/in2");
+MonteCarlo14 = connectLayers(MonteCarlo14,"conv_6","addition_3/in1");
+MonteCarlo14 = connectLayers(MonteCarlo14,"addition_3","batchnorm_7");
+MonteCarlo14 = connectLayers(MonteCarlo14,"addition_3","dropout_11");
+MonteCarlo14 = connectLayers(MonteCarlo14,"conv_8","addition_4/in1");
+MonteCarlo14 = connectLayers(MonteCarlo14,"conv_10","addition_4/in2");
+MonteCarlo14 = connectLayers(MonteCarlo14,"addition_4","batchnorm_10");
+MonteCarlo14 = connectLayers(MonteCarlo14,"addition_4","dropout_13");
+MonteCarlo14 = connectLayers(MonteCarlo14,"conv_16","addition_5/in2");
+MonteCarlo14 = connectLayers(MonteCarlo14,"conv_13","addition_5/in1");
+MonteCarlo14 = connectLayers(MonteCarlo14,"addition_5","batchnorm_12");
+MonteCarlo14 = connectLayers(MonteCarlo14,"addition_5","dropout_16");
+MonteCarlo14 = connectLayers(MonteCarlo14,"conv_17","addition_6/in2");
+MonteCarlo14 = connectLayers(MonteCarlo14,"conv_15","addition_6/in1");
+
+
 options = trainingOptions('adam','Plots','training-progress',...
     'ValidationData',{XValidation,YValidation},...
-    'ValidationFrequency',20,...
-    'MiniBatchSize',20,...
-    'MaxEpochs',500,...
+    'ValidationFrequency',50,...
+    'MiniBatchSize',100,...
+    'MaxEpochs',1000,...
     'InitialLearnRate',0.002,...
     'LearnRateSchedule','piecewise',...
-    'LearnRateDropPeriod',10,...
+    'LearnRateDropPeriod',100,...
     'LearnRateDropFactor',0.5,...
     'Shuffle','every-epoch');
 
@@ -224,12 +381,13 @@ options = trainingOptions('adam','Plots','training-progress',...
 %  For this option to be available, the Parallel-Computing-Toolbox has to be
 %  installed in MATLAB
 
-CP_CNN = trainNetwork(XTrain,YTrain,lgraph_2,options);
+CP_CNN_MC = trainNetwork(XTrain,YTrain,MonteCarlo14,options);
 
 %% Evaluate your model looking at the models predictions
 
 % predict outcome of XValidation
 YPredicted = predict(CP_CNN,XValidation); 
+YPredictedMC = predict(CP_CNN_MC,XValidation);
 
 % show random curve out of force map i and draw the manual CP in green and
 % the CNNs CP in red
@@ -250,18 +408,28 @@ CP_RoV(1,2) = FM{i}.BasedApp{randidx}(RoVidx);
 RoV = drawpoint('Position',CP_RoV,'Color','blue');
 
 fig = figure('Name','Evaluate the model','Position',[949 79 971 915]);
+for i=1:1115
+    Diff(i) = norm(YPredictedMC(i,:)-YValidation(i,:));
+end
+k=1;
+[~,IdxVec] = sort(Diff,'descend');
 idx = randi(length(XValidation));
+idx = IdxVec(k);
 imshow(XValidation(:,:,1,idx),'InitialMagnification','fit');
 manpoint =drawpoint('Position',[YValidation(idx,1)*ImgSize,...
     (1-YValidation(idx,2))*ImgSize],'Color','green');
-predpoint = drawpoint('Position',[YPredicted(idx,1)*ImgSize,...
-    (1-YPredicted(idx,2))*ImgSize],'Color','red');
+% predpoint = drawpoint('Position',[YPredicted(idx,1)*ImgSize,...
+%     (1-YPredicted(idx,2))*ImgSize],'Color','red');
+predpoint2 = drawpoint('Position',[YPredictedMC(idx,1)*ImgSize,...
+    (1-YPredictedMC(idx,2))*ImgSize],'Color','yellow');
+k = k + 1;
+
 
 %% Create dropout model for uncertainty estimation during inference. Extract and apply weights
 %  from previously trained model
 
 DropoutNet = assemble_DON(CP_CNN,0.1);
-
+MonteCarloDrop = assemble_MC(CP_CNN_MC);
 % predict(DropoutNet,X(:,:,:,1))
 % predict(CP_CNN,X(:,:,:,1))
 

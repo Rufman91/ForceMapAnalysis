@@ -47,6 +47,8 @@ for i=1:Nmaps
     for j=jRange'
         % Save the plots as images and convert them into cropped [0
         % 1]-range grayscale images
+        
+        figure(fig)
         fig.Name = sprintf('%s curve nr.%i',objcell{i}.Name,j);
         plot(objcell{i}.THApp{j},objcell{i}.BasedApp{j},'color','black');
         axis([min(objcell{i}.THApp{j}) max(objcell{i}.THApp{j}) min(objcell{i}.BasedApp{j}) max(objcell{i}.BasedApp{j})])
