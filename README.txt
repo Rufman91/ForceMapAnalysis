@@ -4,13 +4,17 @@ QUICKSTART GUIDE Force Map Analysis
 This data analysis program is based around the MATLAB Command Window.
 
 To set up the program, add the force map analysis folder to the MATLAB search path.
-The following Toolboxes might be needed:
+You need the 7z.exe software and also check in which filedirectory the exe file is located.
+
+The following MATLAB Toolboxes might be needed:
 - Statistics and Machine Learning Toolbox
 - Deep Learning Toolbox
 - Signal Processing Toolbox
 - Parallel Computing Toolbox
 - Image Processing Toolbox
 - Curve Fitting Toolbox
+
+Note that the contact point determination using one of the Neural Networks will run significantly faster on a device with a good GPU and the Parallel Computing Toolbox!
 
 To create an Experiment-file, which will be the handle class object in your MATLAB workspace you actually work with, call the constructor method
 
@@ -60,17 +64,13 @@ This is done for, respectively, force maps and surface potential maps by
 >> E.surface_potential_analysis_fibril()
 
 the options for the force map analysis are explained in the functions header comments. At the moment, before you can run Oliver-Pharrian analysis, you need to manually assign the reconstructed tip data
-to the right experimet property. The tip deconvolution has to be done in the old script by Orestis Andriotis.
+to the right experimet property. 
 
-Load the struct named 'Tip', that is saved to the *.mat file from the old tip deconvolution script, into the workplace
-and assign it to the Experiment classes 'CantileverTip' property
-
->> E.CantilerTip = Tip
+The tip deconvolution was just adapted from the old script by Orestis Andriotis. It is run in the context of the force_map_analysis_fibril method right at the beginning.
 
 You should now be able to run the force analysis. Note that the E-Mod of every force curve will be calculated.
 
 The methods for statistical analysis have been carelessly slapped together for a specific use case and are subject to generalization in the near future.
-How E-Moduli from just the fibril apex can be extracted from the FM class can be nearly identically copied from those methods (replacing 'obj.' with 'ExperimentNameInWorkspace.' e.g. 'E.')
 
-
+The fibrils overall moduli, as well as the apex moduli and standard deviations are saved into the property struct E.EMod
 

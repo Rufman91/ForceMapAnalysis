@@ -509,7 +509,7 @@ classdef ForceMap < matlab.mixin.Copyable
 %             cd(current.path)
         end
         
-        function estimate_cp_rov_oliverpharr(obj,batchsize)
+        function estimate_cp_rov_oliver_pharr(obj,batchsize)
             % find contact point with the method of ratio of variances. The method
             % iterates though every point and builds the ratio of the variance of a
             % bunch of points before and after the current point. the point with the
@@ -615,7 +615,7 @@ classdef ForceMap < matlab.mixin.Copyable
             ImgSize = NeuralNet.Layers(1).InputSize;
             objcell{1,1} = obj;
             X = obj.CP_CNN_batchprep(objcell,ImgSize(1));
-            len = length(X);
+            len = size(X,4);
             h = waitbar(0,'Setting up','Name',obj.Name);
             switch runmode
                 case 0
@@ -695,7 +695,7 @@ classdef ForceMap < matlab.mixin.Copyable
             ImgSize = NeuralNet.Layers(1).InputSize;
             objcell{1,1} = obj;
             X = obj.CP_oliver_pharr_batchprep(objcell,ImgSize(1));
-            len = length(X);
+            len = size(X,4);
             h = waitbar(0,'Setting up','Name',obj.Name);
             switch runmode
                 case 0
@@ -777,7 +777,7 @@ classdef ForceMap < matlab.mixin.Copyable
 %             cd(current.path)
         end
         
-        function estimate_cp_old_oliverpharr(obj)
+        function estimate_cp_old_oliver_pharr(obj)
             % CP estimation using the the approach from the old fibril
             % analysis script 'A_nIAFM_analysis_main.m' but without first
             % subtracting the deflection as it is not needed in
