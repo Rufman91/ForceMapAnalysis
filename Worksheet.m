@@ -24,8 +24,8 @@
 % %     FibPot(i) = E.SPM{i}.FibPot;
 % end
 % close(h)
-E.FM{1}.show_e_mod_map
-% k = randi(40);
+% E.FM{1}.show_e_mod_map
+% % k = randi(40);
 % j = randi(1024);
 % plot(E.FM{k}.THApp{j}, E.FM{k}.BasedApp{j})
 % drawpoint('Position',[mean(E.FM{k}.CP_MonteCarlo(:,1,j)) mean(E.FM{k}.CP_MonteCarlo(:,2,j))],'Color','green');
@@ -46,5 +46,131 @@ E.FM{1}.show_e_mod_map
 % 
 % histogram(OrderedDz)
 
+% for i=1:40
+%     RoV(i,:) = E.FM{i}.EModOliverPharr_RoV(E.FM{i}.RectApexIndex);
+%     for j=1:length(E.FM{i}.RectApexIndex)
+%         if RoV(i,j) > (nanmedian(RoV(i,:))+2.5*iqr(RoV(i,:))) || ...
+%                 RoV(i,j) < (nanmedian(RoV(i,:))-2.5*iqr(RoV(i,:))) || ...
+%                 E.FM{i}.ExclMask(E.FM{i}.List2Map(E.FM{i}.RectApexIndex(j),1),E.FM{i}.List2Map(E.FM{i}.RectApexIndex(j),2)) == 0
+%             RoV(i,j) = NaN;
+%         end
+%     end
+% end
+% for i=1:40
+%     Old(i,:) = E.FM{i}.EModOliverPharr_Old(E.FM{i}.RectApexIndex);
+%     for j=1:length(E.FM{i}.RectApexIndex)
+%         if Old(i,j) > (nanmedian(Old(i,:))+2.5*iqr(Old(i,:))) || ...
+%                 Old(i,j) < (nanmedian(Old(i,:))-2.5*iqr(Old(i,:))) || ...
+%                 E.FM{i}.ExclMask(E.FM{i}.List2Map(E.FM{i}.RectApexIndex(j),1),E.FM{i}.List2Map(E.FM{i}.RectApexIndex(j),2)) == 0
+%             Old(i,j) = NaN;
+%         end
+%     end
+% end
+% for i=1:40
+%     CNN(i,:) = E.FM{i}.EModOliverPharr_CNN(E.FM{i}.RectApexIndex);
+%     for j=1:length(E.FM{i}.RectApexIndex)
+%         if CNN(i,j) > (nanmedian(CNN(i,:))+2.5*iqr(CNN(i,:))) || ...
+%                 CNN(i,j) < (nanmedian(CNN(i,:))-2.5*iqr(CNN(i,:))) || ...
+%                 E.FM{i}.ExclMask(E.FM{i}.List2Map(E.FM{i}.RectApexIndex(j),1),E.FM{i}.List2Map(E.FM{i}.RectApexIndex(j),2)) == 0
+%             CNN(i,j) = NaN;
+%         end
+%     end
+% end
+% k=randi(40)
+% RandApex = E.FM{k}.RectApexIndex(randperm(length(E.FM{k}.RectApexIndex)));
+% i=RandApex(1)
+% figure('Color','w');
+% hold on
+% plot((E.FM{k}.HHApp{i}-E.FM{k}.CP_OliverPharr_CNN(i,1))*10e9,E.FM{k}.BasedApp{i}*10e9,(E.FM{k}.HHRet{i}-E.FM{k}.CP_OliverPharr_CNN(i,1))*10e9,E.FM{k}.BasedRet{i}*10e9);
+% plot((E.FM{k}.CP_OliverPharr_CNN(i,1)-E.FM{k}.CP_OliverPharr_CNN(i,1))*10e9, E.FM{k}.CP_OliverPharr_CNN(i,2)*10e9,'O',...
+%     'LineWidth',1.5,...
+%     'MarkerSize',7,...
+%     'MarkerEdgeColor','k',...
+%     'MarkerFaceColor','g');
+% plot((E.FM{k}.CP_OliverPharr_Old(i,1)-E.FM{k}.CP_OliverPharr_CNN(i,1))*10e9, E.FM{k}.CP_OliverPharr_Old(i,2)*10e9,'O',...
+%     'LineWidth',1.5,...
+%     'MarkerSize',7,...
+%     'MarkerEdgeColor','k',...
+%     'MarkerFaceColor','y');
+% plot((E.FM{k}.CP_OliverPharr_RoV(i,1)-E.FM{k}.CP_OliverPharr_CNN(i,1))*10e9, E.FM{k}.CP_OliverPharr_RoV(i,2)*10e9,'O',...
+%     'LineWidth',1.5,...
+%     'MarkerSize',7,...
+%     'MarkerEdgeColor','k',...
+%     'MarkerFaceColor','r');
+% xlabel('Z-Displacement [nm]');
+% ylabel('Deflection [nm]');
+% grid on
+% grid minor
+% dim = [0.4 0.5 0.3 0.3];
+% str = {sprintf('E_{CNN} = %.3f MPa',E.FM{k}.EModOliverPharr_CNN(i)*1e-6),...
+%     sprintf('E_{SD6} = %.3f MPa',E.FM{k}.EModOliverPharr_Old(i)*1e-6),...
+%     sprintf('E_{RoV} = %.3f MPa',E.FM{k}.EModOliverPharr_RoV(i)*1e-6)};
+% annotation('textbox',dim,'String',str,'FitBoxToText','on');
+% legend('Approach','Retract','CNN','SD6','RoV','Location','northwest')
+% 
+% 
+k=randi(40)
+RandApex = E.FM{k}.RectApexIndex(randperm(length(E.FM{k}.RectApexIndex)));
+i=RandApex(1)
+[~,Idx] = max(E.FM{k}.CP_OliverPharr_MonteCarlo_STD);
+figure('Color','w');
+hold on
+b = plot((E.FM{k}.HHApp{i}-E.FM{k}.CP_OliverPharr_CNN(i,1))*10e9,E.FM{k}.BasedApp{i}*10e9,(E.FM{k}.HHRet{i}-E.FM{k}.CP_OliverPharr_CNN(i,1))*10e9,E.FM{k}.BasedRet{i}*10e9,'LineWidth',1.5);
+a = plot((E.FM{k}.CP_OliverPharr_CNN(i,1)-E.FM{k}.CP_OliverPharr_CNN(i,1))*10e9, E.FM{k}.CP_OliverPharr_CNN(i,2)*10e9,'O',...
+    'LineWidth',1.5,...
+    'MarkerSize',7,...
+    'MarkerEdgeColor','k',...
+    'MarkerFaceColor','g');
+for j=1:100
+    plot((E.FM{k}.CP_OliverPharr_MonteCarlo(j,1,i)-E.FM{k}.CP_OliverPharr_CNN(i,1))*10e9, E.FM{k}.CP_OliverPharr_MonteCarlo(j,2,i)*10e9,'O',...
+        'LineWidth',0.5,...
+        'MarkerSize',7,...
+        'MarkerEdgeColor','k',...
+        'MarkerFaceColor','y');
+end
+legend('Approach','Retract','Mean Prediction','Dropout Predictions','Location','northwest');
+uistack(b,'top');
+uistack(a,'top');
+xlabel('Z-Displacement [nm]');
+ylabel('Deflection [nm]');
+grid on
+grid minor
+dim = [0.4 0.3 0.3 0.3];
+str = {'     Network Uncertainty',sprintf('Standard Deviation = %.2f nm',E.FM{k}.CP_OliverPharr_MonteCarlo_STD(i)*1e9)};
+annotation('textbox',dim,'String',str,'FitBoxToText','on');
+i = i + 1;
+% 
+% Act = activations(E.CP_CNN,X(:,:,1,randi(length(X))),'conv_15');
+% figure()
+% I = imtile(mat2gray(Act),'GridSize',[8 8]);
+% imshow(I)
 
-% HEAD HEIGHT SCALING WTFFFFFFF?????
+% % Dry-Wet plots
+% subplot(2,2,1)
+% plot(1,Dry(1:10),'rO',2,Dry(11:20),'rO',[1 2],[mean(Dry(1:10)) mean(Dry(11:20))],'r-X')
+% xticks([1 2])
+% ylim([(min(Dry(1:20))-10) (max(Dry(1:20))+10)])
+% xlim([0 3])
+% xticklabels({'Control Before','Control After'})
+% ylabel('Dry Diameter [nm]')
+% subplot(2,2,2)
+% plot(1,Dry(21:30),'rO',2,Dry(31:40),'rO',[1 2],[mean(Dry(21:30)) mean(Dry(31:40))],'r-X')
+% xticks([1 2])
+% ylim([(min(Dry(21:40))-10) (max(Dry(21:40))+10)])
+% xlim([0 3])
+% xticklabels({'MGO Before','MGO After'})
+% ylabel('Dry Diameter [nm]')
+% subplot(2,2,3)
+% plot(1,Wet(1:10),'bO',2,Wet(11:20),'bO',[1 2],[mean(Wet(1:10)) mean(Wet(11:20))],'b-X')
+% xticks([1 2])
+% ylim([(min(Wet(1:20))-10) (max(Wet(1:20))+10)])
+% xlim([0 3])
+% xticklabels({'Control Before','Control After'})
+% ylabel('Wet Diameter [nm]')
+% subplot(2,2,4)
+% plot(1,Wet(21:30),'bO',2,Wet(31:40),'bO',[1 2],[mean(Wet(21:30)) mean(Wet(31:40))],'b-X')
+% xticks([1 2])
+% ylim([(min(Wet(21:40))-10) (max(Wet(21:40))+10)])
+% xlim([0 3])
+% xticklabels({'MGO Before','MGO After'})
+% ylabel('Wet Diameter [nm]')

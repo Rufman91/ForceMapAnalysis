@@ -1,4 +1,4 @@
-classdef SurfacePotentialMap < handle
+classdef SurfacePotentialMap < matlab.mixin.Copyable
     
     properties
         Name

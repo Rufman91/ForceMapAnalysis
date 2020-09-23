@@ -1,4 +1,4 @@
-classdef Experiment < handle
+classdef Experiment < matlab.mixin.Copyable
     
     properties
         ExperimentName
@@ -27,13 +27,33 @@ classdef Experiment < handle
         
         function obj = Experiment()
             
+            % Force Maps + KPFM or only one of them?
+            answer = questdlg('What kind of measurements were done?', ...
+                'Experiment Type',...
+                'Surface Potential Maps','Indentation Force Maps','Both','Indentation Force Maps');
+            % Handle response
+            switch answer
+                case 'Surface Potential Maps'
+                    WhichFiles = 1;
+                case 'Indentation Force Maps'
+                    WhichFiles = 2;
+                case 'Both'
+                    WhichFiles = 0;
+            end
+            
+            % How many Specimens were tested? Multiple measurements per
+            % specimen?
             prompt = {'Enter Number of tested specimen','Enter number of measurements per specimen','How would you like to name the Experiment?'};
             dlgtitle = 'Experiment Layout';
             dims = [1 35];
             definput = {'20','2','MGO-Glycation'};
             answer = inputdlg(prompt,dlgtitle,dims,definput);
+            
+            
+            
             obj.NumSpec = str2double(answer{1});
             obj.NumMeas = str2double(answer{2});
+            obj.NumFiles = obj.NumMeas*obj.NumSpec;
             obj.ExperimentName = answer{3};
             obj.ExperimentFolder = uigetdir('Choose a Folder where the Experiment is to be saved');
             N = obj.NumFiles;
@@ -57,20 +77,31 @@ classdef Experiment < handle
             obj.FM = cell(N,1);
             obj.SPM = cell(N,1);
             for i=1:N
-                obj.FM{i} = ForceMap(MapFullFile{i},obj.ExperimentFolder);
-                obj.ForceMapFolders{i} = obj.FM{i}.Folder;
-                obj.ForceMapNames{i} = obj.FM{i}.Name;
-                obj.SPM{i} = SurfacePotentialMap();
-                obj.SurfacePotentialMapFolders{i} = obj.SPM{i}.Folder;
-                obj.SurfacePotentialMapNames{i} = obj.SPM{i}.Name;
+                if WhichFiles == 2 || WhichFiles == 0
+                    obj.FM{i} = ForceMap(MapFullFile{i},obj.ExperimentFolder);
+                    obj.ForceMapFolders{i} = obj.FM{i}.Folder;
+                    obj.ForceMapNames{i} = obj.FM{i}.Name;
+                elseif WhichFiles == 1 || WhichFiles == 0
+                    obj.SPM{i} = SurfacePotentialMap();
+                    obj.SurfacePotentialMapFolders{i} = obj.SPM{i}.Folder;
+                    obj.SurfacePotentialMapNames{i} = obj.SPM{i}.Name;
+                end
             end
             obj.FMFlag.Analysis = zeros(N,1);
             obj.FMFlag.Grouping = 0;
             obj.SPMFlag.Analysis = zeros(N,1);
             obj.SPMFlag.Grouping = 0;
             
-            obj.grouping_force_map();
-            obj.grouping_surface_potential_map();
+            if WhichFiles == 2 || WhichFiles == 0
+                obj.grouping_force_map();
+            elseif WhichFiles == 1 || WhichFiles == 0
+                obj.grouping_surface_potential_map();
+            end
+            
+            Temp = load('DropoutNet.mat');
+            obj.DropoutNet = Temp.DropoutNet;
+            Temp2 = load('CP_CNN.mat');
+            obj.CP_CNN = Temp2.CP_CNN;
             
             obj.save_experiment();
         end
@@ -114,6 +145,7 @@ classdef Experiment < handle
            % CPOption = 'Dropout' ... contact point estimation through
            % averaging over multiple passes through monte carlo dropout
            % net. NPasses (Default=100) times slower than 'Fast'
+           % CPOption = 'Old' ... old method for contact point estimation
            %
            % EModOption = 'Hertz' ... E-Modulus calculation through Hertz-Sneddon
            % method
@@ -122,7 +154,7 @@ classdef Experiment < handle
            
            h = waitbar(0,'setting up','Units','normalized','Position',[0.4 0.3 0.2 0.1]);
            NLoop = length(obj.ForceMapNames);
-           if sum(obj.FMFlag) >= 1
+           if sum(obj.FMFlag.Analysis) >= 1
                KeepFlagged = questdlg(sprintf('Some maps have been processed already.\nDo you want to skip them and keep old results?'),...
                    'Processing Options',...
                    'Yes',...
@@ -137,7 +169,7 @@ classdef Experiment < handle
                'Yes',...
                'No','No');
            for i=1:NLoop
-               if isequal(KeepFlagged,'Yes') && obj.FMFlag(i) == 1
+               if isequal(KeepFlagged,'Yes') && obj.FMFlag.Analysis(i) == 1
                    continue
                end
                obj.FM{i}.create_and_level_height_map();
@@ -150,7 +182,7 @@ classdef Experiment < handle
            % Main loop for contact point estimation, Fibril Diameter and
            % Fibril E-Modulus calculation
            for i=1:NLoop
-               if isequal(KeepFlagged,'Yes') && obj.FMFlag(i) == 1
+               if isequal(KeepFlagged,'Yes') && obj.FMFlag.Analysis(i) == 1
                    continue
                end
                waitbar(i/NLoop,h,sprintf('Processing Fibril %i/%i\nFitting Base Line',i,NLoop));
@@ -159,6 +191,8 @@ classdef Experiment < handle
                waitbar(i/NLoop,h,sprintf('Processing Fibril %i/%i\nFinding Contact Point',i,NLoop));
                if isequal(lower(CPOption),'dropout')
                    obj.FM{i}.estimate_cp_cnn(obj.DropoutNet,'Dropout',100);
+               elseif isequal(lower(CPOption),'old')
+                   obj.FM{i}.estimate_cp_old_oliverpharr;
                else
                    obj.FM{i}.estimate_cp_cnn(obj.CP_CNN,'Fast')
                end
@@ -166,12 +200,12 @@ classdef Experiment < handle
                if isequal(lower(EModOption),'hertz')
                    obj.FM{i}.calculate_e_mod_hertz('cnn','parabolic',1);
                else
-                   obj.FM{i}.calculate_e_mod_oliverpharr(obj.CantileverTip.ProjArea,1);
+                   obj.FM{i}.calculate_e_mod_oliverpharr(obj.CantileverTip.ProjArea,0.75);
                end
                waitbar(i/NLoop,h,sprintf('Processing Fibril %i/%i\nWrapping Up And Saving',i,NLoop));
                obj.FM{i}.show_height_map();
                obj.FM{i}.save();
-               obj.FMFlag(i) = 1;
+               obj.FMFlag.Analysis(i) = 1;
            end
            close(h);
        end
@@ -215,10 +249,14 @@ classdef Experiment < handle
                         DataOP(i,j) < (nanmedian(DataOP(i,:))-2.5*iqr(DataOP(i,:))) || ...
                         obj.FM{i}.ExclMask(obj.FM{i}.List2Map(obj.FM{i}.RectApexIndex(j),1),obj.FM{i}.List2Map(obj.FM{i}.RectApexIndex(j),2)) == 0
                     DataOP(i,j) = NaN;
+                elseif DataOP(i,j) < 0
+                    DataOP(i,j) = NaN;
                 end
                 if DataHS(i,j) > (nanmedian(DataHS(i,:))+2.5*iqr(DataHS(i,:))) || ...
                         DataHS(i,j) < (nanmedian(DataHS(i,:))-2.5*iqr(DataHS(i,:))) || ...
                         obj.FM{i}.ExclMask(obj.FM{i}.List2Map(obj.FM{i}.RectApexIndex(j),1),obj.FM{i}.List2Map(obj.FM{i}.RectApexIndex(j),2)) == 0
+                    DataHS(i,j) = NaN;
+                elseif DataHS(i,j) < 0
                     DataHS(i,j) = NaN;
                 end
             end
@@ -227,8 +265,8 @@ classdef Experiment < handle
            DataMeansOP = nanmean(DataOP,2);
            DataMeansHS = nanmean(DataHS,2);
            
-           figure('Name','OliverPharr vs HertzSneddon');
-           plot(1:N,DataMeansOP,'b*',1:N,DataMeansHS,'r*')
+           figure('Name','OliverPharr vs HertzSneddon','Color','w');
+           plot(1:N,DataMeansOP,'bO',1:N,DataMeansHS,'rO')
            legend('E-Mod Oliver-Pharr','E-Mod Hertz-Sneddon')
            xlim([0,N+1])
            xlabel('Force Maps')
@@ -241,7 +279,7 @@ classdef Experiment < handle
                    ttest(DataMeansOP(obj.GroupFM(TestMat(i,2)).Indices),...
                    DataMeansOP(obj.GroupFM(TestMat(i,1)).Indices),'Tail','right');
                
-               figure('Name','Paired Right Tailed T-Test','Units','normalized','Position',[0.2 0.2 0.5 0.5])
+               figure('Name','Paired Right Tailed T-Test','Units','normalized','Position',[0.2 0.2 0.5 0.5],'Color','w')
                boxplot([DataMeansOP(obj.GroupFM(TestMat(i,1)).Indices) DataMeansOP(obj.GroupFM(TestMat(i,2)).Indices)],'Notch','on')
                title('Paired Right Tailed T-Test for Oliver-Pharr Method')
                xticklabels({obj.GroupFM(TestMat(i,1)).Name,obj.GroupFM(TestMat(i,2)).Name})
@@ -251,7 +289,7 @@ classdef Experiment < handle
                Sigma = std(DataMeansOP(obj.GroupFM(TestMat(i,2)).Indices) - DataMeansOP(obj.GroupFM(TestMat(i,1)).Indices));
                Beta = sampsizepwr('t',[0 Sigma],DeltaMean,[],length(obj.GroupFM(TestMat(i,2)).Indices));
                Stats = {sprintf('\\DeltaMean = %.2fMPa',DeltaMean*1e-6),...
-                   sprintf('P-Value = %.3f%',pOP(i)),...
+                   sprintf('P-Value = %.4f%',pOP(i)),...
                    sprintf('Power \\beta = %.2f%%',Beta*100),...
                    sprintf('Number of Specimen = %i',length(obj.GroupFM(TestMat(i,2)).Indices))};
                text(0.5,0.8,Stats,...
@@ -264,7 +302,7 @@ classdef Experiment < handle
                    ttest(DataMeansHS(obj.GroupFM(TestMat(i,2)).Indices),...
                    DataMeansHS(obj.GroupFM(TestMat(i,1)).Indices),'Tail','right');
                
-               figure('Name','Paired Right Tailed T-Test','Units','normalized','Position',[0.2 0.2 0.5 0.5])
+               figure('Name','Paired Right Tailed T-Test','Units','normalized','Position',[0.2 0.2 0.5 0.5],'Color','w')
                boxplot([DataMeansHS(obj.GroupFM(TestMat(i,1)).Indices) DataMeansHS(obj.GroupFM(TestMat(i,2)).Indices)],'Notch','on')
                title('Paired Right Tailed T-Test for Hertz-Sneddon Method')
                xticklabels({obj.GroupFM(TestMat(i,1)).Name,obj.GroupFM(TestMat(i,2)).Name})
@@ -274,7 +312,7 @@ classdef Experiment < handle
                Sigma = std(DataMeansHS(obj.GroupFM(TestMat(i,2)).Indices) - DataMeansHS(obj.GroupFM(TestMat(i,1)).Indices));
                Beta = sampsizepwr('t',[0 Sigma],DeltaMean,[],length(obj.GroupFM(TestMat(i,2)).Indices));
                Stats = {sprintf('\\DeltaMean = %.2f MPa',DeltaMean*1e-6),...
-                   sprintf('P-Value = %.3f%',pHS(i)),...
+                   sprintf('P-Value = %.4f%',pHS(i)),...
                    sprintf('Power \\beta = %.2f%%',Beta*100),...
                    sprintf('Number of Specimen = %i',length(obj.GroupFM(TestMat(i,2)).Indices))};
                text(0.5,0.8,Stats,...
@@ -292,7 +330,7 @@ classdef Experiment < handle
            
            % For Oliver-Pharr
            [hOP,pOP,ciOP,statsOP] = ttest2(DiffMGOOP,DiffControlOP);
-           figure('Name','Two Sample T-Test','Units','normalized','Position',[0.2 0.2 0.5 0.5])
+           figure('Name','Two Sample T-Test','Units','normalized','Position',[0.2 0.2 0.5 0.5],'Color','w')
                yyaxis left
                boxplot([DiffControlOP DiffMGOOP],'Notch','on')
                ax = gca;
@@ -309,11 +347,11 @@ classdef Experiment < handle
                ax.TickLabelInterpreter = 'tex';
                xticklabels({sprintf('%s - %s',obj.GroupFM(2).Name,obj.GroupFM(1).Name),...
                    '\DeltaMean with CI',...
-                   sprintf('%s - %s',obj.GroupFM(3).Name,obj.GroupFM(4).Name)})
+                   sprintf('%s - %s',obj.GroupFM(4).Name,obj.GroupFM(3).Name)})
                ylabel('Difference of Differences [Pa]')
                Beta = sampsizepwr('t2',[mean(DiffControlOP) PooledSTD],mean(DiffMGOOP),[],length(DiffControlOP),'Ratio',length(DiffMGOOP)/length(DiffControlOP));
                Stats = {sprintf('\\DeltaMean = %.2f MPa',DeltaMean*1e-6),...
-                   sprintf('P-Value = %.3f%',pOP),...
+                   sprintf('P-Value = %.4f%',pOP),...
                    sprintf('Power \\beta = %.2f%%',Beta*100),...
                    sprintf('Degrees of freedom df = %i',statsOP.df)};
                text(0.5,0.8,Stats,...
@@ -323,7 +361,7 @@ classdef Experiment < handle
            
            % For Hertz-Sneddon
            [hHS,pHS,ciHS,statsHS] = ttest2(DiffMGOHS,DiffControlHS);
-           figure('Name','Two Sample T-Test','Units','normalized','Position',[0.2 0.2 0.5 0.5])
+           figure('Name','Two Sample T-Test','Units','normalized','Position',[0.2 0.2 0.5 0.5],'Color','w')
                yyaxis left
                boxplot([DiffControlHS DiffMGOHS],'Notch','on')
                ax = gca;
@@ -340,11 +378,11 @@ classdef Experiment < handle
                ax.TickLabelInterpreter = 'tex';
                xticklabels({sprintf('%s - %s',obj.GroupFM(2).Name,obj.GroupFM(1).Name),...
                    '\DeltaMean with CI',...
-                   sprintf('%s - %s',obj.GroupFM(3).Name,obj.GroupFM(4).Name)})
+                   sprintf('%s - %s',obj.GroupFM(4).Name,obj.GroupFM(3).Name)})
                ylabel('Difference of Differences [Pa]')
                Beta = sampsizepwr('t2',[mean(DiffControlHS) PooledSTD],mean(DiffMGOHS),[],length(DiffControlHS),'Ratio',length(DiffMGOHS)/length(DiffControlHS));
                Stats = {sprintf('\\DeltaMean = %.2f MPa',DeltaMean*1e-6),...
-                   sprintf('P-Value = %.3f%',pHS),...
+                   sprintf('P-Value = %.4f%',pHS),...
                    sprintf('Power \\beta = %.2f%%',Beta*100),...
                    sprintf('Degrees of freedom df = %i',statsHS.df)};
                text(0.5,0.8,Stats,...
@@ -382,7 +420,7 @@ classdef Experiment < handle
                    ttest(FibPot(obj.GroupFM(TestMat(i,2)).Indices),...
                    FibPot(obj.GroupFM(TestMat(i,1)).Indices));
                
-               figure('Name','Paired T-Test for Surface Potential Changes','Units','normalized','Position',[0.2 0.2 0.5 0.5])
+               figure('Name','Paired T-Test for Surface Potential Changes','Units','normalized','Position',[0.2 0.2 0.5 0.5],'Color','w')
                boxplot([FibPot(obj.GroupFM(TestMat(i,1)).Indices)' FibPot(obj.GroupFM(TestMat(i,2)).Indices)'])
                title('Paired T-Test for Surface Potential Changes')
                xticklabels({obj.GroupFM(TestMat(i,1)).Name,obj.GroupFM(TestMat(i,2)).Name})
@@ -408,7 +446,7 @@ classdef Experiment < handle
            
            
            [h,p,ci,stats] = ttest2(DiffMGO,DiffControl);
-           figure('Name','Two Sample T-Test','Units','normalized','Position',[0.2 0.2 0.5 0.5])
+           figure('Name','Two Sample T-Test','Units','normalized','Position',[0.2 0.2 0.5 0.5],'Color','w')
                yyaxis left
                boxplot([DiffControl DiffMGO],'Notch','on')
                ax = gca;
@@ -425,7 +463,7 @@ classdef Experiment < handle
                ax.TickLabelInterpreter = 'tex';
                xticklabels({sprintf('%s - %s',obj.GroupSPM(2).Name,obj.GroupSPM(1).Name),...
                    '\DeltaMean with CI',...
-                   sprintf('%s - %s',obj.GroupSPM(3).Name,obj.GroupSPM(4).Name)})
+                   sprintf('%s - %s',obj.GroupSPM(4).Name,obj.GroupSPM(3).Name)})
                ylabel('Difference of Differences [V]')
                Beta = sampsizepwr('t2',[mean(DiffControl) PooledSTD],mean(DiffMGO),[],length(DiffControl),'Ratio',length(DiffMGO)/length(DiffControl));
                Stats = {sprintf('\\DeltaMean = %.2fmV',DeltaMean*1e3),...
@@ -462,7 +500,7 @@ classdef Experiment < handle
                    ttest(RelChange(obj.GroupFM(TestMat(i,2)).Indices),...
                    RelChange(obj.GroupFM(TestMat(i,1)).Indices));
                
-               figure('Name','Paired T-Test for relative Swelling Changes','Units','normalized','Position',[0.2 0.2 0.5 0.5])
+               figure('Name','Paired T-Test for relative Swelling Changes','Units','normalized','Position',[0.2 0.2 0.5 0.5],'Color','w')
                boxplot([RelChange(obj.GroupFM(TestMat(i,1)).Indices)' RelChange(obj.GroupFM(TestMat(i,2)).Indices)'])
                title('Paired T-Test for relative Swelling Changes')
                xticklabels({obj.GroupFM(TestMat(i,1)).Name,obj.GroupFM(TestMat(i,2)).Name})
@@ -488,7 +526,7 @@ classdef Experiment < handle
            
            
            [h,p,ci,stats] = ttest2(DiffMGO,DiffControl);
-           figure('Name','Two Sample T-Test','Units','normalized','Position',[0.2 0.2 0.5 0.5])
+           figure('Name','Two Sample T-Test','Units','normalized','Position',[0.2 0.2 0.5 0.5],'Color','w')
                yyaxis left
                boxplot([DiffControl DiffMGO],'Notch','on')
                ax = gca;
@@ -505,7 +543,7 @@ classdef Experiment < handle
                ax.TickLabelInterpreter = 'tex';
                xticklabels({sprintf('%s - %s',obj.GroupSPM(2).Name,obj.GroupSPM(1).Name),...
                    '\DeltaMean with CI',...
-                   sprintf('%s - %s',obj.GroupSPM(3).Name,obj.GroupSPM(4).Name)})
+                   sprintf('%s - %s',obj.GroupSPM(4).Name,obj.GroupSPM(3).Name)})
                ylabel('Difference of Differences')
                Beta = sampsizepwr('t2',[mean(DiffControl) PooledSTD],mean(DiffMGO),[],length(DiffControl),'Ratio',length(DiffMGO)/length(DiffControl));
                Stats = {sprintf('\\DeltaMean = %.2f',DeltaMean),...
@@ -540,7 +578,7 @@ classdef Experiment < handle
                    ttest(DBanding(obj.GroupFM(TestMat(i,2)).Indices),...
                    DBanding(obj.GroupFM(TestMat(i,1)).Indices));
                
-               figure('Name','Paired T-Test for D-Banding Changes','Units','normalized','Position',[0.2 0.2 0.5 0.5])
+               figure('Name','Paired T-Test for D-Banding Changes','Units','normalized','Position',[0.2 0.2 0.5 0.5],'Color','w')
                boxplot([DBanding(obj.GroupFM(TestMat(i,1)).Indices)' DBanding(obj.GroupFM(TestMat(i,2)).Indices)'])
                title('Paired T-Test for D-Banding Changes')
                xticklabels({obj.GroupFM(TestMat(i,1)).Name,obj.GroupFM(TestMat(i,2)).Name})
@@ -566,7 +604,7 @@ classdef Experiment < handle
            
            
            [h,p,ci,stats] = ttest2(DiffMGO,DiffControl);
-           figure('Name','Two Sample T-Test','Units','normalized','Position',[0.2 0.2 0.5 0.5])
+           figure('Name','Two Sample T-Test','Units','normalized','Position',[0.2 0.2 0.5 0.5],'Color','w')
                yyaxis left
                boxplot([DiffControl DiffMGO],'Notch','on')
                ax = gca;
@@ -583,7 +621,7 @@ classdef Experiment < handle
                ax.TickLabelInterpreter = 'tex';
                xticklabels({sprintf('%s - %s',obj.GroupSPM(2).Name,obj.GroupSPM(1).Name),...
                    '\DeltaMean with CI',...
-                   sprintf('%s - %s',obj.GroupSPM(3).Name,obj.GroupSPM(4).Name)})
+                   sprintf('%s - %s',obj.GroupSPM(4).Name,obj.GroupSPM(3).Name)})
                ylabel('Difference of Differences [m]')
                Beta = sampsizepwr('t2',[mean(DiffControl) PooledSTD],mean(DiffMGO),[],length(DiffControl),'Ratio',length(DiffMGO)/length(DiffControl));
                Stats = {sprintf('\\DeltaMean = %.2fnm',DeltaMean*1e9),...
@@ -622,7 +660,7 @@ classdef Experiment < handle
            % create the appropriate inputdlg for assigning the groups show
            % a table with numbered map-names in background
            Names = obj.ForceMapNames;
-           Fig = figure('Units', 'Normalized', 'Position',[0, 0, 0.4, 1]);
+           Fig = figure('Units', 'Normalized', 'Position',[0, 0, 0.4, 1],'Color','w');
            T = table(Names');
            uitable('Data',T{:,:},'Units', 'Normalized', 'Position',[0, 0, 1, 1]);
            
@@ -673,7 +711,7 @@ classdef Experiment < handle
            % create the appropriate inputdlg for assigning the groups show
            % a table with numbered map-names in background
            Names = obj.SurfacePotentialMapNames;
-           Fig = figure('Units', 'Normalized', 'Position',[0, 0, 0.4, 1]);
+           Fig = figure('Units', 'Normalized', 'Position',[0, 0, 0.4, 1],'Color','w');
            T = table(Names');
            uitable('Data',T{:,:},'Units', 'Normalized', 'Position',[0, 0, 1, 1]);
            
@@ -779,7 +817,7 @@ classdef Experiment < handle
        
        function show_tip_data(obj)
            figure('Name','Cantilever Tip',...
-               'Units','normalized','Position',[0.7 0.1 0.3 0.8]);
+               'Units','normalized','Position',[0.7 0.1 0.3 0.8],'Color','w');
            subplot(3,1,1)
            surf(obj.CantileverTip.data,'LineStyle','none','FaceLighting','gouraud','FaceColor','interp')
            light('Style','local')

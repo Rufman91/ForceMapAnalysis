@@ -1,4 +1,4 @@
-classdef ForceMap < handle
+classdef ForceMap < matlab.mixin.Copyable
     % The force map class represents a single jpk force map file and
     % contains all necessary functions to process the forcecurves.
     % General naming convention for this class is:
@@ -68,7 +68,10 @@ classdef ForceMap < handle
         CP_old          % contact point estimation from old script 'A_nIAFM_analysis_main'
         LoadOld         % comes from same script as CP_old
         UnloadOld       % comes from same script as CP_old
-        CP_OliverPharr  % CP needed in Oliver Pharr type analysis, done on HeadHeight vs Displacement curves 
+        CP_OliverPharr  % CP needed in Oliver Pharr type analysis, done on HeadHeight vs Displacement curves
+        CP_OliverPharr_MonteCarlo
+        CP_OliverPharr_MonteCarlo_STD
+        
     end
     properties
        % Properties related to topological calculations, such as mapping and masking and visualisation 
@@ -99,6 +102,19 @@ classdef ForceMap < handle
         IndDepth
         IndentArea
         ProjTipArea
+    end
+    properties
+        % auxiliary properties to facilitate comparing different methods of
+        % CP estimation
+        CP_OliverPharr_CNN
+        CP_OliverPharr_Old
+        CP_OliverPharr_RoV
+        EModOliverPharr_CNN
+        EModOliverPharr_Old
+        EModOliverPharr_RoV
+        EModHertz_CNN
+        EModHertz_Old
+        EModHertz_RoV
     end
     methods
         % Main methods of the class
@@ -337,6 +353,8 @@ classdef ForceMap < handle
             end
             rmdir(TempFolder,'s');
             
+            obj.ExclMask = logical(ones(obj.NumProfiles,obj.NumPoints));
+            
             obj.create_and_level_height_map();
             
             obj.SelectedCurves = ones(obj.NCurves,1);
@@ -482,6 +500,44 @@ classdef ForceMap < handle
                 [~,CPidx] = max(obj.RoV{i});
                 obj.CP_RoV(i,:) = [obj.THApp{i}(CPidx) obj.BasedApp{i}(CPidx)];
                 CP_RoV = obj.CP_RoV;
+            end
+            close(h)
+%             current = what();
+%             cd(obj.Folder)
+%             savename = sprintf('%s.mat',obj.Name);
+%             save(savename,'obj')
+%             cd(current.path)
+        end
+        
+        function estimate_cp_rov_oliverpharr(obj,batchsize)
+            % find contact point with the method of ratio of variances. The method
+            % iterates though every point and builds the ratio of the variance of a
+            % bunch of points before and after the current point. the point with the
+            % biggest ratio is the returned contact point [Nuria Gavara, 2016]
+            if nargin<2
+                batchsize = 20;
+            end
+            Range = find(obj.SelectedCurves);
+            h = waitbar(0,'Setting up...','Name',obj.Name);
+            CP_RoV = zeros(obj.NCurves,2);
+            obj.CP_OliverPharr_RoV = CP_RoV;
+            for i=Range'
+                prog = i/obj.NCurves;
+                waitbar(prog,h,'applying ratio of variances method...');
+                obj.RoV{i} = zeros(length(obj.BasedApp{i}),1);
+                SmoothedApp = smoothdata(obj.BasedApp{i});
+                % loop through points and calculate the RoV
+                for j=(batchsize+1):(length(obj.BasedApp{i})-batchsize)
+                    obj.RoV{i}(j,1) = var(smoothdata(obj.BasedApp{i}((j+1):(j+batchsize))))/...
+                        var(SmoothedApp((j-batchsize):(j-1)));
+                end
+                % normalize RoV-curve
+                obj.RoV{i} = obj.RoV{i}/range(obj.RoV{i});
+                minrov = min(obj.RoV{i}(batchsize+1:length(obj.RoV{i})-batchsize));
+                obj.RoV{i}(obj.RoV{i}==0) = minrov;
+                [~,CPidx] = max(obj.RoV{i});
+                obj.CP_OliverPharr_RoV(i,:) = [obj.HHApp{i}(CPidx) obj.BasedApp{i}(CPidx)];
+                obj.CP_OliverPharr = obj.CP_OliverPharr_RoV;
             end
             close(h)
 %             current = what();
@@ -676,12 +732,15 @@ classdef ForceMap < handle
                     waitbar(1,h,'Wrapping up');
                     iRange = find(obj.SelectedCurves);
                     k = 1;
-                    Temp_CP_MonteCarlo = zeros(NumPasses,2,obj.NCurves);
+                    obj.CP_OliverPharr_MonteCarlo = zeros(NumPasses,2,obj.NCurves);
                     for i=iRange'
-                        Temp_CP_MonteCarlo(:,1,i) = obj.YDropPred(:,1,k)*range(obj.HHApp{i})+min(obj.HHApp{i});
-                        Temp_CP_MonteCarlo(:,2,i) = obj.YDropPred(:,2,k)*range(obj.BasedApp{i})+min(obj.BasedApp{i});
-                        obj.CP_OliverPharr(i,1) = mean(obj.CP_MonteCarlo(:,1,i));
-                        obj.CP_OliverPharr(i,2) = mean(obj.CP_MonteCarlo(:,2,i));
+                        obj.CP_OliverPharr_MonteCarlo(:,1,i) = obj.YDropPred(:,1,k)*range(obj.HHApp{i})+min(obj.HHApp{i});
+                        obj.CP_OliverPharr_MonteCarlo(:,2,i) = obj.YDropPred(:,2,k)*range(obj.BasedApp{i})+min(obj.BasedApp{i});
+                        obj.CP_OliverPharr(i,1) = mean(obj.CP_OliverPharr_MonteCarlo(:,1,i));
+                        obj.CP_OliverPharr(i,2) = mean(obj.CP_OliverPharr_MonteCarlo(:,2,i));
+                        obj.CP_OliverPharr_CNN(i,1) = obj.CP_OliverPharr(i,1);
+                        obj.CP_OliverPharr_CNN(i,2) = obj.CP_OliverPharr(i,2);
+                        obj.CP_OliverPharr_MonteCarlo_STD(i) = norm([std(obj.CP_OliverPharr_MonteCarlo(:,1,i)) std(obj.CP_OliverPharr_MonteCarlo(:,2,i))]);
                         k = k + 1;
                     end
             end
@@ -710,6 +769,35 @@ classdef ForceMap < handle
                 end
                 [obj.LoadOld{i},obj.UnloadOld{i},Position,obj.CP_old(i,2)] = ContactPoint_sort(load,unload);
                 obj.CP_old(i,1) = obj.THApp{i}(Position);
+            end
+%             current = what();
+%             cd(obj.Folder)
+%             savename = sprintf('%s.mat',obj.Name);
+%             save(savename,'obj')
+%             cd(current.path)
+        end
+        
+        function estimate_cp_old_oliverpharr(obj)
+            % CP estimation using the the approach from the old fibril
+            % analysis script 'A_nIAFM_analysis_main.m' but without first
+            % subtracting the deflection as it is not needed in
+            % Oliver-Pharr analysis
+            iRange = find(obj.SelectedCurves);
+            for i=iRange'
+                load = zeros(length(obj.BasedApp{i}),2);
+                unload = zeros(length(obj.Ret{i}),2);
+                for j=1:length(obj.BasedApp{i})
+                    load(end-(j-1),1) = obj.HHApp{i}(j);
+                    load(j,2) = obj.BasedApp{i}(j);
+                end
+                for j=1:length(obj.Ret{i})
+                    unload(end-(j-1),1) = obj.HHRet{i}(j);
+                    unload(j,2) = obj.Ret{i}(j);
+                end
+                [obj.LoadOld{i},obj.UnloadOld{i},Position,obj.CP_OliverPharr(i,2)] = ContactPoint_sort(load,unload);
+                obj.CP_OliverPharr(i,1) = obj.HHApp{i}(Position);
+                obj.CP_OliverPharr_Old(i,1) =obj.CP_OliverPharr(i,1);
+                obj.CP_OliverPharr_Old(i,2) =obj.CP_OliverPharr(i,2);
             end
 %             current = what();
 %             cd(obj.Folder)
@@ -825,6 +913,13 @@ classdef ForceMap < handle
             end
             E = obj.EModHertz;
             HertzFit = obj.HertzFit;
+                if isequal(lower(CPType),'cnn')
+                        obj.EModHertz_CNN = E;
+                    elseif isequal(lower(CPType),'old')
+                        obj.EModHertz_Old = E;
+                    elseif isequal(lower(CPType),'rov')
+                        obj.EModHertz_RoV = E;
+                end
             for i=1:obj.NumProfiles
                 for j=1:obj.NumPoints
                     obj.EModMapHertz(i,j,1) = (obj.EModHertz(mod(i,2)*j+(1-mod(i,2))*(obj.NumPoints-(j-1))+(obj.NumProfiles-i)*obj.NumPoints));
@@ -848,7 +943,7 @@ classdef ForceMap < handle
             obj.IndentArea = zeros(obj.NCurves,1);
             
             obj.calculate_reference_slope();
-            
+
             for i=Range'
                 Z(:,i) = obj.HHRet{i} - obj.CP_OliverPharr(i,1);
                 D(:,i) = (obj.BasedRet{i} - obj.CP_OliverPharr(i,2))/obj.SpringConstant;
@@ -1577,7 +1672,7 @@ classdef ForceMap < handle
             if nargin < 2
                 k = randi(obj.NCurves);
             end
-            figure('Units','normalized','Position',[0.6 0.1 0.4 0.8])
+            figure('Units','normalized','Position',[0.6 0.1 0.4 0.8],'Color','white')
             subplot(2,1,1)
             plot(obj.HHApp{k},obj.BasedApp{k}/obj.SpringConstant,...
                 obj.HHRet{k},obj.BasedRet{k}/obj.SpringConstant)

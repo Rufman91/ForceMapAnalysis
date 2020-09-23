@@ -172,7 +172,9 @@ moving_average(:,1)=sort(smooth(sub1(:,1),'moving'));
 %% second line fit in approach smoothed_moving average data.
 
 %%%%%%% LINEAR FIT OF APPROACH NON CONTACT DATA %%%%%%%
+warning('off','all')
     p2 = polyfit(sub1(1:index,1),moving_average(1:index,1),1);
+warning('on','all')
     ytemp2(:,1) = polyval(p2,sub1(:,1));    
     ytemp_unload2(:,1) = polyval(p2,sub1_unload(:,1));
     
@@ -214,8 +216,12 @@ MeanDiff=mean(smoothedDiff(1:index,1));
 SD6times=6*std(smoothedDiff(1:index,1));
 
 ii=index;
-while smoothedDiff(ii,1)<(MeanDiff+SD6times)
-    ii=ii+1;
+try
+    while smoothedDiff(ii,1)<(MeanDiff+SD6times)
+        ii=ii+1;
+    end
+catch
+    warning('Error in ContactPoint_sort')
 end
 position=ii;
 
