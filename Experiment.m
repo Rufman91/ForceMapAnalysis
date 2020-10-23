@@ -58,7 +58,9 @@ classdef Experiment < matlab.mixin.Copyable
             obj.NumMeas = str2double(answer{2});
             obj.NumFiles = obj.NumMeas*obj.NumSpec;
             obj.ExperimentName = answer{3};
-            obj.ExperimentFolder = uigetdir('Choose a Folder where the Experiment is to be saved');
+            ParentFolder = uigetdir('Choose a Folder where the Experiment-Folder is to be saved');
+            mkdir(ParentFolder,obj.ExperimentName);
+            obj.ExperimentFolder = fullfile(ParentFolder,obj.ExperimentName,filesep);
             N = obj.NumFiles;
             obj.NumFiles = N;
             MapFullFile = {};
@@ -109,6 +111,78 @@ classdef Experiment < matlab.mixin.Copyable
             
             obj.save_experiment();
         end
+        
+        function add_data(obj)
+            % Force Maps + KPFM or only one of them?
+            answer = questdlg('What kind of measurements were done?', ...
+                'Experiment Type',...
+                'Surface Potential Maps','Indentation Force Maps','Both','Indentation Force Maps');
+            % Handle response
+            switch answer
+                case 'Surface Potential Maps'
+                    WhichFiles = 1;
+                case 'Indentation Force Maps'
+                    WhichFiles = 2;
+                case 'Both'
+                    WhichFiles = 0;
+            end
+            
+            % How many Specimens were tested? Multiple measurements per
+            % specimen?
+            prompt = {'Enter Number of additionally tested specimen'};
+            dlgtitle = 'How many files to add?';
+            dims = [1 35];
+            definput = {'20'};
+            answer = inputdlg(prompt,dlgtitle,dims,definput);
+            
+            NOld = obj.NumFiles;
+            NumNewSpec = str2double(answer{1});
+            NumNewFiles = obj.NumMeas*NumNewSpec;
+            obj.NumSpec = obj.NumSpec + NumNewSpec;
+            obj.NumFiles = obj.NumMeas*obj.NumSpec;
+            N = NumNewFiles;
+            MapFullFile = {};
+            k = 1;
+            while length(MapFullFile) < N
+                Title = sprintf('Choose one or more .jpk-force-map files. %i/%i',length(MapFullFile),N);
+                [TempFile,TempPath] = uigetfile('*.jpk-force-map',Title,'MultiSelect','on');
+                if  ~iscell(TempFile)
+                    MapFullFile{k} = fullfile(TempPath,TempFile);
+                    k = k + 1;
+                else
+                    for i=1:length(TempFile)
+                        MapFullFile{k} = fullfile(TempPath,TempFile{i});
+                        k = k + 1;
+                    end
+                end
+                clear TempFile
+            end
+            
+            for i=1:N
+                if WhichFiles == 2 || WhichFiles == 0
+                    obj.FM{NOld+i} = ForceMap(MapFullFile{i},obj.ExperimentFolder);
+                    obj.ForceMapFolders{NOld+i} = obj.FM{NOld+i}.Folder;
+                    obj.ForceMapNames{NOld+i} = obj.FM{NOld+i}.Name;
+                elseif WhichFiles == 1 || WhichFiles == 0
+                    obj.SPM{NOld+i} = SurfacePotentialMap();
+                    obj.SurfacePotentialMapFolders{NOld+i} = obj.SPM{NOld+i}.Folder;
+                    obj.SurfacePotentialMapNames{NOld+i} = obj.SPM{NOld+i}.Name;
+                end
+            end
+            obj.FMFlag.Analysis(NOld+1:NOld+N) = zeros(N,1);
+            obj.FMFlag.Grouping = 0;
+            obj.SPMFlag.Analysis(NOld+1:NOld+N) = zeros(N,1);
+            obj.SPMFlag.Grouping = 0;
+            
+            if WhichFiles == 2 || WhichFiles == 0
+                obj.grouping_force_map();
+            elseif WhichFiles == 1 || WhichFiles == 0
+                obj.grouping_surface_potential_map();
+            end
+            
+            obj.save_experiment();
+            
+            end
         
         function load_data(obj)
             for i=1:obj.NumFiles

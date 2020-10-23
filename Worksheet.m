@@ -109,36 +109,36 @@
 % legend('Approach','Retract','CNN','SD6','RoV','Location','northwest')
 % 
 % 
-k=randi(40)
-RandApex = E.FM{k}.RectApexIndex(randperm(length(E.FM{k}.RectApexIndex)));
-i=RandApex(1)
-[~,Idx] = max(E.FM{k}.CP_OliverPharr_MonteCarlo_STD);
-figure('Color','w');
-hold on
-b = plot((E.FM{k}.HHApp{i}-E.FM{k}.CP_OliverPharr_CNN(i,1))*10e9,E.FM{k}.BasedApp{i}*10e9,(E.FM{k}.HHRet{i}-E.FM{k}.CP_OliverPharr_CNN(i,1))*10e9,E.FM{k}.BasedRet{i}*10e9,'LineWidth',1.5);
-a = plot((E.FM{k}.CP_OliverPharr_CNN(i,1)-E.FM{k}.CP_OliverPharr_CNN(i,1))*10e9, E.FM{k}.CP_OliverPharr_CNN(i,2)*10e9,'O',...
-    'LineWidth',1.5,...
-    'MarkerSize',7,...
-    'MarkerEdgeColor','k',...
-    'MarkerFaceColor','g');
-for j=1:100
-    plot((E.FM{k}.CP_OliverPharr_MonteCarlo(j,1,i)-E.FM{k}.CP_OliverPharr_CNN(i,1))*10e9, E.FM{k}.CP_OliverPharr_MonteCarlo(j,2,i)*10e9,'O',...
-        'LineWidth',0.5,...
-        'MarkerSize',7,...
-        'MarkerEdgeColor','k',...
-        'MarkerFaceColor','y');
-end
-legend('Approach','Retract','Mean Prediction','Dropout Predictions','Location','northwest');
-uistack(b,'top');
-uistack(a,'top');
-xlabel('Z-Displacement [nm]');
-ylabel('Deflection [nm]');
-grid on
-grid minor
-dim = [0.4 0.3 0.3 0.3];
-str = {'     Network Uncertainty',sprintf('Standard Deviation = %.2f nm',E.FM{k}.CP_OliverPharr_MonteCarlo_STD(i)*1e9)};
-annotation('textbox',dim,'String',str,'FitBoxToText','on');
-i = i + 1;
+% k=randi(40)
+% RandApex = E.FM{k}.RectApexIndex(randperm(length(E.FM{k}.RectApexIndex)));
+% i=RandApex(1)
+% [~,Idx] = max(E.FM{k}.CP_OliverPharr_MonteCarlo_STD);
+% figure('Color','w');
+% hold on
+% b = plot((E.FM{k}.HHApp{i}-E.FM{k}.CP_OliverPharr_CNN(i,1))*10e9,E.FM{k}.BasedApp{i}*10e9,(E.FM{k}.HHRet{i}-E.FM{k}.CP_OliverPharr_CNN(i,1))*10e9,E.FM{k}.BasedRet{i}*10e9,'LineWidth',1.5);
+% a = plot((E.FM{k}.CP_OliverPharr_CNN(i,1)-E.FM{k}.CP_OliverPharr_CNN(i,1))*10e9, E.FM{k}.CP_OliverPharr_CNN(i,2)*10e9,'O',...
+%     'LineWidth',1.5,...
+%     'MarkerSize',7,...
+%     'MarkerEdgeColor','k',...
+%     'MarkerFaceColor','g');
+% for j=1:100
+%     plot((E.FM{k}.CP_OliverPharr_MonteCarlo(j,1,i)-E.FM{k}.CP_OliverPharr_CNN(i,1))*10e9, E.FM{k}.CP_OliverPharr_MonteCarlo(j,2,i)*10e9,'O',...
+%         'LineWidth',0.5,...
+%         'MarkerSize',7,...
+%         'MarkerEdgeColor','k',...
+%         'MarkerFaceColor','y');
+% end
+% legend('Approach','Retract','Mean Prediction','Dropout Predictions','Location','northwest');
+% uistack(b,'top');
+% uistack(a,'top');
+% xlabel('Z-Displacement [nm]');
+% ylabel('Deflection [nm]');
+% grid on
+% grid minor
+% dim = [0.4 0.3 0.3 0.3];
+% str = {'     Network Uncertainty',sprintf('Standard Deviation = %.2f nm',E.FM{k}.CP_OliverPharr_MonteCarlo_STD(i)*1e9)};
+% annotation('textbox',dim,'String',str,'FitBoxToText','on');
+% i = i + 1;
 % 
 % Act = activations(E.CP_CNN,X(:,:,1,randi(length(X))),'conv_15');
 % figure()
@@ -174,3 +174,5 @@ i = i + 1;
 % xlim([0 3])
 % xticklabels({'MGO Before','MGO After'})
 % ylabel('Wet Diameter [nm]')
+
+X = E.FM{1}.CP_oliver_pharr_batchprep(E.FM,128);
