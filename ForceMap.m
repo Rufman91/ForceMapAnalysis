@@ -264,20 +264,62 @@ classdef ForceMap < matlab.mixin.Copyable
                 DataFolder = current.path;
             end
             
-            % unpack jpk-file into temporary folder to read out data
-            cmd1 = '"C:\Program Files\7-Zip\7z.exe" x ';
-            cmd2 = MapFullFile;
-            cmd3 = ' -o';
-            mkdir(DataFolder,'Temp')
-            TempFolder = fullfile(DataFolder,'Temp',filesep);
-            CMD = append(cmd1,cmd2,cmd3,TempFolder);
-            system(CMD);
-            disp('extracting file...')
-            Strings = split(MapFullFile,filesep);
-            CutExtension = split(Strings{end},'.');
-            obj.Name = CutExtension{1};
-            mkdir(DataFolder,'ForceData')
-            obj.Folder = fullfile(DataFolder,'ForceData',filesep);
+            % get OS and use appropriate fitting system command
+            
+            FullOS = computer;
+            OS = FullOS(1:3);
+            
+            if isequal('PCW',OS)
+                % unpack jpk-file into temporary folder to read out data
+                cmd1 = '"C:\Program Files\7-Zip\7z.exe" x ';
+                cmd2 = MapFullFile;
+                cmd3 = ' -o';
+                mkdir(DataFolder,'Temp')
+                TempFolder = fullfile(DataFolder,'Temp',filesep);
+                CMD = append(cmd1,cmd2,cmd3,TempFolder);
+                system(CMD);
+                disp('extracting file...')
+                Strings = split(MapFullFile,filesep);
+                CutExtension = split(Strings{end},'.');
+                obj.Name = CutExtension{1};
+                mkdir(DataFolder,'ForceData')
+                obj.Folder = fullfile(DataFolder,'ForceData',filesep);
+                
+                
+%             system(['unzip -o ', fullfile(datadir,fnamemap), ' ''*shared-data/header.properties'' -d ', tempdir{fib,1}]);
+%                 
+            elseif isequal('GLN',OS)
+                % unpack jpk-file into temporary folder to read out data
+                cmd1 = 'unzip -o ';
+                cmd2 = MapFullFile;
+                cmd3 = ' -d ';
+                mkdir(DataFolder,'Temp')
+                TempFolder = fullfile(DataFolder,'Temp',filesep);
+                CMD = append(cmd1,cmd2,cmd3,TempFolder);
+                system(CMD);
+                disp('extracting file...')
+                Strings = split(MapFullFile,filesep);
+                CutExtension = split(Strings{end},'.');
+                obj.Name = CutExtension{1};
+                mkdir(DataFolder,'ForceData')
+                obj.Folder = fullfile(DataFolder,'ForceData',filesep);
+                
+            elseif isequal('MAC',OS)
+                % unpack jpk-file into temporary folder to read out data
+                cmd1 = 'unzip -o ';
+                cmd2 = MapFullFile;
+                cmd3 = ' -d ';
+                mkdir(DataFolder,'Temp')
+                TempFolder = fullfile(DataFolder,'Temp',filesep);
+                CMD = append(cmd1,cmd2,cmd3,TempFolder);
+                system(CMD);
+                disp('extracting file...')
+                Strings = split(MapFullFile,filesep);
+                CutExtension = split(Strings{end},'.');
+                obj.Name = CutExtension{1};
+                mkdir(DataFolder,'ForceData')
+                obj.Folder = fullfile(DataFolder,'ForceData',filesep);
+            end
             
             
             % reading header properties into object
@@ -767,7 +809,7 @@ classdef ForceMap < matlab.mixin.Copyable
                     unload(end-(j-1),1) = obj.HHRet{i}(j);
                     unload(j,2) = obj.Ret{i}(j);
                 end
-                [obj.LoadOld{i},obj.UnloadOld{i},Position,obj.CP_old(i,2)] = ContactPoint_sort(load,unload);
+                [obj.LoadOld{i},obj.UnloadOld{i},Position,obj.CP_old(i,2)] = ContactPoint_sort_mr(load,unload);
                 obj.CP_old(i,1) = obj.THApp{i}(Position);
             end
 %             current = what();
@@ -794,7 +836,7 @@ classdef ForceMap < matlab.mixin.Copyable
                     unload(end-(j-1),1) = obj.HHRet{i}(j);
                     unload(j,2) = obj.Ret{i}(j);
                 end
-                [obj.LoadOld{i},obj.UnloadOld{i},Position,obj.CP_OliverPharr(i,2)] = ContactPoint_sort(load,unload);
+                [obj.LoadOld{i},obj.UnloadOld{i},Position,obj.CP_OliverPharr(i,2)] = ContactPoint_sort_mr(load,unload);
                 obj.CP_OliverPharr(i,1) = obj.HHApp{i}(Position);
                 obj.CP_OliverPharr_Old(i,1) =obj.CP_OliverPharr(i,1);
                 obj.CP_OliverPharr_Old(i,2) =obj.CP_OliverPharr(i,2);
@@ -1410,7 +1452,8 @@ classdef ForceMap < matlab.mixin.Copyable
         
         function X = CP_oliver_pharr_batchprep(objcell,ImgSize)
             % This function takes as input a 1xN objcell of N objects of the class
-            % 'ForceMap' and combines them into the matrizes needed for NN-training
+            % 'ForceMap' and converts them into 128x128 images needed for
+            % NN-inference
             if nargin < 2
                 ImgSize = 128;
             end
@@ -1694,9 +1737,14 @@ classdef ForceMap < matlab.mixin.Copyable
         function show_height_map(obj)
             T = sprintf('Height Map of %s\nwith chosen indentation points',obj.Name);
             figure('Name',T,'Units','normalized','Position',[0.5 0.1 0.5 0.8]);
-            I = imresize(mat2gray(obj.HeightMap(:,:,1)),[1024 1024]);
+            
             subplot(2,2,1)
-            imshow(I);
+            I = imresize(mat2gray(obj.HeightMap(:,:,1)),[1024 1024]);
+            I = (I*range(obj.HeightMap(:,:,1),'all') + min(obj.HeightMap(:,:,1),[],'all'))*1e9;
+            imshow(I,'Colormap',hot)
+            title(sprintf('%s Plane Fitted Height',obj.Name))
+            c1 = colorbar;
+            c1.Label.String = 'Height [nm]';
             hold on;
             for i=1:obj.NumProfiles
                 plot((obj.List2Map(obj.RectApexIndex(i),2)-1/2)*1024/obj.NumPoints,...
@@ -1707,17 +1755,20 @@ classdef ForceMap < matlab.mixin.Copyable
                     'g+', 'MarkerSize', 10, 'LineWidth', 1);
             end
             title(T);
+            
             subplot(2,2,3)
             Masks = imresize(obj.FibMask.*obj.ExclMask,[1024 1024]);
             imshow(Masks)
             title('Fibril mask with excluded areas')
+            
             subplot(2,2,2)
             surf(imrotate(obj.HeightMap',90),'LineStyle','none','FaceLighting','gouraud','FaceColor','interp')
             axis manual
             light('Style','local')
             title(sprintf('Fibril Diameter = %.2fnm',obj.FibDiam*1e9))
+            
             subplot(2,2,4)
-            EM = imresize(mat2gray(obj.EModMapOliverPharr(:,:,1)),[1024 1024]);
+            EM = imresize(mat2gray(log(obj.EModMapOliverPharr(:,:,1))),[1024 1024]);
             imshow(EM)
             title('E-Modulus Map')
         end
