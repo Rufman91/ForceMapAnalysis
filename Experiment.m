@@ -99,11 +99,11 @@ classdef Experiment < matlab.mixin.Copyable
             obj.SPMFlag.Grouping = 0;
             obj.CantileverTipFlag = 0;
             
-            if WhichFiles == 2 || WhichFiles == 0
-                obj.grouping_force_map();
-            elseif WhichFiles == 1 || WhichFiles == 0
-                obj.grouping_surface_potential_map();
-            end
+%             if WhichFiles == 2 || WhichFiles == 0
+%                 obj.grouping_force_map();
+%             elseif WhichFiles == 1 || WhichFiles == 0
+%                 obj.grouping_surface_potential_map();
+%             end
             
             Temp = load('DropoutNet.mat');
             obj.DropoutNet = Temp.DropoutNet;
@@ -114,6 +114,11 @@ classdef Experiment < matlab.mixin.Copyable
         end
         
         function add_data(obj)
+            
+            % create save copy to restore if function produces errors
+            SaveCopy = obj;
+            
+            try
             % Force Maps + KPFM or only one of them?
             answer = questdlg('What kind of measurements were done?', ...
                 'Experiment Type',...
@@ -175,16 +180,19 @@ classdef Experiment < matlab.mixin.Copyable
             obj.SPMFlag.Analysis(NOld+1:NOld+N) = zeros(N,1);
             obj.SPMFlag.Grouping = 0;
             
-            if WhichFiles == 2 || WhichFiles == 0
-                obj.grouping_force_map();
-            elseif WhichFiles == 1 || WhichFiles == 0
-                obj.grouping_surface_potential_map();
-            end
+%             if WhichFiles == 2 || WhichFiles == 0
+%                 obj.grouping_force_map();
+%             elseif WhichFiles == 1 || WhichFiles == 0
+%                 obj.grouping_surface_potential_map();
+%             end
             
             obj.save_experiment();
+            catch
+                obj = SaveCopy;
+                disp('data adding failed. restored original experiment object')
+            end
             
         end
-        
         
         function load_data(obj)
             for i=1:obj.NumFiles
