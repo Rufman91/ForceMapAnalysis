@@ -84,7 +84,7 @@ classdef Experiment < matlab.mixin.Copyable
             obj.SPM = cell(N,1);
             for i=1:N
                 if WhichFiles == 2 || WhichFiles == 0
-                    obj.FM{i} = ForceMap(MapFullFile{i},obj.ExperimentFolder);
+                    obj.FM{i} = ForceMap(MapFullFile{i},TempPath);
                     obj.ForceMapFolders{i} = obj.FM{i}.Folder;
                     obj.ForceMapNames{i} = obj.FM{i}.Name;
                 elseif WhichFiles == 1 || WhichFiles == 0
@@ -166,7 +166,7 @@ classdef Experiment < matlab.mixin.Copyable
             
             for i=1:N
                 if WhichFiles == 2 || WhichFiles == 0
-                    obj.FM{NOld+i} = ForceMap(MapFullFile{i},obj.ExperimentFolder);
+                    obj.FM{NOld+i} = ForceMap(MapFullFile{i},TempPath);
                     obj.ForceMapFolders{NOld+i} = obj.FM{NOld+i}.Folder;
                     obj.ForceMapNames{NOld+i} = obj.FM{NOld+i}.Name;
                 elseif WhichFiles == 1 || WhichFiles == 0
@@ -194,24 +194,24 @@ classdef Experiment < matlab.mixin.Copyable
             
         end
         
-        function load_data(obj)
-            for i=1:obj.NumFiles
-                obj.FM{i} = ForceMap(obj.ForceMapFolders{i},obj.ForceMapNames{i});
-                obj.SPM{i} = SurfacePotentialMap(obj.SurfacePotentialMapFolders{i},obj.SurfacePotentialMapNames{i});
-            end
-        end
+%         function load_data(obj)
+%             for i=1:obj.NumFiles
+%                 obj.FM{i} = ForceMap(obj.ForceMapFolders{i},obj.ForceMapNames{i});
+%                 obj.SPM{i} = SurfacePotentialMap(obj.SurfacePotentialMapFolders{i},obj.SurfacePotentialMapNames{i});
+%             end
+%         end
         
-        function save_data(obj)
-            for i=1:obj.NumFiles
-                disp('')
-                obj.FM{i}.save();
-                obj.ForceMapFolders{i} = obj.FM{i}.Folder;
-                obj.ForceMapNames{i} = obj.FM{i}.Name;
-                obj.SPM{i}.save();
-                obj.SurfacePotentialMapFolders{i} = obj.SPM{i}.Folder;
-                obj.SurfacePotentialMapNames{i} = obj.SPM{i}.Name;
-            end
-        end
+%         function save_data(obj)
+%             for i=1:obj.NumFiles
+%                 disp('')
+%                 obj.FM{i}.save();
+%                 obj.ForceMapFolders{i} = obj.FM{i}.Folder;
+%                 obj.ForceMapNames{i} = obj.FM{i}.Name;
+%                 obj.SPM{i}.save();
+%                 obj.SurfacePotentialMapFolders{i} = obj.SPM{i}.Folder;
+%                 obj.SurfacePotentialMapNames{i} = obj.SPM{i}.Name;
+%             end
+%         end
         
         function save_experiment(obj)
             current = what();

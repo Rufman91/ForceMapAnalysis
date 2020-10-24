@@ -291,8 +291,8 @@ classdef ForceMap < matlab.mixin.Copyable
                 Strings = split(MapFullFile,filesep);
                 CutExtension = split(Strings{end},'.');
                 obj.Name = CutExtension{1};
-                mkdir(DataFolder,'ForceData')
-                obj.Folder = fullfile(DataFolder,'ForceData',filesep);
+%                 mkdir(DataFolder,'ForceData')
+                obj.Folder = fullfile(DataFolder);
                 
                 
 %             system(['unzip -o ', fullfile(datadir,fnamemap), ' ''*shared-data/header.properties'' -d ', tempdir{fib,1}]);
@@ -310,8 +310,8 @@ classdef ForceMap < matlab.mixin.Copyable
                 Strings = split(MapFullFile,filesep);
                 CutExtension = split(Strings{end},'.');
                 obj.Name = CutExtension{1};
-                mkdir(DataFolder,'ForceData')
-                obj.Folder = fullfile(DataFolder,'ForceData',filesep);
+%                 mkdir(DataFolder,'ForceData')
+                obj.Folder = fullfile(DataFolder);
                 
             elseif isequal('MAC',OS)
                 % unpack jpk-file into temporary folder to read out data
@@ -326,8 +326,8 @@ classdef ForceMap < matlab.mixin.Copyable
                 Strings = split(MapFullFile,filesep);
                 CutExtension = split(Strings{end},'.');
                 obj.Name = CutExtension{1};
-                mkdir(DataFolder,'ForceData')
-                obj.Folder = fullfile(DataFolder,'ForceData',filesep);
+%                 mkdir(DataFolder,'ForceData')
+                obj.Folder = fullfile(DataFolder);
             end
             
             
@@ -410,13 +410,13 @@ classdef ForceMap < matlab.mixin.Copyable
             
             obj.SelectedCurves = ones(obj.NCurves,1);
             
-            cd(current.path);
-            current = what();
-            cd(obj.Folder)
-            savename = sprintf('%s.mat',obj.Name);
-            save(savename,'obj')
-            cd(current.path)
-            disp('loading successfull. object saved in objects folder')
+%             cd(current.path);
+%             current = what();
+%             cd(obj.Folder)
+%             savename = sprintf('%s.mat',obj.Name);
+%             save(savename,'obj')
+%             cd(current.path)
+%             disp('loading successfull. object saved in objects folder')
         end
         
         function choose_curves(obj)
