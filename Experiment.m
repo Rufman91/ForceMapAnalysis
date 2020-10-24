@@ -59,7 +59,9 @@ classdef Experiment < matlab.mixin.Copyable
             obj.NumFiles = obj.NumMeas*obj.NumSpec;
             obj.ExperimentName = answer{3};
             current = what();
-            obj.ExperimentFolder = uigetdir(current.path,'Choose a Folder where the Experiment is to be saved');
+            ParentFolder = uigetdir(current.path,'Choose a Folder where the Experiment is to be saved');
+            mkdir(ParentFolder,obj.ExperimentName);
+            obj.ExperimentFolder = fullfile(ParentFolder,obj.ExperimentName,filesep);
             N = obj.NumFiles;
             obj.NumFiles = N;
             MapFullFile = {};

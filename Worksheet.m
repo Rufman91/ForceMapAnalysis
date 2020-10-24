@@ -176,48 +176,48 @@
 % ylabel('Wet Diameter [nm]')
 
 % Fast Batchprep Workplace: bilinear interpolation of HH-Based-Points;
+% 
+% ImgSize = 128;
+% ImgSizeFinal = 128;
+% X = zeros(ImgSizeFinal,ImgSizeFinal,1,1024);
+% 
+% for i=1:1024
+%     Image = zeros(ImgSize,ImgSize);
+%     
+%     Points(:,1) = E.FM{1}.HHApp{i};
+%     Points(:,2) = E.FM{1}.BasedApp{i};
+%     Points(:,1) = (Points(:,1)-min(Points(:,1)))/range(Points(:,1))*(ImgSize-1);
+%     Points(:,2) = (Points(:,2)-min(Points(:,2)))/range(Points(:,2))*(ImgSize-1);
+%     
+%     L = length(Points);
+%     for j=1:L
+%         
+%         if j==1
+%             Position = [floor(Points(j,1))+1,floor(Points(j,2))+1];
+%         end
+%         if j<L
+%             NextPosition = [floor(Points(j+1,1))+1,floor(Points(j+1,2))+1];
+%         end
+%         Image((ImgSize+1)-Position(2),Position(1)) = 1;
+%         
+%         % fill out points between actual data points
+%         if j<L
+%             L1Norm = norm(Points(j+1,:)-Points(j,:));
+%             IncrX = (Points(j+1,1) - Points(j,1))/L1Norm;
+%             IncrY = (Points(j+1,2) - Points(j,2))/L1Norm;
+%             FillerPos = Points(j,:);
+%             while norm((FillerPos + [IncrX IncrY]) - Points(j,:)) < norm(Points(j+1,:) - Points(j,:))
+%                 FillerPos(1) = FillerPos(1) + IncrX;
+%                 FillerPos(2) = FillerPos(2) + IncrY;
+%                 Image((ImgSize+1)-(floor(FillerPos(2))+1),floor(FillerPos(1))+1) = 1;
+%             end
+%         end
+%         Position = NextPosition;
+%     end
+%     
+%     Image = imresize(Image,[ImgSizeFinal ImgSizeFinal]);
+%     X(:,:,1,i) = Image;
+%     clear Points
+% end
 
-ImgSize = 512;
-ImgSizeFinal = 128;
-X = zeros(ImgSizeFinal,ImgSizeFinal,1,1024);
-
-for i=1:1024
-    Image = zeros(ImgSize,ImgSize);
-    
-    Points(:,1) = E.FM{1}.HHApp{i};
-    Points(:,2) = E.FM{1}.BasedApp{i};
-    Points(:,1) = (Points(:,1)-min(Points(:,1)))/range(Points(:,1))*(ImgSize-1);
-    Points(:,2) = (Points(:,2)-min(Points(:,2)))/range(Points(:,2))*(ImgSize-1);
-    
-    L = length(Points);
-    for j=1:L
-        
-        if j==1
-            Position = [floor(Points(j,1))+1,floor(Points(j,2))+1];
-        end
-        if j<L
-            NextPosition = [floor(Points(j+1,1))+1,floor(Points(j+1,2))+1];
-        end
-        Image((ImgSize+1)-Position(2),Position(1)) = 1;
-        
-        % fill out points between actual data points
-        if j<L
-            L1Norm = norm(Points(j+1,:)-Points(j,:));
-            IncrX = (Points(j+1,1) - Points(j,1))/L1Norm;
-            IncrY = (Points(j+1,2) - Points(j,2))/L1Norm;
-            FillerPos = Points(j,:);
-            while norm((FillerPos + [IncrX IncrY]) - Points(j,:)) < norm(Points(j+1,:) - Points(j,:))
-                FillerPos(1) = FillerPos(1) + IncrX;
-                FillerPos(2) = FillerPos(2) + IncrY;
-                Image((ImgSize+1)-(floor(FillerPos(2))+1),floor(FillerPos(1))+1) = 1;
-            end
-        end
-        Position = NextPosition;
-    end
-    
-    Image = imresize(Image,[ImgSizeFinal ImgSizeFinal]);
-    X(:,:,1,i) = Image;
-    clear Points
-end
-% objcell{1} = E.FM{1};
-% E.FM{1}.CP_oliver_pharr_batchprep(objcell,128);
+X = E.FM{1}.CP_batchprep_new_fast(E.FM,128);
