@@ -880,38 +880,72 @@ classdef ForceMap < matlab.mixin.Copyable
             % Manual contact point selection for NN training on plotted force curves
             % returning a position vector in meters.
             jRange = find(obj.SelectedCurves);
-            fig = figure('Name',obj.Name);
-            for j=jRange'
-                fig.WindowState = 'fullscreen';
-                plot(obj.THApp{j},obj.BasedApp{j});
-                plottitle = sprintf('Curve Nr.%i/%i\n Click and drag the point to the contact point\n Confirm with any key press',j,obj.NCurves);
-                
-                plottitle = sprintf('Curve Nr.%i/%i\n Click and drag the point to the contact point\n Confirm with any key press',j,obj.NCurves);
+            fig = figure('Name',obj.Name,'Units','normalized','Position',[0.2 0.2 0.8 0.8]);
+            k = 1;
+            j = jRange(k);
+            while sum(jRange==j)
+%                 fig.WindowState = 'fullscreen';
+                plot(obj.HHApp{j},obj.BasedApp{j});
+                plottitle = sprintf('Curve Nr.%i/%i\n Click or click and drag the point to the contact point\n Click the red area to exclude the current curve from further analysis\n Click the green area to go back one curve',j,obj.NCurves);
                 title(plottitle);
                 [~, domainidx] = ForceMap.no_contact_domain(obj.App{j});
-                axis([obj.THApp{j}(floor(domainidx*0.2)) inf -inf inf])
-                DelBtn = drawcircle('Center',[],'Radius',,'Color','r')
-                DelBtn = drawcircle('Center',[],'Radius',,'Color','g')
+                axis([obj.HHApp{j}(floor(domainidx*0.2)) inf -inf inf])
+                XRange = range(obj.HHApp{j}(floor(domainidx*0.2):end));
+                YRange = range(obj.BasedApp{j});
+                BtnSemAxisX = XRange/8;
+                BtnSemAxisY = YRange/8;
+                XPosDel = max(obj.HHApp{j}) - 5/8*XRange;
+                YPosDel = max(obj.BasedApp{j}) - 1/3*YRange;
+                XPosBack = max(obj.HHApp{j}) - 7/8*XRange;
+                YPosBack = max(obj.BasedApp{j}) - 1/3*YRange;
+                DelBtn = drawellipse('Center',[XPosDel YPosDel],...
+                    'SemiAxes',[BtnSemAxisX BtnSemAxisY],...
+                    'Color','r',...
+                    'Label','Exclude Curve');
+                BackBtn = drawellipse('Center',[XPosBack YPosBack],...
+                    'SemiAxes',[BtnSemAxisX BtnSemAxisY],...
+                    'Color','g',...
+                    'Label','Go Back one entry');
                 CP_point = drawpoint();
                 
-                if norm(CP_point.Position - DelBtn.Center) <= DelBtn.Radius
+                if ((CP_point.Position(1)-DelBtn.Center(1))/DelBtn.SemiAxes(1))^2 +...
+                        ((CP_point.Position(2)-DelBtn.Center(2))/DelBtn.SemiAxes(2))^2 <= 1
                     obj.SelectedCurves(j) = 0;
+                    k = k + 1;
+                    try
+                        j = jRange(k);
+                    catch
+                        close(fig)
+                        return
+                    end
                     continue
-                elseif norm(CP_point.Position - BackBtn.Center) <= BackBtn.Radius
+                elseif ((CP_point.Position(1)-BackBtn.Center(1))/BackBtn.SemiAxes(1))^2 +...
+                        ((CP_point.Position(2)-BackBtn.Center(2))/BackBtn.SemiAxes(2))^2 <= 1
                     CurrentIndex = find(jRange==j);
-                    j = jRange(CurrentIndex - 2);
-                    continue
+                    if CurrentIndex == 1
+                        continue
+                    else
+                        j = jRange(CurrentIndex - 1);
+                        continue
+                    end
                 end
                 
                 obj.Man_CP(j,1) = CP_point.Position(1);
                 obj.Man_CP(j,2) = CP_point.Position(2);
+                k = k + 1;
+                try
+                    j = jRange(k);
+                catch
+                    close(fig)
+                    return
+                end
             end
             close(fig);
-%             current = what();
-%             cd(obj.Folder)
-%             savename = sprintf('%s.mat',obj.Name);
-%             save(savename,'obj')
-%             cd(current.path)
+            %             current = what();
+            %             cd(obj.Folder)
+            %             savename = sprintf('%s.mat',obj.Name);
+            %             save(savename,'obj')
+            %             cd(current.path)
         end
         
         function [E,HertzFit] = calculate_e_mod_hertz(obj,CPType,TipShape,curve_percent)
