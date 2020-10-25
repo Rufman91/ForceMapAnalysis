@@ -291,8 +291,13 @@ classdef ForceMap < matlab.mixin.Copyable
                 Strings = split(MapFullFile,filesep);
                 CutExtension = split(Strings{end},'.');
                 obj.Name = CutExtension{1};
+<<<<<<< HEAD
 %                 mkdir(DataFolder,'ForceData')
                 obj.Folder = fullfile(DataFolder);
+=======
+                mkdir(DataFolder,'ForceData')
+                obj.Folder = fullfile(DataFolder,'ForceData',filesep);
+>>>>>>> parent of 3e4f59b... Removed functions
                 
                 
 %             system(['unzip -o ', fullfile(datadir,fnamemap), ' ''*shared-data/header.properties'' -d ', tempdir{fib,1}]);
@@ -310,8 +315,13 @@ classdef ForceMap < matlab.mixin.Copyable
                 Strings = split(MapFullFile,filesep);
                 CutExtension = split(Strings{end},'.');
                 obj.Name = CutExtension{1};
+<<<<<<< HEAD
 %                 mkdir(DataFolder,'ForceData')
                 obj.Folder = fullfile(DataFolder);
+=======
+                mkdir(DataFolder,'ForceData')
+                obj.Folder = fullfile(DataFolder,'ForceData',filesep);
+>>>>>>> parent of 3e4f59b... Removed functions
                 
             elseif isequal('MAC',OS)
                 % unpack jpk-file into temporary folder to read out data
@@ -326,8 +336,13 @@ classdef ForceMap < matlab.mixin.Copyable
                 Strings = split(MapFullFile,filesep);
                 CutExtension = split(Strings{end},'.');
                 obj.Name = CutExtension{1};
+<<<<<<< HEAD
 %                 mkdir(DataFolder,'ForceData')
                 obj.Folder = fullfile(DataFolder);
+=======
+                mkdir(DataFolder,'ForceData')
+                obj.Folder = fullfile(DataFolder,'ForceData',filesep);
+>>>>>>> parent of 3e4f59b... Removed functions
             end
             
             
@@ -410,6 +425,7 @@ classdef ForceMap < matlab.mixin.Copyable
             
             obj.SelectedCurves = ones(obj.NCurves,1);
             
+<<<<<<< HEAD
 %             cd(current.path);
 %             current = what();
 %             cd(obj.Folder)
@@ -417,6 +433,15 @@ classdef ForceMap < matlab.mixin.Copyable
 %             save(savename,'obj')
 %             cd(current.path)
 %             disp('loading successfull. object saved in objects folder')
+=======
+            cd(current.path);
+            current = what();
+            cd(obj.Folder)
+            savename = sprintf('%s.mat',obj.Name);
+            save(savename,'obj')
+            cd(current.path)
+            disp('loading successfull. object saved in objects folder')
+>>>>>>> parent of 3e4f59b... Removed functions
         end
         
         function choose_curves(obj)
@@ -892,6 +917,7 @@ classdef ForceMap < matlab.mixin.Copyable
                 axis([obj.THApp{j}(floor(domainidx*0.2)) inf -inf inf])
                 CP_point = drawpoint();
                 
+<<<<<<< HEAD
                 if norm(CP_point.Position - DeletePosition) <= DelBtnRadius
                     obj.SelectedCurves(j) = 0;
                     continue
@@ -901,6 +927,8 @@ classdef ForceMap < matlab.mixin.Copyable
                     continue
                 end
                 
+=======
+>>>>>>> parent of 3e4f59b... Removed functions
                 obj.Man_CP(j,1) = CP_point.Position(1);
                 obj.Man_CP(j,2) = CP_point.Position(2);
             end
