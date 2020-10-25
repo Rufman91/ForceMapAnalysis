@@ -890,16 +890,14 @@ classdef ForceMap < matlab.mixin.Copyable
                 title(plottitle);
                 [~, domainidx] = ForceMap.no_contact_domain(obj.App{j});
                 axis([obj.THApp{j}(floor(domainidx*0.2)) inf -inf inf])
-                DelBtn = drawcircle('Center',[],'Radius',,'Color','r')
-                DelBtn = drawcircle('Center',[],'Radius',,'Color','g')
                 CP_point = drawpoint();
                 
-                if norm(CP_point.Position - DelBtn.Center) <= DelBtn.Radius
+                if norm(CP_point.Position - DeletePosition) <= DelBtnRadius
                     obj.SelectedCurves(j) = 0;
                     continue
-                elseif norm(CP_point.Position - BackBtn.Center) <= BackBtn.Radius
-                    CurrentIndex = find(jRange==j);
-                    j = jRange(CurrentIndex - 2);
+                elseif norm(CP_point.Position - BackPosition) <= BackBtnRadius
+                    CurrentIndex = 
+                    j = j - 2;
                     continue
                 end
                 
