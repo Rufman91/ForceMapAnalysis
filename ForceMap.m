@@ -876,11 +876,16 @@ classdef ForceMap < matlab.mixin.Copyable
 %             cd(current.path)
         end
         
-        function estimate_cp_manually(obj)
+        function estimate_cp_manually(obj,Zoom)
             % Manual contact point selection for NN training on plotted force curves
             % returning a position vector in meters.
+            
+            if nargin < 2
+                Zoom = 0.2;
+            end
+            
             jRange = find(obj.SelectedCurves);
-            fig = figure('Name',obj.Name,'Units','normalized','Position',[0.2 0.2 0.8 0.8]);
+            fig = figure('Name',obj.Name,'Units','normalized','Position',[0.2 0.125 0.8 0.8]);
             k = 1;
             j = jRange(k);
             while sum(jRange==j)
@@ -889,8 +894,8 @@ classdef ForceMap < matlab.mixin.Copyable
                 plottitle = sprintf('Curve Nr.%i/%i\n Click or click and drag the point to the contact point\n Click the red area to exclude the current curve from further analysis\n Click the green area to go back one curve',j,obj.NCurves);
                 title(plottitle);
                 [~, domainidx] = ForceMap.no_contact_domain(obj.App{j});
-                axis([obj.HHApp{j}(floor(domainidx*0.2)) inf -inf inf])
-                XRange = range(obj.HHApp{j}(floor(domainidx*0.2):end));
+                axis([obj.HHApp{j}(floor(domainidx*Zoom)) inf -inf inf])
+                XRange = range(obj.HHApp{j}(floor(domainidx*Zoom):end));
                 YRange = range(obj.BasedApp{j});
                 BtnSemAxisX = XRange/8;
                 BtnSemAxisY = YRange/8;

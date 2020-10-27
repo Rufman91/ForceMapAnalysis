@@ -202,6 +202,7 @@ classdef Experiment < matlab.mixin.Copyable
         end
         
         function save_data(obj)
+            disp('saving');
             for i=1:obj.NumFiles
                 disp('')
                 obj.FM{i}.save();
@@ -217,6 +218,7 @@ classdef Experiment < matlab.mixin.Copyable
             current = what();
             cd(obj.ExperimentFolder)
             savename = sprintf('%s.mat',obj.ExperimentName);
+            disp('saving...');
             save(savename,'obj')
             cd(current.path)
             savemsg = sprintf('Changes to Experiment %s saved to %s',obj.ExperimentName,obj.ExperimentFolder);
