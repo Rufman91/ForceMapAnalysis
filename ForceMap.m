@@ -756,7 +756,7 @@ classdef ForceMap < matlab.mixin.Copyable
             end
             ImgSize = NeuralNet.Layers(1).InputSize;
             objcell{1,1} = obj;
-            X = obj.CP_oliver_pharr_batchprep(objcell,ImgSize(1));
+            X = obj.CP_batchprep_new(objcell,ImgSize(1));
             len = size(X,4);
             h = waitbar(0,'Setting up','Name',obj.Name);
             switch runmode
@@ -765,7 +765,6 @@ classdef ForceMap < matlab.mixin.Copyable
                     Ypredicted = predict(NeuralNet,X);waitbar(1,h,'Wrapping up');
                     iRange = find(obj.SelectedCurves);
                     k = 1;
-                    obj.CP_OliverPharr_MonteCarlo = zeros(NumPasses,2,obj.NCurves);
                     for i=iRange'
                         obj.CP_OliverPharr(i,1) = Ypredicted(k,1)*range(obj.HHApp{i})+min(obj.HHApp{i});
                         obj.CP_OliverPharr(i,2) = Ypredicted(k,2)*range(obj.BasedApp{i})+min(obj.BasedApp{i});
@@ -1643,71 +1642,8 @@ classdef ForceMap < matlab.mixin.Copyable
                         end
                         Position = NextPosition;
                     end
-                    Image = imresize(Image,[ImgSizeFinal ImgSizeFinal]);
-                    X(:,:,1,k) = Image;
-                    k = k + 1;
-                    clear Points
-                end
-            end
-        end
-        
-        function X = CP_batchprep_new_fast(objcell,ImgSize)
-            
-            if nargin<2
-                ImgSize = 128;
-                ImgSizeFinal = 128;
-            else
-                ImgSizeFinal = ImgSize;
-            end
-            Nmaps = length(objcell);
-            
-            % Preallocate sizes of the outputvariables. The trainNetwork() function
-            % requires the batch X of predictor varables (in this case the force-images)
-            % to be a height-by-width-by-channelnumber-by-Numberofimages array and the
-            % prelabeled regression responses Y to be a
-            % Numberofimages-by-Numberofresponses array
-            Nimgs = 0;
-            for i=1:Nmaps
-                Nimgs = Nimgs + sum(objcell{i}.SelectedCurves);
-            end
-            X = zeros(ImgSizeFinal,ImgSizeFinal,1,Nimgs);
-            
-            k = 1;
-            for i=1:Nmaps
-                jRange = find(objcell{i}.SelectedCurves);
-                for j=jRange'
-                    
-                    Image = zeros(ImgSize,ImgSize);
-                    
-                    Points(:,1) = objcell{i}.HHApp{j};
-                    Points(:,2) = objcell{i}.BasedApp{j};
-                    Points(:,1) = (Points(:,1)-min(Points(:,1)))/range(Points(:,1))*(ImgSize-1);
-                    Points(:,2) = (Points(:,2)-min(Points(:,2)))/range(Points(:,2))*(ImgSize-1);
-                    
-                    L = length(Points);
-                    for m=1:L
-                        
-                        if m==1
-                            Position = [floor(Points(m,1))+1,floor(Points(m,2))+1];
-                        end
-                        if m<L
-                            NextPosition = [floor(Points(m+1,1))+1,floor(Points(m+1,2))+1];
-                        end
-                        Image((ImgSize+1)-Position(2),Position(1)) = 1;
-                        
-                        % fill out points between actual data points
-                        if m<L
-                            L1Norm = norm(Points(m+1,:)-Points(m,:));
-                            IncrX = (Points(m+1,1) - Points(m,1))/L1Norm;
-                            IncrY = (Points(m+1,2) - Points(m,2))/L1Norm;
-                            FillerPos = Points(m,:);
-                            while norm((FillerPos + [IncrX IncrY]) - Points(m,:)) < norm(Points(m+1,:) - Points(m,:))
-                                FillerPos(1) = FillerPos(1) + IncrX;
-                                FillerPos(2) = FillerPos(2) + IncrY;
-                                Image((ImgSize+1)-(floor(FillerPos(2))+1),floor(FillerPos(1))+1) = 1;
-                            end
-                        end
-                        Position = NextPosition;
+                    if ImgSize ~= ImgSizeFinal
+                        Image = imresize(Image,[ImgSizeFinal ImgSizeFinal]);
                     end
                     X(:,:,1,k) = Image;
                     k = k + 1;

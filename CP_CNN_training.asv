@@ -138,14 +138,16 @@ tempLayers = [
 resnet14 = addLayers(resnet14,tempLayers);
 
 tempLayers = convolution2dLayer([1 1],128,"Name","conv_9","Padding","same","Stride",[2 2],...
-    'BiasInitializer','zeros','BiasLearnRateFactor',0);
+    'BiasInitializer','zeros','BiasLearnRateFactor',0,...
+    'WeightsInitializer','ones','WeightLearnRateFactor',0);
 resnet14 = addLayers(resnet14,tempLayers);
 
 tempLayers = additionLayer(2,"Name","addition_3");
 resnet14 = addLayers(resnet14,tempLayers);
 
 tempLayers = convolution2dLayer([1 1],128,"Name","conv_10","Padding","same",...
-    'BiasInitializer','zeros','BiasLearnRateFactor',0);
+    'BiasInitializer','zeros','BiasLearnRateFactor',0,...
+    'WeightsInitializer','ones','WeightLearnRateFactor',0);
 resnet14 = addLayers(resnet14,tempLayers);
 
 tempLayers = [
@@ -170,7 +172,8 @@ tempLayers = [
 resnet14 = addLayers(resnet14,tempLayers);
 
 tempLayers = convolution2dLayer([1 1],256,"Name","conv_16","Padding","same","Stride",[2 2],...
-    'BiasInitializer','zeros','BiasLearnRateFactor',0);
+    'BiasInitializer','zeros','BiasLearnRateFactor',0,...
+    'WeightsInitializer','ones','WeightLearnRateFactor',0);
 resnet14 = addLayers(resnet14,tempLayers);
 
 tempLayers = additionLayer(2,"Name","addition_5");
@@ -186,7 +189,8 @@ tempLayers = [
 resnet14 = addLayers(resnet14,tempLayers);
 
 tempLayers = convolution2dLayer([1 1],256,"Name","conv_17","Padding","same",...
-    'BiasInitializer','zeros','BiasLearnRateFactor',0);
+    'BiasInitializer','zeros','BiasLearnRateFactor',0,...
+    'WeightsInitializer','ones','WeightLearnRateFactor',0);
 resnet14 = addLayers(resnet14,tempLayers);
 
 tempLayers = [
@@ -275,7 +279,8 @@ MonteCarlo14 = addLayers(MonteCarlo14,tempLayers);
 tempLayers = [
     dropoutLayer(DropParam,"Name","dropout_8")
     convolution2dLayer([1 1],128,"Name","conv_9","Padding","same","Stride",[2 2],...
-    'BiasInitializer','zeros','BiasLearnRateFactor',0)
+    'BiasInitializer','zeros','BiasLearnRateFactor',0,...
+    'WeightsInitializer','ones','WeightLearnRateFactor',0)
     ];
 MonteCarlo14 = addLayers(MonteCarlo14,tempLayers);
 
@@ -297,7 +302,8 @@ MonteCarlo14 = addLayers(MonteCarlo14,tempLayers);
 tempLayers = [
     dropoutLayer(DropParam,"Name","dropout_11")
     convolution2dLayer([1 1],128,"Name","conv_10","Padding","same",...
-    'BiasInitializer','zeros','BiasLearnRateFactor',0)
+    'BiasInitializer','zeros','BiasLearnRateFactor',0,...
+    'WeightsInitializer','ones','WeightLearnRateFactor',0)
     ];
 MonteCarlo14 = addLayers(MonteCarlo14,tempLayers);
 
@@ -319,7 +325,8 @@ MonteCarlo14 = addLayers(MonteCarlo14,tempLayers);
 tempLayers = [
     dropoutLayer(DropParam,"Name","dropout_13")
     convolution2dLayer([1 1],256,"Name","conv_16","Padding","same","Stride",[2 2],...
-    'BiasInitializer','zeros','BiasLearnRateFactor',0)
+    'BiasInitializer','zeros','BiasLearnRateFactor',0,...
+    'WeightsInitializer','ones','WeightLearnRateFactor',0)
     ];
 MonteCarlo14 = addLayers(MonteCarlo14,tempLayers);
 
@@ -329,7 +336,8 @@ MonteCarlo14 = addLayers(MonteCarlo14,tempLayers);
 tempLayers = [
     dropoutLayer(DropParam,"Name","dropout_16")
     convolution2dLayer([1 1],256,"Name","conv_17","Padding","same",...
-    'BiasInitializer','zeros','BiasLearnRateFactor',0)];
+    'BiasInitializer','zeros','BiasLearnRateFactor',0,...
+    'WeightsInitializer','ones','WeightLearnRateFactor',0)];
 MonteCarlo14 = addLayers(MonteCarlo14,tempLayers);
 
 tempLayers = [
@@ -395,7 +403,7 @@ options = trainingOptions('adam','Plots','training-progress',...
 %  For this option to be available, the Parallel-Computing-Toolbox has to be
 %  installed in MATLAB
 
-CP_CNN = trainNetwork(XTrain,YTrain,resnet14,options);
+CP_CNN = trainNetwork(XTrain,YTrain,lgraph_2,options);
 
 %% Evaluate your model looking at the models predictions
 
