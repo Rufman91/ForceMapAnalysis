@@ -1,8 +1,8 @@
-function [X,Y] = CP_CNN_batchprep(objcell,ImgSize)
+function [X,Y] = CP_CNN_batchprep(objcell,ImgSizeFinal,ImgSize,CutPercent)
 % This function takes as input a 1xN objcell of N objects of the class
 % 'ForceMap' and combines them into the matrizes needed for NN-training
 if nargin < 2
-    ImgSize = 128;
+    ImgSizeFinal = 128;
 end
 Nmaps = length(objcell);
 % First check, if manual CPs are already given in the input class instance. If
@@ -22,7 +22,7 @@ Nimgs = 0;
 for i=1:Nmaps
     Nimgs = Nimgs + sum(objcell{i}.SelectedCurves);
 end
-X = objcell{1}.CP_batchprep_new(objcell,ImgSize,512);
+X = objcell{1}.CP_batchprep_3_channel(objcell,ImgSizeFinal,ImgSize,CutPercent);
 Y = zeros(Nimgs,2);
 
 
@@ -32,7 +32,6 @@ Y = zeros(Nimgs,2);
 k = 1;
 Norm_CP = cell(Nmaps,1);
 for i=1:Nmaps
-    i
     jRange = find(objcell{i}.SelectedCurves);
     Norm_CP{i} = zeros(length(objcell{i}.BasedApp),2);
     for j=jRange'

@@ -878,6 +878,9 @@ classdef ForceMap < matlab.mixin.Copyable
         function estimate_cp_manually(obj,Zoom)
             % Manual contact point selection for NN training on plotted force curves
             % returning a position vector in meters.
+            % 0 <= Zoom <= 1 determines how much of the
+            % rough-estimate-non-contact-domain is cut off from the
+            % picture (e.g. Zoom = 1 just shows the rough-estimate-contact-domain)
             
             if nargin < 2
                 Zoom = 0.2;
@@ -1648,6 +1651,86 @@ classdef ForceMap < matlab.mixin.Copyable
                     X(:,:,1,k) = Image;
                     k = k + 1;
                     clear Points
+                end
+            end
+        end
+        
+        function X = CP_batchprep_3_channel(objcell,ImgSizeFinal,ImgSize,CutPercent)
+            % ImgSizeFinal ...Size of the Output (X(:,:,-,-))
+            % ImgSize ...Size of the Image the final Image is resized from
+            % CutPercent ...1x3 Vector with the percentage that is to be
+            % cut off from the left end of the curve image; one percentage
+            % for each channel
+            
+            if nargin<2
+                ImgSize = 478;
+                ImgSizeFinal = 128;
+                CutPercent = [0 0.5 0.75];
+            elseif nargin < 3
+                ImgSize = 478;
+                CutPercent = [0 0.5 0.75];
+            elseif nargin<4
+                CutPercent = [0 0.5 0.75];
+            end
+            Nmaps = length(objcell);
+            
+            % Preallocate sizes of the outputvariables. The trainNetwork() function
+            % requires the batch X of predictor varables (in this case the force-images)
+            % to be a height-by-width-by-channelnumber-by-Numberofimages array and the
+            % prelabeled regression responses Y to be a
+            % Numberofimages-by-Numberofresponses array
+            Nimgs = 0;
+            for i=1:Nmaps
+                Nimgs = Nimgs + sum(objcell{i}.SelectedCurves);
+            end
+            X = zeros(ImgSizeFinal,ImgSizeFinal,3,Nimgs);
+            
+            k = 1;
+            for i=1:Nmaps
+                jRange = find(objcell{i}.SelectedCurves);
+                for j=jRange'
+                    o = 1;
+                    for n=CutPercent
+                        Image = zeros(ImgSize,ImgSize);
+                        
+                        Points(:,1) = objcell{i}.HHApp{j}(floor(n*length(objcell{i}.HHApp{j}))+1:end);
+                        Points(:,2) = objcell{i}.BasedApp{j}(floor(n*length(objcell{i}.BasedApp{j}))+1:end);
+                        Points(:,1) = (Points(:,1)-min(Points(:,1)))/range(Points(:,1))*(ImgSize-1);
+                        Points(:,2) = (Points(:,2)-min(Points(:,2)))/range(Points(:,2))*(ImgSize-1);
+                        
+                        L = length(Points);
+                        for m=1:L
+                            
+                            if m==1
+                                Position = [floor(Points(m,1))+1,floor(Points(m,2))+1];
+                            end
+                            if m<L
+                                NextPosition = [floor(Points(m+1,1))+1,floor(Points(m+1,2))+1];
+                            end
+                            Image((ImgSize+1)-Position(2),Position(1)) = 1;
+                            
+                            % fill out points between actual data points
+                            if m<L
+                                L1Norm = norm(Points(m+1,:)-Points(m,:));
+                                IncrX = (Points(m+1,1) - Points(m,1))/L1Norm;
+                                IncrY = (Points(m+1,2) - Points(m,2))/L1Norm;
+                                FillerPos = Points(m,:);
+                                while norm((FillerPos + [IncrX IncrY]) - Points(m,:)) < norm(Points(m+1,:) - Points(m,:))
+                                    FillerPos(1) = FillerPos(1) + IncrX;
+                                    FillerPos(2) = FillerPos(2) + IncrY;
+                                    Image((ImgSize+1)-(floor(FillerPos(2))+1),floor(FillerPos(1))+1) = 1;
+                                end
+                            end
+                            Position = NextPosition;
+                        end
+                        if ImgSize ~= ImgSizeFinal
+                            Image = imresize(Image,[ImgSizeFinal ImgSizeFinal]);
+                        end
+                        X(:,:,o,k) = Image;
+                        clear Points
+                        o = o + 1;
+                    end
+                        k = k + 1;
                 end
             end
         end
