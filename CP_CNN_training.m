@@ -53,18 +53,23 @@ end
 
 %% Split the data into a training and a validation set with ratio 3:1
 %  and set the NN layers and training options
-
-ImgSize = 128; %bigger sizes improve results marginally but significantly
+ImgSize = 512;
+ImgSizeFinal = 224; %bigger sizes improve results marginally but significantly
                %increase traning time. The trainer might even run out
                %of GPU memory... not really worth it
+NChannels = 3;
 
 k = 1;
-for i = A
-objcell{k} = E.FM{i};
-k = k + 1;
+for i =1:length(E.FM)
+    if length(E.FM{i}.Man_CP) == E.FM{i}.NCurves
+        objcell{k} = E.FM{i};
+        k = k + 1;
+    end
 end               
 
-[X,Y] = CP_CNN_batchprep(objcell,ImgSize);
+tic
+[X,Y] = CP_CNN_batchprep(objcell,ImgSizeFinal,ImgSize,[0 0.5 0.9]);
+toc
 
 Val_idx = randperm(size(X,4),floor(size(X,4)/4));
 XTrain = X;
@@ -76,7 +81,7 @@ YTrain(Val_idx,:) = [];
 
 %Defining shape of the CNN.
 layers = [
-    imageInputLayer([ImgSize ImgSize 1],"Name","imageinput",...
+    imageInputLayer([ImgSizeFinal ImgSizeFinal NChannels],"Name","imageinput",...
     'Normalization','zscore')
     convolution2dLayer([5 5],32,"Name","conv_1","Padding","same","Stride",[1 1])
     reluLayer("Name","relu_1")
@@ -97,7 +102,7 @@ resnet14 = layerGraph();
 DropParam = 0.2;
 
 tempLayers = [
-    imageInputLayer([ImgSize ImgSize 1],"Name","imageinput","Normalization","zscore")
+    imageInputLayer([ImgSizeFinal ImgSizeFinal 1],"Name","imageinput","Normalization","zscore")
     convolution2dLayer([7 7],64,"Name","conv_11","Padding","same","Stride",[2 2])
     batchNormalizationLayer("Name","batchnorm_9")
     reluLayer("Name","relu_9")
@@ -223,7 +228,7 @@ MonteCarlo14 =  layerGraph();
 DropParam = 0.2;
 
 tempLayers = [
-    imageInputLayer([128 128 1],"Name","imageinput","Normalization","zscore")
+    imageInputLayer([ImgSizeFinal ImgSizeFinal NChannels],"Name","imageinput","Normalization","zscore")
     dropoutLayer(DropParam,"Name","dropout_1")
     convolution2dLayer([7 7],64,"Name","conv_11","Padding","same","Stride",[2 2])
     batchNormalizationLayer("Name","batchnorm_9")
@@ -395,7 +400,7 @@ options = trainingOptions('adam','Plots','training-progress',...
 %  For this option to be available, the Parallel-Computing-Toolbox has to be
 %  installed in MATLAB
 
-CP_CNN_29_10 = trainNetwork(XTrain,YTrain,MonteCarlo14,options);
+CP_CNN_30_10 = trainNetwork(XTrain,YTrain,MonteCarlo14,options);
 
 %% Evaluate your model looking at the models predictions
 
@@ -430,12 +435,12 @@ k=1;
 idx = randi(length(XValidation));
 % idx = IdxVec(k);
 imshow(XValidation(:,:,1,idx),'InitialMagnification','fit');
-manpoint =drawpoint('Position',[YValidation(idx,1)*ImgSize,...
-    (1-YValidation(idx,2))*ImgSize],'Color','green');
+manpoint =drawpoint('Position',[YValidation(idx,1)*ImgSizeFinal,...
+    (1-YValidation(idx,2))*ImgSizeFinal],'Color','green');
 % predpoint = drawpoint('Position',[YPredicted(idx,1)*ImgSize,...
 %     (1-YPredicted(idx,2))*ImgSize],'Color','red');
-predpoint2 = drawpoint('Position',[YPredictedMC(idx,1)*ImgSize,...
-    (1-YPredictedMC(idx,2))*ImgSize],'Color','yellow');
+predpoint2 = drawpoint('Position',[YPredictedMC(idx,1)*ImgSizeFinal,...
+    (1-YPredictedMC(idx,2))*ImgSizeFinal],'Color','yellow');
 k = k + 1;
 
 

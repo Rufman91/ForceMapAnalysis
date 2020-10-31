@@ -147,5 +147,4 @@ DropoutNet = connectLayers(DropoutNet,"conv_17","addition_6/in2");
 DropoutNet = connectLayers(DropoutNet,"conv_15","addition_6/in1");
 
 DropoutNet = assembleNetwork(DropoutNet);
-save('DropoutNet.mat','DropoutNet')
 end

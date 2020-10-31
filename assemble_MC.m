@@ -156,5 +156,4 @@ MonteCarlo14 = connectLayers(MonteCarlo14,"conv_17","addition_6/in2");
 MonteCarlo14 = connectLayers(MonteCarlo14,"conv_15","addition_6/in1");
 
 MonteCarlo14 = assembleNetwork(MonteCarlo14);
-save('MonteCarlo14.mat','MonteCarlo14')
 end
