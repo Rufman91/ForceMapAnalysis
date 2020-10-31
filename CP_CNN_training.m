@@ -395,13 +395,13 @@ options = trainingOptions('adam','Plots','training-progress',...
 %  For this option to be available, the Parallel-Computing-Toolbox has to be
 %  installed in MATLAB
 
-CP_CNN = trainNetwork(XTrain,YTrain,resnet14,options);
+CP_CNN_29_10 = trainNetwork(XTrain,YTrain,MonteCarlo14,options);
 
 %% Evaluate your model looking at the models predictions
 
 % predict outcome of XValidation
 YPredicted = predict(CP_CNN,XValidation); 
-YPredictedMC = predict(CP_CNN_MC,XValidation);
+YPredictedMC = predict(CP_CNN_29_10,XValidation);
 
 % show random curve out of force map i and draw the manual CP in green and
 % the CNNs CP in red
@@ -432,8 +432,8 @@ idx = randi(length(XValidation));
 imshow(XValidation(:,:,1,idx),'InitialMagnification','fit');
 manpoint =drawpoint('Position',[YValidation(idx,1)*ImgSize,...
     (1-YValidation(idx,2))*ImgSize],'Color','green');
-predpoint = drawpoint('Position',[YPredicted(idx,1)*ImgSize,...
-    (1-YPredicted(idx,2))*ImgSize],'Color','red');
+% predpoint = drawpoint('Position',[YPredicted(idx,1)*ImgSize,...
+%     (1-YPredicted(idx,2))*ImgSize],'Color','red');
 predpoint2 = drawpoint('Position',[YPredictedMC(idx,1)*ImgSize,...
     (1-YPredictedMC(idx,2))*ImgSize],'Color','yellow');
 k = k + 1;
