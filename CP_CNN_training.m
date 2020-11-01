@@ -53,8 +53,8 @@ end
 
 %% Split the data into a training and a validation set with ratio 3:1
 %  and set the NN layers and training options
-ImgSize = 512;
-ImgSizeFinal = 224; %bigger sizes improve results marginally but significantly
+ImgSize = 128;
+ImgSizeFinal = 128; %bigger sizes improve results marginally but significantly
                %increase traning time. The trainer might even run out
                %of GPU memory... not really worth it
 NChannels = 3;
@@ -405,9 +405,12 @@ CP_CNN_30_10 = trainNetwork(XTrain,YTrain,MonteCarlo14,options);
 %% Evaluate your model looking at the models predictions
 
 % predict outcome of XValidation
-YPredicted = predict(CP_CNN,XValidation); 
-YPredictedMC = predict(CP_CNN_29_10,XValidation);
-
+h = waitbar(0,'Setting up...');
+for i=1:100
+    waitbar(i/100,h,'The wheel goes round and round')
+    YPredicted(:,:,i) = predict(MC14_3010,XValidation); 
+end
+YPredictedMean = mean(YPredicted,3);
 % show random curve out of force map i and draw the manual CP in green and
 % the CNNs CP in red
 
@@ -427,20 +430,20 @@ CP_RoV(1,2) = FM{i}.BasedApp{randidx}(RoVidx);
 RoV = drawpoint('Position',CP_RoV,'Color','blue');
 
 fig = figure('Name','Evaluate the model','Position',[949 79 971 915]);
-for i=1:1115
-    Diff(i) = norm(YPredictedMC(i,:)-YValidation(i,:));
+for i=1:1900
+    Diff(i) = norm(YPredictedMean(i,:)-YValidation(i,:));
 end
 k=1;
-% [~,IdxVec] = sort(Diff,'descend');
-idx = randi(length(XValidation));
-% idx = IdxVec(k);
+[~,IdxVec] = sort(Diff,'descend');
+% idx = randi(length(XValidation));
+idx = IdxVec(k);
 imshow(XValidation(:,:,1,idx),'InitialMagnification','fit');
 manpoint =drawpoint('Position',[YValidation(idx,1)*ImgSizeFinal,...
     (1-YValidation(idx,2))*ImgSizeFinal],'Color','green');
 % predpoint = drawpoint('Position',[YPredicted(idx,1)*ImgSize,...
 %     (1-YPredicted(idx,2))*ImgSize],'Color','red');
-predpoint2 = drawpoint('Position',[YPredictedMC(idx,1)*ImgSizeFinal,...
-    (1-YPredictedMC(idx,2))*ImgSizeFinal],'Color','yellow');
+predpoint2 = drawpoint('Position',[YPredictedMean(idx,1)*ImgSizeFinal,...
+    (1-YPredictedMean(idx,2))*ImgSizeFinal],'Color','yellow');
 k = k + 1;
 
 

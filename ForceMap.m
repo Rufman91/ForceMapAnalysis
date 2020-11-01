@@ -756,7 +756,7 @@ classdef ForceMap < matlab.mixin.Copyable
             end
             ImgSize = NeuralNet.Layers(1).InputSize;
             objcell{1,1} = obj;
-            X = obj.CP_batchprep_new(objcell,ImgSize(1));
+            X = obj.CP_batchprep_3_channel(objcell,ImgSize(1),ImgSize(1),[0 0.5 0.9]);
             len = size(X,4);
             h = waitbar(0,'Setting up','Name',obj.Name);
             switch runmode
@@ -772,31 +772,31 @@ classdef ForceMap < matlab.mixin.Copyable
                     end
                 case 1
                     obj.YDropPred = zeros(NumPasses,2,len);
-                    CantHandle = false;
+                    CantHandle = true;
+                    MiniBatchSize = len;
+                    DynMBSdone = false;
+                    HasFailed = false;
                     for j=1:NumPasses
                         waitbar(j/NumPasses,h,sprintf('Predicting CP for %i curves. %i/%i passes done',len,j,NumPasses));
-                        if CantHandle == false
+                        while CantHandle == true
                             try
-                                Temp = predict(NeuralNet,X,'MiniBatchSize',len);
-                            catch
-                                CantHandle = true;
-                                warning("Can't compute with optimal MiniBatchSize. Choosing a lower one")
-                                try
-                                    Temp = predict(NeuralNet,X);
-                                catch
-                                    warning("Can't compute with lowered MiniBatchSize. Choosing an even lower one. Computation time is gonna suffer")
-                                    Temp = predict(NeuralNet,X,'MiniBatchSize',10);
+                                Temp = predict(NeuralNet,X,'MiniBatchSize',MiniBatchSize);
+                                CantHandle = false;
+                                if DynMBSdone == false
+                                    if HasFailed == true
+                                        MiniBatchSize = ceil(MiniBatchSize/4);
+                                    end
+                                    fprintf('Dynamically adjusting MiniBatchSize = %i\n',MiniBatchSize)
+                                    DynMBSdone = true;
                                 end
-                            end
-                        else
-                            try
-                                Temp = predict(NeuralNet,X);
                             catch
-                                warning("Can't compute with lowered MiniBatchSize. Choosing an even lower one \nComputation time is gonna suffer")
-                                Temp = predict(NeuralNet,X,'MiniBatchSize',10);
+                                MiniBatchSize = ceil(MiniBatchSize*3/4);
+                                fprintf('Dynamically adjusting MiniBatchSize = %i\n',MiniBatchSize)
+                                HasFailed = true;
                             end
                         end
                         obj.YDropPred(j,:,:) = Temp';
+                        CantHandle = true;
                     end
                     waitbar(1,h,'Wrapping up');
                     iRange = find(obj.SelectedCurves);
@@ -1683,7 +1683,7 @@ classdef ForceMap < matlab.mixin.Copyable
             for i=1:Nmaps
                 Nimgs = Nimgs + sum(objcell{i}.SelectedCurves);
             end
-            X = zeros(ImgSizeFinal,ImgSizeFinal,3,Nimgs);
+            X = zeros(ImgSizeFinal,ImgSizeFinal,3,Nimgs,'logical');
             
             k = 1;
             for i=1:Nmaps
@@ -1691,7 +1691,7 @@ classdef ForceMap < matlab.mixin.Copyable
                 for j=jRange'
                     o = 1;
                     for n=CutPercent
-                        Image = zeros(ImgSize,ImgSize);
+                        Image = zeros(ImgSize,ImgSize,'logical');
                         
                         Points(:,1) = objcell{i}.HHApp{j}(floor(n*length(objcell{i}.HHApp{j}))+1:end);
                         Points(:,2) = objcell{i}.BasedApp{j}(floor(n*length(objcell{i}.BasedApp{j}))+1:end);
@@ -1913,37 +1913,47 @@ classdef ForceMap < matlab.mixin.Copyable
     methods
        % methods for visualization, plotting, statistics and quality control 
         
-        function show_random_curve_THvsForce(obj)
-            k = randi(obj.NCurves);
-            figure('Units','normalized','Position',[0.6 0.1 0.4 0.8])
-            subplot(2,1,1)
-            plot(obj.THApp{k},obj.BasedApp{k},obj.THRet{k},obj.BasedRet{k})
-            title(sprintf('Curve Nr.%i of %s',k,obj.Name))
-            legend('Based Approach','Based Retract','Location','northwest')
-            xlabel('Tip Height [m]')
-            ylabel('Force [N]')
-            drawpoint('Position',[obj.CP(k,1) obj.CP(k,2)]);
-            subplot(2,1,2)
-            imshow(mat2gray(obj.HeightMap))
-            axis on
-            hold on;
-            plot(obj.List2Map(k,2),obj.List2Map(k,1), 'r+', 'MarkerSize', 10, 'LineWidth', 2);
-            
-        end
         
-        function show_random_curve_HHvsDefl(obj,k)
+        function show_random_curve_HHvsForce(obj,k)
             if nargin < 2
                 k = randi(obj.NCurves);
             end
             figure('Units','normalized','Position',[0.6 0.1 0.4 0.8],'Color','white')
             subplot(2,1,1)
-            plot(obj.HHApp{k},obj.BasedApp{k}/obj.SpringConstant,...
-                obj.HHRet{k},obj.BasedRet{k}/obj.SpringConstant)
             title(sprintf('Curve Nr.%i of %s',k,obj.Name))
-            legend('Based Approach','Based Retract','Location','northwest')
-            xlabel('Head Height [m]')
-            ylabel('vDeflection [m]')
-            drawpoint('Position',[obj.CP_OliverPharr(k,1) obj.CP_OliverPharr(k,2)/obj.SpringConstant]);
+            hold on
+            b = plot(obj.HHApp{k}*10e9,obj.BasedApp{k}*10e9,obj.HHRet{k}*10e9,obj.BasedRet{k}*10e9,'LineWidth',1.5);
+            a = plot(obj.CP_OliverPharr(k,1)*10e9, obj.CP_OliverPharr(k,2)*10e9,'O',...
+                'LineWidth',1.5,...
+                'MarkerSize',7,...
+                'MarkerEdgeColor','k',...
+                'MarkerFaceColor','g');
+            for j=1:100
+                plot(obj.CP_OliverPharr_MonteCarlo(j,1,k)*10e9, obj.CP_OliverPharr_MonteCarlo(j,2,k)*10e9,'O',...
+                    'LineWidth',0.5,...
+                    'MarkerSize',7,...
+                    'MarkerEdgeColor','k',...
+                    'MarkerFaceColor','y');
+            end
+            try
+                plot(obj.Man_CP(k,1)*10e9, obj.Man_CP(k,2)*10e9,'O',...
+                'LineWidth',1.5,...
+                'MarkerSize',7,...
+                'MarkerEdgeColor','k',...
+                'MarkerFaceColor','r');
+            catch
+            end
+            legend('Approach','Retract','Mean Prediction','Dropout Predictions','Location','northwest');
+            uistack(b,'top');
+            uistack(a,'top');
+            xlabel('Z-Displacement [nm]');
+            ylabel('Deflection [nm]');
+            grid on
+            grid minor
+            dim = [0.4 0.3 0.6 0.6];
+            str = {'     Network Uncertainty',sprintf('Standard Deviation = %.2f nm',obj.CP_OliverPharr_MonteCarlo_STD(k)*1e9)};
+            annotation('textbox',dim,'String',str,'FitBoxToText','on');
+            
             subplot(2,1,2)
             I = obj.HeightMap;
             I = mat2gray(I);
