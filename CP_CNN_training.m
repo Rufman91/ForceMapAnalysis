@@ -1,59 +1,6 @@
-%% Load maps as ForceMap object into 1xNmaps cell.
-
-
-
-prompt = 'Enter how many force maps you want to load for training:';
-dlgtitle = 'Number of training maps';
-dims = [1 35]; 
-definput = {'2'};
-Nmaps = str2double(inputdlg(prompt,dlgtitle,dims,definput));
-
-% Try loading force maps from previous session. If that fails, let user
-% choose to load from eighter an existing .mat ForceMap-object or from a
-% folder with .csv files
-
-try
-    load('ForceMapFolders.mat');
-    for i=1:length(objectfolders)
-        FM{i} = ForceMap(objectfolders{i});
-    end
-catch ME
-    warning('Could not find existing ForceMap objects. Proceeding with manual loading')
-    rethrow(ME);
-    for i=1:Nmaps
-        FM{i} = ForceMap();
-        objectfolders{i} = FM{i}.Folder;
-    end
-    save('ForceMapFolders','objectfolders');
-end
-
-%% Prepare and manually select and label every single force curve.
-% If you loaded already existing .mat files for the ForceMap objects on
-% which the following operations have already been done, you can skip this
-% section.
-
-for i=20:Nmaps
-    FM{i}.level_height_map();
-end
-for i=20:(Nmaps)
-    FM{i}.choose_fibril(0.8);
-end
-for i=20:Nmaps
-    FM{i}.base_and_tilt();
-end
-for i=20:Nmaps
-    FM{i}.manual_cp();
-end
-for i=1:Nmaps
-    FM{i}.cp_rov();
-end
-for i=1:Nmaps
-    FM{i}.old_cp;
-end
-
 %% Split the data into a training and a validation set with ratio 3:1
 %  and set the NN layers and training options
-ImgSize = 128;
+ImgSize = 512;
 ImgSizeFinal = 128; %bigger sizes improve results marginally but significantly
                %increase traning time. The trainer might even run out
                %of GPU memory... not really worth it
@@ -400,7 +347,7 @@ options = trainingOptions('adam','Plots','training-progress',...
 %  For this option to be available, the Parallel-Computing-Toolbox has to be
 %  installed in MATLAB
 
-CP_CNN_30_10 = trainNetwork(XTrain,YTrain,MonteCarlo14,options);
+CP_CNN_02_11 = trainNetwork(XTrain,YTrain,MonteCarlo14,options);
 
 %% Evaluate your model looking at the models predictions
 

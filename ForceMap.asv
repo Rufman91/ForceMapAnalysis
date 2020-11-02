@@ -1697,9 +1697,9 @@ classdef ForceMap < matlab.mixin.Copyable
                     o = 1;
                     for n=CutPercent
                         if ImgSize == ImgSizeFinal
-                            Image = zeros(ImgSizeFinal,ImgSizeFinal,'logical');
+                            Image = zeros(ImgSizeFinal,ImgSizeFinal,3,Nimgs,'logical');
                         else
-                            Image = zeros(ImgSizeFinal,ImgSizeFinal,'single');
+                            Image = zeros(ImgSizeFinal,ImgSizeFinal,3,Nimgs,'single');
                         end
                         
                         Points(:,1) = objcell{i}.HHApp{j}(floor(n*length(objcell{i}.HHApp{j}))+1:end);
