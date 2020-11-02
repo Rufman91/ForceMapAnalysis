@@ -6,6 +6,8 @@ classdef predictiondropoutLayer < nnet.layer.Layer
     % backpropagate through channels that have been set to zero, which is
     % not the usual procedure. This will lead to untested behaviour.
     
+    %#codegen
+    
     properties
         p   % Dropout probability
     end

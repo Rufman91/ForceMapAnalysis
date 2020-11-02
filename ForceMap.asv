@@ -759,10 +759,44 @@ classdef ForceMap < matlab.mixin.Copyable
             X = obj.CP_batchprep_3_channel(objcell,ImgSize(1),ImgSize(1),[0 0.5 0.9]);
             len = size(X,4);
             h = waitbar(0,'Setting up','Name',obj.Name);
+            CantHandle = true;
+            MiniBatchSize = len;
+            DynMBSdone = false;
+            HasFailed = false;
             switch runmode
                 case 0
                     waitbar(1/2,h,'Predicting CP');
-                    Ypredicted = predict(NeuralNet,X);waitbar(1,h,'Wrapping up');
+                        while CantHandle == true
+                            try
+                                Temp = predict(NeuralNet,X,'MiniBatchSize',MiniBatchSize,'Acceleration','auto');
+                                CantHandle = false;
+                                if DynMBSdone == false
+                                    if HasFailed == true
+                                        MiniBatchSize = ceil(MiniBatchSize/4);
+                                    end
+                                    fprintf('Dynamically adjusting MiniBatchSize = %i\n',MiniBatchSize)
+                                    DynMBSdone = true;
+                                end
+                            catch ME
+                                switch ME.identifier
+                                    case 'parallel:gpu:array:OOM'
+                                        MiniBatchSize = ceil(MiniBatchSize*3/4);
+                                        fprintf('Dynamically adjusting MiniBatchSize = %i\n',MiniBatchSize)
+                                        HasFailed = true;
+                                    case 'nnet_cnn:internal:cnn:layer:CustomLayer:PredictErrored'
+                                        MiniBatchSize = ceil(MiniBatchSize*3/4);
+                                        fprintf('Dynamically adjusting MiniBatchSize = %i\n',MiniBatchSize)
+                                        HasFailed = true;
+                                    case 'nnet_cnn:dlAccel:MEXCallFailed'
+                                        MiniBatchSize = ceil(MiniBatchSize*3/4);
+                                        fprintf('Dynamically adjusting MiniBatchSize = %i\n',MiniBatchSize)
+                                        HasFailed = true;
+                                    otherwise
+                                        rethrow(ME)
+                                end
+                            end
+                        end
+                    waitbar(1,h,'Wrapping up');
                     iRange = find(obj.SelectedCurves);
                     k = 1;
                     for i=iRange'
@@ -772,15 +806,11 @@ classdef ForceMap < matlab.mixin.Copyable
                     end
                 case 1
                     obj.YDropPred = zeros(NumPasses,2,len);
-                    CantHandle = true;
-                    MiniBatchSize = len;
-                    DynMBSdone = false;
-                    HasFailed = false;
                     for j=1:NumPasses
                         waitbar(j/NumPasses,h,sprintf('Predicting CP for %i curves. %i/%i passes done',len,j,NumPasses));
                         while CantHandle == true
                             try
-                                Temp = predict(NeuralNet,X,'MiniBatchSize',MiniBatchSize);
+                                Temp = predict(NeuralNet,X,'MiniBatchSize',MiniBatchSize,'Acceleration','auto');
                                 CantHandle = false;
                                 if DynMBSdone == false
                                     if HasFailed == true
@@ -789,10 +819,23 @@ classdef ForceMap < matlab.mixin.Copyable
                                     fprintf('Dynamically adjusting MiniBatchSize = %i\n',MiniBatchSize)
                                     DynMBSdone = true;
                                 end
-                            catch
-                                MiniBatchSize = ceil(MiniBatchSize*3/4);
-                                fprintf('Dynamically adjusting MiniBatchSize = %i\n',MiniBatchSize)
-                                HasFailed = true;
+                            catch ME
+                                switch ME.identifier
+                                    case 'parallel:gpu:array:OOM'
+                                        MiniBatchSize = ceil(MiniBatchSize*3/4);
+                                        fprintf('Dynamically adjusting MiniBatchSize = %i\n',MiniBatchSize)
+                                        HasFailed = true;
+                                    case 'nnet_cnn:internal:cnn:layer:CustomLayer:PredictErrored'
+                                        MiniBatchSize = ceil(MiniBatchSize*3/4);
+                                        fprintf('Dynamically adjusting MiniBatchSize = %i\n',MiniBatchSize)
+                                        HasFailed = true;
+                                    case 'nnet_cnn:dlAccel:MEXCallFailed'
+                                        MiniBatchSize = ceil(MiniBatchSize*3/4);
+                                        fprintf('Dynamically adjusting MiniBatchSize = %i\n',MiniBatchSize)
+                                        HasFailed = true;
+                                    otherwise
+                                        rethrow(ME)
+                                end
                             end
                         end
                         obj.YDropPred(j,:,:) = Temp';
@@ -1697,9 +1740,9 @@ classdef ForceMap < matlab.mixin.Copyable
                     o = 1;
                     for n=CutPercent
                         if ImgSize == ImgSizeFinal
-                            Image = zeros(ImgSizeFinal,ImgSizeFinal,3,Nimgs,'logical');
+                            Image = zeros(ImgSizeFinal,ImgSizeFinal,'logical');
                         else
-                            Image = zeros(ImgSizeFinal,ImgSizeFinal,3,Nimgs,'single');
+                            Image = zeros(ImgSizeFinal,ImgSizeFinal,'single');
                         end
                         
                         Points(:,1) = objcell{i}.HHApp{j}(floor(n*length(objcell{i}.HHApp{j}))+1:end);
