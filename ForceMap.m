@@ -728,6 +728,8 @@ classdef ForceMap < matlab.mixin.Copyable
         end
         
         function estimate_cp_oliver_pharr(obj,NeuralNet,RunMode,NumPasses)
+            % [] = estimate_cp_oliver_pharr(obj,NeuralNet,RunMode,NumPasses)
+            %
             % NeuralNet has to be passed down from the parent object
             % 'Experiment' to the ForceMap. For RunMode 'Fast' pass the
             % 'ExpInWorkspaceName.CP_CNN' property and for RunMode

@@ -1,5 +1,5 @@
 function [X,Y] = CP_CNN_batchprep(objcell,ImgSizeFinal,ImgSize,CutPercent,DataAugmentation,DataAugMult,NInsertedPoints)
-% [X,Y] = CP_CNN_batchprep(objcell,ImgSizeFinal,ImgSize,CutPercent,DataAugmentation,DataAugMult,NInsertedPoints)
+% [X,Y] = CP_CNN_batchprep(objcell,ImgSizeFinal,ImgSize,CutPercent,DataAugmentation,DataAugMult)
 %
 % This function takes as input a 1xN objcell of N objects of the class
 % 'ForceMap' and combines them into the matrizes needed for NN-training
@@ -14,8 +14,7 @@ function [X,Y] = CP_CNN_batchprep(objcell,ImgSizeFinal,ImgSize,CutPercent,DataAu
 %                  objcell
 % DataAugMult      ... Integer prescribing the times every inputcurve is
 %                      duplicated
-% NInsertedPoints  ... Number of inserted Points between actually measured
-%                      curve points
+% NInsertedPoints  ... Number of inserted P
 
 switch lower(DataAugmentation)
     case 'none'
@@ -24,8 +23,11 @@ switch lower(DataAugmentation)
         objcell = data_aug_zoom(objcell,DataAugMult);
     case 'noise'
         objcell = data_aug_noise(objcell,DataAugMult);
+    case 'noise+'
+        objcell = data_aug_noise_plus(objcell,DataAugMult);
     case 'all'
-        objcell = data_aug_all(objcell,DataAugMult,NInsertedPoints);;
+        objcell = data_aug_zoom(objcell,DataAugMult);
+        objcell = data_aug_noise_plus(objcell,1);
 end
 
 if nargin < 2

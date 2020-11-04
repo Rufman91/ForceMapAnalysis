@@ -1,0 +1,19 @@
+function show_images_with_cp(X,Y,k)
+% show_images_with_cp(X,Y,k)
+%
+% X ... 4-D Array with dimensions [ImgHeight ImgWidth ChannelNumber NImages]
+% Y ... NImages x 2 x- and y- coordinates of the contact point on the image
+% k ... Number of image rows to be displayed
+
+i = randi(length(X),k,1);
+
+for j = 1:k
+    subplot(k,3,(1+k*(j-1)))
+    imshow(X(:,:,1,i(j)))
+    subplot(k,3,(2+(j-1)))
+    imshow(X(:,:,2,i(j)))
+    subplot(k,3,(3+(j-1)))
+    imshow(X(:,:,3,i(j)))
+end
+
+end

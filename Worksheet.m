@@ -219,5 +219,3 @@
 %     X(:,:,1,i) = Image;
 %     clear Points
 % end
-
-X = E.FM{1}.CP_batchprep_new_fast(E.FM,128);
