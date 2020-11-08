@@ -744,7 +744,7 @@ classdef ForceMap < matlab.mixin.Copyable
             % NumPasses is the positive integer defining how many passes
             % are to be done in RunMode 'Dropout'
             % Default NumPasses = 100
-            % NumPasses <= 30 is recommended
+            % NumPasses >= 30 is recommended
             
             if nargin < 2
                 runmode = 0;
@@ -908,7 +908,7 @@ classdef ForceMap < matlab.mixin.Copyable
                     unload(end-(j-1),1) = obj.HHRet{i}(j);
                     unload(j,2) = obj.Ret{i}(j);
                 end
-                [obj.LoadOld{i},obj.UnloadOld{i},Position,obj.CP_OliverPharr(i,2)] = ContactPoint_sort_mr(load,unload);
+                [obj.LoadOld{i},obj.UnloadOld{i},Position,obj.CP_OliverPharr(i,2)] = ContactPoint_sort(load,unload);
                 obj.CP_OliverPharr(i,1) = obj.HHApp{i}(Position);
                 obj.CP_OliverPharr_Old(i,1) =obj.CP_OliverPharr(i,1);
                 obj.CP_OliverPharr_Old(i,2) =obj.CP_OliverPharr(i,2);
