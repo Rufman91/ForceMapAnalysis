@@ -25,7 +25,7 @@ switch lower(DataAugmentation)
     case 'noise'
         objcell = data_aug_noise(objcell,DataAugMult);
     case 'all'
-        objcell = data_aug_all(objcell,DataAugMult,NInsertedPoints);;
+        objcell = data_aug_all(objcell,DataAugMult,NInsertedPoints);
 end
 
 if nargin < 2

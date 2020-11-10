@@ -5,11 +5,11 @@ ImgSizeFinal = 128; %bigger sizes improve results marginally but significantly
                %increase traning time. The trainer might even run out
                %of GPU memory... not really worth it
 NChannels = 3;
-DataAugMult = 3;
+DataAugMult = 6;
 
 k = 1;
 for i =1:length(E.FM)
-    if length(E.FM{i}.Man_CP) == E.FM{i}.NCurves
+    if length(E.FM{i}.Man_CP) >= (E.FM{i}.NCurves-5) && isequal(E.FM{i}.Medium,'PBS')
         objcell{k} = E.FM{i};
         k = k + 1;
     end
@@ -180,7 +180,7 @@ resnet14 = connectLayers(resnet14,"conv_15","addition_6/in1");
 resnet14 = connectLayers(resnet14,"conv_17","addition_6/in2");
 
 MonteCarlo14 =  layerGraph();
-DropParam = 0.2;
+DropParam = 0.1;
 
 tempLayers = [
     imageInputLayer([ImgSizeFinal ImgSizeFinal NChannels],"Name","imageinput","Normalization","zscore")
@@ -355,58 +355,58 @@ options = trainingOptions('adam','Plots','training-progress',...
 %  For this option to be available, the Parallel-Computing-Toolbox has to be
 %  installed in MATLAB
 
-CP_ResNet50_02_11 = trainNetwork(XTrain,YTrain,lgraph_2,options);
-
-%% Evaluate your model looking at the models predictions
-
-% predict outcome of XValidation
-h = waitbar(0,'Setting up...');
-for i=1:100
-    waitbar(i/100,h,'The wheel goes round and round')
-    YPredicted(:,:,i) = predict(MC14_3010,XValidation); 
-end
-YPredictedMean = mean(YPredicted,3);
-% show random curve out of force map i and draw the manual CP in green and
-% the CNNs CP in red
-
-for i=1:Nmaps
-FM{i}.estimate_cp_cnn('Fast');
-end
-
-i = randi(Nmaps);
-idxs = find(FM{i}.SelectedCurves);
-rand = randperm(length(idxs),1);
-randidx = idxs(rand);
-plot(FM{i}.THApp{randidx},(FM{i}.BasedApp{randidx}));
-manual = drawpoint('Position',FM{i}.Man_CP(randidx,:),'Color','green');
-net = drawpoint('Position',FM{i}.CP(randidx,:),'Color','red');
-[CP_RoV(1,1),RoVidx] = max(FM{i}.cp_rov{randidx});
-CP_RoV(1,2) = FM{i}.BasedApp{randidx}(RoVidx);
-RoV = drawpoint('Position',CP_RoV,'Color','blue');
-
-fig = figure('Name','Evaluate the model','Position',[949 79 971 915]);
-for i=1:1900
-    Diff(i) = norm(YPredictedMean(i,:)-YValidation(i,:));
-end
-k=1;
-[~,IdxVec] = sort(Diff,'descend');
-% idx = randi(length(XValidation));
-idx = IdxVec(k);
-imshow(XValidation(:,:,1,idx),'InitialMagnification','fit');
-manpoint =drawpoint('Position',[YValidation(idx,1)*ImgSizeFinal,...
-    (1-YValidation(idx,2))*ImgSizeFinal],'Color','green');
-% predpoint = drawpoint('Position',[YPredicted(idx,1)*ImgSize,...
-%     (1-YPredicted(idx,2))*ImgSize],'Color','red');
-predpoint2 = drawpoint('Position',[YPredictedMean(idx,1)*ImgSizeFinal,...
-    (1-YPredictedMean(idx,2))*ImgSizeFinal],'Color','yellow');
-k = k + 1;
-
-
-%% Create dropout model for uncertainty estimation during inference. Extract and apply weights
-%  from previously trained model
-
-DropoutNet = assemble_DON(CP_CNN,0.1);
-MonteCarloDrop = assemble_MC(CP_CNN_MC);
-% predict(DropoutNet,X(:,:,:,1))
-% predict(CP_CNN,X(:,:,:,1))
-
+CP_MC14_10_11 = trainNetwork(XTrain,YTrain,MonteCarlo14,options);
+% 
+% %% Evaluate your model looking at the models predictions
+% 
+% % predict outcome of XValidation
+% h = waitbar(0,'Setting up...');
+% for i=1:100
+%     waitbar(i/100,h,'The wheel goes round and round')
+%     YPredicted(:,:,i) = predict(MC14_3010,XValidation); 
+% end
+% YPredictedMean = mean(YPredicted,3);
+% % show random curve out of force map i and draw the manual CP in green and
+% % the CNNs CP in red
+% 
+% for i=1:Nmaps
+% FM{i}.estimate_cp_cnn('Fast');
+% end
+% 
+% i = randi(Nmaps);
+% idxs = find(FM{i}.SelectedCurves);
+% rand = randperm(length(idxs),1);
+% randidx = idxs(rand);
+% plot(FM{i}.THApp{randidx},(FM{i}.BasedApp{randidx}));
+% manual = drawpoint('Position',FM{i}.Man_CP(randidx,:),'Color','green');
+% net = drawpoint('Position',FM{i}.CP(randidx,:),'Color','red');
+% [CP_RoV(1,1),RoVidx] = max(FM{i}.cp_rov{randidx});
+% CP_RoV(1,2) = FM{i}.BasedApp{randidx}(RoVidx);
+% RoV = drawpoint('Position',CP_RoV,'Color','blue');
+% 
+% fig = figure('Name','Evaluate the model','Position',[949 79 971 915]);
+% for i=1:1900
+%     Diff(i) = norm(YPredictedMean(i,:)-YValidation(i,:));
+% end
+% k=1;
+% [~,IdxVec] = sort(Diff,'descend');
+% % idx = randi(length(XValidation));
+% idx = IdxVec(k);
+% imshow(XValidation(:,:,1,idx),'InitialMagnification','fit');
+% manpoint =drawpoint('Position',[YValidation(idx,1)*ImgSizeFinal,...
+%     (1-YValidation(idx,2))*ImgSizeFinal],'Color','green');
+% % predpoint = drawpoint('Position',[YPredicted(idx,1)*ImgSize,...
+% %     (1-YPredicted(idx,2))*ImgSize],'Color','red');
+% predpoint2 = drawpoint('Position',[YPredictedMean(idx,1)*ImgSizeFinal,...
+%     (1-YPredictedMean(idx,2))*ImgSizeFinal],'Color','yellow');
+% k = k + 1;
+% 
+% 
+% %% Create dropout model for uncertainty estimation during inference. Extract and apply weights
+% %  from previously trained model
+% 
+% DropoutNet = assemble_DON(CP_CNN,0.1);
+% MonteCarloDrop = assemble_MC(CP_CNN_MC);
+% % predict(DropoutNet,X(:,:,:,1))
+% % predict(CP_CNN,X(:,:,:,1))
+% 
