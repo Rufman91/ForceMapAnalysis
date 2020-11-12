@@ -56,22 +56,22 @@ classdef ForceMap < matlab.mixin.Copyable
         
         RoV = {}        % ratio of variance curve for CP estiamation
         GoF = {}        % goodness of fit curve for each selected curve
-        CPComboCurve    % combination of the various metrics for contact point estimation
         CP              % chosen contact point (CP) for every selected curve, which is then used in E module fitting
         CP_RoV          % CP estimated with the ratio of variance method
         CP_GoF          % CP estimated with the goodness of fit method
         CP_Combo        % CP estimated with a combination of the GoF and RoV methods
+        CPComboCurve    % combination of the various metrics for contact point estimation
+        CP_CNN          % CP estimated with a conv. neural network, eighter in single pass
+                        % or with the Monte Carlo Method
+        CP_MonteCarlo   % All predictions from the multiple inference steps done in 
+                        % the monte carlo method
+        CP_MonteCarlo_STD % Standard deviation of CP_MonteCarlo
         DeltaE = {}     %
-        CP_MonteCarlo   % Contains all Monte Carlo Predictions of the CP
         YDropPred       % Contains the Dropoutpredictions for every curve in the forcemap
-        CP_CNN_Error    % Contains the estimated uncertainty of the CP_CNN
-        Man_CP          % manually chosen contact point
-        CP_old          % contact point estimation from old script 'A_nIAFM_analysis_main'
+        CP_Old          % contact point estimation from old script 'A_nIAFM_analysis_main'
         LoadOld         % comes from same script as CP_old
         UnloadOld       % comes from same script as CP_old
-        CP_OliverPharr  % CP needed in Oliver Pharr type analysis, done on HeadHeight vs Displacement curves
-        CP_OliverPharr_MonteCarlo
-        CP_OliverPharr_MonteCarlo_STD
+        Man_CP          % manually chosen contact point
         
     end
     properties
@@ -107,9 +107,6 @@ classdef ForceMap < matlab.mixin.Copyable
     properties
         % auxiliary properties to facilitate comparing different methods of
         % CP estimation
-        CP_OliverPharr_CNN
-        CP_OliverPharr_Old
-        CP_OliverPharr_RoV
         EModOliverPharr_CNN
         EModOliverPharr_Old
         EModOliverPharr_RoV
@@ -550,46 +547,8 @@ classdef ForceMap < matlab.mixin.Copyable
                 minrov = min(obj.RoV{i}(batchsize+1:length(obj.RoV{i})-batchsize));
                 obj.RoV{i}(obj.RoV{i}==0) = minrov;
                 [~,CPidx] = max(obj.RoV{i});
-                obj.CP_RoV(i,:) = [obj.THApp{i}(CPidx) obj.BasedApp{i}(CPidx)];
-                CP_RoV = obj.CP_RoV;
-            end
-            close(h)
-%             current = what();
-%             cd(obj.Folder)
-%             savename = sprintf('%s.mat',obj.Name);
-%             save(savename,'obj')
-%             cd(current.path)
-        end
-        
-        function estimate_cp_rov_oliver_pharr(obj,batchsize)
-            % find contact point with the method of ratio of variances. The method
-            % iterates though every point and builds the ratio of the variance of a
-            % bunch of points before and after the current point. the point with the
-            % biggest ratio is the returned contact point [Nuria Gavara, 2016]
-            if nargin<2
-                batchsize = 20;
-            end
-            Range = find(obj.SelectedCurves);
-            h = waitbar(0,'Setting up...','Name',obj.Name);
-            CP_RoV = zeros(obj.NCurves,2);
-            obj.CP_OliverPharr_RoV = CP_RoV;
-            for i=Range'
-                prog = i/obj.NCurves;
-                waitbar(prog,h,'applying ratio of variances method...');
-                obj.RoV{i} = zeros(length(obj.BasedApp{i}),1);
-                SmoothedApp = smoothdata(obj.BasedApp{i});
-                % loop through points and calculate the RoV
-                for j=(batchsize+1):(length(obj.BasedApp{i})-batchsize)
-                    obj.RoV{i}(j,1) = var(smoothdata(obj.BasedApp{i}((j+1):(j+batchsize))))/...
-                        var(SmoothedApp((j-batchsize):(j-1)));
-                end
-                % normalize RoV-curve
-                obj.RoV{i} = obj.RoV{i}/range(obj.RoV{i});
-                minrov = min(obj.RoV{i}(batchsize+1:length(obj.RoV{i})-batchsize));
-                obj.RoV{i}(obj.RoV{i}==0) = minrov;
-                [~,CPidx] = max(obj.RoV{i});
-                obj.CP_OliverPharr_RoV(i,:) = [obj.HHApp{i}(CPidx) obj.BasedApp{i}(CPidx)];
-                obj.CP_OliverPharr = obj.CP_OliverPharr_RoV;
+                obj.CP_RoV(i,:) = [obj.HHApp{i}(CPidx) obj.BasedApp{i}(CPidx)];
+                obj.CP = obj.CP_RoV;
             end
             close(h)
 %             current = what();
@@ -604,12 +563,14 @@ classdef ForceMap < matlab.mixin.Copyable
             Range = find(obj.SelectedCurves);
             h = waitbar(0,'Setting up...','Name',obj.Name);
             for i=Range'
-                smoothx = smoothdata(obj.THApp{i});
-                smoothy = smoothdata(obj.BasedApp{i});
-                Rsquare = 2*ones(length(obj.BasedApp{i}),1);
-                E = ones(length(obj.BasedApp{i}),1);
-                obj.DeltaE = ones(length(obj.BasedApp{i}),1);
-                testrange = floor(0.5*length(obj.BasedApp{i})):(length(obj.BasedApp{i})-5);
+                Based = obj.BasedApp;
+                THApp = obj.HHApp{i} - obj.BasedApp{i}/obj.SpringConstant;
+                smoothx = smoothdata(THApp);
+                smoothy = smoothdata(Based);
+                Rsquare = 2*ones(length(Based),1);
+                E = ones(length(Based),1);
+                obj.DeltaE = ones(length(Based),1);
+                testrange = floor(0.5*length(Based)):(length(Based)-5);
                 msg = sprintf('applying goodness of fit method on curve Nr.%i/%i',i,obj.NCurves);
                 for j=testrange
                     prog = (j-testrange(1))/length(testrange);
@@ -621,9 +582,9 @@ classdef ForceMap < matlab.mixin.Copyable
                 Rsquare(Rsquare==2) = min(Rsquare);
                 obj.GoF{i} = normalize(Rsquare,'range');
                 [~,CPidx] = max(obj.GoF{i});
-                obj.CP_GoF(i,:) = [obj.THApp{i}(CPidx) obj.BasedApp{i}(CPidx)];
-                %deltaE(floor(0.5*length(obj.BasedApp{i})):(length(obj.BasedApp{i})-6)) = -diff(log(E));
+                obj.CP_GoF(i,:) = [THApp(CPidx) Based(CPidx)];
             end
+            obj.CP = obj.CP_GoF;
             close(h)
 %             current = what();
 %             cd(obj.Folder)
@@ -639,88 +600,8 @@ classdef ForceMap < matlab.mixin.Copyable
             for i=Range'
                 obj.CPComboCurve{i} = obj.RoV{i}.*obj.GoF{i};
                 [~,CPidx] = max(obj.CPComboCurve{i});
-                obj.CP_Combo(i,:) = [obj.THApp{i}(CPidx) obj.BasedApp{i}(CPidx)];
+                obj.CP_Combo(i,:) = [obj.HHApp{i}(CPidx) obj.BasedApp{i}(CPidx)];
             end
-%             current = what();
-%             cd(obj.Folder)
-%             savename = sprintf('%s.mat',obj.Name);
-%             save(savename,'obj')
-%             cd(current.path)
-        end
-                
-        function estimate_cp_cnn(obj,NeuralNet,RunMode,NumPasses)
-            % RunMode = 'Fast' just predict with one forwardpass using
-            % CP_CNN
-            % RunMode = 'Dropout' predict through n=NumPasses forwardpasses
-            % through DropoutNet and additionally gain a metric for
-            % uncertainty of the CP estimate
-            if nargin < 2
-                runmode = 0;
-            elseif isequal(RunMode,'Fast')
-                runmode = 0;
-            elseif isequal(RunMode,'Dropout')
-                runmode = 1;
-                if nargin < 3
-                    NumPasses = 100; % if not specified in arguments, NumPasses defaults to 100
-                end
-            end
-            ImgSize = NeuralNet.Layers(1).InputSize;
-            objcell{1,1} = obj;
-            X = obj.CP_CNN_batchprep(objcell,ImgSize(1));
-            len = size(X,4);
-            h = waitbar(0,'Setting up','Name',obj.Name);
-            switch runmode
-                case 0
-                    waitbar(1/2,h,'Predicting CP');
-                    Ypredicted = predict(NeuralNet,X);
-                    iRange = find(obj.SelectedCurves);
-                    k = 1;
-                    for i=iRange'
-                        obj.CP(i,1) = Ypredicted(k,1)*range(obj.THApp{i})+min(obj.THApp{i});
-                        obj.CP(i,2) = Ypredicted(k,2)*range(obj.BasedApp{i})+min(obj.BasedApp{i});
-                        k = k + 1;
-                    end
-                case 1
-                    obj.YDropPred = zeros(NumPasses,2,len);
-                    CantHandle = false;
-                    for j=1:NumPasses
-                        waitbar(j/NumPasses,h,sprintf('Predicting CP for %i curves. %i/%i passes done',len,j,NumPasses));
-                        if CantHandle == false
-                            try
-                                Temp = predict(NeuralNet,X,'MiniBatchSize',len);
-                            catch
-                                CantHandle = true;
-                                warning("Can't compute with optimal MiniBatchSize. Choosing a lower one")
-                                try
-                                    Temp = predict(NeuralNet,X);
-                                catch
-                                    warning("Can't compute with lowered MiniBatchSize. Choosing an even lower one. Computation time is gonna suffer")
-                                    Temp = predict(NeuralNet,X,'MiniBatchSize',10);
-                                end
-                            end
-                        else
-                            try
-                                Temp = predict(NeuralNet,X);
-                            catch
-                                warning("Can't compute with lowered MiniBatchSize. Choosing an even lower one \nComputation time is gonna suffer")
-                                Temp = predict(NeuralNet,X,'MiniBatchSize',10);
-                            end
-                        end
-                        obj.YDropPred(j,:,:) = Temp';
-                    end
-                    waitbar(1,h,'Wrapping up');
-                    iRange = find(obj.SelectedCurves);
-                    k = 1;
-                    obj.CP_MonteCarlo = zeros(NumPasses,2,obj.NCurves);
-                    for i=iRange'
-                        obj.CP_MonteCarlo(:,1,i) = obj.YDropPred(:,1,k)*range(obj.THApp{i})+min(obj.THApp{i});
-                        obj.CP_MonteCarlo(:,2,i) = obj.YDropPred(:,2,k)*range(obj.BasedApp{i})+min(obj.BasedApp{i});
-                        obj.CP(i,1) = mean(obj.CP_MonteCarlo(:,1,i));
-                        obj.CP(i,2) = mean(obj.CP_MonteCarlo(:,2,i));
-                        k = k + 1;
-                    end
-            end
-            close(h)
 %             current = what();
 %             cd(obj.Folder)
 %             savename = sprintf('%s.mat',obj.Name);
@@ -728,7 +609,7 @@ classdef ForceMap < matlab.mixin.Copyable
 %             cd(current.path)
         end
         
-        function estimate_cp_oliver_pharr(obj,NeuralNet,RunMode,NumPasses)
+        function estimate_cp_cnn(obj,NeuralNet,RunMode,NumPasses)
             % [] = estimate_cp_oliver_pharr(obj,NeuralNet,RunMode,NumPasses)
             %
             % NeuralNet has to be passed down from the parent object
@@ -803,8 +684,10 @@ classdef ForceMap < matlab.mixin.Copyable
                     iRange = find(obj.SelectedCurves);
                     k = 1;
                     for i=iRange'
-                        obj.CP_OliverPharr(i,1) = Ypredicted(k,1)*range(obj.HHApp{i})+min(obj.HHApp{i});
-                        obj.CP_OliverPharr(i,2) = Ypredicted(k,2)*range(obj.BasedApp{i})+min(obj.BasedApp{i});
+                        obj.CP_CNN(i,1) = Ypredicted(k,1)*range(obj.HHApp{i})+min(obj.HHApp{i});
+                        obj.CP_CNN(i,2) = Ypredicted(k,2)*range(obj.BasedApp{i})+min(obj.BasedApp{i});
+                        obj.CP(i,1) = obj.CP_CNN(i,1);
+                        obj.CP(i,2) = obj.CP_CNN(i,2);
                         k = k + 1;
                     end
                 case 1
@@ -847,15 +730,15 @@ classdef ForceMap < matlab.mixin.Copyable
                     waitbar(1,h,'Wrapping up');
                     iRange = find(obj.SelectedCurves);
                     k = 1;
-                    obj.CP_OliverPharr_MonteCarlo = zeros(NumPasses,2,obj.NCurves);
+                    obj.CP_MonteCarlo = zeros(NumPasses,2,obj.NCurves);
                     for i=iRange'
-                        obj.CP_OliverPharr_MonteCarlo(:,1,i) = obj.YDropPred(:,1,k)*range(obj.HHApp{i})+min(obj.HHApp{i});
-                        obj.CP_OliverPharr_MonteCarlo(:,2,i) = obj.YDropPred(:,2,k)*range(obj.BasedApp{i})+min(obj.BasedApp{i});
-                        obj.CP_OliverPharr(i,1) = mean(obj.CP_OliverPharr_MonteCarlo(:,1,i));
-                        obj.CP_OliverPharr(i,2) = mean(obj.CP_OliverPharr_MonteCarlo(:,2,i));
-                        obj.CP_OliverPharr_CNN(i,1) = obj.CP_OliverPharr(i,1);
-                        obj.CP_OliverPharr_CNN(i,2) = obj.CP_OliverPharr(i,2);
-                        obj.CP_OliverPharr_MonteCarlo_STD(i) = norm([std(obj.CP_OliverPharr_MonteCarlo(:,1,i)) std(obj.CP_OliverPharr_MonteCarlo(:,2,i))]);
+                        obj.CP_MonteCarlo(:,1,i) = obj.YDropPred(:,1,k)*range(obj.HHApp{i})+min(obj.HHApp{i});
+                        obj.CP_MonteCarlo(:,2,i) = obj.YDropPred(:,2,k)*range(obj.BasedApp{i})+min(obj.BasedApp{i});
+                        obj.CP(i,1) = mean(obj.CP_MonteCarlo(:,1,i));
+                        obj.CP(i,2) = mean(obj.CP_MonteCarlo(:,2,i));
+                        obj.CP_CNN(i,1) = obj.CP(i,1);
+                        obj.CP_CNN(i,2) = obj.CP(i,2);
+                        obj.CP_MonteCarlo_STD(i) = norm([std(obj.CP_MonteCarlo(:,1,i)) std(obj.CP_MonteCarlo(:,2,i))]);
                         k = k + 1;
                     end
             end
@@ -868,31 +751,6 @@ classdef ForceMap < matlab.mixin.Copyable
         end
         
         function estimate_cp_old(obj)
-            % CP estimation using the the approach from the old fibril
-            % analysis script 'A_nIAFM_analysis_main.m'
-            iRange = find(obj.SelectedCurves);
-            for i=iRange'
-                load = zeros(length(obj.BasedApp{i}),2);
-                unload = zeros(length(obj.Ret{i}),2);
-                for j=1:length(obj.BasedApp{i})
-                    load(end-(j-1),1) = obj.THApp{i}(j);
-                    load(j,2) = obj.BasedApp{i}(j);
-                end
-                for j=1:length(obj.Ret{i})
-                    unload(end-(j-1),1) = obj.HHRet{i}(j);
-                    unload(j,2) = obj.Ret{i}(j);
-                end
-                [obj.LoadOld{i},obj.UnloadOld{i},Position,obj.CP_old(i,2)] = ContactPoint_sort_mr(load,unload);
-                obj.CP_old(i,1) = obj.THApp{i}(Position);
-            end
-%             current = what();
-%             cd(obj.Folder)
-%             savename = sprintf('%s.mat',obj.Name);
-%             save(savename,'obj')
-%             cd(current.path)
-        end
-        
-        function estimate_cp_old_oliver_pharr(obj)
             % CP estimation using the the approach from the old fibril
             % analysis script 'A_nIAFM_analysis_main.m' but without first
             % subtracting the deflection as it is not needed in
@@ -909,10 +767,10 @@ classdef ForceMap < matlab.mixin.Copyable
                     unload(end-(j-1),1) = obj.HHRet{i}(j);
                     unload(j,2) = obj.Ret{i}(j);
                 end
-                [obj.LoadOld{i},obj.UnloadOld{i},Position,obj.CP_OliverPharr(i,2)] = ContactPoint_sort(load,unload);
-                obj.CP_OliverPharr(i,1) = obj.HHApp{i}(Position);
-                obj.CP_OliverPharr_Old(i,1) =obj.CP_OliverPharr(i,1);
-                obj.CP_OliverPharr_Old(i,2) =obj.CP_OliverPharr(i,2);
+                [obj.LoadOld{i},obj.UnloadOld{i},Position,obj.CP(i,2)] = ContactPoint_sort(load,unload);
+                obj.CP(i,1) = obj.HHApp{i}(Position);
+                obj.CP_Old(i,1) =obj.CP(i,1);
+                obj.CP_Old(i,2) =obj.CP(i,2);
             end
 %             current = what();
 %             cd(obj.Folder)
@@ -1036,10 +894,10 @@ classdef ForceMap < matlab.mixin.Copyable
                 else
                     CP = obj.CP(i,:);
                 end
-                tip_h = obj.THApp{i} - CP(1);
+                force = obj.BasedApp{i} - CP(2);
+                tip_h = (obj.HHApp{i} - CP(1)) - force/obj.SpringConstant;
                 tip_h(tip_h < 0) = [];
                 obj.IndDepthHertz(i) = max(tip_h);
-                force = obj.BasedApp{i} - CP(2);
                 % delete everything below curve_percent of the maximum
                 % force
                 force(1:(length(force)-length(tip_h))) = [];
@@ -1112,8 +970,8 @@ classdef ForceMap < matlab.mixin.Copyable
             obj.calculate_reference_slope();
 
             for i=Range'
-                Z(:,i) = obj.HHRet{i} - obj.CP_OliverPharr(i,1);
-                D(:,i) = (obj.BasedRet{i} - obj.CP_OliverPharr(i,2))/obj.SpringConstant;
+                Z(:,i) = obj.HHRet{i} - obj.CP(i,1);
+                D(:,i) = (obj.BasedRet{i} - obj.CP(i,2))/obj.SpringConstant;
                 Zmax(i) = max(Z(:,i));
                 Dmax(i) = max(D(:,i));
                 DCurvePercent = D(D(:,i)>=(1-CurvePercent)*Dmax(i),i);
@@ -1865,8 +1723,8 @@ classdef ForceMap < matlab.mixin.Copyable
             for i=Range'
                 if (obj.FibMask(obj.List2Map(i,1),obj.List2Map(i,2)) == 0) &&...
                         (obj.ExclMask(obj.List2Map(i,1),obj.List2Map(i,2)) == 1)
-                    Z(:,i) = obj.HHRet{i} - obj.CP_OliverPharr(i,1);
-                    D(:,i) = (obj.BasedRet{i} - obj.CP_OliverPharr(i,2))/obj.SpringConstant;
+                    Z(:,i) = obj.HHRet{i} - obj.CP(i,1);
+                    D(:,i) = (obj.BasedRet{i} - obj.CP(i,2))/obj.SpringConstant;
                     Dmax = max(D(:,i));
                     DCurvePercent = D(D(:,i)>=(1-CurvePercent)*Dmax,i);
                     ZCurvePercent = Z(1:length(DCurvePercent),i);
@@ -1985,14 +1843,14 @@ classdef ForceMap < matlab.mixin.Copyable
             title(sprintf('Curve Nr.%i of %s',k,obj.Name))
             hold on
             b = plot(obj.HHApp{k}*10e9,obj.BasedApp{k}*10e9,obj.HHRet{k}*10e9,obj.BasedRet{k}*10e9,'LineWidth',1.5);
-            a = plot(obj.CP_OliverPharr(k,1)*10e9, obj.CP_OliverPharr(k,2)*10e9,'O',...
+            a = plot(obj.CP(k,1)*10e9, obj.CP(k,2)*10e9,'O',...
                 'LineWidth',1.5,...
                 'MarkerSize',7,...
                 'MarkerEdgeColor','k',...
                 'MarkerFaceColor','g');
             try
                 for j=1:100
-                    plot(obj.CP_OliverPharr_MonteCarlo(j,1,k)*10e9, obj.CP_OliverPharr_MonteCarlo(j,2,k)*10e9,'O',...
+                    plot(obj.CP_MonteCarlo(j,1,k)*10e9, obj.CP_MonteCarlo(j,2,k)*10e9,'O',...
                         'LineWidth',0.5,...
                         'MarkerSize',7,...
                         'MarkerEdgeColor','k',...
@@ -2016,7 +1874,7 @@ classdef ForceMap < matlab.mixin.Copyable
             grid on
             grid minor
             dim = [0.4 0.3 0.6 0.6];
-            str = {'     Network Uncertainty',sprintf('Standard Deviation = %.2f nm',obj.CP_OliverPharr_MonteCarlo_STD(k)*1e9)};
+            str = {'     Network Uncertainty',sprintf('Standard Deviation = %.2f nm',obj.CP_MonteCarlo_STD(k)*1e9)};
             annotation('textbox',dim,'String',str,'FitBoxToText','on');
             
             subplot(2,1,2)
@@ -2034,8 +1892,8 @@ classdef ForceMap < matlab.mixin.Copyable
             figure('Name',T,'Units','normalized','Position',[0.5 0.1 0.5 0.8]);
             
             subplot(2,2,1)
-            I = imresize(mat2gray(obj.HeightMap(:,:,1)),[1024 1024]);
-            I = (I*range(obj.HeightMap(:,:,1),'all') + min(obj.HeightMap(:,:,1),[],'all'))*1e9;
+            I = imresize(obj.HeightMap(:,:,1).*1e9,[1024 1024]);
+%             I = (I*range(obj.HeightMap(:,:,1),'all') + min(obj.HeightMap(:,:,1),[],'all'))*1e9;
             imshow(I,'Colormap',hot)
             title(sprintf('%s Plane Fitted Height',obj.Name))
             c1 = colorbar;
@@ -2137,7 +1995,7 @@ classdef ForceMap < matlab.mixin.Copyable
                 legend('Approach','Retract','Location','northwest')
                 xlabel('Head Height [m]')
                 ylabel('vDeflection [m]')
-                drawpoint('Position',[obj.CP_OliverPharr(k,1) obj.CP_OliverPharr(k,2)]);
+                drawpoint('Position',[obj.CP(k,1) obj.CP(k,2)]);
                 
                 if m == 1
                     subplot(2,3,3)

@@ -105,10 +105,10 @@ classdef Experiment < matlab.mixin.Copyable
 %                 obj.grouping_surface_potential_map();
 %             end
             
-            Temp = load('DropoutNet.mat');
-            obj.DropoutNet = Temp.DropoutNet;
-            Temp2 = load('CP_CNN.mat');
-            obj.CP_CNN = Temp2.CP_CNN;
+            Temp = load('DropoutNetFinal.mat');
+            obj.DropoutNet = Temp.MC14_Drop;
+            Temp2 = load('CP_CNN_Final.mat');
+            obj.CP_CNN = Temp2.CNN;
             
             obj.save_experiment();
         end
@@ -273,6 +273,7 @@ classdef Experiment < matlab.mixin.Copyable
             end
             
             if isequal(KeepTip,'No')
+                waitbar(0,h,'deconvoluting cantilever tip...')
                 obj.deconvolute_cantilever_tip;
             elseif isequal(KeepTip,'Yes')
             end
@@ -306,23 +307,13 @@ classdef Experiment < matlab.mixin.Copyable
                 obj.FM{i}.calculate_fib_diam();
                 waitbar(i/NLoop,h,sprintf('Processing Fibril %i/%i\nFinding Contact Point',i,NLoop));
                 if isequal(lower(CPOption),'dropout')
-                    if isequal(lower(EModOption),'hertz')
-                        obj.FM{i}.estimate_cp_cnn(obj.DropoutNet,'Dropout',100);
-                    elseif isequal(lower(EModOption),'oliver')
-                        obj.FM{i}.estimate_cp_oliver_pharr(obj.DropoutNet,'Dropout',100);
-                    end
+                    obj.FM{i}.estimate_cp_cnn(obj.DropoutNet,'Dropout',100);
                 elseif isequal(lower(CPOption),'old')
-                    if isequal(lower(EModOption),'hertz')
-                        obj.FM{i}.estimate_cp_old;
-                    elseif isequal(lower(EModOption),'oliver')
-                        obj.FM{i}.estimate_cp_old_oliver_pharr;
-                    end
+                    obj.FM{i}.estimate_cp_old;
+                elseif isequal(lower(CPOption),'fast')
+                    obj.FM{i}.estimate_cp_cnn(obj.CP_CNN,'Fast');
                 else
-                    if isequal(lower(EModOption),'hertz')
-                        obj.FM{i}.estimate_cp_cnn(obj.CP_CNN,'Fast');
-                    elseif isequal(lower(EModOption),'oliver')
-                        obj.FM{i}.estimate_cp_oliver_pharr(obj.CP_CNN,'Fast');
-                    end
+                    obj.FM{i}.estimate_cp_cnn(obj.CP_CNN,'Fast');
                 end
                 waitbar(i/NLoop,h,sprintf('Processing Fibril %i/%i\nCalculating E-Modulus',i,NLoop));
                 if isequal(lower(EModOption),'hertz')
@@ -340,9 +331,9 @@ classdef Experiment < matlab.mixin.Copyable
             % Assign the Apex curves EMod and exclude +-2.5*IQR and curves
             % from ExclMask
             for i=1:NLoop
-                if isequal(lower(EModOption),'hertz')
+                if isequal(lower(EModOption(1:5)),'hertz')
                     EMods = obj.FM{i}.EModHertz;
-                elseif isequal(lower(EModOption),'oliver')
+                elseif isequal(lower(EModOption(1:6)),'oliver')
                     EMods = obj.FM{i}.EModOliverPharr;
                 else
                     EMods = obj.FM{i}.EModOliverPharr;

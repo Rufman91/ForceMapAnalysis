@@ -306,23 +306,13 @@ classdef Experiment < matlab.mixin.Copyable
                 obj.FM{i}.calculate_fib_diam();
                 waitbar(i/NLoop,h,sprintf('Processing Fibril %i/%i\nFinding Contact Point',i,NLoop));
                 if isequal(lower(CPOption),'dropout')
-                    if isequal(lower(EModOption),'hertz')
-                        obj.FM{i}.estimate_cp_cnn(obj.DropoutNet,'Dropout',100);
-                    elseif isequal(lower(EModOption),'oliver')
-                        obj.FM{i}.estimate_cp_oliver_pharr(obj.DropoutNet,'Dropout',100);
-                    end
+                    obj.FM{i}.estimate_cp_cnn(obj.DropoutNet,'Dropout',100);
                 elseif isequal(lower(CPOption),'old')
-                    if isequal(lower(EModOption),'hertz')
-                        obj.FM{i}.estimate_cp_old;
-                    elseif isequal(lower(EModOption),'oliver')
-                        obj.FM{i}.estimate_cp_old_oliver_pharr;
-                    end
+                    obj.FM{i}.estimate_cp_old;
+                elseif 
+                    obj.FM{i}.estimate_cp_cnn(obj.CP_CNN,'Fast');
                 else
-                    if isequal(lower(EModOption),'hertz')
-                        obj.FM{i}.estimate_cp_cnn(obj.CP_CNN,'Fast');
-                    elseif isequal(lower(EModOption),'oliver')
-                        obj.FM{i}.estimate_cp_oliver_pharr(obj.CP_CNN,'Fast');
-                    end
+                    obj.FM{i}.estimate_cp_cnn(obj.CP_CNN,'Fast');
                 end
                 waitbar(i/NLoop,h,sprintf('Processing Fibril %i/%i\nCalculating E-Modulus',i,NLoop));
                 if isequal(lower(EModOption),'hertz')
@@ -398,8 +388,8 @@ classdef Experiment < matlab.mixin.Copyable
             % also replace data points that lie on the exclusion mask with
             % NaN
             for i=1:N
-                DataOP(i,:) = log(obj.FM{i}.EModOliverPharr(obj.FM{i}.RectApexIndex);
-                DataHS(i,:) = log(obj.FM{i}.EModHertz(obj.FM{i}.RectApexIndex));
+                DataOP(i,:) = obj.FM{i}.EModOliverPharr(obj.FM{i}.RectApexIndex);
+                DataHS(i,:) = obj.FM{i}.EModHertz(obj.FM{i}.RectApexIndex);
                 for j=1:length(obj.FM{i}.RectApexIndex)
                     if DataOP(i,j) > (nanmedian(DataOP(i,:))+2.5*iqr(DataOP(i,:))) || ...
                             DataOP(i,j) < (nanmedian(DataOP(i,:))-2.5*iqr(DataOP(i,:))) || ...

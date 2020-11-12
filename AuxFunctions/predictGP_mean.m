@@ -1,0 +1,10 @@
+function [mu_star,sigma_star] = predictGP_mean(X,X_star,sigma,lambda,F,noise)
+FMean = mean(F);
+FSTD = std(F);
+FNorm = (F - FMean)/FSTD;
+N = length(X);
+K = kernel(X,X,sigma,lambda) + noise*eye(N);
+K_star = kernel(X,X_star,sigma,lambda);
+mu_star_norm = K_star'*(inv(K+1e-6*eye(N))*FNorm);
+sigma_star = kernel(X_star,X_star,sigma,lambda) - K_star'*(K\K_star);
+mu_star = (mu_star_norm*FSTD + FMean);
