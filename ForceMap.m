@@ -637,10 +637,12 @@ classdef ForceMap < matlab.mixin.Copyable
                 if nargin < 3
                     NumPasses = 100; % if not specified in arguments, NumPasses defaults to 100
                 end
+            elseif isequal(RunMode,'Zoom')
+                runmode = 2;
             end
             ImgSize = NeuralNet.Layers(1).InputSize;
             objcell{1,1} = obj;
-            X = obj.CP_batchprep_3_channel(objcell,ImgSize(1),ImgSize(1),[0 0.5 0.9]);
+            X = obj.CP_batchprep_3_channel(objcell,ImgSize(1),ImgSize(1),[0 0.3 0.7]);
             len = size(X,4);
             h = waitbar(0,'Setting up','Name',obj.Name);
             CantHandle = true;
@@ -739,6 +741,48 @@ classdef ForceMap < matlab.mixin.Copyable
                         obj.CP_CNN(i,1) = obj.CP(i,1);
                         obj.CP_CNN(i,2) = obj.CP(i,2);
                         obj.CP_MonteCarlo_STD(i) = norm([std(obj.CP_MonteCarlo(:,1,i)) std(obj.CP_MonteCarlo(:,2,i))]);
+                        k = k + 1;
+                    end
+                    case 2
+                    waitbar(1/2,h,'Predicting CP');
+                        while CantHandle == true
+                            try
+                                Ypredicted = predict(NeuralNet,X,'MiniBatchSize',MiniBatchSize,'Acceleration','auto');
+                                CantHandle = false;
+                                if DynMBSdone == false
+                                    if HasFailed == true
+                                        MiniBatchSize = ceil(MiniBatchSize/4);
+                                    end
+                                    fprintf('Dynamically adjusting MiniBatchSize = %i\n',MiniBatchSize)
+                                    DynMBSdone = true;
+                                end
+                            catch ME
+                                switch ME.identifier
+                                    case 'parallel:gpu:array:OOM'
+                                        MiniBatchSize = ceil(MiniBatchSize*3/4);
+                                        fprintf('Dynamically adjusting MiniBatchSize = %i\n',MiniBatchSize)
+                                        HasFailed = true;
+                                    case 'nnet_cnn:internal:cnn:layer:CustomLayer:PredictErrored'
+                                        MiniBatchSize = ceil(MiniBatchSize*3/4);
+                                        fprintf('Dynamically adjusting MiniBatchSize = %i\n',MiniBatchSize)
+                                        HasFailed = true;
+                                    case 'nnet_cnn:dlAccel:MEXCallFailed'
+                                        MiniBatchSize = ceil(MiniBatchSize*3/4);
+                                        fprintf('Dynamically adjusting MiniBatchSize = %i\n',MiniBatchSize)
+                                        HasFailed = true;
+                                    otherwise
+                                        rethrow(ME)
+                                end
+                            end
+                        end
+                    waitbar(1,h,'Wrapping up');
+                    iRange = find(obj.SelectedCurves);
+                    k = 1;
+                    for i=iRange'
+                        obj.CP_CNN(i,1) = Ypredicted(k,1)*range(obj.HHApp{i})+min(obj.HHApp{i});
+                        obj.CP_CNN(i,2) = Ypredicted(k,2)*range(obj.BasedApp{i})+min(obj.BasedApp{i});
+                        obj.CP(i,1) = obj.CP_CNN(i,1);
+                        obj.CP(i,2) = obj.CP_CNN(i,2);
                         k = k + 1;
                     end
             end
@@ -867,6 +911,8 @@ classdef ForceMap < matlab.mixin.Copyable
         end
         
         function [E,HertzFit] = calculate_e_mod_hertz(obj,CPType,TipShape,curve_percent)
+            % [E,HertzFit] = calculate_e_mod_hertz(obj,CPType,TipShape,curve_percent)
+            %
             % calculate the E modulus of the chosen curves using the CP
             % type chosen in the arguments fitting the lower curve_percent
             % part of the curves
@@ -882,7 +928,7 @@ classdef ForceMap < matlab.mixin.Copyable
                 if isequal(lower(CPType),'cnn')
                     CP = obj.CP(i,:);
                 elseif isequal(lower(CPType),'old')
-                    CP = obj.CP_old(i,:);
+                    CP = obj.CP_Old(i,:);
                 elseif isequal(lower(CPType),'rov')
                     CP = obj.CP_RoV(i,:);
                 elseif isequal(lower(CPType),'gof')
@@ -1887,9 +1933,9 @@ classdef ForceMap < matlab.mixin.Copyable
             
         end
         
-        function show_height_map(obj)
+        function Fig = show_height_map(obj)
             T = sprintf('Height Map of %s\nwith chosen indentation points',obj.Name);
-            figure('Name',T,'Units','normalized','Position',[0.5 0.1 0.5 0.8]);
+            Fig = figure('Name',T,'Units','normalized','Position',[0.5 0.1 0.5 0.8]);
             
             subplot(2,2,1)
             I = imresize(obj.HeightMap(:,:,1).*1e9,[1024 1024]);
@@ -2069,6 +2115,7 @@ classdef ForceMap < matlab.mixin.Copyable
                     return
                 end
                 k = obj.RectApexIndex(m);
+                
                 subplot(2,2,1)
                 I = imresize(mat2gray(obj.HeightMap(:,:,1)),[1024 1024]);
                 imshow(I);

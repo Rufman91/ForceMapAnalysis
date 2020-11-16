@@ -105,10 +105,10 @@ classdef Experiment < matlab.mixin.Copyable
 %                 obj.grouping_surface_potential_map();
 %             end
             
-            Temp = load('DropoutNet.mat');
-            obj.DropoutNet = Temp.DropoutNet;
-            Temp2 = load('CP_CNN.mat');
-            obj.CP_CNN = Temp2.CP_CNN;
+            Temp = load('DropoutNetFinal.mat');
+            obj.DropoutNet = Temp.MC14_Drop;
+            Temp2 = load('CP_CNN_Final.mat');
+            obj.CP_CNN = Temp2.CNN;
             
             obj.save_experiment();
         end
@@ -273,6 +273,7 @@ classdef Experiment < matlab.mixin.Copyable
             end
             
             if isequal(KeepTip,'No')
+                waitbar(0,h,'deconvoluting cantilever tip...')
                 obj.deconvolute_cantilever_tip;
             elseif isequal(KeepTip,'Yes')
             end
@@ -306,11 +307,13 @@ classdef Experiment < matlab.mixin.Copyable
                 obj.FM{i}.calculate_fib_diam();
                 waitbar(i/NLoop,h,sprintf('Processing Fibril %i/%i\nFinding Contact Point',i,NLoop));
                 if isequal(lower(CPOption),'dropout')
-                    obj.FM{i}.estimate_cp_cnn(obj.DropoutNet,'Dropout',100);
+                    obj.FM{i}.estimate_cp_cnn(obj.DropoutNet,'Dropout',30);
                 elseif isequal(lower(CPOption),'old')
                     obj.FM{i}.estimate_cp_old;
-                elseif 
+                elseif isequal(lower(CPOption),'fast')
                     obj.FM{i}.estimate_cp_cnn(obj.CP_CNN,'Fast');
+                elseif isequal(lower(CPOption),'zoom')
+                    obj.FM{i}.estimate_cp_cnn(obj.CP_CNN,'Zoom');
                 else
                     obj.FM{i}.estimate_cp_cnn(obj.CP_CNN,'Fast');
                 end
@@ -322,7 +325,10 @@ classdef Experiment < matlab.mixin.Copyable
                 end
                 waitbar(i/NLoop,h,sprintf('Processing Fibril %i/%i\nWrapping Up And Saving',i,NLoop));
                 
-                obj.FM{i}.show_height_map();
+                if i > 1
+                    close(Fig{i-1})
+                end
+                Fig{i} = obj.FM{i}.show_height_map();
                 obj.FM{i}.save();
                 obj.FMFlag.Analysis(i) = 1;
             end
@@ -330,9 +336,9 @@ classdef Experiment < matlab.mixin.Copyable
             % Assign the Apex curves EMod and exclude +-2.5*IQR and curves
             % from ExclMask
             for i=1:NLoop
-                if isequal(lower(EModOption),'hertz')
+                if isequal(lower(EModOption(1:5)),'hertz')
                     EMods = obj.FM{i}.EModHertz;
-                elseif isequal(lower(EModOption),'oliver')
+                elseif isequal(lower(EModOption(1:6)),'oliver')
                     EMods = obj.FM{i}.EModOliverPharr;
                 else
                     EMods = obj.FM{i}.EModOliverPharr;
@@ -390,17 +396,21 @@ classdef Experiment < matlab.mixin.Copyable
             for i=1:N
                 DataOP(i,:) = obj.FM{i}.EModOliverPharr(obj.FM{i}.RectApexIndex);
                 DataHS(i,:) = obj.FM{i}.EModHertz(obj.FM{i}.RectApexIndex);
+                OutliersOP = isoutlier(DataOP(i,:));
+                OutliersHS = isoutlier(DataHS(i,:));
                 for j=1:length(obj.FM{i}.RectApexIndex)
                     if DataOP(i,j) > (nanmedian(DataOP(i,:))+2.5*iqr(DataOP(i,:))) || ...
                             DataOP(i,j) < (nanmedian(DataOP(i,:))-2.5*iqr(DataOP(i,:))) || ...
-                            obj.FM{i}.ExclMask(obj.FM{i}.List2Map(obj.FM{i}.RectApexIndex(j),1),obj.FM{i}.List2Map(obj.FM{i}.RectApexIndex(j),2)) == 0
+                            obj.FM{i}.ExclMask(obj.FM{i}.List2Map(obj.FM{i}.RectApexIndex(j),1),obj.FM{i}.List2Map(obj.FM{i}.RectApexIndex(j),2)) == 0 ||...
+                            OutliersOP(j) == 1
                         DataOP(i,j) = NaN;
                     elseif DataOP(i,j) < 0
                         DataOP(i,j) = NaN;
                     end
                     if DataHS(i,j) > (nanmedian(DataHS(i,:))+2.5*iqr(DataHS(i,:))) || ...
                             DataHS(i,j) < (nanmedian(DataHS(i,:))-2.5*iqr(DataHS(i,:))) || ...
-                            obj.FM{i}.ExclMask(obj.FM{i}.List2Map(obj.FM{i}.RectApexIndex(j),1),obj.FM{i}.List2Map(obj.FM{i}.RectApexIndex(j),2)) == 0
+                            obj.FM{i}.ExclMask(obj.FM{i}.List2Map(obj.FM{i}.RectApexIndex(j),1),obj.FM{i}.List2Map(obj.FM{i}.RectApexIndex(j),2)) == 0 ||...
+                            OutliersHS(j) == 1
                         DataHS(i,j) = NaN;
                     elseif DataHS(i,j) < 0
                         DataHS(i,j) = NaN;

@@ -637,6 +637,8 @@ classdef ForceMap < matlab.mixin.Copyable
                 if nargin < 3
                     NumPasses = 100; % if not specified in arguments, NumPasses defaults to 100
                 end
+            elseif isequal(RunMode,'Zoom')
+                runmode = 
             end
             ImgSize = NeuralNet.Layers(1).InputSize;
             objcell{1,1} = obj;
@@ -1894,7 +1896,7 @@ classdef ForceMap < matlab.mixin.Copyable
             subplot(2,2,1)
             I = imresize(obj.HeightMap(:,:,1).*1e9,[1024 1024]);
 %             I = (I*range(obj.HeightMap(:,:,1),'all') + min(obj.HeightMap(:,:,1),[],'all'))*1e9;
-            imshow(I,'Colormap',hot)
+            imshow(I,[min(I,[],'all') max(I,[],'all')],'Colormap',hot)
             title(sprintf('%s Plane Fitted Height',obj.Name))
             c1 = colorbar;
             c1.Label.String = 'Height [nm]';
