@@ -49,7 +49,7 @@ classdef Experiment < matlab.mixin.Copyable
             prompt = {'Enter Number of tested specimen','Enter number of measurements per specimen','How would you like to name the Experiment?'};
             dlgtitle = 'Experiment Layout';
             dims = [1 35];
-            definput = {'20','2','MGO-Glycation'};
+            definput = {'10','1','YourExperimentName'};
             answer = inputdlg(prompt,dlgtitle,dims,definput);
             
             
@@ -93,9 +93,10 @@ classdef Experiment < matlab.mixin.Copyable
                     obj.SurfacePotentialMapNames{i} = obj.SPM{i}.Name;
                 end
             end
-            obj.FMFlag.Analysis = zeros(N,1);
+            obj.FMFlag.FibrilAnalysis = zeros(N,1);
+            obj.FMFlag.Preprocessed = zeros(N,1);
             obj.FMFlag.Grouping = 0;
-            obj.SPMFlag.Analysis = zeros(N,1);
+            obj.SPMFlag.FibrilAnalysis = zeros(N,1);
             obj.SPMFlag.Grouping = 0;
             obj.CantileverTipFlag = 0;
             
@@ -116,7 +117,7 @@ classdef Experiment < matlab.mixin.Copyable
         function add_data(obj)
             
             % create save copy to restore if function produces errors
-            SaveCopy = obj;
+            SaveCopy = obj.copy;
             
             try
             % Force Maps + KPFM or only one of them?
@@ -175,9 +176,10 @@ classdef Experiment < matlab.mixin.Copyable
                     obj.SurfacePotentialMapNames{NOld+i} = obj.SPM{NOld+i}.Name;
                 end
             end
-            obj.FMFlag.Analysis(NOld+1:NOld+N) = zeros(N,1);
+            obj.FMFlag.FibrilAnalysis(NOld+1:NOld+N) = zeros(N,1);
+            obj.FMFlag.Preprocessed(NOld+1:NOld+N) = zeros(N,1);
             obj.FMFlag.Grouping = 0;
-            obj.SPMFlag.Analysis(NOld+1:NOld+N) = zeros(N,1);
+            obj.SPMFlag.FibrilAnalysis(NOld+1:NOld+N) = zeros(N,1);
             obj.SPMFlag.Grouping = 0;
             
 %             if WhichFiles == 2 || WhichFiles == 0
@@ -187,7 +189,7 @@ classdef Experiment < matlab.mixin.Copyable
 %             end
             
             obj.save_experiment();
-            catch
+            catch ME
                 obj = SaveCopy;
                 disp('data adding failed. restored original experiment object')
             end
@@ -229,6 +231,50 @@ classdef Experiment < matlab.mixin.Copyable
     methods
         % methods for sequential data analysis mostly looping over child-classes methods
         
+        function preprocessing(obj)
+            % preprocessing(obj)
+            % 
+            % bare minimum of preprocessing steps to prepare data for
+            % custom further data processing. (.base_and_tilt(),)
+            
+            h = waitbar(0,'setting up','Units','normalized','Position',[0.4 0.3 0.2 0.1]);
+            NLoop = length(obj.ForceMapNames);
+            if sum(obj.FMFlag.Preprocessed) >= 1
+                KeepFlagged = questdlg(sprintf('Some maps have been processed already.\nDo you want to skip them and keep old results?'),...
+                    'Processing Options',...
+                    'Yes',...
+                    'No',...
+                    'No');
+            else
+                KeepFlagged = 'No';
+            end
+            
+            for i=1:NLoop
+                if isequal(KeepFlagged,'Yes') && obj.FMFlag.Preprocessed(i) == 1
+                    continue
+                end
+                obj.FM{i}.create_and_level_height_map();
+            end
+            
+            
+            % Main loop for base and tilt
+            for i=1:NLoop
+                if isequal(KeepFlagged,'Yes') && obj.FMFlag.Preprocessed(i) == 1
+                    continue
+                end
+                waitbar(i/NLoop,h,sprintf('Preprocessing ForceMap %i/%i\nFitting Base Lines',i,NLoop));
+                obj.FM{i}.base_and_tilt('linear');
+                waitbar(i/NLoop,h,sprintf('Preprocessing ForceMap %i/%i\nWrapping Up And Saving',i,NLoop));
+                
+                obj.FM{i}.save();
+                obj.FMFlag.Preprocessed(i) = 1;
+            end
+            
+            obj.save_experiment;
+            
+            close(h);
+        end
+        
         function force_map_analysis_fibril(obj,CPOption,EModOption)
             % force_map_analysis_fibril(obj,CPOption,EModOption)
             %
@@ -252,7 +298,7 @@ classdef Experiment < matlab.mixin.Copyable
             
             h = waitbar(0,'setting up','Units','normalized','Position',[0.4 0.3 0.2 0.1]);
             NLoop = length(obj.ForceMapNames);
-            if sum(obj.FMFlag.Analysis) >= 1
+            if sum(obj.FMFlag.FibrilAnalysis) >= 1
                 KeepFlagged = questdlg(sprintf('Some maps have been processed already.\nDo you want to skip them and keep old results?'),...
                     'Processing Options',...
                     'Yes',...
@@ -284,7 +330,7 @@ classdef Experiment < matlab.mixin.Copyable
                 'Yes',...
                 'No','No');
             for i=1:NLoop
-                if isequal(KeepFlagged,'Yes') && obj.FMFlag.Analysis(i) == 1
+                if isequal(KeepFlagged,'Yes') && obj.FMFlag.FibrilAnalysis(i) == 1
                     continue
                 end
                 obj.FM{i}.create_and_level_height_map();
@@ -299,7 +345,7 @@ classdef Experiment < matlab.mixin.Copyable
             % Main loop for contact point estimation, Fibril Diameter and
             % Fibril E-Modulus calculation
             for i=1:NLoop
-                if isequal(KeepFlagged,'Yes') && obj.FMFlag.Analysis(i) == 1
+                if isequal(KeepFlagged,'Yes') && obj.FMFlag.FibrilAnalysis(i) == 1
                     continue
                 end
                 waitbar(i/NLoop,h,sprintf('Processing Fibril %i/%i\nFitting Base Line',i,NLoop));
@@ -328,9 +374,9 @@ classdef Experiment < matlab.mixin.Copyable
                 if i > 1
                     close(Fig{i-1})
                 end
-                Fig{i} = obj.FM{i}.show_height_map();
+                Fig{i} = obj.FM{i}.show_analyzed_fibril();
                 obj.FM{i}.save();
-                obj.FMFlag.Analysis(i) = 1;
+                obj.FMFlag.FibrilAnalysis(i) = 1;
             end
             
             % Assign the Apex curves EMod and exclude +-2.5*IQR and curves
@@ -1124,6 +1170,28 @@ classdef Experiment < matlab.mixin.Copyable
             plot(1:30,obj.CantileverTip.ProjArea(1:30))
             xlabel('Typical Indentation Depth [nm]')
             ylabel('Projected Area [m^2]')
+        end
+        
+        function mapsData = andreas_script_conversion(obj)
+            % mapsData = andreas_script_conversion(obj)
+            %
+            % Simple pipeline to funnel data from Experiment() ForceMaps()
+            % to the mapsData struct needed in Andreas Rohatschecks
+            % 'B_Select_4bttn_V2.m' script
+            
+            
+            % Fill the relevant parts of the struct
+            for i=1:obj.NumFiles
+                mapsData(i).MapName = obj.FM{i}.Name;
+                tempload = cell(obj.FM{i}.NCurves,1);
+                tempunload = cell(obj.FM{i}.NCurves,1);
+                for j=1:obj.FM{i}.NCurves
+                    tempload{j,1} = [-obj.FM{i}.HHApp{j} obj.FM{i}.App{j}./obj.FM{i}.SpringConstant];
+                    tempunload{j,1} = [-obj.FM{i}.HHRet{j} obj.FM{i}.Ret{j}./obj.FM{i}.SpringConstant];
+                end
+                mapsData(i).load_data = tempload;
+                mapsData(i).unload_data = tempunload;
+            end
         end
         
     end

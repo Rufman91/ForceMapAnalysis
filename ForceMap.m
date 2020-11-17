@@ -24,7 +24,6 @@ classdef ForceMap < matlab.mixin.Copyable
         
         Name            % name of the force map. taken as the name of the folder, containing the .csv files
         Folder          % location of the .csv files of the force map
-        Header          % header properties taken from the JPK force map container file
         NCurves         % number of curves on the force map
         NumProfiles
         NumPoints
@@ -387,10 +386,25 @@ classdef ForceMap < matlab.mixin.Copyable
                 obj.HHApp{i} = -TempHHApp;
                 obj.App{i} = obj.App{i}.*obj.SpringConstant;
                 clear TempHHApp
-            
+                
+                % Below there is a workaround for jpk-force-map files,
+                % where the capacitiveSensorHeight is for some reason
+                % written into an additional segment folder '2' instead of
+                % '1'... I have genuinely no idea what is going on there,
+                % but this error has made files unreadable in the past
+                
                 SegmentHeaderFileDirectory = fullfile(TempFolder,'index',string((i-1)),'segments','1','segment-header.properties');
+                FileMissing(1) = isfile(SegmentHeaderFileDirectory);
                 HeightDataDirectory = fullfile(TempFolder,'index',string((i-1)),'segments','1','channels','capacitiveSensorHeight.dat');
+                FileMissing(2) = isfile(HeightDataDirectory);
                 vDefDataDirectory = fullfile(TempFolder,'index',string((i-1)),'segments','1','channels','vDeflection.dat');
+                FileMissing(3) = isfile(vDefDataDirectory);
+                
+                if sum(FileMissing) ~= 3
+                    SegmentHeaderFileDirectory = fullfile(TempFolder,'index',string((i-1)),'segments','2','segment-header.properties');
+              	    HeightDataDirectory = fullfile(TempFolder,'index',string((i-1)),'segments','2','channels','capacitiveSensorHeight.dat');
+                    vDefDataDirectory = fullfile(TempFolder,'index',string((i-1)),'segments','2','channels','vDeflection.dat');
+                end
             
                 [TempHHRet,obj.Ret{i}]=...
                 obj.writedata(HeaderFileDirectory,SegmentHeaderFileDirectory,...
@@ -1933,7 +1947,7 @@ classdef ForceMap < matlab.mixin.Copyable
             
         end
         
-        function Fig = show_height_map(obj)
+        function Fig = show_analyzed_fibril(obj)
             T = sprintf('Height Map of %s\nwith chosen indentation points',obj.Name);
             Fig = figure('Name',T,'Units','normalized','Position',[0.5 0.1 0.5 0.8]);
             
@@ -1970,6 +1984,28 @@ classdef ForceMap < matlab.mixin.Copyable
             EM = imresize(mat2gray(log(obj.EModMapOliverPharr(:,:,1))),[1024 1024]);
             imshow(EM)
             title('E-Modulus Map')
+        end
+        
+        function show_height_map(obj)
+            T = sprintf('Height Map of %s',obj.Name);
+            Fig = figure('Name',T,'Units','normalized','Position',[0.5 0.1 0.5 0.8]);
+            
+            subplot(2,1,1)
+            I = obj.HeightMap(:,:,1).*1e9;
+%             I = (I*range(obj.HeightMap(:,:,1),'all') + min(obj.HeightMap(:,:,1),[],'all'))*1e9;
+            imshow(I,[min(I,[],'all') max(I,[],'all')],'Colormap',hot)
+            title(sprintf('%s Plane Fitted Height',obj.Name))
+            c1 = colorbar;
+            c1.Label.String = 'Height [nm]';
+            
+            subplot(2,1,2)
+            I = imresize(obj.HeightMap(:,:,1).*1e9,[1024 1024]);
+%             I = (I*range(obj.HeightMap(:,:,1),'all') + min(obj.HeightMap(:,:,1),[],'all'))*1e9;
+            imshow(I,[min(I,[],'all') max(I,[],'all')],'Colormap',hot)
+            title(sprintf('%s Plane Fitted Height Resized',obj.Name))
+            c1 = colorbar;
+            c1.Label.String = 'Height [nm]';
+            
         end
         
         function show_e_mod_map(obj)
