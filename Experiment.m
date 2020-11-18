@@ -1172,12 +1172,14 @@ classdef Experiment < matlab.mixin.Copyable
             ylabel('Projected Area [m^2]')
         end
         
-        function mapsData = andreas_script_conversion(obj)
-            % mapsData = andreas_script_conversion(obj)
+        function [mapsData,datadir,originname,num_of_files,...
+    num_of_force_curves] = andreas_script_conversion(obj)
+            % [mapsData,datadir,originname,num_of_files,...
+            %   num_of_force_curves] = andreas_script_conversion(obj)
             %
             % Simple pipeline to funnel data from Experiment() ForceMaps()
             % to the mapsData struct needed in Andreas Rohatschecks
-            % 'B_Select_4bttn_V2.m' script
+            % 'B_Select_4bttn_V2.m' script to replace A_Read.m
             
             
             % Fill the relevant parts of the struct
@@ -1191,7 +1193,11 @@ classdef Experiment < matlab.mixin.Copyable
                 end
                 mapsData(i).load_data = tempload;
                 mapsData(i).unload_data = tempunload;
+                num_of_force_curves(i,1) = obj.FM{i}.NCurves; 
+                originname{i,1} = obj.ForceMapNames(i);
             end
+            datadir = obj.ExperimentFolder;
+            num_of_files = obj.NumFiles;
         end
         
     end
