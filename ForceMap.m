@@ -60,8 +60,8 @@ classdef ForceMap < matlab.mixin.Copyable
         CP_GoF          % CP estimated with the goodness of fit method
         CP_Combo        % CP estimated with a combination of the GoF and RoV methods
         CPComboCurve    % combination of the various metrics for contact point estimation
-        CP_CNN          % CP estimated with a conv. neural network, eighter in single pass
-                        % or with the Monte Carlo Method
+        CP_CNN          % CP estimated with a conv. neural network in a single pass
+        CP_Dropout      % CP estimated with a conv. neural network in multiple Monte Carlo Dropout passes
         CP_MonteCarlo   % All predictions from the multiple inference steps done in 
                         % the monte carlo method
         CP_MonteCarlo_STD % Standard deviation of CP_MonteCarlo
@@ -71,6 +71,7 @@ classdef ForceMap < matlab.mixin.Copyable
         LoadOld         % comes from same script as CP_old
         UnloadOld       % comes from same script as CP_old
         Man_CP          % manually chosen contact point
+        CPFlag          % Struct containing booleans to indicate if a certain CP-type has been estimated
         
     end
     properties
@@ -422,6 +423,15 @@ classdef ForceMap < matlab.mixin.Copyable
             
             obj.SelectedCurves = ones(obj.NCurves,1);
             
+            obj.CPFlag.RoV = 0;
+            obj.CPFlag.GoF = 0;
+            obj.CPFlag.Combo = 0;
+            obj.CPFlag.CNN = 0;
+            obj.CPFlag.CNNZoom = 0;
+            obj.CPFlag.Dropout = 0;
+            obj.CPFlag.Manual = 0;
+            obj.CPFlag.Old = 0;
+            
             cd(current.path);
             current = what();
             cd(obj.Folder)
@@ -565,6 +575,7 @@ classdef ForceMap < matlab.mixin.Copyable
                 obj.CP = obj.CP_RoV;
             end
             close(h)
+            obj.CPFlag.RoV = 1;
 %             current = what();
 %             cd(obj.Folder)
 %             savename = sprintf('%s.mat',obj.Name);
@@ -577,7 +588,7 @@ classdef ForceMap < matlab.mixin.Copyable
             Range = find(obj.SelectedCurves);
             h = waitbar(0,'Setting up...','Name',obj.Name);
             for i=Range'
-                Based = obj.BasedApp;
+                Based = obj.BasedApp{i};
                 THApp = obj.HHApp{i} - obj.BasedApp{i}/obj.SpringConstant;
                 smoothx = smoothdata(THApp);
                 smoothy = smoothdata(Based);
@@ -600,6 +611,7 @@ classdef ForceMap < matlab.mixin.Copyable
             end
             obj.CP = obj.CP_GoF;
             close(h)
+            obj.CPFlag.GoF = 1;
 %             current = what();
 %             cd(obj.Folder)
 %             savename = sprintf('%s.mat',obj.Name);
@@ -616,6 +628,8 @@ classdef ForceMap < matlab.mixin.Copyable
                 [~,CPidx] = max(obj.CPComboCurve{i});
                 obj.CP_Combo(i,:) = [obj.HHApp{i}(CPidx) obj.BasedApp{i}(CPidx)];
             end
+            
+            obj.CPFlag.Combo = 1;
 %             current = what();
 %             cd(obj.Folder)
 %             savename = sprintf('%s.mat',obj.Name);
@@ -706,6 +720,7 @@ classdef ForceMap < matlab.mixin.Copyable
                         obj.CP(i,2) = obj.CP_CNN(i,2);
                         k = k + 1;
                     end
+                    obj.CPFlag.CNN = 1;
                 case 1
                     obj.YDropPred = zeros(NumPasses,2,len);
                     for j=1:NumPasses
@@ -752,43 +767,44 @@ classdef ForceMap < matlab.mixin.Copyable
                         obj.CP_MonteCarlo(:,2,i) = obj.YDropPred(:,2,k)*range(obj.BasedApp{i})+min(obj.BasedApp{i});
                         obj.CP(i,1) = mean(obj.CP_MonteCarlo(:,1,i));
                         obj.CP(i,2) = mean(obj.CP_MonteCarlo(:,2,i));
-                        obj.CP_CNN(i,1) = obj.CP(i,1);
-                        obj.CP_CNN(i,2) = obj.CP(i,2);
+                        obj.CP_Dropout(i,1) = obj.CP(i,1);
+                        obj.CP_Dropout(i,2) = obj.CP(i,2);
                         obj.CP_MonteCarlo_STD(i) = norm([std(obj.CP_MonteCarlo(:,1,i)) std(obj.CP_MonteCarlo(:,2,i))]);
                         k = k + 1;
                     end
-                    case 2
+                    obj.CPFlag.Dropout = 1;
+                case 2
                     waitbar(1/2,h,'Predicting CP');
-                        while CantHandle == true
-                            try
-                                Ypredicted = predict(NeuralNet,X,'MiniBatchSize',MiniBatchSize,'Acceleration','auto');
-                                CantHandle = false;
-                                if DynMBSdone == false
-                                    if HasFailed == true
-                                        MiniBatchSize = ceil(MiniBatchSize/4);
-                                    end
+                    while CantHandle == true
+                        try
+                            Ypredicted = predict(NeuralNet,X,'MiniBatchSize',MiniBatchSize,'Acceleration','auto');
+                            CantHandle = false;
+                            if DynMBSdone == false
+                                if HasFailed == true
+                                    MiniBatchSize = ceil(MiniBatchSize/4);
+                                end
+                                fprintf('Dynamically adjusting MiniBatchSize = %i\n',MiniBatchSize)
+                                DynMBSdone = true;
+                            end
+                        catch ME
+                            switch ME.identifier
+                                case 'parallel:gpu:array:OOM'
+                                    MiniBatchSize = ceil(MiniBatchSize*3/4);
                                     fprintf('Dynamically adjusting MiniBatchSize = %i\n',MiniBatchSize)
-                                    DynMBSdone = true;
-                                end
-                            catch ME
-                                switch ME.identifier
-                                    case 'parallel:gpu:array:OOM'
-                                        MiniBatchSize = ceil(MiniBatchSize*3/4);
-                                        fprintf('Dynamically adjusting MiniBatchSize = %i\n',MiniBatchSize)
-                                        HasFailed = true;
-                                    case 'nnet_cnn:internal:cnn:layer:CustomLayer:PredictErrored'
-                                        MiniBatchSize = ceil(MiniBatchSize*3/4);
-                                        fprintf('Dynamically adjusting MiniBatchSize = %i\n',MiniBatchSize)
-                                        HasFailed = true;
-                                    case 'nnet_cnn:dlAccel:MEXCallFailed'
-                                        MiniBatchSize = ceil(MiniBatchSize*3/4);
-                                        fprintf('Dynamically adjusting MiniBatchSize = %i\n',MiniBatchSize)
-                                        HasFailed = true;
-                                    otherwise
-                                        rethrow(ME)
-                                end
+                                    HasFailed = true;
+                                case 'nnet_cnn:internal:cnn:layer:CustomLayer:PredictErrored'
+                                    MiniBatchSize = ceil(MiniBatchSize*3/4);
+                                    fprintf('Dynamically adjusting MiniBatchSize = %i\n',MiniBatchSize)
+                                    HasFailed = true;
+                                case 'nnet_cnn:dlAccel:MEXCallFailed'
+                                    MiniBatchSize = ceil(MiniBatchSize*3/4);
+                                    fprintf('Dynamically adjusting MiniBatchSize = %i\n',MiniBatchSize)
+                                    HasFailed = true;
+                                otherwise
+                                    rethrow(ME)
                             end
                         end
+                    end
                     waitbar(1,h,'Wrapping up');
                     iRange = find(obj.SelectedCurves);
                     k = 1;
@@ -799,6 +815,7 @@ classdef ForceMap < matlab.mixin.Copyable
                         obj.CP(i,2) = obj.CP_CNN(i,2);
                         k = k + 1;
                     end
+                    obj.CPFlag.CNNZoom = 1;
             end
             close(h)
 %             current = what();
@@ -825,11 +842,13 @@ classdef ForceMap < matlab.mixin.Copyable
                     unload(end-(j-1),1) = obj.HHRet{i}(j);
                     unload(j,2) = obj.Ret{i}(j);
                 end
-                [obj.LoadOld{i},obj.UnloadOld{i},Position,obj.CP(i,2)] = ContactPoint_sort(load,unload);
+                [obj.LoadOld{i},obj.UnloadOld{i},Position,vDef] = ContactPoint_sort(load,unload);
+                obj.CP(i,2) = vDef*obj.SpringConstant;
                 obj.CP(i,1) = obj.HHApp{i}(Position);
                 obj.CP_Old(i,1) =obj.CP(i,1);
                 obj.CP_Old(i,2) =obj.CP(i,2);
             end
+            obj.CPFlag.Old = 1;
 %             current = what();
 %             cd(obj.Folder)
 %             savename = sprintf('%s.mat',obj.Name);
@@ -917,6 +936,7 @@ classdef ForceMap < matlab.mixin.Copyable
                 end
             end
             close(fig);
+            obj.CPFlag.Manual = 1;
             %             current = what();
             %             cd(obj.Folder)
             %             savename = sprintf('%s.mat',obj.Name);
@@ -1894,48 +1914,117 @@ classdef ForceMap < matlab.mixin.Copyable
        % methods for visualization, plotting, statistics and quality control 
         
         
-        function show_random_curve_HHvsForce(obj,k)
+        function fig = show_curve_HHvsForce(obj,ZoomMult,k)
             if nargin < 2
-                k = randi(obj.NCurves);
+                jRange = find(obj.SelectedCurves);
+                k = jRange(randi(length(jRange)));
+                ZoomMult = 0.5;
             end
-            figure('Units','normalized','Position',[0.6 0.1 0.4 0.8],'Color','white')
+            if nargin < 3
+                jRange = find(obj.SelectedCurves);
+                k = jRange(randi(length(jRange)));
+            end
+            fig = figure('Units','normalized',...
+                'Position',[0.6 0.1 0.4 0.8],...
+                'Color','white',...
+                'Name',obj.Name);
+            
             subplot(2,1,1)
             title(sprintf('Curve Nr.%i of %s',k,obj.Name))
             hold on
-            b = plot(obj.HHApp{k}*10e9,obj.BasedApp{k}*10e9,obj.HHRet{k}*10e9,obj.BasedRet{k}*10e9,'LineWidth',1.5);
-            a = plot(obj.CP(k,1)*10e9, obj.CP(k,2)*10e9,'O',...
-                'LineWidth',1.5,...
-                'MarkerSize',7,...
-                'MarkerEdgeColor','k',...
-                'MarkerFaceColor','g');
-            try
-                for j=1:100
-                    plot(obj.CP_MonteCarlo(j,1,k)*10e9, obj.CP_MonteCarlo(j,2,k)*10e9,'O',...
-                        'LineWidth',0.5,...
-                        'MarkerSize',7,...
-                        'MarkerEdgeColor','k',...
-                        'MarkerFaceColor','y');
-                end
-            catch
-            end
-            try
-                plot(obj.Man_CP(k,1)*10e9, obj.Man_CP(k,2)*10e9,'O',...
+            plot(obj.HHApp{k}*1e9,obj.BasedApp{k}*1e9,obj.HHRet{k}*1e9,obj.BasedRet{k}*1e9,'LineWidth',1.5);
+            Legends = {'Approach','Retract'};
+            
+            if obj.CPFlag.Manual == 1
+                plot(obj.Man_CP(k,1)*1e9, obj.Man_CP(k,2)*1e9,'O',...
                 'LineWidth',1.5,...
                 'MarkerSize',7,...
                 'MarkerEdgeColor','k',...
                 'MarkerFaceColor','r');
-            catch
+                Legends{end+1} = 'Manual CP';
+                xlim([(obj.HHApp{k}(1)+ZoomMult*(obj.Man_CP(k,1) - obj.HHApp{k}(1)))*1e9 inf]);
             end
-            legend('Approach','Retract','Mean Prediction','Dropout Predictions','Location','northwest');
-            uistack(b,'top');
-            uistack(a,'top');
-            xlabel('Z-Displacement [nm]');
-            ylabel('Deflection [nm]');
+            if obj.CPFlag.RoV == 1
+                plot(obj.CP_RoV(k,1)*1e9, obj.CP_RoV(k,2)*1e9,'O',...
+                'LineWidth',1.5,...
+                'MarkerSize',7,...
+                'MarkerEdgeColor','k',...
+                'MarkerFaceColor','b');
+                Legends{end+1} = 'CP RoV';
+                xlim([(obj.HHApp{k}(1)+ZoomMult*(obj.CP_RoV(k,1) - obj.HHApp{k}(1)))*1e9 inf]);
+            end
+            if obj.CPFlag.GoF == 1
+                plot(obj.CP_GoF(k,1)*1e9, obj.CP_GoF(k,2)*1e9,'O',...
+                'LineWidth',1.5,...
+                'MarkerSize',7,...
+                'MarkerEdgeColor','k',...
+                'MarkerFaceColor','c');
+                Legends{end+1} = 'CP GoF';
+                xlim([(obj.HHApp{k}(1)+ZoomMult*(obj.CP_GoF(k,1) - obj.HHApp{k}(1)))*1e9 inf]);
+            end
+            if obj.CPFlag.Combo == 1
+                plot(obj.CP_Combo(k,1)*1e9, obj.CP_Combo(k,2)*1e9,'O',...
+                'LineWidth',1.5,...
+                'MarkerSize',7,...
+                'MarkerEdgeColor','k',...
+                'MarkerFaceColor','m');
+                Legends{end+1} = 'CP Combo';
+                xlim([(obj.HHApp{k}(1)+ZoomMult*(obj.CP_Combo(k,1) - obj.HHApp{k}(1)))*1e9 inf]);
+            end
+            if obj.CPFlag.CNN == 1
+                plot(obj.CP_CNN(k,1)*1e9, obj.CP_CNN(k,2)*1e9,'O',...
+                'LineWidth',1.5,...
+                'MarkerSize',7,...
+                'MarkerEdgeColor','k',...
+                'MarkerFaceColor','y');
+                Legends{end+1} = 'CP CNN';
+                xlim([(obj.HHApp{k}(1)+ZoomMult*(obj.CP_CNN(k,1) - obj.HHApp{k}(1)))*1e9 inf]);
+            end
+            if obj.CPFlag.CNNZoom == 1
+                plot(obj.CP_CNNZoom(k,1)*1e9, obj.CP_CNNZoom(k,2)*1e9,'O',...
+                'LineWidth',1.5,...
+                'MarkerSize',7,...
+                'MarkerEdgeColor','k',...
+                'MarkerFaceColor',[0.8500 0.3250 0.0980]);
+                Legends{end+1} = 'CP CNNZoom';
+                xlim([(obj.HHApp{k}(1)+ZoomMult*(obj.CP_CNNZoom(k,1) - obj.HHApp{k}(1)))*1e9 inf]);
+            end
+            if obj.CPFlag.Old == 1
+                plot(obj.CP_Old(k,1)*1e9, obj.CP_Old(k,2)*1e9,'O',...
+                'LineWidth',1.5,...
+                'MarkerSize',7,...
+                'MarkerEdgeColor','k',...
+                'MarkerFaceColor',[0.9290 0.6940 0.1250]);
+                Legends{end+1} = 'CP SD6';
+                xlim([(obj.HHApp{k}(1)+ZoomMult*(obj.CP_Old(k,1) - obj.HHApp{k}(1)))*1e9 inf]);
+            end
+            if obj.CPFlag.Dropout == 1
+                X = obj.CP_Dropout(k,1)*1e9;
+                Y = obj.CP_Dropout(k,2)*1e9;
+                XSTD = std(obj.CP_MonteCarlo(:,1,k))*1e9;
+                YSTD = std(obj.CP_MonteCarlo(:,2,k))*1e9;
+                plot(X, Y,'O',...
+                'LineWidth',1.5,...
+                'MarkerSize',7,...
+                'MarkerEdgeColor','k',...
+                'MarkerFaceColor',[0.4940 0.1840 0.5560]);
+                plot([X-XSTD X+XSTD],[Y Y],'-+',[X X],[Y-YSTD Y+YSTD],'-+',...
+                'LineWidth',1.5,...
+                'Color',[0.4940 0.1840 0.5560]);
+                Legends{end+1} = 'CP Dropout';
+                Legends{end+1} = sprintf('Dropout Uncertainty %.2f nm',obj.CP_MonteCarlo_STD(k)*1e9);
+                xlim([(obj.HHApp{k}(1)+ZoomMult*(obj.CP_Dropout(k,1) - obj.HHApp{k}(1)))*1e9 inf]);
+            end
+            
+            legend(Legends,...
+                'Location','northwest');
+            xlabel('Cantilever Head Height [nm]');
+            ylabel('vDeflection-Force [N]');
             grid on
             grid minor
-            dim = [0.4 0.3 0.6 0.6];
-            str = {'     Network Uncertainty',sprintf('Standard Deviation = %.2f nm',obj.CP_MonteCarlo_STD(k)*1e9)};
-            annotation('textbox',dim,'String',str,'FitBoxToText','on');
+%             dim = [0.4 0.3 0.6 0.6];
+%             str = {'     Network Uncertainty',sprintf('Standard Deviation = %.2f nm',obj.CP_MonteCarlo_STD(k)*1e9)};
+%             annotation('textbox',dim,'String',str,'FitBoxToText','on');
             
             subplot(2,1,2)
             I = obj.HeightMap;
@@ -1945,6 +2034,25 @@ classdef ForceMap < matlab.mixin.Copyable
             hold on;
             plot(obj.List2Map(k,2),obj.List2Map(k,1), 'r+', 'MarkerSize', 10, 'LineWidth', 2);
             
+            NextK = drawpoint();
+            MapPos1 = round(NextK.Position(2));
+            MapPos2 = round(NextK.Position(1));
+            if MapPos1 == 0
+                MapPos1 = 1;
+            elseif MapPos1 > size(obj.Map2List,1)
+                MapPos1 = size(obj.Map2List,1);
+            end
+            if MapPos2 == 0
+                MapPos2 = 1;
+            elseif MapPos2 > size(obj.Map2List,2)
+                MapPos2 = size(obj.Map2List,2);
+            end
+            k = obj.Map2List(MapPos1,MapPos2);
+            close(fig)
+            try
+                obj.show_curve_HHvsForce(ZoomMult,k);
+            catch
+            end
         end
         
         function Fig = show_analyzed_fibril(obj)

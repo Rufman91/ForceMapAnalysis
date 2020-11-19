@@ -1188,8 +1188,8 @@ classdef Experiment < matlab.mixin.Copyable
                 tempload = cell(obj.FM{i}.NCurves,1);
                 tempunload = cell(obj.FM{i}.NCurves,1);
                 for j=1:obj.FM{i}.NCurves
-                    tempload{j,1} = [-obj.FM{i}.HHApp{j} obj.FM{i}.App{j}./obj.FM{i}.SpringConstant];
-                    tempunload{j,1} = [-obj.FM{i}.HHRet{j} obj.FM{i}.Ret{j}./obj.FM{i}.SpringConstant];
+                    tempload{j,1} = [-obj.FM{i}.HHApp{j} obj.FM{i}.App{j}];
+                    tempunload{j,1} = [-obj.FM{i}.HHRet{j} obj.FM{i}.Ret{j}];
                 end
                 mapsData(i).load_data = tempload;
                 mapsData(i).unload_data = tempunload;
