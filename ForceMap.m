@@ -61,10 +61,12 @@ classdef ForceMap < matlab.mixin.Copyable
         CP_Combo        % CP estimated with a combination of the GoF and RoV methods
         CPComboCurve    % combination of the various metrics for contact point estimation
         CP_CNN          % CP estimated with a conv. neural network in a single pass
+        CP_CNNZoom
         CP_Dropout      % CP estimated with a conv. neural network in multiple Monte Carlo Dropout passes
         CP_MonteCarlo   % All predictions from the multiple inference steps done in 
                         % the monte carlo method
         CP_MonteCarlo_STD % Standard deviation of CP_MonteCarlo
+        MiniBatchSize % Optimal MiniBatchSize for CNN-prediction for current system environment
         DeltaE = {}     %
         YDropPred       % Contains the Dropoutpredictions for every curve in the forcemap
         CP_Old          % contact point estimation from old script 'A_nIAFM_analysis_main'
@@ -114,138 +116,13 @@ classdef ForceMap < matlab.mixin.Copyable
         EModHertz_Old
         EModHertz_RoV
     end
+    properties
+        % System specifications and variables. Used for runtime opt.
+        HostOS
+        HostName
+    end
     methods
         % Main methods of the class
-
-        %%%%% this constructor method version goes together with Martin
-        %%%%% Handelhausers .py-script for .jpk-force-map -> .cvs
-        %%%%% conversion
-%         function obj = ForceMap(mapfilepath,mapname)
-%             %%% Constructor of the class
-%             
-%             % Specify the folder where the files live. And import them.
-%             % Also get curent folder and return to it after import of
-%             % files.
-%             % Assigns the properties that can be found in the jpk-file
-%             % already
-%             
-%             current = what();
-%             
-%             % determine if ForceMap is given a loadpath for existing .mat
-%             if nargin > 0
-%                 cd(mapfilepath);
-%                 file = dir(sprintf('%s.mat',mapname));
-%                 load(file.name);
-%                 cd(current.path);
-%                 msg = sprintf('loading %s',obj.Name);
-%                 disp(msg);
-%                 disp('loading successfull')
-%                 return
-%             end
-%             
-%             quest = 'Do you want to load an already existing .mat file of the force map?';
-%             answer = questdlg(quest,'Load map...','...from .mat-file','...from .cvs-folder','...from .cvs-folder');
-%             if isequal(answer, '...from .mat-file')
-%                 [mapfile, mapfilepath] = uigetfile();
-%                 cd(mapfilepath);
-%                 load(mapfile,'-mat');
-%                 cd(current.path);
-%                 msg = sprintf('loading %s',obj.Name);
-%                 disp(msg);
-%                 disp('loading successfull')
-%                 obj.Folder = mapfilepath;
-%                 return
-%             else
-%             end
-%             
-%             
-%             obj.Folder = uigetdir;
-%             cd(obj.Folder);
-%             splitfolder = strsplit(obj.Folder,'\');
-%             obj.Name = string(splitfolder(end));
-%             msg = sprintf('loading %s',obj.Name);
-%             disp(msg);
-%             
-%             % Get a list of all files in the folder with the desired file name pattern.
-%             % Change to whatever pattern you used for the names of your force map files.
-%             filePattern = fullfile(obj.Folder, '*.csv');
-%             theFiles = dir(filePattern);
-%             % Check to make sure files of specified patterns have been found
-%             if length(theFiles) < 1
-%                 errorMessage = 'No files of the specified name pattern have been found in the current directory';
-%                 uiwait(warndlg(errorMessage));
-%                 return;
-%             end
-%             
-%             % Import data from csv-files
-%             import_header = importdata(theFiles(2).name);
-%             k = 1;
-%             for i=1:length(import_header)
-%                 if isempty(strfind(import_header{i},'start-option.'))
-%                     obj.Header{k,1} = import_header{i};
-%                     k = k + 1;
-%                 end
-%             end
-%             for i=1:length(obj.Header)
-%                 split = strsplit(obj.Header{i,1},",");
-%                 if length(split) > 1
-%                     obj.Header{i,2} = str2double(split{2});
-%                     obj.Header{i,1} = split{1};
-%                 else
-%                 end
-%             end
-%             % Apply scaling multipliers from header to curve data and
-%             % delete placeholder data points from curves where piezo range
-%             % was too small
-%             TempApp = readmatrix(theFiles(1).name);
-%             TempHHApp = readmatrix(theFiles(3).name)*(-obj.Header{9,2}) - obj.Header{8,2};
-%             obj.NCurves = obj.Header{5,2}*obj.Header{6,2};
-%             
-%             for i=1:obj.NCurves
-%                 DelNApp = round(TempApp(end,i),6,'significant');
-%                 if DelNApp == round(TempApp(end-1,i),6,'significant')
-%                     DelMap = DelNApp;
-%                     k = 1;
-%                     while DelNApp == round(TempApp(end-k,i),6,'significant')
-%                         k = k + 1;
-%                     end
-%                     obj.App{i} = TempApp(1:(end-k),i);
-%                 else
-%                     obj.App{i} = TempApp(:,i);
-%                 end
-%                 obj.HHApp{i} = TempHHApp(1:length(obj.App{i}),i);
-%             end
-%             
-%             for i=1:obj.NCurves
-%                 if round(obj.App{i}(end),6,'significant') == DelMap
-%                     obj.App{i}(end) = [];
-%                     obj.HHApp{i}(end) = [];
-%                 end
-%             end
-%             
-%             obj.HHRet = mat2cell(readmatrix(theFiles(4).name)*obj.Header{11,2},...
-%                 [obj.Header{3,2}],ones(obj.Header{5,2}*obj.Header{6,2},1));
-%             obj.Ret = mat2cell(readmatrix(theFiles(5).name),...
-%                 [obj.Header{3,2}],ones(obj.Header{5,2}*obj.Header{6,2},1));
-%             obj.PixApp = obj.Header{2,2};
-%             obj.PixRet = obj.Header{3,2};
-%             obj.Sensitivity = obj.Header{16,2};
-%             obj.SelectedCurves = ones(obj.NCurves,1);
-%             obj.Man_CP = zeros(obj.NCurves,2);            
-%             obj.NumProfiles = obj.Header{6,2};
-%             obj.NumPoints = obj.Header{5,2};
-%             obj.SpringConstant = obj.Header{17,2};
-%             
-%             obj.create_and_level_height_map();
-%             
-%             cd(current.path);
-%             current = what();
-%             cd(obj.Folder)
-%             savename = sprintf('%s.mat',obj.Name);
-%             save(savename,'obj')
-%             cd(current.path)
-%             disp('loading successfull. object saved in objects folder')
-%         end
         
         function obj = ForceMap(MapFullFile,DataFolder)
             %%% Constructor of the class
@@ -266,6 +143,14 @@ classdef ForceMap < matlab.mixin.Copyable
             
             FullOS = computer;
             OS = FullOS(1:3);
+            obj.HostOS = OS;
+            if isequal(OS,'PCW')
+                obj.HostName = getenv('COMPUTERNAME');
+            elseif isequal(OS,'GLN')
+                obj.HostName = getenv('HOSTNAME');
+            elseif isequal(OS,'MAC')
+                obj.HostName = getenv('HOSTNAME');
+            end
             
             if isequal('PCW',OS)
                 % unpack jpk-file into temporary folder to read out data
@@ -431,6 +316,7 @@ classdef ForceMap < matlab.mixin.Copyable
             obj.CPFlag.Dropout = 0;
             obj.CPFlag.Manual = 0;
             obj.CPFlag.Old = 0;
+            obj.CPFlag.CNNopt = 0;
             
             cd(current.path);
             current = what();
@@ -671,45 +557,24 @@ classdef ForceMap < matlab.mixin.Copyable
             ImgSize = NeuralNet.Layers(1).InputSize;
             objcell{1,1} = obj;
             X = obj.CP_batchprep_3_channel(objcell,ImgSize(1),ImgSize(1),[0 0.3 0.7]);
-            len = size(X,4);
-            h = waitbar(0,'Setting up','Name',obj.Name);
+            h = waitbar(0,'Setting up and optimizing runtime...','Name',obj.Name);
+            
+            obj.check_for_new_host();
+            obj.cnn_runtime_optimization(NeuralNet,X);
+            
             CantHandle = true;
-            MiniBatchSize = len;
-            DynMBSdone = false;
-            HasFailed = false;
             switch runmode
                 case 0
                     waitbar(1/2,h,'Predicting CP');
-                        while CantHandle == true
-                            try
-                                Ypredicted = predict(NeuralNet,X,'MiniBatchSize',MiniBatchSize,'Acceleration','auto');
-                                CantHandle = false;
-                                if DynMBSdone == false
-                                    if HasFailed == true
-                                        MiniBatchSize = ceil(MiniBatchSize/4);
-                                    end
-                                    fprintf('Dynamically adjusting MiniBatchSize = %i\n',MiniBatchSize)
-                                    DynMBSdone = true;
-                                end
-                            catch ME
-                                switch ME.identifier
-                                    case 'parallel:gpu:array:OOM'
-                                        MiniBatchSize = ceil(MiniBatchSize*3/4);
-                                        fprintf('Dynamically adjusting MiniBatchSize = %i\n',MiniBatchSize)
-                                        HasFailed = true;
-                                    case 'nnet_cnn:internal:cnn:layer:CustomLayer:PredictErrored'
-                                        MiniBatchSize = ceil(MiniBatchSize*3/4);
-                                        fprintf('Dynamically adjusting MiniBatchSize = %i\n',MiniBatchSize)
-                                        HasFailed = true;
-                                    case 'nnet_cnn:dlAccel:MEXCallFailed'
-                                        MiniBatchSize = ceil(MiniBatchSize*3/4);
-                                        fprintf('Dynamically adjusting MiniBatchSize = %i\n',MiniBatchSize)
-                                        HasFailed = true;
-                                    otherwise
-                                        rethrow(ME)
-                                end
-                            end
+                    while CantHandle == true
+                        try
+                            Ypredicted = predict(NeuralNet,X,'MiniBatchSize',obj.MiniBatchSize,'Acceleration','auto');
+                            CantHandle = false;
+                        catch
+                            obj.CPFlag.CNNOpt = 0;
+                            obj.cnn_runtime_optimization(NeuralNet,X);
                         end
+                    end
                     waitbar(1,h,'Wrapping up');
                     iRange = find(obj.SelectedCurves);
                     k = 1;
@@ -727,32 +592,12 @@ classdef ForceMap < matlab.mixin.Copyable
                         waitbar(j/NumPasses,h,sprintf('Predicting CP for %i curves. %i/%i passes done',len,j,NumPasses));
                         while CantHandle == true
                             try
-                                Temp = predict(NeuralNet,X,'MiniBatchSize',MiniBatchSize,'Acceleration','auto');
+                                Temp = predict(NeuralNet,X,'MiniBatchSize',obj.MiniBatchSize,'Acceleration','auto');
                                 CantHandle = false;
-                                if DynMBSdone == false
-                                    if HasFailed == true
-                                        MiniBatchSize = ceil(MiniBatchSize/4);
-                                    end
-                                    fprintf('Dynamically adjusting MiniBatchSize = %i\n',MiniBatchSize)
-                                    DynMBSdone = true;
-                                end
-                            catch ME
-                                switch ME.identifier
-                                    case 'parallel:gpu:array:OOM'
-                                        MiniBatchSize = ceil(MiniBatchSize*3/4);
-                                        fprintf('Dynamically adjusting MiniBatchSize = %i\n',MiniBatchSize)
-                                        HasFailed = true;
-                                    case 'nnet_cnn:internal:cnn:layer:CustomLayer:PredictErrored'
-                                        MiniBatchSize = ceil(MiniBatchSize*3/4);
-                                        fprintf('Dynamically adjusting MiniBatchSize = %i\n',MiniBatchSize)
-                                        HasFailed = true;
-                                    case 'nnet_cnn:dlAccel:MEXCallFailed'
-                                        MiniBatchSize = ceil(MiniBatchSize*3/4);
-                                        fprintf('Dynamically adjusting MiniBatchSize = %i\n',MiniBatchSize)
-                                        HasFailed = true;
-                                    otherwise
-                                        rethrow(ME)
-                                end
+                            catch 
+                                CantHandle = true;
+                                obj.CPFlag.CNNOpt = 0;
+                                obj.cnn_runtime_optimization(NeuralNet,X);
                             end
                         end
                         obj.YDropPred(j,:,:) = Temp';
@@ -774,55 +619,60 @@ classdef ForceMap < matlab.mixin.Copyable
                     end
                     obj.CPFlag.Dropout = 1;
                 case 2
-                    waitbar(1/2,h,'Predicting CP');
+                    waitbar(1/3,h,'Predicting CP, first guess...');
                     while CantHandle == true
                         try
-                            Ypredicted = predict(NeuralNet,X,'MiniBatchSize',MiniBatchSize,'Acceleration','auto');
+                            Ypredicted = predict(NeuralNet,X,'MiniBatchSize',obj.MiniBatchSize,'Acceleration','auto');
                             CantHandle = false;
-                            if DynMBSdone == false
-                                if HasFailed == true
-                                    MiniBatchSize = ceil(MiniBatchSize/4);
-                                end
-                                fprintf('Dynamically adjusting MiniBatchSize = %i\n',MiniBatchSize)
-                                DynMBSdone = true;
-                            end
-                        catch ME
-                            switch ME.identifier
-                                case 'parallel:gpu:array:OOM'
-                                    MiniBatchSize = ceil(MiniBatchSize*3/4);
-                                    fprintf('Dynamically adjusting MiniBatchSize = %i\n',MiniBatchSize)
-                                    HasFailed = true;
-                                case 'nnet_cnn:internal:cnn:layer:CustomLayer:PredictErrored'
-                                    MiniBatchSize = ceil(MiniBatchSize*3/4);
-                                    fprintf('Dynamically adjusting MiniBatchSize = %i\n',MiniBatchSize)
-                                    HasFailed = true;
-                                case 'nnet_cnn:dlAccel:MEXCallFailed'
-                                    MiniBatchSize = ceil(MiniBatchSize*3/4);
-                                    fprintf('Dynamically adjusting MiniBatchSize = %i\n',MiniBatchSize)
-                                    HasFailed = true;
-                                otherwise
-                                    rethrow(ME)
-                            end
+                        catch
+                            obj.CPFlag.CNNOpt = 0;
+                            obj.cnn_runtime_optimization(NeuralNet,X);
+                        end
+                    end
+                    iRange = find(obj.SelectedCurves);
+                    k = 1;
+                    for i=iRange'
+                        obj.CP_CNNZoom(i,1) = Ypredicted(k,1)*range(obj.HHApp{i})+min(obj.HHApp{i});
+                        obj.CP_CNNZoom(i,2) = Ypredicted(k,2)*range(obj.BasedApp{i})+min(obj.BasedApp{i});
+                        obj.CP(i,1) = obj.CP_CNNZoom(i,1);
+                        obj.CP(i,2) = obj.CP_CNNZoom(i,2);
+                        k = k + 1;
+                    end
+                    
+                    waitbar(2/3,h,'Predicting zoomed CP');
+                    ZoomObj = obj.copy;
+                    ZoomObj.cnn_zoom_in();
+                    Zoomcell{1,1} = ZoomObj;
+                    X = obj.CP_batchprep_3_channel(Zoomcell,ImgSize(1),ImgSize(1),[0 0.3 0.7]);
+                    CantHandle = true;
+                    while CantHandle == true
+                        try
+                            Ypredicted = predict(NeuralNet,X,'MiniBatchSize',obj.MiniBatchSize,'Acceleration','auto');
+                            CantHandle = false;
+                        catch
+                            obj.CPFlag.CNNOpt = 0;
+                            obj.cnn_runtime_optimization(NeuralNet,X);
                         end
                     end
                     waitbar(1,h,'Wrapping up');
                     iRange = find(obj.SelectedCurves);
                     k = 1;
                     for i=iRange'
-                        obj.CP_CNN(i,1) = Ypredicted(k,1)*range(obj.HHApp{i})+min(obj.HHApp{i});
-                        obj.CP_CNN(i,2) = Ypredicted(k,2)*range(obj.BasedApp{i})+min(obj.BasedApp{i});
-                        obj.CP(i,1) = obj.CP_CNN(i,1);
-                        obj.CP(i,2) = obj.CP_CNN(i,2);
+                        obj.CP_CNNZoom(i,1) = Ypredicted(k,1)*range(ZoomObj.HHApp{i})+min(ZoomObj.HHApp{i});
+                        obj.CP_CNNZoom(i,2) = Ypredicted(k,2)*range(ZoomObj.BasedApp{i})+min(ZoomObj.BasedApp{i});
+                        obj.CP(i,1) = obj.CP_CNNZoom(i,1);
+                        obj.CP(i,2) = obj.CP_CNNZoom(i,2);
                         k = k + 1;
                     end
+                    
                     obj.CPFlag.CNNZoom = 1;
             end
             close(h)
-%             current = what();
-%             cd(obj.Folder)
-%             savename = sprintf('%s.mat',obj.Name);
-%             save(savename,'obj')
-%             cd(current.path)
+            %             current = what();
+            %             cd(obj.Folder)
+            %             savename = sprintf('%s.mat',obj.Name);
+            %             save(savename,'obj')
+            %             cd(current.path)
         end
         
         function estimate_cp_old(obj)
@@ -1908,6 +1758,102 @@ classdef ForceMap < matlab.mixin.Copyable
 %             cd(current.path)
         end
         
+        function check_for_new_host(obj)
+            % check_for_new_host(obj)
+            %
+            % Checks, if the system environment has changed and, if so,
+            % resets CPFlag.CNNOpt
+            
+            FullOS = computer;
+            OS = FullOS(1:3);
+            if isequal(OS,'PCW')
+                Host = getenv('COMPUTERNAME');
+            elseif isequal(OS,'GLN')
+                Host = getenv('HOSTNAME');
+            elseif isequal(OS,'MAC')
+                Host = getenv('HOSTNAME');
+            end
+            
+            if isequal(obj.HostOS,OS) && isequal(obj.HostName,Host)
+                return
+            else
+                obj.CPFlag.CNNOpt = 0;
+                obj.HostOS = OS;
+                obj.HostName = Host;
+            end
+        end
+        
+        function cnn_runtime_optimization(obj,NeuralNet,X)
+            % cnn_runtime_optimization(obj,NeuralNet,X)
+            %
+            % optimizes runtime for neural network prediction by adjusting
+            % MiniBatchSize
+            
+            len = size(X,4);
+            if obj.CPFlag.CNNOpt == 0
+                CantHandle = true;
+                obj.MiniBatchSize = len;
+                DynMBSdone = false;
+                HasFailed = false;
+                while CantHandle == true
+                    try
+                        predict(NeuralNet,X,'MiniBatchSize',obj.MiniBatchSize,'Acceleration','auto');
+                        CantHandle = false;
+                        if DynMBSdone == false
+                            if HasFailed == true
+                                obj.MiniBatchSize = ceil(obj.MiniBatchSize/3);
+                            end
+                            fprintf('Dynamically adjusting MiniBatchSize = %i\n',obj.MiniBatchSize)
+                            DynMBSdone = true;
+                        end
+                    catch ME
+                        switch ME.identifier
+                            case 'parallel:gpu:array:OOM'
+                                obj.MiniBatchSize = ceil(obj.MiniBatchSize*3/4);
+                                fprintf('Dynamically adjusting MiniBatchSize = %i\n',obj.MiniBatchSize)
+                                HasFailed = true;
+                            case 'nnet_cnn:internal:cnn:layer:CustomLayer:PredictErrored'
+                                obj.MiniBatchSize = ceil(obj.MiniBatchSize*3/4);
+                                fprintf('Dynamically adjusting MiniBatchSize = %i\n',obj.MiniBatchSize)
+                                HasFailed = true;
+                            case 'nnet_cnn:dlAccel:MEXCallFailed'
+                                obj.MiniBatchSize = ceil(obj.MiniBatchSize*3/4);
+                                fprintf('Dynamically adjusting MiniBatchSize = %i\n',obj.MiniBatchSize)
+                                HasFailed = true;
+                            otherwise
+                                rethrow(ME)
+                        end
+                    end
+                end
+                obj.CPFlag.CNNOpt = 1;
+            end
+            
+        end
+        
+        function cnn_zoom_in(obj)
+            % cnn_zoom_in(obj)
+            %
+            % Caution! do not use this function on your ForceMaps! This is
+            % an aux method for the Zoom mode in CNN CP estimation and is
+            % only run on throwaway ForceMap copys
+            
+            iRange = find(obj.SelectedCurves)';
+            for i=iRange
+                Lb = abs(min(obj.HHApp{i})-obj.CP_CNNZoom(i,1));
+                La = abs(max(obj.HHApp{i})-obj.CP_CNNZoom(i,1));
+                L = Lb + La;
+                if Lb/L <= 0.7
+                    continue
+                end
+                Lsub = (Lb - 0.7*L)/0.3;
+                CutOff = min(obj.HHApp{i}) + Lsub;
+                obj.HHApp{i}(obj.HHApp{i}<CutOff) = [];
+                obj.BasedApp{i}(1:(end-length(obj.HHApp{i}))) = [];
+            end
+            
+            
+        end
+        
     end
     
     methods
@@ -2353,3 +2299,135 @@ classdef ForceMap < matlab.mixin.Copyable
     end
     
 end
+
+% Function Graveyard
+
+        %%%%% this constructor method version goes together with Martin
+        %%%%% Handelhausers .py-script for .jpk-force-map -> .cvs
+        %%%%% conversion
+%         function obj = ForceMap(mapfilepath,mapname)
+%             %%% Constructor of the class
+%             
+%             % Specify the folder where the files live. And import them.
+%             % Also get curent folder and return to it after import of
+%             % files.
+%             % Assigns the properties that can be found in the jpk-file
+%             % already
+%             
+%             current = what();
+%             
+%             % determine if ForceMap is given a loadpath for existing .mat
+%             if nargin > 0
+%                 cd(mapfilepath);
+%                 file = dir(sprintf('%s.mat',mapname));
+%                 load(file.name);
+%                 cd(current.path);
+%                 msg = sprintf('loading %s',obj.Name);
+%                 disp(msg);
+%                 disp('loading successfull')
+%                 return
+%             end
+%             
+%             quest = 'Do you want to load an already existing .mat file of the force map?';
+%             answer = questdlg(quest,'Load map...','...from .mat-file','...from .cvs-folder','...from .cvs-folder');
+%             if isequal(answer, '...from .mat-file')
+%                 [mapfile, mapfilepath] = uigetfile();
+%                 cd(mapfilepath);
+%                 load(mapfile,'-mat');
+%                 cd(current.path);
+%                 msg = sprintf('loading %s',obj.Name);
+%                 disp(msg);
+%                 disp('loading successfull')
+%                 obj.Folder = mapfilepath;
+%                 return
+%             else
+%             end
+%             
+%             
+%             obj.Folder = uigetdir;
+%             cd(obj.Folder);
+%             splitfolder = strsplit(obj.Folder,'\');
+%             obj.Name = string(splitfolder(end));
+%             msg = sprintf('loading %s',obj.Name);
+%             disp(msg);
+%             
+%             % Get a list of all files in the folder with the desired file name pattern.
+%             % Change to whatever pattern you used for the names of your force map files.
+%             filePattern = fullfile(obj.Folder, '*.csv');
+%             theFiles = dir(filePattern);
+%             % Check to make sure files of specified patterns have been found
+%             if length(theFiles) < 1
+%                 errorMessage = 'No files of the specified name pattern have been found in the current directory';
+%                 uiwait(warndlg(errorMessage));
+%                 return;
+%             end
+%             
+%             % Import data from csv-files
+%             import_header = importdata(theFiles(2).name);
+%             k = 1;
+%             for i=1:length(import_header)
+%                 if isempty(strfind(import_header{i},'start-option.'))
+%                     obj.Header{k,1} = import_header{i};
+%                     k = k + 1;
+%                 end
+%             end
+%             for i=1:length(obj.Header)
+%                 split = strsplit(obj.Header{i,1},",");
+%                 if length(split) > 1
+%                     obj.Header{i,2} = str2double(split{2});
+%                     obj.Header{i,1} = split{1};
+%                 else
+%                 end
+%             end
+%             % Apply scaling multipliers from header to curve data and
+%             % delete placeholder data points from curves where piezo range
+%             % was too small
+%             TempApp = readmatrix(theFiles(1).name);
+%             TempHHApp = readmatrix(theFiles(3).name)*(-obj.Header{9,2}) - obj.Header{8,2};
+%             obj.NCurves = obj.Header{5,2}*obj.Header{6,2};
+%             
+%             for i=1:obj.NCurves
+%                 DelNApp = round(TempApp(end,i),6,'significant');
+%                 if DelNApp == round(TempApp(end-1,i),6,'significant')
+%                     DelMap = DelNApp;
+%                     k = 1;
+%                     while DelNApp == round(TempApp(end-k,i),6,'significant')
+%                         k = k + 1;
+%                     end
+%                     obj.App{i} = TempApp(1:(end-k),i);
+%                 else
+%                     obj.App{i} = TempApp(:,i);
+%                 end
+%                 obj.HHApp{i} = TempHHApp(1:length(obj.App{i}),i);
+%             end
+%             
+%             for i=1:obj.NCurves
+%                 if round(obj.App{i}(end),6,'significant') == DelMap
+%                     obj.App{i}(end) = [];
+%                     obj.HHApp{i}(end) = [];
+%                 end
+%             end
+%             
+%             obj.HHRet = mat2cell(readmatrix(theFiles(4).name)*obj.Header{11,2},...
+%                 [obj.Header{3,2}],ones(obj.Header{5,2}*obj.Header{6,2},1));
+%             obj.Ret = mat2cell(readmatrix(theFiles(5).name),...
+%                 [obj.Header{3,2}],ones(obj.Header{5,2}*obj.Header{6,2},1));
+%             obj.PixApp = obj.Header{2,2};
+%             obj.PixRet = obj.Header{3,2};
+%             obj.Sensitivity = obj.Header{16,2};
+%             obj.SelectedCurves = ones(obj.NCurves,1);
+%             obj.Man_CP = zeros(obj.NCurves,2);            
+%             obj.NumProfiles = obj.Header{6,2};
+%             obj.NumPoints = obj.Header{5,2};
+%             obj.SpringConstant = obj.Header{17,2};
+%             
+%             obj.create_and_level_height_map();
+%             
+%             cd(current.path);
+%             current = what();
+%             cd(obj.Folder)
+%             savename = sprintf('%s.mat',obj.Name);
+%             save(savename,'obj')
+%             cd(current.path)
+%             disp('loading successfull. object saved in objects folder')
+%         end
