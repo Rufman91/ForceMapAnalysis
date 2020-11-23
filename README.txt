@@ -79,6 +79,11 @@ what kind of measurements have been done? (Force Maps, KPFM) --> Number of files
 --> choose your *.jpk-force-map files (currently only works for the newest two generations of jpk force map files (23.09.2020))
 
 The data will then be extracted from the jpk files, which could take a few minutes, and your experiment will be saved to the location you chose at the beginning.
+Your saved Experiment can now be reopened at any time using the command
+
+>> ExperimentNameInWorkspace = Experiment.load
+
+You can also load the .mat with matlabs own load() function but that will cause problems, if you change the Experiment folder or work from a different Workstation.
 
 You can now already call several informations, called properties, from you experiment class. Assuming the experiment is called 'E' in the workspace , examples would be:
 
