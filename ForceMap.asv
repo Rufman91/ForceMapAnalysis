@@ -301,7 +301,6 @@ classdef ForceMap < matlab.mixin.Copyable
             rmdir(TempFolder,'s');
             
             obj.ExclMask = logical(ones(obj.NumProfiles,obj.NumPoints));
-            obj.FibMask = logical(zeros(obj.NumProfiles,obj.NumPoints));
             
             obj.create_and_level_height_map();
             
@@ -561,7 +560,6 @@ classdef ForceMap < matlab.mixin.Copyable
             objcell{1,1} = obj;
             X = obj.CP_batchprep_3_channel(objcell,ImgSize(1),ImgSize(1),[0 0.3 0.7]);
             h = waitbar(0,'Setting up and optimizing runtime...','Name',obj.Name);
-            len = size(X,4);
             
             obj.check_for_new_host();
             obj.cnn_runtime_optimization(NeuralNet,X);
@@ -575,7 +573,7 @@ classdef ForceMap < matlab.mixin.Copyable
                             Ypredicted = predict(NeuralNet,X,'MiniBatchSize',obj.MiniBatchSize,'Acceleration','auto');
                             CantHandle = false;
                         catch
-                            obj.CPFlag.CNNopt = 0;
+                            obj.CPFlag.CNNOpt = 0;
                             obj.cnn_runtime_optimization(NeuralNet,X);
                         end
                     end
@@ -600,7 +598,7 @@ classdef ForceMap < matlab.mixin.Copyable
                                 CantHandle = false;
                             catch 
                                 CantHandle = true;
-                                obj.CPFlag.CNNopt = 0;
+                                obj.CPFlag.CNNOpt = 0;
                                 obj.cnn_runtime_optimization(NeuralNet,X);
                             end
                         end
@@ -629,7 +627,7 @@ classdef ForceMap < matlab.mixin.Copyable
                             Ypredicted = predict(NeuralNet,X,'MiniBatchSize',obj.MiniBatchSize,'Acceleration','auto');
                             CantHandle = false;
                         catch
-                            obj.CPFlag.CNNopt = 0;
+                            obj.CPFlag.CNNOpt = 0;
                             obj.cnn_runtime_optimization(NeuralNet,X);
                         end
                     end
@@ -654,7 +652,7 @@ classdef ForceMap < matlab.mixin.Copyable
                             Ypredicted = predict(NeuralNet,X,'MiniBatchSize',obj.MiniBatchSize,'Acceleration','auto');
                             CantHandle = false;
                         catch
-                            obj.CPFlag.CNNopt = 0;
+                            obj.CPFlag.CNNOpt = 0;
                             obj.cnn_runtime_optimization(NeuralNet,X);
                         end
                     end
@@ -891,9 +889,7 @@ classdef ForceMap < matlab.mixin.Copyable
                 CurvePercent = 0.75;
             end
             if nargin < 4
-                CurvePercent = 0.75;
-                ExternalRefSlope = false;
-            end
+                
             Range = find(obj.SelectedCurves);
             Epsilon = 0.73; % Correction constant from Oliver Pharr Method (1992)
             Beta = 1.0226; %Correction constant from Oliver Pharr Method (1992)
@@ -1772,7 +1768,7 @@ classdef ForceMap < matlab.mixin.Copyable
             % check_for_new_host(obj)
             %
             % Checks, if the system environment has changed and, if so,
-            % resets CPFlag.CNNopt
+            % resets CPFlag.CNNOpt
             
             FullOS = computer;
             OS = FullOS(1:3);
@@ -1787,7 +1783,7 @@ classdef ForceMap < matlab.mixin.Copyable
             if isequal(obj.HostOS,OS) && isequal(obj.HostName,Host)
                 return
             else
-                obj.CPFlag.CNNopt = 0;
+                obj.CPFlag.CNNOpt = 0;
                 obj.HostOS = OS;
                 obj.HostName = Host;
             end
@@ -1800,7 +1796,7 @@ classdef ForceMap < matlab.mixin.Copyable
             % MiniBatchSize
             
             len = size(X,4);
-            if obj.CPFlag.CNNopt == 0
+            if obj.CPFlag.CNNOpt == 0
                 CantHandle = true;
                 obj.MiniBatchSize = len;
                 DynMBSdone = false;
@@ -1835,7 +1831,7 @@ classdef ForceMap < matlab.mixin.Copyable
                         end
                     end
                 end
-                obj.CPFlag.CNNopt = 1;
+                obj.CPFlag.CNNOpt = 1;
             end
             
         end

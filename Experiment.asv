@@ -448,7 +448,7 @@ classdef Experiment < matlab.mixin.Copyable
             close(h);
         end
         
-        function force_map_analysis_general(obj,CPOption,EModOption)
+        function force_map_analysis_general(obj)
             % force_map_analysis_general(obj,CPOption,EModOption)
             %
             % CPOption = 'Fast' ...(Default) contact point estimation through single
@@ -514,15 +514,12 @@ classdef Experiment < matlab.mixin.Copyable
                 obj.FM{i}.manual_exclusion();
             end
             
-            % preprocess reference ForceMaps
-            if isequal(lower(EModOption),'oliver')
-                ExternalRefSlope = true;
-                waitbar(0,h,'Processing reference ForceMaps')
-                for i=1:length(obj.RefFM)
-                    obj.RefFM{i}.base_and_tilt('linear');
-                    obj.cp_option_converter(CPOption,i,ExternalRefSlope);
-                    obj.RefFM{i}.calculate_reference_slope;
-                end
+            ExternalRefSlope = true;
+            waitbar(0,h,'Processing reference ForceMaps')
+            for i=1:length(obj.RefFM)
+                obj.RefFM{i}.base_and_tilt('linear');
+                obj.cp_option_converter(CPOption,i,);
+                obj.RefFM{i}.calculate_reference_slope;
             end
             
             % Main loop for contact point estimation and E-Modulus calculation
@@ -1088,78 +1085,42 @@ classdef Experiment < matlab.mixin.Copyable
             %
             % aux-function for CPOption choice
             
-            if nargin < 4
-                RefFM = false;
+            
+            
+            if isequal(lower(CPOption),'rov')
+                obj.FM{i}.estimate_cp_rov();
             end
-            if RefFM == false
-                if isequal(lower(CPOption),'rov')
-                    obj.FM{i}.estimate_cp_rov();
-                end
-                if isequal(lower(CPOption),'gof')
-                    obj.FM{i}.estimate_cp_gof();
-                end
-                if isequal(lower(CPOption),'old')
-                    obj.FM{i}.estimate_cp_old();
-                end
-                if isequal(lower(CPOption),'combo')
-                    obj.FM{i}.estimate_cp_rov();
-                    obj.FM{i}.estimate_cp_gof();
-                    obj.FM{i}.estimate_cp_combined();
-                end
-                if isequal(lower(CPOption),'manual')
-                    obj.FM{i}.estimate_cp_manually;
-                end
-                if isequal(lower(CPOption),'fast')
-                    obj.FM{i}.estimate_cp_cnn(obj.CP_CNN,'Fast');
-                end
-                if isequal(lower(CPOption),'dropout')
-                    obj.FM{i}.estimate_cp_cnn(obj.DropoutNet,'Dropout',100);
-                end
-                if isequal(lower(CPOption),'zoom')
-                    obj.FM{i}.estimate_cp_cnn(obj.CP_CNN,'Zoom');
-                end
-                if isequal(lower(CPOption),'dropzoom')
-                    obj.FM{i}.estimate_cp_cnn(obj.CP_CNN,'Dropzoom');
-                end
-                if isequal(lower(CPOption),'zoomsweep')
-                    obj.FM{i}.estimate_cp_cnn(obj.CP_CNN,'Zoomsweep');
-                end
-            elseif RefFM == true
-                if isequal(lower(CPOption),'rov')
-                    obj.RefFM{i}.estimate_cp_rov();
-                end
-                if isequal(lower(CPOption),'gof')
-                    obj.RefFM{i}.estimate_cp_gof();
-                end
-                if isequal(lower(CPOption),'old')
-                    obj.RefFM{i}.estimate_cp_old();
-                end
-                if isequal(lower(CPOption),'combo')
-                    obj.RefFM{i}.estimate_cp_rov();
-                    obj.RefFM{i}.estimate_cp_gof();
-                    obj.RefFM{i}.estimate_cp_combined();
-                end
-                if isequal(lower(CPOption),'manual')
-                    obj.RefFM{i}.estimate_cp_manually;
-                end
-                if isequal(lower(CPOption),'fast')
-                    obj.RefFM{i}.estimate_cp_cnn(obj.CP_CNN,'Fast');
-                end
-                if isequal(lower(CPOption),'dropout')
-                    obj.RefFM{i}.estimate_cp_cnn(obj.DropoutNet,'Dropout',100);
-                end
-                if isequal(lower(CPOption),'zoom')
-                    obj.RefFM{i}.estimate_cp_cnn(obj.CP_CNN,'Zoom');
-                end
-                if isequal(lower(CPOption),'dropzoom')
-                    obj.RefFM{i}.estimate_cp_cnn(obj.CP_CNN,'Dropzoom');
-                end
-                if isequal(lower(CPOption),'zoomsweep')
-                    obj.RefFM{i}.estimate_cp_cnn(obj.CP_CNN,'Zoomsweep');
-                end
+            if isequal(lower(CPOption),'gof')
+                obj.FM{i}.estimate_cp_gof();
             end
-                
+            if isequal(lower(CPOption),'old')
+                obj.FM{i}.estimate_cp_old();
             end
+            if isequal(lower(CPOption),'combo')
+                obj.FM{i}.estimate_cp_rov();
+                obj.FM{i}.estimate_cp_gof();
+                obj.FM{i}.estimate_cp_combined();
+            end
+            if isequal(lower(CPOption),'manual')
+                obj.FM{i}.estimate_cp_manually;
+            end
+            if isequal(lower(CPOption),'fast')
+                obj.FM{i}.estimate_cp_cnn(obj.CP_CNN,'Fast');
+            end
+            if isequal(lower(CPOption),'dropout')
+                obj.FM{i}.estimate_cp_cnn(obj.DropoutNet,'Dropout',100);
+            end
+            if isequal(lower(CPOption),'zoom')
+                obj.FM{i}.estimate_cp_cnn(obj.CP_CNN,'Zoom');
+            end
+            if isequal(lower(CPOption),'dropzoom')
+                obj.FM{i}.estimate_cp_cnn(obj.CP_CNN,'Dropzoom');
+            end
+            if isequal(lower(CPOption),'zoomsweep')
+                obj.FM{i}.estimate_cp_cnn(obj.CP_CNN,'Zoomsweep');
+            end
+            
+        end
         
     end
     
