@@ -34,6 +34,11 @@ Beware that the changes are overwritten, if you stash and pull!
 $ git stash
 $ git pull
 
+If command line stuff is not for you, you can also download GitHub Desktop and clone the repository
+ (https://github.com/Rufman91/ForceMapAnalysis.git) from there. All needed git features should be
+available in there, too.
+
+
 For further information or if you want to contribute to the programm contact rufman@ilsb.tuwien.ac.at
 
 
@@ -45,7 +50,8 @@ If you dont want to work with git, go to
 https://github.com/Rufman91/ForceMapAnalysis.git
 
 and download the repository in the 'Code' dropdown menu with 'Download Zip'.
-Note that setting up with git may take longer, but updating is way faster.
+Note that setting up with git may take longer, but updating is way faster and
+enables the possibility to contribute.
 
 
 

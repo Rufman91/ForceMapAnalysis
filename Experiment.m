@@ -1005,7 +1005,7 @@ classdef Experiment < matlab.mixin.Copyable
             % create the appropriate inputdlg for assigning the groups show
             % a table with numbered map-names in background
             Names = obj.ForceMapNames;
-            Fig = figure('Units', 'Normalized', 'Position',[0, 0, 0.4, 1],'Color','w');
+            Fig = figure('Units', 'Normalized', 'Position',[0.2 0.2 0.4 8],'Color','w');
             T = table(Names');
             uitable('Data',T{:,:},'Units', 'Normalized', 'Position',[0, 0, 1, 1]);
             
