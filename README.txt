@@ -38,6 +38,17 @@ For further information or if you want to contribute to the programm contact ruf
 
 
 
+1.1 NO GIT!!!
+
+If you dont want to work with git, go to 
+
+https://github.com/Rufman91/ForceMapAnalysis.git
+
+and download the repository in the 'Code' dropdown menu with 'Download Zip'.
+Note that setting up with git may take longer, but updating is way faster.
+
+
+
 2. Set up programm
 
 To set up the program, add the force map analysis folder to the MATLAB search path under Home > Set Path.
