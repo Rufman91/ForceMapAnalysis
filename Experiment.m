@@ -481,23 +481,23 @@ classdef Experiment < matlab.mixin.Copyable
             else
                 KeepFlagged = 'No';
             end
-            
-            if obj.CantileverTipFlag == 1
-                KeepTip = questdlg(sprintf('There already exists data from a deconvoluted tip\nDo you want to skip tip deconvolution and keep old tip data?'),...
-                    'Processing Options',...
-                    'Yes',...
-                    'No',...
-                    'No');
-            else
-                KeepTip = 'No';
+            if isequal(lower(EModOption),'oliver')
+                if obj.CantileverTipFlag == 1
+                    KeepTip = questdlg(sprintf('There already exists data from a deconvoluted tip\nDo you want to skip tip deconvolution and keep old tip data?'),...
+                        'Processing Options',...
+                        'Yes',...
+                        'No',...
+                        'No');
+                else
+                    KeepTip = 'No';
+                end
+                
+                if isequal(KeepTip,'No')
+                    waitbar(0,h,'deconvoluting cantilever tip...')
+                    obj.deconvolute_cantilever_tip;
+                elseif isequal(KeepTip,'Yes')
+                end
             end
-            
-            if isequal(KeepTip,'No')
-                waitbar(0,h,'deconvoluting cantilever tip...')
-                obj.deconvolute_cantilever_tip;
-            elseif isequal(KeepTip,'Yes')
-            end
-            
             % Preprocessing everything, that needs user input
             answer = questdlg('Do you want to skip manual exclusion of problematic areas?',...
                 'Manual Exclusion',...

@@ -219,4 +219,3 @@
 %     X(:,:,1,i) = Image;
 %     clear Points
 % end
-MGO.force_map_analysis_fibril('Fast','Oliver');
