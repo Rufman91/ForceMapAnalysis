@@ -1870,11 +1870,11 @@ classdef ForceMap < matlab.mixin.Copyable
        % methods for visualization, plotting, statistics and quality control 
         
         
-        function fig = show_curve_HHvsForce(obj,ZoomMult,k)
+        function fig = show_force_curve(obj,ZoomMult,k)
             if nargin < 2
                 jRange = find(obj.SelectedCurves);
                 k = jRange(randi(length(jRange)));
-                ZoomMult = 0.5;
+                ZoomMult = 0;
             end
             if nargin < 3
                 jRange = find(obj.SelectedCurves);
@@ -1989,7 +1989,7 @@ classdef ForceMap < matlab.mixin.Copyable
             axis on
             hold on;
             plot(obj.List2Map(k,2),obj.List2Map(k,1), 'r+', 'MarkerSize', 10, 'LineWidth', 2);
-            
+            title('Choose a different point...')
             NextK = drawpoint();
             MapPos1 = round(NextK.Position(2));
             MapPos2 = round(NextK.Position(1));
@@ -2006,7 +2006,7 @@ classdef ForceMap < matlab.mixin.Copyable
             k = obj.Map2List(MapPos1,MapPos2);
             close(fig)
             try
-                obj.show_curve_HHvsForce(ZoomMult,k);
+                obj.show_force_curve(ZoomMult,k);
             catch
             end
         end
