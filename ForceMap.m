@@ -45,8 +45,8 @@ classdef ForceMap < matlab.mixin.Copyable
         
         App = {}        % approach force data in Newton
         Ret = {}        % retraction force data in Newton
-        HHApp = {}      % head-height approach data in meters
-        HHRet = {}      % head-height retract data in meters
+        HHApp = {}      % capacitive-sensor-height approach data in meters
+        HHRet = {}      % capacitive-sensor-height retract data in meters
         THApp = {}      % vertical tip height approach data in meters
         THRet = {}      % vertical tip height retract data in meters
         BasedApp = {}   % approach force data with subtracted base line and tilt in Newton
