@@ -329,9 +329,9 @@ classdef Experiment < matlab.mixin.Copyable
             % CPOption = 'Dropout' ... contact point estimation through
             % averaging over multiple passes through monte carlo dropout
             % net. NPasses (Default=100) times slower than 'Fast'
-            % CPOption = 'Zoom' ... CNN-based method (still in development)
-            % CPOption = 'ZoomDrop' ... CNN-based method (still in development)
-            % CPOption = 'Zoomsweep' ... CNN-based method (still in development)
+            % CPOption = 'Zoom' ... CNN-based method 
+            % CPOption = 'ZoomDropout' ... CNN-based method (still in development)
+            % CPOption = 'ZoomSweep' ... CNN-based method
             % CPOption = 'Old' ... old method for contact point estimation
             % CPOption = 'RoV' ... RoV method for contact point estimation
             % CPOption = 'GoF' ... GoF method for contact point estimation
@@ -579,7 +579,7 @@ classdef Experiment < matlab.mixin.Copyable
             TestMat = [str2num(answer{1})];
             
             % Write Data into local variables and
-            % replace extreme outlier values (median +- 2.5*IQR) with NaN
+            % replace extreme outlier values with NaN
             % also replace data points that lie on the exclusion mask with
             % NaN
             for i=1:N
@@ -625,7 +625,7 @@ classdef Experiment < matlab.mixin.Copyable
                     DataMeansOP(obj.GroupFM(TestMat(i,1)).Indices),'Tail','right');
                 
                 figure('Name','Paired Right Tailed T-Test','Units','normalized','Position',[0.2 0.2 0.5 0.5],'Color','w')
-                boxplot([DataMeansOP(obj.GroupFM(TestMat(i,1)).Indices) DataMeansOP(obj.GroupFM(TestMat(i,2)).Indices)]*1e-6,'Notch','on')
+                boxplot([DataMeansOP(obj.GroupFM(TestMat(i,1)).Indices) DataMeansOP(obj.GroupFM(TestMat(i,2)).Indices)]*1e-6)
                 title('Paired Right Tailed T-Test for Oliver-Pharr Method')
                 xticklabels({obj.GroupFM(TestMat(i,1)).Name,obj.GroupFM(TestMat(i,2)).Name})
                 xlabel('Test Group')
@@ -648,7 +648,7 @@ classdef Experiment < matlab.mixin.Copyable
 %                     DataMeansHS(obj.GroupFM(TestMat(i,1)).Indices),'Tail','right');
 %                 
 %                 figure('Name','Paired Right Tailed T-Test','Units','normalized','Position',[0.2 0.2 0.5 0.5],'Color','w')
-%                 boxplot([DataMeansHS(obj.GroupFM(TestMat(i,1)).Indices) DataMeansHS(obj.GroupFM(TestMat(i,2)).Indices)],'Notch','on')
+%                 boxplot([DataMeansHS(obj.GroupFM(TestMat(i,1)).Indices) DataMeansHS(obj.GroupFM(TestMat(i,2)).Indices)])
 %                 title('Paired Right Tailed T-Test for Hertz-Sneddon Method')
 %                 xticklabels({obj.GroupFM(TestMat(i,1)).Name,obj.GroupFM(TestMat(i,2)).Name})
 %                 xlabel('Test Group')
@@ -677,7 +677,7 @@ classdef Experiment < matlab.mixin.Copyable
             [hOP,pOP,ciOP,statsOP] = ttest2(DiffMGOOP,DiffControlOP);
             figure('Name','Two Sample T-Test','Units','normalized','Position',[0.2 0.2 0.5 0.5],'Color','w')
             yyaxis left
-            boxplot([DiffControlOP DiffMGOOP],'Notch','on')
+            boxplot([DiffControlOP DiffMGOOP])
             ax = gca;
             YLim = ax.YLim;
             ylabel('Difference Before-After E-Mod [Pa]')
@@ -708,7 +708,7 @@ classdef Experiment < matlab.mixin.Copyable
 %             [hHS,pHS,ciHS,statsHS] = ttest2(DiffMGOHS,DiffControlHS);
 %             figure('Name','Two Sample T-Test','Units','normalized','Position',[0.2 0.2 0.5 0.5],'Color','w')
 %             yyaxis left
-%             boxplot([DiffControlHS DiffMGOHS],'Notch','on')
+%             boxplot([DiffControlHS DiffMGOHS])
 %             ax = gca;
 %             YLim = ax.YLim;
 %             ylabel('Difference Before-After E-Mod [Pa]')
@@ -766,7 +766,7 @@ classdef Experiment < matlab.mixin.Copyable
                     FibPot(obj.GroupFM(TestMat(i,1)).Indices));
                 
                 figure('Name','Paired T-Test for Surface Potential Changes','Units','normalized','Position',[0.2 0.2 0.5 0.5],'Color','w')
-                boxplot([FibPot(obj.GroupFM(TestMat(i,1)).Indices)' FibPot(obj.GroupFM(TestMat(i,2)).Indices)']*1e3,'Notch','on')
+                boxplot([FibPot(obj.GroupFM(TestMat(i,1)).Indices)' FibPot(obj.GroupFM(TestMat(i,2)).Indices)']*1e3)
                 title('Paired T-Test for Surface Potential Changes')
                 xticklabels({obj.GroupFM(TestMat(i,1)).Name,obj.GroupFM(TestMat(i,2)).Name})
                 xlabel('Test Group')
@@ -793,7 +793,7 @@ classdef Experiment < matlab.mixin.Copyable
             [h,p,ci,stats] = ttest2(DiffMGO,DiffControl);
             figure('Name','Two Sample T-Test','Units','normalized','Position',[0.2 0.2 0.5 0.5],'Color','w')
             yyaxis left
-            boxplot([DiffControl DiffMGO],'Notch','on')
+            boxplot([DiffControl DiffMGO])
             ax = gca;
             YLim = ax.YLim;
             ylabel('Difference Before-After Potential [V]')
@@ -873,7 +873,7 @@ classdef Experiment < matlab.mixin.Copyable
             [h,p,ci,stats] = ttest2(DiffMGO,DiffControl);
             figure('Name','Two Sample T-Test','Units','normalized','Position',[0.2 0.2 0.5 0.5],'Color','w')
             yyaxis left
-            boxplot([DiffControl DiffMGO],'Notch','on')
+            boxplot([DiffControl DiffMGO])
             ax = gca;
             YLim = ax.YLim;
             ylabel('Difference Before-After relative Swelling')
@@ -951,7 +951,7 @@ classdef Experiment < matlab.mixin.Copyable
             [h,p,ci,stats] = ttest2(DiffMGO,DiffControl);
             figure('Name','Two Sample T-Test','Units','normalized','Position',[0.2 0.2 0.5 0.5],'Color','w')
             yyaxis left
-            boxplot([DiffControl DiffMGO],'Notch','on')
+            boxplot([DiffControl DiffMGO])
             ax = gca;
             YLim = ax.YLim;
             ylabel('Difference Before-After in D-Banding [m]')
@@ -1088,6 +1088,8 @@ classdef Experiment < matlab.mixin.Copyable
             %
             % aux-function for CPOption choice
             
+            NumPasses = 30;
+            
             if nargin < 4
                 RefFM = false;
             end
@@ -1113,16 +1115,16 @@ classdef Experiment < matlab.mixin.Copyable
                     obj.FM{i}.estimate_cp_cnn(obj.CP_CNN,'Fast');
                 end
                 if isequal(lower(CPOption),'dropout')
-                    obj.FM{i}.estimate_cp_cnn(obj.DropoutNet,'Dropout',100);
+                    obj.FM{i}.estimate_cp_cnn(obj.DropoutNet,'Dropout',NumPasses);
                 end
                 if isequal(lower(CPOption),'zoom')
                     obj.FM{i}.estimate_cp_cnn(obj.CP_CNN,'Zoom');
                 end
-                if isequal(lower(CPOption),'dropzoom')
-                    obj.FM{i}.estimate_cp_cnn(obj.CP_CNN,'Dropzoom');
+                if isequal(lower(CPOption),'zoomdropout')
+                    obj.FM{i}.estimate_cp_cnn(obj.CP_CNN,'zoomdropout',NumPasses);
                 end
                 if isequal(lower(CPOption),'zoomsweep')
-                    obj.FM{i}.estimate_cp_cnn(obj.CP_CNN,'Zoomsweep');
+                    obj.FM{i}.estimate_cp_cnn(obj.CP_CNN,'Zoomsweep',NumPasses);
                 end
             elseif RefFM == true
                 if isequal(lower(CPOption),'rov')
@@ -1146,20 +1148,44 @@ classdef Experiment < matlab.mixin.Copyable
                     obj.RefFM{i}.estimate_cp_cnn(obj.CP_CNN,'Fast');
                 end
                 if isequal(lower(CPOption),'dropout')
-                    obj.RefFM{i}.estimate_cp_cnn(obj.DropoutNet,'Dropout',100);
+                    obj.RefFM{i}.estimate_cp_cnn(obj.DropoutNet,'Dropout',NumPasses);
                 end
                 if isequal(lower(CPOption),'zoom')
                     obj.RefFM{i}.estimate_cp_cnn(obj.CP_CNN,'Zoom');
                 end
-                if isequal(lower(CPOption),'dropzoom')
-                    obj.RefFM{i}.estimate_cp_cnn(obj.CP_CNN,'Dropzoom');
+                if isequal(lower(CPOption),'zoomdropout')
+                    obj.RefFM{i}.estimate_cp_cnn(obj.CP_CNN,'zoomdropout',NumPasses);
                 end
                 if isequal(lower(CPOption),'zoomsweep')
-                    obj.RefFM{i}.estimate_cp_cnn(obj.CP_CNN,'Zoomsweep');
+                    obj.RefFM{i}.estimate_cp_cnn(obj.CP_CNN,'Zoomsweep',NumPasses);
                 end
             end
                 
+        end
+            
+        function Results = results_readout(obj)
+            % result_readout(obj)
+            %
+            % Interactive function to specify how and which results to
+            % return
+            %
+            % Under Development!!!!!
+            
+            if obj.FMFlag.Grouping == 0
+                obj.grouping_force_map;
             end
+            
+            N = length(obj.GroupFM);
+            
+            for i=1:N
+                Index = regexp(obj.GroupFM(i).Name,'\w');
+                FieldName = obj.GroupFM(i).Name(Index);
+                Results.(FieldName) = [];
+                
+                clear Index
+            end
+            
+        end
         
     end
     

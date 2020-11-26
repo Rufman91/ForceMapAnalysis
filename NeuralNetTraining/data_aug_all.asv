@@ -1,4 +1,4 @@
-function OutCell = data_aug_all(InCell,DataAugMult,NInsertedPoints, RunMode)
+function OutCell = data_aug_all(InCell,DataAugMult,NInsertedPoints, )
 % OutCell = data_aug_all(InCell,DataAugMult,NInsertedPoints)
 
 if nargin < 4
@@ -21,7 +21,11 @@ clear InCell
 if isequal(lower(RunMode),'all') || isequal(lower(RunMode(1:4)),'zoom')
     for i = (NIn+1):(NIn*DataAugMult)
         % max CutPercent restricted to 90% for stability reasons
-        CutPercent = rand(1,OutCell{i}.NCurves)*0.9;
+        if isequal(lower(RunMode),'zoom')
+            CutPercent = rand(1,OutCell{i}.NCurves)*0.9;
+        elseif isequal(lower(RunMode),'zoomdet')
+            
+        end
         jRange = find(OutCell{i}.SelectedCurves)';
         for j = jRange
             NNCPts = length(OutCell{i}.HHApp{j}(OutCell{i}.HHApp{j}<OutCell{i}.Man_CP(j,1)));

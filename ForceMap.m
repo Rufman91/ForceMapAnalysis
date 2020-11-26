@@ -63,8 +63,9 @@ classdef ForceMap < matlab.mixin.Copyable
         CP_Combo        % CP estimated with a combination of the GoF and RoV methods
         CPComboCurve    % combination of the various metrics for contact point estimation
         CP_CNN          % CP estimated with a conv. neural network in a single pass
-        CP_CNNZoom
+        CP_CNNZoom      % CP estimated with a conv. neural network, first estimate CP, then zoom into the curve for more accurate pred
         CP_Dropout      % CP estimated with a conv. neural network in multiple Monte Carlo Dropout passes
+        CP_CNNZoomSweep % CP estimated with a conv. neural network, sweep over several magnifications and take mean (or median?) estimate
         CP_MonteCarlo   % All predictions from the multiple inference steps done in 
                         % the monte carlo method
         CP_MonteCarlo_STD % Standard deviation of CP_MonteCarlo
@@ -312,6 +313,8 @@ classdef ForceMap < matlab.mixin.Copyable
             obj.CPFlag.Combo = 0;
             obj.CPFlag.CNN = 0;
             obj.CPFlag.CNNZoom = 0;
+            obj.CPFlag.CNNZoomDropout = 0;
+            obj.CPFlag.CNNZoomSweep = 0;
             obj.CPFlag.Dropout = 0;
             obj.CPFlag.Manual = 0;
             obj.CPFlag.Old = 0;
@@ -547,15 +550,25 @@ classdef ForceMap < matlab.mixin.Copyable
             
             if nargin < 2
                 runmode = 0;
-            elseif isequal(RunMode,'Fast')
+            elseif isequal(lower(RunMode),'fast')
                 runmode = 0;
-            elseif isequal(RunMode,'Dropout')
+            elseif isequal(lower(RunMode),'dropout')
                 runmode = 1;
                 if nargin < 3
                     NumPasses = 100; % if not specified in arguments, NumPasses defaults to 100
                 end
-            elseif isequal(RunMode,'Zoom')
+            elseif isequal(lower(RunMode),'zoom')
                 runmode = 2;
+            elseif isequal(lower(RunMode),'zoomdropout')
+                runmode = 3;
+                if nargin < 3
+                    NumPasses = 100; % if not specified in arguments, NumPasses defaults to 100
+                end
+            elseif isequal(lower(RunMode),'zoomsweep')
+                runmode = 4;
+                if nargin < 3
+                    NumPasses = 20; % if not specified in arguments, NumPasses defaults to 20
+                end
             end
             ImgSize = NeuralNet.Layers(1).InputSize;
             objcell{1,1} = obj;
@@ -569,6 +582,7 @@ classdef ForceMap < matlab.mixin.Copyable
             CantHandle = true;
             switch runmode
                 case 0
+                    % Fast
                     waitbar(1/2,h,'Predicting CP');
                     while CantHandle == true
                         try
@@ -591,6 +605,7 @@ classdef ForceMap < matlab.mixin.Copyable
                     end
                     obj.CPFlag.CNN = 1;
                 case 1
+                    % Dropout
                     obj.YDropPred = zeros(NumPasses,2,len);
                     for j=1:NumPasses
                         waitbar(j/NumPasses,h,sprintf('Predicting CP for %i curves. %i/%i passes done',len,j,NumPasses));
@@ -623,6 +638,56 @@ classdef ForceMap < matlab.mixin.Copyable
                     end
                     obj.CPFlag.Dropout = 1;
                 case 2
+                    % Zoom
+                    waitbar(1/3,h,'Predicting CP, first guess...');
+                    while CantHandle == true
+                        try
+                            Ypredicted = predict(NeuralNet,X,'MiniBatchSize',obj.MiniBatchSize,'Acceleration','auto');
+                            CantHandle = false;
+                        catch
+                            obj.CPFlag.CNNopt = 0;
+                            obj.cnn_runtime_optimization(NeuralNet,X);
+                        end
+                    end
+                    iRange = find(obj.SelectedCurves);
+                    k = 1;
+                    for i=iRange'
+                        obj.CP_CNNZoom(i,1) = Ypredicted(k,1)*range(obj.HHApp{i})+min(obj.HHApp{i});
+                        obj.CP_CNNZoom(i,2) = Ypredicted(k,2)*range(obj.BasedApp{i})+min(obj.BasedApp{i});
+                        obj.CP(i,1) = obj.CP_CNNZoom(i,1);
+                        obj.CP(i,2) = obj.CP_CNNZoom(i,2);
+                        k = k + 1;
+                    end
+                    
+                    waitbar(2/3,h,'Predicting zoomed CP');
+                    ZoomObj = obj.copy;
+                    ZoomObj.cnn_zoom_in(0.5);
+                    ZoomCell{1,1} = ZoomObj;
+                    X = obj.CP_batchprep_3_channel(ZoomCell,ImgSize(1),ImgSize(1),[0 0.3 0.7]);
+                    CantHandle = true;
+                    while CantHandle == true
+                        try
+                            Ypredicted = predict(NeuralNet,X,'MiniBatchSize',obj.MiniBatchSize,'Acceleration','auto');
+                            CantHandle = false;
+                        catch
+                            obj.CPFlag.CNNopt = 0;
+                            obj.cnn_runtime_optimization(NeuralNet,X);
+                        end
+                    end
+                    waitbar(1,h,'Wrapping up');
+                    iRange = find(obj.SelectedCurves);
+                    k = 1;
+                    for i=iRange'
+                        obj.CP_CNNZoom(i,1) = Ypredicted(k,1)*range(ZoomObj.HHApp{i})+min(ZoomObj.HHApp{i});
+                        obj.CP_CNNZoom(i,2) = Ypredicted(k,2)*range(ZoomObj.BasedApp{i})+min(ZoomObj.BasedApp{i});
+                        obj.CP(i,1) = obj.CP_CNNZoom(i,1);
+                        obj.CP(i,2) = obj.CP_CNNZoom(i,2);
+                        k = k + 1;
+                    end
+                    
+                    obj.CPFlag.CNNZoom = 1;
+                case 3
+                    % ZoomDropout
                     waitbar(1/3,h,'Predicting CP, first guess...');
                     while CantHandle == true
                         try
@@ -646,8 +711,8 @@ classdef ForceMap < matlab.mixin.Copyable
                     waitbar(2/3,h,'Predicting zoomed CP');
                     ZoomObj = obj.copy;
                     ZoomObj.cnn_zoom_in();
-                    Zoomcell{1,1} = ZoomObj;
-                    X = obj.CP_batchprep_3_channel(Zoomcell,ImgSize(1),ImgSize(1),[0 0.3 0.7]);
+                    ZoomCell{1,1} = ZoomObj;
+                    X = obj.CP_batchprep_3_channel(ZoomCell,ImgSize(1),ImgSize(1),[0 0.3 0.7]);
                     CantHandle = true;
                     while CantHandle == true
                         try
@@ -669,7 +734,63 @@ classdef ForceMap < matlab.mixin.Copyable
                         k = k + 1;
                     end
                     
-                    obj.CPFlag.CNNZoom = 1;
+                    obj.CPFlag.CNNZoomDropout = 1;
+                case 4
+                    % ZoomSweep
+                    waitbar(1/3,h,'Predicting CP, first guess...');
+                    while CantHandle == true
+                        try
+                            Ypredicted = predict(NeuralNet,X,'MiniBatchSize',obj.MiniBatchSize,'Acceleration','auto');
+                            CantHandle = false;
+                        catch
+                            obj.CPFlag.CNNopt = 0;
+                            obj.cnn_runtime_optimization(NeuralNet,X);
+                        end
+                    end
+                    iRange = find(obj.SelectedCurves);
+                    k = 1;
+                    for i=iRange'
+                        obj.CP_CNNZoom(i,1) = Ypredicted(k,1)*range(obj.HHApp{i})+min(obj.HHApp{i});
+                        obj.CP_CNNZoom(i,2) = Ypredicted(k,2)*range(obj.BasedApp{i})+min(obj.BasedApp{i});
+                        obj.CP(i,1) = obj.CP_CNNZoom(i,1);
+                        obj.CP(i,2) = obj.CP_CNNZoom(i,2);
+                        k = k + 1;
+                    end
+                    
+                    waitbar(2/3,h,'Predicting zoomed CP, sweeping over multiple zooms');
+                    MaxZoom = 0.7;
+                    ZoomFactor = (1-MaxZoom):MaxZoom/(NumPasses-1):1; 
+                    for i=1:NumPasses
+                        ZoomCell{i} = obj.copy;
+                        ZoomCell{i}.cnn_zoom_in(ZoomFactor(i));
+                    end
+                    X = obj.CP_batchprep_3_channel(ZoomCell,ImgSize(1),ImgSize(1),[0 0.3 0.7]);
+                    CantHandle = true;
+                    while CantHandle == true
+                        try
+                            Ypredicted = predict(NeuralNet,X,'MiniBatchSize',obj.MiniBatchSize,'Acceleration','auto');
+                            CantHandle = false;
+                        catch
+                            obj.CPFlag.CNNopt = 0;
+                            obj.cnn_runtime_optimization(NeuralNet,X);
+                        end
+                    end
+                    waitbar(1,h,'Wrapping up');
+                    iRange = find(obj.SelectedCurves);
+                    k = 1;
+                    for i=iRange'
+                        for j=1:NumPasses
+                            TempCP(i,1,j) = Ypredicted(k+length(iRange)*(j-1),1)*range(ZoomCell{j}.HHApp{i})+min(ZoomCell{j}.HHApp{i});
+                            TempCP(i,2,j) = Ypredicted(k+length(iRange)*(j-1),2)*range(ZoomCell{j}.BasedApp{i})+min(ZoomCell{j}.BasedApp{i});
+                        end
+                        obj.CP_CNNZoomSweep(i,1) = mean(TempCP(i,1,:),3);
+                        obj.CP_CNNZoomSweep(i,2) = mean(TempCP(i,2,:),3);
+                        obj.CP(i,1) = obj.CP_CNNZoomSweep(i,1);
+                        obj.CP(i,2) = obj.CP_CNNZoomSweep(i,2);
+                        k = k + 1;
+                    end
+                    
+                    obj.CPFlag.CNNZoomSweep = 1;
             end
             close(h)
             %             current = what();
@@ -1840,7 +1961,7 @@ classdef ForceMap < matlab.mixin.Copyable
             
         end
         
-        function cnn_zoom_in(obj)
+        function cnn_zoom_in(obj,ZoomFactor)
             % cnn_zoom_in(obj)
             %
             % Caution! do not use this function on your ForceMaps! This is
@@ -1852,10 +1973,10 @@ classdef ForceMap < matlab.mixin.Copyable
                 Lb = abs(min(obj.HHApp{i})-obj.CP_CNNZoom(i,1));
                 La = abs(max(obj.HHApp{i})-obj.CP_CNNZoom(i,1));
                 L = Lb + La;
-                if Lb/L <= 0.7
+                if Lb/L <= ZoomFactor
                     continue
                 end
-                Lsub = (Lb - 0.7*L)/0.3;
+                Lsub = (Lb - ZoomFactor*L)/(1-ZoomFactor);
                 CutOff = min(obj.HHApp{i}) + Lsub;
                 obj.HHApp{i}(obj.HHApp{i}<CutOff) = [];
                 obj.BasedApp{i}(1:(end-length(obj.HHApp{i}))) = [];
@@ -1945,6 +2066,15 @@ classdef ForceMap < matlab.mixin.Copyable
                 Legends{end+1} = 'CP CNNZoom';
                 xlim([(obj.HHApp{k}(1)+ZoomMult*(obj.CP_CNNZoom(k,1) - obj.HHApp{k}(1)))*1e9 inf]);
             end
+            if obj.CPFlag.CNNZoomSweep == 1
+                plot(obj.CP_CNNZoomSweep(k,1)*1e9, obj.CP_CNNZoomSweep(k,2)*1e9,'gs',...
+                'LineWidth',1.5,...
+                'MarkerSize',7,...
+                'MarkerEdgeColor','k',...
+                'MarkerFaceColor',[0.8500 0.3250 0.0980]);
+                Legends{end+1} = 'CP CNNZoomSweep';
+                xlim([(obj.HHApp{k}(1)+ZoomMult*(obj.CP_CNNZoomSweep(k,1) - obj.HHApp{k}(1)))*1e9 inf]);
+            end
             if obj.CPFlag.Old == 1
                 plot(obj.CP_Old(k,1)*1e9, obj.CP_Old(k,2)*1e9,'O',...
                 'LineWidth',1.5,...
@@ -2026,10 +2156,10 @@ classdef ForceMap < matlab.mixin.Copyable
             for i=1:obj.NumProfiles
                 plot((obj.List2Map(obj.RectApexIndex(i),2)-1/2)*1024/obj.NumPoints,...
                     (obj.List2Map(obj.RectApexIndex(i),1)-1/2)*1024/obj.NumProfiles,...
-                    'r+', 'MarkerSize', 10, 'LineWidth', 1);
-                plot((obj.List2Map(obj.ApexIndex(i),2)-1/2)*1024/obj.NumPoints,...
-                    (obj.List2Map(obj.ApexIndex(i),1)-1/2)*1024/obj.NumProfiles,...
-                    'g+', 'MarkerSize', 10, 'LineWidth', 1);
+                    'g+', 'MarkerSize', 10, 'LineWidth', 2);
+%                 plot((obj.List2Map(obj.ApexIndex(i),2)-1/2)*1024/obj.NumPoints,...
+%                     (obj.List2Map(obj.ApexIndex(i),1)-1/2)*1024/obj.NumProfiles,...
+%                     'g+', 'MarkerSize', 10, 'LineWidth', 1);
             end
             title(T);
             
