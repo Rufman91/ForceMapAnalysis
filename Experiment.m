@@ -1,7 +1,7 @@
 classdef Experiment < matlab.mixin.Copyable
     
     properties
-        ExperimentName
+        ExperimentName % Shows name of the experiment
         ExperimentFolder
         HostOS
         HostName
