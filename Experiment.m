@@ -5,7 +5,7 @@ classdef Experiment < matlab.mixin.Copyable
         ExperimentFolder
         HostOS
         HostName
-        ForceMapNames
+        ForceMapNames % Shows names of the force maps
         ForceMapFolders
         SurfacePotentialMapFolders
         SurfacePotentialMapNames
