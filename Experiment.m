@@ -2,7 +2,7 @@ classdef Experiment < matlab.mixin.Copyable
     
     properties
         ExperimentName % Shows name of the experiment
-        ExperimentFolder
+        ExperimentFolder % Shows Folder where Experiment is saved
         HostOS
         HostName
         ForceMapNames % Shows names of the force maps
