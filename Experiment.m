@@ -1104,8 +1104,12 @@ classdef Experiment < matlab.mixin.Copyable
                     obj.FM{i}.estimate_cp_old();
                 end
                 if isequal(lower(CPOption),'combo')
-                    obj.FM{i}.estimate_cp_rov();
-                    obj.FM{i}.estimate_cp_gof();
+                    if obj.FM{i}.CPFlag.RoV == 0
+                        obj.FM{i}.estimate_cp_rov();
+                    end
+                    if obj.FM{i}.CPFlag.GoF == 0
+                        obj.FM{i}.estimate_cp_gof();
+                    end
                     obj.FM{i}.estimate_cp_combined();
                 end
                 if isequal(lower(CPOption),'manual')
