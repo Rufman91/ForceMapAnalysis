@@ -1,11 +1,11 @@
 classdef Experiment < matlab.mixin.Copyable
     
     properties
-        ExperimentName
-        ExperimentFolder
-        HostOS
+        ExperimentName      % Shows name of the experiment
+        ExperimentFolder    % Shows Folder where Experiment is saved
+        HostOS              % Shows the current operating
         HostName
-        ForceMapNames
+        ForceMapNames       % Shows names of the force maps
         ForceMapFolders
         SurfacePotentialMapFolders
         SurfacePotentialMapNames
@@ -737,7 +737,7 @@ classdef Experiment < matlab.mixin.Copyable
             
         end
         
-        function statistical_analysis_surface_potential(obj)
+        function FibPot = statistical_analysis_surface_potential(obj)
             % Statistical analysis of the surface potential map experiment.
             % First get the grouping of data from the user and then perform
             % several tests, plots etc.
@@ -1088,7 +1088,7 @@ classdef Experiment < matlab.mixin.Copyable
             %
             % aux-function for CPOption choice
             
-            NumPasses = 30;
+            NumPasses = 20;
             
             if nargin < 4
                 RefFM = false;
@@ -1189,6 +1189,91 @@ classdef Experiment < matlab.mixin.Copyable
                 clear Index
             end
             
+        end
+        
+        function create_moving_dot_gif_emod_vs_surfpot(obj,NFrames,NStartFrames,NEndFrames)
+            % create_moving_dot_gif_emod_vs_surfpot(obj,NFrames,FreezeFrames)
+            %
+            % This gif-creator has been written for a specific use case and
+            % has to be manually recoded to fit other Experiments. Videos
+            % generated run at 30 FPS so e.g. NFrames=60, NEndFrames=30
+            % and NStartFrames=30 creates a 4 second video
+            
+            % Get Fibril Data
+            X = obj.statistical_analysis_force_maps*1e-6;
+            Y = obj.statistical_analysis_surface_potential*1e3;
+            Y = Y';
+            close all
+            
+            %
+            DX1 = X(11:20) - X(1:10); 
+            DX2 = X(31:40) - X(21:30);
+            DY1 = Y(11:20) - Y(1:10);
+            DY2 = Y(31:40) - Y(21:30);
+            
+            Steps = 0:1/(NFrames-1):1;
+            
+            % Create and and open .avi for write-in of frames
+            FullFile = fullfile(obj.ExperimentFolder,filesep,'EModvsSurfPot_gif.avi');
+            
+            Vid = VideoWriter(FullFile);
+            Vid.open
+            
+            
+            % Create figure and loop over NFrames to write into Vid
+            Fig = figure('Color','white',...
+                'Units','normalized','Position',[0 0 1 1]);
+            for i=1:NFrames
+                hold off
+                XTemp1 = X(1:10) + Steps(i)*DX1;
+                XTemp2 = X(21:30) + Steps(i)*DX2;
+                YTemp1 = Y(1:10) + Steps(i)*DY1;
+                YTemp2 = Y(21:30) + Steps(i)*DY2;
+                MeanX1 = mean(XTemp1);
+                ErrX1 = std(XTemp1)/sqrt(10);
+                MeanX2 = mean(XTemp2);
+                ErrX2 = std(XTemp2)/sqrt(10);
+                MeanY1 = mean(YTemp1);
+                ErrY1 = std(YTemp1)/sqrt(10);
+                MeanY2 = mean(YTemp2);
+                ErrY2 = std(YTemp2)/sqrt(10);
+                plot(XTemp1,YTemp1,'square','MarkerEdgeColor','k','MarkerFaceColor','b','MarkerSize',10)
+                ax = Fig.CurrentAxes;
+                xlim([min(X)-0.1*range(X) max(X)+0.1*range(X)])
+                ylim([min(Y)-0.1*range(Y) max(Y)+0.1*range(Y)])
+                hold on
+                errorbar(MeanX1,MeanY1,-ErrY1,ErrY1,-ErrX1,ErrX1,'bsquare','MarkerEdgeColor','k','MarkerFaceColor','b','MarkerSize',20)
+                plot(XTemp2,YTemp2,'diamond','MarkerEdgeColor','k','MarkerFaceColor','r','MarkerSize',10)
+                errorbar(MeanX2,MeanY2,-ErrY1,ErrY1,-ErrX1,ErrX1,'rdiamond','MarkerEdgeColor','k','MarkerFaceColor','r','MarkerSize',20)
+                legend({'Control Group','Mean Control +- SE','MGO Group','Mean MGO +- SE'},'FontSize',22)
+                xlabel('Indentation Modulus [MPa]','FontSize',22)
+                ylabel('Rel. Surface Potential [mV]','FontSize',22)
+                ax.FontSize = 22;
+                title('...','FontSize',42)
+                
+                if i==1
+                    title('Before PBS/MGO','FontSize',42)
+                    Frame = getframe(Fig);
+                    for j=1:NStartFrames
+                        Vid.writeVideo(Frame)
+                    end
+                    title('...','FontSize',42)
+                end
+                
+                Frame = getframe(Fig);
+                
+                Vid.writeVideo(Frame);
+            end
+            
+            for i=1:NEndFrames
+                % Lingers on the last frame for NEndFrames/30 seconds
+                title('After PBS/MGO','FontSize',42)
+                Frame = getframe(Fig);
+                Vid.writeVideo(Frame)
+            end
+            
+            Vid.close
+            close(Fig)
         end
         
     end
