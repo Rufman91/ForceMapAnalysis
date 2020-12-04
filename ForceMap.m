@@ -35,17 +35,17 @@ classdef ForceMap < matlab.mixin.Copyable
         SpringConstant
         DBanding        % Fourieranalysis-based estimate of DBanding perdiod (only available with sufficient resolution)
         RefSlope        % Refernce slope as determined from the upper curve slope from data from very hard
-                        % surfaces (mica,glass), either from glass parts beneath the specimen or from 
-                        % separate reference force maps
+        % surfaces (mica,glass), either from glass parts beneath the specimen or from
+        % separate reference force maps
         PixApp          % maximum number of measured points during approach
         PixRet          % maximum number of measured points during retraction
         SelectedCurves  % logical vector of length NCurves with 0s for excluded and 1s for included curves. gets initialized with ones
         TipRadius = 8  % (nominal, if not otherwise calculated) tip radius in nm for the chosen type of tip model
         PoissonR = 0.5  % standard Poisson ratio for most mechanical models
-        Medium 
+        Medium
     end
     properties
-       % Curve data Properties 
+        % Curve data Properties
         
         App = {}        % approach force data in Newton
         Ret = {}        % retraction force data in Newton
@@ -71,8 +71,8 @@ classdef ForceMap < matlab.mixin.Copyable
         CP_CNNZoom      % CP estimated with a conv. neural network, first estimate CP, then zoom into the curve for more accurate pred
         CP_Dropout      % CP estimated with a conv. neural network in multiple Monte Carlo Dropout passes
         CP_CNNZoomSweep % CP estimated with a conv. neural network, sweep over several magnifications and take mean (or median?) estimate
-        CP_MonteCarlo   % All predictions from the multiple inference steps done in 
-                        % the monte carlo method
+        CP_MonteCarlo   % All predictions from the multiple inference steps done in
+        % the monte carlo method
         CP_MonteCarlo_STD % Standard deviation of CP_MonteCarlo
         MiniBatchSize % Optimal MiniBatchSize for CNN-prediction for current system environment
         DeltaE = {}     %
@@ -85,8 +85,8 @@ classdef ForceMap < matlab.mixin.Copyable
         
     end
     properties
-       % Properties related to topological calculations, such as mapping and masking and visualisation 
-       
+        % Properties related to topological calculations, such as mapping and masking and visualisation
+        
         HeightMap       % height profile map taken from the maximum head-height from approach max(hhapp)
         EModMapHertz    % E modulus profile map. same ordering as HeightMap
         EModMapOliverPharr % """"
@@ -109,7 +109,7 @@ classdef ForceMap < matlab.mixin.Copyable
         HertzFit        % HertzFit model generated in the calculate_e_mod_hertz method
         IndDepthHertz
         DZslope
-        Stiffness 
+        Stiffness
         IndDepth
         IndentArea
         ProjTipArea
@@ -182,8 +182,8 @@ classdef ForceMap < matlab.mixin.Copyable
                 obj.Folder = fullfile(DataFolder,'ForceData',filesep);
                 
                 
-%             system(['unzip -o ', fullfile(datadir,fnamemap), ' ''*shared-data/header.properties'' -d ', tempdir{fib,1}]);
-%                 
+                %             system(['unzip -o ', fullfile(datadir,fnamemap), ' ''*shared-data/header.properties'' -d ', tempdir{fib,1}]);
+                %
             elseif isequal('GLN',OS)
                 % unpack jpk-file into temporary folder to read out data
                 cmd1 = 'unzip -o ';
@@ -294,8 +294,8 @@ classdef ForceMap < matlab.mixin.Copyable
                 end
                 
                 [TempHHApp,obj.App{i},obj.SpringConstant,obj.Sensitivity]=...
-                obj.writedata(HeaderFileDirectory,SegmentHeaderFileDirectory,...
-                HeightDataDirectory,vDefDataDirectory,obj.HHType);
+                    obj.writedata(HeaderFileDirectory,SegmentHeaderFileDirectory,...
+                    HeightDataDirectory,vDefDataDirectory,obj.HHType);
                 
                 obj.HHApp{i} = -TempHHApp;
                 obj.App{i} = obj.App{i}.*obj.SpringConstant;
@@ -328,9 +328,9 @@ classdef ForceMap < matlab.mixin.Copyable
                 end
                 
                 [TempHHRet,obj.Ret{i}]=...
-                obj.writedata(HeaderFileDirectory,SegmentHeaderFileDirectory,...
-                HeightDataDirectory,vDefDataDirectory,obj.HHType);
-            
+                    obj.writedata(HeaderFileDirectory,SegmentHeaderFileDirectory,...
+                    HeightDataDirectory,vDefDataDirectory,obj.HHType);
+                
                 obj.HHRet{i} = -TempHHRet;
                 obj.Ret{i} = obj.Ret{i}.*obj.SpringConstant;
                 clear TempHHRet
@@ -394,11 +394,11 @@ classdef ForceMap < matlab.mixin.Copyable
                 end
             end
             close(gcf)
-%             current = what();
-%             cd(obj.Folder)
-%             savename = sprintf('%s.mat',obj.Name);
-%             save(savename,'obj')
-%             cd(current.path)
+            %             current = what();
+            %             cd(obj.Folder)
+            %             savename = sprintf('%s.mat',obj.Name);
+            %             save(savename,'obj')
+            %             cd(current.path)
         end
         
         function base_and_tilt(obj,RunMode)
@@ -461,11 +461,11 @@ classdef ForceMap < matlab.mixin.Copyable
                 obj.THRet{i} = obj.HHRet{i} - obj.BasedRet{i}/obj.SpringConstant;
             end
             close(h);
-%             current = what();
-%             cd(obj.Folder)
-%             savename = sprintf('%s.mat',obj.Name);
-%             save(savename,'obj')
-%             cd(current.path)
+            %             current = what();
+            %             cd(obj.Folder)
+            %             savename = sprintf('%s.mat',obj.Name);
+            %             save(savename,'obj')
+            %             cd(current.path)
         end
         
         function estimate_cp_rov(obj,batchsize)
@@ -500,11 +500,11 @@ classdef ForceMap < matlab.mixin.Copyable
             end
             close(h)
             obj.CPFlag.RoV = 1;
-%             current = what();
-%             cd(obj.Folder)
-%             savename = sprintf('%s.mat',obj.Name);
-%             save(savename,'obj')
-%             cd(current.path)
+            %             current = what();
+            %             cd(obj.Folder)
+            %             savename = sprintf('%s.mat',obj.Name);
+            %             save(savename,'obj')
+            %             cd(current.path)
         end
         
         function estimate_cp_gof(obj)
@@ -540,11 +540,11 @@ classdef ForceMap < matlab.mixin.Copyable
             obj.CP = obj.CP_GoF;
             close(h)
             obj.CPFlag.GoF = 1;
-%             current = what();
-%             cd(obj.Folder)
-%             savename = sprintf('%s.mat',obj.Name);
-%             save(savename,'obj')
-%             cd(current.path)
+            %             current = what();
+            %             cd(obj.Folder)
+            %             savename = sprintf('%s.mat',obj.Name);
+            %             save(savename,'obj')
+            %             cd(current.path)
         end
         
         function estimate_cp_combined(obj)
@@ -559,11 +559,11 @@ classdef ForceMap < matlab.mixin.Copyable
             end
             
             obj.CPFlag.Combo = 1;
-%             current = what();
-%             cd(obj.Folder)
-%             savename = sprintf('%s.mat',obj.Name);
-%             save(savename,'obj')
-%             cd(current.path)
+            %             current = what();
+            %             cd(obj.Folder)
+            %             savename = sprintf('%s.mat',obj.Name);
+            %             save(savename,'obj')
+            %             cd(current.path)
         end
         
         function estimate_cp_cnn(obj,NeuralNet,RunMode,NumPasses)
@@ -650,7 +650,7 @@ classdef ForceMap < matlab.mixin.Copyable
                             try
                                 Temp = predict(NeuralNet,X,'MiniBatchSize',obj.MiniBatchSize,'Acceleration','auto');
                                 CantHandle = false;
-                            catch 
+                            catch
                                 CantHandle = true;
                                 obj.CPFlag.CNNopt = 0;
                                 obj.cnn_runtime_optimization(NeuralNet,X);
@@ -796,7 +796,7 @@ classdef ForceMap < matlab.mixin.Copyable
                     
                     waitbar(2/3,h,'Predicting zoomed CP, sweeping over multiple zooms');
                     MaxZoom = 0.7;
-                    ZoomFactor = (1-MaxZoom):MaxZoom/(NumPasses-1):1; 
+                    ZoomFactor = (1-MaxZoom):MaxZoom/(NumPasses-1):1;
                     for i=1:NumPasses
                         ZoomCell{i} = obj.copy;
                         ZoomCell{i}.cnn_zoom_in(ZoomFactor(i));
@@ -861,11 +861,11 @@ classdef ForceMap < matlab.mixin.Copyable
                 obj.CP_Old(i,2) =obj.CP(i,2);
             end
             obj.CPFlag.Old = 1;
-%             current = what();
-%             cd(obj.Folder)
-%             savename = sprintf('%s.mat',obj.Name);
-%             save(savename,'obj')
-%             cd(current.path)
+            %             current = what();
+            %             cd(obj.Folder)
+            %             savename = sprintf('%s.mat',obj.Name);
+            %             save(savename,'obj')
+            %             cd(current.path)
         end
         
         function estimate_cp_manually(obj,Zoom,Idx)
@@ -887,7 +887,7 @@ classdef ForceMap < matlab.mixin.Copyable
                 j = Idx;
             end
             while sum(jRange==j)
-%                 fig.WindowState = 'fullscreen';
+                %                 fig.WindowState = 'fullscreen';
                 plot(obj.HHApp{j},obj.BasedApp{j});
                 plottitle = sprintf('Curve Nr.%i/%i\n Click or click and drag the point to the contact point\n Click the red area to exclude the current curve from further analysis\n Click the green area to go back one curve',j,obj.NCurves);
                 title(plottitle);
@@ -1030,13 +1030,13 @@ classdef ForceMap < matlab.mixin.Copyable
             end
             E = obj.EModHertz;
             HertzFit = obj.HertzFit;
-                if isequal(lower(CPType),'cnn')
-                        obj.EModHertz_CNN = E;
-                    elseif isequal(lower(CPType),'old')
-                        obj.EModHertz_Old = E;
-                    elseif isequal(lower(CPType),'rov')
-                        obj.EModHertz_RoV = E;
-                end
+            if isequal(lower(CPType),'cnn')
+                obj.EModHertz_CNN = E;
+            elseif isequal(lower(CPType),'old')
+                obj.EModHertz_Old = E;
+            elseif isequal(lower(CPType),'rov')
+                obj.EModHertz_RoV = E;
+            end
             for i=1:obj.NumProfiles
                 for j=1:obj.NumPoints
                     obj.EModMapHertz(i,j,1) = (obj.EModHertz(mod(i,2)*j+(1-mod(i,2))*(obj.NumPoints-(j-1))+(obj.NumProfiles-i)*obj.NumPoints));
@@ -1066,7 +1066,7 @@ classdef ForceMap < matlab.mixin.Copyable
             if ExternalRefSlope == false
                 obj.calculate_reference_slope();
             end
-
+            
             for i=Range'
                 Z(:,i) = obj.HHRet{i} - obj.CP(i,1);
                 D(:,i) = (obj.BasedRet{i} - obj.CP(i,2))/obj.SpringConstant;
@@ -1128,11 +1128,11 @@ classdef ForceMap < matlab.mixin.Copyable
                 close(f)
             end
             
-%             current = what();
-%             cd(obj.Folder)
-%             savename = sprintf('%s.mat',obj.Name);
-%             save(savename,'obj')
-%             cd(current.path)
+            %             current = what();
+            %             cd(obj.Folder)
+            %             savename = sprintf('%s.mat',obj.Name);
+            %             save(savename,'obj')
+            %             cd(current.path)
         end
         
         function calculate_fib_diam(obj)
@@ -1160,11 +1160,11 @@ classdef ForceMap < matlab.mixin.Copyable
                 obj.ApexIndex(i) = obj.Map2List(i,obj.ApexIndex(i));
             end
             
-%             current = what();
-%             cd(obj.Folder)
-%             savename = sprintf('%s.mat',obj.Name);
-%             save(savename,'obj')
-%             cd(current.path)
+            %             current = what();
+            %             cd(obj.Folder)
+            %             savename = sprintf('%s.mat',obj.Name);
+            %             save(savename,'obj')
+            %             cd(current.path)
         end
         
         function [img,imgorsize] = force2img(obj,ImgSize)
@@ -1220,7 +1220,7 @@ classdef ForceMap < matlab.mixin.Copyable
             %            pause(5)
             close(f)
         end
-
+        
     end
     
     
@@ -1568,7 +1568,7 @@ classdef ForceMap < matlab.mixin.Copyable
                 Nimgs = Nimgs + sum(objcell{i}.SelectedCurves);
             end
             X = zeros(ImgSize,ImgSize,1,Nimgs);
-
+            
             fig = figure('Color','w');
             k = 1;
             for i=1:Nmaps
@@ -1715,7 +1715,7 @@ classdef ForceMap < matlab.mixin.Copyable
             else
                 X = zeros(ImgSizeFinal,ImgSizeFinal,3,Nimgs,'single');
             end
-                
+            
             
             k = 1;
             for i=1:Nmaps
@@ -1766,7 +1766,7 @@ classdef ForceMap < matlab.mixin.Copyable
                         clear Points
                         o = o + 1;
                     end
-                        k = k + 1;
+                    k = k + 1;
                 end
             end
         end
@@ -1827,7 +1827,7 @@ classdef ForceMap < matlab.mixin.Copyable
         end
         
         function calculate_reference_slope(obj)
-            % Calculates the distribution of DZslopes on the curves 
+            % Calculates the distribution of DZslopes on the curves
             % that that are neihter on the fibril nor the excluded zones.
             %  the upper 25% of the curve are considered for the
             %  calculation
@@ -1883,7 +1883,7 @@ classdef ForceMap < matlab.mixin.Copyable
                 mask(i,Idx(i,1:floor(MaxIdx*MaskParam))) = 1;
             end
             mask = logical(~mask);
-
+            
             masked_map = mask(:,:,1).*obj.HeightMap;
             % create a N-by-3 matrix with each column being a point in
             % 3D-space
@@ -1937,11 +1937,11 @@ classdef ForceMap < matlab.mixin.Copyable
             mask = bwareafilt(mask,1,4);
             obj.FibMask = mask;
             
-%             current = what();
-%             cd(obj.Folder)
-%             savename = sprintf('%s.mat',obj.Name);
-%             save(savename,'obj')
-%             cd(current.path)
+            %             current = what();
+            %             cd(obj.Folder)
+            %             savename = sprintf('%s.mat',obj.Name);
+            %             save(savename,'obj')
+            %             cd(current.path)
         end
         
         function check_for_new_host(obj)
@@ -2043,7 +2043,7 @@ classdef ForceMap < matlab.mixin.Copyable
     end
     
     methods
-       % methods for visualization, plotting, statistics and quality control 
+        % methods for visualization, plotting, statistics and quality control
         
         
         function fig = show_force_curve(obj,ZoomMult,k)
@@ -2069,73 +2069,73 @@ classdef ForceMap < matlab.mixin.Copyable
             
             if obj.CPFlag.Manual == 1
                 plot(obj.Man_CP(k,1)*1e9, obj.Man_CP(k,2)*1e9,'O',...
-                'LineWidth',1.5,...
-                'MarkerSize',7,...
-                'MarkerEdgeColor','k',...
-                'MarkerFaceColor','r');
+                    'LineWidth',1.5,...
+                    'MarkerSize',7,...
+                    'MarkerEdgeColor','k',...
+                    'MarkerFaceColor','r');
                 Legends{end+1} = 'Manual CP';
                 xlim([(obj.HHApp{k}(1)+ZoomMult*(obj.Man_CP(k,1) - obj.HHApp{k}(1)))*1e9 inf]);
             end
             if obj.CPFlag.RoV == 1
                 plot(obj.CP_RoV(k,1)*1e9, obj.CP_RoV(k,2)*1e9,'O',...
-                'LineWidth',1.5,...
-                'MarkerSize',7,...
-                'MarkerEdgeColor','k',...
-                'MarkerFaceColor','b');
+                    'LineWidth',1.5,...
+                    'MarkerSize',7,...
+                    'MarkerEdgeColor','k',...
+                    'MarkerFaceColor','b');
                 Legends{end+1} = 'CP RoV';
                 xlim([(obj.HHApp{k}(1)+ZoomMult*(obj.CP_RoV(k,1) - obj.HHApp{k}(1)))*1e9 inf]);
             end
             if obj.CPFlag.GoF == 1
                 plot(obj.CP_GoF(k,1)*1e9, obj.CP_GoF(k,2)*1e9,'O',...
-                'LineWidth',1.5,...
-                'MarkerSize',7,...
-                'MarkerEdgeColor','k',...
-                'MarkerFaceColor','c');
+                    'LineWidth',1.5,...
+                    'MarkerSize',7,...
+                    'MarkerEdgeColor','k',...
+                    'MarkerFaceColor','c');
                 Legends{end+1} = 'CP GoF';
                 xlim([(obj.HHApp{k}(1)+ZoomMult*(obj.CP_GoF(k,1) - obj.HHApp{k}(1)))*1e9 inf]);
             end
             if obj.CPFlag.Combo == 1
                 plot(obj.CP_Combo(k,1)*1e9, obj.CP_Combo(k,2)*1e9,'O',...
-                'LineWidth',1.5,...
-                'MarkerSize',7,...
-                'MarkerEdgeColor','k',...
-                'MarkerFaceColor','m');
+                    'LineWidth',1.5,...
+                    'MarkerSize',7,...
+                    'MarkerEdgeColor','k',...
+                    'MarkerFaceColor','m');
                 Legends{end+1} = 'CP Combo';
                 xlim([(obj.HHApp{k}(1)+ZoomMult*(obj.CP_Combo(k,1) - obj.HHApp{k}(1)))*1e9 inf]);
             end
             if obj.CPFlag.CNN == 1
                 plot(obj.CP_CNN(k,1)*1e9, obj.CP_CNN(k,2)*1e9,'O',...
-                'LineWidth',1.5,...
-                'MarkerSize',7,...
-                'MarkerEdgeColor','k',...
-                'MarkerFaceColor','y');
+                    'LineWidth',1.5,...
+                    'MarkerSize',7,...
+                    'MarkerEdgeColor','k',...
+                    'MarkerFaceColor','y');
                 Legends{end+1} = 'CP CNN';
                 xlim([(obj.HHApp{k}(1)+ZoomMult*(obj.CP_CNN(k,1) - obj.HHApp{k}(1)))*1e9 inf]);
             end
             if obj.CPFlag.CNNZoom == 1
                 plot(obj.CP_CNNZoom(k,1)*1e9, obj.CP_CNNZoom(k,2)*1e9,'O',...
-                'LineWidth',1.5,...
-                'MarkerSize',7,...
-                'MarkerEdgeColor','k',...
-                'MarkerFaceColor',[0.8500 0.3250 0.0980]);
+                    'LineWidth',1.5,...
+                    'MarkerSize',7,...
+                    'MarkerEdgeColor','k',...
+                    'MarkerFaceColor',[0.8500 0.3250 0.0980]);
                 Legends{end+1} = 'CP CNNZoom';
                 xlim([(obj.HHApp{k}(1)+ZoomMult*(obj.CP_CNNZoom(k,1) - obj.HHApp{k}(1)))*1e9 inf]);
             end
             if obj.CPFlag.CNNZoomSweep == 1
                 plot(obj.CP_CNNZoomSweep(k,1)*1e9, obj.CP_CNNZoomSweep(k,2)*1e9,'gs',...
-                'LineWidth',1.5,...
-                'MarkerSize',7,...
-                'MarkerEdgeColor','k',...
-                'MarkerFaceColor',[0.8500 0.3250 0.0980]);
+                    'LineWidth',1.5,...
+                    'MarkerSize',7,...
+                    'MarkerEdgeColor','k',...
+                    'MarkerFaceColor',[0.8500 0.3250 0.0980]);
                 Legends{end+1} = 'CP CNNZoomSweep';
                 xlim([(obj.HHApp{k}(1)+ZoomMult*(obj.CP_CNNZoomSweep(k,1) - obj.HHApp{k}(1)))*1e9 inf]);
             end
             if obj.CPFlag.Old == 1
                 plot(obj.CP_Old(k,1)*1e9, obj.CP_Old(k,2)*1e9,'O',...
-                'LineWidth',1.5,...
-                'MarkerSize',7,...
-                'MarkerEdgeColor','k',...
-                'MarkerFaceColor',[0.9290 0.6940 0.1250]);
+                    'LineWidth',1.5,...
+                    'MarkerSize',7,...
+                    'MarkerEdgeColor','k',...
+                    'MarkerFaceColor',[0.9290 0.6940 0.1250]);
                 Legends{end+1} = 'CP SD6';
                 xlim([(obj.HHApp{k}(1)+ZoomMult*(obj.CP_Old(k,1) - obj.HHApp{k}(1)))*1e9 inf]);
             end
@@ -2145,13 +2145,13 @@ classdef ForceMap < matlab.mixin.Copyable
                 XSTD = std(obj.CP_MonteCarlo(:,1,k))*1e9;
                 YSTD = std(obj.CP_MonteCarlo(:,2,k))*1e9;
                 plot(X, Y,'O',...
-                'LineWidth',1.5,...
-                'MarkerSize',7,...
-                'MarkerEdgeColor','k',...
-                'MarkerFaceColor',[0.4940 0.1840 0.5560]);
+                    'LineWidth',1.5,...
+                    'MarkerSize',7,...
+                    'MarkerEdgeColor','k',...
+                    'MarkerFaceColor',[0.4940 0.1840 0.5560]);
                 plot([X-XSTD X+XSTD],[Y Y],'-+',[X X],[Y-YSTD Y+YSTD],'-+',...
-                'LineWidth',1.5,...
-                'Color',[0.4940 0.1840 0.5560]);
+                    'LineWidth',1.5,...
+                    'Color',[0.4940 0.1840 0.5560]);
                 Legends{end+1} = 'CP Dropout';
                 Legends{end+1} = sprintf('Dropout Uncertainty %.2f nm',obj.CP_MonteCarlo_STD(k)*1e9);
                 xlim([(obj.HHApp{k}(1)+ZoomMult*(obj.CP_Dropout(k,1) - obj.HHApp{k}(1)))*1e9 inf]);
@@ -2163,9 +2163,9 @@ classdef ForceMap < matlab.mixin.Copyable
             ylabel('vDeflection-Force [nN]');
             grid on
             grid minor
-%             dim = [0.4 0.3 0.6 0.6];
-%             str = {'     Network Uncertainty',sprintf('Standard Deviation = %.2f nm',obj.CP_MonteCarlo_STD(k)*1e9)};
-%             annotation('textbox',dim,'String',str,'FitBoxToText','on');
+            %             dim = [0.4 0.3 0.6 0.6];
+            %             str = {'     Network Uncertainty',sprintf('Standard Deviation = %.2f nm',obj.CP_MonteCarlo_STD(k)*1e9)};
+            %             annotation('textbox',dim,'String',str,'FitBoxToText','on');
             
             subplot(2,1,2)
             I = obj.HeightMap;
@@ -2173,13 +2173,16 @@ classdef ForceMap < matlab.mixin.Copyable
             imshow(I)
             axis on
             hold on;
-            for i=1:obj.NumProfiles
-                plot((obj.List2Map(obj.RectApexIndex(i),2)),...
-                    (obj.List2Map(obj.RectApexIndex(i),1)),...
-                    'g+', 'MarkerSize', 10, 'LineWidth', 2);
-%                 plot((obj.List2Map(obj.ApexIndex(i),2)-1/2)*1024/obj.NumPoints,...
-%                     (obj.List2Map(obj.ApexIndex(i),1)-1/2)*1024/obj.NumProfiles,...
-%                     'g+', 'MarkerSize', 10, 'LineWidth', 1);
+            try
+                for i=1:obj.NumProfiles
+                    plot((obj.List2Map(obj.RectApexIndex(i),2)),...
+                        (obj.List2Map(obj.RectApexIndex(i),1)),...
+                        'g+', 'MarkerSize', 10, 'LineWidth', 2);
+                    %                 plot((obj.List2Map(obj.ApexIndex(i),2)-1/2)*1024/obj.NumPoints,...
+                    %                     (obj.List2Map(obj.ApexIndex(i),1)-1/2)*1024/obj.NumProfiles,...
+                    %                     'g+', 'MarkerSize', 10, 'LineWidth', 1);
+                end
+            catch
             end
             plot(obj.List2Map(k,2),obj.List2Map(k,1), 'r+', 'MarkerSize', 10, 'LineWidth', 2);
             title('Choose a different point...')
@@ -2210,19 +2213,22 @@ classdef ForceMap < matlab.mixin.Copyable
             
             subplot(2,2,1)
             I = imresize(obj.HeightMap(:,:,1).*1e9,[1024 1024]);
-%             I = (I*range(obj.HeightMap(:,:,1),'all') + min(obj.HeightMap(:,:,1),[],'all'))*1e9;
+            %             I = (I*range(obj.HeightMap(:,:,1),'all') + min(obj.HeightMap(:,:,1),[],'all'))*1e9;
             imshow(I,[min(I,[],'all') max(I,[],'all')],'Colormap',hot)
             title(sprintf('%s Plane Fitted Height',obj.Name))
             c1 = colorbar;
             c1.Label.String = 'Height [nm]';
             hold on;
-            for i=1:obj.NumProfiles
-                plot((obj.List2Map(obj.RectApexIndex(i),2)-1/2)*1024/obj.NumPoints,...
-                    (obj.List2Map(obj.RectApexIndex(i),1)-1/2)*1024/obj.NumProfiles,...
-                    'g+', 'MarkerSize', 10, 'LineWidth', 2);
-%                 plot((obj.List2Map(obj.ApexIndex(i),2)-1/2)*1024/obj.NumPoints,...
-%                     (obj.List2Map(obj.ApexIndex(i),1)-1/2)*1024/obj.NumProfiles,...
-%                     'g+', 'MarkerSize', 10, 'LineWidth', 1);
+            try
+                for i=1:obj.NumProfiles
+                    plot((obj.List2Map(obj.RectApexIndex(i),2)-1/2)*1024/obj.NumPoints,...
+                        (obj.List2Map(obj.RectApexIndex(i),1)-1/2)*1024/obj.NumProfiles,...
+                        'g+', 'MarkerSize', 10, 'LineWidth', 2);
+                    %                 plot((obj.List2Map(obj.ApexIndex(i),2)-1/2)*1024/obj.NumPoints,...
+                    %                     (obj.List2Map(obj.ApexIndex(i),1)-1/2)*1024/obj.NumProfiles,...
+                    %                     'g+', 'MarkerSize', 10, 'LineWidth', 1);
+                end
+            catch
             end
             title(T);
             
@@ -2249,7 +2255,7 @@ classdef ForceMap < matlab.mixin.Copyable
             
             subplot(2,1,1)
             I = obj.HeightMap(:,:,1).*1e9;
-%             I = (I*range(obj.HeightMap(:,:,1),'all') + min(obj.HeightMap(:,:,1),[],'all'))*1e9;
+            %             I = (I*range(obj.HeightMap(:,:,1),'all') + min(obj.HeightMap(:,:,1),[],'all'))*1e9;
             imshow(I,[min(I,[],'all') max(I,[],'all')],'Colormap',hot)
             title(sprintf('%s Plane Fitted Height',obj.Name))
             c1 = colorbar;
@@ -2257,7 +2263,7 @@ classdef ForceMap < matlab.mixin.Copyable
             
             subplot(2,1,2)
             I = imresize(obj.HeightMap(:,:,1).*1e9,[1024 1024]);
-%             I = (I*range(obj.HeightMap(:,:,1),'all') + min(obj.HeightMap(:,:,1),[],'all'))*1e9;
+            %             I = (I*range(obj.HeightMap(:,:,1),'all') + min(obj.HeightMap(:,:,1),[],'all'))*1e9;
             imshow(I,[min(I,[],'all') max(I,[],'all')],'Colormap',hot)
             title(sprintf('%s Plane Fitted Height Resized',obj.Name))
             c1 = colorbar;
@@ -2345,7 +2351,7 @@ classdef ForceMap < matlab.mixin.Copyable
                         median(obj.EModOliverPharr(obj.RectApexIndex))*1e-6,...
                         std(obj.EModOliverPharr(obj.RectApexIndex))*1e-6));
                 end
-                    
+                
                 subplot(2,3,4)
                 plot(0:obj.NumProfiles+1,obj.RefSlope*ones(obj.NumProfiles+2,1))
                 ylim([0 1.3])
@@ -2447,7 +2453,7 @@ classdef ForceMap < matlab.mixin.Copyable
                         median(obj.EModHertz(obj.RectApexIndex))*1e-6,...
                         std(obj.EModHertz(obj.RectApexIndex))*1e-6));
                 end
-                    
+                
                 
                 subplot(2,2,4)
                 plot((obj.IndDepthHertz(obj.RectApexIndex))*1e9,...
@@ -2505,20 +2511,20 @@ end
 
 % Function Graveyard
 
-        %%%%% this constructor method version goes together with Martin
-        %%%%% Handelhausers .py-script for .jpk-force-map -> .cvs
-        %%%%% conversion
+%%%%% this constructor method version goes together with Martin
+%%%%% Handelhausers .py-script for .jpk-force-map -> .cvs
+%%%%% conversion
 %         function obj = ForceMap(mapfilepath,mapname)
 %             %%% Constructor of the class
-%             
+%
 %             % Specify the folder where the files live. And import them.
 %             % Also get curent folder and return to it after import of
 %             % files.
 %             % Assigns the properties that can be found in the jpk-file
 %             % already
-%             
+%
 %             current = what();
-%             
+%
 %             % determine if ForceMap is given a loadpath for existing .mat
 %             if nargin > 0
 %                 cd(mapfilepath);
@@ -2530,7 +2536,7 @@ end
 %                 disp('loading successfull')
 %                 return
 %             end
-%             
+%
 %             quest = 'Do you want to load an already existing .mat file of the force map?';
 %             answer = questdlg(quest,'Load map...','...from .mat-file','...from .cvs-folder','...from .cvs-folder');
 %             if isequal(answer, '...from .mat-file')
@@ -2545,15 +2551,15 @@ end
 %                 return
 %             else
 %             end
-%             
-%             
+%
+%
 %             obj.Folder = uigetdir;
 %             cd(obj.Folder);
 %             splitfolder = strsplit(obj.Folder,'\');
 %             obj.Name = string(splitfolder(end));
 %             msg = sprintf('loading %s',obj.Name);
 %             disp(msg);
-%             
+%
 %             % Get a list of all files in the folder with the desired file name pattern.
 %             % Change to whatever pattern you used for the names of your force map files.
 %             filePattern = fullfile(obj.Folder, '*.csv');
@@ -2564,7 +2570,7 @@ end
 %                 uiwait(warndlg(errorMessage));
 %                 return;
 %             end
-%             
+%
 %             % Import data from csv-files
 %             import_header = importdata(theFiles(2).name);
 %             k = 1;
@@ -2588,7 +2594,7 @@ end
 %             TempApp = readmatrix(theFiles(1).name);
 %             TempHHApp = readmatrix(theFiles(3).name)*(-obj.Header{9,2}) - obj.Header{8,2};
 %             obj.NCurves = obj.Header{5,2}*obj.Header{6,2};
-%             
+%
 %             for i=1:obj.NCurves
 %                 DelNApp = round(TempApp(end,i),6,'significant');
 %                 if DelNApp == round(TempApp(end-1,i),6,'significant')
@@ -2603,14 +2609,14 @@ end
 %                 end
 %                 obj.HHApp{i} = TempHHApp(1:length(obj.App{i}),i);
 %             end
-%             
+%
 %             for i=1:obj.NCurves
 %                 if round(obj.App{i}(end),6,'significant') == DelMap
 %                     obj.App{i}(end) = [];
 %                     obj.HHApp{i}(end) = [];
 %                 end
 %             end
-%             
+%
 %             obj.HHRet = mat2cell(readmatrix(theFiles(4).name)*obj.Header{11,2},...
 %                 [obj.Header{3,2}],ones(obj.Header{5,2}*obj.Header{6,2},1));
 %             obj.Ret = mat2cell(readmatrix(theFiles(5).name),...
@@ -2619,13 +2625,13 @@ end
 %             obj.PixRet = obj.Header{3,2};
 %             obj.Sensitivity = obj.Header{16,2};
 %             obj.SelectedCurves = ones(obj.NCurves,1);
-%             obj.Man_CP = zeros(obj.NCurves,2);            
+%             obj.Man_CP = zeros(obj.NCurves,2);
 %             obj.NumProfiles = obj.Header{6,2};
 %             obj.NumPoints = obj.Header{5,2};
 %             obj.SpringConstant = obj.Header{17,2};
-%             
+%
 %             obj.create_and_level_height_map();
-%             
+%
 %             cd(current.path);
 %             current = what();
 %             cd(obj.Folder)
