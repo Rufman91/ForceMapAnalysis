@@ -27,12 +27,16 @@ classdef ForceMap < matlab.mixin.Copyable
         HostOS          % Operating System
         HostName        % Name of hosting system
         NCurves         % number of curves on the force map
-        NumProfiles
-        NumPoints
+        NumProfiles     % number of scanned profiles along the YSize of the force map
+        NumPoints       % number of scanned points per profile along the XSize of the force map
+        XSize           % Size of imaged window in X-direction
+        YSize           % Size of imaged window in Y-direction
         Sensitivity
         SpringConstant
         DBanding        % Fourieranalysis-based estimate of DBanding perdiod (only available with sufficient resolution)
-        RefSlope
+        RefSlope        % Refernce slope as determined from the upper curve slope from data from very hard
+                        % surfaces (mica,glass), either from glass parts beneath the specimen or from 
+                        % separate reference force maps
         PixApp          % maximum number of measured points during approach
         PixRet          % maximum number of measured points during retraction
         SelectedCurves  % logical vector of length NCurves with 0s for excluded and 1s for included curves. gets initialized with ones
@@ -47,6 +51,7 @@ classdef ForceMap < matlab.mixin.Copyable
         Ret = {}        % retraction force data in Newton
         HHApp = {}      % capacitive-sensor-height approach data in meters
         HHRet = {}      % capacitive-sensor-height retract data in meters
+        HHType          % Type of Head Height.(Default is capacitiveSensorHeight; switches to measuredHeight, if default does'nt exist)
         THApp = {}      % vertical tip height approach data in meters
         THRet = {}      % vertical tip height retract data in meters
         BasedApp = {}   % approach force data with subtracted base line and tilt in Newton
@@ -252,10 +257,29 @@ classdef ForceMap < matlab.mixin.Copyable
             where=strfind(tline,'=');
             obj.NumProfiles = str2double(tline(where+1:end));
             
+            %   XSize
+            clear tline where;
+            frewind(fileID);
+            B=strfind(A,'force-scan-map.position-pattern.grid.ulength=');
+            fseek(fileID,B,'cof');
+            tline = fgetl(fileID);
+            where=strfind(tline,'=');
+            obj.XSize = str2double(tline(where+1:end));
+            
+            %   YSize
+            clear tline where;
+            frewind(fileID);
+            B=strfind(A,'force-scan-map.position-pattern.grid.vlength=');
+            fseek(fileID,B,'cof');
+            tline = fgetl(fileID);
+            where=strfind(tline,'=');
+            obj.YSize = str2double(tline(where+1:end));
             
             clear tline A B where
             
             fclose(fileID);
+            
+            obj.HHType = 'capacitiveSensorHeight';
             
             %loading curve data into cell arrays
             for i=1:obj.NCurves
@@ -264,36 +288,48 @@ classdef ForceMap < matlab.mixin.Copyable
                 HeightDataDirectory = fullfile(TempFolder,'index',string((i-1)),'segments','0','channels','capacitiveSensorHeight.dat');
                 vDefDataDirectory = fullfile(TempFolder,'index',string((i-1)),'segments','0','channels','vDeflection.dat');
                 
+                if ~isfile(HeightDataDirectory) || isequal(obj.HHType,'measuredHeight')
+                    HeightDataDirectory = fullfile(TempFolder,'index',string((i-1)),'segments','0','channels','measuredHeight.dat');
+                    obj.HHType = 'measuredHeight';
+                end
+                
                 [TempHHApp,obj.App{i},obj.SpringConstant,obj.Sensitivity]=...
                 obj.writedata(HeaderFileDirectory,SegmentHeaderFileDirectory,...
-                HeightDataDirectory,vDefDataDirectory);
+                HeightDataDirectory,vDefDataDirectory,obj.HHType);
                 
                 obj.HHApp{i} = -TempHHApp;
                 obj.App{i} = obj.App{i}.*obj.SpringConstant;
                 clear TempHHApp
                 
                 % Below there is a workaround for jpk-force-map files,
-                % where the capacitiveSensorHeight is for some reason
+                % where the capacitiveSensorHeight
                 % written into an additional segment folder '2' instead of
-                % '1'... I have genuinely no idea what is going on there,
-                % but this error has made files unreadable in the past
+                % '1'. This occurs, when there is a nonzero holding time,
+                % which gets writtem into the '1'-folder instead
+                
+                % To be implemented: read holding segment into ForceMap
+                % class
                 
                 SegmentHeaderFileDirectory = fullfile(TempFolder,'index',string((i-1)),'segments','1','segment-header.properties');
-                FileMissing(1) = isfile(SegmentHeaderFileDirectory);
                 HeightDataDirectory = fullfile(TempFolder,'index',string((i-1)),'segments','1','channels','capacitiveSensorHeight.dat');
-                FileMissing(2) = isfile(HeightDataDirectory);
                 vDefDataDirectory = fullfile(TempFolder,'index',string((i-1)),'segments','1','channels','vDeflection.dat');
-                FileMissing(3) = isfile(vDefDataDirectory);
                 
-                if sum(FileMissing) ~= 3
+                if isfolder(fullfile(TempFolder,'index',string((i-1)),'segments','2'))
                     SegmentHeaderFileDirectory = fullfile(TempFolder,'index',string((i-1)),'segments','2','segment-header.properties');
-              	    HeightDataDirectory = fullfile(TempFolder,'index',string((i-1)),'segments','2','channels','capacitiveSensorHeight.dat');
+                    HeightDataDirectory = fullfile(TempFolder,'index',string((i-1)),'segments','2','channels','capacitiveSensorHeight.dat');
                     vDefDataDirectory = fullfile(TempFolder,'index',string((i-1)),'segments','2','channels','vDeflection.dat');
+                    if ~isfile(HeightDataDirectory)  || isequal(obj.HHType,'measuredHeight')
+                        HeightDataDirectory = fullfile(TempFolder,'index',string((i-1)),'segments','2','channels','measuredHeight.dat');
+                    end
                 end
-            
+                
+                if ~isfile(HeightDataDirectory) || isequal(obj.HHType,'measuredHeight')
+                    HeightDataDirectory = fullfile(TempFolder,'index',string((i-1)),'segments','1','channels','measuredHeight.dat');
+                end
+                
                 [TempHHRet,obj.Ret{i}]=...
                 obj.writedata(HeaderFileDirectory,SegmentHeaderFileDirectory,...
-                HeightDataDirectory,vDefDataDirectory);
+                HeightDataDirectory,vDefDataDirectory,obj.HHType);
             
                 obj.HHRet{i} = -TempHHRet;
                 obj.Ret{i} = obj.Ret{i}.*obj.SpringConstant;
@@ -1245,14 +1281,14 @@ classdef ForceMap < matlab.mixin.Copyable
         
         function [HeadHeight ,Force,spring_constant,sensitivity]=...
                 writedata(HeaderFileDirectory,SegmentHeaderFileDirectory,...
-                HeighDataDirectory,vDelfDataDirectory)
-            % Author: Orestis Andriotis (slightly changed by Manuel Rufin)
+                HeighDataDirectory,vDelfDataDirectory,HHType)
+            % Author: Orestis Andriotis (slightly changed and adapted by Manuel Rufin)
             % HeaderFileDirectory: file directory of the main header properties. There
             % is the information about the scaling factors to convert the raw data.
             % SegmentHeaderFileDirectory: file directory of the header of each segment.
             % Each segment means the loading (#0) and unloading (#1).
             
-            % HeighDataDirectory: file directory of height.dat file
+            % HeighDataDirectory: file directory of capacitiveSensorHeight.dat file
             % vDelfDataDirectory: file directory of vDeflection.dat file
             %
             
@@ -1297,8 +1333,7 @@ classdef ForceMap < matlab.mixin.Copyable
                 mult_height_meters2, offset_height_meters2,...
                 mult_vDefl_volts, offset_vDefl_volts,...
                 sensitivity, spring_constant] =...
-                ForceMap.getheaderinfo(HeaderFileDirectory);
-            % converts raw data and writes them into one varialble 'fdata'
+                ForceMap.getheaderinfo(HeaderFileDirectory,HHType);
             
             % converts raw into volts by calling the getheaderinfo function
             heightvolts = RawHeight.*mult_height_meters1 + offset_height_meters1;
@@ -1325,7 +1360,7 @@ classdef ForceMap < matlab.mixin.Copyable
         function [mult_height_meters1, offset_height_meters1,...
                 mult_height_meters2, offset_height_meters2,...
                 mult_vDefl_volts, offset_vDefl_volts,...
-                sensitivity, spring_constant] = getheaderinfo(filedirectory)
+                sensitivity, spring_constant] = getheaderinfo(filedirectory,HHType)
             % Author: Orestis Andriotis
             % getheaderinfo
             % reads header from a force scan series and extracts the scaling
@@ -1338,7 +1373,11 @@ classdef ForceMap < matlab.mixin.Copyable
             fseek(fileID,1,'cof'); % goes at the first position in the file
             
             %   Multiplier
-            B=strfind(A,'lcd-info.3.encoder.scaling.multiplier=');
+            if isequal(HHType,'capacitiveSensorHeight')
+                B=strfind(A,'lcd-info.3.encoder.scaling.multiplier=');
+            elseif isequal(HHType,'measuredHeight')
+                B=strfind(A,'lcd-info.4.encoder.scaling.multiplier=');
+            end
             % strfind(file,string) is looking for a specific string in the file.
             fseek(fileID,B,'cof');
             % moves at the location where specific string is located
@@ -1353,19 +1392,24 @@ classdef ForceMap < matlab.mixin.Copyable
             %   Offset
             clear tline where;
             frewind(fileID);
-            B=strfind(A,'lcd-info.3.encoder.scaling.offset=');
+            if isequal(HHType,'capacitiveSensorHeight')
+                B=strfind(A,'lcd-info.3.encoder.scaling.offset=');
+            elseif isequal(HHType,'measuredHeight')
+                B=strfind(A,'lcd-info.4.encoder.scaling.offset=');
+            end
             fseek(fileID,B,'cof');
             tline = fgetl(fileID);
             where=strfind(tline,'=');
             offset_height_meters1 = str2double(tline(where+1:end));
             
-            
-            % SCALING METERS -> METERS
-            
             %   Multiplier
             clear tline where;
             frewind(fileID);
-            B=strfind(A,'lcd-info.3.conversion-set.conversion.nominal.scaling.multiplier=');
+            if isequal(HHType,'capacitiveSensorHeight')
+                B=strfind(A,'lcd-info.3.conversion-set.conversion.nominal.scaling.multiplier=');
+            elseif isequal(HHType,'measuredHeight')
+                B=strfind(A,'lcd-info.4.conversion-set.conversion.nominal.scaling.multiplier=');
+            end
             fseek(fileID,B,'cof');
             tline = fgetl(fileID);
             where=strfind(tline,'=');
@@ -1375,7 +1419,11 @@ classdef ForceMap < matlab.mixin.Copyable
             %   Offset
             clear tline where;
             frewind(fileID);
-            B=strfind(A,'lcd-info.3.conversion-set.conversion.nominal.scaling.offset=');
+            if isequal(HHType,'capacitiveSensorHeight')
+                B=strfind(A,'lcd-info.3.conversion-set.conversion.nominal.scaling.offset=');
+            elseif isequal(HHType,'measuredHeight')
+                B=strfind(A,'lcd-info.4.conversion-set.conversion.nominal.scaling.offset=');
+            end
             fseek(fileID,B,'cof');
             tline = fgetl(fileID);
             where=strfind(tline,'=');
@@ -1385,10 +1433,16 @@ classdef ForceMap < matlab.mixin.Copyable
             % vDeflection: 1. CONVERSION raw-volts & 2. volts to meters
             % Conversion RAW -> VOLTS
             
+            if isequal(HHType,'capacitiveSensorHeight')
+                Numlcd = 2;
+            elseif isequal(HHType,'measuredHeight')
+                Numlcd = 1;
+            end
+            
             %   Multiplier
             clear tline where;
             frewind(fileID);
-            B=strfind(A,'lcd-info.2.encoder.scaling.multiplier=');
+            B=strfind(A,sprintf('lcd-info.%i.encoder.scaling.multiplier=',Numlcd));
             fseek(fileID,B,'cof');
             tline = fgetl(fileID);
             where=strfind(tline,'=');
@@ -1397,7 +1451,7 @@ classdef ForceMap < matlab.mixin.Copyable
             %   Offset
             clear tline where;
             frewind(fileID);
-            B=strfind(A,'lcd-info.2.encoder.scaling.offset=');
+            B=strfind(A,sprintf('lcd-info.%i.encoder.scaling.offset=',Numlcd));
             fseek(fileID,B,'cof');
             tline = fgetl(fileID);
             where=strfind(tline,'=');
@@ -1409,7 +1463,7 @@ classdef ForceMap < matlab.mixin.Copyable
             %   Multiplier (that is the sensitivity measured in meters per Volts)
             clear tline where;
             frewind(fileID);
-            B=strfind(A,'lcd-info.2.conversion-set.conversion.distance.scaling.multiplier=');
+            B=strfind(A,sprintf('lcd-info.%i.conversion-set.conversion.distance.scaling.multiplier=',Numlcd));
             fseek(fileID,B,'cof');
             tline = fgetl(fileID);
             where=strfind(tline,'=');
@@ -1419,7 +1473,7 @@ classdef ForceMap < matlab.mixin.Copyable
             
             clear tline where;
             frewind(fileID);
-            B=strfind(A,'lcd-info.2.conversion-set.conversion.force.scaling.multiplier=');
+            B=strfind(A,sprintf('lcd-info.%i.conversion-set.conversion.force.scaling.multiplier=',Numlcd));
             fseek(fileID,B,'cof');
             tline = fgetl(fileID);
             where=strfind(tline,'=');
@@ -2105,7 +2159,7 @@ classdef ForceMap < matlab.mixin.Copyable
             legend(Legends,...
                 'Location','northwest');
             xlabel('Cantilever Head Height [nm]');
-            ylabel('vDeflection-Force [N]');
+            ylabel('vDeflection-Force [nN]');
             grid on
             grid minor
 %             dim = [0.4 0.3 0.6 0.6];
