@@ -3,8 +3,8 @@ classdef Experiment < matlab.mixin.Copyable
     properties
         ExperimentName      % Shows name of the experiment
         ExperimentFolder    % Shows Folder where Experiment is saved
-        HostOS              % Shows the current operating system
-        HostName            % Shows the current Host (User of running machine)
+        HostOS              % Shows the current operating
+        HostName
         ForceMapNames       % Shows names of the force maps
         ForceMapFolders
         SurfacePotentialMapFolders
@@ -1104,10 +1104,10 @@ classdef Experiment < matlab.mixin.Copyable
                     obj.FM{i}.estimate_cp_old();
                 end
                 if isequal(lower(CPOption),'combo')
-                    if obj.FM{i}.CPFlag.RoV == 0
+                    if obj.FM{i}.CPFlag
                         obj.FM{i}.estimate_cp_rov();
                     end
-                    if obj.FM{i}.CPFlag.GoF == 0
+                    if obj.FM
                         obj.FM{i}.estimate_cp_gof();
                     end
                     obj.FM{i}.estimate_cp_combined();

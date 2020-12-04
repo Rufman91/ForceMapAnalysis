@@ -555,6 +555,7 @@ classdef ForceMap < matlab.mixin.Copyable
                 obj.CPComboCurve{i} = obj.RoV{i}.*obj.GoF{i};
                 [~,CPidx] = max(obj.CPComboCurve{i});
                 obj.CP_Combo(i,:) = [obj.HHApp{i}(CPidx) obj.BasedApp{i}(CPidx)];
+                obj.CP(i,:) = obj.CP_Combo(i,:);
             end
             
             obj.CPFlag.Combo = 1;
@@ -2172,6 +2173,14 @@ classdef ForceMap < matlab.mixin.Copyable
             imshow(I)
             axis on
             hold on;
+            for i=1:obj.NumProfiles
+                plot((obj.List2Map(obj.RectApexIndex(i),2)),...
+                    (obj.List2Map(obj.RectApexIndex(i),1)),...
+                    'g+', 'MarkerSize', 10, 'LineWidth', 2);
+%                 plot((obj.List2Map(obj.ApexIndex(i),2)-1/2)*1024/obj.NumPoints,...
+%                     (obj.List2Map(obj.ApexIndex(i),1)-1/2)*1024/obj.NumProfiles,...
+%                     'g+', 'MarkerSize', 10, 'LineWidth', 1);
+            end
             plot(obj.List2Map(k,2),obj.List2Map(k,1), 'r+', 'MarkerSize', 10, 'LineWidth', 2);
             title('Choose a different point...')
             NextK = drawpoint();
