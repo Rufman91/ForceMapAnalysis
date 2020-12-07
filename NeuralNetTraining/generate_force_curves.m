@@ -14,7 +14,7 @@ for i=1:NCurves
     Base2ResponseRatio = rand;
     xVal = [0:1/(NPoints-1):1] - Base2ResponseRatio;
     pr1 = 2*rand+1;
-    pr2 = 10*rand;
+    pr2 = 10000*rand;
 end
 plot(xVal,IndentResp(xVal,pr1,pr2))
 
