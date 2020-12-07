@@ -16,12 +16,11 @@ RGB6=[200 108 81]./255;
 
 %% Allocate data
 
-xxA0=h_approach;
-xxA1=h_retraction;
+x0=mapsData(1).load_data{1,1}(:,1);
+y0=mapsData(1).load_data{1,1}(:,2);
 
-yyA0=f_approach;
-yyA1=f_retraction;
-
+x1=mapsData(1).unload_data{1,1}(:,1);
+y1=mapsData(1).unload_data{1,1}(:,2);
 
 %% Define variables
 
@@ -31,56 +30,40 @@ jj=1; % jj corresponds to the number of force curves
 
 kk=0;
 
-
-%% Define the margins of the subtightplot 
-    %%% "subtightplot.m" is needed
-    subplot = @(m,n,p) subtightplot (m, n, p,...
-        [0.01 0.005],...% gap [vertical horizontal]
-        [0.01 0.01],...% margin height [lower upper]
-        [0.005 0.005]); % margin width [left right]
-
 %% Figure
+%%
 for ii=1:4  
-    fig=figure(ii);
+    fig=figure(1);
     h_fig1=gcf; % Defines the handle for the current figure 
 
     h_fig1.Color='white'; % changes the background color of the figure
     h_fig1.Units='normalized'; % Defines the units 
     h_fig1.OuterPosition=[0 0 1 1];% changes the size of the to the whole screen
     h_fig1.PaperOrientation='landscape';
-    % h_fig1.WindowState='fullscreen'; % Shows the figure in fullscreen mode
 
-    %%% Axes 
-    %h_axes1=gca; % Defines the handle for the current axes
-    box on
-    h_axes1=axes;
-    h_axes1.FontSize = 20;
-    h_axes1.XLabel.String = 'Tip-sample seperation  (nm)';
-    h_axes1.XLabel.FontSize = 20;
-    h_axes1.YLabel.String = 'Force (nN)';
-    h_axes1.YLabel.FontSize = 20;
+    %% Plotting the tiles
+    t = tiledlayout(5,5);
+    %t.TileSpacing = 'compact';
+    %t.Padding = 'compact';
+    t.TileSpacing = 'none'; % To reduce the spacing between the tiles
+    t.Padding = 'none'; % To reduce the padding of perimeter of a tile
 
-    %%% Plots
-    % Plot the subplot
-    for jj= (1:25)+25*kk             
-        subplot(5,5,jj-25*kk)
-        hold on
-        grid on
-        plot(xxA0(:,jj),yyA0(:,jj)); % Plots all row entries in column jj
-        plot(xxA1(:,jj),yyA1(:,jj)); % Plots all row entries in column jj
-  
-        %%% Axes
-        box on
-        h_axes1=axes;
-        h_axes1.FontSize = 20;
-        h_axes1.XLabel.String = 'Tip-sample seperation  (nm)';
-        h_axes1.XLabel.FontSize = 20;
-        h_axes1.YLabel.String = 'Force (nN)';
-        h_axes1.YLabel.FontSize = 20;
-    end
-    
-    %% Dialog boxes
-        %%% "bttnChoiseDialog.m" is needed
+        for jj=1:25  
+            % Tile jj
+            ax=nexttile
+            hold on
+            grid on
+            plot(x0,y0);
+            plot(x1,y1);
+            % Legend, x- and y-labels and title
+            legend('Approach','Retraction','Location','best')
+            xlabel('Tip-sample seperation  (nm)','FontSize',11,'Interpreter','latex');
+            ylabel('Force (nN)','FontSize',11,'Interpreter','latex');
+            title('Sample 1')
+        end
+        
+        %% Dialog boxes
+        %%% "bttnChoiseDialog.m" file is needed
         inputOptions={'Select all', 'Select none', 'Select all - except of', 'Select none - except of'}; % Define the input arguments
         % 'Select all' = 1
         % 'Select none' = 2
@@ -111,6 +94,62 @@ for ii=1:4
            SelectionData(k).numbselectfc{j,1} = str2num(SelectionData(k).numbselectfc{j,1}); 
         
         end
-    
+        
+        %% Colour highlighting of the force curves regarding the choosen answer and storage in a structure
+           
+        if isequal(SelectionData(k).subplotselect{j,1},1)
+            for i = (1:25)+25*l % If all force curve from a SubMap are selected to be analyzed
+            subplot(5,5,i-25*l)
+            title(num2str(indent(i,1)),'Color','b') 
+            SelectionData(k).selectfc_load(i,1)=mapsData(k).load_data(i,1); % Store the selected Dataset of mapsData.load in a cell
+            SelectionData(k).selectfc_unload(i,1)=mapsData(k).unload_data(i,1);
+            end
+             
+        elseif isequal(SelectionData(k).subplotselect{j,1},2)
+            for i = (1:25)+25*l % If none force curve from a SubMap are selected to be analyzed
+            subplot(5,5,i-25*l)
+            title(num2str(indent(i,1)),'Color','r') 
+            SelectionData(k).nonselectfc_load(i,1)=mapsData(k).load_data(i,1); % Store the selected Dataset of mapsData.Approach in a cell
+            SelectionData(k).nonselectfc_unload(i,1)=mapsData(k).unload_data(i,1);
+            end
+
+        elseif isequal(SelectionData(k).subplotselect{j,1},3)        
+            for i = (1:25)+25*l 
+        %%% Step 1: Select all force curves of the SubMap
+            subplot(5,5,i-25*l)
+            title(num2str(indent(i,1)),'Color','b')
+            SelectionData(k).selectfc_load(i,1)=mapsData(k).load_data(i,1); % Store the selected Dataset of mapsData.Approach in a cell
+            SelectionData(k).selectfc_unload(i,1)=mapsData(k).unload_data(i,1);
+            end   
+         
+        %%% Step 2: Correct for the non-selected force curves of selection 3            
+            for i=SelectionData(k).numbnonselectfc{j,1} % Deselect the choosen force curves
+            subplot(5,5,i-25*l)
+            title(num2str(indent(i,1)),'Color','r')
+            SelectionData(k).selectfc_load(i,1)={[]}; % Delete the non-selected force curves in the selectfc cell
+            SelectionData(k).selectfc_unload(i,1)={[]};
+            SelectionData(k).nonselectfc_load(i,1)=mapsData(k).load_data(i,1); % Store the selected Dataset of mapsData.Approach in a cell
+            SelectionData(k).nonselectfc_unload(i,1)=mapsData(k).unload_data(i,1);
+            end
+         
+        elseif isequal(SelectionData(k).subplotselect{j,1},4)        
+            for i = (1:25)+25*l 
+        %%% Step 1: Select all force curves of the SubMap
+            subplot(5,5,i-25*l)
+            title(num2str(indent(i,1)),'Color','r')
+            SelectionData(k).nonselectfc_load(i,1)=mapsData(k).load_data(i,1); % Store the selected Dataset of mapsData.Approach in a cell
+            SelectionData(k).nonselectfc_unload(i,1)=mapsData(k).unload_data(i,1);
+            end   
+         
+        %%% Step 2: Correct for the non-selected force curves of selection 3            
+            for i=SelectionData(k).numbselectfc{j,1} % Deselect the choosen force curves
+            subplot(5,5,i-25*l)
+            title(num2str(indent(i,1)),'Color','b')
+            SelectionData(k).nonselectfc_load(i,1)={[]}; % Delete the selected force curves in the selectfc cell
+            SelectionData(k).nonselectfc_unload(i,1)={[]};
+            SelectionData(k).selectfc_load(i,1)=mapsData(k).load_data(i,1); % Store the selected Dataset of mapsData.Approach in a cell
+            SelectionData(k).selectfc_unload(i,1)=mapsData(k).unload_data(i,1);
+            end    
+        end
     kk=ii;
 end
