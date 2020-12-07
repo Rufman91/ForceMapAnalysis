@@ -1510,7 +1510,7 @@ classdef Experiment < matlab.mixin.Copyable
             %   num_of_force_curves] = andreas_script_conversion(obj)
             %
             % Simple pipeline to funnel data from Experiment() ForceMaps()
-            % to the mapsData struct needed in Andreas Rohatschecks
+            % to the mapsData struct needed in Andreas Rohatschek
             % 'B_Select_4bttn_V2.m' script to replace A_Read.m
             
             

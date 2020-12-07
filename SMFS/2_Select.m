@@ -1,4 +1,18 @@
+%% 
+clear
 close all
+clc
+
+%% Define RGB colors
+
+RGB1=[0 26 255]./255;  % Blue 
+RGB2=[255 119 0]./255; % Orange
+RGB7=[255 230 0]./255; % Yellow
+
+RGB3=[80 220 100]./255; % Emerald
+RGB4=[200 81 160]./255; % Compl to emerald
+RGB5=[81 172 200]./255; 
+RGB6=[200 108 81]./255;
 
 %% Allocate data
 
