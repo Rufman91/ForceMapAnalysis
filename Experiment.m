@@ -27,7 +27,7 @@ classdef Experiment < matlab.mixin.Copyable
     end
     
     methods
-        % constructor method and methods related with data handling
+        % constructor method and methods related with Experiment-file handling
         
         function obj = Experiment()
             
@@ -295,6 +295,41 @@ classdef Experiment < matlab.mixin.Copyable
                 end
             end
         end
+    end
+    methods(Static)
+        % Static methods related with Experiment-file handling
+        
+        function E = load()
+            % E = load()
+            %
+            % recommended way of loading an existing Experiment() from its
+            % folder. Checks, if path has changed and adjusts object
+            % properties. Also checks if running on different system,
+            % and, if so, updating object properties and setting
+            % CPFlag.CNNOpt = 0
+            
+            [File,Path] = uigetfile('*.mat','Choose Experiment .mat from folder');
+            Fullfile = fullfile(Path,File);
+            disp('Loading Experiment... this can take a while for larger Experiments')
+            load(Fullfile);
+            
+            E = obj;
+            clear obj
+            
+            E.check_for_new_host();
+            FMFolder = fullfile(Path,filesep,'ForceData');
+            for i=1:E.NumFiles
+                if ~isempty(E.FM{i})
+                    E.FM{i}.check_for_new_host();
+                    E.FM{i}.Folder = FMFolder;
+                    E.ForceMapFolders{i} = FMFolder;
+                end
+            end
+            
+            E.ExperimentFolder = Path;
+            
+        end
+        
     end
     
     methods
@@ -1583,37 +1618,6 @@ classdef Experiment < matlab.mixin.Copyable
     methods(Static)
         % Static auxilary methods mainly for tip deconvolution (code by Orestis Andriotis)
         % and Experiment() loading
-        
-        function E = load()
-            % E = load()
-            %
-            % recommended way of loading an existing Experiment() from its
-            % folder. Checks, if path has changed and adjusts object
-            % properties. Also checks if running on different system,
-            % and, if so, updating object properties and setting
-            % CPFlag.CNNOpt = 0
-            
-            [File,Path] = uigetfile('*.mat','Choose Experiment .mat from folder');
-            Fullfile = fullfile(Path,File);
-            disp('Loading Experiment... this can take a while for larger Experiments')
-            load(Fullfile);
-            
-            E = obj;
-            clear obj
-            
-            E.check_for_new_host();
-            FMFolder = fullfile(Path,filesep,'ForceData');
-            for i=1:E.NumFiles
-                if ~isempty(E.FM{i})
-                    E.FM{i}.check_for_new_host();
-                    E.FM{i}.Folder = FMFolder;
-                    E.ForceMapFolders{i} = FMFolder;
-                end
-            end
-            
-            E.ExperimentFolder = Path;
-            
-        end
         
         function [depth_num, projected_area] = proj_area(shape,image_x_axis)
             % shape=probe_tip_tgt1_run12_0002;

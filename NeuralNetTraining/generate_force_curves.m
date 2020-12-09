@@ -23,15 +23,18 @@ for i=1:NCurves
     xVal = [0:1/(NPoints-1):1] - Base2ResponseRatio;
     pr1 = 2*rand+1;
     pr2 = 10000*rand;
+    DummyForceMap.HHApp{i} = xVal;
+    DummyForceMap.BasedApp{i} = double(IndentResp(xVal,pr1,pr2));
+    DummyForceMap.BasedRet{i} = zeros(1,length(xVal));
+    DummyForceMap.HHRet{i} = xVal;
     if i <= 36
         nexttile
+        plot(xVal,DummyForceMap.BasedApp{i})
     end
-    DummyForceMap.BasedApp{i} = xVal;
-    DummyForceMap.App{i} = IndentResp(xVal,pr1,pr2);
-    plot(xVal,DummyForceMap.App{i})
 end
 
-DummyForceMap.Man_CP = zeros()
+DummyForceMap.Man_CP = zeros(NCurves,2);
+DummyForceMap.CPFlag.Manual = 1;
 X = 1;
 Y = 2;
 
