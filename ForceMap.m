@@ -128,7 +128,7 @@ classdef ForceMap < matlab.mixin.Copyable
     methods
         % Main methods of the class
         
-        function obj = ForceMap(MapFullFile,DataFolder)
+        function obj = ForceMap(MapFullFile,DataFolder,FakeOpt,NSynthCurves)
             %%% Constructor of the class
             
             % Specify the folder where the files live. And import them.
@@ -138,6 +138,27 @@ classdef ForceMap < matlab.mixin.Copyable
             % already
             
             current = what();
+            
+            if nargin >= 3 && isequal(FakeOpt,'Dummy')
+                obj.Name = 'DummyForceMap';
+                obj.NCurves = NSynthCurves;
+                obj.SelectedCurves = ones(obj.NCurves,1);
+                obj.CPFlag.RoV = 0;
+                obj.CPFlag.GoF = 0;
+                obj.CPFlag.Combo = 0;
+                obj.CPFlag.CNN = 0;
+                obj.CPFlag.CNNZoom = 0;
+                obj.CPFlag.CNNZoomDropout = 0;
+                obj.CPFlag.CNNZoomSweep = 0;
+                obj.CPFlag.Dropout = 0;
+                obj.CPFlag.Manual = 0;
+                obj.CPFlag.Old = 0;
+                obj.CPFlag.CNNopt = 0;
+                obj.Ret = cell(1,NSynthCurves);
+                obj.BasedRet = cell(1,NSynthCurves);
+                obj.create_and_level_height_map();
+                return
+            end
             
             if nargin < 2
                 DataFolder = current.path;
