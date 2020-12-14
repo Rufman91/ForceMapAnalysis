@@ -128,7 +128,7 @@ classdef ForceMap < matlab.mixin.Copyable
     methods
         % Main methods of the class
         
-        function obj = ForceMap(MapFullFile,DataFolder,FakeOpt)
+        function obj = ForceMap(MapFullFile,DataFolder,FakeOpt,NSynthCurves)
             %%% Constructor of the class
             
             % Specify the folder where the files live. And import them.
@@ -139,8 +139,9 @@ classdef ForceMap < matlab.mixin.Copyable
             
             current = what();
             
-            if nargin == 3 && F
+            if nargin >= 3 && isequal(FakeOpt,'Dummy')
                 obj.Name = 'DummyForceMap';
+                obj.NCurves = NSynthCurves;
                 obj.SelectedCurves = ones(obj.NCurves,1);
                 obj.CPFlag.RoV = 0;
                 obj.CPFlag.GoF = 0;
@@ -153,6 +154,9 @@ classdef ForceMap < matlab.mixin.Copyable
                 obj.CPFlag.Manual = 0;
                 obj.CPFlag.Old = 0;
                 obj.CPFlag.CNNopt = 0;
+                obj.Ret = cell(1,NSynthCurves);
+                obj.BasedRet = cell(1,NSynthCurves);
+                obj.create_and_level_height_map();
                 return
             end
             
@@ -1236,6 +1240,29 @@ classdef ForceMap < matlab.mixin.Copyable
             imshowpair(imresize(mat2gray(obj.HeightMap(:,:,1)),[1024 1024]),imresize(mask(:,:,1),[1024 1024]),'montage')
             %            pause(5)
             close(f)
+        end
+        
+        function bla
+            k = 1;
+            while k>obj.NCurves-25
+                tiledlayout(5,5)
+                for i=1:25
+                plot()
+                nexttile
+                end
+                IdxVec = buttonchoise
+                if 'select'
+                    obj.SelectedCurves(k:k+25) = 0;
+                    obj.SelectedCurves(IdxVec) = 1;
+                end
+                if 
+                obj.SelectedCurves(IdxVec) = 0
+                k = k + 25;
+                end
+            for i=1:obj.NCurves
+                Range
+            end
+            
         end
         
     end
