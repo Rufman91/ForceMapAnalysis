@@ -1197,31 +1197,106 @@ classdef ForceMap < matlab.mixin.Copyable
             obj.MinRet = MinRet;
         end
 
-        function bla
-            % Work in Progress
-            k = 1;
-            while k>obj.NCurves-25
-                
-                mod()
-                
-                
-                tiledlayout(5,5)
-                for i=1:1000000
-                plot()
-                nexttile
-                end
-                IdxVec = buttonchoise
-                if 'select'
-                    obj.SelectedCurves(k:k+25) = 0;
-                    obj.SelectedCurves(IdxVec) = 1;
-                end
-                if BlaBla
-                obj.SelectedCurves(IdxVec) = 0
-                k = k + 25;
-                end
+        function fc_selection(obj) % fc ... force curve
+            Range = find(obj.SelectedCurves); % Gives the index of each fc
+            for ii=1:obj.NCurves
+            MinApp(ii)=min(obj.BasedApp{ii});
             end
+            for ii=1:4  
+            fig=figure(ii);
+            h_fig1=gcf; % Defines the handle for the current figure 
+            h_fig1.Color='white'; % changes the background color of the figure
+            h_fig1.Units='normalized'; % Defines the units 
+            h_fig1.OuterPosition=[0 0 1 1];% changes the size of the to the whole screen
+            h_fig1.PaperOrientation='landscape';
+         
+            %% Plotting the tiles
+            t = tiledlayout(5,5);
+            %t.TileSpacing = 'compact';
+            %t.Padding = 'compact';
+            t.TileSpacing = 'none'; % To reduce the spacing between the tiles
+            t.Padding = 'none'; % To reduce the padding of perimeter of a tile
+
+                for jj=1:25
+                    % Tile jj
+                    kk=jj+25*(ii-1);
+                    nexttile
+                    hold on
+                    grid on
+                    plot(obj.HHApp{kk},obj.BasedApp{kk});
+                    plot(obj.HHRet{kk},obj.BasedRet{kk});
+                    % Legend, x- and y-labels and title
+                    t=title(num2str(Range(kk,1))); % Title for each Subplot
+                    t.Units='normalized'; % Set units to 'normalized'  
+                    t.Position=[0.5,0.9]; % Position the subplot title within the subplot
+                    %legend('Approach','Retraction','Location','best')
+                    %xlabel('Tip-sample seperation  (nm)','FontSize',11,'Interpreter','latex');
+                    %ylabel('Force (nN)','FontSize',11,'Interpreter','latex');
+                    
+                end
+                
+                 %% Dialog boxes
+
+        inputOptions={'Select all', 'Select none', 'Select all - except of', 'Select none - except of'}; % Define the input arguments
+        % 'Select all' = 1
+        % 'Select none' = 2
+        % 'Select all - except of' = 3
+        % 'Select none - except of' = 4
+
+        defSelection=inputOptions{1}; % Default selection; Defined selection if the window is closed without choosing a selection possibility
+
+        SelectBttns(ii,1)=bttnChoiseDialog(inputOptions, 'Force curve selection', defSelection,...
+        'Please choose the appropriate button ...'); % Stores the selected button number per figure
+%         
+%         % Case 3:
+%         if SelectBttns(kk,1)==3
+%             obj.SelectedCurves{kk,1}=
+%         
+%         if isequal(SelectionData(k).subplotselect{j,1},3)
+%             prompt = {'Enter the force curve number you do not want for further analysis'};
+%             definput = {''};
+%             opts.Interpreter = 'tex';
+%             SelectionData(k).numbnonselectfc(j,1) = inputdlg(prompt,'Select all except of ...',[1 100],definput,opts);        
+%             %%% Convert the 'except of' force curves in the SelectionData structure   
+%             SelectionData(k).numbnonselectfc{j,1} = str2num(SelectionData(k).numbnonselectfc{j,1}); 
+%                 
+%         % Case 4:      
+%         elseif isequal(SelectionData(k).subplotselect{j,1},4)
+%             prompt = {'Enter the force curve number you do not want for further analysis'};
+%             definput = {''};
+%             opts.Interpreter = 'tex';
+%             SelectionData(k).numbselectfc(j,1) = inputdlg(prompt,'Select none except of ...',[1 100],definput,opts);        
+%             %%% Convert the 'except of' force curves in the SelectionData structure   
+%            SelectionData(k).numbselectfc{j,1} = str2num(SelectionData(k).numbselectfc{j,1}); 
+%         
+%         end
+                
+             end
         end
-        
+%             
+%             % Work in Progress
+%             k = 1;
+%             while k>obj.NCurves-25
+%                 
+%                 mod()
+%                 
+%                 
+%                 tiledlayout(5,5)
+%                 for i=1:1000000
+%                 plot()
+%                 nexttile
+%                 end
+%                 IdxVec = buttonchoise
+%                 if 'select'
+%                     obj.SelectedCurves(k:k+25) = 0;
+%                     obj.SelectedCurves(IdxVec) = 1;
+%                 end
+%                 if BlaBla
+%                 obj.SelectedCurves(IdxVec) = 0
+%                 k = k + 25;
+%                 end
+%             end
+%             end        
     end
     
     
