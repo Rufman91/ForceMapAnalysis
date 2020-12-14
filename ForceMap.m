@@ -1188,10 +1188,32 @@ classdef ForceMap < matlab.mixin.Copyable
             close(f)
         end
         
+<<<<<<< Updated upstream
         function [MinApp] = min_force(obj)           
             for ii=1:obj.NCurves
             MinApp(ii)=min(obj.BasedApp{ii});
             MinRet(ii)=min(obj.BasedRet{ii}); 
+=======
+        function bla
+            % Work in Progress
+            k = 1;
+            while k>obj.NCurves-25
+                
+                tiledlayout(5,5)
+                for i=1:1000000
+                plot()
+                nexttile
+                end
+                IdxVec = buttonchoise
+                if 'select'
+                    obj.SelectedCurves(k:k+25) = 0;
+                    obj.SelectedCurves(IdxVec) = 1;
+                end
+                if BlaBla
+                obj.SelectedCurves(IdxVec) = 0
+                k = k + 25;
+                end
+>>>>>>> Stashed changes
             end
             obj.MinRet = MinRet;
         end
