@@ -1272,6 +1272,15 @@ classdef Experiment < matlab.mixin.Copyable
             close(Fig)
         end
         
+        function min_batch(obj)
+            
+            for ii=1:obj.NumFiles
+               obj.FM{ii}.base_and_tilt('linear');
+               obj.FM{ii}.min_force; 
+            end
+            obj.save_experiment
+        end
+        
     end
     
     methods

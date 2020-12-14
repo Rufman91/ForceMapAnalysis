@@ -119,6 +119,10 @@ classdef ForceMap < matlab.mixin.Copyable
         EModHertz_Old
         EModHertz_RoV
     end
+    properties
+        % SMFS related 
+        MinRet % Minimum value of the 
+    end
     
     methods
         % Main methods of the class
@@ -1182,6 +1186,14 @@ classdef ForceMap < matlab.mixin.Copyable
             imshowpair(imresize(mat2gray(obj.HeightMap(:,:,1)),[1024 1024]),imresize(mask(:,:,1),[1024 1024]),'montage')
             %            pause(5)
             close(f)
+        end
+        
+        function [MinApp] = min_force(obj)           
+            for ii=1:obj.NCurves
+            MinApp(ii)=min(obj.BasedApp{ii});
+            MinRet(ii)=min(obj.BasedRet{ii}); 
+            end
+            obj.MinRet = MinRet;
         end
 
     end
