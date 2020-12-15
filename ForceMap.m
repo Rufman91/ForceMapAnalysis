@@ -1275,6 +1275,63 @@ classdef ForceMap < matlab.mixin.Copyable
 %         
 %         end
                 
+%% Colour highlighting of the force curves regarding the choosen answer and storage in a structure
+           
+        if isequal(SelectionData(k).subplotselect{j,1},1)
+            for i = (1:25)+25*l % If all force curve from a SubMap are selected to be analyzed
+            subplot(5,5,i-25*l)
+            title(num2str(indent(i,1)),'Color','b') 
+            SelectionData(k).selectfc_load(i,1)=mapsData(k).load_data(i,1); % Store the selected Dataset of mapsData.load in a cell
+            SelectionData(k).selectfc_unload(i,1)=mapsData(k).unload_data(i,1);
+            end
+             
+        elseif isequal(SelectionData(k).subplotselect{j,1},2)
+            for i = (1:25)+25*l % If none force curve from a SubMap are selected to be analyzed
+            subplot(5,5,i-25*l)
+            title(num2str(indent(i,1)),'Color','r') 
+            SelectionData(k).nonselectfc_load(i,1)=mapsData(k).load_data(i,1); % Store the selected Dataset of mapsData.Approach in a cell
+            SelectionData(k).nonselectfc_unload(i,1)=mapsData(k).unload_data(i,1);
+            end
+
+        elseif isequal(SelectionData(k).subplotselect{j,1},3)        
+            for i = (1:25)+25*l 
+        %%% Step 1: Select all force curves of the SubMap
+            subplot(5,5,i-25*l)
+            title(num2str(indent(i,1)),'Color','b')
+            SelectionData(k).selectfc_load(i,1)=mapsData(k).load_data(i,1); % Store the selected Dataset of mapsData.Approach in a cell
+            SelectionData(k).selectfc_unload(i,1)=mapsData(k).unload_data(i,1);
+            end   
+         
+        %%% Step 2: Correct for the non-selected force curves of selection 3            
+            for i=SelectionData(k).numbnonselectfc{j,1} % Deselect the choosen force curves
+            subplot(5,5,i-25*l)
+            title(num2str(indent(i,1)),'Color','r')
+            SelectionData(k).selectfc_load(i,1)={[]}; % Delete the non-selected force curves in the selectfc cell
+            SelectionData(k).selectfc_unload(i,1)={[]};
+            SelectionData(k).nonselectfc_load(i,1)=mapsData(k).load_data(i,1); % Store the selected Dataset of mapsData.Approach in a cell
+            SelectionData(k).nonselectfc_unload(i,1)=mapsData(k).unload_data(i,1);
+            end
+         
+        elseif isequal(SelectionData(k).subplotselect{j,1},4)        
+            for i = (1:25)+25*l 
+        %%% Step 1: Select all force curves of the SubMap
+            subplot(5,5,i-25*l)
+            title(num2str(indent(i,1)),'Color','r')
+            SelectionData(k).nonselectfc_load(i,1)=mapsData(k).load_data(i,1); % Store the selected Dataset of mapsData.Approach in a cell
+            SelectionData(k).nonselectfc_unload(i,1)=mapsData(k).unload_data(i,1);
+            end   
+         
+        %%% Step 2: Correct for the non-selected force curves of selection 3            
+            for i=SelectionData(k).numbselectfc{j,1} % Deselect the choosen force curves
+            subplot(5,5,i-25*l)
+            title(num2str(indent(i,1)),'Color','b')
+            SelectionData(k).nonselectfc_load(i,1)={[]}; % Delete the selected force curves in the selectfc cell
+            SelectionData(k).nonselectfc_unload(i,1)={[]};
+            SelectionData(k).selectfc_load(i,1)=mapsData(k).load_data(i,1); % Store the selected Dataset of mapsData.Approach in a cell
+            SelectionData(k).selectfc_unload(i,1)=mapsData(k).unload_data(i,1);
+            end    
+        end
+
              end
         end
 %             
