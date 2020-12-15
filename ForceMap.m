@@ -1247,7 +1247,11 @@ classdef ForceMap < matlab.mixin.Copyable
 
         SelectBttns(ii,1)=bttnChoiseDialog(inputOptions, 'Force curve selection', defSelection,...
         'Please choose the appropriate button ...'); % Stores the selected button number per figure
-%         
+
+        if Selectbuttons == 2
+            obj.SelectedCurves(kk-24:kk) = 0;
+        end
+    %         
 %         % Case 3:
 %         if SelectBttns(kk,1)==3
 %             obj.SelectedCurves{kk,1}=
