@@ -1201,8 +1201,15 @@ classdef ForceMap < matlab.mixin.Copyable
             for ii=1:obj.NCurves
             MinApp(ii)=min(obj.BasedApp{ii});
             end
-            for ii=1:4  
-            fig=figure(ii);
+            
+            Remainder=mod(obj.NCurves,25);
+            NFigures=floor(obj.NCurves./25);
+            if Remainder ~= 0
+                NFigures=NFigures+1
+            end    
+            %% Figure loop
+            for ii=1:NFigures  
+            figure;
             h_fig1=gcf; % Defines the handle for the current figure 
             h_fig1.Color='white'; % changes the background color of the figure
             h_fig1.Units='normalized'; % Defines the units 
@@ -1215,15 +1222,22 @@ classdef ForceMap < matlab.mixin.Copyable
             %t.Padding = 'compact';
             t.TileSpacing = 'none'; % To reduce the spacing between the tiles
             t.Padding = 'none'; % To reduce the padding of perimeter of a tile
-
-                for jj=1:25
+            
+            % Defining variables
+            if ii==NFigures && Remainder~=0
+                NLoop=Remainder;
+            else
+                NLoop=25;
+            end
+                %% Plot loop    
+                for jj=1:NLoop
                     % Tile jj
                     kk=jj+25*(ii-1);
                     nexttile
                     hold on
                     grid on
-                    plot(obj.HHApp{kk},obj.BasedApp{kk});
-                    plot(obj.HHRet{kk},obj.BasedRet{kk});
+                    plot(obj.THApp{kk},obj.BasedApp{kk});
+                    plot(obj.THRet{kk},obj.BasedRet{kk});
                     % Legend, x- and y-labels and title
                     if obj.SelectedCurves(kk) == 0
                         t=title(sprintf('%i',kk),'Color','r');
@@ -1240,7 +1254,7 @@ classdef ForceMap < matlab.mixin.Copyable
                 end
                 
                  %% Dialog boxes
-
+        % Function 'bttnChoiseDialog.m' is needed to excute this section
         inputOptions={'Select all', 'Select none', 'Select all - except of', 'Select none - except of'}; % Define the input arguments
         % 'Select all' = 1
         % 'Select none' = 2
@@ -1249,35 +1263,43 @@ classdef ForceMap < matlab.mixin.Copyable
 
         defSelection=inputOptions{1}; % Default selection; Defined selection if the window is closed without choosing a selection possibility
 
-        SelectBttns(ii,1)=bttnChoiseDialog(inputOptions, 'Force curve selection', defSelection,...
+        SelectBttns=bttnChoiseDialog(inputOptions, 'Force curve selection', defSelection,...
         'Please choose the appropriate button ...'); % Stores the selected button number per figure
-
+        
+        % Case 1: Select all
+        if SelectBttns == 1
+            obj.SelectedCurves(kk-24:kk) = 1;
+        end
+        
+        % Case 2: Select none
         if SelectBttns == 2
             obj.SelectedCurves(kk-24:kk) = 0;
         end
-    %         
-%         % Case 3:
-%         if SelectBttns(kk,1)==3
-%             obj.SelectedCurves{kk,1}=
-%         
-%         if isequal(SelectionData(k).subplotselect{j,1},3)
-%             prompt = {'Enter the force curve number you do not want for further analysis'};
-%             definput = {''};
-%             opts.Interpreter = 'tex';
-%             SelectionData(k).numbnonselectfc(j,1) = inputdlg(prompt,'Select all except of ...',[1 100],definput,opts);        
-%             %%% Convert the 'except of' force curves in the SelectionData structure   
-%             SelectionData(k).numbnonselectfc{j,1} = str2num(SelectionData(k).numbnonselectfc{j,1}); 
-%                 
-%         % Case 4:      
-%         elseif isequal(SelectionData(k).subplotselect{j,1},4)
-%             prompt = {'Enter the force curve number you do not want for further analysis'};
-%             definput = {''};
-%             opts.Interpreter = 'tex';
-%             SelectionData(k).numbselectfc(j,1) = inputdlg(prompt,'Select none except of ...',[1 100],definput,opts);        
-%             %%% Convert the 'except of' force curves in the SelectionData structure   
-%            SelectionData(k).numbselectfc{j,1} = str2num(SelectionData(k).numbselectfc{j,1}); 
-%         
-%         end
+        
+        % Case 3: Select all - except of
+        if SelectBttns == 3
+            obj.SelectedCurves(kk-24:kk) = 1;
+            prompt = {'Enter the force curve number you do not want to keep for analysis (For multiple selections just use the space key to separeat entries)'};
+            definput = {''};
+            opts.Interpreter = 'tex';
+            IndSelec=inputdlg(prompt,'Select all except of ...',[1 150],definput,opts); % Stores the individual selected fc as a cell array of character vectors 
+            IndSelec=str2num(IndSelec{1}); % Convert the cell array to numerals
+            obj.SelectedCurves(IndSelec) = 0;
+        end
+        
+        % Case 4: Select none - except of
+        if SelectBttns == 4
+            obj.SelectedCurves(kk-24:kk) = 0;
+            prompt = {'Enter the force curve number you want want to keep for analysis (For multiple selections just use the space key to separeat entries)'};
+            definput = {''};
+            opts.Interpreter = 'tex';
+            IndSelec=inputdlg(prompt,'Select all except of ...',[1 150],definput,opts); % Stores the individual selected fc as a cell array of character vectors 
+            IndSelec=str2num(IndSelec{1}); % Convert the cell array to numerals
+            obj.SelectedCurves(IndSelec) = 1;
+        end
+        
+        close all
+
                 
 %% Colour highlighting of the force curves regarding the choosen answer and storage in a structure
            
