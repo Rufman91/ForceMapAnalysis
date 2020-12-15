@@ -1237,156 +1237,137 @@ classdef ForceMap < matlab.mixin.Copyable
                     hold on
                     grid on
                     plot(obj.THApp{kk},obj.BasedApp{kk});
-                    plot(obj.THRet{kk},obj.BasedRet{kk});
-                    % Legend, x- and y-labels and title
+                    plot(obj.THRet{kk},obj.BasedRet{kk});                    
                     if obj.SelectedCurves(kk) == 0
-                        t=title(sprintf('%i',kk),'Color','r');
+                        ti=title(sprintf('%i',kk),'Color','r');
                     elseif obj.SelectedCurves(kk) == 1
-                        t=title(sprintf('%i',kk),'Color','b');
+                        ti=title(sprintf('%i',kk),'Color','b');
                     end
-                     % Title for each Subplot
-                    t.Units='normalized'; % Set units to 'normalized'  
-                    t.Position=[0.5,0.9]; % Position the subplot title within the subplot
+                    % Title for each Subplot
+                    ti.Units='normalized'; % Set units to 'normalized'  
+                    ti.Position=[0.5,0.9]; % Position the subplot title within the subplot
+                    % Legend, x- and y-labels
                     %legend('Approach','Retraction','Location','best')
                     %xlabel('Tip-sample seperation  (nm)','FontSize',11,'Interpreter','latex');
-                    %ylabel('Force (nN)','FontSize',11,'Interpreter','latex');
-                    
+                    %ylabel('Force (nN)','FontSize',11,'Interpreter','latex');                  
                 end
                 
                  %% Dialog boxes
-        % Function 'bttnChoiseDialog.m' is needed to excute this section
-        inputOptions={'Select all', 'Select none', 'Select all - except of', 'Select none - except of'}; % Define the input arguments
-        % 'Select all' = 1
-        % 'Select none' = 2
-        % 'Select all - except of' = 3
-        % 'Select none - except of' = 4
+                % Function 'bttnChoiseDialog.m' is needed to excute this section
+                
+                inputOptions={'Select all', 'Select none', 'Select all - except of', 'Select none - except of'}; % Define the input arguments
+                % 'Select all' = 1
+                % 'Select none' = 2
+                % 'Select all - except of' = 3
+                % 'Select none - except of' = 4
 
-        defSelection=inputOptions{1}; % Default selection; Defined selection if the window is closed without choosing a selection possibility
+                defSelection=inputOptions{1}; % Default selection; Defined selection if the window is closed without choosing a selection possibility
 
-        SelectBttns=bttnChoiseDialog(inputOptions, 'Force curve selection', defSelection,...
-        'Please choose the appropriate button ...'); % Stores the selected button number per figure
-        
-        % Case 1: Select all
-        if SelectBttns == 1
-            obj.SelectedCurves(kk-24:kk) = 1;
-        end
-        
-        % Case 2: Select none
-        if SelectBttns == 2
-            obj.SelectedCurves(kk-24:kk) = 0;
-        end
-        
-        % Case 3: Select all - except of
-        if SelectBttns == 3
-            obj.SelectedCurves(kk-24:kk) = 1;
-            prompt = {'Enter the force curve number you do not want to keep for analysis (For multiple selections just use the space key to separeat entries)'};
-            definput = {''};
-            opts.Interpreter = 'tex';
-            IndSelec=inputdlg(prompt,'Select all except of ...',[1 150],definput,opts); % Stores the individual selected fc as a cell array of character vectors 
-            IndSelec=str2num(IndSelec{1}); % Convert the cell array to numerals
-            obj.SelectedCurves(IndSelec) = 0;
-        end
-        
-        % Case 4: Select none - except of
-        if SelectBttns == 4
-            obj.SelectedCurves(kk-24:kk) = 0;
-            prompt = {'Enter the force curve number you want want to keep for analysis (For multiple selections just use the space key to separeat entries)'};
-            definput = {''};
-            opts.Interpreter = 'tex';
-            IndSelec=inputdlg(prompt,'Select all except of ...',[1 150],definput,opts); % Stores the individual selected fc as a cell array of character vectors 
-            IndSelec=str2num(IndSelec{1}); % Convert the cell array to numerals
-            obj.SelectedCurves(IndSelec) = 1;
-        end
-        
-        close all
+                SelectBttns=bttnChoiseDialog(inputOptions, 'Force curve selection', defSelection,...
+                'Please choose the appropriate button ...'); % Stores the selected button number per figure
 
+                % Case 1: Select all
+                if SelectBttns == 1
+                    obj.SelectedCurves(kk-24:kk) = 1;
+                end
+
+                % Case 2: Select none
+                if SelectBttns == 2
+                    obj.SelectedCurves(kk-24:kk) = 0;
+                end
+
+                % Case 3: Select all - except of
+                if SelectBttns == 3
+                    obj.SelectedCurves(kk-24:kk) = 1;
+                    prompt = {'Enter the force curve number you do not want to keep for analysis (For multiple selections just use the space key to separeat entries)'};
+                    definput = {''};
+                    opts.Interpreter = 'tex';
+                    IndSelec=inputdlg(prompt,'Select all except of ...',[1 150],definput,opts); % Stores the individual selected fc as a cell array of character vectors 
+                    IndSelec=str2num(IndSelec{1}); % Convert the cell array to numerals
+                    obj.SelectedCurves(IndSelec) = 0;
+                end
+
+                if obj.SelectedCurves(kk-24:kk) == 0
+                    t=title(sprintf('%i',kk),'Color','r');
+                    elseif obj.SelectedCurves(kk-24:kk) == 1
+                    t=title(sprintf('%i',kk),'Color','b');
+                end
+        
+                % Case 4: Select none - except of
+                if SelectBttns == 4
+                    obj.SelectedCurves(kk-24:kk) = 0;
+                    prompt = {'Enter the force curve number you want want to keep for analysis (For multiple selections just use the space key to separeat entries)'};
+                    definput = {''};
+                    opts.Interpreter = 'tex';
+                    IndSelec=inputdlg(prompt,'Select all except of ...',[1 150],definput,opts); % Stores the individual selected fc as a cell array of character vectors 
+                    IndSelec=str2num(IndSelec{1}); % Convert the cell array to numerals
+                    obj.SelectedCurves(IndSelec) = 1;
+                end
+            end
+                % Housekeeping
+                close all
                 
 %% Colour highlighting of the force curves regarding the choosen answer and storage in a structure
-           
-%         if isequal(SelectionData(k).subplotselect{j,1},1)
-%             for i = (1:25)+25*l % If all force curve from a SubMap are selected to be analyzed
-%             subplot(5,5,i-25*l)
-%             title(num2str(indent(i,1)),'Color','b') 
-%             SelectionData(k).selectfc_load(i,1)=mapsData(k).load_data(i,1); % Store the selected Dataset of mapsData.load in a cell
-%             SelectionData(k).selectfc_unload(i,1)=mapsData(k).unload_data(i,1);
-%             end
-%              
-%         elseif isequal(SelectionData(k).subplotselect{j,1},2)
-%             for i = (1:25)+25*l % If none force curve from a SubMap are selected to be analyzed
-%             subplot(5,5,i-25*l)
-%             title(num2str(indent(i,1)),'Color','r') 
-%             SelectionData(k).nonselectfc_load(i,1)=mapsData(k).load_data(i,1); % Store the selected Dataset of mapsData.Approach in a cell
-%             SelectionData(k).nonselectfc_unload(i,1)=mapsData(k).unload_data(i,1);
-%             end
-% 
-%         elseif isequal(SelectionData(k).subplotselect{j,1},3)        
-%             for i = (1:25)+25*l 
-%         %%% Step 1: Select all force curves of the SubMap
-%             subplot(5,5,i-25*l)
-%             title(num2str(indent(i,1)),'Color','b')
-%             SelectionData(k).selectfc_load(i,1)=mapsData(k).load_data(i,1); % Store the selected Dataset of mapsData.Approach in a cell
-%             SelectionData(k).selectfc_unload(i,1)=mapsData(k).unload_data(i,1);
-%             end   
-%          
-%         %%% Step 2: Correct for the non-selected force curves of selection 3            
-%             for i=SelectionData(k).numbnonselectfc{j,1} % Deselect the choosen force curves
-%             subplot(5,5,i-25*l)
-%             title(num2str(indent(i,1)),'Color','r')
-%             SelectionData(k).selectfc_load(i,1)={[]}; % Delete the non-selected force curves in the selectfc cell
-%             SelectionData(k).selectfc_unload(i,1)={[]};
-%             SelectionData(k).nonselectfc_load(i,1)=mapsData(k).load_data(i,1); % Store the selected Dataset of mapsData.Approach in a cell
-%             SelectionData(k).nonselectfc_unload(i,1)=mapsData(k).unload_data(i,1);
-%             end
-%          
-%         elseif isequal(SelectionData(k).subplotselect{j,1},4)        
-%             for i = (1:25)+25*l 
-%         %%% Step 1: Select all force curves of the SubMap
-%             subplot(5,5,i-25*l)
-%             title(num2str(indent(i,1)),'Color','r')
-%             SelectionData(k).nonselectfc_load(i,1)=mapsData(k).load_data(i,1); % Store the selected Dataset of mapsData.Approach in a cell
-%             SelectionData(k).nonselectfc_unload(i,1)=mapsData(k).unload_data(i,1);
-%             end   
-%          
-%         %%% Step 2: Correct for the non-selected force curves of selection 3            
-%             for i=SelectionData(k).numbselectfc{j,1} % Deselect the choosen force curves
-%             subplot(5,5,i-25*l)
-%             title(num2str(indent(i,1)),'Color','b')
-%             SelectionData(k).nonselectfc_load(i,1)={[]}; % Delete the selected force curves in the selectfc cell
-%             SelectionData(k).nonselectfc_unload(i,1)={[]};
-%             SelectionData(k).selectfc_load(i,1)=mapsData(k).load_data(i,1); % Store the selected Dataset of mapsData.Approach in a cell
-%             SelectionData(k).selectfc_unload(i,1)=mapsData(k).unload_data(i,1);
-%             end    
-%         end
+            %% Figure loop
+            for ii=1:NFigures  
+            figure;
+            h_fig1=gcf; % Defines the handle for the current figure 
+            h_fig1.Color='white'; % changes the background color of the figure
+            h_fig1.Units='normalized'; % Defines the units 
+            h_fig1.OuterPosition=[0 0 1 1];% changes the size of the to the whole screen
+            h_fig1.PaperOrientation='landscape';
+                %% Plotting the tiles
+                t = tiledlayout(5,5);
+                %t.TileSpacing = 'compact';
+                %t.Padding = 'compact';
+                t.TileSpacing = 'none'; % To reduce the spacing between the tiles
+                t.Padding = 'none'; % To reduce the padding of perimeter of a tile
 
-             end
+                % Defining variables
+                if ii==NFigures && Remainder~=0
+                    NLoop=Remainder;
+                else
+                    NLoop=25;
+                end 
+               
+                %% Title loop
+                for jj=1:NLoop
+                    % Tile jj
+                    kk=jj+25*(ii-1);
+                    nexttile
+                    hold on
+                    grid on
+                    plot(obj.THApp{kk},obj.BasedApp{kk});
+                    plot(obj.THRet{kk},obj.BasedRet{kk});                    
+                    if obj.SelectedCurves(kk) == 0
+                        ti=title(sprintf('%i',kk),'Color','r');
+                    elseif obj.SelectedCurves(kk) == 1
+                        ti=title(sprintf('%i',kk),'Color','b');
+                    end
+                    % Title for each Subplot
+                    ti.Units='normalized'; % Set units to 'normalized'  
+                    ti.Position=[0.5,0.9]; % Position the subplot title within the subplot
+                    % Legend, x- and y-labels
+                    %legend('Approach','Retraction','Location','best')
+                    %xlabel('Tip-sample seperation  (nm)','FontSize',11,'Interpreter','latex');
+                    %ylabel('Force (nN)','FontSize',11,'Interpreter','latex');                  
+                end
+             
+            end
+%% WORK IN PROGRESS %%
+            %% Save figures
+
+            % print(figure,fullname,'-dpng');
+            %print(figure,'-dpng');
+            
+             % Housekeeping
+ %               close all
+ 
+%% END WORK IN PROGRESS %%
+
         end
-%             
-%             % Work in Progress
-%             k = 1;
-%             while k>obj.NCurves-25
-%                 
-%                 mod()
-%                 
-%                 
-%                 tiledlayout(5,5)
-%                 for i=1:1000000
-%                 plot()
-%                 nexttile
-%                 end
-%                 IdxVec = buttonchoise
-%                 if 'select'
-%                     obj.SelectedCurves(k:k+25) = 0;
-%                     obj.SelectedCurves(IdxVec) = 1;
-%                 end
-%                 if BlaBla
-%                 obj.SelectedCurves(IdxVec) = 0
-%                 k = k + 25;
-%                 end
-%             end
-%             end        
-    end
-    
-    
+
+    end    
     methods (Static)
         % Auxiliary methods
         
