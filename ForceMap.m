@@ -1209,12 +1209,11 @@ classdef ForceMap < matlab.mixin.Copyable
             end    
             %% Figure loop
             for ii=1:NFigures  
-            figure;
-            h_fig1=gcf; % Defines the handle for the current figure 
-            h_fig1.Color='white'; % changes the background color of the figure
-            h_fig1.Units='normalized'; % Defines the units 
-            h_fig1.OuterPosition=[0 0 1 1];% changes the size of the to the whole screen
-            h_fig1.PaperOrientation='landscape';
+            h_fig=figure(ii);
+            h_fig.Color='white'; % changes the background color of the figure
+            h_fig.Units='normalized'; % Defines the units 
+            h_fig.OuterPosition=[0 0 1 1];% changes the size of the to the whole screen
+            h_fig.PaperOrientation='landscape';
          
             %% Plotting the tiles
             t = tiledlayout(5,5);
@@ -1310,12 +1309,11 @@ classdef ForceMap < matlab.mixin.Copyable
 %% Colour highlighting of the force curves regarding the choosen answer and storage in a structure
             %% Figure loop
             for ii=1:NFigures  
-            figure;
-            h_fig1=gcf; % Defines the handle for the current figure 
-            h_fig1.Color='white'; % changes the background color of the figure
-            h_fig1.Units='normalized'; % Defines the units 
-            h_fig1.OuterPosition=[0 0 1 1];% changes the size of the to the whole screen
-            h_fig1.PaperOrientation='landscape';
+            h_fig=figure(ii);
+            h_fig.Color='white'; % changes the background color of the figure
+            h_fig.Units='normalized'; % Defines the units 
+            h_fig.OuterPosition=[0 0 1 1];% changes the size of the to the whole screen
+            h_fig.PaperOrientation='landscape';
                 %% Plotting the tiles
                 t = tiledlayout(5,5);
                 %t.TileSpacing = 'compact';
