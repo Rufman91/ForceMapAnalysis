@@ -1242,28 +1242,6 @@ classdef ForceMap < matlab.mixin.Copyable
             close(f)
         end
         
-        function bla
-            % Work in Progress
-            k = 1;
-            while k>obj.NCurves-25
-                
-                tiledlayout(5,5)
-                for i=1:
-                plot()
-                nexttile
-                end
-                IdxVec = buttonchoise
-                if 'select'
-                    obj.SelectedCurves(k:k+25) = 0;
-                    obj.SelectedCurves(IdxVec) = 1;
-                end
-                if BlaBla
-                obj.SelectedCurves(IdxVec) = 0
-                k = k + 25;
-                end
-            end
-        end
-        
     end
     
     
