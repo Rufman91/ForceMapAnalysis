@@ -487,7 +487,7 @@ classdef Experiment < matlab.mixin.Copyable
                 else
                     EMods = obj.FM{i}.EModOliverPharr;
                 end
-                obj.EMod.Apex(i,:) = EMods(obj.FM{i}.RectApexIndex);
+                obj.EMod.Apex(i,1:length(obj.FM{i}.RectApexIndex)) = EMods(obj.FM{i}.RectApexIndex);
                 for j=1:length(obj.FM{i}.RectApexIndex)
                     if obj.EMod.Apex(i,j) > (nanmedian(obj.EMod.Apex(i,:))+2.5*iqr(obj.EMod.Apex(i,:))) || ...
                             obj.EMod.Apex(i,j) < (nanmedian(obj.EMod.Apex(i,:))-2.5*iqr(obj.EMod.Apex(i,:))) || ...

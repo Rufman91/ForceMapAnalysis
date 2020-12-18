@@ -43,6 +43,7 @@ classdef ForceMap < matlab.mixin.Copyable
         TipRadius = 8  % (nominal, if not otherwise calculated) tip radius in nm for the chosen type of tip model
         PoissonR = 0.5  % standard Poisson ratio for most mechanical models
         Medium
+        FibrilFlag
     end
     properties
         % Curve data Properties
@@ -1158,12 +1159,19 @@ classdef ForceMap < matlab.mixin.Copyable
         
         function calculate_fib_diam(obj)
             [obj.Apex,obj.ApexIndex] = max(obj.HeightMap(:,:,1).*obj.FibMask,[],2);
-            obj.RectApex = zeros(obj.NumProfiles,1);
-            obj.RectApexIndex = zeros(obj.NumProfiles,1);
-            obj.RectApexIndex = round(predictGP_mean([1:obj.NumProfiles],[1:obj.NumProfiles],1,5*obj.NumProfiles,obj.ApexIndex,1));
-            for i=1:obj.NumProfiles
-                obj.RectApex(i) = obj.HeightMap(i,obj.RectApexIndex(i),1);
+            
+            if obj.FibrilFlag.Straight == 1;
+                obj.RectApex = zeros(obj.NumProfiles,1);
+                obj.RectApexIndex = zeros(obj.NumProfiles,1);
+                obj.RectApexIndex = round(predictGP_mean([1:obj.NumProfiles],[1:obj.NumProfiles],1,5*obj.NumProfiles,obj.ApexIndex,1));
+                for i=1:obj.NumProfiles
+                    obj.RectApex(i) = obj.HeightMap(i,obj.RectApexIndex(i),1);
+                end
+            else
+                obj.RectApex = obj.Apex;
+                obj.RectApexIndex = obj.ApexIndex;
             end
+            
             k = 1;
             for i=1:obj.NumProfiles
                 if obj.ExclMask(i,obj.RectApexIndex(i)) == 1
@@ -1952,10 +1960,28 @@ classdef ForceMap < matlab.mixin.Copyable
             end
             mask = logical(mask);
             mask = bwareafilt(mask,1,4);
-            for i=1:10
-                mask = medfilt2(mask,[5 3],'symmetric');
+            
+            % determine linear orientation angle of the fibril and pad
+            % accordingly
+            k = 1;
+            for i=1:obj.NumProfiles
+                for j = 1:obj.NumPoints
+                    if mask(i,j) == 1
+                        xy(k,:) = [i,j];
+                        k = k + 1;
+                    end
+                end
             end
-            mask = bwareafilt(mask,1,4);
+            FitLine = fit(xy(:,1).*obj.XSize/obj.NumProfiles,xy(:,2).*obj.YSize/obj.NumPoints,'poly1');
+            obj.FibrilFlag.Straight = 0;
+            if abs(FitLine.p1) <= 0.05
+                obj.FibrilFlag.Straight = 1;
+                for i=1:10
+                    mask = medfilt2(mask,[5 3],'zeros');
+%                     imshow(mask)
+                end
+                mask = bwareafilt(mask,1,4);
+            end
             obj.FibMask = mask;
             
             %             current = what();
