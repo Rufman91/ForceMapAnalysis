@@ -2004,7 +2004,7 @@ classdef Experiment < matlab.mixin.Copyable
             set(gca,'FontSize',8)
             zlabel('Height (m)')
             
-            waitforbuttonpress
+%             waitforbuttonpress
             close all
             
             
