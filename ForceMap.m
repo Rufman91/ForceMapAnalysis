@@ -1158,7 +1158,7 @@ classdef ForceMap < matlab.mixin.Copyable
             %             cd(current.path)
         end
         
-        function calculate_fib_diam(obj)
+         function calculate_fib_diam(obj)
             [obj.Apex,obj.ApexIndex] = max(obj.HeightMap(:,:,1).*obj.FibMask,[],2);
             
             if obj.FibrilFlag.Straight == 1;
@@ -1979,7 +1979,7 @@ classdef ForceMap < matlab.mixin.Copyable
             if abs(FitLine.p1) <= 0.05
                 obj.FibrilFlag.Straight = 1;
                 for i=1:10
-                    mask = medfilt2(mask,[5 3],'zeros');
+                    mask = medfilt2(mask,[5 3],'symmetric');
 %                     imshow(mask)
                 end
                 mask = bwareafilt(mask,1,4);
