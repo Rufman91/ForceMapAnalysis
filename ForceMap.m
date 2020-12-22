@@ -94,6 +94,7 @@ classdef ForceMap < matlab.mixin.Copyable
         List2Map        % An R->RxR ((k)->(i,j)) mapping of indices to switch between the two representations
         Map2List        % An RxR->R ((i,j)->(k))mapping of indices to switch between the two representations
         FibDiam = []    % Estimated fibril diameter
+        FibDiamSTD      % Estimated fibril diameter std
         FibMask         % Logical mask marking the whole fibril
         ExclMask        % Manually chosen areas that are to be excluded for calculations of fibril EMod, FibDiam, DBanding etc.
         Apex            % Value of highest pixel in each profile
@@ -1180,6 +1181,7 @@ classdef ForceMap < matlab.mixin.Copyable
                 end
             end
             obj.FibDiam = mean(FibHeight);
+            obj.FibDiamSTD = nanstd(FibHeight);
             
             % Convert RectApexIndex and ApexIndex, so that they are
             % consistent with the Map2List-List2Map format (its entrances
