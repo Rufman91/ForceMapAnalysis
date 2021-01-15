@@ -1205,7 +1205,7 @@ classdef ForceMap < matlab.mixin.Copyable
             Remainder=mod(obj.NCurves,25);
             NFigures=floor(obj.NCurves./25);
             if Remainder ~= 0
-                NFigures=NFigures+1
+                NFigures=NFigures+1;
             end    
             %% Figure loop
             for ii=1:NFigures  
