@@ -1272,9 +1272,9 @@ classdef Experiment < matlab.mixin.Copyable
             Steps = 0:1/(NFrames-1):1;
             
             % Create and and open .avi for write-in of frames
-            FullFile = fullfile(obj.ExperimentFolder,filesep,'EModvsSurfPot_gif.avi');
+            FullFile = fullfile(obj.ExperimentFolder,filesep,'EModvsSurfPot_gif');
             
-            Vid = VideoWriter(FullFile);
+            Vid = VideoWriter(FullFile,'MPEG-4');
             Vid.open
             
             
