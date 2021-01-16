@@ -923,6 +923,11 @@ classdef ForceMap < matlab.mixin.Copyable
             %             cd(current.path)
         end
         
+        function estimate_cp_hardsurface
+            % contact point estimation for force curves detected on hard
+            % surfaces
+        
+        
         function [E,HertzFit] = calculate_e_mod_hertz(obj,CPType,TipShape,curve_percent)
             % [E,HertzFit] = calculate_e_mod_hertz(obj,CPType,TipShape,curve_percent)
             %
