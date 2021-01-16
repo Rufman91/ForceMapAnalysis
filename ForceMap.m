@@ -926,7 +926,7 @@ classdef ForceMap < matlab.mixin.Copyable
         function estimate_cp_hardsurface
             % contact point estimation for force curves detected on hard
             % surfaces
-        
+        end
         
         function [E,HertzFit] = calculate_e_mod_hertz(obj,CPType,TipShape,curve_percent)
             % [E,HertzFit] = calculate_e_mod_hertz(obj,CPType,TipShape,curve_percent)
@@ -1355,14 +1355,19 @@ classdef ForceMap < matlab.mixin.Copyable
                     %xlabel('Tip-sample seperation  (nm)','FontSize',11,'Interpreter','latex');
                     %ylabel('Force (nN)','FontSize',11,'Interpreter','latex');                  
                 end
-             
-            end
 %% WORK IN PROGRESS %%
             %% Save figures
+        %%% Define the name for the figure title    
+        partname=sprintf('_ForceMaps_part%d',ii);        
+        fullname=sprintf('%s%s',obj.FM{ii}.Name,partname);
 
-            % print(figure,fullname,'-dpng');
-            %print(figure,'-dpng');
-            
+        %%% Create a folder "Figures" in datadir for saving the results
+        mkdir(ExperimentFolder,'Report_Figures'); 
+        FiguresDir=fullfile(datadir,'Report_Figures');
+        print(gcf,fullname,'-dpng');             
+            end
+
+          
              % Housekeeping
  %               close all
  
