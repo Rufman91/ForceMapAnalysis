@@ -76,6 +76,7 @@ classdef ForceMap < matlab.mixin.Copyable
         LoadOld         % comes from same script as CP_old
         UnloadOld       % comes from same script as CP_old
         Man_CP          % manually chosen contact point
+        CP_HardSurface  % Detract cantilever deflection for CP estimation
         CPFlag          % Struct containing booleans to indicate if a certain CP-type has been estimated
         
     end
@@ -323,6 +324,7 @@ classdef ForceMap < matlab.mixin.Copyable
             obj.CPFlag.Manual = 0;
             obj.CPFlag.Old = 0;
             obj.CPFlag.CNNopt = 0;
+            obj.CPFlag.HardSurface = 0;
             
             cd(current.path);
             current = what();
@@ -923,9 +925,17 @@ classdef ForceMap < matlab.mixin.Copyable
             %             cd(current.path)
         end
         
-        function estimate_cp_hardsurface
+        function estimate_cp_hardsurface(obj)
             % contact point estimation for force curves detected on hard
             % surfaces
+            
+            for i=1:obj.NCurves
+                obj.CP_HardSurface(i,1) = obj.HHApp{i}(end) - obj.BasedApp{i}(end)/obj.SpringConstant;
+                obj.CP_HardSurface(i,2) = 0;
+                plot(obj.HHApp{i},obj.BasedApp{i});
+                drawpoint('Position',[obj.CP_HardSurface(i,1) obj.CP_HardSurface(i,2)]);
+            end
+            obj.CPFlag.HardSurface = 1;
         end
         
         function [E,HertzFit] = calculate_e_mod_hertz(obj,CPType,TipShape,curve_percent)
