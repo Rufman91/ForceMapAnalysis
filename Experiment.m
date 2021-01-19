@@ -1281,6 +1281,21 @@ classdef Experiment < matlab.mixin.Copyable
             obj.save_experiment
         end
         
+        function SMFS_selection(obj)
+        % 
+        cd(obj.ExperimentFolder) % change into folder
+        
+         %%% Create a folder "Figures" in datadir for saving the results
+         mkdir(obj.ExperimentFolder,'ReportFigures'); 
+         cd('ReportFigures');
+         
+            %for ii=1:obj.NumFiles
+            for ii=1
+               obj.FM{ii}.fc_selection;   % run batch over the function
+               obj.save_experiment;        % Save immediately after each force curve
+            end
+     
+        end
     end
     
     methods

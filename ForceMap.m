@@ -1311,7 +1311,7 @@ classdef ForceMap < matlab.mixin.Copyable
                 % Housekeeping
                 close all
                 
-%% Colour highlighting of the force curves regarding the choosen answer and storage in a structure
+            %% Colour highlighting of the force curves regarding the choosen answer and storage in a structure
             %% Figure loop
             for ii=1:NFigures  
             h_fig=figure(ii);
@@ -1355,24 +1355,15 @@ classdef ForceMap < matlab.mixin.Copyable
                     %xlabel('Tip-sample seperation  (nm)','FontSize',11,'Interpreter','latex');
                     %ylabel('Force (nN)','FontSize',11,'Interpreter','latex');                  
                 end
-%% WORK IN PROGRESS %%
+
             %% Save figures
-        %%% Define the name for the figure title    
-        partname=sprintf('_ForceMaps_part%d',ii);        
-        fullname=sprintf('%s%s',obj.FM{ii}.Name,partname);
-
-        %%% Create a folder "Figures" in datadir for saving the results
-        mkdir(ExperimentFolder,'Report_Figures'); 
-        FiguresDir=fullfile(datadir,'Report_Figures');
-        print(gcf,fullname,'-dpng');             
+            %%% Define the name for the figure title    
+            partname=sprintf('-ForceMaps-part%d',ii);        
+            fullname=sprintf('%s%s',obj.Name,partname);
+            %%% Save the current figure in the current folder
+            print(gcf,fullname,'-dpng'); 
             end
-
-          
-             % Housekeeping
- %               close all
- 
-%% END WORK IN PROGRESS %%
-
+        close Figure 1 Figure 2 Figure 3 Figure 4
         end
 
     end    
