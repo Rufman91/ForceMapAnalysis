@@ -23,6 +23,8 @@ classdef ForceMap < matlab.mixin.Copyable
         % Properties shared for the whole Force Map
         
         Name            % name of the force map. taken as the name of the folder, containing the .csv files
+        Date            % date when the force map was detected
+        Time            % time when the force map was detected
         Folder          % location of the .csv files of the force map
         HostOS          % Operating System
         HostName        % Name of hosting system
@@ -176,11 +178,22 @@ classdef ForceMap < matlab.mixin.Copyable
                     disp('unzipping failed')
                 end
                 Strings = split(MapFullFile,filesep);
-                CutExtension = split(Strings{end},'.');
-                obj.Name = CutExtension{1};
+                %%% Define the search expressions
+                % Comment: JPK includes a few attributes of a measurement into the name:
+                % The name attachement is the same for all experiments:
+                % 'Typedname'+'-'+'data'+'-'+'year'+'.'+'months'+'.'+'day'+'-hour'+'.'+'minute'+'.'+'second'+'.'+'thousandths'+'.'+'jpk file extension'
+                exp1 = '.*(?=\-data)'; % Finds the typed-in name of the user during the AFM experiment
+                exp2 = '\d{4}\.\d{2}\.\d{2}'; % Finds the date
+                exp3 = '\d{2}\.\d{2}\.\d{3}'; % Finds the time
+                obj.Name = regexp(Strings(8,1), exp1, 'match');
+                obj.Name = char(obj.Name{1});
+                obj.Date = regexp(Strings(8,1), exp2, 'match');
+                obj.Date = char(obj.Date{1});
+                obj.Time = regexp(Strings(8,1), exp3, 'match');
+                obj.Time = char(obj.Time{1});
+                %%% Create a data folder to store the force data
                 mkdir(DataFolder,'ForceData')
-                obj.Folder = fullfile(DataFolder,'ForceData',filesep);
-                
+                obj.Folder = fullfile(DataFolder,'ForceData',filesep);                
                 
 %             system(['unzip -o ', fullfile(datadir,fnamemap), ' ''*shared-data/header.properties'' -d ', tempdir{fib,1}]);
 %                 
@@ -1327,7 +1340,7 @@ classdef ForceMap < matlab.mixin.Copyable
                 % Housekeeping
                 close all
                 
-            %% Colour highlighting of the force curves regarding the choosen answer and storage in a structure
+            %%% Colour highlighting of the force curves regarding the choosen answer and storage in a structure
             %% Figure loop
             for ii=1:NFigures  
             h_fig=figure(ii);
