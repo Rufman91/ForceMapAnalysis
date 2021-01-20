@@ -1282,23 +1282,21 @@ classdef Experiment < matlab.mixin.Copyable
         end
         
         function SMFS_selection(obj)
-        %
-        % obj.preprocessing
-        
-        
-        cd(obj.ExperimentFolder) % change into folder
         
          %%% Create a folder "Figures" in datadir for saving the results
+         cd(obj.ExperimentFolder) % Move into the folder 
          mkdir(obj.ExperimentFolder,'ReportFigures'); 
          cd('ReportFigures');
-         
-            %for ii=1:obj.NumFiles
-            for ii=2
+            % Loop over the imported force maps
+            for ii=1:obj.NumFiles
+            %for ii=2 % Debugging
+               % Give current Force Map Position
+               sprintf('Force Map No. %d of %d',ii,obj.NumFiles)
+               % Run the chosen functions
                obj.FM{ii}.estimate_cp_hardsurface
-               obj.FM{ii}.fc_selection;     % run batch over the function
+               obj.FM{ii}.fc_selection;     
                obj.save_experiment;        % Save immediately after each force curve
-            end
-     
+            end    
         end
     end
     

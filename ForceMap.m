@@ -1236,7 +1236,8 @@ classdef ForceMap < matlab.mixin.Copyable
                 NFigures=NFigures+1;
             end    
             %% Figure loop
-            for ii=1:NFigures  
+            for ii=1:NFigures           
+            % Figure    
             h_fig=figure(ii);
             h_fig.Color='white'; % changes the background color of the figure
             h_fig.Units='normalized'; % Defines the units 
