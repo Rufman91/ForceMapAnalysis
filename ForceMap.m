@@ -932,8 +932,9 @@ classdef ForceMap < matlab.mixin.Copyable
             for i=1:obj.NCurves
                 obj.CP_HardSurface(i,1) = obj.HHApp{i}(end) - obj.BasedApp{i}(end)/obj.SpringConstant;
                 obj.CP_HardSurface(i,2) = 0;
-                plot(obj.HHApp{i},obj.BasedApp{i});
-                drawpoint('Position',[obj.CP_HardSurface(i,1) obj.CP_HardSurface(i,2)]);
+                %% Debugging
+                % plot(obj.HHApp{i},obj.BasedApp{i});
+                % drawpoint('Position',[obj.CP_HardSurface(i,1) obj.CP_HardSurface(i,2)]);
             end
             obj.CPFlag.HardSurface = 1;
         end
@@ -1201,8 +1202,7 @@ classdef ForceMap < matlab.mixin.Copyable
             imshowpair(imresize(mat2gray(obj.HeightMap(:,:,1)),[1024 1024]),imresize(mask(:,:,1),[1024 1024]),'montage')
             %            pause(5)
             close(f)
-        end
-        
+        end        
 
         function [MinApp] = min_force(obj)           
             for ii=1:obj.NCurves
@@ -1247,11 +1247,17 @@ classdef ForceMap < matlab.mixin.Copyable
                 for jj=1:NLoop
                     % Tile jj
                     kk=jj+25*(ii-1);
+                    %%% Define some variables
+                    x100=-100e-9; % Defines 100nm
+                    x500=-500e-9; % Defines 100nm
+                    % Plot tile
                     nexttile
                     hold on
                     grid on
-                    plot(obj.THApp{kk},obj.BasedApp{kk});
-                    plot(obj.THRet{kk},obj.BasedRet{kk});                    
+                    plot(obj.THApp{kk}-obj.CP_HardSurface(kk,1),obj.BasedApp{kk});
+                    plot(obj.THRet{kk}-obj.CP_HardSurface(kk,1),obj.BasedRet{kk});
+                    line([x100 x100], ylim,'Color','k'); % Draws a vertical line                  
+                    line([x500 x500], ylim,'Color','k'); % Draws a vertical line
                     if obj.SelectedCurves(kk) == 0
                         ti=title(sprintf('%i',kk),'Color','r');
                     elseif obj.SelectedCurves(kk) == 1
@@ -1266,7 +1272,7 @@ classdef ForceMap < matlab.mixin.Copyable
                     %ylabel('Force (nN)','FontSize',11,'Interpreter','latex');                  
                 end
                 
-                 %% Dialog boxes
+                %% Dialog boxes
                 % Function 'bttnChoiseDialog.m' is needed to excute this section
                 
                 inputOptions={'Select all', 'Select none', 'Select all - except of', 'Select none - except of'}; % Define the input arguments
@@ -1350,8 +1356,8 @@ classdef ForceMap < matlab.mixin.Copyable
                     nexttile
                     hold on
                     grid on
-                    plot(obj.THApp{kk},obj.BasedApp{kk});
-                    plot(obj.THRet{kk},obj.BasedRet{kk});                    
+                    plot(obj.THApp{kk}-obj.CP_HardSurface(kk,1),obj.BasedApp{kk});
+                    plot(obj.THRet{kk}-obj.CP_HardSurface(kk,1),obj.BasedRet{kk});                    
                     if obj.SelectedCurves(kk) == 0
                         ti=title(sprintf('%i',kk),'Color','r');
                     elseif obj.SelectedCurves(kk) == 1
@@ -1368,7 +1374,7 @@ classdef ForceMap < matlab.mixin.Copyable
 
             %% Save figures
             %%% Define the name for the figure title    
-            partname=sprintf('-ForceMaps-part%d',ii);        
+            partname=sprintf('-part%d',ii);        
             fullname=sprintf('%s%s',obj.Name,partname);
             %%% Save the current figure in the current folder
             print(gcf,fullname,'-dpng'); 

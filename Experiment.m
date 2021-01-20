@@ -1282,7 +1282,10 @@ classdef Experiment < matlab.mixin.Copyable
         end
         
         function SMFS_selection(obj)
-        % 
+        %
+        % obj.preprocessing
+        
+        
         cd(obj.ExperimentFolder) % change into folder
         
          %%% Create a folder "Figures" in datadir for saving the results
@@ -1290,8 +1293,9 @@ classdef Experiment < matlab.mixin.Copyable
          cd('ReportFigures');
          
             %for ii=1:obj.NumFiles
-            for ii=1
-               obj.FM{ii}.fc_selection;   % run batch over the function
+            for ii=2
+               obj.FM{ii}.estimate_cp_hardsurface
+               obj.FM{ii}.fc_selection;     % run batch over the function
                obj.save_experiment;        % Save immediately after each force curve
             end
      
