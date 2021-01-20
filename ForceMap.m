@@ -1226,6 +1226,10 @@ classdef ForceMap < matlab.mixin.Copyable
         end
 
         function fc_selection(obj) % fc ... force curve
+            
+            % Give the name of the current force map
+            sprintf(obj.Name)
+               
             for ii=1:obj.NCurves
             MinApp(ii)=min(obj.BasedApp{ii});
             end
@@ -1243,7 +1247,7 @@ classdef ForceMap < matlab.mixin.Copyable
             h_fig.Units='normalized'; % Defines the units 
             h_fig.OuterPosition=[0 0 1 1];% changes the size of the to the whole screen
             h_fig.PaperOrientation='landscape';
-         
+            h_fig.Name=obj.Name;         
             %% Plotting the tiles
             t = tiledlayout(5,5);
             %t.TileSpacing = 'compact';
@@ -1349,6 +1353,7 @@ classdef ForceMap < matlab.mixin.Copyable
             h_fig.Units='normalized'; % Defines the units 
             h_fig.OuterPosition=[0 0 1 1];% changes the size of the to the whole screen
             h_fig.PaperOrientation='landscape';
+            h_fig.Name=obj.Name; 
                 %% Plotting the tiles
                 t = tiledlayout(5,5);
                 %t.TileSpacing = 'compact';
