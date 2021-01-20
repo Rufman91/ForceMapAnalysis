@@ -1226,10 +1226,7 @@ classdef ForceMap < matlab.mixin.Copyable
         end
 
         function fc_selection(obj) % fc ... force curve
-            
-            % Give the name of the current force map
-            sprintf(obj.Name)
-               
+        
             for ii=1:obj.NCurves
             MinApp(ii)=min(obj.BasedApp{ii});
             end
