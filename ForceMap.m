@@ -185,11 +185,11 @@ classdef ForceMap < matlab.mixin.Copyable
                 exp1 = '.*(?=\-data)'; % Finds the typed-in name of the user during the AFM experiment
                 exp2 = '\d{4}\.\d{2}\.\d{2}'; % Finds the date
                 exp3 = '\d{2}\.\d{2}\.\d{3}'; % Finds the time
-                obj.Name = regexp(Strings(8,1), exp1, 'match');
+                obj.Name = regexp(Strings(end,1), exp1, 'match');
                 obj.Name = char(obj.Name{1});
-                obj.Date = regexp(Strings(8,1), exp2, 'match');
+                obj.Date = regexp(Strings(end,1), exp2, 'match');
                 obj.Date = char(obj.Date{1});
-                obj.Time = regexp(Strings(8,1), exp3, 'match');
+                obj.Time = regexp(Strings(end,1), exp3, 'match');
                 obj.Time = char(obj.Time{1});
                 %%% Create a data folder to store the force data
                 mkdir(DataFolder,'ForceData')
