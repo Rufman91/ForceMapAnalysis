@@ -1589,7 +1589,7 @@ classdef Experiment < matlab.mixin.Copyable
         function update_NumFiles(obj)
             
             obj.NumFiles=size(obj.FM,1);
-            
+            obj.save_experiment;        % Save immediately after each force curve
         end
         
     end
