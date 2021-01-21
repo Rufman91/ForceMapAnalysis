@@ -215,6 +215,11 @@ classdef ForceMap < matlab.mixin.Copyable
                 exp3 = '\d{2}\.\d{2}\.\d{3}'; % Finds the time
                 obj.Name = regexp(Strings(end,1), exp1, 'match');
                 obj.Name = char(obj.Name{1});
+                if isequal(obj.Name,'')
+                    exp4 = '.*(?=.jpk)';
+                    obj.Name = regexp(Strings(end,1), exp4, 'match');
+                    obj.Name = char(obj.Name{1});
+                end
                 obj.Date = regexp(Strings(end,1), exp2, 'match');
                 obj.Date = char(obj.Date{1});
                 obj.Time = regexp(Strings(end,1), exp3, 'match');
@@ -236,8 +241,25 @@ classdef ForceMap < matlab.mixin.Copyable
                 system(CMD);
                 disp('extracting file...')
                 Strings = split(MapFullFile,filesep);
-                CutExtension = split(Strings{end},'.');
-                obj.Name = CutExtension{1};
+                %%% Define the search expressions
+                % Comment: JPK includes a few attributes of a measurement into the name:
+                % The name attachement is the same for all experiments:
+                % 'Typedname'+'-'+'data'+'-'+'year'+'.'+'months'+'.'+'day'+'-hour'+'.'+'minute'+'.'+'second'+'.'+'thousandths'+'.'+'jpk file extension'
+                exp1 = '.*(?=\-data)'; % Finds the typed-in name of the user during the AFM experiment
+                exp2 = '\d{4}\.\d{2}\.\d{2}'; % Finds the date
+                exp3 = '\d{2}\.\d{2}\.\d{3}'; % Finds the time
+                obj.Name = regexp(Strings(end,1), exp1, 'match');
+                obj.Name = char(obj.Name{1});
+                if isequal(obj.Name,'')
+                    exp4 = '.*(?=.jpk)';
+                    obj.Name = regexp(Strings(end,1), exp4, 'match');
+                    obj.Name = char(obj.Name{1});
+                end
+                obj.Date = regexp(Strings(end,1), exp2, 'match');
+                obj.Date = char(obj.Date{1});
+                obj.Time = regexp(Strings(end,1), exp3, 'match');
+                obj.Time = char(obj.Time{1});
+                %%% Create a data folder to store the force data
                 mkdir(DataFolder,'ForceData')
                 obj.Folder = fullfile(DataFolder,'ForceData',filesep);
                 
@@ -252,8 +274,25 @@ classdef ForceMap < matlab.mixin.Copyable
                 system(CMD);
                 disp('extracting file...')
                 Strings = split(MapFullFile,filesep);
-                CutExtension = split(Strings{end},'.');
-                obj.Name = CutExtension{1};
+                %%% Define the search expressions
+                % Comment: JPK includes a few attributes of a measurement into the name:
+                % The name attachement is the same for all experiments:
+                % 'Typedname'+'-'+'data'+'-'+'year'+'.'+'months'+'.'+'day'+'-hour'+'.'+'minute'+'.'+'second'+'.'+'thousandths'+'.'+'jpk file extension'
+                exp1 = '.*(?=\-data)'; % Finds the typed-in name of the user during the AFM experiment
+                exp2 = '\d{4}\.\d{2}\.\d{2}'; % Finds the date
+                exp3 = '\d{2}\.\d{2}\.\d{3}'; % Finds the time
+                obj.Name = regexp(Strings(end,1), exp1, 'match');
+                obj.Name = char(obj.Name{1});
+                if isequal(obj.Name,'')
+                    exp4 = '.*(?=.jpk)';
+                    obj.Name = regexp(Strings(end,1), exp4, 'match');
+                    obj.Name = char(obj.Name{1});
+                end
+                obj.Date = regexp(Strings(end,1), exp2, 'match');
+                obj.Date = char(obj.Date{1});
+                obj.Time = regexp(Strings(end,1), exp3, 'match');
+                obj.Time = char(obj.Time{1});
+                %%% Create a data folder to store the force data
                 mkdir(DataFolder,'ForceData')
                 obj.Folder = fullfile(DataFolder,'ForceData',filesep);
             end

@@ -1599,34 +1599,6 @@ classdef Experiment < matlab.mixin.Copyable
             ylabel('Projected Area [m^2]')
         end
         
-        function [mapsData,datadir,originname,num_of_files,...
-    num_of_force_curves] = andreas_script_conversion(obj)
-            % [mapsData,datadir,originname,num_of_files,...
-            %   num_of_force_curves] = andreas_script_conversion(obj)
-            %
-            % Simple pipeline to funnel data from Experiment() ForceMaps()
-            % to the mapsData struct needed in Andreas Rohatschek
-            % 'B_Select_4bttn_V2.m' script to replace A_Read.m
-            
-            
-            % Fill the relevant parts of the struct
-            for i=1:obj.NumFiles
-                mapsData(i).MapName = obj.FM{i}.Name;
-                tempload = cell(obj.FM{i}.NCurves,1);
-                tempunload = cell(obj.FM{i}.NCurves,1);
-                for j=1:obj.FM{i}.NCurves
-                    tempload{j,1} = [-obj.FM{i}.HHApp{j} obj.FM{i}.App{j}];
-                    tempunload{j,1} = [-obj.FM{i}.HHRet{j} obj.FM{i}.Ret{j}];
-                end
-                mapsData(i).load_data = tempload;
-                mapsData(i).unload_data = tempunload;
-                num_of_force_curves(i,1) = obj.FM{i}.NCurves; 
-                originname{i,1} = obj.ForceMapNames(i);
-            end
-            datadir = obj.ExperimentFolder;
-            num_of_files = obj.NumFiles;
-        end
-        
         function check_for_new_host(obj)
             % check_for_new_host(obj)
             %
@@ -1645,12 +1617,6 @@ classdef Experiment < matlab.mixin.Copyable
             
             obj.HostOS = OS;
             obj.HostName = Host;
-        end
-        
-        function update_NumFiles(obj)
-            
-            obj.NumFiles=size(obj.FM,1);
-            obj.save_experiment;        % Save immediately after each force curve
         end
         
     end
