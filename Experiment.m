@@ -1334,6 +1334,39 @@ classdef Experiment < matlab.mixin.Copyable
             close(Fig)
         end
         
+        function min_batch(obj)
+            
+            for ii=1:obj.NumFiles
+               obj.FM{ii}.base_and_tilt('linear');
+               obj.FM{ii}.min_force; 
+            end
+            obj.save_experiment
+        end
+        
+        function SMFS_selection(obj)
+        
+            % Update the current loaded number of force maps    
+            obj.update_NumFiles
+         
+            % Change into the Folder of Interest
+            cd(obj.ExperimentFolder) % Move into the folder 
+ 
+            % Loop over the imported force maps
+            for ii=1:obj.NumFiles
+            %for ii=3:5 % Debugging
+               %%% Create folders for saving the produced figures
+               foldername=sprintf('FiguresFM%d',ii);    % Defines the folder name
+               mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
+               currpath=fullfile(obj.ExperimentFolder,foldername);
+               cd(currpath); 
+               % Give current Force Map Position
+               sprintf('Force Map No. %d of %d',ii,obj.NumFiles)
+               % Run the chosen functions
+               obj.FM{ii}.estimate_cp_hardsurface
+               obj.FM{ii}.fc_selection;     
+               obj.save_experiment;        % Save immediately after each force curve
+            end    
+        end
     end
     
     methods
@@ -1572,7 +1605,7 @@ classdef Experiment < matlab.mixin.Copyable
             %   num_of_force_curves] = andreas_script_conversion(obj)
             %
             % Simple pipeline to funnel data from Experiment() ForceMaps()
-            % to the mapsData struct needed in Andreas Rohatschecks
+            % to the mapsData struct needed in Andreas Rohatschek
             % 'B_Select_4bttn_V2.m' script to replace A_Read.m
             
             
@@ -1612,6 +1645,12 @@ classdef Experiment < matlab.mixin.Copyable
             
             obj.HostOS = OS;
             obj.HostName = Host;
+        end
+        
+        function update_NumFiles(obj)
+            
+            obj.NumFiles=size(obj.FM,1);
+            obj.save_experiment;        % Save immediately after each force curve
         end
         
     end

@@ -23,6 +23,8 @@ classdef ForceMap < matlab.mixin.Copyable
         % Properties shared for the whole Force Map
         
         Name            % name of the force map. taken as the name of the folder, containing the .csv files
+        Date            % date when the force map was detected
+        Time            % time when the force map was detected
         Folder          % location of the .csv files of the force map
         HostOS          % Operating System
         HostName        % Name of hosting system
@@ -82,6 +84,7 @@ classdef ForceMap < matlab.mixin.Copyable
         LoadOld         % comes from same script as CP_old
         UnloadOld       % comes from same script as CP_old
         Man_CP          % manually chosen contact point
+        CP_HardSurface  % Detract cantilever deflection for CP estimation
         CPFlag          % Struct containing booleans to indicate if a certain CP-type has been estimated
         
     end
@@ -125,6 +128,10 @@ classdef ForceMap < matlab.mixin.Copyable
         EModHertz_CNN
         EModHertz_Old
         EModHertz_RoV
+    end
+    properties
+        % SMFS related 
+        MinRet % Minimum value of the 
     end
     
     methods
@@ -199,11 +206,22 @@ classdef ForceMap < matlab.mixin.Copyable
                     disp('unzipping failed')
                 end
                 Strings = split(MapFullFile,filesep);
-                CutExtension = split(Strings{end},'.');
-                obj.Name = CutExtension{1};
+                %%% Define the search expressions
+                % Comment: JPK includes a few attributes of a measurement into the name:
+                % The name attachement is the same for all experiments:
+                % 'Typedname'+'-'+'data'+'-'+'year'+'.'+'months'+'.'+'day'+'-hour'+'.'+'minute'+'.'+'second'+'.'+'thousandths'+'.'+'jpk file extension'
+                exp1 = '.*(?=\-data)'; % Finds the typed-in name of the user during the AFM experiment
+                exp2 = '\d{4}\.\d{2}\.\d{2}'; % Finds the date
+                exp3 = '\d{2}\.\d{2}\.\d{3}'; % Finds the time
+                obj.Name = regexp(Strings(end,1), exp1, 'match');
+                obj.Name = char(obj.Name{1});
+                obj.Date = regexp(Strings(end,1), exp2, 'match');
+                obj.Date = char(obj.Date{1});
+                obj.Time = regexp(Strings(end,1), exp3, 'match');
+                obj.Time = char(obj.Time{1});
+                %%% Create a data folder to store the force data
                 mkdir(DataFolder,'ForceData')
-                obj.Folder = fullfile(DataFolder,'ForceData',filesep);
-                
+                obj.Folder = fullfile(DataFolder,'ForceData',filesep);                
                 
                 %             system(['unzip -o ', fullfile(datadir,fnamemap), ' ''*shared-data/header.properties'' -d ', tempdir{fib,1}]);
                 %
@@ -378,6 +396,7 @@ classdef ForceMap < matlab.mixin.Copyable
             obj.CPFlag.Manual = 0;
             obj.CPFlag.Old = 0;
             obj.CPFlag.CNNopt = 0;
+            obj.CPFlag.HardSurface = 0;
             
             cd(current.path);
             current = what();
@@ -979,6 +998,20 @@ classdef ForceMap < matlab.mixin.Copyable
             %             cd(current.path)
         end
         
+        function estimate_cp_hardsurface(obj)
+            % contact point estimation for force curves detected on hard
+            % surfaces
+            
+            for i=1:obj.NCurves
+                obj.CP_HardSurface(i,1) = obj.HHApp{i}(end) - obj.BasedApp{i}(end)/obj.SpringConstant;
+                obj.CP_HardSurface(i,2) = 0;
+                %% Debugging
+                % plot(obj.HHApp{i},obj.BasedApp{i});
+                % drawpoint('Position',[obj.CP_HardSurface(i,1) obj.CP_HardSurface(i,2)]);
+            end
+            obj.CPFlag.HardSurface = 1;
+        end
+        
         function [E,HertzFit] = calculate_e_mod_hertz(obj,CPType,TipShape,curve_percent)
             % [E,HertzFit] = calculate_e_mod_hertz(obj,CPType,TipShape,curve_percent)
             %
@@ -1250,11 +1283,187 @@ classdef ForceMap < matlab.mixin.Copyable
             imshowpair(imresize(mat2gray(obj.HeightMap(:,:,1)),[1024 1024]),imresize(mask(:,:,1),[1024 1024]),'montage')
             %            pause(5)
             close(f)
+        end        
+
+        function [MinApp] = min_force(obj)           
+            for ii=1:obj.NCurves
+            MinApp(ii)=min(obj.BasedApp{ii});
+            MinRet(ii)=min(obj.BasedRet{ii}); 
+            end
+            obj.MinRet = MinRet;
         end
+
+        function fc_selection(obj) % fc ... force curve
+            
+            % Define remainder situation
+            Remainder=mod(obj.NCurves,25);
+            NFigures=floor(obj.NCurves./25);
+            if Remainder ~= 0
+                NFigures=NFigures+1;
+            end    
+            %% Figure loop
+            for ii=1:NFigures           
+            % Figure    
+            h_fig=figure(ii);
+            h_fig.Color='white'; % changes the background color of the figure
+            h_fig.Units='normalized'; % Defines the units 
+            h_fig.OuterPosition=[0 0 1 1];% changes the size of the to the whole screen
+            h_fig.PaperOrientation='landscape';
+            h_fig.Name=obj.Name;         
+            %% Plotting the tiles
+            t = tiledlayout(5,5);
+            %t.TileSpacing = 'compact';
+            %t.Padding = 'compact';
+            t.TileSpacing = 'none'; % To reduce the spacing between the tiles
+            t.Padding = 'none'; % To reduce the padding of perimeter of a tile
+            
+            % Defining variables
+            if ii==NFigures && Remainder~=0
+                NLoop=Remainder;
+            else
+                NLoop=25;
+            end
+                %% Plot loop    
+                for jj=1:NLoop
+                    % Tile jj
+                    kk=jj+25*(ii-1);
+                    %%% Define some variables
+                    x100=-100e-9; % Defines 100nm
+                    x500=-500e-9; % Defines 100nm
+                    % Plot tile
+                    nexttile
+                    hold on
+                    grid on
+                    plot(obj.THApp{kk}-obj.CP_HardSurface(kk,1),obj.BasedApp{kk});
+                    plot(obj.THRet{kk}-obj.CP_HardSurface(kk,1),obj.BasedRet{kk});
+                    line([x100 x100], ylim,'Color','k'); % Draws a vertical line                  
+                    line([x500 x500], ylim,'Color','k'); % Draws a vertical line
+                    if obj.SelectedCurves(kk) == 0
+                        ti=title(sprintf('%i',kk),'Color','r');
+                    elseif obj.SelectedCurves(kk) == 1
+                        ti=title(sprintf('%i',kk),'Color','b');
+                    end
+                    % Title for each Subplot
+                    ti.Units='normalized'; % Set units to 'normalized'  
+                    ti.Position=[0.5,0.9]; % Position the subplot title within the subplot
+                    % Legend, x- and y-labels
+                    %legend('Approach','Retraction','Location','best')
+                    %xlabel('Tip-sample seperation  (nm)','FontSize',11,'Interpreter','latex');
+                    %ylabel('Force (nN)','FontSize',11,'Interpreter','latex');                  
+                end
+                
+                %% Dialog boxes
+                % Function 'bttnChoiseDialog.m' is needed to excute this section
+                
+                inputOptions={'Select all', 'Select none', 'Select all - except of', 'Select none - except of'}; % Define the input arguments
+                % 'Select all' = 1
+                % 'Select none' = 2
+                % 'Select all - except of' = 3
+                % 'Select none - except of' = 4
+
+                defSelection=inputOptions{1}; % Default selection; Defined selection if the window is closed without choosing a selection possibility
+
+                SelectBttns=bttnChoiseDialog(inputOptions, 'Force curve selection', defSelection,...
+                'Please choose the appropriate button ...'); % Stores the selected button number per figure
+
+                % Case 1: Select all
+                if SelectBttns == 1
+                    obj.SelectedCurves(kk-24:kk) = 1;
+                end
+
+                % Case 2: Select none
+                if SelectBttns == 2
+                    obj.SelectedCurves(kk-24:kk) = 0;
+                end
+
+                % Case 3: Select all - except of
+                if SelectBttns == 3
+                    obj.SelectedCurves(kk-24:kk) = 1;
+                    prompt = {'Enter the force curve number you do not want to keep for analysis (For multiple selections just use the space key to separeat entries)'};
+                    definput = {''};
+                    opts.Interpreter = 'tex';
+                    IndSelec=inputdlg(prompt,'Select all except of ...',[1 150],definput,opts); % Stores the individual selected fc as a cell array of character vectors 
+                    IndSelec=str2num(IndSelec{1}); % Convert the cell array to numerals
+                    obj.SelectedCurves(IndSelec) = 0;
+                end
+
+                if obj.SelectedCurves(kk-24:kk) == 0
+                    t=title(sprintf('%i',kk),'Color','r');
+                    elseif obj.SelectedCurves(kk-24:kk) == 1
+                    t=title(sprintf('%i',kk),'Color','b');
+                end
         
-    end
-    
-    
+                % Case 4: Select none - except of
+                if SelectBttns == 4
+                    obj.SelectedCurves(kk-24:kk) = 0;
+                    prompt = {'Enter the force curve number you want want to keep for analysis (For multiple selections just use the space key to separeat entries)'};
+                    definput = {''};
+                    opts.Interpreter = 'tex';
+                    IndSelec=inputdlg(prompt,'Select all except of ...',[1 150],definput,opts); % Stores the individual selected fc as a cell array of character vectors 
+                    IndSelec=str2num(IndSelec{1}); % Convert the cell array to numerals
+                    obj.SelectedCurves(IndSelec) = 1;
+                end
+            end
+                % Housekeeping
+                close all
+                
+            %%% Colour highlighting of the force curves regarding the choosen answer and storage in a structure
+            %% Figure loop
+            for ii=1:NFigures  
+            h_fig=figure(ii);
+            h_fig.Color='white'; % changes the background color of the figure
+            h_fig.Units='normalized'; % Defines the units 
+            h_fig.OuterPosition=[0 0 1 1];% changes the size of the to the whole screen
+            h_fig.PaperOrientation='landscape';
+            h_fig.Name=obj.Name; 
+                %% Plotting the tiles
+                t = tiledlayout(5,5);
+                %t.TileSpacing = 'compact';
+                %t.Padding = 'compact';
+                t.TileSpacing = 'none'; % To reduce the spacing between the tiles
+                t.Padding = 'none'; % To reduce the padding of perimeter of a tile
+
+                % Defining variables
+                if ii==NFigures && Remainder~=0
+                    NLoop=Remainder;
+                else
+                    NLoop=25;
+                end 
+               
+                %% Title loop
+                for jj=1:NLoop
+                    % Tile jj
+                    kk=jj+25*(ii-1);
+                    nexttile
+                    hold on
+                    grid on
+                    plot(obj.THApp{kk}-obj.CP_HardSurface(kk,1),obj.BasedApp{kk});
+                    plot(obj.THRet{kk}-obj.CP_HardSurface(kk,1),obj.BasedRet{kk});                    
+                    if obj.SelectedCurves(kk) == 0
+                        ti=title(sprintf('%i',kk),'Color','r');
+                    elseif obj.SelectedCurves(kk) == 1
+                        ti=title(sprintf('%i',kk),'Color','b');
+                    end
+                    % Title for each Subplot
+                    ti.Units='normalized'; % Set units to 'normalized'  
+                    ti.Position=[0.5,0.9]; % Position the subplot title within the subplot
+                    % Legend, x- and y-labels
+                    %legend('Approach','Retraction','Location','best')
+                    %xlabel('Tip-sample seperation  (nm)','FontSize',11,'Interpreter','latex');
+                    %ylabel('Force (nN)','FontSize',11,'Interpreter','latex');                  
+                end
+
+            %% Save figures
+            %%% Define the name for the figure title    
+            partname=sprintf('-part%d',ii);        
+            fullname=sprintf('%s%s',obj.Name,partname);
+            %%% Save the current figure in the current folder
+            print(gcf,fullname,'-dpng'); 
+            end
+        close Figure 1 Figure 2 Figure 3 Figure 4
+        end
+
+    end    
     methods (Static)
         % Auxiliary methods
         
