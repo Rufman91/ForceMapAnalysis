@@ -1283,13 +1283,17 @@ classdef Experiment < matlab.mixin.Copyable
         
         function SMFS_selection(obj)
         
-         %%% Create a folder "Figures" in datadir for saving the results
+         %%% Change into the Folder of Interest
          cd(obj.ExperimentFolder) % Move into the folder 
-         mkdir(obj.ExperimentFolder,'ReportFigures'); 
-         cd('ReportFigures');
+ 
             % Loop over the imported force maps
-            for ii=1:obj.NumFiles
-            %for ii=2 % Debugging
+            %for ii=1:obj.NumFiles
+            for ii=3:5 % Debugging
+            %%% Create folders for saving the produced figures
+               foldername=sprintf('FiguresFM%d',ii);    % Defines the folder name
+               mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
+               currpath=fullfile(obj.ExperimentFolder,foldername);
+               cd(currpath); 
                % Give current Force Map Position
                sprintf('Force Map No. %d of %d',ii,obj.NumFiles)
                % Run the chosen functions
