@@ -25,6 +25,7 @@ classdef ForceMap < matlab.mixin.Copyable
         Name            % name of the force map. taken as the name of the folder, containing the .csv files
         Date            % date when the force map was detected
         Time            % time when the force map was detected
+        ID              % Identifier for relation to Experiment
         Folder          % location of the .csv files of the force map
         HostOS          % Operating System
         HostName        % Name of hosting system
@@ -212,7 +213,7 @@ classdef ForceMap < matlab.mixin.Copyable
                 % 'Typedname'+'-'+'data'+'-'+'year'+'.'+'months'+'.'+'day'+'-hour'+'.'+'minute'+'.'+'second'+'.'+'thousandths'+'.'+'jpk file extension'
                 exp1 = '.*(?=\-data)'; % Finds the typed-in name of the user during the AFM experiment
                 exp2 = '\d{4}\.\d{2}\.\d{2}'; % Finds the date
-                exp3 = '\d{2}\.\d{2}\.\d{3}'; % Finds the time
+                exp3 = '\d{2}\.\d{2}\.\d{2}\.\d{3}'; % Finds the time
                 obj.Name = regexp(Strings(end,1), exp1, 'match');
                 obj.Name = char(obj.Name{1});
                 if isequal(obj.Name,'')
@@ -247,7 +248,7 @@ classdef ForceMap < matlab.mixin.Copyable
                 % 'Typedname'+'-'+'data'+'-'+'year'+'.'+'months'+'.'+'day'+'-hour'+'.'+'minute'+'.'+'second'+'.'+'thousandths'+'.'+'jpk file extension'
                 exp1 = '.*(?=\-data)'; % Finds the typed-in name of the user during the AFM experiment
                 exp2 = '\d{4}\.\d{2}\.\d{2}'; % Finds the date
-                exp3 = '\d{2}\.\d{2}\.\d{3}'; % Finds the time
+                exp3 = '\d{2}\.\d{2}\.\d{2}\.\d{3}'; % Finds the time
                 obj.Name = regexp(Strings(end,1), exp1, 'match');
                 obj.Name = char(obj.Name{1});
                 if isequal(obj.Name,'')
@@ -280,7 +281,7 @@ classdef ForceMap < matlab.mixin.Copyable
                 % 'Typedname'+'-'+'data'+'-'+'year'+'.'+'months'+'.'+'day'+'-hour'+'.'+'minute'+'.'+'second'+'.'+'thousandths'+'.'+'jpk file extension'
                 exp1 = '.*(?=\-data)'; % Finds the typed-in name of the user during the AFM experiment
                 exp2 = '\d{4}\.\d{2}\.\d{2}'; % Finds the date
-                exp3 = '\d{2}\.\d{2}\.\d{3}'; % Finds the time
+                exp3 = '\d{2}\.\d{2}\.\d{2}\.\d{3}'; % Finds the time
                 obj.Name = regexp(Strings(end,1), exp1, 'match');
                 obj.Name = char(obj.Name{1});
                 if isequal(obj.Name,'')

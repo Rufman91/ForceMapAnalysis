@@ -157,6 +157,11 @@ classdef Experiment < matlab.mixin.Copyable
             
             obj.check_for_new_host()
             
+            % Add Experiment identifier into ForceMap
+            for i=1:obj.NumFiles
+                obj.FM{i}.ID = sprintf('%s%i',obj.ExperimentName,i);
+            end
+            
             obj.save_experiment();
         end
         
@@ -211,11 +216,11 @@ classdef Experiment < matlab.mixin.Copyable
             
             for i=1:N
                 if WhichFiles == 2 || WhichFiles == 0
-                    SaveCopy.FM{NOld+i} = ForceMap(MapFullFile{i},SaveCopy.ExperimentFolder);
+                    SaveCopy.FM{NOld+i,1} = ForceMap(MapFullFile{i},SaveCopy.ExperimentFolder);
                     SaveCopy.ForceMapFolders{NOld+i} = SaveCopy.FM{NOld+i}.Folder;
                     SaveCopy.ForceMapNames{NOld+i} = SaveCopy.FM{NOld+i}.Name;
                 elseif WhichFiles == 1 || WhichFiles == 0
-                    SaveCopy.SPM{NOld+i} = SurfacePotentialMap();
+                    SaveCopy.SPM{NOld+i,1} = SurfacePotentialMap();
                     SaveCopy.SurfacePotentialMapFolders{NOld+i} = SaveCopy.SPM{NOld+i}.Folder;
                     SaveCopy.SurfacePotentialMapNames{NOld+i} = SaveCopy.SPM{NOld+i}.Name;
                 end
@@ -232,6 +237,13 @@ classdef Experiment < matlab.mixin.Copyable
 %             elseif WhichFiles == 1 || WhichFiles == 0
 %                 obj.grouping_surface_potential_map();
 %             end
+
+            
+            % Add Experiment identifier into ForceMap
+            for i=(NOld+1):SaveCopy.NumFiles
+                SaveCopy.FM{i}.ID = sprintf('%s%i',SaveCopy.ExperimentName,i);
+            end
+            
             clear obj
             obj = SaveCopy.copy_experiment;
             obj.save_experiment();
@@ -287,10 +299,10 @@ classdef Experiment < matlab.mixin.Copyable
                 if i<=length(obj.SPM)
                     MCSPM = metaclass(obj.SPM{i});
                 end
-                if i<=length(obj.FM) && isequal(MCFM.SuperclassList.Name,'matlab.mixin.Copyable')
+                if i<=length(obj.FM) && ~isempty(MCFM.SuperclassList) && isequal(MCFM.SuperclassList.Name,'matlab.mixin.Copyable')
                     ExperimentCopy.FM{i} = obj.FM{i}.copy;
                 end
-                if i<=length(obj.SPM) && isequal(MCSPM.SuperclassList.Name,'matlab.mixin.Copyable')
+                if i<=length(obj.SPM) && ~isempty(MCSPM.SuperclassList) && isequal(MCSPM.SuperclassList.Name,'matlab.mixin.Copyable')
                     ExperimentCopy.SPM{i} = obj.SPM{i}.copy;
                 end
             end
