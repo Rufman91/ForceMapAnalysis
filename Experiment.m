@@ -272,6 +272,7 @@ classdef Experiment < matlab.mixin.Copyable
             savemsg = sprintf('Changes to Experiment %s saved to %s',obj.ExperimentName,obj.ExperimentFolder);
             disp(savemsg);
         end
+
     end
     
     methods
@@ -1287,9 +1288,9 @@ classdef Experiment < matlab.mixin.Copyable
          cd(obj.ExperimentFolder) % Move into the folder 
  
             % Loop over the imported force maps
-            %for ii=1:obj.NumFiles
-            for ii=3:5 % Debugging
-            %%% Create folders for saving the produced figures
+            for ii=1:obj.NumFiles
+            %for ii=3:5 % Debugging
+               %%% Create folders for saving the produced figures
                foldername=sprintf('FiguresFM%d',ii);    % Defines the folder name
                mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
                currpath=fullfile(obj.ExperimentFolder,foldername);
@@ -1580,6 +1581,12 @@ classdef Experiment < matlab.mixin.Copyable
             
             obj.HostOS = OS;
             obj.HostName = Host;
+        end
+        
+        function update_NumFiles(obj)
+            
+            obj.NumFiles=size(obj.FM,1);
+            
         end
         
     end

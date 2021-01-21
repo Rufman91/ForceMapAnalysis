@@ -1227,9 +1227,9 @@ classdef ForceMap < matlab.mixin.Copyable
 
         function fc_selection(obj) % fc ... force curve
         
-            for ii=1:obj.NCurves
-            MinApp(ii)=min(obj.BasedApp{ii});
-            end
+           % for ii=1:obj.NCurves
+           % MinApp(ii)=min(obj.BasedApp{ii});
+           % end
             
             Remainder=mod(obj.NCurves,25);
             NFigures=floor(obj.NCurves./25);
