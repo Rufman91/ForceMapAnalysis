@@ -1356,9 +1356,6 @@ classdef Experiment < matlab.mixin.Copyable
         end
         
         function SMFS_selection(obj)
-        
-            % Update the current loaded number of force maps    
-            obj.update_NumFiles
          
             % Change into the Folder of Interest
             cd(obj.ExperimentFolder) % Move into the folder 

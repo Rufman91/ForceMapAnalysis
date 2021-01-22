@@ -1342,6 +1342,8 @@ classdef ForceMap < matlab.mixin.Copyable
                 NFigures=NFigures+1;
             end    
             %% Figure loop
+            figname=strcat(obj.ID,{': '},obj.Name);
+            figname=char(figname);
             for ii=1:NFigures           
             % Figure    
             h_fig=figure(ii);
@@ -1349,7 +1351,7 @@ classdef ForceMap < matlab.mixin.Copyable
             h_fig.Units='normalized'; % Defines the units 
             h_fig.OuterPosition=[0 0 1 1];% changes the size of the to the whole screen
             h_fig.PaperOrientation='landscape';
-            h_fig.Name=obj.Name;         
+            h_fig.Name=figname;         
             %% Plotting the tiles
             t = tiledlayout(5,5);
             %t.TileSpacing = 'compact';
@@ -1449,13 +1451,15 @@ classdef ForceMap < matlab.mixin.Copyable
                 
             %%% Colour highlighting of the force curves regarding the choosen answer and storage in a structure
             %% Figure loop
+            figname=strcat(obj.ID,{': '},obj.Name);
+            figname=char(figname);
             for ii=1:NFigures  
             h_fig=figure(ii);
             h_fig.Color='white'; % changes the background color of the figure
             h_fig.Units='normalized'; % Defines the units 
             h_fig.OuterPosition=[0 0 1 1];% changes the size of the to the whole screen
             h_fig.PaperOrientation='landscape';
-            h_fig.Name=obj.Name; 
+            h_fig.Name=figname; 
                 %% Plotting the tiles
                 t = tiledlayout(5,5);
                 %t.TileSpacing = 'compact';
