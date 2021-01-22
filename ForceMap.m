@@ -1332,7 +1332,74 @@ classdef ForceMap < matlab.mixin.Copyable
             end
             obj.MinRet = MinRet;
         end
+        
+        function fc_print(obj) % fc ... force curve
+            
+            % Define remainder situation
+            Remainder=mod(obj.NCurves,25);
+            NFigures=floor(obj.NCurves./25);
+            if Remainder ~= 0
+                NFigures=NFigures+1;
+            end    
+            %% Figure loop
+            figname=strcat(obj.ID,{'-'},obj.Name);
+            figname=char(figname);
+            for ii=1:NFigures           
+            % Figure    
+            h_fig=figure(ii);
+            h_fig.Color='white'; % changes the background color of the figure
+            h_fig.Units='normalized'; % Defines the units 
+            h_fig.OuterPosition=[0 0 1 1];% changes the size of the to the whole screen
+            h_fig.PaperOrientation='landscape';
+            h_fig.Name=figname;         
+            %% Plotting the tiles
+            t = tiledlayout(5,5);
+            %t.TileSpacing = 'compact';
+            %t.Padding = 'compact';
+            t.TileSpacing = 'none'; % To reduce the spacing between the tiles
+            t.Padding = 'none'; % To reduce the padding of perimeter of a tile
+            
+            % Defining variables
+            if ii==NFigures && Remainder~=0
+                NLoop=Remainder;
+            else
+                NLoop=25;
+            end
+                %% Plot loop    
+                for jj=1:NLoop
+                    % Tile jj
+                    kk=jj+25*(ii-1);
+                    %%% Define some variables
+                    x100=-100e-9; % Defines 100nm
+                    x500=-500e-9; % Defines 100nm
+                    % Plot tile
+                    nexttile
+                    hold on
+                    grid on
+                    plot(obj.THApp{kk}-obj.CP_HardSurface(kk,1),obj.BasedApp{kk});
+                    plot(obj.THRet{kk}-obj.CP_HardSurface(kk,1),obj.BasedRet{kk});
+                    line([x100 x100], ylim,'Color','k'); % Draws a vertical line                  
+                    line([x500 x500], ylim,'Color','k'); % Draws a vertical line
+                    % Title for each Subplot
+                    ti=title(sprintf('%i',kk),'Color','k');                                     
+                    ti.Units='normalized'; % Set units to 'normalized'  
+                    ti.Position=[0.5,0.9]; % Position the subplot title within the subplot
+                    % Legend, x- and y-labels
+                    %legend('Approach','Retraction','Location','best')
+                    %xlabel('Tip-sample seperation  (nm)','FontSize',11,'Interpreter','latex');
+                    %ylabel('Force (nN)','FontSize',11,'Interpreter','latex');                  
+                end
 
+            %% Save figures
+            %%% Define the name for the figure title    
+            partname=sprintf('-part%d',ii);        
+            fullname=sprintf('%s%s',figname,partname);
+            %%% Save the current figure in the current folder
+            print(gcf,fullname,'-dpng'); 
+            end
+        close Figure 1 Figure 2 Figure 3 Figure 4
+        end
+        
         function fc_selection(obj) % fc ... force curve
             
             % Define remainder situation
@@ -1380,12 +1447,12 @@ classdef ForceMap < matlab.mixin.Copyable
                     plot(obj.THRet{kk}-obj.CP_HardSurface(kk,1),obj.BasedRet{kk});
                     line([x100 x100], ylim,'Color','k'); % Draws a vertical line                  
                     line([x500 x500], ylim,'Color','k'); % Draws a vertical line
+                    % Title for each Subplot
                     if obj.SelectedCurves(kk) == 0
                         ti=title(sprintf('%i',kk),'Color','r');
                     elseif obj.SelectedCurves(kk) == 1
                         ti=title(sprintf('%i',kk),'Color','b');
                     end
-                    % Title for each Subplot
                     ti.Units='normalized'; % Set units to 'normalized'  
                     ti.Position=[0.5,0.9]; % Position the subplot title within the subplot
                     % Legend, x- and y-labels
@@ -1483,12 +1550,12 @@ classdef ForceMap < matlab.mixin.Copyable
                     grid on
                     plot(obj.THApp{kk}-obj.CP_HardSurface(kk,1),obj.BasedApp{kk});
                     plot(obj.THRet{kk}-obj.CP_HardSurface(kk,1),obj.BasedRet{kk});                    
+                    % Title for each Subplot
                     if obj.SelectedCurves(kk) == 0
                         ti=title(sprintf('%i',kk),'Color','r');
                     elseif obj.SelectedCurves(kk) == 1
                         ti=title(sprintf('%i',kk),'Color','b');
                     end
-                    % Title for each Subplot
                     ti.Units='normalized'; % Set units to 'normalized'  
                     ti.Position=[0.5,0.9]; % Position the subplot title within the subplot
                     % Legend, x- and y-labels
@@ -1507,6 +1574,8 @@ classdef ForceMap < matlab.mixin.Copyable
         close Figure 1 Figure 2 Figure 3 Figure 4
         end
 
+       
+        
     end    
     methods (Static)
         % Auxiliary methods

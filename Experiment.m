@@ -1355,12 +1355,34 @@ classdef Experiment < matlab.mixin.Copyable
             obj.save_experiment
         end
         
+        function SMFS_print(obj)
+         
+            % Change into the Folder of Interest
+            cd(obj.ExperimentFolder) % Move into the folder 
+            % Create folders for saving the produced figures
+            foldername='FM_raw_Fig';    % Defines the folder name
+            mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
+            currpath=fullfile(obj.ExperimentFolder,foldername);
+            cd(currpath); 
+            
+            % Loop over the imported force maps
+            for ii=1:obj.NumFiles
+            %for ii=3:5 % Debugging
+               % Command window output
+               sprintf('Force Map No. %d of %d',ii,obj.NumFiles) % Gives current Force Map Position
+               % Run the chosen functions
+               obj.FM{ii}.estimate_cp_hardsurface
+               obj.FM{ii}.fc_print;     
+               obj.save_experiment;        % Save immediately after each force curve
+            end    
+        end
+        
         function SMFS_selection(obj)
          
             % Change into the Folder of Interest
             cd(obj.ExperimentFolder) % Move into the folder 
             % Create folders for saving the produced figures
-            foldername='FM_Figures';    % Defines the folder name
+            foldername='FM_Fig';    % Defines the folder name
             mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
             currpath=fullfile(obj.ExperimentFolder,foldername);
             cd(currpath); 
