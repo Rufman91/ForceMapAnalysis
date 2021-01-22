@@ -1342,7 +1342,7 @@ classdef ForceMap < matlab.mixin.Copyable
                 NFigures=NFigures+1;
             end    
             %% Figure loop
-            figname=strcat(obj.ID,{': '},obj.Name);
+            figname=strcat(obj.ID,{'-'},obj.Name);
             figname=char(figname);
             for ii=1:NFigures           
             % Figure    
@@ -1451,7 +1451,7 @@ classdef ForceMap < matlab.mixin.Copyable
                 
             %%% Colour highlighting of the force curves regarding the choosen answer and storage in a structure
             %% Figure loop
-            figname=strcat(obj.ID,{': '},obj.Name);
+            figname=strcat(obj.ID,{'-'},obj.Name);
             figname=char(figname);
             for ii=1:NFigures  
             h_fig=figure(ii);
@@ -1500,7 +1500,7 @@ classdef ForceMap < matlab.mixin.Copyable
             %% Save figures
             %%% Define the name for the figure title    
             partname=sprintf('-part%d',ii);        
-            fullname=sprintf('%s%s',obj.Name,partname);
+            fullname=sprintf('%s%s',figname,partname);
             %%% Save the current figure in the current folder
             print(gcf,fullname,'-dpng'); 
             end

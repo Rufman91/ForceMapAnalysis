@@ -1359,17 +1359,17 @@ classdef Experiment < matlab.mixin.Copyable
          
             % Change into the Folder of Interest
             cd(obj.ExperimentFolder) % Move into the folder 
- 
+            % Create folders for saving the produced figures
+            foldername='FM_Figures';    % Defines the folder name
+            mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
+            currpath=fullfile(obj.ExperimentFolder,foldername);
+            cd(currpath); 
+            
             % Loop over the imported force maps
             for ii=1:obj.NumFiles
             %for ii=3:5 % Debugging
-               %%% Create folders for saving the produced figures
-               foldername=sprintf('FiguresFM%d',ii);    % Defines the folder name
-               mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
-               currpath=fullfile(obj.ExperimentFolder,foldername);
-               cd(currpath); 
-               % Give current Force Map Position
-               sprintf('Force Map No. %d of %d',ii,obj.NumFiles)
+               % Command window output
+               sprintf('Force Map No. %d of %d',ii,obj.NumFiles) % Gives current Force Map Position
                % Run the chosen functions
                obj.FM{ii}.estimate_cp_hardsurface
                obj.FM{ii}.fc_selection;     
