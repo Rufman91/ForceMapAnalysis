@@ -658,526 +658,6 @@ classdef Experiment < matlab.mixin.Copyable
             % WORK IN PROGRESS
         end
         
-        function [DataMeansOP,DataMeansHS,DataOP,DataHS] = statistical_analysis_force_maps(obj)
-            % Basic statistical analysis of the force map experiment. First get the grouping
-            % of data from the user and then perform several tests, plots
-            % etc.
-            N = obj.NumFiles;
-            obj.grouping_force_map();
-            
-            % Ask user which groups are to be compared
-            prompt = 'Specialize which groups are to be tested against which';
-            definput = {'1 2 ; 3 4'};
-            answer = inputdlg(prompt,'Pairings',[1 50],definput);
-            
-            % Define Test Matrix
-            TestMat = [str2num(answer{1})];
-            
-            % Write Data into local variables and
-            % replace extreme outlier values with NaN
-            % also replace data points that lie on the exclusion mask with
-            % NaN
-            for i=1:N
-                DataOP(i,:) = obj.FM{i}.EModOliverPharr(obj.FM{i}.RectApexIndex);
-                DataHS(i,:) = obj.FM{i}.EModHertz(obj.FM{i}.RectApexIndex);
-                OutliersOP = isoutlier(DataOP(i,:));
-                OutliersHS = isoutlier(DataHS(i,:));
-                for j=1:length(obj.FM{i}.RectApexIndex)
-                    if DataOP(i,j) > (nanmedian(DataOP(i,:))+2.5*iqr(DataOP(i,:))) || ...
-                            DataOP(i,j) < (nanmedian(DataOP(i,:))-2.5*iqr(DataOP(i,:))) || ...
-                            obj.FM{i}.ExclMask(obj.FM{i}.List2Map(obj.FM{i}.RectApexIndex(j),1),obj.FM{i}.List2Map(obj.FM{i}.RectApexIndex(j),2)) == 0 ||...
-                            OutliersOP(j) == 1
-                        DataOP(i,j) = NaN;
-                    elseif DataOP(i,j) < 0
-                        DataOP(i,j) = NaN;
-                    end
-                    if DataHS(i,j) > (nanmedian(DataHS(i,:))+2.5*iqr(DataHS(i,:))) || ...
-                            DataHS(i,j) < (nanmedian(DataHS(i,:))-2.5*iqr(DataHS(i,:))) || ...
-                            obj.FM{i}.ExclMask(obj.FM{i}.List2Map(obj.FM{i}.RectApexIndex(j),1),obj.FM{i}.List2Map(obj.FM{i}.RectApexIndex(j),2)) == 0 ||...
-                            OutliersHS(j) == 1
-                        DataHS(i,j) = NaN;
-                    elseif DataHS(i,j) < 0
-                        DataHS(i,j) = NaN;
-                    end
-                end
-            end
-            
-            DataMeansOP = nanmean(DataOP,2);
-            DataMeansHS = nanmean(DataHS,2);
-            
-            figure('Name','OliverPharr vs HertzSneddon','Color','w');
-            plot(DataMeansHS,DataMeansOP,'bO')
-            legend(sprintf('E-Mod Hertz vs. Oliver-Pharr (R=%.3f)',corr(DataMeansHS,DataMeansOP)))
-%             xlim([0,N+1])
-            xlabel('E-Mod Hertz [Pa]')
-            ylabel('E-Mod Oliver-Pharr [Pa]')
-            
-            % loop over all rows of the Test Matrix, doing paired ttests
-            for i=1:size(TestMat,1)
-                % Statistics for Oliver-Pharr Method
-                [hOP(i),pOP(i)] = ...
-                    ttest(DataMeansOP(obj.GroupFM(TestMat(i,2)).Indices),...
-                    DataMeansOP(obj.GroupFM(TestMat(i,1)).Indices),'Tail','right');
-                
-                figure('Name','Paired Right Tailed T-Test','Units','normalized','Position',[0.2 0.2 0.5 0.5],'Color','w')
-                boxplot([DataMeansOP(obj.GroupFM(TestMat(i,1)).Indices) DataMeansOP(obj.GroupFM(TestMat(i,2)).Indices)]*1e-6)
-                title('Paired Right Tailed T-Test for Oliver-Pharr Method')
-                xticklabels({obj.GroupFM(TestMat(i,1)).Name,obj.GroupFM(TestMat(i,2)).Name})
-                xlabel('Test Group')
-                ylabel('Indentation Modulus [MPa]')
-                DeltaMean = mean(DataMeansOP(obj.GroupFM(TestMat(i,2)).Indices)) - mean(DataMeansOP(obj.GroupFM(TestMat(i,1)).Indices));
-                Sigma = std(DataMeansOP(obj.GroupFM(TestMat(i,2)).Indices) - DataMeansOP(obj.GroupFM(TestMat(i,1)).Indices));
-                Beta = sampsizepwr('t',[0 Sigma],DeltaMean,[],length(obj.GroupFM(TestMat(i,2)).Indices));
-                Stats = {sprintf('\\DeltaMean = %.2fMPa',DeltaMean*1e-6),...
-                    sprintf('P-Value = %.4f%',pOP(i)),...
-                    sprintf('Power \\beta = %.2f%%',Beta*100),...
-                    sprintf('Number of Specimen = %i',length(obj.GroupFM(TestMat(i,2)).Indices))};
-                text(0.5,0.8,Stats,...
-                    'Units','normalized',...
-                    'FontSize',12,...
-                    'HorizontalAlignment','center')
-                
-%                 %Statistics for Hertz-Sneddon Method
-%                 [hHS(i),pHS(i)] = ...
-%                     ttest(DataMeansHS(obj.GroupFM(TestMat(i,2)).Indices),...
-%                     DataMeansHS(obj.GroupFM(TestMat(i,1)).Indices),'Tail','right');
-%                 
-%                 figure('Name','Paired Right Tailed T-Test','Units','normalized','Position',[0.2 0.2 0.5 0.5],'Color','w')
-%                 boxplot([DataMeansHS(obj.GroupFM(TestMat(i,1)).Indices) DataMeansHS(obj.GroupFM(TestMat(i,2)).Indices)])
-%                 title('Paired Right Tailed T-Test for Hertz-Sneddon Method')
-%                 xticklabels({obj.GroupFM(TestMat(i,1)).Name,obj.GroupFM(TestMat(i,2)).Name})
-%                 xlabel('Test Group')
-%                 ylabel('E-Mod Hertz-Sneddon[Pa]')
-%                 DeltaMean = mean(DataMeansHS(obj.GroupFM(TestMat(i,2)).Indices)) - mean(DataMeansHS(obj.GroupFM(TestMat(i,1)).Indices));
-%                 Sigma = std(DataMeansHS(obj.GroupFM(TestMat(i,2)).Indices) - DataMeansHS(obj.GroupFM(TestMat(i,1)).Indices));
-%                 Beta = sampsizepwr('t',[0 Sigma],DeltaMean,[],length(obj.GroupFM(TestMat(i,2)).Indices));
-%                 Stats = {sprintf('\\DeltaMean = %.2f MPa',DeltaMean*1e-6),...
-%                     sprintf('P-Value = %.4f%',pHS(i)),...
-%                     sprintf('Power \\beta = %.2f%%',Beta*100),...
-%                     sprintf('Number of Specimen = %i',length(obj.GroupFM(TestMat(i,2)).Indices))};
-%                 text(0.5,0.8,Stats,...
-%                     'Units','normalized',...
-%                     'FontSize',12,...
-%                     'HorizontalAlignment','center')
-            end
-            
-            % Now test, if the difference in one pair of groups is
-            % statistically different from the other in a two sample t test
-            DiffControlOP = DataMeansOP(11:20) - DataMeansOP(1:10);
-            DiffMGOOP = DataMeansOP(31:40) - DataMeansOP(21:30);
-            DiffControlHS = DataMeansHS(11:20) - DataMeansHS(1:10);
-            DiffMGOHS = DataMeansHS(31:40) - DataMeansHS(21:30);
-            
-            % For Oliver-Pharr
-            [hOP,pOP,ciOP,statsOP] = ttest2(DiffMGOOP,DiffControlOP);
-            figure('Name','Two Sample T-Test','Units','normalized','Position',[0.2 0.2 0.5 0.5],'Color','w')
-            yyaxis left
-            boxplot([DiffControlOP DiffMGOOP])
-            ax = gca;
-            YLim = ax.YLim;
-            ylabel('Difference Before-After E-Mod [Pa]')
-            DeltaMean = mean(DiffMGOOP) - mean(DiffControlOP);
-            PooledSTD = statsOP.sd;
-            yyaxis right
-            errorbar(1.5,DeltaMean,ciOP(2)-DeltaMean,'O');
-            ylim(YLim)
-            xticks([1 1.5 2])
-            title('Two Sample T-Test for E-Mod Oliver-Pharr Method')
-            ax = gca;
-            ax.TickLabelInterpreter = 'tex';
-            xticklabels({sprintf('%s - %s',obj.GroupFM(2).Name,obj.GroupFM(1).Name),...
-                '\DeltaMean with CI',...
-                sprintf('%s - %s',obj.GroupFM(4).Name,obj.GroupFM(3).Name)})
-            ylabel('Difference of Differences [Pa]')
-            Beta = sampsizepwr('t2',[mean(DiffControlOP) PooledSTD],mean(DiffMGOOP),[],length(DiffControlOP),'Ratio',length(DiffMGOOP)/length(DiffControlOP));
-            Stats = {sprintf('\\DeltaMean = %.2f MPa',DeltaMean*1e-6),...
-                sprintf('P-Value = %.4f%',pOP),...
-                sprintf('Power \\beta = %.2f%%',Beta*100),...
-                sprintf('Degrees of freedom df = %i',statsOP.df)};
-            text(0.5,0.8,Stats,...
-                'Units','normalized',...
-                'FontSize',12,...
-                'HorizontalAlignment','center')
-            
-%             % For Hertz-Sneddon
-%             [hHS,pHS,ciHS,statsHS] = ttest2(DiffMGOHS,DiffControlHS);
-%             figure('Name','Two Sample T-Test','Units','normalized','Position',[0.2 0.2 0.5 0.5],'Color','w')
-%             yyaxis left
-%             boxplot([DiffControlHS DiffMGOHS])
-%             ax = gca;
-%             YLim = ax.YLim;
-%             ylabel('Difference Before-After E-Mod [Pa]')
-%             DeltaMean = mean(DiffMGOHS) - mean(DiffControlHS);
-%             PooledSTD = statsHS.sd;
-%             yyaxis right
-%             errorbar(1.5,DeltaMean,ciHS(2)-DeltaMean,'O');
-%             ylim(YLim)
-%             xticks([1 1.5 2])
-%             title('Two Sample T-Test for E-Mod Hertz-Sneddon Method')
-%             ax = gca;
-%             ax.TickLabelInterpreter = 'tex';
-%             xticklabels({sprintf('%s - %s',obj.GroupFM(2).Name,obj.GroupFM(1).Name),...
-%                 '\DeltaMean with CI',...
-%                 sprintf('%s - %s',obj.GroupFM(4).Name,obj.GroupFM(3).Name)})
-%             ylabel('Difference of Differences [Pa]')
-%             Beta = sampsizepwr('t2',[mean(DiffControlHS) PooledSTD],mean(DiffMGOHS),[],length(DiffControlHS),'Ratio',length(DiffMGOHS)/length(DiffControlHS));
-%             Stats = {sprintf('\\DeltaMean = %.2f MPa',DeltaMean*1e-6),...
-%                 sprintf('P-Value = %.4f%',pHS),...
-%                 sprintf('Power \\beta = %.2f%%',Beta*100),...
-%                 sprintf('Degrees of freedom df = %i',statsHS.df)};
-%             text(0.5,0.8,Stats,...
-%                 'Units','normalized',...
-%                 'FontSize',12,...
-%                 'HorizontalAlignment','center')
-            
-        end
-        
-        function FibPot = statistical_analysis_surface_potential(obj)
-            % Statistical analysis of the surface potential map experiment.
-            % First get the grouping of data from the user and then perform
-            % several tests, plots etc.
-            
-            obj.grouping_surface_potential_map();
-            
-            %%%%%%% DISCLAIMER: just works for specific cases at the moment %%%%%%%
-            
-            N = obj.NumFiles;
-            
-            % Ask user which groups are to be compared
-            prompt = 'Specialize which groups are to be tested against which';
-            definput = {'1 2 ; 3 4'};
-            answer = inputdlg(prompt,'Pairings',[1 50],definput);
-            
-            % Define Test Matrix
-            TestMat = [str2num(answer{1})];
-            % Get Data
-            for i=1:N
-                FibPot(i) = obj.SPM{i}.FibPot;
-            end
-            % Do Paired T-Test of Surface Potential between paired groups
-            for i=1:size(TestMat,1)
-                [h(i),p(i)] = ...
-                    ttest(FibPot(obj.GroupFM(TestMat(i,2)).Indices),...
-                    FibPot(obj.GroupFM(TestMat(i,1)).Indices));
-                
-                figure('Name','Paired T-Test for Surface Potential Changes','Units','normalized','Position',[0.2 0.2 0.5 0.5],'Color','w')
-                boxplot([FibPot(obj.GroupFM(TestMat(i,1)).Indices)' FibPot(obj.GroupFM(TestMat(i,2)).Indices)']*1e3)
-                title('Paired T-Test for Surface Potential Changes')
-                xticklabels({obj.GroupFM(TestMat(i,1)).Name,obj.GroupFM(TestMat(i,2)).Name})
-                xlabel('Test Group')
-                ylabel('Surface Potential [mV]')
-                DeltaMean = mean(FibPot(obj.GroupFM(TestMat(i,2)).Indices)) - mean(FibPot(obj.GroupFM(TestMat(i,1)).Indices));
-                Sigma = std(FibPot(obj.GroupFM(TestMat(i,2)).Indices) - FibPot(obj.GroupFM(TestMat(i,1)).Indices));
-                Beta = sampsizepwr('t',[0 Sigma],DeltaMean,[],length(obj.GroupFM(TestMat(i,2)).Indices));
-                Stats = {sprintf('\\DeltaMean = %.2fmV',DeltaMean*1e3),...
-                    sprintf('P-Value = %.2e%',p(i)),...
-                    sprintf('Power \\beta = %.2f%%',Beta*100),...
-                    sprintf('Number of Specimen = %i',length(obj.GroupFM(TestMat(i,2)).Indices))};
-                text(0.5,0.8,Stats,...
-                    'Units','normalized',...
-                    'FontSize',12,...
-                    'HorizontalAlignment','center')
-            end
-            
-            % Now test, if the difference in one pair of groups is
-            % statistically different from the other in a two sample t test
-            DiffControl = (FibPot(11:20) - FibPot(1:10))';
-            DiffMGO = (FibPot(31:40) - FibPot(21:30))';
-            
-            
-            [h,p,ci,stats] = ttest2(DiffMGO,DiffControl);
-            figure('Name','Two Sample T-Test','Units','normalized','Position',[0.2 0.2 0.5 0.5],'Color','w')
-            yyaxis left
-            boxplot([DiffControl DiffMGO])
-            ax = gca;
-            YLim = ax.YLim;
-            ylabel('Difference Before-After Potential [V]')
-            DeltaMean = mean(DiffMGO) - mean(DiffControl);
-            PooledSTD = stats.sd;
-            yyaxis right
-            errorbar(1.5,DeltaMean,ci(2)-DeltaMean,'O');
-            ylim(YLim)
-            xticks([1 1.5 2])
-            title('Two Sample T-Test for Surface Potential Changes')
-            ax = gca;
-            ax.TickLabelInterpreter = 'tex';
-            xticklabels({sprintf('%s - %s',obj.GroupSPM(2).Name,obj.GroupSPM(1).Name),...
-                '\DeltaMean with CI',...
-                sprintf('%s - %s',obj.GroupSPM(4).Name,obj.GroupSPM(3).Name)})
-            ylabel('Difference of Differences [V]')
-            Beta = sampsizepwr('t2',[mean(DiffControl) PooledSTD],mean(DiffMGO),[],length(DiffControl),'Ratio',length(DiffMGO)/length(DiffControl));
-            Stats = {sprintf('\\DeltaMean = %.2fmV',DeltaMean*1e3),...
-                sprintf('P-Value = %.2e%',p),...
-                sprintf('Power \\beta = %.2f%%',Beta*100),...
-                sprintf('Degrees of freedom df = %i',stats.df)};
-            text(0.5,0.8,Stats,...
-                'Units','normalized',...
-                'FontSize',12,...
-                'HorizontalAlignment','center')
-        end
-        
-        function statistical_analysis_swelling(obj)
-            %%%%%%% DISCLAIMER: just works for specific cases at the moment %%%%%%%
-            
-            N = obj.NumFiles;
-            
-            % Ask user which groups are to be compared
-            prompt = 'Specialize which groups are to be tested against which';
-            definput = {'1 2 ; 3 4'};
-            answer = inputdlg(prompt,'Pairings',[1 50],definput);
-            
-            % Define Test Matrix
-            TestMat = [str2num(answer{1})];
-            % Get Data
-            for i=1:N
-                Dry(i) = obj.SPM{i}.FibDiam;
-                Wet(i) = obj.FM{i}.FibDiam;
-                RelChange(i) = Wet(i)/Dry(i);
-            end
-            % Do Paired T-Test of relative swelling between paired groups
-            for i=1:size(TestMat,1)
-                [h(i),p(i)] = ...
-                    ttest(RelChange(obj.GroupFM(TestMat(i,2)).Indices),...
-                    RelChange(obj.GroupFM(TestMat(i,1)).Indices));
-                
-                figure('Name','Paired T-Test for relative Swelling Changes','Units','normalized','Position',[0.2 0.2 0.5 0.5],'Color','w')
-                boxplot([RelChange(obj.GroupFM(TestMat(i,1)).Indices)' RelChange(obj.GroupFM(TestMat(i,2)).Indices)'])
-                title('Paired T-Test for relative Swelling Changes')
-                xticklabels({obj.GroupFM(TestMat(i,1)).Name,obj.GroupFM(TestMat(i,2)).Name})
-                xlabel('Test Group')
-                ylabel('Relative Swelling')
-                DeltaMean = mean(RelChange(obj.GroupFM(TestMat(i,2)).Indices)) - mean(RelChange(obj.GroupFM(TestMat(i,1)).Indices));
-                Sigma = std(RelChange(obj.GroupFM(TestMat(i,2)).Indices) - RelChange(obj.GroupFM(TestMat(i,1)).Indices));
-                Beta = sampsizepwr('t',[0 Sigma],DeltaMean,[],length(obj.GroupFM(TestMat(i,2)).Indices));
-                Stats = {sprintf('\\DeltaMean = %.2f',DeltaMean),...
-                    sprintf('P-Value = %.3f%',p(i)),...
-                    sprintf('Power \\beta = %.2f%%',Beta*100),...
-                    sprintf('Number of Specimen = %i',length(obj.GroupFM(TestMat(i,2)).Indices))};
-                text(0.5,0.8,Stats,...
-                    'Units','normalized',...
-                    'FontSize',12,...
-                    'HorizontalAlignment','center')
-            end
-            
-            % Now test, if the difference in one pair of groups is
-            % statistically different from the other in a two sample t test
-            DiffControl = (RelChange(11:20) - RelChange(1:10))';
-            DiffMGO = (RelChange(31:40) - RelChange(21:30))';
-            
-            
-            [h,p,ci,stats] = ttest2(DiffMGO,DiffControl);
-            figure('Name','Two Sample T-Test','Units','normalized','Position',[0.2 0.2 0.5 0.5],'Color','w')
-            yyaxis left
-            boxplot([DiffControl DiffMGO])
-            ax = gca;
-            YLim = ax.YLim;
-            ylabel('Difference Before-After relative Swelling')
-            DeltaMean = mean(DiffMGO) - mean(DiffControl);
-            PooledSTD = stats.sd;
-            yyaxis right
-            errorbar(1.5,DeltaMean,ci(2)-DeltaMean,'O');
-            ylim(YLim)
-            xticks([1 1.5 2])
-            title('Two Sample T-Test for relative Swelling')
-            ax = gca;
-            ax.TickLabelInterpreter = 'tex';
-            xticklabels({sprintf('%s - %s',obj.GroupSPM(2).Name,obj.GroupSPM(1).Name),...
-                '\DeltaMean with CI',...
-                sprintf('%s - %s',obj.GroupSPM(4).Name,obj.GroupSPM(3).Name)})
-            ylabel('Difference of Differences')
-            Beta = sampsizepwr('t2',[mean(DiffControl) PooledSTD],mean(DiffMGO),[],length(DiffControl),'Ratio',length(DiffMGO)/length(DiffControl));
-            Stats = {sprintf('\\DeltaMean = %.2f',DeltaMean),...
-                sprintf('P-Value = %.2e%',p),...
-                sprintf('Power \\beta = %.2f%%',Beta*100),...
-                sprintf('Degrees of freedom df = %i',stats.df)};
-            text(0.5,0.8,Stats,...
-                'Units','normalized',...
-                'FontSize',12,...
-                'HorizontalAlignment','center')
-        end
-        
-        function statistical_analysis_d_banding(obj)
-            %%%%%%% DISCLAIMER: just works for specific cases at the moment %%%%%%%
-            
-            N = obj.NumFiles;
-            
-            % Ask user which groups are to be compared
-            prompt = 'Specialize which groups are to be tested against which';
-            definput = {'1 2 ; 3 4'};
-            answer = inputdlg(prompt,'Pairings',[1 50],definput);
-            
-            % Define Test Matrix
-            TestMat = [str2num(answer{1})];
-            % Get Data
-            for i=1:N
-                DBanding(i) = obj.SPM{i}.DBanding;
-            end
-            % Do Paired T-Test of relative swelling between paired groups
-            for i=1:size(TestMat,1)
-                [h(i),p(i)] = ...
-                    ttest(DBanding(obj.GroupFM(TestMat(i,2)).Indices),...
-                    DBanding(obj.GroupFM(TestMat(i,1)).Indices));
-                
-                figure('Name','Paired T-Test for D-Banding Changes','Units','normalized','Position',[0.2 0.2 0.5 0.5],'Color','w')
-                boxplot([DBanding(obj.GroupFM(TestMat(i,1)).Indices)' DBanding(obj.GroupFM(TestMat(i,2)).Indices)'])
-                title('Paired T-Test for D-Banding Changes')
-                xticklabels({obj.GroupFM(TestMat(i,1)).Name,obj.GroupFM(TestMat(i,2)).Name})
-                xlabel('Test Group')
-                ylabel('D-Banding [m]')
-                DeltaMean = mean(DBanding(obj.GroupFM(TestMat(i,2)).Indices)) - mean(DBanding(obj.GroupFM(TestMat(i,1)).Indices));
-                Sigma = std(DBanding(obj.GroupFM(TestMat(i,2)).Indices) - DBanding(obj.GroupFM(TestMat(i,1)).Indices));
-                Beta = sampsizepwr('t',[0 Sigma],DeltaMean,[],length(obj.GroupFM(TestMat(i,2)).Indices));
-                Stats = {sprintf('\\DeltaMean = %.2fnm',DeltaMean*1e9),...
-                    sprintf('P-Value = %.3f%',p(i)),...
-                    sprintf('Power \\beta = %.2f%%',Beta*100),...
-                    sprintf('Number of Specimen = %i',length(obj.GroupFM(TestMat(i,2)).Indices))};
-                text(0.5,0.8,Stats,...
-                    'Units','normalized',...
-                    'FontSize',12,...
-                    'HorizontalAlignment','center')
-            end
-            
-            % Now test, if the difference in one pair of groups is
-            % statistically different from the other in a two sample t test
-            DiffControl = (DBanding(11:20) - DBanding(1:10))';
-            DiffMGO = (DBanding(31:40) - DBanding(21:30))';
-            
-            
-            [h,p,ci,stats] = ttest2(DiffMGO,DiffControl);
-            figure('Name','Two Sample T-Test','Units','normalized','Position',[0.2 0.2 0.5 0.5],'Color','w')
-            yyaxis left
-            boxplot([DiffControl DiffMGO])
-            ax = gca;
-            YLim = ax.YLim;
-            ylabel('Difference Before-After in D-Banding [m]')
-            DeltaMean = mean(DiffMGO) - mean(DiffControl);
-            PooledSTD = stats.sd;
-            yyaxis right
-            errorbar(1.5,DeltaMean,ci(2)-DeltaMean,'O');
-            ylim(YLim)
-            xticks([1 1.5 2])
-            title('Two Sample T-Test for D-Banding Changes')
-            ax = gca;
-            ax.TickLabelInterpreter = 'tex';
-            xticklabels({sprintf('%s - %s',obj.GroupSPM(2).Name,obj.GroupSPM(1).Name),...
-                '\DeltaMean with CI',...
-                sprintf('%s - %s',obj.GroupSPM(4).Name,obj.GroupSPM(3).Name)})
-            ylabel('Difference of Differences [m]')
-            Beta = sampsizepwr('t2',[mean(DiffControl) PooledSTD],mean(DiffMGO),[],length(DiffControl),'Ratio',length(DiffMGO)/length(DiffControl));
-            Stats = {sprintf('\\DeltaMean = %.2fnm',DeltaMean*1e9),...
-                sprintf('P-Value = %.2e%',p),...
-                sprintf('Power \\beta = %.2f%%',Beta*100),...
-                sprintf('Degrees of freedom df = %i',stats.df)};
-            text(0.5,0.8,Stats,...
-                'Units','normalized',...
-                'FontSize',12,...
-                'HorizontalAlignment','center')
-        end
-        
-        function grouping_force_map(obj)
-            % A series of input dialogues that determine the structure and
-            % relations of the force map files in the experiment
-            
-            if obj.FMFlag.Grouping == 1
-                disp('Force Maps already have a Grouping assigned')
-                return
-            elseif obj.SPMFlag.Grouping == 1
-                answer = questdlg('Is the Grouping and File order the same as for Surface Potential Maps?');
-                if isequal(lower(answer),'yes')
-                    obj.GroupFM = obj.GroupSPM;
-                    obj.FMFlag.Grouping = 1;
-                    disp('Same Grouping as Surface Potential Maps assigned to Force Maps')
-                    return
-                else
-                end
-            end
-            
-            % How many statistical groups are there?
-            answer1 = inputdlg('How many different groupings of data are there? (E.g. Control-Before and Control-After count as two separate groups)',...
-                'Statistical Groupings',[1 50]);
-            NGroups = str2num(answer1{1});
-            
-            % create the appropriate inputdlg for assigning the groups show
-            % a table with numbered map-names in background
-            Names = obj.ForceMapNames;
-            Fig = figure('Units', 'Normalized', 'Position',[0.2 0.2 0.4 8],'Color','w');
-            T = table(Names');
-            uitable('Data',T{:,:},'Units', 'Normalized', 'Position',[0, 0, 1, 1]);
-            
-            for i=1:2:2*NGroups
-                prompts{i} = sprintf('Whats the Name of Group %i?',(i+1)/2);
-                prompts{i+1} = sprintf('Which Indices belong to Group %i?',(i+1)/2);
-                definput{i} = sprintf('Group %i Name',(i+1)/2);
-                definput{i+1} = 'e.g. 1 2 3 4 8 9 10 or 1:4 8:10';
-            end
-            
-            dims = [1 50];
-            opts.WindowStyle = 'normal';
-            dlgtitle = 'Choose and name Groups';
-            answer2 = inputdlg(prompts,dlgtitle,dims,definput,opts);
-            
-            for i=1:NGroups
-                obj.GroupFM(i).Name = answer2{2*i-1};
-                obj.GroupFM(i).Indices = str2num(answer2{2*i});
-            end
-            obj.FMFlag.Grouping = 1;
-            close(Fig);
-            
-        end
-        
-        function grouping_surface_potential_map(obj)
-            % A series of input dialogues that determine the structure and
-            % relations of the force map files in the experiment
-            
-            if obj.SPMFlag.Grouping == 1
-                disp('Surface Potential Maps already have a Grouping assigned')
-                return
-            elseif obj.FMFlag.Grouping == 1
-                answer = questdlg('Is the Grouping and File order the same as for Force Maps?');
-                if isequal(lower(answer),'yes')
-                    obj.GroupSPM = obj.GroupFM;
-                    disp('Same Grouping as Force Maps assigned to Surface Potential Maps')
-                    obj.SPMFlag.Grouping = 1;
-                    return
-                else
-                end
-            end
-            
-            % How many statistical groups are there?
-            answer1 = inputdlg('How many different groupings of data are there? (E.g. Control-Before and Control-After count as two separate groups)',...
-                'Statistical Groupings',[1 50]);
-            NGroups = str2num(answer1{1});
-            
-            % create the appropriate inputdlg for assigning the groups show
-            % a table with numbered map-names in background
-            Names = obj.SurfacePotentialMapNames;
-            Fig = figure('Units', 'Normalized', 'Position',[0, 0, 0.4, 1],'Color','w');
-            T = table(Names');
-            uitable('Data',T{:,:},'Units', 'Normalized', 'Position',[0, 0, 1, 1]);
-            
-            for i=1:2:2*NGroups
-                prompts{i} = sprintf('Whats the Name of Group %i?',(i+1)/2);
-                prompts{i+1} = sprintf('Which Indices belong to Group %i?',(i+1)/2);
-                definput{i} = sprintf('Group %i Name',(i+1)/2);
-                definput{i+1} = 'e.g. 1 2 3 4 8 9 10 or 1:4 8:10';
-            end
-            
-            dims = [1 50];
-            opts.WindowStyle = 'normal';
-            dlgtitle = 'Choose and name Groups';
-            answer2 = inputdlg(prompts,dlgtitle,dims,definput,opts);
-            
-            for i=1:NGroups
-                obj.GroupSPM(i).Name = answer2{2*i-1};
-                obj.GroupSPM(i).Indices = str2num(answer2{2*i});
-            end
-            
-            obj.SPMFlag.Grouping = 1;
-            
-            close(Fig);
-            
-        end
-        
         function cp_option_converter(obj,CPOption,i,RefFM)
             % cp_option_converter(CPOption,i,RefFM)
             %
@@ -1403,6 +883,544 @@ classdef Experiment < matlab.mixin.Copyable
                obj.FM{ii}.fc_selection;     
                obj.save_experiment;        % Save immediately after each force curve
             end    
+        end
+    end
+    
+    methods
+        %%%   WARNING! %%%
+        % The following methods were programmed for specific use cases
+        % and are yet to be generalized! However, you can of course adjust
+        % them for your own use, though its probably easier to just take
+        % the processed raw data from your Experiment and do your own
+        % statistics
+        
+        function [DataMeansOP,DataMeansHS,DataOP,DataHS] = statistical_analysis_force_maps(obj)
+            % Basic statistical analysis of the force map experiment. First get the grouping
+            % of data from the user and then perform several tests, plots
+            % etc.
+            
+            warning('The following methods were programmed for specific use cases and are yet to be generalized! However, you can of course adjust them for your own use, though its probably easier to just take the processed raw data from your Experiment and do your own statistics')
+            
+            N = obj.NumFiles;
+            obj.grouping_force_map();
+            
+            % Ask user which groups are to be compared
+            prompt = 'Specialize which groups are to be tested against which';
+            definput = {'1 2 ; 3 4'};
+            answer = inputdlg(prompt,'Pairings',[1 50],definput);
+            
+            % Define Test Matrix
+            TestMat = [str2num(answer{1})];
+            
+            % Write Data into local variables and
+            % replace extreme outlier values with NaN
+            % also replace data points that lie on the exclusion mask with
+            % NaN
+            for i=1:N
+                DataOP(i,:) = obj.FM{i}.EModOliverPharr(obj.FM{i}.RectApexIndex);
+                DataHS(i,:) = obj.FM{i}.EModHertz(obj.FM{i}.RectApexIndex);
+                OutliersOP = isoutlier(DataOP(i,:));
+                OutliersHS = isoutlier(DataHS(i,:));
+                for j=1:length(obj.FM{i}.RectApexIndex)
+                    if DataOP(i,j) > (nanmedian(DataOP(i,:))+2.5*iqr(DataOP(i,:))) || ...
+                            DataOP(i,j) < (nanmedian(DataOP(i,:))-2.5*iqr(DataOP(i,:))) || ...
+                            obj.FM{i}.ExclMask(obj.FM{i}.List2Map(obj.FM{i}.RectApexIndex(j),1),obj.FM{i}.List2Map(obj.FM{i}.RectApexIndex(j),2)) == 0 ||...
+                            OutliersOP(j) == 1
+                        DataOP(i,j) = NaN;
+                    elseif DataOP(i,j) < 0
+                        DataOP(i,j) = NaN;
+                    end
+                    if DataHS(i,j) > (nanmedian(DataHS(i,:))+2.5*iqr(DataHS(i,:))) || ...
+                            DataHS(i,j) < (nanmedian(DataHS(i,:))-2.5*iqr(DataHS(i,:))) || ...
+                            obj.FM{i}.ExclMask(obj.FM{i}.List2Map(obj.FM{i}.RectApexIndex(j),1),obj.FM{i}.List2Map(obj.FM{i}.RectApexIndex(j),2)) == 0 ||...
+                            OutliersHS(j) == 1
+                        DataHS(i,j) = NaN;
+                    elseif DataHS(i,j) < 0
+                        DataHS(i,j) = NaN;
+                    end
+                end
+            end
+            
+            DataMeansOP = nanmean(DataOP,2);
+            DataMeansHS = nanmean(DataHS,2);
+            
+            figure('Name','OliverPharr vs HertzSneddon','Color','w');
+            plot(DataMeansHS,DataMeansOP,'bO')
+            legend(sprintf('E-Mod Hertz vs. Oliver-Pharr (R=%.3f)',corr(DataMeansHS,DataMeansOP)))
+%             xlim([0,N+1])
+            xlabel('E-Mod Hertz [Pa]')
+            ylabel('E-Mod Oliver-Pharr [Pa]')
+            
+            % loop over all rows of the Test Matrix, doing paired ttests
+            for i=1:size(TestMat,1)
+                % Statistics for Oliver-Pharr Method
+                [hOP(i),pOP(i)] = ...
+                    ttest(DataMeansOP(obj.GroupFM(TestMat(i,2)).Indices),...
+                    DataMeansOP(obj.GroupFM(TestMat(i,1)).Indices),'Tail','right');
+                
+                figure('Name','Paired Right Tailed T-Test','Units','normalized','Position',[0.2 0.2 0.5 0.5],'Color','w')
+                boxplot([DataMeansOP(obj.GroupFM(TestMat(i,1)).Indices) DataMeansOP(obj.GroupFM(TestMat(i,2)).Indices)]*1e-6)
+                title('Paired Right Tailed T-Test for Oliver-Pharr Method')
+                xticklabels({obj.GroupFM(TestMat(i,1)).Name,obj.GroupFM(TestMat(i,2)).Name})
+                xlabel('Test Group')
+                ylabel('Indentation Modulus [MPa]')
+                DeltaMean = mean(DataMeansOP(obj.GroupFM(TestMat(i,2)).Indices)) - mean(DataMeansOP(obj.GroupFM(TestMat(i,1)).Indices));
+                Sigma = std(DataMeansOP(obj.GroupFM(TestMat(i,2)).Indices) - DataMeansOP(obj.GroupFM(TestMat(i,1)).Indices));
+                Beta = sampsizepwr('t',[0 Sigma],DeltaMean,[],length(obj.GroupFM(TestMat(i,2)).Indices));
+                Stats = {sprintf('\\DeltaMean = %.2fMPa',DeltaMean*1e-6),...
+                    sprintf('P-Value = %.4f%',pOP(i)),...
+                    sprintf('Power \\beta = %.2f%%',Beta*100),...
+                    sprintf('Number of Specimen = %i',length(obj.GroupFM(TestMat(i,2)).Indices))};
+                text(0.5,0.8,Stats,...
+                    'Units','normalized',...
+                    'FontSize',12,...
+                    'HorizontalAlignment','center')
+                
+%                 %Statistics for Hertz-Sneddon Method
+%                 [hHS(i),pHS(i)] = ...
+%                     ttest(DataMeansHS(obj.GroupFM(TestMat(i,2)).Indices),...
+%                     DataMeansHS(obj.GroupFM(TestMat(i,1)).Indices),'Tail','right');
+%                 
+%                 figure('Name','Paired Right Tailed T-Test','Units','normalized','Position',[0.2 0.2 0.5 0.5],'Color','w')
+%                 boxplot([DataMeansHS(obj.GroupFM(TestMat(i,1)).Indices) DataMeansHS(obj.GroupFM(TestMat(i,2)).Indices)])
+%                 title('Paired Right Tailed T-Test for Hertz-Sneddon Method')
+%                 xticklabels({obj.GroupFM(TestMat(i,1)).Name,obj.GroupFM(TestMat(i,2)).Name})
+%                 xlabel('Test Group')
+%                 ylabel('E-Mod Hertz-Sneddon[Pa]')
+%                 DeltaMean = mean(DataMeansHS(obj.GroupFM(TestMat(i,2)).Indices)) - mean(DataMeansHS(obj.GroupFM(TestMat(i,1)).Indices));
+%                 Sigma = std(DataMeansHS(obj.GroupFM(TestMat(i,2)).Indices) - DataMeansHS(obj.GroupFM(TestMat(i,1)).Indices));
+%                 Beta = sampsizepwr('t',[0 Sigma],DeltaMean,[],length(obj.GroupFM(TestMat(i,2)).Indices));
+%                 Stats = {sprintf('\\DeltaMean = %.2f MPa',DeltaMean*1e-6),...
+%                     sprintf('P-Value = %.4f%',pHS(i)),...
+%                     sprintf('Power \\beta = %.2f%%',Beta*100),...
+%                     sprintf('Number of Specimen = %i',length(obj.GroupFM(TestMat(i,2)).Indices))};
+%                 text(0.5,0.8,Stats,...
+%                     'Units','normalized',...
+%                     'FontSize',12,...
+%                     'HorizontalAlignment','center')
+            end
+            
+            % Now test, if the difference in one pair of groups is
+            % statistically different from the other in a two sample t test
+            DiffControlOP = DataMeansOP(11:20) - DataMeansOP(1:10);
+            DiffMGOOP = DataMeansOP(31:40) - DataMeansOP(21:30);
+            DiffControlHS = DataMeansHS(11:20) - DataMeansHS(1:10);
+            DiffMGOHS = DataMeansHS(31:40) - DataMeansHS(21:30);
+            
+            % For Oliver-Pharr
+            [hOP,pOP,ciOP,statsOP] = ttest2(DiffMGOOP,DiffControlOP);
+            figure('Name','Two Sample T-Test','Units','normalized','Position',[0.2 0.2 0.5 0.5],'Color','w')
+            yyaxis left
+            boxplot([DiffControlOP DiffMGOOP])
+            ax = gca;
+            YLim = ax.YLim;
+            ylabel('Difference Before-After E-Mod [Pa]')
+            DeltaMean = mean(DiffMGOOP) - mean(DiffControlOP);
+            PooledSTD = statsOP.sd;
+            yyaxis right
+            errorbar(1.5,DeltaMean,ciOP(2)-DeltaMean,'O');
+            ylim(YLim)
+            xticks([1 1.5 2])
+            title('Two Sample T-Test for E-Mod Oliver-Pharr Method')
+            ax = gca;
+            ax.TickLabelInterpreter = 'tex';
+            xticklabels({sprintf('%s - %s',obj.GroupFM(2).Name,obj.GroupFM(1).Name),...
+                '\DeltaMean with CI',...
+                sprintf('%s - %s',obj.GroupFM(4).Name,obj.GroupFM(3).Name)})
+            ylabel('Difference of Differences [Pa]')
+            Beta = sampsizepwr('t2',[mean(DiffControlOP) PooledSTD],mean(DiffMGOOP),[],length(DiffControlOP),'Ratio',length(DiffMGOOP)/length(DiffControlOP));
+            Stats = {sprintf('\\DeltaMean = %.2f MPa',DeltaMean*1e-6),...
+                sprintf('P-Value = %.4f%',pOP),...
+                sprintf('Power \\beta = %.2f%%',Beta*100),...
+                sprintf('Degrees of freedom df = %i',statsOP.df)};
+            text(0.5,0.8,Stats,...
+                'Units','normalized',...
+                'FontSize',12,...
+                'HorizontalAlignment','center')
+            
+%             % For Hertz-Sneddon
+%             [hHS,pHS,ciHS,statsHS] = ttest2(DiffMGOHS,DiffControlHS);
+%             figure('Name','Two Sample T-Test','Units','normalized','Position',[0.2 0.2 0.5 0.5],'Color','w')
+%             yyaxis left
+%             boxplot([DiffControlHS DiffMGOHS])
+%             ax = gca;
+%             YLim = ax.YLim;
+%             ylabel('Difference Before-After E-Mod [Pa]')
+%             DeltaMean = mean(DiffMGOHS) - mean(DiffControlHS);
+%             PooledSTD = statsHS.sd;
+%             yyaxis right
+%             errorbar(1.5,DeltaMean,ciHS(2)-DeltaMean,'O');
+%             ylim(YLim)
+%             xticks([1 1.5 2])
+%             title('Two Sample T-Test for E-Mod Hertz-Sneddon Method')
+%             ax = gca;
+%             ax.TickLabelInterpreter = 'tex';
+%             xticklabels({sprintf('%s - %s',obj.GroupFM(2).Name,obj.GroupFM(1).Name),...
+%                 '\DeltaMean with CI',...
+%                 sprintf('%s - %s',obj.GroupFM(4).Name,obj.GroupFM(3).Name)})
+%             ylabel('Difference of Differences [Pa]')
+%             Beta = sampsizepwr('t2',[mean(DiffControlHS) PooledSTD],mean(DiffMGOHS),[],length(DiffControlHS),'Ratio',length(DiffMGOHS)/length(DiffControlHS));
+%             Stats = {sprintf('\\DeltaMean = %.2f MPa',DeltaMean*1e-6),...
+%                 sprintf('P-Value = %.4f%',pHS),...
+%                 sprintf('Power \\beta = %.2f%%',Beta*100),...
+%                 sprintf('Degrees of freedom df = %i',statsHS.df)};
+%             text(0.5,0.8,Stats,...
+%                 'Units','normalized',...
+%                 'FontSize',12,...
+%                 'HorizontalAlignment','center')
+            
+        end
+        
+        function FibPot = statistical_analysis_surface_potential(obj)
+            % Statistical analysis of the surface potential map experiment.
+            % First get the grouping of data from the user and then perform
+            % several tests, plots etc.
+            
+            warning('The following methods were programmed for specific use cases and are yet to be generalized! However, you can of course adjust them for your own use, though its probably easier to just take the processed raw data from your Experiment and do your own statistics')
+            
+            obj.grouping_surface_potential_map();
+            
+            %%%%%%% DISCLAIMER: just works for specific cases at the moment %%%%%%%
+            
+            N = obj.NumFiles;
+            
+            % Ask user which groups are to be compared
+            prompt = 'Specialize which groups are to be tested against which';
+            definput = {'1 2 ; 3 4'};
+            answer = inputdlg(prompt,'Pairings',[1 50],definput);
+            
+            % Define Test Matrix
+            TestMat = [str2num(answer{1})];
+            % Get Data
+            for i=1:N
+                FibPot(i) = obj.SPM{i}.FibPot;
+            end
+            % Do Paired T-Test of Surface Potential between paired groups
+            for i=1:size(TestMat,1)
+                [h(i),p(i)] = ...
+                    ttest(FibPot(obj.GroupFM(TestMat(i,2)).Indices),...
+                    FibPot(obj.GroupFM(TestMat(i,1)).Indices));
+                
+                figure('Name','Paired T-Test for Surface Potential Changes','Units','normalized','Position',[0.2 0.2 0.5 0.5],'Color','w')
+                boxplot([FibPot(obj.GroupFM(TestMat(i,1)).Indices)' FibPot(obj.GroupFM(TestMat(i,2)).Indices)']*1e3)
+                title('Paired T-Test for Surface Potential Changes')
+                xticklabels({obj.GroupFM(TestMat(i,1)).Name,obj.GroupFM(TestMat(i,2)).Name})
+                xlabel('Test Group')
+                ylabel('Surface Potential [mV]')
+                DeltaMean = mean(FibPot(obj.GroupFM(TestMat(i,2)).Indices)) - mean(FibPot(obj.GroupFM(TestMat(i,1)).Indices));
+                Sigma = std(FibPot(obj.GroupFM(TestMat(i,2)).Indices) - FibPot(obj.GroupFM(TestMat(i,1)).Indices));
+                Beta = sampsizepwr('t',[0 Sigma],DeltaMean,[],length(obj.GroupFM(TestMat(i,2)).Indices));
+                Stats = {sprintf('\\DeltaMean = %.2fmV',DeltaMean*1e3),...
+                    sprintf('P-Value = %.2e%',p(i)),...
+                    sprintf('Power \\beta = %.2f%%',Beta*100),...
+                    sprintf('Number of Specimen = %i',length(obj.GroupFM(TestMat(i,2)).Indices))};
+                text(0.5,0.8,Stats,...
+                    'Units','normalized',...
+                    'FontSize',12,...
+                    'HorizontalAlignment','center')
+            end
+            
+            % Now test, if the difference in one pair of groups is
+            % statistically different from the other in a two sample t test
+            DiffControl = (FibPot(11:20) - FibPot(1:10))';
+            DiffMGO = (FibPot(31:40) - FibPot(21:30))';
+            
+            
+            [h,p,ci,stats] = ttest2(DiffMGO,DiffControl);
+            figure('Name','Two Sample T-Test','Units','normalized','Position',[0.2 0.2 0.5 0.5],'Color','w')
+            yyaxis left
+            boxplot([DiffControl DiffMGO])
+            ax = gca;
+            YLim = ax.YLim;
+            ylabel('Difference Before-After Potential [V]')
+            DeltaMean = mean(DiffMGO) - mean(DiffControl);
+            PooledSTD = stats.sd;
+            yyaxis right
+            errorbar(1.5,DeltaMean,ci(2)-DeltaMean,'O');
+            ylim(YLim)
+            xticks([1 1.5 2])
+            title('Two Sample T-Test for Surface Potential Changes')
+            ax = gca;
+            ax.TickLabelInterpreter = 'tex';
+            xticklabels({sprintf('%s - %s',obj.GroupSPM(2).Name,obj.GroupSPM(1).Name),...
+                '\DeltaMean with CI',...
+                sprintf('%s - %s',obj.GroupSPM(4).Name,obj.GroupSPM(3).Name)})
+            ylabel('Difference of Differences [V]')
+            Beta = sampsizepwr('t2',[mean(DiffControl) PooledSTD],mean(DiffMGO),[],length(DiffControl),'Ratio',length(DiffMGO)/length(DiffControl));
+            Stats = {sprintf('\\DeltaMean = %.2fmV',DeltaMean*1e3),...
+                sprintf('P-Value = %.2e%',p),...
+                sprintf('Power \\beta = %.2f%%',Beta*100),...
+                sprintf('Degrees of freedom df = %i',stats.df)};
+            text(0.5,0.8,Stats,...
+                'Units','normalized',...
+                'FontSize',12,...
+                'HorizontalAlignment','center')
+        end
+        
+        function statistical_analysis_swelling(obj)
+            %%%%%%% DISCLAIMER: just works for specific cases at the moment %%%%%%%
+            
+            warning('The following methods were programmed for specific use cases and are yet to be generalized! However, you can of course adjust them for your own use, though its probably easier to just take the processed raw data from your Experiment and do your own statistics')
+            
+            N = obj.NumFiles;
+            
+            % Ask user which groups are to be compared
+            prompt = 'Specialize which groups are to be tested against which';
+            definput = {'1 2 ; 3 4'};
+            answer = inputdlg(prompt,'Pairings',[1 50],definput);
+            
+            % Define Test Matrix
+            TestMat = [str2num(answer{1})];
+            % Get Data
+            for i=1:N
+                Dry(i) = obj.SPM{i}.FibDiam;
+                Wet(i) = obj.FM{i}.FibDiam;
+                RelChange(i) = Wet(i)/Dry(i);
+            end
+            % Do Paired T-Test of relative swelling between paired groups
+            for i=1:size(TestMat,1)
+                [h(i),p(i)] = ...
+                    ttest(RelChange(obj.GroupFM(TestMat(i,2)).Indices),...
+                    RelChange(obj.GroupFM(TestMat(i,1)).Indices));
+                
+                figure('Name','Paired T-Test for relative Swelling Changes','Units','normalized','Position',[0.2 0.2 0.5 0.5],'Color','w')
+                boxplot([RelChange(obj.GroupFM(TestMat(i,1)).Indices)' RelChange(obj.GroupFM(TestMat(i,2)).Indices)'])
+                title('Paired T-Test for relative Swelling Changes')
+                xticklabels({obj.GroupFM(TestMat(i,1)).Name,obj.GroupFM(TestMat(i,2)).Name})
+                xlabel('Test Group')
+                ylabel('Relative Swelling')
+                DeltaMean = mean(RelChange(obj.GroupFM(TestMat(i,2)).Indices)) - mean(RelChange(obj.GroupFM(TestMat(i,1)).Indices));
+                Sigma = std(RelChange(obj.GroupFM(TestMat(i,2)).Indices) - RelChange(obj.GroupFM(TestMat(i,1)).Indices));
+                Beta = sampsizepwr('t',[0 Sigma],DeltaMean,[],length(obj.GroupFM(TestMat(i,2)).Indices));
+                Stats = {sprintf('\\DeltaMean = %.2f',DeltaMean),...
+                    sprintf('P-Value = %.3f%',p(i)),...
+                    sprintf('Power \\beta = %.2f%%',Beta*100),...
+                    sprintf('Number of Specimen = %i',length(obj.GroupFM(TestMat(i,2)).Indices))};
+                text(0.5,0.8,Stats,...
+                    'Units','normalized',...
+                    'FontSize',12,...
+                    'HorizontalAlignment','center')
+            end
+            
+            % Now test, if the difference in one pair of groups is
+            % statistically different from the other in a two sample t test
+            DiffControl = (RelChange(11:20) - RelChange(1:10))';
+            DiffMGO = (RelChange(31:40) - RelChange(21:30))';
+            
+            
+            [h,p,ci,stats] = ttest2(DiffMGO,DiffControl);
+            figure('Name','Two Sample T-Test','Units','normalized','Position',[0.2 0.2 0.5 0.5],'Color','w')
+            yyaxis left
+            boxplot([DiffControl DiffMGO])
+            ax = gca;
+            YLim = ax.YLim;
+            ylabel('Difference Before-After relative Swelling')
+            DeltaMean = mean(DiffMGO) - mean(DiffControl);
+            PooledSTD = stats.sd;
+            yyaxis right
+            errorbar(1.5,DeltaMean,ci(2)-DeltaMean,'O');
+            ylim(YLim)
+            xticks([1 1.5 2])
+            title('Two Sample T-Test for relative Swelling')
+            ax = gca;
+            ax.TickLabelInterpreter = 'tex';
+            xticklabels({sprintf('%s - %s',obj.GroupSPM(2).Name,obj.GroupSPM(1).Name),...
+                '\DeltaMean with CI',...
+                sprintf('%s - %s',obj.GroupSPM(4).Name,obj.GroupSPM(3).Name)})
+            ylabel('Difference of Differences')
+            Beta = sampsizepwr('t2',[mean(DiffControl) PooledSTD],mean(DiffMGO),[],length(DiffControl),'Ratio',length(DiffMGO)/length(DiffControl));
+            Stats = {sprintf('\\DeltaMean = %.2f',DeltaMean),...
+                sprintf('P-Value = %.2e%',p),...
+                sprintf('Power \\beta = %.2f%%',Beta*100),...
+                sprintf('Degrees of freedom df = %i',stats.df)};
+            text(0.5,0.8,Stats,...
+                'Units','normalized',...
+                'FontSize',12,...
+                'HorizontalAlignment','center')
+        end
+        
+        function statistical_analysis_d_banding(obj)
+            %%%%%%% DISCLAIMER: just works for specific cases at the moment %%%%%%%
+            
+            warning('The following methods were programmed for specific use cases and are yet to be generalized! However, you can of course adjust them for your own use, though its probably easier to just take the processed raw data from your Experiment and do your own statistics')
+            
+            N = obj.NumFiles;
+            
+            % Ask user which groups are to be compared
+            prompt = 'Specialize which groups are to be tested against which';
+            definput = {'1 2 ; 3 4'};
+            answer = inputdlg(prompt,'Pairings',[1 50],definput);
+            
+            % Define Test Matrix
+            TestMat = [str2num(answer{1})];
+            % Get Data
+            for i=1:N
+                DBanding(i) = obj.SPM{i}.DBanding;
+            end
+            % Do Paired T-Test of relative swelling between paired groups
+            for i=1:size(TestMat,1)
+                [h(i),p(i)] = ...
+                    ttest(DBanding(obj.GroupFM(TestMat(i,2)).Indices),...
+                    DBanding(obj.GroupFM(TestMat(i,1)).Indices));
+                
+                figure('Name','Paired T-Test for D-Banding Changes','Units','normalized','Position',[0.2 0.2 0.5 0.5],'Color','w')
+                boxplot([DBanding(obj.GroupFM(TestMat(i,1)).Indices)' DBanding(obj.GroupFM(TestMat(i,2)).Indices)'])
+                title('Paired T-Test for D-Banding Changes')
+                xticklabels({obj.GroupFM(TestMat(i,1)).Name,obj.GroupFM(TestMat(i,2)).Name})
+                xlabel('Test Group')
+                ylabel('D-Banding [m]')
+                DeltaMean = mean(DBanding(obj.GroupFM(TestMat(i,2)).Indices)) - mean(DBanding(obj.GroupFM(TestMat(i,1)).Indices));
+                Sigma = std(DBanding(obj.GroupFM(TestMat(i,2)).Indices) - DBanding(obj.GroupFM(TestMat(i,1)).Indices));
+                Beta = sampsizepwr('t',[0 Sigma],DeltaMean,[],length(obj.GroupFM(TestMat(i,2)).Indices));
+                Stats = {sprintf('\\DeltaMean = %.2fnm',DeltaMean*1e9),...
+                    sprintf('P-Value = %.3f%',p(i)),...
+                    sprintf('Power \\beta = %.2f%%',Beta*100),...
+                    sprintf('Number of Specimen = %i',length(obj.GroupFM(TestMat(i,2)).Indices))};
+                text(0.5,0.8,Stats,...
+                    'Units','normalized',...
+                    'FontSize',12,...
+                    'HorizontalAlignment','center')
+            end
+            
+            % Now test, if the difference in one pair of groups is
+            % statistically different from the other in a two sample t test
+            DiffControl = (DBanding(11:20) - DBanding(1:10))';
+            DiffMGO = (DBanding(31:40) - DBanding(21:30))';
+            
+            
+            [h,p,ci,stats] = ttest2(DiffMGO,DiffControl);
+            figure('Name','Two Sample T-Test','Units','normalized','Position',[0.2 0.2 0.5 0.5],'Color','w')
+            yyaxis left
+            boxplot([DiffControl DiffMGO])
+            ax = gca;
+            YLim = ax.YLim;
+            ylabel('Difference Before-After in D-Banding [m]')
+            DeltaMean = mean(DiffMGO) - mean(DiffControl);
+            PooledSTD = stats.sd;
+            yyaxis right
+            errorbar(1.5,DeltaMean,ci(2)-DeltaMean,'O');
+            ylim(YLim)
+            xticks([1 1.5 2])
+            title('Two Sample T-Test for D-Banding Changes')
+            ax = gca;
+            ax.TickLabelInterpreter = 'tex';
+            xticklabels({sprintf('%s - %s',obj.GroupSPM(2).Name,obj.GroupSPM(1).Name),...
+                '\DeltaMean with CI',...
+                sprintf('%s - %s',obj.GroupSPM(4).Name,obj.GroupSPM(3).Name)})
+            ylabel('Difference of Differences [m]')
+            Beta = sampsizepwr('t2',[mean(DiffControl) PooledSTD],mean(DiffMGO),[],length(DiffControl),'Ratio',length(DiffMGO)/length(DiffControl));
+            Stats = {sprintf('\\DeltaMean = %.2fnm',DeltaMean*1e9),...
+                sprintf('P-Value = %.2e%',p),...
+                sprintf('Power \\beta = %.2f%%',Beta*100),...
+                sprintf('Degrees of freedom df = %i',stats.df)};
+            text(0.5,0.8,Stats,...
+                'Units','normalized',...
+                'FontSize',12,...
+                'HorizontalAlignment','center')
+        end
+        
+        function grouping_force_map(obj)
+            % A series of input dialogues that determine the structure and
+            % relations of the force map files in the experiment
+            
+            if obj.FMFlag.Grouping == 1
+                disp('Force Maps already have a Grouping assigned')
+                return
+            elseif obj.SPMFlag.Grouping == 1
+                answer = questdlg('Is the Grouping and File order the same as for Surface Potential Maps?');
+                if isequal(lower(answer),'yes')
+                    obj.GroupFM = obj.GroupSPM;
+                    obj.FMFlag.Grouping = 1;
+                    disp('Same Grouping as Surface Potential Maps assigned to Force Maps')
+                    return
+                else
+                end
+            end
+            
+            % How many statistical groups are there?
+            answer1 = inputdlg('How many different groupings of data are there? (E.g. Control-Before and Control-After count as two separate groups)',...
+                'Statistical Groupings',[1 50]);
+            NGroups = str2num(answer1{1});
+            
+            % create the appropriate inputdlg for assigning the groups show
+            % a table with numbered map-names in background
+            Names = obj.ForceMapNames;
+            Fig = figure('Units', 'Normalized', 'Position',[0.2 0.2 0.4 8],'Color','w');
+            T = table(Names');
+            uitable('Data',T{:,:},'Units', 'Normalized', 'Position',[0, 0, 1, 1]);
+            
+            for i=1:2:2*NGroups
+                prompts{i} = sprintf('Whats the Name of Group %i?',(i+1)/2);
+                prompts{i+1} = sprintf('Which Indices belong to Group %i?',(i+1)/2);
+                definput{i} = sprintf('Group %i Name',(i+1)/2);
+                definput{i+1} = 'e.g. 1 2 3 4 8 9 10 or 1:4 8:10';
+            end
+            
+            dims = [1 50];
+            opts.WindowStyle = 'normal';
+            dlgtitle = 'Choose and name Groups';
+            answer2 = inputdlg(prompts,dlgtitle,dims,definput,opts);
+            
+            for i=1:NGroups
+                obj.GroupFM(i).Name = answer2{2*i-1};
+                obj.GroupFM(i).Indices = str2num(answer2{2*i});
+            end
+            obj.FMFlag.Grouping = 1;
+            close(Fig);
+            
+        end
+        
+        function grouping_surface_potential_map(obj)
+            % A series of input dialogues that determine the structure and
+            % relations of the force map files in the experiment
+            
+            if obj.SPMFlag.Grouping == 1
+                disp('Surface Potential Maps already have a Grouping assigned')
+                return
+            elseif obj.FMFlag.Grouping == 1
+                answer = questdlg('Is the Grouping and File order the same as for Force Maps?');
+                if isequal(lower(answer),'yes')
+                    obj.GroupSPM = obj.GroupFM;
+                    disp('Same Grouping as Force Maps assigned to Surface Potential Maps')
+                    obj.SPMFlag.Grouping = 1;
+                    return
+                else
+                end
+            end
+            
+            % How many statistical groups are there?
+            answer1 = inputdlg('How many different groupings of data are there? (E.g. Control-Before and Control-After count as two separate groups)',...
+                'Statistical Groupings',[1 50]);
+            NGroups = str2num(answer1{1});
+            
+            % create the appropriate inputdlg for assigning the groups show
+            % a table with numbered map-names in background
+            Names = obj.SurfacePotentialMapNames;
+            Fig = figure('Units', 'Normalized', 'Position',[0, 0, 0.4, 1],'Color','w');
+            T = table(Names');
+            uitable('Data',T{:,:},'Units', 'Normalized', 'Position',[0, 0, 1, 1]);
+            
+            for i=1:2:2*NGroups
+                prompts{i} = sprintf('Whats the Name of Group %i?',(i+1)/2);
+                prompts{i+1} = sprintf('Which Indices belong to Group %i?',(i+1)/2);
+                definput{i} = sprintf('Group %i Name',(i+1)/2);
+                definput{i+1} = 'e.g. 1 2 3 4 8 9 10 or 1:4 8:10';
+            end
+            
+            dims = [1 50];
+            opts.WindowStyle = 'normal';
+            dlgtitle = 'Choose and name Groups';
+            answer2 = inputdlg(prompts,dlgtitle,dims,definput,opts);
+            
+            for i=1:NGroups
+                obj.GroupSPM(i).Name = answer2{2*i-1};
+                obj.GroupSPM(i).Indices = str2num(answer2{2*i});
+            end
+            
+            obj.SPMFlag.Grouping = 1;
+            
+            close(Fig);
+            
         end
     end
     
