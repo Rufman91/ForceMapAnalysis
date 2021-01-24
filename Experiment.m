@@ -860,24 +860,43 @@ classdef Experiment < matlab.mixin.Copyable
             obj.save_experiment
         end
         
-        function SMFS_selection(obj)
-        
-            % Update the current loaded number of force maps    
-            obj.update_NumFiles
+        function SMFS_print(obj)
          
             % Change into the Folder of Interest
             cd(obj.ExperimentFolder) % Move into the folder 
- 
+            % Create folders for saving the produced figures
+            foldername='FM_raw_Fig';    % Defines the folder name
+            mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
+            currpath=fullfile(obj.ExperimentFolder,foldername);
+            cd(currpath); 
+            
             % Loop over the imported force maps
             for ii=1:obj.NumFiles
             %for ii=3:5 % Debugging
-               %%% Create folders for saving the produced figures
-               foldername=sprintf('FiguresFM%d',ii);    % Defines the folder name
-               mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
-               currpath=fullfile(obj.ExperimentFolder,foldername);
-               cd(currpath); 
-               % Give current Force Map Position
-               sprintf('Force Map No. %d of %d',ii,obj.NumFiles)
+               % Command window output
+               sprintf('Force Map No. %d of %d',ii,obj.NumFiles) % Gives current Force Map Position
+               % Run the chosen functions
+               obj.FM{ii}.estimate_cp_hardsurface
+               obj.FM{ii}.fc_print;     
+               obj.save_experiment;        % Save immediately after each force curve
+            end    
+        end
+        
+        function SMFS_selection(obj)
+         
+            % Change into the Folder of Interest
+            cd(obj.ExperimentFolder) % Move into the folder 
+            % Create folders for saving the produced figures
+            foldername='FM_Fig';    % Defines the folder name
+            mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
+            currpath=fullfile(obj.ExperimentFolder,foldername);
+            cd(currpath); 
+            
+            % Loop over the imported force maps
+            for ii=1:obj.NumFiles
+            %for ii=3:5 % Debugging
+               % Command window output
+               sprintf('Force Map No. %d of %d',ii,obj.NumFiles) % Gives current Force Map Position
                % Run the chosen functions
                obj.FM{ii}.estimate_cp_hardsurface
                obj.FM{ii}.fc_selection;     
@@ -1421,252 +1440,6 @@ classdef Experiment < matlab.mixin.Copyable
             
             close(Fig);
             
-        end
-        
-        function cp_option_converter(obj,CPOption,i,RefFM)
-            % cp_option_converter(CPOption,i,RefFM)
-            %
-            % aux-function for CPOption choice
-            
-            NumPasses = 20;
-            
-            if nargin < 4
-                RefFM = false;
-            end
-            if RefFM == false
-                if isequal(lower(CPOption),'rov')
-                    obj.FM{i}.estimate_cp_rov();
-                end
-                if isequal(lower(CPOption),'gof')
-                    obj.FM{i}.estimate_cp_gof();
-                end
-                if isequal(lower(CPOption),'old')
-                    obj.FM{i}.estimate_cp_old();
-                end
-                if isequal(lower(CPOption),'combo')
-                    if obj.FM{i}.CPFlag.RoV == 0
-                        obj.FM{i}.estimate_cp_rov();
-                    end
-                    if obj.FM{i}.CPFlag.GoF == 0
-                        obj.FM{i}.estimate_cp_gof();
-                    end
-                    obj.FM{i}.estimate_cp_combined();
-                end
-                if isequal(lower(CPOption),'manual')
-                    obj.FM{i}.estimate_cp_manually;
-                end
-                if isequal(lower(CPOption),'fast')
-                    obj.FM{i}.estimate_cp_cnn(obj.CP_CNN,'Fast');
-                end
-                if isequal(lower(CPOption),'dropout')
-                    obj.FM{i}.estimate_cp_cnn(obj.DropoutNet,'Dropout',NumPasses);
-                end
-                if isequal(lower(CPOption),'zoom')
-                    obj.FM{i}.estimate_cp_cnn(obj.CP_CNN,'Zoom');
-                end
-                if isequal(lower(CPOption),'zoomdropout')
-                    obj.FM{i}.estimate_cp_cnn(obj.CP_CNN,'zoomdropout',NumPasses);
-                end
-                if isequal(lower(CPOption),'zoomsweep')
-                    obj.FM{i}.estimate_cp_cnn(obj.CP_CNN,'Zoomsweep',NumPasses);
-                end
-            elseif RefFM == true
-                if isequal(lower(CPOption),'rov')
-                    obj.RefFM{i}.estimate_cp_rov();
-                end
-                if isequal(lower(CPOption),'gof')
-                    obj.RefFM{i}.estimate_cp_gof();
-                end
-                if isequal(lower(CPOption),'old')
-                    obj.RefFM{i}.estimate_cp_old();
-                end
-                if isequal(lower(CPOption),'combo')
-                    obj.RefFM{i}.estimate_cp_rov();
-                    obj.RefFM{i}.estimate_cp_gof();
-                    obj.RefFM{i}.estimate_cp_combined();
-                end
-                if isequal(lower(CPOption),'manual')
-                    obj.RefFM{i}.estimate_cp_manually;
-                end
-                if isequal(lower(CPOption),'fast')
-                    obj.RefFM{i}.estimate_cp_cnn(obj.CP_CNN,'Fast');
-                end
-                if isequal(lower(CPOption),'dropout')
-                    obj.RefFM{i}.estimate_cp_cnn(obj.DropoutNet,'Dropout',NumPasses);
-                end
-                if isequal(lower(CPOption),'zoom')
-                    obj.RefFM{i}.estimate_cp_cnn(obj.CP_CNN,'Zoom');
-                end
-                if isequal(lower(CPOption),'zoomdropout')
-                    obj.RefFM{i}.estimate_cp_cnn(obj.CP_CNN,'zoomdropout',NumPasses);
-                end
-                if isequal(lower(CPOption),'zoomsweep')
-                    obj.RefFM{i}.estimate_cp_cnn(obj.CP_CNN,'Zoomsweep',NumPasses);
-                end
-            end
-                
-        end
-            
-        function Results = results_readout(obj)
-            % result_readout(obj)
-            %
-            % Interactive function to specify how and which results to
-            % return
-            %
-            % Under Development!!!!!
-            
-            if obj.FMFlag.Grouping == 0
-                obj.grouping_force_map;
-            end
-            
-            N = length(obj.GroupFM);
-            
-            for i=1:N
-                Index = regexp(obj.GroupFM(i).Name,'\w');
-                FieldName = obj.GroupFM(i).Name(Index);
-                Results.(FieldName) = [];
-                
-                clear Index
-            end
-            
-        end
-        
-        function create_moving_dot_gif_emod_vs_surfpot(obj,NFrames,NStartFrames,NEndFrames)
-            % create_moving_dot_gif_emod_vs_surfpot(obj,NFrames,FreezeFrames)
-            %
-            % This gif-creator has been written for a specific use case and
-            % has to be manually recoded to fit other Experiments. Videos
-            % generated run at 30 FPS so e.g. NFrames=60, NEndFrames=30
-            % and NStartFrames=30 creates a 4 second video
-            
-            % Get Fibril Data
-            X = obj.statistical_analysis_force_maps*1e-6;
-            Y = obj.statistical_analysis_surface_potential*1e3;
-            Y = Y';
-            close all
-            
-            %
-            DX1 = X(11:20) - X(1:10); 
-            DX2 = X(31:40) - X(21:30);
-            DY1 = Y(11:20) - Y(1:10);
-            DY2 = Y(31:40) - Y(21:30);
-            
-            Steps = 0:1/(NFrames-1):1;
-            
-            % Create and and open .avi for write-in of frames
-            FullFile = fullfile(obj.ExperimentFolder,filesep,'EModvsSurfPot_gif');
-            
-            Vid = VideoWriter(FullFile,'MPEG-4');
-            Vid.open
-            
-            
-            % Create figure and loop over NFrames to write into Vid
-            Fig = figure('Color','white',...
-                'Units','normalized','Position',[0 0 1 1]);
-            for i=1:NFrames
-                hold off
-                XTemp1 = X(1:10) + Steps(i)*DX1;
-                XTemp2 = X(21:30) + Steps(i)*DX2;
-                YTemp1 = Y(1:10) + Steps(i)*DY1;
-                YTemp2 = Y(21:30) + Steps(i)*DY2;
-                MeanX1 = mean(XTemp1);
-                ErrX1 = std(XTemp1)/sqrt(10);
-                MeanX2 = mean(XTemp2);
-                ErrX2 = std(XTemp2)/sqrt(10);
-                MeanY1 = mean(YTemp1);
-                ErrY1 = std(YTemp1)/sqrt(10);
-                MeanY2 = mean(YTemp2);
-                ErrY2 = std(YTemp2)/sqrt(10);
-                plot(XTemp1,YTemp1,'square','MarkerEdgeColor','k','MarkerFaceColor','b','MarkerSize',10)
-                ax = Fig.CurrentAxes;
-                xlim([min(X)-0.1*range(X) max(X)+0.1*range(X)])
-                ylim([min(Y)-0.1*range(Y) max(Y)+0.1*range(Y)])
-                hold on
-                errorbar(MeanX1,MeanY1,-ErrY1,ErrY1,-ErrX1,ErrX1,'bsquare','MarkerEdgeColor','k','MarkerFaceColor','b','MarkerSize',20)
-                plot(XTemp2,YTemp2,'diamond','MarkerEdgeColor','k','MarkerFaceColor','r','MarkerSize',10)
-                errorbar(MeanX2,MeanY2,-ErrY1,ErrY1,-ErrX1,ErrX1,'rdiamond','MarkerEdgeColor','k','MarkerFaceColor','r','MarkerSize',20)
-                legend({'Control Group','Mean Control +- SE','MGO Group','Mean MGO +- SE'},'FontSize',22)
-                xlabel('Indentation Modulus [MPa]','FontSize',22)
-                ylabel('Rel. Surface Potential [mV]','FontSize',22)
-                ax.FontSize = 22;
-                title('...','FontSize',42)
-                
-                if i==1
-                    title('Before PBS/MGO','FontSize',42)
-                    Frame = getframe(Fig);
-                    for j=1:NStartFrames
-                        Vid.writeVideo(Frame)
-                    end
-                    title('...','FontSize',42)
-                end
-                
-                Frame = getframe(Fig);
-                
-                Vid.writeVideo(Frame);
-            end
-            
-            for i=1:NEndFrames
-                % Lingers on the last frame for NEndFrames/30 seconds
-                title('After PBS/MGO','FontSize',42)
-                Frame = getframe(Fig);
-                Vid.writeVideo(Frame)
-            end
-            
-            Vid.close
-            close(Fig)
-        end
-        
-        function min_batch(obj)
-            
-            for ii=1:obj.NumFiles
-               obj.FM{ii}.base_and_tilt('linear');
-               obj.FM{ii}.min_force; 
-            end
-            obj.save_experiment
-        end
-        
-        function SMFS_print(obj)
-         
-            % Change into the Folder of Interest
-            cd(obj.ExperimentFolder) % Move into the folder 
-            % Create folders for saving the produced figures
-            foldername='FM_raw_Fig';    % Defines the folder name
-            mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
-            currpath=fullfile(obj.ExperimentFolder,foldername);
-            cd(currpath); 
-            
-            % Loop over the imported force maps
-            for ii=1:obj.NumFiles
-            %for ii=3:5 % Debugging
-               % Command window output
-               sprintf('Force Map No. %d of %d',ii,obj.NumFiles) % Gives current Force Map Position
-               % Run the chosen functions
-               obj.FM{ii}.estimate_cp_hardsurface
-               obj.FM{ii}.fc_print;     
-               obj.save_experiment;        % Save immediately after each force curve
-            end    
-        end
-        
-        function SMFS_selection(obj)
-         
-            % Change into the Folder of Interest
-            cd(obj.ExperimentFolder) % Move into the folder 
-            % Create folders for saving the produced figures
-            foldername='FM_Fig';    % Defines the folder name
-            mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
-            currpath=fullfile(obj.ExperimentFolder,foldername);
-            cd(currpath); 
-            
-            % Loop over the imported force maps
-            for ii=1:obj.NumFiles
-            %for ii=3:5 % Debugging
-               % Command window output
-               sprintf('Force Map No. %d of %d',ii,obj.NumFiles) % Gives current Force Map Position
-               % Run the chosen functions
-               obj.FM{ii}.estimate_cp_hardsurface
-               obj.FM{ii}.fc_selection;     
-               obj.save_experiment;        % Save immediately after each force curve
-            end    
         end
     end
     
