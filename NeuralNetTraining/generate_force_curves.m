@@ -9,7 +9,7 @@ function [X,Y,DummyForceMap] = generate_force_curves(NCurves)
 syms IndentResp(x,p1,p2)
 IndentResp(x,p1,p2) = piecewise(x<0,0,x>=0,p2*x^(p1));
 
-DummyForceMap = ForceMap('I dont care','leave britney alone','Dummy',NCurves);
+DummyForceMap = ForceMap('I dont care','leave britney alone','ID not needed','Dummy',NCurves);
 
 
 for i=1:NCurves
