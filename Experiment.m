@@ -118,19 +118,33 @@ classdef Experiment < matlab.mixin.Copyable
                 end
                 clear TempFile
             end
-            obj.FM = cell(N,1);
-            obj.SPM = cell(N,1);
+            FM = cell(N,1);
+            SPM = cell(N,1);
+            ExperimentName = obj.ExperimentName;
+            ExperimentFolder = obj.ExperimentFolder;
+            parfor i=1:N
+                if WhichFiles == 2 || WhichFiles == 0
+                    TempID = sprintf('%s-%i',ExperimentName,i);
+                    FM{i} = ForceMap(MapFullFile{i},ExperimentFolder,TempID);
+                elseif WhichFiles == 1 || WhichFiles == 0
+                    SPM{i} = SurfacePotentialMap();
+                end
+            end
+            
+            % Assign the objects created in the parfor loop to the
+            % Experiment object
+            obj.FM = FM;
+            obj.SPM = SPM;
             for i=1:N
                 if WhichFiles == 2 || WhichFiles == 0
-                    obj.FM{i} = ForceMap(MapFullFile{i},obj.ExperimentFolder);
                     obj.ForceMapFolders{i} = obj.FM{i}.Folder;
                     obj.ForceMapNames{i} = obj.FM{i}.Name;
                 elseif WhichFiles == 1 || WhichFiles == 0
-                    obj.SPM{i} = SurfacePotentialMap();
                     obj.SurfacePotentialMapFolders{i} = obj.SPM{i}.Folder;
                     obj.SurfacePotentialMapNames{i} = obj.SPM{i}.Name;
                 end
             end
+            
             for i=1:NRef
                 if WhichFiles == 2 || WhichFiles == 0
                     obj.RefFM{i} = ForceMap(MapFullFile{N+i},obj.ExperimentFolder);
@@ -155,17 +169,14 @@ classdef Experiment < matlab.mixin.Copyable
             Temp2 = load('CP_CNN_Final.mat');
             obj.CP_CNN = Temp2.CNN;
             
-            obj.check_for_new_host()
-            
-            % Add Experiment identifier into ForceMap
-            for i=1:obj.NumFiles
-                obj.FM{i}.ID = sprintf('%s%i',obj.ExperimentName,i);
-            end
+            obj.check_for_new_host();
             
             obj.save_experiment();
         end
         
-        function add_data(obj)
+        function Out = add_data(obj)
+            
+            warning('Note that for this function to work properly you need to assign your Experiment in workspace to itself e.g. ">> E = E.add_data" otherwise the updated Experiment will be stored in the temporary variable "ans" and inevitably overwritten at some point!')
             
             % create save copy to restore if function produces errors
             SaveCopy = obj.copy_experiment;
@@ -214,17 +225,36 @@ classdef Experiment < matlab.mixin.Copyable
                 clear TempFile
             end
             
+            % Load maps into Experiment with parfor-loop
+            FM = cell(SaveCopy.NumFiles,1);
+            SPM = cell(SaveCopy.NumFiles,1);
+            FM(1:NOld) = SaveCopy.FM;
+            SPM(1:NOld) = SaveCopy.SPM;
+            ExperimentName = obj.ExperimentName;
+            ExperimentFolder = obj.ExperimentFolder;
+            parfor i=1:N
+                if WhichFiles == 2 || WhichFiles == 0
+                    TempID = sprintf('%s-%i',ExperimentName,NOld+i);
+                    FM{NOld+i} = ForceMap(MapFullFile{i},ExperimentFolder,TempID);
+                elseif WhichFiles == 1 || WhichFiles == 0
+                    SPM{NOld+i} = SurfacePotentialMap();
+                end
+            end
+            
+            % Assign the objects created in the parfor loop to the
+            % Experiment object
+            SaveCopy.FM = FM;
+            SaveCopy.SPM = SPM;
             for i=1:N
                 if WhichFiles == 2 || WhichFiles == 0
-                    SaveCopy.FM{NOld+i,1} = ForceMap(MapFullFile{i},SaveCopy.ExperimentFolder);
                     SaveCopy.ForceMapFolders{NOld+i} = SaveCopy.FM{NOld+i}.Folder;
                     SaveCopy.ForceMapNames{NOld+i} = SaveCopy.FM{NOld+i}.Name;
                 elseif WhichFiles == 1 || WhichFiles == 0
-                    SaveCopy.SPM{NOld+i,1} = SurfacePotentialMap();
                     SaveCopy.SurfacePotentialMapFolders{NOld+i} = SaveCopy.SPM{NOld+i}.Folder;
                     SaveCopy.SurfacePotentialMapNames{NOld+i} = SaveCopy.SPM{NOld+i}.Name;
                 end
             end
+            
             SaveCopy.FMFlag.FibrilAnalysis(NOld+1:NOld+N) = zeros(N,1);
             SaveCopy.FMFlag.ForceMapAnalysis(NOld+1:NOld+N) = zeros(N,1);
             SaveCopy.FMFlag.Preprocessed(NOld+1:NOld+N) = zeros(N,1);
@@ -238,17 +268,12 @@ classdef Experiment < matlab.mixin.Copyable
 %                 obj.grouping_surface_potential_map();
 %             end
 
-            
-            % Add Experiment identifier into ForceMap
-            for i=(NOld+1):SaveCopy.NumFiles
-                SaveCopy.FM{i}.ID = sprintf('%s%i',SaveCopy.ExperimentName,i);
-            end
-            
-            clear obj
-            obj = SaveCopy.copy_experiment;
-            obj.save_experiment();
+            Out = SaveCopy;
+            Out.save_experiment
+            warning('Did you read the warning above?');
             catch ME
                 disp('data adding failed. restored original experiment object')
+                Out = obj;
             end
             
         end
@@ -351,7 +376,7 @@ classdef Experiment < matlab.mixin.Copyable
             % preprocessing(obj)
             % 
             % bare minimum of preprocessing steps to prepare data for
-            % custom further data processing. (.base_and_tilt(),)
+            % custom further data processing. (.base_and_tilt())
             
             h = waitbar(0,'setting up','Units','normalized','Position',[0.4 0.3 0.2 0.1]);
             NLoop = length(obj.ForceMapNames);

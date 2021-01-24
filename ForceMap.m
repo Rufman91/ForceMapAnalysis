@@ -138,7 +138,7 @@ classdef ForceMap < matlab.mixin.Copyable
     methods
         % Main methods of the class
         
-        function obj = ForceMap(MapFullFile,DataFolder,FakeOpt,NSynthCurves)
+        function obj = ForceMap(MapFullFile,DataFolder,TempID,FakeOpt,NSynthCurves)
             %%% Constructor of the class
             
             % Specify the folder where the files live. And import them.
@@ -149,7 +149,9 @@ classdef ForceMap < matlab.mixin.Copyable
             
             current = what();
             
-            if nargin >= 3 && isequal(FakeOpt,'Dummy')
+            obj.ID = TempID;
+            
+            if nargin >= 4 && isequal(FakeOpt,'Dummy')
                 obj.Name = 'DummyForceMap';
                 obj.NCurves = NSynthCurves;
                 obj.SelectedCurves = ones(obj.NCurves,1);
@@ -194,9 +196,10 @@ classdef ForceMap < matlab.mixin.Copyable
                 cmd3 = MapFullFile;
                 cmd4 = '"';
                 cmd5 = ' -o';
-                mkdir(DataFolder,'Temp')
+                TempFolderName = sprintf('Temp%s',obj.ID);
+                mkdir(DataFolder,TempFolderName)
                 cmd6 = '"';
-                TempFolder = fullfile(DataFolder,'Temp',filesep);
+                TempFolder = fullfile(DataFolder,TempFolderName,filesep);
                 cmd8 = '"';
                 CMD = append(cmd1,cmd2,cmd3,cmd4,cmd5,cmd6,TempFolder,cmd8);
                 disp('extracting file...')
@@ -236,8 +239,9 @@ classdef ForceMap < matlab.mixin.Copyable
                 cmd1 = 'unzip -o ';
                 cmd2 = MapFullFile;
                 cmd3 = ' -d ';
-                mkdir(DataFolder,'Temp')
-                TempFolder = fullfile(DataFolder,'Temp',filesep);
+                TempFolderName = sprintf('Temp%s',obj.ID);
+                mkdir(DataFolder,TempFolderName)
+                TempFolder = fullfile(DataFolder,TempFolderName,filesep);
                 CMD = append(cmd1,cmd2,cmd3,TempFolder);
                 system(CMD);
                 disp('extracting file...')
@@ -269,8 +273,9 @@ classdef ForceMap < matlab.mixin.Copyable
                 cmd1 = 'unzip -o ';
                 cmd2 = MapFullFile;
                 cmd3 = ' -d ';
-                mkdir(DataFolder,'Temp')
-                TempFolder = fullfile(DataFolder,'Temp',filesep);
+                TempFolderName = sprintf('Temp%s',obj.ID);
+                mkdir(DataFolder,TempFolderName)
+                TempFolder = fullfile(DataFolder,TempFolderName,filesep);
                 CMD = append(cmd1,cmd2,cmd3,TempFolder);
                 system(CMD);
                 disp('extracting file...')
@@ -298,6 +303,9 @@ classdef ForceMap < matlab.mixin.Copyable
                 obj.Folder = fullfile(DataFolder,'ForceData',filesep);
             end
             
+            Index = regexp(obj.ID,'(?<=\-).','all');
+            LoadMessage = sprintf('loading data into ForceMap Nr.%s',obj.ID(Index(end):end));
+            disp(LoadMessage)
             
             % reading header properties into object
             filedirectory = fullfile(TempFolder,'header.properties');
