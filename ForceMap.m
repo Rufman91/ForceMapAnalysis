@@ -20,7 +20,8 @@ classdef ForceMap < matlab.mixin.Copyable
     % to get a class parameter of this force map (the tip radius of the used cantilever)
     
     properties
-        % Properties shared for the whole Force Map
+        % Properties shared for the whole Force Map. All data is given SI
+        % units otherwise it would be stated separately 
         
         Name            % name of the force map. taken as the name of the folder, containing the .csv files
         Date            % date when the force map was detected
@@ -34,6 +35,8 @@ classdef ForceMap < matlab.mixin.Copyable
         NumPoints       % number of scanned points per profile along the XSize of the force map
         XSize           % Size of imaged window in X-direction
         YSize           % Size of imaged window in Y-direction
+        Velocity        % Approach and retraction velocity as defined in the force map settings
+        GridAngle       % in degrees (°)
         Sensitivity
         SpringConstant
         DBanding        % Fourieranalysis-based estimate of DBanding perdiod (only available with sufficient resolution)
@@ -363,6 +366,25 @@ classdef ForceMap < matlab.mixin.Copyable
             tline = fgetl(fileID);
             where=strfind(tline,'=');
             obj.YSize = str2double(tline(where+1:end));
+            
+            %   Velocity
+            clear tline where;
+            frewind(fileID);
+            B=strfind(A,'force-scan-map.settings.force-settings.start-option.velocity=');
+            fseek(fileID,B,'cof');
+            tline = fgetl(fileID);
+            where=strfind(tline,'=');
+            obj.Velocity = str2double(tline(where+1:end));
+                    
+            %   GridAngle
+            clear tline where;
+            frewind(fileID);
+            B=strfind(A,'force-scan-map.position-pattern.grid.theta=');
+            fseek(fileID,B,'cof');
+            tline = fgetl(fileID);
+            where=strfind(tline,'=');
+            obj.GridAngle = str2double(tline(where+1:end));
+            obj.GridAngle = obj.GridAngle*180/pi;
             
             clear tline A B where
             

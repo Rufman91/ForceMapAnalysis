@@ -123,6 +123,7 @@ classdef Experiment < matlab.mixin.Copyable
             ExperimentName = obj.ExperimentName;
             ExperimentFolder = obj.ExperimentFolder;
             parfor i=1:N
+            % for i=1:N Debugging
                 if WhichFiles == 2 || WhichFiles == 0
                     TempID = sprintf('%s-%i',ExperimentName,i);
                     FM{i} = ForceMap(MapFullFile{i},ExperimentFolder,TempID);
