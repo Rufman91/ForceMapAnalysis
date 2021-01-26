@@ -1264,7 +1264,7 @@ classdef ForceMap < matlab.mixin.Copyable
          function calculate_fib_diam(obj)
             [obj.Apex,obj.ApexIndex] = max(obj.HeightMap(:,:,1).*obj.FibMask,[],2);
             
-            if obj.FibrilFlag.Straight == 1;
+            if obj.FibrilFlag.Straight == 1
                 obj.RectApex = zeros(obj.NumProfiles,1);
                 obj.RectApexIndex = zeros(obj.NumProfiles,1);
                 obj.RectApexIndex = round(predictGP_mean([1:obj.NumProfiles],[1:obj.NumProfiles],1,5*obj.NumProfiles,obj.ApexIndex,1));
@@ -2697,7 +2697,7 @@ classdef ForceMap < matlab.mixin.Copyable
             light('Style','local')
         end
         
-        function quality_control_oliver_pharr(obj,PauseTime)
+        function quality_control_oliver_pharr_fibril(obj,PauseTime)
             % shows some relevant plots for the E-Mod calculation
             % rectified apex force curves
             
@@ -2797,7 +2797,7 @@ classdef ForceMap < matlab.mixin.Copyable
             end
         end
         
-        function quality_control_hertz_sneddon(obj,PauseTime)
+        function quality_control_hertz_sneddon_fibril(obj,PauseTime)
             % shows some relevant plots for the E-Mod calculation
             % rectified apex force curves
             
@@ -2834,9 +2834,16 @@ classdef ForceMap < matlab.mixin.Copyable
                 title('Height Map with Apex Points');
                 
                 subplot(2,2,2)
-                plot(obj.THApp{k} - obj.CP(k,1),feval(obj.HertzFit{k},obj.THApp{k} - obj.CP(k,1)),...
-                    obj.THApp{k} - obj.CP(k,1),obj.BasedApp{k} - obj.CP(k,2),...
-                    obj.THRet{k} - obj.CP(k,1),obj.BasedRet{k} - obj.CP(k,2))
+                
+                % Determine X-Range for HertzModel
+                X = obj.THApp{m} - obj.CP(m,1);
+                X(X<0) = [];
+                HertzModelX = 0:range(X)/100:2*max(X);
+                HertzModelY = feval(obj.HertzFit{m},HertzModelX);
+                
+                plot(HertzModelX(HertzModelY<=max(obj.BasedApp{m} - obj.CP(m,2))),HertzModelY(HertzModelY<=max(obj.BasedApp{m} - obj.CP(m,2))),...
+                    obj.THApp{m} - obj.CP(m,1),obj.BasedApp{m} - obj.CP(m,2),...
+                    obj.THRet{m} - obj.CP(m,1),obj.BasedRet{m} - obj.CP(m,2))
                 xlim([min(obj.THApp{k} - obj.CP(k,1))+range(obj.THApp{k} - obj.CP(k,1))/2 ...
                     max(obj.THApp{k} - obj.CP(k,1))+range(obj.THApp{k} - obj.CP(k,1))*0.1])
                 title(sprintf('Elastic Modulus = %.2f MPa',obj.EModHertz(k)*1e-6))
@@ -2875,7 +2882,176 @@ classdef ForceMap < matlab.mixin.Copyable
             end
         end
         
-        function compare_hertz_oliver(obj)
+        function quality_control_oliver_pharr(obj,PauseTime)
+            % shows some relevant plots for the E-Mod calculation
+            
+            if nargin < 2
+                PauseTime = 1.5;
+            end
+            
+            T = sprintf('Quality control of force map %s',obj.Name);
+            Fig = figure('Name',T,'Units','normalized','Position',[0.1 0.1 0.8 0.8]);
+            m = 1;
+            while 1==1
+                try
+                    figure(Fig);
+                catch
+                    return
+                end
+                subplot(2,3,1)
+                I = imresize(mat2gray(obj.HeightMap(:,:,1)),[1024 1024]);
+                imshow(I);
+                hold on;
+                
+                plot((obj.List2Map(m,2)-1/2)*1024/obj.NumPoints,...
+                    (obj.List2Map(m,1)-1/2)*1024/obj.NumProfiles,...
+                    'g*', 'MarkerSize', 10, 'LineWidth', 2);
+                
+                title('Height Map');
+                
+                subplot(2,3,2)
+                plot(obj.HHApp{m},obj.BasedApp{m}/obj.SpringConstant,...
+                    obj.HHRet{m},obj.BasedRet{m}/obj.SpringConstant)
+                xlim([min(obj.HHApp{m})+range(obj.HHApp{m})/2 ...
+                    max(obj.HHApp{m})+range(obj.HHApp{m})*0.1])
+                title(sprintf('Elastic Modulus = %.2f MPa',obj.EModOliverPharr(m)*1e-6))
+                legend('Approach','Retract','Location','northwest')
+                xlabel('Head Height [m]')
+                ylabel('vDeflection [m]')
+                drawpoint('Position',[obj.CP(m,1) obj.CP(m,2)]);
+                
+                if m == 1
+                    subplot(2,3,3)
+                    boxplot(obj.EModOliverPharr(obj.RectApexIndex));
+                    xticklabels(obj.Name)
+                    title(sprintf('mean = %.2f MPa\nmedian = %.2f MPa\nstd = %.3f MPa',...
+                        nanmean(obj.EModOliverPharr(obj.RectApexIndex))*1e-6,...
+                        nanmedian(obj.EModOliverPharr(obj.RectApexIndex))*1e-6,...
+                        nanstd(obj.EModOliverPharr(obj.RectApexIndex))*1e-6));
+                end
+                
+                subplot(2,3,4)
+                plot(0:obj.NumProfiles+1,obj.RefSlope*ones(obj.NumProfiles+2,1))
+                ylim([0 1.3])
+                xlim([0 obj.NumProfiles+1])
+                hold on
+                plot(1:obj.NumProfiles,obj.DZslope(obj.RectApexIndex),'bO')
+                plot(m,obj.DZslope(obj.RectApexIndex(m)),'rO','MarkerFaceColor','r')
+                xlabel('Index')
+                ylabel('DZ-Slope')
+                legend(sprintf('Glass Reference Slope = %.3f',obj.RefSlope))
+                hold off
+                
+                subplot(2,3,5)
+                plot(obj.IndDepth(obj.RectApexIndex)*1e9,...
+                    obj.EModOliverPharr(obj.RectApexIndex)*1e-6,'bO')
+                hold on
+                plot(obj.IndDepth(obj.RectApexIndex(m))*1e9,...
+                    obj.EModOliverPharr(obj.RectApexIndex(m))*1e-6,'rO','MarkerFaceColor','r')
+                xlabel('Indentation Depth [nm]')
+                ylabel('Elastic Modulus [MPa]')
+                hold off
+                
+                subplot(2,3,6)
+                plot(obj.IndDepth(obj.RectApexIndex)*1e9,...
+                    obj.IndentArea(obj.RectApexIndex),'bO','MarkerSize',10,'MarkerFaceColor','b')
+                hold on
+                plot(obj.IndDepth(obj.RectApexIndex(m))*1e9,...
+                    obj.IndentArea(obj.RectApexIndex(m)),'rO','MarkerSize',10,'MarkerFaceColor','r')
+                Xmax = round(max(obj.IndDepth(obj.RectApexIndex))*1e9+5);
+                xlim([0 Xmax])
+                plot(1:Xmax,obj.ProjTipArea(1:Xmax),'Color','black')
+                xlabel('Indentation Depth [nm]')
+                ylabel('Projected Area [m^2]')
+                hold off
+                
+                pause(PauseTime)
+                if m<obj.NCurves
+                    m = m + 1;
+                else
+                    m = 1;
+                end
+            end
+        end
+        
+        function quality_control_hertz_sneddon(obj,PauseTime)
+            % shows some relevant plots for the E-Mod calculation
+            % rectified apex force curves
+            
+            if nargin < 2
+                PauseTime = 1.5;
+            end
+            
+            T = sprintf('Quality control of force map %s',obj.Name);
+            Fig = figure('Name',T,'Units','normalized','Position',[0.1 0.1 0.8 0.8]);
+            m = 1;
+            while 1==1
+                try
+                    figure(Fig);
+                catch
+                    return
+                end
+                subplot(2,3,1)
+                I = imresize(mat2gray(obj.HeightMap(:,:,1)),[1024 1024]);
+                imshow(I);
+                hold on;
+                
+                plot((obj.List2Map(m,2)-1/2)*1024/obj.NumPoints,...
+                    (obj.List2Map(m,1)-1/2)*1024/obj.NumProfiles,...
+                    'g*', 'MarkerSize', 10, 'LineWidth', 2);
+                
+                title('Height Map');
+                
+                subplot(2,2,2)
+                
+                % Determine X-Range for HertzModel
+                X = obj.THApp{m} - obj.CP(m,1);
+                X(X<0) = [];
+                HertzModelX = 0:range(X)/100:2*max(X);
+                HertzModelY = feval(obj.HertzFit{m},HertzModelX);
+                
+                plot(HertzModelX(HertzModelY<=max(obj.BasedApp{m} - obj.CP(m,2))),HertzModelY(HertzModelY<=max(obj.BasedApp{m} - obj.CP(m,2))),...
+                    obj.THApp{m} - obj.CP(m,1),obj.BasedApp{m} - obj.CP(m,2),...
+                    obj.THRet{m} - obj.CP(m,1),obj.BasedRet{m} - obj.CP(m,2))
+                xlim([min(obj.THApp{m} - obj.CP(m,1))+range(obj.THApp{m} - obj.CP(m,1))/2 ...
+                    max(obj.THApp{m} - obj.CP(m,1))+range(obj.THApp{m} - obj.CP(m,1))*0.1])
+                title(sprintf('Elastic Modulus = %.2f MPa',obj.EModHertz(m)*1e-6))
+                legend('Hertz Fit','Approach','Retract','Location','northwest')
+                xlabel('Cantilever Tip Height [m]')
+                ylabel('Force [N]')
+                drawpoint('Position',[0 0]);
+                
+                if m == 1
+                    subplot(2,2,3)
+                    boxplot(obj.EModHertz(obj.RectApexIndex));
+                    xticklabels(obj.Name)
+                    title(sprintf('mean = %.2f MPa\nmedian = %.2f MPa\nstd = %.3f MPa',...
+                        nanmean(obj.EModHertz(obj.RectApexIndex))*1e-6,...
+                        nanmedian(obj.EModHertz(obj.RectApexIndex))*1e-6,...
+                        nanstd(obj.EModHertz(obj.RectApexIndex))*1e-6));
+                end
+                
+                
+                subplot(2,2,4)
+                plot((obj.IndDepthHertz(obj.RectApexIndex))*1e9,...
+                    obj.EModHertz(obj.RectApexIndex)*1e-6,'bO')
+                hold on
+                plot((obj.IndDepthHertz(obj.RectApexIndex(m)))*1e9,...
+                    obj.EModHertz(obj.RectApexIndex(m))*1e-6,'rO','MarkerFaceColor','r')
+                xlabel('Indentation Depth [nm]')
+                ylabel('Elastic Modulus [MPa]')
+                hold off
+                
+                pause(PauseTime)
+                if m<obj.NCurves
+                    m = m + 1;
+                else
+                    m = 1;
+                end
+            end
+        end
+        
+        function compare_hertz_oliver_fibril(obj)
             % Boxplots comparing the two methods of elastic modulus
             % calculation
             figure('Name',obj.Name)

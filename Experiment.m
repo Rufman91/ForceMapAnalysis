@@ -427,7 +427,9 @@ classdef Experiment < matlab.mixin.Copyable
             % net. NPasses (Default=100) times slower than 'Fast'
             % CPOption = 'Zoom' ... CNN-based method 
             % CPOption = 'ZoomDropout' ... CNN-based method (still in development)
-            % CPOption = 'ZoomSweep' ... CNN-based method
+            %%%%%% RECOMMENDED %%%%%%
+            % CPOption = 'Zoomsweep' ... CNN-based method
+            %%%%%% RECOMMENDED %%%%%%
             % CPOption = 'Old' ... old method for contact point estimation
             % CPOption = 'RoV' ... RoV method for contact point estimation
             % CPOption = 'GoF' ... GoF method for contact point estimation
@@ -554,7 +556,9 @@ classdef Experiment < matlab.mixin.Copyable
             % net. NPasses (Default=100) times slower than 'Fast'
             % CPOption = 'Zoom' ... CNN-based method (still in development)
             % CPOption = 'ZoomDrop' ... CNN-based method (still in development)
-            % CPOption = 'Zoomsweep' ... CNN-based method (still in development)
+            %%%%%% RECOMMENDED %%%%%%
+            % CPOption = 'Zoomsweep' ... CNN-based method
+            %%%%%% RECOMMENDED %%%%%%
             % CPOption = 'Old' ... old method for contact point estimation
             % CPOption = 'RoV' ... RoV method for contact point estimation
             % CPOption = 'GoF' ... GoF method for contact point estimation
