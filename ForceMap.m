@@ -371,11 +371,33 @@ classdef ForceMap < matlab.mixin.Copyable
             clear tline where;
             frewind(fileID);
             B=strfind(A,'force-scan-map.settings.force-settings.start-option.velocity=');
-            fseek(fileID,B,'cof');
-            tline = fgetl(fileID);
-            where=strfind(tline,'=');
-            obj.Velocity = str2double(tline(where+1:end));
-                    
+            if isempty(B)
+                warning("Could not find Z-tip-velocity in header. Calculating from Z-Length and Extension-Time instead")
+                
+                clear tline where;
+                frewind(fileID);
+                B=strfind(A,'force-scan-map.settings.force-settings.extend-scan-time=');
+                fseek(fileID,B,'cof');
+                tline = fgetl(fileID);
+                where=strfind(tline,'=');
+                ExtendTime = str2double(tline(where+1:end));
+                
+                clear tline where;
+                frewind(fileID);
+                B=strfind(A,'force-scan-map.settings.force-settings.relative-z-start=');
+                fseek(fileID,B,'cof');
+                tline = fgetl(fileID);
+                where=strfind(tline,'=');
+                ZLength = str2double(tline(where+1:end));
+                
+                obj.Velocity = ZLength/ExtendTime;
+            else
+                fseek(fileID,B,'cof');
+                tline = fgetl(fileID);
+                where=strfind(tline,'=');
+                obj.Velocity = str2double(tline(where+1:end));
+            end
+            
             %   GridAngle
             clear tline where;
             frewind(fileID);
