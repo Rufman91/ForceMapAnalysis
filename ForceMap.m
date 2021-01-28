@@ -11,12 +11,12 @@ classdef ForceMap < matlab.mixin.Copyable
     % should be  called by using the class-INSTANCE and not the classname
     % 'ForceMap'.
     % So if you load a map under the name 'FM' with the classconstructor
-    % e.g. FM = ForceMap();
+    % e.g.>> FM = ForceMap();
     % you should from now on call methods on this specific instance.
     % A valid call could for example be:
-    % FM.base_and_tilt();
+    % >> FM.base_and_tilt();
     % to conduct an operation (a base fit in this case) on the force map or
-    % FM.TipRadius;
+    % >> FM.TipRadius;
     % to get a class parameter of this force map (the tip radius of the used cantilever)
     
     properties
@@ -155,32 +155,10 @@ classdef ForceMap < matlab.mixin.Copyable
             obj.ID = TempID;
             
             if nargin >= 4 && isequal(FakeOpt,'Dummy')
-                obj.Name = 'DummyForceMap';
-                obj.NCurves = NSynthCurves;
-                obj.SelectedCurves = ones(obj.NCurves,1);
-                obj.CPFlag.RoV = 0;
-                obj.CPFlag.GoF = 0;
-                obj.CPFlag.Combo = 0;
-                obj.CPFlag.CNN = 0;
-                obj.CPFlag.CNNZoom = 0;
-                obj.CPFlag.CNNZoomDropout = 0;
-                obj.CPFlag.CNNZoomSweep = 0;
-                obj.CPFlag.Dropout = 0;
-                obj.CPFlag.Manual = 0;
-                obj.CPFlag.Old = 0;
-                obj.CPFlag.CNNopt = 0;
-                obj.Ret = cell(1,NSynthCurves);
-                obj.BasedRet = cell(1,NSynthCurves);
-                obj.create_and_level_height_map();
-                return
-            end
-            
-            if nargin < 2
-                DataFolder = current.path;
+                obj.create_dummy_force_map(NSynthCurves);
             end
             
             % get OS and use appropriate fitting system command
-            
             FullOS = computer;
             OS = FullOS(1:3);
             obj.HostOS = OS;
@@ -192,284 +170,23 @@ classdef ForceMap < matlab.mixin.Copyable
                 obj.HostName = getenv('HOSTNAME');
             end
             
-            if isequal('PCW',OS)
-                % unpack jpk-file into temporary folder to read out data
-                cmd1 = '"C:\Program Files\7-Zip\7z.exe" x ';
-                cmd2 = '"';
-                cmd3 = MapFullFile;
-                cmd4 = '"';
-                cmd5 = ' -o';
-                TempFolderName = sprintf('Temp%s',obj.ID);
-                mkdir(DataFolder,TempFolderName)
-                cmd6 = '"';
-                TempFolder = fullfile(DataFolder,TempFolderName,filesep);
-                cmd8 = '"';
-                CMD = append(cmd1,cmd2,cmd3,cmd4,cmd5,cmd6,TempFolder,cmd8);
-                disp('extracting file...')
-                h = system(CMD);
-                if h==0
-                    disp('unzipping successfull')
-                elseif h==1
-                    disp('unzipping failed')
-                end
-                Strings = split(MapFullFile,filesep);
-                %%% Define the search expressions
-                % Comment: JPK includes a few attributes of a measurement into the name:
-                % The name attachement is the same for all experiments:
-                % 'Typedname'+'-'+'data'+'-'+'year'+'.'+'months'+'.'+'day'+'-hour'+'.'+'minute'+'.'+'second'+'.'+'thousandths'+'.'+'jpk file extension'
-                exp1 = '.*(?=\-data)'; % Finds the typed-in name of the user during the AFM experiment
-                exp2 = '\d{4}\.\d{2}\.\d{2}'; % Finds the date
-                exp3 = '\d{2}\.\d{2}\.\d{2}\.\d{3}'; % Finds the time
-                obj.Name = regexp(Strings(end,1), exp1, 'match');
-                obj.Name = char(obj.Name{1});
-                if isequal(obj.Name,'')
-                    exp4 = '.*(?=.jpk)';
-                    obj.Name = regexp(Strings(end,1), exp4, 'match');
-                    obj.Name = char(obj.Name{1});
-                end
-                obj.Date = regexp(Strings(end,1), exp2, 'match');
-                obj.Date = char(obj.Date{1});
-                obj.Time = regexp(Strings(end,1), exp3, 'match');
-                obj.Time = char(obj.Time{1});
-                %%% Create a data folder to store the force data
-                mkdir(DataFolder,'ForceData')
-                obj.Folder = fullfile(DataFolder,'ForceData',filesep);                
-                
-                %             system(['unzip -o ', fullfile(datadir,fnamemap), ' ''*shared-data/header.properties'' -d ', tempdir{fib,1}]);
-                %
-            elseif isequal('GLN',OS)
-                % unpack jpk-file into temporary folder to read out data
-                cmd1 = 'unzip -o ';
-                cmd2 = MapFullFile;
-                cmd3 = ' -d ';
-                TempFolderName = sprintf('Temp%s',obj.ID);
-                mkdir(DataFolder,TempFolderName)
-                TempFolder = fullfile(DataFolder,TempFolderName,filesep);
-                CMD = append(cmd1,cmd2,cmd3,TempFolder);
-                system(CMD);
-                disp('extracting file...')
-                Strings = split(MapFullFile,filesep);
-                %%% Define the search expressions
-                % Comment: JPK includes a few attributes of a measurement into the name:
-                % The name attachement is the same for all experiments:
-                % 'Typedname'+'-'+'data'+'-'+'year'+'.'+'months'+'.'+'day'+'-hour'+'.'+'minute'+'.'+'second'+'.'+'thousandths'+'.'+'jpk file extension'
-                exp1 = '.*(?=\-data)'; % Finds the typed-in name of the user during the AFM experiment
-                exp2 = '\d{4}\.\d{2}\.\d{2}'; % Finds the date
-                exp3 = '\d{2}\.\d{2}\.\d{2}\.\d{3}'; % Finds the time
-                obj.Name = regexp(Strings(end,1), exp1, 'match');
-                obj.Name = char(obj.Name{1});
-                if isequal(obj.Name,'')
-                    exp4 = '.*(?=.jpk)';
-                    obj.Name = regexp(Strings(end,1), exp4, 'match');
-                    obj.Name = char(obj.Name{1});
-                end
-                obj.Date = regexp(Strings(end,1), exp2, 'match');
-                obj.Date = char(obj.Date{1});
-                obj.Time = regexp(Strings(end,1), exp3, 'match');
-                obj.Time = char(obj.Time{1});
-                %%% Create a data folder to store the force data
-                mkdir(DataFolder,'ForceData')
-                obj.Folder = fullfile(DataFolder,'ForceData',filesep);
-                
-            elseif isequal('MAC',OS)
-                % unpack jpk-file into temporary folder to read out data
-                cmd1 = 'unzip -o ';
-                cmd2 = MapFullFile;
-                cmd3 = ' -d ';
-                TempFolderName = sprintf('Temp%s',obj.ID);
-                mkdir(DataFolder,TempFolderName)
-                TempFolder = fullfile(DataFolder,TempFolderName,filesep);
-                CMD = append(cmd1,cmd2,cmd3,TempFolder);
-                system(CMD);
-                disp('extracting file...')
-                Strings = split(MapFullFile,filesep);
-                %%% Define the search expressions
-                % Comment: JPK includes a few attributes of a measurement into the name:
-                % The name attachement is the same for all experiments:
-                % 'Typedname'+'-'+'data'+'-'+'year'+'.'+'months'+'.'+'day'+'-hour'+'.'+'minute'+'.'+'second'+'.'+'thousandths'+'.'+'jpk file extension'
-                exp1 = '.*(?=\-data)'; % Finds the typed-in name of the user during the AFM experiment
-                exp2 = '\d{4}\.\d{2}\.\d{2}'; % Finds the date
-                exp3 = '\d{2}\.\d{2}\.\d{2}\.\d{3}'; % Finds the time
-                obj.Name = regexp(Strings(end,1), exp1, 'match');
-                obj.Name = char(obj.Name{1});
-                if isequal(obj.Name,'')
-                    exp4 = '.*(?=.jpk)';
-                    obj.Name = regexp(Strings(end,1), exp4, 'match');
-                    obj.Name = char(obj.Name{1});
-                end
-                obj.Date = regexp(Strings(end,1), exp2, 'match');
-                obj.Date = char(obj.Date{1});
-                obj.Time = regexp(Strings(end,1), exp3, 'match');
-                obj.Time = char(obj.Time{1});
-                %%% Create a data folder to store the force data
-                mkdir(DataFolder,'ForceData')
-                obj.Folder = fullfile(DataFolder,'ForceData',filesep);
-            end
+            % Unpack jpk-force-map with 7zip call to the terminal
+            TempFolder = obj.unpack_jpk_force_map(MapFullFile,DataFolder);
             
             Index = regexp(obj.ID,'(?<=\-).','all');
             LoadMessage = sprintf('loading data into ForceMap Nr.%s',obj.ID(Index(end):end));
             disp(LoadMessage)
             
             % reading header properties into object
-            filedirectory = fullfile(TempFolder,'header.properties');
-            fileID=fopen(filedirectory,'rt','n','UTF-8'); % fileID = fopen(filename,permission,machinefmt,encodingIn)
-            A=fileread(filedirectory);
-            % Height: 1. CONVERSION raw-meters & 2. SCALE meters
-            % Conversion RAW -> VOLTS
-            fseek(fileID,1,'cof'); % goes at the first position in the file
-            
-            %   NCurves
-            B=strfind(A,'force-scan-map.indexes.max=');
-            % strfind(file,string) is looking for a specific string in the file.
-            fseek(fileID,B,'cof');
-            % moves at the location where specific string is located
-            tline = fgetl(fileID);
-            % stores that string in a character
-            where=strfind(tline,'=');
-            % "where" is the position of the "=" symbol in the tline string
-            obj.NCurves = 1 + str2double(... % convert the string to number
-                tline(where+1:end)... % this is the number
-                );
-            
-            %   NumPoints
-            clear tline where;
-            frewind(fileID);
-            B=strfind(A,'force-scan-map.position-pattern.grid.ilength=');
-            fseek(fileID,B,'cof');
-            tline = fgetl(fileID);
-            where=strfind(tline,'=');
-            obj.NumPoints = str2double(tline(where+1:end));
-            
-            %   NumProfiles
-            clear tline where;
-            frewind(fileID);
-            B=strfind(A,'force-scan-map.position-pattern.grid.jlength=');
-            fseek(fileID,B,'cof');
-            tline = fgetl(fileID);
-            where=strfind(tline,'=');
-            obj.NumProfiles = str2double(tline(where+1:end));
-            
-            %   XSize
-            clear tline where;
-            frewind(fileID);
-            B=strfind(A,'force-scan-map.position-pattern.grid.ulength=');
-            fseek(fileID,B,'cof');
-            tline = fgetl(fileID);
-            where=strfind(tline,'=');
-            obj.XSize = str2double(tline(where+1:end));
-            
-            %   YSize
-            clear tline where;
-            frewind(fileID);
-            B=strfind(A,'force-scan-map.position-pattern.grid.vlength=');
-            fseek(fileID,B,'cof');
-            tline = fgetl(fileID);
-            where=strfind(tline,'=');
-            obj.YSize = str2double(tline(where+1:end));
-            
-            %   Velocity
-            clear tline where;
-            frewind(fileID);
-            B=strfind(A,'force-scan-map.settings.force-settings.start-option.velocity=');
-            if isempty(B)
-                warning("Could not find Z-tip-velocity in header. Calculating from Z-Length and Extension-Time instead")
-                
-                clear tline where;
-                frewind(fileID);
-                B=strfind(A,'force-scan-map.settings.force-settings.extend-scan-time=');
-                fseek(fileID,B,'cof');
-                tline = fgetl(fileID);
-                where=strfind(tline,'=');
-                ExtendTime = str2double(tline(where+1:end));
-                
-                clear tline where;
-                frewind(fileID);
-                B=strfind(A,'force-scan-map.settings.force-settings.relative-z-start=');
-                fseek(fileID,B,'cof');
-                tline = fgetl(fileID);
-                where=strfind(tline,'=');
-                ZLength = str2double(tline(where+1:end));
-                
-                obj.Velocity = ZLength/ExtendTime;
-            else
-                fseek(fileID,B,'cof');
-                tline = fgetl(fileID);
-                where=strfind(tline,'=');
-                obj.Velocity = str2double(tline(where+1:end));
-            end
-            
-            %   GridAngle
-            clear tline where;
-            frewind(fileID);
-            B=strfind(A,'force-scan-map.position-pattern.grid.theta=');
-            fseek(fileID,B,'cof');
-            tline = fgetl(fileID);
-            where=strfind(tline,'=');
-            obj.GridAngle = str2double(tline(where+1:end));
-            obj.GridAngle = obj.GridAngle*180/pi;
-            
-            clear tline A B where
-            
-            fclose(fileID);
-            
-            obj.HHType = 'capacitiveSensorHeight';
+            obj.read_in_header_properties(TempFolder);
             
             %loading curve data into cell arrays
-            for i=1:obj.NCurves
-                HeaderFileDirectory = fullfile(TempFolder,'shared-data','header.properties');
-                SegmentHeaderFileDirectory = fullfile(TempFolder,'index',string((i-1)),'segments','0','segment-header.properties');
-                HeightDataDirectory = fullfile(TempFolder,'index',string((i-1)),'segments','0','channels','capacitiveSensorHeight.dat');
-                vDefDataDirectory = fullfile(TempFolder,'index',string((i-1)),'segments','0','channels','vDeflection.dat');
-                
-                if ~isfile(HeightDataDirectory) || isequal(obj.HHType,'measuredHeight')
-                    HeightDataDirectory = fullfile(TempFolder,'index',string((i-1)),'segments','0','channels','measuredHeight.dat');
-                    obj.HHType = 'measuredHeight';
-                end
-                
-                [TempHHApp,obj.App{i},obj.SpringConstant,obj.Sensitivity]=...
-                    obj.writedata(HeaderFileDirectory,SegmentHeaderFileDirectory,...
-                    HeightDataDirectory,vDefDataDirectory,obj.HHType);
-                
-                obj.HHApp{i} = -TempHHApp;
-                obj.App{i} = obj.App{i}.*obj.SpringConstant;
-                clear TempHHApp
-                
-                % Below there is a workaround for jpk-force-map files,
-                % where the capacitiveSensorHeight
-                % written into an additional segment folder '2' instead of
-                % '1'. This occurs, when there is a nonzero holding time,
-                % which gets writtem into the '1'-folder instead
-                
-                % To be implemented: read holding segment into ForceMap
-                % class
-                
-                SegmentHeaderFileDirectory = fullfile(TempFolder,'index',string((i-1)),'segments','1','segment-header.properties');
-                HeightDataDirectory = fullfile(TempFolder,'index',string((i-1)),'segments','1','channels','capacitiveSensorHeight.dat');
-                vDefDataDirectory = fullfile(TempFolder,'index',string((i-1)),'segments','1','channels','vDeflection.dat');
-                
-                if isfolder(fullfile(TempFolder,'index',string((i-1)),'segments','2'))
-                    SegmentHeaderFileDirectory = fullfile(TempFolder,'index',string((i-1)),'segments','2','segment-header.properties');
-                    HeightDataDirectory = fullfile(TempFolder,'index',string((i-1)),'segments','2','channels','capacitiveSensorHeight.dat');
-                    vDefDataDirectory = fullfile(TempFolder,'index',string((i-1)),'segments','2','channels','vDeflection.dat');
-                    if ~isfile(HeightDataDirectory)  || isequal(obj.HHType,'measuredHeight')
-                        HeightDataDirectory = fullfile(TempFolder,'index',string((i-1)),'segments','2','channels','measuredHeight.dat');
-                    end
-                end
-                
-                if ~isfile(HeightDataDirectory) || isequal(obj.HHType,'measuredHeight')
-                    HeightDataDirectory = fullfile(TempFolder,'index',string((i-1)),'segments','1','channels','measuredHeight.dat');
-                end
-                
-                [TempHHRet,obj.Ret{i}]=...
-                    obj.writedata(HeaderFileDirectory,SegmentHeaderFileDirectory,...
-                    HeightDataDirectory,vDefDataDirectory,obj.HHType);
-                
-                obj.HHRet{i} = -TempHHRet;
-                obj.Ret{i} = obj.Ret{i}.*obj.SpringConstant;
-                clear TempHHRet
-            end
+            obj.load_force_curves(TempFolder);
+            
+            %clean up unzipped jpk-force-map file
             rmdir(TempFolder,'s');
             
+            % intitialize masks
             obj.ExclMask = logical(ones(obj.NumProfiles,obj.NumPoints));
             obj.FibMask = logical(zeros(obj.NumProfiles,obj.NumPoints));
             
@@ -477,19 +194,9 @@ classdef ForceMap < matlab.mixin.Copyable
             
             obj.SelectedCurves = ones(obj.NCurves,1);
             
-            obj.CPFlag.RoV = 0;
-            obj.CPFlag.GoF = 0;
-            obj.CPFlag.Combo = 0;
-            obj.CPFlag.CNN = 0;
-            obj.CPFlag.CNNZoom = 0;
-            obj.CPFlag.CNNZoomDropout = 0;
-            obj.CPFlag.CNNZoomSweep = 0;
-            obj.CPFlag.Dropout = 0;
-            obj.CPFlag.Manual = 0;
-            obj.CPFlag.Old = 0;
-            obj.CPFlag.CNNopt = 0;
-            obj.CPFlag.HardSurface = 0;
+            obj.initialize_flags();
             
+            % Save ForceMap and then change back into original folder
             cd(current.path);
             current = what();
             cd(obj.Folder)
@@ -2461,6 +2168,328 @@ classdef ForceMap < matlab.mixin.Copyable
             end
             
             
+        end
+        
+        function TempFolder = unpack_jpk_force_map(obj,MapFullFile,DataFolder)
+            
+            if isequal('PCW',obj.HostOS)
+                % unpack jpk-file into temporary folder to read out data
+                cmd1 = '"C:\Program Files\7-Zip\7z.exe" x ';
+                cmd2 = '"';
+                cmd3 = MapFullFile;
+                cmd4 = '"';
+                cmd5 = ' -o';
+                TempFolderName = sprintf('Temp%s',obj.ID);
+                mkdir(DataFolder,TempFolderName)
+                cmd6 = '"';
+                TempFolder = fullfile(DataFolder,TempFolderName,filesep);
+                cmd8 = '"';
+                CMD = append(cmd1,cmd2,cmd3,cmd4,cmd5,cmd6,TempFolder,cmd8);
+                disp('extracting file...')
+                h = system(CMD);
+                if h==0
+                    disp('unzipping successfull')
+                elseif h==1
+                    disp('unzipping failed')
+                end
+                Strings = split(MapFullFile,filesep);
+                %%% Define the search expressions
+                % Comment: JPK includes a few attributes of a measurement into the name:
+                % The name attachement is the same for all experiments:
+                % 'Typedname'+'-'+'data'+'-'+'year'+'.'+'months'+'.'+'day'+'-hour'+'.'+'minute'+'.'+'second'+'.'+'thousandths'+'.'+'jpk file extension'
+                exp1 = '.*(?=\-data)'; % Finds the typed-in name of the user during the AFM experiment
+                exp2 = '\d{4}\.\d{2}\.\d{2}'; % Finds the date
+                exp3 = '\d{2}\.\d{2}\.\d{2}\.\d{3}'; % Finds the time
+                obj.Name = regexp(Strings(end,1), exp1, 'match');
+                obj.Name = char(obj.Name{1});
+                if isequal(obj.Name,'')
+                    exp4 = '.*(?=.jpk)';
+                    obj.Name = regexp(Strings(end,1), exp4, 'match');
+                    obj.Name = char(obj.Name{1});
+                end
+                obj.Date = regexp(Strings(end,1), exp2, 'match');
+                obj.Date = char(obj.Date{1});
+                obj.Time = regexp(Strings(end,1), exp3, 'match');
+                obj.Time = char(obj.Time{1});
+                %%% Create a data folder to store the force data
+                mkdir(DataFolder,'ForceData')
+                obj.Folder = fullfile(DataFolder,'ForceData',filesep);
+                
+                %             system(['unzip -o ', fullfile(datadir,fnamemap), ' ''*shared-data/header.properties'' -d ', tempdir{fib,1}]);
+                %
+            elseif isequal('GLN',obj.HostOS)
+                % unpack jpk-file into temporary folder to read out data
+                cmd1 = 'unzip -o ';
+                cmd2 = MapFullFile;
+                cmd3 = ' -d ';
+                TempFolderName = sprintf('Temp%s',obj.ID);
+                mkdir(DataFolder,TempFolderName)
+                TempFolder = fullfile(DataFolder,TempFolderName,filesep);
+                CMD = append(cmd1,cmd2,cmd3,TempFolder);
+                system(CMD);
+                disp('extracting file...')
+                Strings = split(MapFullFile,filesep);
+                %%% Define the search expressions
+                % Comment: JPK includes a few attributes of a measurement into the name:
+                % The name attachement is the same for all experiments:
+                % 'Typedname'+'-'+'data'+'-'+'year'+'.'+'months'+'.'+'day'+'-hour'+'.'+'minute'+'.'+'second'+'.'+'thousandths'+'.'+'jpk file extension'
+                exp1 = '.*(?=\-data)'; % Finds the typed-in name of the user during the AFM experiment
+                exp2 = '\d{4}\.\d{2}\.\d{2}'; % Finds the date
+                exp3 = '\d{2}\.\d{2}\.\d{2}\.\d{3}'; % Finds the time
+                obj.Name = regexp(Strings(end,1), exp1, 'match');
+                obj.Name = char(obj.Name{1});
+                if isequal(obj.Name,'')
+                    exp4 = '.*(?=.jpk)';
+                    obj.Name = regexp(Strings(end,1), exp4, 'match');
+                    obj.Name = char(obj.Name{1});
+                end
+                obj.Date = regexp(Strings(end,1), exp2, 'match');
+                obj.Date = char(obj.Date{1});
+                obj.Time = regexp(Strings(end,1), exp3, 'match');
+                obj.Time = char(obj.Time{1});
+                %%% Create a data folder to store the force data
+                mkdir(DataFolder,'ForceData')
+                obj.Folder = fullfile(DataFolder,'ForceData',filesep);
+                
+            elseif isequal('MAC',obj.HostOS)
+                % unpack jpk-file into temporary folder to read out data
+                cmd1 = 'unzip -o ';
+                cmd2 = MapFullFile;
+                cmd3 = ' -d ';
+                TempFolderName = sprintf('Temp%s',obj.ID);
+                mkdir(DataFolder,TempFolderName)
+                TempFolder = fullfile(DataFolder,TempFolderName,filesep);
+                CMD = append(cmd1,cmd2,cmd3,TempFolder);
+                system(CMD);
+                disp('extracting file...')
+                Strings = split(MapFullFile,filesep);
+                %%% Define the search expressions
+                % Comment: JPK includes a few attributes of a measurement into the name:
+                % The name attachement is the same for all experiments:
+                % 'Typedname'+'-'+'data'+'-'+'year'+'.'+'months'+'.'+'day'+'-hour'+'.'+'minute'+'.'+'second'+'.'+'thousandths'+'.'+'jpk file extension'
+                exp1 = '.*(?=\-data)'; % Finds the typed-in name of the user during the AFM experiment
+                exp2 = '\d{4}\.\d{2}\.\d{2}'; % Finds the date
+                exp3 = '\d{2}\.\d{2}\.\d{2}\.\d{3}'; % Finds the time
+                obj.Name = regexp(Strings(end,1), exp1, 'match');
+                obj.Name = char(obj.Name{1});
+                if isequal(obj.Name,'')
+                    exp4 = '.*(?=.jpk)';
+                    obj.Name = regexp(Strings(end,1), exp4, 'match');
+                    obj.Name = char(obj.Name{1});
+                end
+                obj.Date = regexp(Strings(end,1), exp2, 'match');
+                obj.Date = char(obj.Date{1});
+                obj.Time = regexp(Strings(end,1), exp3, 'match');
+                obj.Time = char(obj.Time{1});
+                %%% Create a data folder to store the force data
+                mkdir(DataFolder,'ForceData')
+                obj.Folder = fullfile(DataFolder,'ForceData',filesep);
+            end
+        end
+        
+        function read_in_header_properties(obj,TempFolder)
+            % Check for jpk-software version and get important ForceMap
+            % properties
+            
+            filedirectory = fullfile(TempFolder,'header.properties');
+            fileID=fopen(filedirectory,'rt','n','UTF-8'); % fileID = fopen(filename,permission,machinefmt,encodingIn)
+            A=fileread(filedirectory);
+            % Height: 1. CONVERSION raw-meters & 2. SCALE meters
+            % Conversion RAW -> VOLTS
+            fseek(fileID,1,'cof'); % goes at the first position in the file
+            
+            %   NCurves
+            B=strfind(A,'force-scan-map.indexes.max=');
+            % strfind(file,string) is looking for a specific string in the file.
+            fseek(fileID,B,'cof');
+            % moves at the location where specific string is located
+            tline = fgetl(fileID);
+            % stores that string in a character
+            where=strfind(tline,'=');
+            % "where" is the position of the "=" symbol in the tline string
+            obj.NCurves = 1 + str2double(... % convert the string to number
+                tline(where+1:end)... % this is the number
+                );
+            
+            %   NumPoints
+            clear tline where;
+            frewind(fileID);
+            B=strfind(A,'force-scan-map.position-pattern.grid.ilength=');
+            fseek(fileID,B,'cof');
+            tline = fgetl(fileID);
+            where=strfind(tline,'=');
+            obj.NumPoints = str2double(tline(where+1:end));
+            
+            %   NumProfiles
+            clear tline where;
+            frewind(fileID);
+            B=strfind(A,'force-scan-map.position-pattern.grid.jlength=');
+            fseek(fileID,B,'cof');
+            tline = fgetl(fileID);
+            where=strfind(tline,'=');
+            obj.NumProfiles = str2double(tline(where+1:end));
+            
+            %   XSize
+            clear tline where;
+            frewind(fileID);
+            B=strfind(A,'force-scan-map.position-pattern.grid.ulength=');
+            fseek(fileID,B,'cof');
+            tline = fgetl(fileID);
+            where=strfind(tline,'=');
+            obj.XSize = str2double(tline(where+1:end));
+            
+            %   YSize
+            clear tline where;
+            frewind(fileID);
+            B=strfind(A,'force-scan-map.position-pattern.grid.vlength=');
+            fseek(fileID,B,'cof');
+            tline = fgetl(fileID);
+            where=strfind(tline,'=');
+            obj.YSize = str2double(tline(where+1:end));
+            
+            %   Velocity
+            clear tline where;
+            frewind(fileID);
+            B=strfind(A,'force-scan-map.settings.force-settings.start-option.velocity=');
+            if isempty(B)
+                warning("Could not find Z-tip-velocity in header. Calculating from Z-Length and Extension-Time instead")
+                
+                clear tline where;
+                frewind(fileID);
+                B=strfind(A,'force-scan-map.settings.force-settings.extend-scan-time=');
+                fseek(fileID,B,'cof');
+                tline = fgetl(fileID);
+                where=strfind(tline,'=');
+                ExtendTime = str2double(tline(where+1:end));
+                
+                clear tline where;
+                frewind(fileID);
+                B=strfind(A,'force-scan-map.settings.force-settings.relative-z-start=');
+                fseek(fileID,B,'cof');
+                tline = fgetl(fileID);
+                where=strfind(tline,'=');
+                ZLength = str2double(tline(where+1:end));
+                
+                obj.Velocity = ZLength/ExtendTime;
+            else
+                fseek(fileID,B,'cof');
+                tline = fgetl(fileID);
+                where=strfind(tline,'=');
+                obj.Velocity = str2double(tline(where+1:end));
+            end
+            
+            %   GridAngle
+            clear tline where;
+            frewind(fileID);
+            B=strfind(A,'force-scan-map.position-pattern.grid.theta=');
+            fseek(fileID,B,'cof');
+            tline = fgetl(fileID);
+            where=strfind(tline,'=');
+            obj.GridAngle = str2double(tline(where+1:end));
+            obj.GridAngle = obj.GridAngle*180/pi;
+            
+            clear tline A B where
+            
+            fclose(fileID);
+        end
+        
+        function load_force_curves(obj,TempFolder)
+            
+            obj.HHType = 'capacitiveSensorHeight';
+            for i=1:obj.NCurves
+                HeaderFileDirectory = fullfile(TempFolder,'shared-data','header.properties');
+                SegmentHeaderFileDirectory = fullfile(TempFolder,'index',string((i-1)),'segments','0','segment-header.properties');
+                HeightDataDirectory = fullfile(TempFolder,'index',string((i-1)),'segments','0','channels','capacitiveSensorHeight.dat');
+                vDefDataDirectory = fullfile(TempFolder,'index',string((i-1)),'segments','0','channels','vDeflection.dat');
+                
+                if ~isfile(HeightDataDirectory) || isequal(obj.HHType,'measuredHeight')
+                    HeightDataDirectory = fullfile(TempFolder,'index',string((i-1)),'segments','0','channels','measuredHeight.dat');
+                    obj.HHType = 'measuredHeight';
+                end
+                
+                [TempHHApp,obj.App{i},obj.SpringConstant,obj.Sensitivity]=...
+                    obj.writedata(HeaderFileDirectory,SegmentHeaderFileDirectory,...
+                    HeightDataDirectory,vDefDataDirectory,obj.HHType);
+                
+                obj.HHApp{i} = -TempHHApp;
+                obj.App{i} = obj.App{i}.*obj.SpringConstant;
+                clear TempHHApp
+                
+                % Below there is a workaround for jpk-force-map files,
+                % where the capacitiveSensorHeight
+                % written into an additional segment folder '2' instead of
+                % '1'. This occurs, when there is a nonzero holding time,
+                % which gets writtem into the '1'-folder instead
+                
+                % To be implemented: read holding segment into ForceMap
+                % class
+                
+                SegmentHeaderFileDirectory = fullfile(TempFolder,'index',string((i-1)),'segments','1','segment-header.properties');
+                HeightDataDirectory = fullfile(TempFolder,'index',string((i-1)),'segments','1','channels','capacitiveSensorHeight.dat');
+                vDefDataDirectory = fullfile(TempFolder,'index',string((i-1)),'segments','1','channels','vDeflection.dat');
+                
+                if isfolder(fullfile(TempFolder,'index',string((i-1)),'segments','2'))
+                    SegmentHeaderFileDirectory = fullfile(TempFolder,'index',string((i-1)),'segments','2','segment-header.properties');
+                    HeightDataDirectory = fullfile(TempFolder,'index',string((i-1)),'segments','2','channels','capacitiveSensorHeight.dat');
+                    vDefDataDirectory = fullfile(TempFolder,'index',string((i-1)),'segments','2','channels','vDeflection.dat');
+                    if ~isfile(HeightDataDirectory)  || isequal(obj.HHType,'measuredHeight')
+                        HeightDataDirectory = fullfile(TempFolder,'index',string((i-1)),'segments','2','channels','measuredHeight.dat');
+                    end
+                end
+                
+                if ~isfile(HeightDataDirectory) || isequal(obj.HHType,'measuredHeight')
+                    HeightDataDirectory = fullfile(TempFolder,'index',string((i-1)),'segments','1','channels','measuredHeight.dat');
+                end
+                
+                [TempHHRet,obj.Ret{i}]=...
+                    obj.writedata(HeaderFileDirectory,SegmentHeaderFileDirectory,...
+                    HeightDataDirectory,vDefDataDirectory,obj.HHType);
+                
+                obj.HHRet{i} = -TempHHRet;
+                obj.Ret{i} = obj.Ret{i}.*obj.SpringConstant;
+                clear TempHHRet
+            end
+        end
+        
+        function initialize_flags(obj)
+           % initialize all flags related to the ForceMap class
+           
+            obj.CPFlag.RoV = 0;
+            obj.CPFlag.GoF = 0;
+            obj.CPFlag.Combo = 0;
+            obj.CPFlag.CNN = 0;
+            obj.CPFlag.CNNZoom = 0;
+            obj.CPFlag.CNNZoomDropout = 0;
+            obj.CPFlag.CNNZoomSweep = 0;
+            obj.CPFlag.Dropout = 0;
+            obj.CPFlag.Manual = 0;
+            obj.CPFlag.Old = 0;
+            obj.CPFlag.CNNopt = 0;
+            obj.CPFlag.HardSurface = 0; 
+        end
+        
+        function create_dummy_force_map(obj,NSynthCurves)
+            % creates blank bare miinimum ForceMap for synthetic force
+            % curves needed in certain CP scripts
+            
+            obj.Name = 'DummyForceMap';
+            obj.NCurves = NSynthCurves;
+            obj.SelectedCurves = ones(obj.NCurves,1);
+            obj.CPFlag.RoV = 0;
+            obj.CPFlag.GoF = 0;
+            obj.CPFlag.Combo = 0;
+            obj.CPFlag.CNN = 0;
+            obj.CPFlag.CNNZoom = 0;
+            obj.CPFlag.CNNZoomDropout = 0;
+            obj.CPFlag.CNNZoomSweep = 0;
+            obj.CPFlag.Dropout = 0;
+            obj.CPFlag.Manual = 0;
+            obj.CPFlag.Old = 0;
+            obj.CPFlag.CNNopt = 0;
+            obj.Ret = cell(1,NSynthCurves);
+            obj.BasedRet = cell(1,NSynthCurves);
+            obj.create_and_level_height_map();
+            return
         end
         
     end
