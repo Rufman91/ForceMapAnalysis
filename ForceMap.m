@@ -2333,6 +2333,15 @@ classdef ForceMap < matlab.mixin.Copyable
             where=strfind(tline,'=');
             obj.NumProfiles = str2double(tline(where+1:end));
             
+            %   NumPoints
+            clear tline where;
+            frewind(fileID);
+            B=strfind(A,'force-scan-map.position-pattern.grid.ilength=');
+            fseek(fileID,B,'cof');
+            tline = fgetl(fileID);
+            where=strfind(tline,'=');
+            obj.NumPoints = str2double(tline(where+1:end));
+            
             %   XSize
             clear tline where;
             frewind(fileID);
