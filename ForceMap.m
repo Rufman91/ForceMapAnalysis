@@ -27,6 +27,7 @@ classdef ForceMap < matlab.mixin.Copyable
         Date            % date when the force map was detected
         Time            % time when the force map was detected
         ID              % Identifier for relation to Experiment
+        FileVersion     % Version of jpk-force-map file
         Folder          % location of the .csv files of the force map
         HostOS          % Operating System
         HostName        % Name of hosting system
@@ -2298,7 +2299,19 @@ classdef ForceMap < matlab.mixin.Copyable
             % Conversion RAW -> VOLTS
             fseek(fileID,1,'cof'); % goes at the first position in the file
             
+            
+            %   Check for file version
+            frewind(fileID);
+            B=strfind(A,'force-scan-map.description.source-software=');
+            fseek(fileID,B,'cof');
+            tline = fgetl(fileID);
+            where=strfind(tline,'=');
+            obj.FileVersion = tline(where+1:end);
+            
+            
             %   NCurves
+            clear tline where;
+            frewind(fileID);
             B=strfind(A,'force-scan-map.indexes.max=');
             % strfind(file,string) is looking for a specific string in the file.
             fseek(fileID,B,'cof');
@@ -2311,14 +2324,6 @@ classdef ForceMap < matlab.mixin.Copyable
                 tline(where+1:end)... % this is the number
                 );
             
-            %   NumPoints
-            clear tline where;
-            frewind(fileID);
-            B=strfind(A,'force-scan-map.position-pattern.grid.ilength=');
-            fseek(fileID,B,'cof');
-            tline = fgetl(fileID);
-            where=strfind(tline,'=');
-            obj.NumPoints = str2double(tline(where+1:end));
             
             %   NumProfiles
             clear tline where;
@@ -2328,6 +2333,15 @@ classdef ForceMap < matlab.mixin.Copyable
             tline = fgetl(fileID);
             where=strfind(tline,'=');
             obj.NumProfiles = str2double(tline(where+1:end));
+            
+            %   NumPoints
+            clear tline where;
+            frewind(fileID);
+            B=strfind(A,'force-scan-map.position-pattern.grid.ilength=');
+            fseek(fileID,B,'cof');
+            tline = fgetl(fileID);
+            where=strfind(tline,'=');
+            obj.NumPoints = str2double(tline(where+1:end));
             
             %   XSize
             clear tline where;
@@ -3141,7 +3155,7 @@ end
 
 %%%%% this constructor method version goes together with Martin
 %%%%% Handelhausers .py-script for .jpk-force-map -> .cvs
-%%%%% conversion
+%%%%% conversion. Might be needed at some point in the future.
 %         function obj = ForceMap(mapfilepath,mapname)
 %             %%% Constructor of the class
 %
