@@ -2301,13 +2301,12 @@ classdef ForceMap < matlab.mixin.Copyable
             
             
             %   Check for file version
-            clear tline where;
             frewind(fileID);
             B=strfind(A,'force-scan-map.description.source-software=');
             fseek(fileID,B,'cof');
             tline = fgetl(fileID);
             where=strfind(tline,'=');
-            obj.FileVersion = str2double(tline(where+1:end));
+            obj.FileVersion = tline(where+1:end);
             
             
             %   NCurves
