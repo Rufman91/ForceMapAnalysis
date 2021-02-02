@@ -1102,11 +1102,15 @@ classdef ForceMap < matlab.mixin.Copyable
                 % Chip number and Cantilever
                 exp15='(?<=MSNL.*)\d+(\E)'; % Finds the chip number and the cantilever
                 obj.ChipCant = regexp(obj.Name, exp15, 'match'); 
+                if ~isempty(obj.ChipCant)   
                 obj.ChipCant = char(obj.ChipCant{1});
+                end
                 % Chip box
                 exp16 = '(?<=.*)[CLXVI]\w+'; % Finds the chip number given in roman numerals
                 obj.Chipbox = regexp(obj.Name, exp16, 'match'); 
+                if ~isempty(obj.Chipbox)   
                 obj.Chipbox = char(obj.Chipbox{1});
+                end
                 % Glass
                 exp21='glass';
                 pat=regexpPattern(exp21,"IgnoreCase",true);
