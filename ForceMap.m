@@ -2310,6 +2310,8 @@ classdef ForceMap < matlab.mixin.Copyable
             
             
             %   NCurves
+            clear tline where;
+            frewind(fileID);
             B=strfind(A,'force-scan-map.indexes.max=');
             % strfind(file,string) is looking for a specific string in the file.
             fseek(fileID,B,'cof');
