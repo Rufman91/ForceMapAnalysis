@@ -136,7 +136,11 @@ classdef ForceMap < matlab.mixin.Copyable
     end
     properties
         % SMFS related 
-        MinRet % Minimum value of the 
+        MinRet % Minimum value of the
+        Substrate
+        Condition
+        ChipCant
+        Chipbox
     end
     
     methods
@@ -1091,6 +1095,68 @@ classdef ForceMap < matlab.mixin.Copyable
             MinRet(ii)=min(obj.BasedRet{ii}); 
             end
             obj.MinRet = MinRet;
+        end
+        
+        function fc_chipprop(obj)
+                 
+                % Chip number and Cantilever
+                exp15='(?<=MSNL.*)\d+(\E)'; % Finds the chip number and the cantilever
+                obj.ChipCant = regexp(obj.Name, exp15, 'match'); 
+                obj.ChipCant = char(obj.ChipCant{1});
+                % Chip box
+                exp16 = '(?<=.*)[CLXVI]\w+'; % Finds the chip number given in roman numerals
+                obj.Chipbox = regexp(obj.Name, exp16, 'match'); 
+                obj.Chipbox = char(obj.Chipbox{1});
+                % Glass
+                exp21='glass';
+                pat=regexpPattern(exp21,"IgnoreCase",true);
+                ext21=extract(obj.Name,pat);
+                % Mica
+                exp22='mica';
+                pat=regexpPattern(exp22,"IgnoreCase",true);
+                ext22=extract(obj.Name,pat);
+                % inorganic bone (Hydroxyapatite)
+                exp23='inorganic';
+                pat=regexpPattern(exp23,"IgnoreCase",true);
+                ext23=extract(obj.Name,pat);
+                % organic bone 
+                exp24='organic';
+                pat=regexpPattern(exp24,"IgnoreCase",true);
+                ext24=extract(obj.Name,pat);
+                % poly Lysine 
+                exp25='Lysine';
+                pat=regexpPattern(exp25,"IgnoreCase",true);
+                ext25=extract(obj.Name,pat);
+                % Substrate
+                if isempty(ext21)==0
+                    obj.Substrate='glass';
+                elseif isempty(ext22)==0
+                    obj.Substrate='mica';
+                elseif isempty(ext23)==0
+                    obj.Substrate='hydroxyapatite';
+                elseif isempty(ext24)==0
+                    obj.Substrate='organicBone';
+                elseif isempty(ext25)==0
+                    obj.Substrate='polyLysine';
+                else
+                    obj.Substrate=[];
+                end
+                % Milli-Q water
+                exp31='mil';
+                pat=regexpPattern(exp31,"IgnoreCase",true);
+                ext31=extract(obj.Name,pat);
+                % Acetic acid (HAc)
+                exp32='HAc';
+                pat=regexpPattern(exp32,"IgnoreCase",true);
+                ext32=extract(obj.Name,pat);
+                % Environmental conditions
+                if isempty(ext31)==0
+                    obj.Condition='milli-Q water';
+                elseif isempty(ext32)==0
+                    obj.Condition='HAc';
+                else
+                    obj.Condition='PBS';
+                end
         end
         
         function fc_print(obj) % fc ... force curve
