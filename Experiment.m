@@ -122,7 +122,7 @@ classdef Experiment < matlab.mixin.Copyable
             SPM = cell(N,1);
             ExperimentName = obj.ExperimentName;
             ExperimentFolder = obj.ExperimentFolder;
-            parfor i=1:N
+            for i=1:N
             % for i=1:N Debugging
                 if WhichFiles == 2 || WhichFiles == 0
                     TempID = sprintf('%s-%i',ExperimentName,i);
