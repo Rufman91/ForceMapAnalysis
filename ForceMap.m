@@ -137,10 +137,10 @@ classdef ForceMap < matlab.mixin.Copyable
     properties
         % SMFS related 
         MinRet % Minimum value of the
-        Substrate
-        Condition
-        ChipCant
-        Chipbox
+        Substrate       % Used substrate for the measurement 
+        EnvCond         % Environmental condition during the experiment
+        ChipCant        % AFM-Chip number and Cantilever label
+        Chipbox         % AFM-Chipbox number (in Roman numerals)
     end
     
     methods
@@ -1155,11 +1155,11 @@ classdef ForceMap < matlab.mixin.Copyable
                 ext32=extract(obj.Name,pat);
                 % Environmental conditions
                 if isempty(ext31)==0
-                    obj.Condition='milli-Q water';
+                    obj.EnvCond='milli-Q water';
                 elseif isempty(ext32)==0
-                    obj.Condition='HAc';
+                    obj.EnvCond='HAc';
                 else
-                    obj.Condition='PBS';
+                    obj.EnvCond='PBS';
                 end
         end
         

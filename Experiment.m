@@ -23,6 +23,8 @@ classdef Experiment < matlab.mixin.Copyable
         CP_CNN
         CantileverTip
         CantileverTipFlag
+        idxSubstrate
+        idxEnvCond
         
     end
     
@@ -887,6 +889,56 @@ classdef Experiment < matlab.mixin.Copyable
             end    
         end
         
+        function SMFS_print_sort_by_property(obj)
+         
+            % Change into the Folder of Interest
+            cd(obj.ExperimentFolder) % Move into the folder 
+            % Create folders for saving the produced figures
+            foldername='FM_sorted_Fig';    % Defines the folder name
+            mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
+            currpath=fullfile(obj.ExperimentFolder,foldername);
+            cd(currpath); 
+            
+            % Define the property combinations to print together
+            % Substrates
+            % Mica: 1
+            % Glass: 2
+            % Hydroxyapatite: 3
+            % Organic Bone: 4
+            % poly-Lysine: 5
+            idxMica=find(obj.idxSubstrate==1); 
+            idxGlass=find(obj.idxSubstrate==2);
+            idxApatite=find(obj.idxSubstrate==3);
+            idxOrgBone=find(obj.idxSubstrate==4);
+            idxLys=find(obj.idxSubstrate==5);
+            
+            % Environmental conditions
+            % PBS: 1
+            % milli-Q water: 2
+            % HAc: 3
+            idxPBS=find(obj.idxEnvCond==1);
+            idxWater=find(obj.idxEnvCond==2);
+            idxHAc=find(obj.idxEnvCond==3);
+            
+            % Find mututal indices
+            idxSub=idxMica;
+            idxCond=idxWater;
+
+            mutual=ismember(idxSub,idxCond);
+            mutualIdx=nonzeros(idxSub.*mutual);
+
+           
+            % Loop over the imported force maps
+            for ii=1:size(mutualIdx)
+               jj=mutualIdx(ii,1);
+               % Run the chosen functions
+               obj.FM{jj}.estimate_cp_hardsurface
+               obj.SMFS_sort_by_property
+               obj.FM{jj}.fc_print
+               obj.save_experiment        % Save immediately after each force curve
+            end   
+        end
+        
         function SMFS_selection(obj)
          
             % Change into the Folder of Interest
@@ -908,8 +960,40 @@ classdef Experiment < matlab.mixin.Copyable
                obj.save_experiment;        % Save immediately after each force curve
             end    
         end
+        
+        function SMFS_sort_by_property(obj)
+                   
+            for ii=1:obj.NumFiles
+                obj.FM{ii}.fc_chipprop
+                % Substrate
+                if isempty(obj.FM{ii}.Substrate)
+                    obj.idxSubstrate(ii,1)=0;
+                    sprintf('Unlabelled substrate property in Force Map No. %d',ii)
+                elseif isequal(obj.FM{ii}.Substrate,'mica')
+                    obj.idxSubstrate(ii,1)=1;              
+                elseif isequal(obj.FM{ii}.Substrate,'glass')
+                    obj.idxSubstrate(ii,1)=2;
+                elseif isequal(obj.FM{ii}.Substrate,'hydroxyapatite')
+                    obj.idxSubstrate(ii,1)=3;  
+                elseif isequal(obj.FM{ii}.Substrate,'organicBone')
+                    obj.idxSubstrate(ii,1)=4;
+                elseif isequal(obj.FM{ii}.Substrate,'polyLysine')
+                    obj.idxSubstrate(ii,1)=5;
+                end
+                % Environmental condition
+                if isempty(obj.FM{ii}.EnvCond)
+                    obj.idxEnvCond(ii,1)=0;
+                    sprintf('Unlabelled environmental condition property in Force Map No. %d',ii)
+                elseif isequal(obj.FM{ii}.EnvCond,'PBS')
+                    obj.idxEnvCond(ii,1)=1;              
+                elseif isequal(obj.FM{ii}.EnvCond,'milli-Q water')
+                    obj.idxEnvCond(ii,1)=2;
+                elseif isequal(obj.FM{ii}.EnvCond,'HAc')
+                    obj.idxEnvCond(ii,1)=3;                  
+                end        
+            end
+        end
     end
-    
     methods
         %%%   WARNING! %%%
         % The following methods were programmed for specific use cases
