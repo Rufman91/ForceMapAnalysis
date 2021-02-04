@@ -1172,7 +1172,7 @@ classdef ForceMap < matlab.mixin.Copyable
                 NFigures=NFigures+1;
             end    
             %% Figure loop
-            figname=strcat(obj.ID,{'-'},obj.Name);
+            figname=strcat(obj.ID,{'-'},obj.Date,{'-'},obj.Name);
             figname=char(figname);
             for ii=1:NFigures           
             % Figure    
@@ -1223,6 +1223,7 @@ classdef ForceMap < matlab.mixin.Copyable
             %% Save figures
             %%% Define the name for the figure title    
             partname=sprintf('-part%d',ii);        
+           % fullname=sprintf('%s%s',figname,partname);
             fullname=sprintf('%s%s',figname,partname);
             %%% Save the current figure in the current folder
             print(gcf,fullname,'-dpng'); 
