@@ -894,7 +894,7 @@ classdef Experiment < matlab.mixin.Copyable
             % Change into the Folder of Interest
             cd(obj.ExperimentFolder) % Move into the folder 
             % Create folders for saving the produced figures
-            foldername='FM_sorted_Fig';    % Defines the folder name
+            foldername='FM_Fig_Glass_Water';    % Defines the folder name
             mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
             currpath=fullfile(obj.ExperimentFolder,foldername);
             cd(currpath); 
@@ -921,15 +921,16 @@ classdef Experiment < matlab.mixin.Copyable
             idxHAc=find(obj.idxEnvCond==3);
             
             % Find mututal indices
-            idxSub=idxMica;
+            idxSub=idxGlass;
             idxCond=idxWater;
 
             mutual=ismember(idxSub,idxCond);
             mutualIdx=nonzeros(idxSub.*mutual);
-
+            [kk, ~]=size(mutualIdx);
+            sprintf('Number of mutual Force Maps is  %d',kk)
            
             % Loop over the imported force maps
-            for ii=1:size(mutualIdx)
+            for ii=1:kk
                jj=mutualIdx(ii,1);
                % Run the chosen functions
                obj.FM{jj}.estimate_cp_hardsurface

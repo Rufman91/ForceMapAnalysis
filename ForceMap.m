@@ -141,6 +141,7 @@ classdef ForceMap < matlab.mixin.Copyable
         EnvCond         % Environmental condition during the experiment
         ChipCant        % AFM-Chip number and Cantilever label
         Chipbox         % AFM-Chipbox number (in Roman numerals)
+        ModDate         % Modified Date is a modification of the poperty Date. Dots are removed
     end
     
     methods
@@ -1164,6 +1165,8 @@ classdef ForceMap < matlab.mixin.Copyable
         end
         
         function fc_print(obj) % fc ... force curve
+            % Remove dots in obj.Date
+            obj.ModDate=strrep(obj.Date,'.','');
             
             % Define remainder situation
             Remainder=mod(obj.NCurves,25);
@@ -1172,7 +1175,7 @@ classdef ForceMap < matlab.mixin.Copyable
                 NFigures=NFigures+1;
             end    
             %% Figure loop
-            figname=strcat(obj.ID,{'-'},obj.Date,{'-'},obj.Name);
+            figname=strcat(obj.ID,{'-'},obj.ModDate,{'-'},obj.Name);
             figname=char(figname);
             for ii=1:NFigures           
             % Figure    
