@@ -124,13 +124,25 @@ classdef Experiment < matlab.mixin.Copyable
             SPM = cell(N,1);
             ExperimentName = obj.ExperimentName;
             ExperimentFolder = obj.ExperimentFolder;
-            for i=1:N
-            % for i=1:N Debugging
-                if WhichFiles == 2 || WhichFiles == 0
-                    TempID = sprintf('%s-%i',ExperimentName,i);
-                    FM{i} = ForceMap(MapFullFile{i},ExperimentFolder,TempID);
-                elseif WhichFiles == 1 || WhichFiles == 0
-                    SPM{i} = SurfacePotentialMap();
+            if contains(struct2array(ver), 'Parallel Computing Toolbox')
+                parfor i=1:N
+                    % for i=1:N Debugging
+                    if WhichFiles == 2 || WhichFiles == 0
+                        TempID = sprintf('%s-%i',ExperimentName,i);
+                        FM{i} = ForceMap(MapFullFile{i},ExperimentFolder,TempID);
+                    elseif WhichFiles == 1 || WhichFiles == 0
+                        SPM{i} = SurfacePotentialMap();
+                    end
+                end
+            else
+                for i=1:N
+                    % for i=1:N Debugging
+                    if WhichFiles == 2 || WhichFiles == 0
+                        TempID = sprintf('%s-%i',ExperimentName,i);
+                        FM{i} = ForceMap(MapFullFile{i},ExperimentFolder,TempID);
+                    elseif WhichFiles == 1 || WhichFiles == 0
+                        SPM{i} = SurfacePotentialMap();
+                    end
                 end
             end
             
@@ -235,15 +247,26 @@ classdef Experiment < matlab.mixin.Copyable
             SPM(1:NOld) = SaveCopy.SPM;
             ExperimentName = obj.ExperimentName;
             ExperimentFolder = obj.ExperimentFolder;
-            parfor i=1:N
-                if WhichFiles == 2 || WhichFiles == 0
-                    TempID = sprintf('%s-%i',ExperimentName,NOld+i);
-                    FM{NOld+i} = ForceMap(MapFullFile{i},ExperimentFolder,TempID);
-                elseif WhichFiles == 1 || WhichFiles == 0
-                    SPM{NOld+i} = SurfacePotentialMap();
+            if contains(struct2array(ver), 'Parallel Computing Toolbox')
+                parfor i=1:N
+                    if WhichFiles == 2 || WhichFiles == 0
+                        TempID = sprintf('%s-%i',ExperimentName,NOld+i);
+                        FM{NOld+i} = ForceMap(MapFullFile{i},ExperimentFolder,TempID);
+                    elseif WhichFiles == 1 || WhichFiles == 0
+                        SPM{NOld+i} = SurfacePotentialMap();
+                    end
                 end
+            else
+                for i=1:N
+                    if WhichFiles == 2 || WhichFiles == 0
+                        TempID = sprintf('%s-%i',ExperimentName,NOld+i);
+                        FM{NOld+i} = ForceMap(MapFullFile{i},ExperimentFolder,TempID);
+                    elseif WhichFiles == 1 || WhichFiles == 0
+                        SPM{NOld+i} = SurfacePotentialMap();
+                    end
+                end
+                
             end
-            
             % Assign the objects created in the parfor loop to the
             % Experiment object
             SaveCopy.FM = FM;
