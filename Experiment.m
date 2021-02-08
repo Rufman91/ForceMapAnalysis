@@ -299,6 +299,20 @@ classdef Experiment < matlab.mixin.Copyable
             warning('Did you read the warning above?');
             catch ME
                 disp('data adding failed. restored original experiment object')
+                fclose('all')
+                cd(obj.ExperimentFolder)
+                
+                % Check for and remove any temporary folders that were
+                % created during failed file-add attempt
+                CheckDir = dir('Temp*');
+                if 0<length(CheckDir)
+                    for i=1:length(CheckDir)
+                        if CheckDir(i).isdir
+                            rmdir(CheckDir(i).name)
+                        end
+                    end
+                end
+                
                 Out = obj;
             end
             
