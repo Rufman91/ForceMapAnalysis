@@ -142,6 +142,7 @@ classdef ForceMap < matlab.mixin.Copyable
         ChipCant        % AFM-Chip number and Cantilever label
         Chipbox         % AFM-Chipbox number (in Roman numerals)
         ModDate         % Modified Date is a modification of the poperty Date. Dots are removed
+        FlagPrintSort   % 
     end
     
     methods
@@ -2553,7 +2554,8 @@ classdef ForceMap < matlab.mixin.Copyable
             obj.CPFlag.Manual = 0;
             obj.CPFlag.Old = 0;
             obj.CPFlag.CNNopt = 0;
-            obj.CPFlag.HardSurface = 0; 
+            obj.CPFlag.HardSurface = 0;
+            obj.FlagPrintSort = 0;
         end
         
         function create_dummy_force_map(obj,NSynthCurves)

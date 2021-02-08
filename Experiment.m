@@ -912,55 +912,57 @@ classdef Experiment < matlab.mixin.Copyable
             end    
         end
         
-        function SMFS_print_sort_by_property(obj)
-         
-            % Change into the Folder of Interest
+        function SMFS_print_sort(obj,StartDate,EndDate)
+         % Comment: Date format is: 'YYYY.MM.DD'
+            
+         % Change into the Folder of Interest
             cd(obj.ExperimentFolder) % Move into the folder 
-            % Create folders for saving the produced figures
-            foldername='FM_Fig_Glass_Water';    % Defines the folder name
-            mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
-            currpath=fullfile(obj.ExperimentFolder,foldername);
-            cd(currpath); 
-            
-            % Define the property combinations to print together
-            % Substrates
-            % Mica: 1
-            % Glass: 2
-            % Hydroxyapatite: 3
-            % Organic Bone: 4
-            % poly-Lysine: 5
-            idxMica=find(obj.idxSubstrate==1); 
-            idxGlass=find(obj.idxSubstrate==2);
-            idxApatite=find(obj.idxSubstrate==3);
-            idxOrgBone=find(obj.idxSubstrate==4);
-            idxLys=find(obj.idxSubstrate==5);
-            
-            % Environmental conditions
-            % PBS: 1
-            % milli-Q water: 2
-            % HAc: 3
-            idxPBS=find(obj.idxEnvCond==1);
-            idxWater=find(obj.idxEnvCond==2);
-            idxHAc=find(obj.idxEnvCond==3);
-            
-            % Find mututal indices
-            idxSub=idxGlass;
-            idxCond=idxWater;
-
-            mutual=ismember(idxSub,idxCond);
-            mutualIdx=nonzeros(idxSub.*mutual);
-            [kk, ~]=size(mutualIdx);
-            sprintf('Number of mutual Force Maps is  %d',kk)
-           
+            if nargin<2
+                StartDate='0000.00.00';
+                EndDate='2999.00.00';
+            elseif nargin<3
+                EndDate='2999.00.00';
+            end
             % Loop over the imported force maps
-            for ii=1:kk
-               jj=mutualIdx(ii,1);
+             for ii=1:obj.NumFiles
+                if obj.FM{ii}.FlagPrintSort
+                    continue
+                end
+                               
+                FMDate=split(obj.FM{ii}.Date,'.');
+                StartDateSplit=split(StartDate,'.');
+                EndDateSplit=split(EndDate,'.');
+                             
+                if ~(str2num(FMDate{1}) > str2num(StartDateSplit{1}) || ... % Verifies if the year of the FM object Date is greater than the start date
+                        (str2num(FMDate{1}) == str2num(StartDateSplit{1})... % Verifies if the year of the FM object Date is equal with the start date
+                        && str2num(FMDate{2}) > str2num(StartDateSplit{2})) || ...  % Verifies if the month of the FM object Date is greater than the start date
+                    (str2num(FMDate{1}) == str2num(StartDateSplit{1})...    
+                    &&(str2num(FMDate{2}) == str2num(StartDateSplit{2}))... % Verifies if the month of the FM object Date is equal than the start date
+                        && (str2num(FMDate{3}) >= str2num(StartDateSplit{3})))) % Verifies if the day of the FM object Date is greater than or equal with the start date
+                    continue
+                elseif ~(str2num(FMDate{1}) < str2num(EndDateSplit{1}) || ... 
+                        (str2num(FMDate{1}) == str2num(EndDateSplit{1})...
+                        && str2num(FMDate{2}) < str2num(EndDateSplit{2})) || ...
+                    (str2num(FMDate{1}) == str2num(EndDateSplit{1})...    
+                    &&(str2num(FMDate{2}) == str2num(EndDateSplit{2}))...
+                        && (str2num(FMDate{3}) <= str2num(EndDateSplit{3})))) 
+                    continue
+                end  
+                
+                StartDateMod=strrep(StartDate,'.','');
+                EndDateMod=strrep(EndDate,'.','');
+                foldername=append('FM_',obj.FM{ii}.Substrate,'_',obj.FM{ii}.EnvCond,'_',StartDateMod,'-',EndDateMod); % Defines the folder name
+                warning('off','all');
+                mkdir(foldername);
+                warning('on','all');
+                cd(foldername)         
                % Run the chosen functions
-               obj.FM{jj}.estimate_cp_hardsurface
-               obj.SMFS_sort_by_property
-               obj.FM{jj}.fc_print
-               obj.save_experiment        % Save immediately after each force curve
-            end   
+               obj.FM{ii}.estimate_cp_hardsurface      
+               obj.FM{ii}.fc_print
+               cd(obj.ExperimentFolder) % Move into the folder 
+               obj.FM{ii}.FlagPrintSort=1;
+            end 
+            %obj.save_experiment        % Save immediately after each force curve
         end
         
         function SMFS_selection(obj)
@@ -981,42 +983,11 @@ classdef Experiment < matlab.mixin.Copyable
                % Run the chosen functions
                obj.FM{ii}.estimate_cp_hardsurface
                obj.FM{ii}.fc_selection;     
-               obj.save_experiment;        % Save immediately after each force curve
+               %obj.save_experiment;        % Save immediately after each force curve
             end    
         end
         
-        function SMFS_sort_by_property(obj)
-                   
-            for ii=1:obj.NumFiles
-                obj.FM{ii}.fc_chipprop
-                % Substrate
-                if isempty(obj.FM{ii}.Substrate)
-                    obj.idxSubstrate(ii,1)=0;
-                    sprintf('Unlabelled substrate property in Force Map No. %d',ii)
-                elseif isequal(obj.FM{ii}.Substrate,'mica')
-                    obj.idxSubstrate(ii,1)=1;              
-                elseif isequal(obj.FM{ii}.Substrate,'glass')
-                    obj.idxSubstrate(ii,1)=2;
-                elseif isequal(obj.FM{ii}.Substrate,'hydroxyapatite')
-                    obj.idxSubstrate(ii,1)=3;  
-                elseif isequal(obj.FM{ii}.Substrate,'organicBone')
-                    obj.idxSubstrate(ii,1)=4;
-                elseif isequal(obj.FM{ii}.Substrate,'polyLysine')
-                    obj.idxSubstrate(ii,1)=5;
-                end
-                % Environmental condition
-                if isempty(obj.FM{ii}.EnvCond)
-                    obj.idxEnvCond(ii,1)=0;
-                    sprintf('Unlabelled environmental condition property in Force Map No. %d',ii)
-                elseif isequal(obj.FM{ii}.EnvCond,'PBS')
-                    obj.idxEnvCond(ii,1)=1;              
-                elseif isequal(obj.FM{ii}.EnvCond,'milli-Q water')
-                    obj.idxEnvCond(ii,1)=2;
-                elseif isequal(obj.FM{ii}.EnvCond,'HAc')
-                    obj.idxEnvCond(ii,1)=3;                  
-                end        
-            end
-        end
+        
     end
     methods
         %%%   WARNING! %%%
