@@ -939,14 +939,18 @@ classdef Experiment < matlab.mixin.Copyable
             end
             % Loop over the imported force maps
              for ii=1:obj.NumFiles
-                if obj.FM{ii}.FlagPrintSort
+                % Needed function
+                obj.FM{ii}.fc_chipprop
+         
+                if ~obj.FM{ii}.FlagPrintSort
+                % if obj.FM{ii}.FlagPrintSort    
                     continue
                 end
-                               
+                % Remove the dots in the dates               
                 FMDate=split(obj.FM{ii}.Date,'.');
                 StartDateSplit=split(StartDate,'.');
                 EndDateSplit=split(EndDate,'.');
-                             
+                % if conditions for the time selection (start date and end date)              
                 if ~(str2num(FMDate{1}) > str2num(StartDateSplit{1}) || ... % Verifies if the year of the FM object Date is greater than the start date
                         (str2num(FMDate{1}) == str2num(StartDateSplit{1})... % Verifies if the year of the FM object Date is equal with the start date
                         && str2num(FMDate{2}) > str2num(StartDateSplit{2})) || ...  % Verifies if the month of the FM object Date is greater than the start date
@@ -962,10 +966,11 @@ classdef Experiment < matlab.mixin.Copyable
                         && (str2num(FMDate{3}) <= str2num(EndDateSplit{3})))) 
                     continue
                 end  
-                
+                % Define variables for the folder name
+                VelocityConvert=num2str(obj.FM{ii}.Velocity*1e+9); % Convert into nm
                 StartDateMod=strrep(StartDate,'.','');
                 EndDateMod=strrep(EndDate,'.','');
-                foldername=append('FM_',obj.FM{ii}.Substrate,'_',obj.FM{ii}.EnvCond,'_',StartDateMod,'-',EndDateMod); % Defines the folder name
+                foldername=append('FM_',VelocityConvert,obj.FM{ii}.Substrate,'_',obj.FM{ii}.EnvCond,'_','_',StartDateMod,'-',EndDateMod); % Defines the folder name
                 warning('off','all');
                 mkdir(foldername);
                 warning('on','all');

@@ -1139,13 +1139,13 @@ classdef ForceMap < matlab.mixin.Copyable
                 elseif isempty(ext22)==0
                     obj.Substrate='mica';
                 elseif isempty(ext23)==0
-                    obj.Substrate='hydroxyapatite';
+                    obj.Substrate='hydAp'; % Hydroxyapatite
                 elseif isempty(ext24)==0
-                    obj.Substrate='organicBone';
+                    obj.Substrate='orgBone'; % Organic Bone
                 elseif isempty(ext25)==0
-                    obj.Substrate='polyLysine';
+                    obj.Substrate='lysine'; % poly-Lysine
                 else
-                    obj.Substrate=[];
+                    obj.Substrate='glass';
                 end
                 % Milli-Q water
                 exp31='mil';
@@ -1157,11 +1157,11 @@ classdef ForceMap < matlab.mixin.Copyable
                 ext32=extract(obj.Name,pat);
                 % Environmental conditions
                 if isempty(ext31)==0
-                    obj.EnvCond='milli-Q water';
+                    obj.EnvCond='Water'; % Milli-Q water
                 elseif isempty(ext32)==0
-                    obj.EnvCond='HAc';
+                    obj.EnvCond='HAc'; % Acetic acid
                 else
-                    obj.EnvCond='PBS';
+                    obj.EnvCond='PBS'; % Phosphate buffered saline
                 end
         end
         
