@@ -25,6 +25,7 @@ classdef Experiment < matlab.mixin.Copyable
         CantileverTipFlag
         idxSubstrate
         idxEnvCond
+        SMFSFlag
         
     end
     
@@ -906,17 +907,25 @@ classdef Experiment < matlab.mixin.Copyable
         
         function SMFS_presorting(obj)
             % SMFS_presorting: This function allows to conduct an automated presorting of the force curves 
-            % Loop over the imported force maps
+            % The function flags force curves and whole force maps that are
+            % non-functionalize
+            
+            % Needed function
             obj.preprocessing
+            % Loop over the imported force maps
             for ii=1:obj.NumFiles
             obj.FM{ii}.base_and_tilt
             obj.FM{ii}.estimate_cp_hardsurface
             obj.FM{ii}.fc_based_ret_correction  
             obj.FM{ii}.fc_selection_procedure
+                if nnz(obj.FM{ii}.SMFSFlag.Min)<20 % Only if more than 20 force curves fulfil the citeria the whole force map is considered successfully functionalized
+                    obj.SMFSFlag(ii)=0;
+                else
+                    obj.SMFSFlag(ii)=1;
+                end
             end
         end
-        
-        
+               
         function SMFS_print(obj)
             % SMFS_print: A function to simply plot all force curves of all
             % force maps loaded without any selection taking place 
