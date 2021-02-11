@@ -1209,6 +1209,9 @@ classdef ForceMap < matlab.mixin.Copyable
         end
         
         function fc_print(obj) % fc ... force curve
+            % fc_print: A function to simply plot all force curves of a
+            % force map without any selection taking place
+            
             % Remove dots in obj.Date
             obj.ModDate=strrep(obj.Date,'.','');
             
@@ -1254,7 +1257,7 @@ classdef ForceMap < matlab.mixin.Copyable
                     hold on
                     grid on
                     plot(obj.THApp{kk}-obj.CP_HardSurface(kk,1),obj.BasedApp{kk});
-                    plot(obj.THRet{kk}-obj.CP_HardSurface(kk,1),obj.BasedRet{kk});
+                    plot(obj.THRet{kk}-obj.CP_HardSurface(kk,1),obj.BasedRetCorr{kk});
                     line([x100 x100], ylim,'Color','k'); % Draws a vertical line                  
                     line([x500 x500], ylim,'Color','k'); % Draws a vertical line
                     % Title for each Subplot

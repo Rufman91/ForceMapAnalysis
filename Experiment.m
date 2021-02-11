@@ -918,7 +918,9 @@ classdef Experiment < matlab.mixin.Copyable
         
         
         function SMFS_print(obj)
-         
+            % SMFS_print: A function to simply plot all force curves of all
+            % force maps loaded without any selection taking place 
+            
             % Change into the Folder of Interest
             cd(obj.ExperimentFolder) % Move into the folder 
             % Create folders for saving the produced figures
@@ -940,7 +942,10 @@ classdef Experiment < matlab.mixin.Copyable
         end
         
         function SMFS_print_sort(obj,StartDate,EndDate)
-         % Comment: Date format is: 'YYYY.MM.DD'
+            % SMFS_print_sort: A function to plot all force curves of all
+            % force maps sorted by different properties 
+            
+            % Comment: Date format is: 'YYYY.MM.DD'
             
          % Change into the Folder of Interest
             cd(obj.ExperimentFolder) % Move into the folder 
