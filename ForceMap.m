@@ -142,7 +142,8 @@ classdef ForceMap < matlab.mixin.Copyable
         ChipCant        % AFM-Chip number and Cantilever label
         Chipbox         % AFM-Chipbox number (in Roman numerals)
         ModDate         % Modified Date is a modification of the poperty Date. Dots are removed
-        FlagPrintSort   % 
+        SMFSFlag        %
+        BasedRetCorr    % BasedRet data corrected
     end
     
     methods
@@ -1099,6 +1100,48 @@ classdef ForceMap < matlab.mixin.Copyable
             obj.MinRet = MinRet;
         end
         
+        function fc_based_ret_correction(obj,DataShare)  
+
+        if nargin <2
+            DataShare=0.05; % 5%
+        end
+        % loop over all force curves  
+        for kk=1:100
+            DataPts=size(obj.BasedApp{kk}); % Determine the quantity of data points in the force curve 
+            LimitIdx=round(DataPts(1)*DataShare); % Determine the corresponidng index
+            CorrMean=mean(abs(obj.BasedApp{kk}(1:LimitIdx+1,1))-abs(obj.BasedRet{kk}(end-LimitIdx:end,1))); % Calculate the mean of the difference data
+            obj.BasedRetCorr{kk}=obj.BasedRet{kk}-CorrMean; % Correct the BasedRet data with the mean of the correction data
+        end        
+        % %% Appendix
+        % close all
+        % % Define variables
+        % kk=1
+        % x100=-100e-9; % Defines 100nm
+        % x500=-500e-9; % Defines 500nm
+        % % Graphical preview
+        % fig=gcf;
+        % fig.Units='normalized'; % changes to normalized unit settings, necessary to receive the full screen size in the next line
+        % fig.Color='white'; % changes the background color of the figure
+        % fig.OuterPosition=[0.5 0 0.5 1];% changes the size of the figure to half screen
+        % fig.PaperOrientation='landscape';
+        % grid on
+        % hold on
+        % % "Origin" data
+        % plot(a.FM{1}.THApp{kk}-a.FM{1}.CP_HardSurface(kk,1),a.FM{1}.BasedApp{kk},'b');
+        % plot(a.FM{1}.THRet{kk}-a.FM{1}.CP_HardSurface(kk,1),a.FM{1}.BasedRet{kk},'r');
+        % % Retention data corrected
+        % plot(a.FM{1}.THRet{kk}-a.FM{1}.CP_HardSurface(kk,1),a.FM{ii}.BasedRetCorr{kk},'g');
+        % % DataShare part of the data
+        % plot(a.FM{1}.THApp{kk}(1:LimitIdx+1,1)-a.FM{1}.CP_HardSurface(kk,1),a.FM{1}.BasedApp{kk}(1:LimitIdx+1,1),'y');
+        % plot(a.FM{1}.THRet{kk}(end-LimitIdx:end,1)-a.FM{1}.CP_HardSurface(kk,1),a.FM{1}.BasedRet{kk}(end-LimitIdx:end,1),'m');
+        % % Markers
+        % plot(a.FM{1}.THRet{kk}(ThreshIdx,1)-a.FM{1}.CP_HardSurface(kk,1),a.FM{1}.BasedRet{kk}(ThreshIdx,1),'kx','MarkerSize',20);
+        % plot(a.FM{1}.THApp{kk}(ThreshIdx,1)-a.FM{1}.CP_HardSurface(kk,1),a.FM{1}.BasedApp{kk}(ThreshIdx,1),'mx','MarkerSize',20);
+        % Distances lines
+        % line([x100 x100], ylim,'Color','k'); % Draws a vertical line
+        % line([x500 x500], ylim,'Color','k'); % Draws a vertical line
+        end
+        
         function fc_chipprop(obj)
                  
                 % Chip number and Cantilever
@@ -1205,7 +1248,7 @@ classdef ForceMap < matlab.mixin.Copyable
                     kk=jj+25*(ii-1);
                     %%% Define some variables
                     x100=-100e-9; % Defines 100nm
-                    x500=-500e-9; % Defines 100nm
+                    x500=-500e-9; % Defines 500nm
                     % Plot tile
                     nexttile
                     hold on
@@ -1408,10 +1451,50 @@ classdef ForceMap < matlab.mixin.Copyable
             end
         close Figure 1 Figure 2 Figure 3 Figure 4
         end
-
-       
         
-    end    
+        function fc_selection_procedure(obj,ThreshholdDist,ThreshValue)
+
+            if nargin <2
+                ThreshholdDist=50e-9;  % 50 nm
+                ThreshValue=50e-12;    % 50 pN
+            elseif nargin<3
+                ThreshValue=50e-12;    % 50 pN
+            end
+            % loop over all force curves
+            for kk=1:100
+            % Determine the index corresponding to the threshhold distance
+            ThreshDist=abs(obj.THRet{kk}-obj.CP_HardSurface(kk,1)+ThreshholdDist);
+            [~, ThreshIdx]=min(ThreshDist);
+            % Check if the force curve is selected 
+                if (obj.BasedApp{kk}(ThreshIdx)-obj.BasedRetCorr{kk}(ThreshIdx))>ThreshValue
+                    obj.SMFSFlag.Min(kk)=1;
+                else
+                    obj.SMFSFlag.Min(kk)=0;
+                end
+            end           
+%             %% Appendix
+%             close all
+%             % Define variables
+%             kk=1
+%             x100=-100e-9; % Defines 100nm
+%             x500=-500e-9; % Defines 500nm
+%             % Graphical preview
+%             fig=gcf;
+%             fig.Units='normalized'; % changes to normalized unit settings, necessary to receive the full screen size in the next line
+%             fig.Color='white'; % changes the background color of the figure
+%             fig.OuterPosition=[0.5 0 0.5 1];% changes the size of the figure to half screen
+%             fig.PaperOrientation='landscape';
+%             grid on
+%             hold on
+%             plot(obj.FM{1}.THApp{kk}-obj.FM{1}.CP_HardSurface(kk,1),obj.FM{1}.BasedApp{kk},'b');
+%             plot(obj.FM{1}.THRet{kk}-obj.FM{1}.CP_HardSurface(kk,1),obj.FM{1}.BasedRet{kk},'r'); 
+%             plot(obj.FM{1}.THRet{kk}(ThreshIdx,1)-obj.FM{1}.CP_HardSurface(kk,1),obj.FM{1}.BasedRet{kk}(ThreshIdx,1),'kx','MarkerSize',20);
+%             line([x100 x100], ylim,'Color','k'); % Draws a vertical line                  
+%             line([x500 x500], ylim,'Color','k'); % Draws a vertical line      
+        end
+       
+   end  
+        
     methods (Static)
         % Auxiliary methods
         
@@ -2554,8 +2637,11 @@ classdef ForceMap < matlab.mixin.Copyable
             obj.CPFlag.Manual = 0;
             obj.CPFlag.Old = 0;
             obj.CPFlag.CNNopt = 0;
-            obj.CPFlag.HardSurface = 0;
-            obj.FlagPrintSort = 0;
+            obj.CPFlag.HardSurface = 0;            
+            % SMFS
+            obj.SMFSFlag.Min=zeros(1,obj.NCurves);
+            obj.SMFSFlag.Length=zeros(1,obj.NCurves);  
+
         end
         
         function create_dummy_force_map(obj,NSynthCurves)

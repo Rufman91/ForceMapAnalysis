@@ -904,6 +904,19 @@ classdef Experiment < matlab.mixin.Copyable
             obj.save_experiment
         end
         
+        function SMFS_presorting(obj)
+            % SMFS_presorting: This function allows to conduct an automated presorting of the force curves 
+            % Loop over the imported force maps
+            obj.preprocessing
+            for ii=1:obj.NumFiles
+            obj.FM{ii}.base_and_tilt
+            obj.FM{ii}.estimate_cp_hardsurface
+            obj.FM{ii}.fc_based_ret_correction  
+            obj.FM{ii}.fc_selection_procedure
+            end
+        end
+        
+        
         function SMFS_print(obj)
          
             % Change into the Folder of Interest
@@ -922,7 +935,7 @@ classdef Experiment < matlab.mixin.Copyable
                % Run the chosen functions
                obj.FM{ii}.estimate_cp_hardsurface
                obj.FM{ii}.fc_print;     
-               obj.save_experiment;        % Save immediately after each force curve
+             %  obj.save_experiment;        % Save immediately after each force curve
             end    
         end
         
@@ -970,7 +983,7 @@ classdef Experiment < matlab.mixin.Copyable
                 VelocityConvert=num2str(obj.FM{ii}.Velocity*1e+9); % Convert into nm
                 StartDateMod=strrep(StartDate,'.','');
                 EndDateMod=strrep(EndDate,'.','');
-                foldername=append('FM_',VelocityConvert,obj.FM{ii}.Substrate,'_',obj.FM{ii}.EnvCond,'_','_',StartDateMod,'-',EndDateMod); % Defines the folder name
+                foldername=append('FM_',VelocityConvert,'_',obj.FM{ii}.Substrate,'_',obj.FM{ii}.EnvCond,'_','_',StartDateMod,'-',EndDateMod); % Defines the folder name
                 warning('off','all');
                 mkdir(foldername);
                 warning('on','all');
