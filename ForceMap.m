@@ -1100,16 +1100,20 @@ classdef ForceMap < matlab.mixin.Copyable
             obj.MinRet = MinRet;
         end
         
-        function fc_based_ret_correction(obj,DataShare)  
-
+        function fc_based_ret_correction(obj,DataShareStart,DataShareEnd)  
+            % fc_based_ret_correction: A function to correct for an AFM
+            % based baseline deviation between the approach and retraction
+            % data
         if nargin <2
-            DataShare=0.05; % 5%
+            DataShareStart=0.05; % 5%
+            DataShareEnd=0.1; % 1%
         end
         % loop over all force curves  
         for kk=1:100
             DataPts=size(obj.BasedApp{kk}); % Determine the quantity of data points in the force curve 
-            LimitIdx=round(DataPts(1)*DataShare); % Determine the corresponidng index
-            CorrMean=mean(abs(obj.BasedApp{kk}(1:LimitIdx+1,1))-abs(obj.BasedRet{kk}(end-LimitIdx:end,1))); % Calculate the mean of the difference data
+            LimitIdx1=round(DataPts(1)*DataShareStart); % Determine the corresponidng index
+            LimitIdx2=round(DataPts(1)*DataShareEnd);
+            CorrMean=mean(abs(obj.BasedApp{kk}(LimitIdx1:LimitIdx2,1))-abs(obj.BasedRet{kk}(DataPts(1)-LimitIdx2:DataPts(1)-LimitIdx1,1))); % Calculate the mean of the difference data
             obj.BasedRetCorr{kk}=obj.BasedRet{kk}-CorrMean; % Correct the BasedRet data with the mean of the correction data
         end        
         % %% Appendix
@@ -1132,8 +1136,8 @@ classdef ForceMap < matlab.mixin.Copyable
         % % Retention data corrected
         % plot(a.FM{1}.THRet{kk}-a.FM{1}.CP_HardSurface(kk,1),a.FM{ii}.BasedRetCorr{kk},'g');
         % % DataShare part of the data
-        % plot(a.FM{1}.THApp{kk}(1:LimitIdx+1,1)-a.FM{1}.CP_HardSurface(kk,1),a.FM{1}.BasedApp{kk}(1:LimitIdx+1,1),'y');
-        % plot(a.FM{1}.THRet{kk}(end-LimitIdx:end,1)-a.FM{1}.CP_HardSurface(kk,1),a.FM{1}.BasedRet{kk}(end-LimitIdx:end,1),'m');
+        % plot(a.FM{1}.THApp{kk}(LimitIdx1:LimitIdx2,1)-a.FM{1}.CP_HardSurface(kk,1),a.FM{1}.BasedApp{kk}(LimitIdx1:LimitIdx2,1),'y');
+        % plot(a.FM{1}.THRet{kk}(DataPts(1)-LimitIdx2:DataPts(1)-LimitIdx1,1)-a.FM{1}.CP_HardSurface(kk,1),a.FM{1}.BasedRet{kk}(DataPts(1)-LimitIdx2:DataPts(1)-LimitIdx1,1),'m');
         % % Markers
         % plot(a.FM{1}.THRet{kk}(ThreshIdx,1)-a.FM{1}.CP_HardSurface(kk,1),a.FM{1}.BasedRet{kk}(ThreshIdx,1),'kx','MarkerSize',20);
         % plot(a.FM{1}.THApp{kk}(ThreshIdx,1)-a.FM{1}.CP_HardSurface(kk,1),a.FM{1}.BasedApp{kk}(ThreshIdx,1),'mx','MarkerSize',20);
