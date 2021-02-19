@@ -913,34 +913,43 @@ classdef Experiment < matlab.mixin.Copyable
             % Needed function
             obj.preprocessing
             % Loop over the imported force maps
-            for ii=1:obj.NumFiles
-            obj.FM{ii}.base_and_tilt
-            obj.FM{ii}.estimate_cp_hardsurface
-            obj.FM{ii}.fc_based_ret_correction  
-            obj.FM{ii}.fc_selection_procedure
-                if nnz(obj.FM{ii}.SMFSFlag.Min)<20 % Only if more than 20 force curves fulfil the citeria the whole force map is considered successfully functionalized
-                    obj.SMFSFlag(ii)=0;
-                else
-                    obj.SMFSFlag(ii)=1;
-                end
+            %for ii=1:obj.NumFiles
+            for ii=46:obj.NumFiles % Debugging
+            % Command window output
+                sprintf('Force Map No. %d of %d',ii,obj.NumFiles) % Gives current Force Map Position
+                obj.FM{ii}.base_and_tilt
+                obj.FM{ii}.estimate_cp_hardsurface
+                obj.FM{ii}.fc_based_ret_correction  
+                obj.FM{ii}.fc_selection_procedure
+                    if nnz(obj.FM{ii}.SMFSFlag.Min)<20 % Only if more than 20 force curves fulfil the citeria the whole force map is considered successfully functionalized
+                        obj.SMFSFlag(ii)=0;
+                    else
+                        obj.SMFSFlag(ii)=1;
+                    end
             end
         end
                
         function SMFS_print(obj)
             % SMFS_print: A function to simply plot all force curves of all
-            % force maps loaded without any selection taking place 
+            % force maps loaded and calssified based on the SMFS Flag 
             
             % Change into the Folder of Interest
             cd(obj.ExperimentFolder) % Move into the folder 
             % Create folders for saving the produced figures
-            foldername='FM_raw_Fig';    % Defines the folder name
+            % foldername='FM_raw_Fig';    % Defines the folder name
+            foldername='FM_presort0';    % Defines the folder name
             mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
             currpath=fullfile(obj.ExperimentFolder,foldername);
             cd(currpath); 
             
             % Loop over the imported force maps
-            for ii=1:obj.NumFiles
-            %for ii=3:5 % Debugging
+            %for ii=1:obj.NumFiles
+            for ii=88:obj.NumFiles % Debugging
+            % Presort condition 
+                %if ~obj.SMFSFlag(ii)   % Selects all flagged 1 force maps
+                if obj.SMFSFlag(ii)     % Selects all flagged 0 force maps
+                    continue
+                end
                % Command window output
                sprintf('Force Map No. %d of %d',ii,obj.NumFiles) % Gives current Force Map Position
                % Run the chosen functions

@@ -1254,7 +1254,7 @@ classdef ForceMap < matlab.mixin.Copyable
                     % Tile jj
                     kk=jj+25*(ii-1);
                     %%% Define some variables
-                    x100=-100e-9; % Defines 100nm
+                    x50=-50e-9; % Defines 100nm
                     x500=-500e-9; % Defines 500nm
                     % Plot tile
                     nexttile
@@ -1262,7 +1262,7 @@ classdef ForceMap < matlab.mixin.Copyable
                     grid on
                     plot(obj.THApp{kk}-obj.CP_HardSurface(kk,1),obj.BasedApp{kk});
                     plot(obj.THRet{kk}-obj.CP_HardSurface(kk,1),obj.BasedRetCorr{kk});
-                    line([x100 x100], ylim,'Color','k'); % Draws a vertical line                  
+                    line([x50 x50], ylim,'Color','k'); % Draws a vertical line                  
                     line([x500 x500], ylim,'Color','k'); % Draws a vertical line
                     % Title for each Subplot
                     ti=title(sprintf('%i',kk),'Color','k');                                     
@@ -1460,7 +1460,11 @@ classdef ForceMap < matlab.mixin.Copyable
         end
         
         function fc_selection_procedure(obj,ThreshholdDist,ThreshValue)
-
+            % fc_selection_procedure: A function to distinguish between
+            % force curves that fulfil or do not fulfil the logical
+            % statement
+            % SMFSFlag.Min = 0:  Force curves indicate a naked tip
+            % SMFSFlag.Min = 1:  Force curves indicate a functionalized tip
             if nargin <2
                 ThreshholdDist=50e-9;  % 50 nm
                 ThreshValue=50e-12;    % 50 pN
