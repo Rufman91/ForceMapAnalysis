@@ -1459,22 +1459,22 @@ classdef ForceMap < matlab.mixin.Copyable
         close Figure 1 Figure 2 Figure 3 Figure 4
         end
         
-        function fc_selection_procedure(obj,ThreshholdDist,ThreshValue)
+        function fc_selection_procedure(obj,ThresholdDist,ThreshValue)
             % fc_selection_procedure: A function to distinguish between
             % force curves that fulfil or do not fulfil the logical
             % statement
             % SMFSFlag.Min = 0:  Force curves indicate a naked tip
             % SMFSFlag.Min = 1:  Force curves indicate a functionalized tip
             if nargin <2
-                ThreshholdDist=50e-9;  % 50 nm
+                ThresholdDist=50e-9;  % 50 nm
                 ThreshValue=50e-12;    % 50 pN
             elseif nargin<3
                 ThreshValue=50e-12;    % 50 pN
             end
             % loop over all force curves
             for kk=1:100
-            % Determine the index corresponding to the threshhold distance
-            ThreshDist=abs(obj.THRet{kk}-obj.CP_HardSurface(kk,1)+ThreshholdDist);
+            % Determine the index corresponding to the threshold distance
+            ThreshDist=abs(obj.THRet{kk}-obj.CP_HardSurface(kk,1)+ThresholdDist);
             [~, ThreshIdx]=min(ThreshDist);
             % Check if the force curve is selected 
                 if (obj.BasedApp{kk}(ThreshIdx)-obj.BasedRetCorr{kk}(ThreshIdx))>ThreshValue

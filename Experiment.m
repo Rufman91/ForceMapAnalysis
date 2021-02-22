@@ -26,6 +26,7 @@ classdef Experiment < matlab.mixin.Copyable
         idxSubstrate
         idxEnvCond
         SMFSFlag
+        SMFSFlagPrint
         
     end
     
@@ -946,8 +947,8 @@ classdef Experiment < matlab.mixin.Copyable
             %for ii=1:obj.NumFiles
             for ii=88:obj.NumFiles % Debugging
             % Presort condition 
-                %if ~obj.SMFSFlag(ii)   % Selects all flagged 1 force maps
-                if obj.SMFSFlag(ii)     % Selects all flagged 0 force maps
+                if ~obj.SMFSFlag(ii)   % Selects all flagged 1 force maps
+                %if obj.SMFSFlag(ii)     % Selects all flagged 0 force maps
                     continue
                 end
                % Command window output
@@ -978,8 +979,8 @@ classdef Experiment < matlab.mixin.Copyable
                 % Needed function
                 obj.FM{ii}.fc_chipprop
          
-                if ~obj.FM{ii}.FlagPrintSort
-                % if obj.FM{ii}.FlagPrintSort    
+                %if ~obj.SMFSFlag(ii)     % Selects all flagged 1 force maps
+                if obj.SMFSFlag(ii)     % Selects all flagged 0 force maps
                     continue
                 end
                 % Remove the dots in the dates               
@@ -1003,11 +1004,12 @@ classdef Experiment < matlab.mixin.Copyable
                     continue
                 end  
                 % Define variables for the folder name
+                SMFSFlagConvert=num2str(obj.SMFSFlag(ii));
                 VelocityConvert=num2str(obj.FM{ii}.Velocity*1e+9); % Convert into nm
                 StartDateMod=strrep(StartDate,'.','');
                 EndDateMod=strrep(EndDate,'.','');
-                foldername=append('FM_',VelocityConvert,'_',obj.FM{ii}.Substrate,'_',obj.FM{ii}.EnvCond,'_','_',StartDateMod,'-',EndDateMod); % Defines the folder name
-                warning('off','all');
+                foldername=append('FM_Flag',SMFSFlagConvert,'_',VelocityConvert,'_',obj.FM{ii}.Substrate,'_',obj.FM{ii}.EnvCond,'_',StartDateMod,'-',EndDateMod); % Defines the folder name
+                warning('off','all'); % To not showing the warning that the same folder is created each loop
                 mkdir(foldername);
                 warning('on','all');
                 cd(foldername)         
@@ -1015,7 +1017,69 @@ classdef Experiment < matlab.mixin.Copyable
                obj.FM{ii}.estimate_cp_hardsurface      
                obj.FM{ii}.fc_print
                cd(obj.ExperimentFolder) % Move into the folder 
-               obj.FM{ii}.FlagPrintSort=1;
+               obj.SMFSFlagPrint(ii)=1;               
+            end 
+            %obj.save_experiment        % Save immediately after each force curve
+        end
+        
+        function SMFS_print_sort_cantilever(obj,StartDate,EndDate)
+            % SMFS_print_sort: A function to plot all force curves of all
+            % force maps sorted by different properties 
+            
+            % Comment: Date format is: 'YYYY.MM.DD'
+            
+         % Change into the Folder of Interest
+            cd(obj.ExperimentFolder) % Move into the folder 
+            if nargin<2
+                StartDate='0000.00.00';
+                EndDate='2999.00.00';
+            elseif nargin<3
+                EndDate='2999.00.00';
+            end
+            % Loop over the imported force maps
+             for ii=1:obj.NumFiles
+                % Needed function
+                obj.FM{ii}.fc_chipprop
+         
+                if ~obj.SMFSFlag(ii)     % Selects all flagged 1 force maps
+                %if obj.SMFSFlag(ii)     % Selects all flagged 0 force maps
+                    continue
+                end
+                % Remove the dots in the dates               
+                FMDate=split(obj.FM{ii}.Date,'.');
+                StartDateSplit=split(StartDate,'.');
+                EndDateSplit=split(EndDate,'.');
+                % if conditions for the time selection (start date and end date)              
+                if ~(str2num(FMDate{1}) > str2num(StartDateSplit{1}) || ... % Verifies if the year of the FM object Date is greater than the start date
+                        (str2num(FMDate{1}) == str2num(StartDateSplit{1})... % Verifies if the year of the FM object Date is equal with the start date
+                        && str2num(FMDate{2}) > str2num(StartDateSplit{2})) || ...  % Verifies if the month of the FM object Date is greater than the start date
+                    (str2num(FMDate{1}) == str2num(StartDateSplit{1})...    
+                    &&(str2num(FMDate{2}) == str2num(StartDateSplit{2}))... % Verifies if the month of the FM object Date is equal than the start date
+                        && (str2num(FMDate{3}) >= str2num(StartDateSplit{3})))) % Verifies if the day of the FM object Date is greater than or equal with the start date
+                    continue
+                elseif ~(str2num(FMDate{1}) < str2num(EndDateSplit{1}) || ... 
+                        (str2num(FMDate{1}) == str2num(EndDateSplit{1})...
+                        && str2num(FMDate{2}) < str2num(EndDateSplit{2})) || ...
+                    (str2num(FMDate{1}) == str2num(EndDateSplit{1})...    
+                    &&(str2num(FMDate{2}) == str2num(EndDateSplit{2}))...
+                        && (str2num(FMDate{3}) <= str2num(EndDateSplit{3})))) 
+                    continue
+                end  
+                % Define variables for the folder name
+                SMFSFlagConvert=num2str(obj.SMFSFlag(ii));
+                StartDateMod=strrep(StartDate,'.','');
+                EndDateMod=strrep(EndDate,'.','');
+                %ChipCantConvert=nume2str(obj.FM{ii}.ChipCant);
+                foldername=append('FM_Flag',SMFSFlagConvert,'_',obj.FM{ii}.ChipCant,'_',StartDateMod,'-',EndDateMod); % Defines the folder name
+                warning('off','all'); % To not showing the warning that the same folder is created each loop
+                mkdir(foldername);
+                warning('on','all');
+                cd(foldername)         
+               % Run the chosen functions
+               obj.FM{ii}.estimate_cp_hardsurface      
+               obj.FM{ii}.fc_print
+               cd(obj.ExperimentFolder) % Move into the folder 
+               obj.SMFSFlagPrint(ii)=1;               
             end 
             %obj.save_experiment        % Save immediately after each force curve
         end
