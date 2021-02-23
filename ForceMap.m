@@ -18,7 +18,7 @@ classdef ForceMap < matlab.mixin.Copyable
     % to conduct an operation (a base fit in this case) on the force map or
     % >> FM.TipRadius;
     % to get a class parameter of this force map (the tip radius of the used cantilever)
-    
+    % TESTEST
     properties
         % Properties shared for the whole Force Map. All data is given SI
         % units otherwise it would be stated separately 
