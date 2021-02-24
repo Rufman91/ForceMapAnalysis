@@ -1149,14 +1149,14 @@ classdef ForceMap < matlab.mixin.Copyable
         function fc_chipprop(obj)
                  
                 % Chip number and Cantilever
-                exp15='(?<=MSNL.*)\d+(\E)'; % Finds the chip number and the cantilever
-                obj.ChipCant = regexp(obj.Name, exp15, 'match'); 
+                exp15='(?!10)\d+\w{1}'; % Finds the chip number and the cantilever   
+                obj.ChipCant = regexp(obj.Name, exp15, 'match','once'); 
                 if ~isempty(obj.ChipCant)   
                 obj.ChipCant = char(obj.ChipCant{1});
                 end
                 % Chip box
-                exp16 = '(?<=.*)[CLXVI]\w+'; % Finds the chip number given in roman numerals
-                obj.Chipbox = regexp(obj.Name, exp16, 'match'); 
+                exp16 = '(?!L)[CLXVI]+'; % Finds the chip number given in roman numerals 
+                obj.Chipbox = regexp(obj.Name, exp16, 'match','once'); 
                 if ~isempty(obj.Chipbox)   
                 obj.Chipbox = char(obj.Chipbox{1});
                 end
@@ -1225,9 +1225,12 @@ classdef ForceMap < matlab.mixin.Copyable
             if Remainder ~= 0
                 NFigures=NFigures+1;
             end    
-            %% Figure loop
-            figname=strcat(obj.ID,{'-'},obj.ModDate,{'-'},obj.Name);
+            % Define variables for the figure name
+            VelocityConvert=num2str(obj.Velocity*1e+9); % Convert into nm
+            %figname=strcat(obj.ID,{'-'},obj.ModDate,{'-'},obj.Velocity,{'-'},obj.Name);
+            figname=strcat(obj.ID,{'-'},obj.ModDate,{'-'},VelocityConvert,{'-'},obj.Substrate,{'-'},obj.EnvCond,{'-'},obj.Chipbox,{'-'},obj.ChipCant);
             figname=char(figname);
+            %% Figure loop
             for ii=1:NFigures           
             % Figure    
             h_fig=figure(ii);
@@ -1276,7 +1279,7 @@ classdef ForceMap < matlab.mixin.Copyable
 
             %% Save figures
             %%% Define the name for the figure title    
-            partname=sprintf('-part%d',ii);        
+            partname=sprintf('-p%d',ii);        
            % fullname=sprintf('%s%s',figname,partname);
             fullname=sprintf('%s%s',figname,partname);
             %%% Save the current figure in the current folder
@@ -1293,8 +1296,9 @@ classdef ForceMap < matlab.mixin.Copyable
             if Remainder ~= 0
                 NFigures=NFigures+1;
             end    
-            %% Figure loop
-            figname=strcat(obj.ID,{'-'},obj.Name);
+            %% Figure loop          
+            %figname=strcat(obj.ID,{'-'},obj.ModDate,{'-'},obj.Velocity,{'-'},obj.Name);
+            figname=strcat(obj.ID,{'-'},obj.ModDate,{'-'},obj.Velocity,{'-'},obj.Substrate,{'-'},obj.EnvCond,{'-'},obj.Chipbox,{'-'},obj.ChipCant);
             figname=char(figname);
             for ii=1:NFigures           
             % Figure    
@@ -1451,7 +1455,7 @@ classdef ForceMap < matlab.mixin.Copyable
 
             %% Save figures
             %%% Define the name for the figure title    
-            partname=sprintf('-part%d',ii);        
+            partname=sprintf('-p%d',ii);        
             fullname=sprintf('%s%s',figname,partname);
             %%% Save the current figure in the current folder
             print(gcf,fullname,'-dpng'); 

@@ -914,8 +914,8 @@ classdef Experiment < matlab.mixin.Copyable
             % Needed function
             obj.preprocessing
             % Loop over the imported force maps
-            %for ii=1:obj.NumFiles
-            for ii=46:obj.NumFiles % Debugging
+            for ii=1:obj.NumFiles
+            %for ii=46:obj.NumFiles % Debugging
             % Command window output
                 sprintf('Force Map No. %d of %d',ii,obj.NumFiles) % Gives current Force Map Position
                 obj.FM{ii}.base_and_tilt
@@ -1040,11 +1040,7 @@ classdef Experiment < matlab.mixin.Copyable
              for ii=1:obj.NumFiles
                 % Needed function
                 obj.FM{ii}.fc_chipprop
-         
-                if ~obj.SMFSFlag(ii)     % Selects all flagged 1 force maps
-                %if obj.SMFSFlag(ii)     % Selects all flagged 0 force maps
-                    continue
-                end
+                        
                 % Remove the dots in the dates               
                 FMDate=split(obj.FM{ii}.Date,'.');
                 StartDateSplit=split(StartDate,'.');
@@ -1068,8 +1064,7 @@ classdef Experiment < matlab.mixin.Copyable
                 % Define variables for the folder name
                 SMFSFlagConvert=num2str(obj.SMFSFlag(ii));
                 StartDateMod=strrep(StartDate,'.','');
-                EndDateMod=strrep(EndDate,'.','');
-                %ChipCantConvert=nume2str(obj.FM{ii}.ChipCant);
+                EndDateMod=strrep(EndDate,'.','');                
                 foldername=append('FM_Flag',SMFSFlagConvert,'_',obj.FM{ii}.ChipCant,'_',StartDateMod,'-',EndDateMod); % Defines the folder name
                 warning('off','all'); % To not showing the warning that the same folder is created each loop
                 mkdir(foldername);
@@ -1078,8 +1073,7 @@ classdef Experiment < matlab.mixin.Copyable
                % Run the chosen functions
                obj.FM{ii}.estimate_cp_hardsurface      
                obj.FM{ii}.fc_print
-               cd(obj.ExperimentFolder) % Move into the folder 
-               obj.SMFSFlagPrint(ii)=1;               
+               cd(obj.ExperimentFolder) % Move into the folder                           
             end 
             %obj.save_experiment        % Save immediately after each force curve
         end
