@@ -906,6 +906,17 @@ classdef Experiment < matlab.mixin.Copyable
             obj.save_experiment
         end
         
+        function SMFS_preprocessing(obj)
+            % SMFS_preprocessing: A function to run a bundle of other 
+            % typically required functions for further analysis
+            %obj.preprocessing
+            % force map loop
+            %for ii=1:obj.NumFiles
+            for ii=270    
+                obj.FM{ii}.fc_chipprop
+            end
+        end
+                
         function SMFS_presorting(obj)
             % SMFS_presorting: This function allows to conduct an automated presorting of the force curves 
             % The function flags force curves and whole force maps that are
@@ -1065,7 +1076,8 @@ classdef Experiment < matlab.mixin.Copyable
                 SMFSFlagConvert=num2str(obj.SMFSFlag(ii));
                 StartDateMod=strrep(StartDate,'.','');
                 EndDateMod=strrep(EndDate,'.','');                
-                foldername=append('FM_Flag',SMFSFlagConvert,'_',obj.FM{ii}.ChipCant,'_',StartDateMod,'-',EndDateMod); % Defines the folder name
+                %foldername=append('FM_Flag',SMFSFlagConvert,'_',obj.FM{ii}.ChipCant,'_',StartDateMod,'-',EndDateMod); % Defines the folder name
+                foldername=append('FM_',obj.FM{ii}.ChipCant,'_',StartDateMod,'-',EndDateMod);
                 warning('off','all'); % To not showing the warning that the same folder is created each loop
                 mkdir(foldername);
                 warning('on','all');
