@@ -28,6 +28,7 @@ classdef ForceMap < matlab.mixin.Copyable
         Time            % time when the force map was detected
         ID              % Identifier for relation to Experiment
         FileVersion     % Version of jpk-force-map file
+        FileType        % File Type: force map or qi-map
         Folder          % location of the .csv files of the force map
         HostOS          % Operating System
         HostName        % Name of hosting system
@@ -1653,12 +1654,23 @@ classdef ForceMap < matlab.mixin.Copyable
             % Conversion RAW -> VOLTS
             fseek(fileID,1,'cof'); % goes at the first position in the file
             
+            exp1='\d{1}';
+            
+            frewind(fileID);
+            B=strfind(A,HHType);
+            tline = A(B:end);
+            HHNum = regexp(tline,exp1,'match','once');
+            
+            clear tline;
+            frewind(fileID);
+            B=strfind(A,'vDeflection');
+            tline = A(B:end);
+            vDefNum = regexp(tline,exp1,'match','once');
+            
             %   Multiplier
-            if isequal(HHType,'capacitiveSensorHeight')
-                B=strfind(A,'lcd-info.3.encoder.scaling.multiplier=');
-            elseif isequal(HHType,'measuredHeight')
-                B=strfind(A,'lcd-info.4.encoder.scaling.multiplier=');
-            end
+            clear tline;
+            frewind(fileID);
+            B=strfind(A,strcat('lcd-info.',HHNum,'.encoder.scaling.multiplier='));
             % strfind(file,string) is looking for a specific string in the file.
             fseek(fileID,B,'cof');
             % moves at the location where specific string is located
@@ -1673,11 +1685,7 @@ classdef ForceMap < matlab.mixin.Copyable
             %   Offset
             clear tline where;
             frewind(fileID);
-            if isequal(HHType,'capacitiveSensorHeight')
-                B=strfind(A,'lcd-info.3.encoder.scaling.offset=');
-            elseif isequal(HHType,'measuredHeight')
-                B=strfind(A,'lcd-info.4.encoder.scaling.offset=');
-            end
+            B=strfind(A,strcat('lcd-info.',HHNum,'.encoder.scaling.offset='));
             fseek(fileID,B,'cof');
             tline = fgetl(fileID);
             where=strfind(tline,'=');
@@ -1686,11 +1694,7 @@ classdef ForceMap < matlab.mixin.Copyable
             %   Multiplier
             clear tline where;
             frewind(fileID);
-            if isequal(HHType,'capacitiveSensorHeight')
-                B=strfind(A,'lcd-info.3.conversion-set.conversion.nominal.scaling.multiplier=');
-            elseif isequal(HHType,'measuredHeight')
-                B=strfind(A,'lcd-info.4.conversion-set.conversion.nominal.scaling.multiplier=');
-            end
+            B=strfind(A,strcat('lcd-info.',HHNum,'.conversion-set.conversion.nominal.scaling.multiplier='));
             fseek(fileID,B,'cof');
             tline = fgetl(fileID);
             where=strfind(tline,'=');
@@ -1700,11 +1704,7 @@ classdef ForceMap < matlab.mixin.Copyable
             %   Offset
             clear tline where;
             frewind(fileID);
-            if isequal(HHType,'capacitiveSensorHeight')
-                B=strfind(A,'lcd-info.3.conversion-set.conversion.nominal.scaling.offset=');
-            elseif isequal(HHType,'measuredHeight')
-                B=strfind(A,'lcd-info.4.conversion-set.conversion.nominal.scaling.offset=');
-            end
+            B=strfind(A,strcat('lcd-info.',HHNum,'.conversion-set.conversion.nominal.scaling.offset='));
             fseek(fileID,B,'cof');
             tline = fgetl(fileID);
             where=strfind(tline,'=');
@@ -1714,16 +1714,10 @@ classdef ForceMap < matlab.mixin.Copyable
             % vDeflection: 1. CONVERSION raw-volts & 2. volts to meters
             % Conversion RAW -> VOLTS
             
-            if isequal(HHType,'capacitiveSensorHeight')
-                Numlcd = 2;
-            elseif isequal(HHType,'measuredHeight')
-                Numlcd = 1;
-            end
-            
             %   Multiplier
             clear tline where;
             frewind(fileID);
-            B=strfind(A,sprintf('lcd-info.%i.encoder.scaling.multiplier=',Numlcd));
+            B=strfind(A,strcat('lcd-info.',vDefNum,'.encoder.scaling.multiplier='));
             fseek(fileID,B,'cof');
             tline = fgetl(fileID);
             where=strfind(tline,'=');
@@ -1732,7 +1726,7 @@ classdef ForceMap < matlab.mixin.Copyable
             %   Offset
             clear tline where;
             frewind(fileID);
-            B=strfind(A,sprintf('lcd-info.%i.encoder.scaling.offset=',Numlcd));
+            B=strfind(A,strcat('lcd-info.',vDefNum,'.encoder.scaling.offset='));
             fseek(fileID,B,'cof');
             tline = fgetl(fileID);
             where=strfind(tline,'=');
@@ -1744,7 +1738,7 @@ classdef ForceMap < matlab.mixin.Copyable
             %   Multiplier (that is the sensitivity measured in meters per Volts)
             clear tline where;
             frewind(fileID);
-            B=strfind(A,sprintf('lcd-info.%i.conversion-set.conversion.distance.scaling.multiplier=',Numlcd));
+            B=strfind(A,strcat('lcd-info.',vDefNum,'.conversion-set.conversion.distance.scaling.multiplier='));
             fseek(fileID,B,'cof');
             tline = fgetl(fileID);
             where=strfind(tline,'=');
@@ -1754,7 +1748,7 @@ classdef ForceMap < matlab.mixin.Copyable
             
             clear tline where;
             frewind(fileID);
-            B=strfind(A,sprintf('lcd-info.%i.conversion-set.conversion.force.scaling.multiplier=',Numlcd));
+            B=strfind(A,strcat('lcd-info.',vDefNum,'.conversion-set.conversion.force.scaling.multiplier='));
             fseek(fileID,B,'cof');
             tline = fgetl(fileID);
             where=strfind(tline,'=');
@@ -2466,20 +2460,32 @@ classdef ForceMap < matlab.mixin.Copyable
             % Conversion RAW -> VOLTS
             fseek(fileID,1,'cof'); % goes at the first position in the file
             
+            %   Check for file type (.jpk-force-map, .jpk-qi-data)
+            frewind(fileID);
+            B=strfind(A,'jpk-data-file=');
+            fseek(fileID,B,'cof');
+            tline = fgetl(fileID);
+            where=strfind(tline,'=');
+            TempType = tline(where+1:end);
+            if isequal(TempType, 'spm-quantitative-image-data-file')   % Valid for software versions 6.1.158  
+                obj.FileType = 'quantitative-imaging-map';
+            elseif isequal(TempType,'spm-force-scan-map-file')         % Valid for software versions 6.1.158 
+                obj.FileType = 'force-scan-map';
+            end
             
             %   Check for file version
+            clear tline where;
             frewind(fileID);
-            B=strfind(A,'force-scan-map.description.source-software=');
+            B=strfind(A,strcat(obj.FileType,'.description.source-software='));
             fseek(fileID,B,'cof');
             tline = fgetl(fileID);
             where=strfind(tline,'=');
             obj.FileVersion = tline(where+1:end);
             
-            
             %   NCurves
             clear tline where;
             frewind(fileID);
-            B=strfind(A,'force-scan-map.indexes.max=');
+            B=strfind(A,strcat(obj.FileType,'.indexes.max='));
             % strfind(file,string) is looking for a specific string in the file.
             fseek(fileID,B,'cof');
             % moves at the location where specific string is located
@@ -2491,11 +2497,10 @@ classdef ForceMap < matlab.mixin.Copyable
                 tline(where+1:end)... % this is the number
                 );
             
-            
             %   NumProfiles
             clear tline where;
             frewind(fileID);
-            B=strfind(A,'force-scan-map.position-pattern.grid.jlength=');
+            B=strfind(A,strcat(obj.FileType,'.position-pattern.grid.jlength='));
             fseek(fileID,B,'cof');
             tline = fgetl(fileID);
             where=strfind(tline,'=');
@@ -2504,7 +2509,7 @@ classdef ForceMap < matlab.mixin.Copyable
             %   NumPoints
             clear tline where;
             frewind(fileID);
-            B=strfind(A,'force-scan-map.position-pattern.grid.ilength=');
+            B=strfind(A,strcat(obj.FileType,'.position-pattern.grid.ilength='));
             fseek(fileID,B,'cof');
             tline = fgetl(fileID);
             where=strfind(tline,'=');
@@ -2513,7 +2518,7 @@ classdef ForceMap < matlab.mixin.Copyable
             %   XSize
             clear tline where;
             frewind(fileID);
-            B=strfind(A,'force-scan-map.position-pattern.grid.ulength=');
+            B=strfind(A,strcat(obj.FileType,'.position-pattern.grid.ulength='));
             fseek(fileID,B,'cof');
             tline = fgetl(fileID);
             where=strfind(tline,'=');
@@ -2522,7 +2527,7 @@ classdef ForceMap < matlab.mixin.Copyable
             %   YSize
             clear tline where;
             frewind(fileID);
-            B=strfind(A,'force-scan-map.position-pattern.grid.vlength=');
+            B=strfind(A,strcat(obj.FileType,'.position-pattern.grid.vlength='));
             fseek(fileID,B,'cof');
             tline = fgetl(fileID);
             where=strfind(tline,'=');
@@ -2531,25 +2536,43 @@ classdef ForceMap < matlab.mixin.Copyable
             %   Velocity
             clear tline where;
             frewind(fileID);
-            B=strfind(A,'force-scan-map.settings.force-settings.start-option.velocity=');
+            B=strfind(A,strcat(obj.FileType,'.settings.force-settings.start-option.velocity='));
             if isempty(B)
                 warning("Could not find Z-tip-velocity in header. Calculating from Z-Length and Extension-Time instead")
                 
-                clear tline where;
-                frewind(fileID);
-                B=strfind(A,'force-scan-map.settings.force-settings.extend-scan-time=');
-                fseek(fileID,B,'cof');
-                tline = fgetl(fileID);
-                where=strfind(tline,'=');
-                ExtendTime = str2double(tline(where+1:end));
-                
-                clear tline where;
-                frewind(fileID);
-                B=strfind(A,'force-scan-map.settings.force-settings.relative-z-start=');
-                fseek(fileID,B,'cof');
-                tline = fgetl(fileID);
-                where=strfind(tline,'=');
-                ZLength = str2double(tline(where+1:end));
+                if isequal(obj.FileType,'force-scan-map')
+                    clear tline where;
+                    frewind(fileID);
+                    B=strfind(A,'force-scan-map.settings.force-settings.extend-scan-time=');
+                    fseek(fileID,B,'cof');
+                    tline = fgetl(fileID);
+                    where=strfind(tline,'=');
+                    ExtendTime = str2double(tline(where+1:end));
+                    
+                    clear tline where;
+                    frewind(fileID);
+                    B=strfind(A,'force-scan-map.settings.force-settings.relative-z-start=');
+                    fseek(fileID,B,'cof');
+                    tline = fgetl(fileID);
+                    where=strfind(tline,'=');
+                    ZLength = str2double(tline(where+1:end));
+                elseif isequal(obj.FileType,'quantitative-imaging-map')
+                    clear tline where;
+                    frewind(fileID);
+                    B=strfind(A,'quantitative-imaging-map.settings.force-settings.extend.duration=');
+                    fseek(fileID,B,'cof');
+                    tline = fgetl(fileID);
+                    where=strfind(tline,'=');
+                    ExtendTime = str2double(tline(where+1:end));
+                    
+                    clear tline where;
+                    frewind(fileID);
+                    B=strfind(A,'quantitative-imaging-map.settings.force-settings.extend.z-start=');
+                    fseek(fileID,B,'cof');
+                    tline = fgetl(fileID);
+                    where=strfind(tline,'=');
+                    ZLength = str2double(tline(where+1:end));
+                end
                 
                 obj.Velocity = ZLength/ExtendTime;
             else
@@ -2562,7 +2585,7 @@ classdef ForceMap < matlab.mixin.Copyable
             %   GridAngle
             clear tline where;
             frewind(fileID);
-            B=strfind(A,'force-scan-map.position-pattern.grid.theta=');
+            B=strfind(A,strcat(obj.FileType,'.position-pattern.grid.theta='));
             fseek(fileID,B,'cof');
             tline = fgetl(fileID);
             where=strfind(tline,'=');
@@ -2586,6 +2609,10 @@ classdef ForceMap < matlab.mixin.Copyable
                 if ~isfile(HeightDataDirectory) || isequal(obj.HHType,'measuredHeight')
                     HeightDataDirectory = fullfile(TempFolder,'index',string((i-1)),'segments','0','channels','measuredHeight.dat');
                     obj.HHType = 'measuredHeight';
+                end
+                if ~isfile(HeightDataDirectory) || isequal(obj.HHType,'Height')
+                    HeightDataDirectory = fullfile(TempFolder,'index',string((i-1)),'segments','0','channels','Height.dat');
+                    obj.HHType = 'Height';
                 end
                 
                 [TempHHApp,obj.App{i},obj.SpringConstant,obj.Sensitivity]=...

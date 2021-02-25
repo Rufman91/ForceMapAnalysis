@@ -38,12 +38,12 @@ classdef Experiment < matlab.mixin.Copyable
             % Force Maps + KPFM or only one of them?
             answer = questdlg('What kind of measurements were done?', ...
                 'Experiment Type',...
-                'Surface Potential Maps','Indentation Force Maps','Both','Indentation Force Maps');
+                'Surface Potential Maps','Indentation Force/QI Maps','Both','Indentation Force/QI Maps');
             % Handle response
             switch answer
                 case 'Surface Potential Maps'
                     WhichFiles = 1;
-                case 'Indentation Force Maps'
+                case 'Indentation Force/QI Maps'
                     WhichFiles = 2;
                 case 'Both'
                     WhichFiles = 0;
@@ -94,8 +94,10 @@ classdef Experiment < matlab.mixin.Copyable
             MapFullFile = {};
             k = 1;
             while length(MapFullFile) < N
-                Title = sprintf('Choose one or more .jpk-force-map files. %i/%i',length(MapFullFile),N);
-                [TempFile,TempPath] = uigetfile('*.jpk-force-map',Title,'MultiSelect','on');
+                Title = sprintf('Choose one or more .jpk-force-map or .jpk-qi-data files. %i/%i',length(MapFullFile),N);
+                [TempFile,TempPath] = uigetfile({'*.jpk-force-map;*.jpk-qi-data',...
+                    'Valid Types (*.jpk-force-map,*.jpk-qi-data)'},...
+                    Title,'MultiSelect','on');
                 if  ~iscell(TempFile)
                     MapFullFile{k} = fullfile(TempPath,TempFile);
                     k = k + 1;
@@ -109,8 +111,10 @@ classdef Experiment < matlab.mixin.Copyable
             end
             
             while length(MapFullFile) < N + NRef
-                Title = sprintf('Choose one or more REFERENCE .jpk-force-map files. %i/%i',length(MapFullFile)-N,NRef);
-                [TempFile,TempPath] = uigetfile('*.jpk-force-map',Title,'MultiSelect','on');
+                Title = sprintf('Choose one or more REFERENCE .jpk-force-map or .jpk-qi-data files. %i/%i',length(MapFullFile)-N,NRef);
+                [TempFile,TempPath] = uigetfile({'*.jpk-force-map;*.jpk-qi-data',...
+                    'Valid Types (*.jpk-force-map,*.jpk-qi-data)'},...
+                    Title,'MultiSelect','on');
                 if  ~iscell(TempFile)
                     MapFullFile{k} = fullfile(TempPath,TempFile);
                     k = k + 1;
@@ -126,7 +130,7 @@ classdef Experiment < matlab.mixin.Copyable
             SPM = cell(N,1);
             ExperimentName = obj.ExperimentName;
             ExperimentFolder = obj.ExperimentFolder;
-            if contains(struct2array(ver), 'Parallel Computing Toolbox')
+            if contains(struct2array(ver), 'Parallel Computing Toolbox') && ~obj.NumFiles == 1
                 parfor i=1:N
                     % for i=1:N Debugging
                     if WhichFiles == 2 || WhichFiles == 0
@@ -229,7 +233,9 @@ classdef Experiment < matlab.mixin.Copyable
             k = 1;
             while length(MapFullFile) < N
                 Title = sprintf('Choose one or more .jpk-force-map files. %i/%i',length(MapFullFile),N);
-                [TempFile,TempPath] = uigetfile('*.jpk-force-map',Title,'MultiSelect','on');
+                [TempFile,TempPath] = uigetfile({'*.jpk-force-map;*.jpk-qi-data',...
+                    'Valid Types (*.jpk-force-map,*.jpk-qi-data)'},...
+                    Title,'MultiSelect','on');
                 if  ~iscell(TempFile)
                     MapFullFile{k} = fullfile(TempPath,TempFile);
                     k = k + 1;
