@@ -999,7 +999,7 @@ classdef ForceMap < matlab.mixin.Copyable
             %             cd(current.path)
         end
         
-         function calculate_fib_diam(obj)
+        function calculate_fib_diam(obj)
             [obj.Apex,obj.ApexIndex] = max(obj.HeightMap(:,:,1).*obj.FibMask,[],2);
             
             if obj.FibrilFlag.Straight == 1
