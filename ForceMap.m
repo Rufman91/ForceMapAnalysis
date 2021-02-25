@@ -28,6 +28,7 @@ classdef ForceMap < matlab.mixin.Copyable
         Time            % time when the force map was detected
         ID              % Identifier for relation to Experiment
         FileVersion     % Version of jpk-force-map file
+        FileType        % File Type: force map or qi-map
         Folder          % location of the .csv files of the force map
         HostOS          % Operating System
         HostName        % Name of hosting system
@@ -136,7 +137,14 @@ classdef ForceMap < matlab.mixin.Copyable
     end
     properties
         % SMFS related 
-        MinRet % Minimum value of the 
+        MinRet % Minimum value of the
+        Substrate       % Used substrate for the measurement 
+        EnvCond         % Environmental condition during the experiment
+        ChipCant        % AFM-Chip number and Cantilever label
+        Chipbox         % AFM-Chipbox number (in Roman numerals)
+        ModDate         % Modified Date is a modification of the poperty Date. Dots are removed
+        SMFSFlag        %
+        BasedRetCorr    % BasedRet data corrected
     end
     
     methods
@@ -1093,7 +1101,118 @@ classdef ForceMap < matlab.mixin.Copyable
             obj.MinRet = MinRet;
         end
         
+        function fc_based_ret_correction(obj,DataShareStart,DataShareEnd)  
+            % fc_based_ret_correction: A function to correct for an AFM
+            % based baseline deviation between the approach and retraction
+            % data
+        if nargin <2
+            DataShareStart=0.05; % 5%
+            DataShareEnd=0.1; % 1%
+        end
+        % loop over all force curves  
+        for kk=1:100
+            DataPts=size(obj.BasedApp{kk}); % Determine the quantity of data points in the force curve 
+            LimitIdx1=round(DataPts(1)*DataShareStart); % Determine the corresponidng index
+            LimitIdx2=round(DataPts(1)*DataShareEnd);
+            CorrMean=mean(abs(obj.BasedApp{kk}(LimitIdx1:LimitIdx2,1))-abs(obj.BasedRet{kk}(DataPts(1)-LimitIdx2:DataPts(1)-LimitIdx1,1))); % Calculate the mean of the difference data
+            obj.BasedRetCorr{kk}=obj.BasedRet{kk}-CorrMean; % Correct the BasedRet data with the mean of the correction data
+        end        
+        % %% Appendix
+        % close all
+        % % Define variables
+        % kk=1
+        % x100=-100e-9; % Defines 100nm
+        % x500=-500e-9; % Defines 500nm
+        % % Graphical preview
+        % fig=gcf;
+        % fig.Units='normalized'; % changes to normalized unit settings, necessary to receive the full screen size in the next line
+        % fig.Color='white'; % changes the background color of the figure
+        % fig.OuterPosition=[0.5 0 0.5 1];% changes the size of the figure to half screen
+        % fig.PaperOrientation='landscape';
+        % grid on
+        % hold on
+        % % "Origin" data
+        % plot(a.FM{1}.THApp{kk}-a.FM{1}.CP_HardSurface(kk,1),a.FM{1}.BasedApp{kk},'b');
+        % plot(a.FM{1}.THRet{kk}-a.FM{1}.CP_HardSurface(kk,1),a.FM{1}.BasedRet{kk},'r');
+        % % Retention data corrected
+        % plot(a.FM{1}.THRet{kk}-a.FM{1}.CP_HardSurface(kk,1),a.FM{ii}.BasedRetCorr{kk},'g');
+        % % DataShare part of the data
+        % plot(a.FM{1}.THApp{kk}(LimitIdx1:LimitIdx2,1)-a.FM{1}.CP_HardSurface(kk,1),a.FM{1}.BasedApp{kk}(LimitIdx1:LimitIdx2,1),'y');
+        % plot(a.FM{1}.THRet{kk}(DataPts(1)-LimitIdx2:DataPts(1)-LimitIdx1,1)-a.FM{1}.CP_HardSurface(kk,1),a.FM{1}.BasedRet{kk}(DataPts(1)-LimitIdx2:DataPts(1)-LimitIdx1,1),'m');
+        % % Markers
+        % plot(a.FM{1}.THRet{kk}(ThreshIdx,1)-a.FM{1}.CP_HardSurface(kk,1),a.FM{1}.BasedRet{kk}(ThreshIdx,1),'kx','MarkerSize',20);
+        % plot(a.FM{1}.THApp{kk}(ThreshIdx,1)-a.FM{1}.CP_HardSurface(kk,1),a.FM{1}.BasedApp{kk}(ThreshIdx,1),'mx','MarkerSize',20);
+        % Distances lines
+        % line([x100 x100], ylim,'Color','k'); % Draws a vertical line
+        % line([x500 x500], ylim,'Color','k'); % Draws a vertical line
+        end
+        
+        function fc_chipprop(obj)
+                 
+                % Chip number and Cantilever
+                exp15='(?!10)\d+\w{1}'; % Finds the chip number and the cantilever   
+                obj.ChipCant = regexp(obj.Name, exp15, 'match','once');                 
+                % Chip box
+                exp16 = '(?!L)[CLXVI]+'; % Finds the chip number given in roman numerals 
+                obj.Chipbox = regexp(obj.Name, exp16, 'match','once');                 
+                % Glass
+                exp21='glass';
+                pat=regexpPattern(exp21,"IgnoreCase",true);
+                ext21=extract(obj.Name,pat);
+                % Mica
+                exp22='mica';
+                pat=regexpPattern(exp22,"IgnoreCase",true);
+                ext22=extract(obj.Name,pat);
+                % inorganic bone (Hydroxyapatite)
+                exp23='inorganic';
+                pat=regexpPattern(exp23,"IgnoreCase",true);
+                ext23=extract(obj.Name,pat);
+                % organic bone 
+                exp24='organic';
+                pat=regexpPattern(exp24,"IgnoreCase",true);
+                ext24=extract(obj.Name,pat);
+                % poly Lysine 
+                exp25='Lysine';
+                pat=regexpPattern(exp25,"IgnoreCase",true);
+                ext25=extract(obj.Name,pat);
+                % Substrate
+                if isempty(ext21)==0
+                    obj.Substrate='glass';
+                elseif isempty(ext22)==0
+                    obj.Substrate='mica';
+                elseif isempty(ext23)==0
+                    obj.Substrate='hydAp'; % Hydroxyapatite
+                elseif isempty(ext24)==0
+                    obj.Substrate='orgBone'; % Organic Bone
+                elseif isempty(ext25)==0
+                    obj.Substrate='lysine'; % poly-Lysine
+                else
+                    obj.Substrate='glass';
+                end
+                % Milli-Q water
+                exp31='mil';
+                pat=regexpPattern(exp31,"IgnoreCase",true);
+                ext31=extract(obj.Name,pat);
+                % Acetic acid (HAc)
+                exp32='HAc';
+                pat=regexpPattern(exp32,"IgnoreCase",true);
+                ext32=extract(obj.Name,pat);
+                % Environmental conditions
+                if isempty(ext31)==0
+                    obj.EnvCond='Water'; % Milli-Q water
+                elseif isempty(ext32)==0
+                    obj.EnvCond='HAc'; % Acetic acid
+                else
+                    obj.EnvCond='PBS'; % Phosphate buffered saline
+                end
+        end
+        
         function fc_print(obj) % fc ... force curve
+            % fc_print: A function to simply plot all force curves of a
+            % force map without any selection taking place
+            
+            % Remove dots in obj.Date
+            obj.ModDate=strrep(obj.Date,'.','');
             
             % Define remainder situation
             Remainder=mod(obj.NCurves,25);
@@ -1101,9 +1220,12 @@ classdef ForceMap < matlab.mixin.Copyable
             if Remainder ~= 0
                 NFigures=NFigures+1;
             end    
-            %% Figure loop
-            figname=strcat(obj.ID,{'-'},obj.Name);
+            % Define variables for the figure name
+            VelocityConvert=num2str(obj.Velocity*1e+9); % Convert into nm
+            %figname=strcat(obj.ID,{'-'},obj.ModDate,{'-'},obj.Velocity,{'-'},obj.Name);
+            figname=strcat(obj.ID,{'-'},obj.ModDate,{'-'},VelocityConvert,{'-'},obj.Substrate,{'-'},obj.EnvCond,{'-'},obj.Chipbox,{'-'},obj.ChipCant);
             figname=char(figname);
+            %% Figure loop
             for ii=1:NFigures           
             % Figure    
             h_fig=figure(ii);
@@ -1130,15 +1252,15 @@ classdef ForceMap < matlab.mixin.Copyable
                     % Tile jj
                     kk=jj+25*(ii-1);
                     %%% Define some variables
-                    x100=-100e-9; % Defines 100nm
-                    x500=-500e-9; % Defines 100nm
+                    x50=-50e-9; % Defines 100nm
+                    x500=-500e-9; % Defines 500nm
                     % Plot tile
                     nexttile
                     hold on
                     grid on
                     plot(obj.THApp{kk}-obj.CP_HardSurface(kk,1),obj.BasedApp{kk});
-                    plot(obj.THRet{kk}-obj.CP_HardSurface(kk,1),obj.BasedRet{kk});
-                    line([x100 x100], ylim,'Color','k'); % Draws a vertical line                  
+                    plot(obj.THRet{kk}-obj.CP_HardSurface(kk,1),obj.BasedRetCorr{kk});
+                    line([x50 x50], ylim,'Color','k'); % Draws a vertical line                  
                     line([x500 x500], ylim,'Color','k'); % Draws a vertical line
                     % Title for each Subplot
                     ti=title(sprintf('%i',kk),'Color','k');                                     
@@ -1152,7 +1274,8 @@ classdef ForceMap < matlab.mixin.Copyable
 
             %% Save figures
             %%% Define the name for the figure title    
-            partname=sprintf('-part%d',ii);        
+            partname=sprintf('-p%d',ii);        
+           % fullname=sprintf('%s%s',figname,partname);
             fullname=sprintf('%s%s',figname,partname);
             %%% Save the current figure in the current folder
             print(gcf,fullname,'-dpng'); 
@@ -1168,8 +1291,9 @@ classdef ForceMap < matlab.mixin.Copyable
             if Remainder ~= 0
                 NFigures=NFigures+1;
             end    
-            %% Figure loop
-            figname=strcat(obj.ID,{'-'},obj.Name);
+            %% Figure loop          
+            %figname=strcat(obj.ID,{'-'},obj.ModDate,{'-'},obj.Velocity,{'-'},obj.Name);
+            figname=strcat(obj.ID,{'-'},obj.ModDate,{'-'},obj.Velocity,{'-'},obj.Substrate,{'-'},obj.EnvCond,{'-'},obj.Chipbox,{'-'},obj.ChipCant);
             figname=char(figname);
             for ii=1:NFigures           
             % Figure    
@@ -1326,17 +1450,61 @@ classdef ForceMap < matlab.mixin.Copyable
 
             %% Save figures
             %%% Define the name for the figure title    
-            partname=sprintf('-part%d',ii);        
+            partname=sprintf('-p%d',ii);        
             fullname=sprintf('%s%s',figname,partname);
             %%% Save the current figure in the current folder
             print(gcf,fullname,'-dpng'); 
             end
         close Figure 1 Figure 2 Figure 3 Figure 4
         end
-
-       
         
-    end    
+        function fc_selection_procedure(obj,ThresholdDist,ThreshValue)
+            % fc_selection_procedure: A function to distinguish between
+            % force curves that fulfil or do not fulfil the logical
+            % statement
+            % SMFSFlag.Min = 0:  Force curves indicate a naked tip
+            % SMFSFlag.Min = 1:  Force curves indicate a functionalized tip
+            if nargin <2
+                ThresholdDist=50e-9;  % 50 nm
+                ThreshValue=50e-12;    % 50 pN
+            elseif nargin<3
+                ThreshValue=50e-12;    % 50 pN
+            end
+            % loop over all force curves
+            for kk=1:100
+            % Determine the index corresponding to the threshold distance
+            ThreshDist=abs(obj.THRet{kk}-obj.CP_HardSurface(kk,1)+ThresholdDist);
+            [~, ThreshIdx]=min(ThreshDist);
+            % Check if the force curve is selected 
+                if (obj.BasedApp{kk}(ThreshIdx)-obj.BasedRetCorr{kk}(ThreshIdx))>ThreshValue
+                    obj.SMFSFlag.Min(kk)=1;
+                else
+                    obj.SMFSFlag.Min(kk)=0;
+                end
+            end           
+%             %% Appendix
+%             close all
+%             % Define variables
+%             kk=1
+%             x100=-100e-9; % Defines 100nm
+%             x500=-500e-9; % Defines 500nm
+%             % Graphical preview
+%             fig=gcf;
+%             fig.Units='normalized'; % changes to normalized unit settings, necessary to receive the full screen size in the next line
+%             fig.Color='white'; % changes the background color of the figure
+%             fig.OuterPosition=[0.5 0 0.5 1];% changes the size of the figure to half screen
+%             fig.PaperOrientation='landscape';
+%             grid on
+%             hold on
+%             plot(obj.FM{1}.THApp{kk}-obj.FM{1}.CP_HardSurface(kk,1),obj.FM{1}.BasedApp{kk},'b');
+%             plot(obj.FM{1}.THRet{kk}-obj.FM{1}.CP_HardSurface(kk,1),obj.FM{1}.BasedRet{kk},'r'); 
+%             plot(obj.FM{1}.THRet{kk}(ThreshIdx,1)-obj.FM{1}.CP_HardSurface(kk,1),obj.FM{1}.BasedRet{kk}(ThreshIdx,1),'kx','MarkerSize',20);
+%             line([x100 x100], ylim,'Color','k'); % Draws a vertical line                  
+%             line([x500 x500], ylim,'Color','k'); % Draws a vertical line      
+        end
+       
+   end  
+        
     methods (Static)
         % Auxiliary methods
         
@@ -1486,12 +1654,23 @@ classdef ForceMap < matlab.mixin.Copyable
             % Conversion RAW -> VOLTS
             fseek(fileID,1,'cof'); % goes at the first position in the file
             
+            exp1='\d{1}';
+            
+            frewind(fileID);
+            B=strfind(A,HHType);
+            tline = A(B:end);
+            HHNum = regexp(tline,exp1,'match','once');
+            
+            clear tline;
+            frewind(fileID);
+            B=strfind(A,'vDeflection');
+            tline = A(B:end);
+            vDefNum = regexp(tline,exp1,'match','once');
+            
             %   Multiplier
-            if isequal(HHType,'capacitiveSensorHeight')
-                B=strfind(A,'lcd-info.3.encoder.scaling.multiplier=');
-            elseif isequal(HHType,'measuredHeight')
-                B=strfind(A,'lcd-info.4.encoder.scaling.multiplier=');
-            end
+            clear tline;
+            frewind(fileID);
+            B=strfind(A,strcat('lcd-info.',HHNum,'.encoder.scaling.multiplier='));
             % strfind(file,string) is looking for a specific string in the file.
             fseek(fileID,B,'cof');
             % moves at the location where specific string is located
@@ -1506,11 +1685,7 @@ classdef ForceMap < matlab.mixin.Copyable
             %   Offset
             clear tline where;
             frewind(fileID);
-            if isequal(HHType,'capacitiveSensorHeight')
-                B=strfind(A,'lcd-info.3.encoder.scaling.offset=');
-            elseif isequal(HHType,'measuredHeight')
-                B=strfind(A,'lcd-info.4.encoder.scaling.offset=');
-            end
+            B=strfind(A,strcat('lcd-info.',HHNum,'.encoder.scaling.offset='));
             fseek(fileID,B,'cof');
             tline = fgetl(fileID);
             where=strfind(tline,'=');
@@ -1519,11 +1694,7 @@ classdef ForceMap < matlab.mixin.Copyable
             %   Multiplier
             clear tline where;
             frewind(fileID);
-            if isequal(HHType,'capacitiveSensorHeight')
-                B=strfind(A,'lcd-info.3.conversion-set.conversion.nominal.scaling.multiplier=');
-            elseif isequal(HHType,'measuredHeight')
-                B=strfind(A,'lcd-info.4.conversion-set.conversion.nominal.scaling.multiplier=');
-            end
+            B=strfind(A,strcat('lcd-info.',HHNum,'.conversion-set.conversion.nominal.scaling.multiplier='));
             fseek(fileID,B,'cof');
             tline = fgetl(fileID);
             where=strfind(tline,'=');
@@ -1533,11 +1704,7 @@ classdef ForceMap < matlab.mixin.Copyable
             %   Offset
             clear tline where;
             frewind(fileID);
-            if isequal(HHType,'capacitiveSensorHeight')
-                B=strfind(A,'lcd-info.3.conversion-set.conversion.nominal.scaling.offset=');
-            elseif isequal(HHType,'measuredHeight')
-                B=strfind(A,'lcd-info.4.conversion-set.conversion.nominal.scaling.offset=');
-            end
+            B=strfind(A,strcat('lcd-info.',HHNum,'.conversion-set.conversion.nominal.scaling.offset='));
             fseek(fileID,B,'cof');
             tline = fgetl(fileID);
             where=strfind(tline,'=');
@@ -1547,16 +1714,10 @@ classdef ForceMap < matlab.mixin.Copyable
             % vDeflection: 1. CONVERSION raw-volts & 2. volts to meters
             % Conversion RAW -> VOLTS
             
-            if isequal(HHType,'capacitiveSensorHeight')
-                Numlcd = 2;
-            elseif isequal(HHType,'measuredHeight')
-                Numlcd = 1;
-            end
-            
             %   Multiplier
             clear tline where;
             frewind(fileID);
-            B=strfind(A,sprintf('lcd-info.%i.encoder.scaling.multiplier=',Numlcd));
+            B=strfind(A,strcat('lcd-info.',vDefNum,'.encoder.scaling.multiplier='));
             fseek(fileID,B,'cof');
             tline = fgetl(fileID);
             where=strfind(tline,'=');
@@ -1565,7 +1726,7 @@ classdef ForceMap < matlab.mixin.Copyable
             %   Offset
             clear tline where;
             frewind(fileID);
-            B=strfind(A,sprintf('lcd-info.%i.encoder.scaling.offset=',Numlcd));
+            B=strfind(A,strcat('lcd-info.',vDefNum,'.encoder.scaling.offset='));
             fseek(fileID,B,'cof');
             tline = fgetl(fileID);
             where=strfind(tline,'=');
@@ -1577,7 +1738,7 @@ classdef ForceMap < matlab.mixin.Copyable
             %   Multiplier (that is the sensitivity measured in meters per Volts)
             clear tline where;
             frewind(fileID);
-            B=strfind(A,sprintf('lcd-info.%i.conversion-set.conversion.distance.scaling.multiplier=',Numlcd));
+            B=strfind(A,strcat('lcd-info.',vDefNum,'.conversion-set.conversion.distance.scaling.multiplier='));
             fseek(fileID,B,'cof');
             tline = fgetl(fileID);
             where=strfind(tline,'=');
@@ -1587,7 +1748,7 @@ classdef ForceMap < matlab.mixin.Copyable
             
             clear tline where;
             frewind(fileID);
-            B=strfind(A,sprintf('lcd-info.%i.conversion-set.conversion.force.scaling.multiplier=',Numlcd));
+            B=strfind(A,strcat('lcd-info.',vDefNum,'.conversion-set.conversion.force.scaling.multiplier='));
             fseek(fileID,B,'cof');
             tline = fgetl(fileID);
             where=strfind(tline,'=');
@@ -2299,20 +2460,32 @@ classdef ForceMap < matlab.mixin.Copyable
             % Conversion RAW -> VOLTS
             fseek(fileID,1,'cof'); % goes at the first position in the file
             
+            %   Check for file type (.jpk-force-map, .jpk-qi-data)
+            frewind(fileID);
+            B=strfind(A,'jpk-data-file=');
+            fseek(fileID,B,'cof');
+            tline = fgetl(fileID);
+            where=strfind(tline,'=');
+            TempType = tline(where+1:end);
+            if isequal(TempType, 'spm-quantitative-image-data-file')   % Valid for software versions 6.1.158  
+                obj.FileType = 'quantitative-imaging-map';
+            elseif isequal(TempType,'spm-force-scan-map-file')         % Valid for software versions 6.1.158 
+                obj.FileType = 'force-scan-map';
+            end
             
             %   Check for file version
+            clear tline where;
             frewind(fileID);
-            B=strfind(A,'force-scan-map.description.source-software=');
+            B=strfind(A,strcat(obj.FileType,'.description.source-software='));
             fseek(fileID,B,'cof');
             tline = fgetl(fileID);
             where=strfind(tline,'=');
             obj.FileVersion = tline(where+1:end);
             
-            
             %   NCurves
             clear tline where;
             frewind(fileID);
-            B=strfind(A,'force-scan-map.indexes.max=');
+            B=strfind(A,strcat(obj.FileType,'.indexes.max='));
             % strfind(file,string) is looking for a specific string in the file.
             fseek(fileID,B,'cof');
             % moves at the location where specific string is located
@@ -2324,11 +2497,10 @@ classdef ForceMap < matlab.mixin.Copyable
                 tline(where+1:end)... % this is the number
                 );
             
-            
             %   NumProfiles
             clear tline where;
             frewind(fileID);
-            B=strfind(A,'force-scan-map.position-pattern.grid.jlength=');
+            B=strfind(A,strcat(obj.FileType,'.position-pattern.grid.jlength='));
             fseek(fileID,B,'cof');
             tline = fgetl(fileID);
             where=strfind(tline,'=');
@@ -2337,7 +2509,7 @@ classdef ForceMap < matlab.mixin.Copyable
             %   NumPoints
             clear tline where;
             frewind(fileID);
-            B=strfind(A,'force-scan-map.position-pattern.grid.ilength=');
+            B=strfind(A,strcat(obj.FileType,'.position-pattern.grid.ilength='));
             fseek(fileID,B,'cof');
             tline = fgetl(fileID);
             where=strfind(tline,'=');
@@ -2346,7 +2518,7 @@ classdef ForceMap < matlab.mixin.Copyable
             %   XSize
             clear tline where;
             frewind(fileID);
-            B=strfind(A,'force-scan-map.position-pattern.grid.ulength=');
+            B=strfind(A,strcat(obj.FileType,'.position-pattern.grid.ulength='));
             fseek(fileID,B,'cof');
             tline = fgetl(fileID);
             where=strfind(tline,'=');
@@ -2355,7 +2527,7 @@ classdef ForceMap < matlab.mixin.Copyable
             %   YSize
             clear tline where;
             frewind(fileID);
-            B=strfind(A,'force-scan-map.position-pattern.grid.vlength=');
+            B=strfind(A,strcat(obj.FileType,'.position-pattern.grid.vlength='));
             fseek(fileID,B,'cof');
             tline = fgetl(fileID);
             where=strfind(tline,'=');
@@ -2364,25 +2536,43 @@ classdef ForceMap < matlab.mixin.Copyable
             %   Velocity
             clear tline where;
             frewind(fileID);
-            B=strfind(A,'force-scan-map.settings.force-settings.start-option.velocity=');
+            B=strfind(A,strcat(obj.FileType,'.settings.force-settings.start-option.velocity='));
             if isempty(B)
                 warning("Could not find Z-tip-velocity in header. Calculating from Z-Length and Extension-Time instead")
                 
-                clear tline where;
-                frewind(fileID);
-                B=strfind(A,'force-scan-map.settings.force-settings.extend-scan-time=');
-                fseek(fileID,B,'cof');
-                tline = fgetl(fileID);
-                where=strfind(tline,'=');
-                ExtendTime = str2double(tline(where+1:end));
-                
-                clear tline where;
-                frewind(fileID);
-                B=strfind(A,'force-scan-map.settings.force-settings.relative-z-start=');
-                fseek(fileID,B,'cof');
-                tline = fgetl(fileID);
-                where=strfind(tline,'=');
-                ZLength = str2double(tline(where+1:end));
+                if isequal(obj.FileType,'force-scan-map')
+                    clear tline where;
+                    frewind(fileID);
+                    B=strfind(A,'force-scan-map.settings.force-settings.extend-scan-time=');
+                    fseek(fileID,B,'cof');
+                    tline = fgetl(fileID);
+                    where=strfind(tline,'=');
+                    ExtendTime = str2double(tline(where+1:end));
+                    
+                    clear tline where;
+                    frewind(fileID);
+                    B=strfind(A,'force-scan-map.settings.force-settings.relative-z-start=');
+                    fseek(fileID,B,'cof');
+                    tline = fgetl(fileID);
+                    where=strfind(tline,'=');
+                    ZLength = str2double(tline(where+1:end));
+                elseif isequal(obj.FileType,'quantitative-imaging-map')
+                    clear tline where;
+                    frewind(fileID);
+                    B=strfind(A,'quantitative-imaging-map.settings.force-settings.extend.duration=');
+                    fseek(fileID,B,'cof');
+                    tline = fgetl(fileID);
+                    where=strfind(tline,'=');
+                    ExtendTime = str2double(tline(where+1:end));
+                    
+                    clear tline where;
+                    frewind(fileID);
+                    B=strfind(A,'quantitative-imaging-map.settings.force-settings.extend.z-start=');
+                    fseek(fileID,B,'cof');
+                    tline = fgetl(fileID);
+                    where=strfind(tline,'=');
+                    ZLength = str2double(tline(where+1:end));
+                end
                 
                 obj.Velocity = ZLength/ExtendTime;
             else
@@ -2395,7 +2585,7 @@ classdef ForceMap < matlab.mixin.Copyable
             %   GridAngle
             clear tline where;
             frewind(fileID);
-            B=strfind(A,'force-scan-map.position-pattern.grid.theta=');
+            B=strfind(A,strcat(obj.FileType,'.position-pattern.grid.theta='));
             fseek(fileID,B,'cof');
             tline = fgetl(fileID);
             where=strfind(tline,'=');
@@ -2419,6 +2609,10 @@ classdef ForceMap < matlab.mixin.Copyable
                 if ~isfile(HeightDataDirectory) || isequal(obj.HHType,'measuredHeight')
                     HeightDataDirectory = fullfile(TempFolder,'index',string((i-1)),'segments','0','channels','measuredHeight.dat');
                     obj.HHType = 'measuredHeight';
+                end
+                if ~isfile(HeightDataDirectory) || isequal(obj.HHType,'Height')
+                    HeightDataDirectory = fullfile(TempFolder,'index',string((i-1)),'segments','0','channels','Height.dat');
+                    obj.HHType = 'Height';
                 end
                 
                 [TempHHApp,obj.App{i},obj.SpringConstant,obj.Sensitivity]=...
@@ -2479,7 +2673,11 @@ classdef ForceMap < matlab.mixin.Copyable
             obj.CPFlag.Manual = 0;
             obj.CPFlag.Old = 0;
             obj.CPFlag.CNNopt = 0;
-            obj.CPFlag.HardSurface = 0; 
+            obj.CPFlag.HardSurface = 0;            
+            % SMFS
+            obj.SMFSFlag.Min=zeros(1,obj.NCurves);
+            obj.SMFSFlag.Length=zeros(1,obj.NCurves);  
+
         end
         
         function create_dummy_force_map(obj,NSynthCurves)
