@@ -23,6 +23,10 @@ classdef Experiment < matlab.mixin.Copyable
         CP_CNN
         CantileverTip
         CantileverTipFlag
+        idxSubstrate
+        idxEnvCond
+        SMFSFlag
+        SMFSFlagPrint
         
     end
     
@@ -34,12 +38,12 @@ classdef Experiment < matlab.mixin.Copyable
             % Force Maps + KPFM or only one of them?
             answer = questdlg('What kind of measurements were done?', ...
                 'Experiment Type',...
-                'Surface Potential Maps','Indentation Force Maps','Both','Indentation Force Maps');
+                'Surface Potential Maps','Indentation Force/QI Maps','Both','Indentation Force/QI Maps');
             % Handle response
             switch answer
                 case 'Surface Potential Maps'
                     WhichFiles = 1;
-                case 'Indentation Force Maps'
+                case 'Indentation Force/QI Maps'
                     WhichFiles = 2;
                 case 'Both'
                     WhichFiles = 0;
@@ -90,8 +94,10 @@ classdef Experiment < matlab.mixin.Copyable
             MapFullFile = {};
             k = 1;
             while length(MapFullFile) < N
-                Title = sprintf('Choose one or more .jpk-force-map files. %i/%i',length(MapFullFile),N);
-                [TempFile,TempPath] = uigetfile('*.jpk-force-map',Title,'MultiSelect','on');
+                Title = sprintf('Choose one or more .jpk-force-map or .jpk-qi-data files. %i/%i',length(MapFullFile),N);
+                [TempFile,TempPath] = uigetfile({'*.jpk-force-map;*.jpk-qi-data',...
+                    'Valid Types (*.jpk-force-map,*.jpk-qi-data)'},...
+                    Title,'MultiSelect','on');
                 if  ~iscell(TempFile)
                     MapFullFile{k} = fullfile(TempPath,TempFile);
                     k = k + 1;
@@ -105,8 +111,10 @@ classdef Experiment < matlab.mixin.Copyable
             end
             
             while length(MapFullFile) < N + NRef
-                Title = sprintf('Choose one or more REFERENCE .jpk-force-map files. %i/%i',length(MapFullFile)-N,NRef);
-                [TempFile,TempPath] = uigetfile('*.jpk-force-map',Title,'MultiSelect','on');
+                Title = sprintf('Choose one or more REFERENCE .jpk-force-map or .jpk-qi-data files. %i/%i',length(MapFullFile)-N,NRef);
+                [TempFile,TempPath] = uigetfile({'*.jpk-force-map;*.jpk-qi-data',...
+                    'Valid Types (*.jpk-force-map,*.jpk-qi-data)'},...
+                    Title,'MultiSelect','on');
                 if  ~iscell(TempFile)
                     MapFullFile{k} = fullfile(TempPath,TempFile);
                     k = k + 1;
@@ -122,7 +130,7 @@ classdef Experiment < matlab.mixin.Copyable
             SPM = cell(N,1);
             ExperimentName = obj.ExperimentName;
             ExperimentFolder = obj.ExperimentFolder;
-            if contains(struct2array(ver), 'Parallel Computing Toolbox')
+            if contains(struct2array(ver), 'Parallel Computing Toolbox') && ~obj.NumFiles == 1
                 parfor i=1:N
                     % for i=1:N Debugging
                     if WhichFiles == 2 || WhichFiles == 0
@@ -225,7 +233,9 @@ classdef Experiment < matlab.mixin.Copyable
             k = 1;
             while length(MapFullFile) < N
                 Title = sprintf('Choose one or more .jpk-force-map files. %i/%i',length(MapFullFile),N);
-                [TempFile,TempPath] = uigetfile('*.jpk-force-map',Title,'MultiSelect','on');
+                [TempFile,TempPath] = uigetfile({'*.jpk-force-map;*.jpk-qi-data',...
+                    'Valid Types (*.jpk-force-map,*.jpk-qi-data)'},...
+                    Title,'MultiSelect','on');
                 if  ~iscell(TempFile)
                     MapFullFile{k} = fullfile(TempPath,TempFile);
                     k = k + 1;
@@ -902,26 +912,188 @@ classdef Experiment < matlab.mixin.Copyable
             obj.save_experiment
         end
         
+        function SMFS_preprocessing(obj)
+            % SMFS_preprocessing: A function to run a bundle of other 
+            % typically required functions for further analysis
+            %obj.preprocessing
+            % force map loop
+            %for ii=1:obj.NumFiles
+            for ii=270    
+                obj.FM{ii}.fc_chipprop
+            end
+        end
+                
+        function SMFS_presorting(obj)
+            % SMFS_presorting: This function allows to conduct an automated presorting of the force curves 
+            % The function flags force curves and whole force maps that are
+            % non-functionalize
+            
+            % Needed function
+            obj.preprocessing
+            % Loop over the imported force maps
+            for ii=1:obj.NumFiles
+            %for ii=46:obj.NumFiles % Debugging
+            % Command window output
+                sprintf('Force Map No. %d of %d',ii,obj.NumFiles) % Gives current Force Map Position
+                obj.FM{ii}.base_and_tilt
+                obj.FM{ii}.estimate_cp_hardsurface
+                obj.FM{ii}.fc_based_ret_correction  
+                obj.FM{ii}.fc_selection_procedure
+                    if nnz(obj.FM{ii}.SMFSFlag.Min)<20 % Only if more than 20 force curves fulfil the citeria the whole force map is considered successfully functionalized
+                        obj.SMFSFlag(ii)=0;
+                    else
+                        obj.SMFSFlag(ii)=1;
+                    end
+            end
+        end
+               
         function SMFS_print(obj)
-         
+            % SMFS_print: A function to simply plot all force curves of all
+            % force maps loaded and calssified based on the SMFS Flag 
+            
             % Change into the Folder of Interest
             cd(obj.ExperimentFolder) % Move into the folder 
             % Create folders for saving the produced figures
-            foldername='FM_raw_Fig';    % Defines the folder name
+            % foldername='FM_raw_Fig';    % Defines the folder name
+            foldername='FM_presort0';    % Defines the folder name
             mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
             currpath=fullfile(obj.ExperimentFolder,foldername);
             cd(currpath); 
             
             % Loop over the imported force maps
-            for ii=1:obj.NumFiles
-            %for ii=3:5 % Debugging
+            %for ii=1:obj.NumFiles
+            for ii=88:obj.NumFiles % Debugging
+            % Presort condition 
+                if ~obj.SMFSFlag(ii)   % Selects all flagged 1 force maps
+                %if obj.SMFSFlag(ii)     % Selects all flagged 0 force maps
+                    continue
+                end
                % Command window output
                sprintf('Force Map No. %d of %d',ii,obj.NumFiles) % Gives current Force Map Position
                % Run the chosen functions
                obj.FM{ii}.estimate_cp_hardsurface
                obj.FM{ii}.fc_print;     
-               obj.save_experiment;        % Save immediately after each force curve
+             %  obj.save_experiment;        % Save immediately after each force curve
             end    
+        end
+        
+        function SMFS_print_sort(obj,StartDate,EndDate)
+            % SMFS_print_sort: A function to plot all force curves of all
+            % force maps sorted by different properties 
+            
+            % Comment: Date format is: 'YYYY.MM.DD'
+            
+         % Change into the Folder of Interest
+            cd(obj.ExperimentFolder) % Move into the folder 
+            if nargin<2
+                StartDate='0000.00.00';
+                EndDate='2999.00.00';
+            elseif nargin<3
+                EndDate='2999.00.00';
+            end
+            % Loop over the imported force maps
+             for ii=1:obj.NumFiles
+                % Needed function
+                obj.FM{ii}.fc_chipprop
+         
+                %if ~obj.SMFSFlag(ii)     % Selects all flagged 1 force maps
+                if obj.SMFSFlag(ii)     % Selects all flagged 0 force maps
+                    continue
+                end
+                % Remove the dots in the dates               
+                FMDate=split(obj.FM{ii}.Date,'.');
+                StartDateSplit=split(StartDate,'.');
+                EndDateSplit=split(EndDate,'.');
+                % if conditions for the time selection (start date and end date)              
+                if ~(str2num(FMDate{1}) > str2num(StartDateSplit{1}) || ... % Verifies if the year of the FM object Date is greater than the start date
+                        (str2num(FMDate{1}) == str2num(StartDateSplit{1})... % Verifies if the year of the FM object Date is equal with the start date
+                        && str2num(FMDate{2}) > str2num(StartDateSplit{2})) || ...  % Verifies if the month of the FM object Date is greater than the start date
+                    (str2num(FMDate{1}) == str2num(StartDateSplit{1})...    
+                    &&(str2num(FMDate{2}) == str2num(StartDateSplit{2}))... % Verifies if the month of the FM object Date is equal than the start date
+                        && (str2num(FMDate{3}) >= str2num(StartDateSplit{3})))) % Verifies if the day of the FM object Date is greater than or equal with the start date
+                    continue
+                elseif ~(str2num(FMDate{1}) < str2num(EndDateSplit{1}) || ... 
+                        (str2num(FMDate{1}) == str2num(EndDateSplit{1})...
+                        && str2num(FMDate{2}) < str2num(EndDateSplit{2})) || ...
+                    (str2num(FMDate{1}) == str2num(EndDateSplit{1})...    
+                    &&(str2num(FMDate{2}) == str2num(EndDateSplit{2}))...
+                        && (str2num(FMDate{3}) <= str2num(EndDateSplit{3})))) 
+                    continue
+                end  
+                % Define variables for the folder name
+                SMFSFlagConvert=num2str(obj.SMFSFlag(ii));
+                VelocityConvert=num2str(obj.FM{ii}.Velocity*1e+9); % Convert into nm
+                StartDateMod=strrep(StartDate,'.','');
+                EndDateMod=strrep(EndDate,'.','');
+                foldername=append('FM_Flag',SMFSFlagConvert,'_',VelocityConvert,'_',obj.FM{ii}.Substrate,'_',obj.FM{ii}.EnvCond,'_',StartDateMod,'-',EndDateMod); % Defines the folder name
+                warning('off','all'); % To not showing the warning that the same folder is created each loop
+                mkdir(foldername);
+                warning('on','all');
+                cd(foldername)         
+               % Run the chosen functions
+               obj.FM{ii}.estimate_cp_hardsurface      
+               obj.FM{ii}.fc_print
+               cd(obj.ExperimentFolder) % Move into the folder 
+               obj.SMFSFlagPrint(ii)=1;               
+            end 
+            %obj.save_experiment        % Save immediately after each force curve
+        end
+        
+        function SMFS_print_sort_cantilever(obj,StartDate,EndDate)
+            % SMFS_print_sort: A function to plot all force curves of all
+            % force maps sorted by different properties 
+            
+            % Comment: Date format is: 'YYYY.MM.DD'
+            
+         % Change into the Folder of Interest
+            cd(obj.ExperimentFolder) % Move into the folder 
+            if nargin<2
+                StartDate='0000.00.00';
+                EndDate='2999.00.00';
+            elseif nargin<3
+                EndDate='2999.00.00';
+            end
+            % Loop over the imported force maps
+             for ii=1:obj.NumFiles
+                % Needed function
+                obj.FM{ii}.fc_chipprop
+                        
+                % Remove the dots in the dates               
+                FMDate=split(obj.FM{ii}.Date,'.');
+                StartDateSplit=split(StartDate,'.');
+                EndDateSplit=split(EndDate,'.');
+                % if conditions for the time selection (start date and end date)              
+                if ~(str2num(FMDate{1}) > str2num(StartDateSplit{1}) || ... % Verifies if the year of the FM object Date is greater than the start date
+                        (str2num(FMDate{1}) == str2num(StartDateSplit{1})... % Verifies if the year of the FM object Date is equal with the start date
+                        && str2num(FMDate{2}) > str2num(StartDateSplit{2})) || ...  % Verifies if the month of the FM object Date is greater than the start date
+                    (str2num(FMDate{1}) == str2num(StartDateSplit{1})...    
+                    &&(str2num(FMDate{2}) == str2num(StartDateSplit{2}))... % Verifies if the month of the FM object Date is equal than the start date
+                        && (str2num(FMDate{3}) >= str2num(StartDateSplit{3})))) % Verifies if the day of the FM object Date is greater than or equal with the start date
+                    continue
+                elseif ~(str2num(FMDate{1}) < str2num(EndDateSplit{1}) || ... 
+                        (str2num(FMDate{1}) == str2num(EndDateSplit{1})...
+                        && str2num(FMDate{2}) < str2num(EndDateSplit{2})) || ...
+                    (str2num(FMDate{1}) == str2num(EndDateSplit{1})...    
+                    &&(str2num(FMDate{2}) == str2num(EndDateSplit{2}))...
+                        && (str2num(FMDate{3}) <= str2num(EndDateSplit{3})))) 
+                    continue
+                end  
+                % Define variables for the folder name
+                SMFSFlagConvert=num2str(obj.SMFSFlag(ii));
+                StartDateMod=strrep(StartDate,'.','');
+                EndDateMod=strrep(EndDate,'.','');                
+                %foldername=append('FM_Flag',SMFSFlagConvert,'_',obj.FM{ii}.ChipCant,'_',StartDateMod,'-',EndDateMod); % Defines the folder name
+                foldername=append('FM_',obj.FM{ii}.ChipCant,'_',StartDateMod,'-',EndDateMod);
+                warning('off','all'); % To not showing the warning that the same folder is created each loop
+                mkdir(foldername);
+                warning('on','all');
+                cd(foldername)         
+               % Run the chosen functions
+               obj.FM{ii}.estimate_cp_hardsurface      
+               obj.FM{ii}.fc_print
+               cd(obj.ExperimentFolder) % Move into the folder                           
+            end 
+            %obj.save_experiment        % Save immediately after each force curve
         end
         
         function SMFS_selection(obj)
@@ -942,11 +1114,12 @@ classdef Experiment < matlab.mixin.Copyable
                % Run the chosen functions
                obj.FM{ii}.estimate_cp_hardsurface
                obj.FM{ii}.fc_selection;     
-               obj.save_experiment;        % Save immediately after each force curve
+               %obj.save_experiment;        % Save immediately after each force curve
             end    
         end
+        
+        
     end
-    
     methods
         %%%   WARNING! %%%
         % The following methods were programmed for specific use cases
