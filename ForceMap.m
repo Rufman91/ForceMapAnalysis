@@ -1214,6 +1214,12 @@ classdef ForceMap < matlab.mixin.Copyable
             % Remove dots in obj.Date
             obj.ModDate=strrep(obj.Date,'.','');
             
+            % Define tiled plot axis limits
+            XMin=-700e-9;   % Limit of the X-axis in meters (m)   
+            XMax=50e-9;    % Limit of the X-axis in meters (m)
+            YMin=-inf;      % Limit of the Y-axis in Newtons (N)   
+            YMax=50e-12;    % Limit of the Y-axis in Newtons (N)
+            
             % Define remainder situation
             Remainder=mod(obj.NCurves,25);
             NFigures=floor(obj.NCurves./25);
@@ -1255,7 +1261,9 @@ classdef ForceMap < matlab.mixin.Copyable
                     x50=-50e-9; % Defines 100nm
                     x500=-500e-9; % Defines 500nm
                     % Plot tile
-                    nexttile
+                    ax=nexttile;      
+                    ax.XLim = [XMin XMax];
+                    ax.YLim = [YMin YMax];
                     hold on
                     grid on
                     plot(obj.THApp{kk}-obj.CP_HardSurface(kk,1),obj.BasedApp{kk});
