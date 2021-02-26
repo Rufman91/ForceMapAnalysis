@@ -1150,7 +1150,7 @@ classdef ForceMap < matlab.mixin.Copyable
         function fc_chipprop(obj)
                  
                 % Chip number and Cantilever
-                exp15='(?!10)\d+\w{1}'; % Finds the chip number and the cantilever   
+                exp15='(\d+\D{1}\>)'; % Finds the chip number and the cantilever   
                 obj.ChipCant = regexp(obj.Name, exp15, 'match','once');                 
                 % Chip box
                 exp16 = '(?!L)[CLXVI]+'; % Finds the chip number given in roman numerals 
