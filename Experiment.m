@@ -909,7 +909,7 @@ classdef Experiment < matlab.mixin.Copyable
                obj.FM{ii}.base_and_tilt('linear');
                obj.FM{ii}.min_force; 
             end
-            obj.save_experiment
+          %  obj.save_experiment
         end
         
         function SMFS_preprocessing(obj)
@@ -918,7 +918,7 @@ classdef Experiment < matlab.mixin.Copyable
             %obj.preprocessing
             % force map loop
             %for ii=1:obj.NumFiles
-            for ii=270    
+            for ii=1:obj.NumFiles    
                 obj.FM{ii}.fc_chipprop
             end
         end
@@ -947,22 +947,35 @@ classdef Experiment < matlab.mixin.Copyable
             end
         end
                
-        function SMFS_print(obj)
+        function SMFS_print(obj,XMin,XMax,YMin,YMax)
             % SMFS_print: A function to simply plot all force curves of all
             % force maps loaded and calssified based on the SMFS Flag 
+           
+%             XMin=-700e-9;    
+%             XMax=50e-9;  
+%             YMin=-inf;      
+%             YMax=100e-12;    
+            
+            % Input variable adaptation
+            if nargin < 2
+                XMin= -inf;     % Limit of the X-axis in meters (m)  
+                XMax= inf;      % Limit of the X-axis in meters (m)
+                YMin= -inf;     % Limit of the Y-axis in Newtons (N)   
+                YMax= inf;      % Limit of the Y-axis in Newtons (N)
+            end
             
             % Change into the Folder of Interest
             cd(obj.ExperimentFolder) % Move into the folder 
             % Create folders for saving the produced figures
             % foldername='FM_raw_Fig';    % Defines the folder name
-            foldername='FM_presort0';    % Defines the folder name
+            foldername='FM_presort1';    % Defines the folder name
             mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
             currpath=fullfile(obj.ExperimentFolder,foldername);
             cd(currpath); 
             
             % Loop over the imported force maps
-            %for ii=1:obj.NumFiles
-            for ii=88:obj.NumFiles % Debugging
+            for ii=1:obj.NumFiles
+            %for ii=3:obj.NumFiles % Debugging
             % Presort condition 
                 if ~obj.SMFSFlag(ii)   % Selects all flagged 1 force maps
                 %if obj.SMFSFlag(ii)     % Selects all flagged 0 force maps
@@ -972,7 +985,7 @@ classdef Experiment < matlab.mixin.Copyable
                sprintf('Force Map No. %d of %d',ii,obj.NumFiles) % Gives current Force Map Position
                % Run the chosen functions
                obj.FM{ii}.estimate_cp_hardsurface
-               obj.FM{ii}.fc_print;     
+               obj.FM{ii}.fc_print(XMin,XMax,YMin, YMax);     
              %  obj.save_experiment;        % Save immediately after each force curve
             end    
         end
@@ -980,11 +993,11 @@ classdef Experiment < matlab.mixin.Copyable
         function SMFS_print_sort(obj,StartDate,EndDate)
             % SMFS_print_sort: A function to plot all force curves of all
             % force maps sorted by different properties 
-            
             % Comment: Date format is: 'YYYY.MM.DD'
             
-         % Change into the Folder of Interest
+            % Change into the Folder of Interest
             cd(obj.ExperimentFolder) % Move into the folder 
+            % Input variable adaptation
             if nargin<2
                 StartDate='0000.00.00';
                 EndDate='2999.00.00';
@@ -1042,11 +1055,12 @@ classdef Experiment < matlab.mixin.Copyable
         function SMFS_print_sort_cantilever(obj,StartDate,EndDate)
             % SMFS_print_sort: A function to plot all force curves of all
             % force maps sorted by different properties 
-            
             % Comment: Date format is: 'YYYY.MM.DD'
             
-         % Change into the Folder of Interest
+            % Change into the Folder of Interest
             cd(obj.ExperimentFolder) % Move into the folder 
+            
+            % Input variable adaptation
             if nargin<2
                 StartDate='0000.00.00';
                 EndDate='2999.00.00';

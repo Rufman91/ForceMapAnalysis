@@ -1207,19 +1207,19 @@ classdef ForceMap < matlab.mixin.Copyable
                 end
         end
         
-        function fc_print(obj) % fc ... force curve
+        function fc_print(obj,XMin,XMax,YMin, YMax) % fc ... force curve
             % fc_print: A function to simply plot all force curves of a
             % force map without any selection taking place
             
             % Remove dots in obj.Date
             obj.ModDate=strrep(obj.Date,'.','');
-            
-            % Define tiled plot axis limits
-            XMin=-700e-9;   % Limit of the X-axis in meters (m)   
-            XMax=50e-9;    % Limit of the X-axis in meters (m)
-            YMin=-inf;      % Limit of the Y-axis in Newtons (N)   
-            YMax=50e-12;    % Limit of the Y-axis in Newtons (N)
-            
+   
+            if nargin < 2
+                XMin= -inf;
+                XMax= inf;
+                YMin= -inf;
+                YMax= inf;
+            end
             % Define remainder situation
             Remainder=mod(obj.NCurves,25);
             NFigures=floor(obj.NCurves./25);
@@ -1273,7 +1273,7 @@ classdef ForceMap < matlab.mixin.Copyable
                     % Title for each Subplot
                     ti=title(sprintf('%i',kk),'Color','k');                                     
                     ti.Units='normalized'; % Set units to 'normalized'  
-                    ti.Position=[0.5,0.9]; % Position the subplot title within the subplot
+                    ti.Position=[0.5,1]; % Position the subplot title within the subplot                   
                     % Legend, x- and y-labels
                     %legend('Approach','Retraction','Location','best')
                     %xlabel('Tip-sample seperation  (nm)','FontSize',11,'Interpreter','latex');
@@ -1291,7 +1291,7 @@ classdef ForceMap < matlab.mixin.Copyable
         close Figure 1 Figure 2 Figure 3 Figure 4
         end
         
-        function fc_selection(obj) % fc ... force curve
+        function fc_selection(obj,XMin,XMax,YMin, YMax) % fc ... force curve
             
             % Define remainder situation
             Remainder=mod(obj.NCurves,25);
@@ -1332,7 +1332,9 @@ classdef ForceMap < matlab.mixin.Copyable
                     x100=-100e-9; % Defines 100nm
                     x500=-500e-9; % Defines 100nm
                     % Plot tile
-                    nexttile
+                    ax=nexttile;      
+                    ax.XLim = [XMin XMax];
+                    ax.YLim = [YMin YMax];
                     hold on
                     grid on
                     plot(obj.THApp{kk}-obj.CP_HardSurface(kk,1),obj.BasedApp{kk});
@@ -1346,7 +1348,7 @@ classdef ForceMap < matlab.mixin.Copyable
                         ti=title(sprintf('%i',kk),'Color','b');
                     end
                     ti.Units='normalized'; % Set units to 'normalized'  
-                    ti.Position=[0.5,0.9]; % Position the subplot title within the subplot
+                    ti.Position=[0.5,1]; % Position the subplot title within the subplot
                     % Legend, x- and y-labels
                     %legend('Approach','Retraction','Location','best')
                     %xlabel('Tip-sample seperation  (nm)','FontSize',11,'Interpreter','latex');
@@ -1437,7 +1439,9 @@ classdef ForceMap < matlab.mixin.Copyable
                 for jj=1:NLoop
                     % Tile jj
                     kk=jj+25*(ii-1);
-                    nexttile
+                    ax=nexttile;      
+                    ax.XLim = [XMin XMax];
+                    ax.YLim = [YMin YMax];
                     hold on
                     grid on
                     plot(obj.THApp{kk}-obj.CP_HardSurface(kk,1),obj.BasedApp{kk});
@@ -1449,7 +1453,7 @@ classdef ForceMap < matlab.mixin.Copyable
                         ti=title(sprintf('%i',kk),'Color','b');
                     end
                     ti.Units='normalized'; % Set units to 'normalized'  
-                    ti.Position=[0.5,0.9]; % Position the subplot title within the subplot
+                    ti.Position=[0.5,1]; % Position the subplot title within the subplot
                     % Legend, x- and y-labels
                     %legend('Approach','Retraction','Location','best')
                     %xlabel('Tip-sample seperation  (nm)','FontSize',11,'Interpreter','latex');
