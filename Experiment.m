@@ -27,6 +27,7 @@ classdef Experiment < matlab.mixin.Copyable
         idxEnvCond
         SMFSFlag
         SMFSFlagPrint
+        MinFM
         
     end
     
@@ -907,7 +908,8 @@ classdef Experiment < matlab.mixin.Copyable
             
             for ii=1:obj.NumFiles
                obj.FM{ii}.base_and_tilt('linear');
-               obj.FM{ii}.min_force; 
+               obj.FM{ii}.min_force;
+               obj.MinFM(ii)=min(obj.FM{ii}.MinRet);
             end
           %  obj.save_experiment
         end
@@ -916,10 +918,13 @@ classdef Experiment < matlab.mixin.Copyable
             % SMFS_preprocessing: A function to run a bundle of other 
             % typically required functions for further analysis
             %obj.preprocessing
+                       
             % force map loop
             %for ii=1:obj.NumFiles
             for ii=1:obj.NumFiles    
+                %obj.FM{ii}.base_and_tilt('linear');           
                 obj.FM{ii}.fc_chipprop
+                %obj.FM{ii}.fc_based_ret_correction
             end
         end
                 
@@ -953,7 +958,8 @@ classdef Experiment < matlab.mixin.Copyable
            
 %             XMin=-700e-9;    
 %             XMax=50e-9;  
-%             YMin=-inf;      
+%             YMin=-inf;
+%             YMin=-obj.MinFM;  
 %             YMax=100e-12;    
             
             % Input variable adaptation

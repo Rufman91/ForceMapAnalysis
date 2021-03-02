@@ -137,7 +137,7 @@ classdef ForceMap < matlab.mixin.Copyable
     end
     properties
         % SMFS related 
-        MinRet % Minimum value of the
+        MinRet          % Minimum value of the adhesion force
         Substrate       % Used substrate for the measurement 
         EnvCond         % Environmental condition during the experiment
         ChipCant        % AFM-Chip number and Cantilever label
