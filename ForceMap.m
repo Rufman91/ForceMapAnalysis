@@ -1196,12 +1196,24 @@ classdef ForceMap < matlab.mixin.Copyable
                 % Acetic acid (HAc)
                 exp32='HAc';
                 pat=regexpPattern(exp32,"IgnoreCase",true);
-                ext32=extract(obj.Name,pat);
+                ext32=extract(obj.Name,pat);\
+                % CAPS buffer
+                exp33='CAPS';
+                pat=regexpPattern(exp33,"IgnoreCase",true);
+                ext33=extract(obj.Name,pat);
+                % Dulbecco's phospate buffered saline (DPBS) buffer
+                exp34='DPBS';
+                pat=regexpPattern(exp34,"IgnoreCase",true);
+                ext34=extract(obj.Name,pat);
                 % Environmental conditions
                 if isempty(ext31)==0
                     obj.EnvCond='Water'; % Milli-Q water
                 elseif isempty(ext32)==0
                     obj.EnvCond='HAc'; % Acetic acid
+                elseif isempty(ext33)==0
+                    obj.EnvCond='CAPS'; % CAPS
+                elseif isempty(ext34)==0
+                    obj.EnvCond='DPBS'; % Dulbecco's phospate buffered saline
                 else
                     obj.EnvCond='PBS'; % Phosphate buffered saline
                 end
