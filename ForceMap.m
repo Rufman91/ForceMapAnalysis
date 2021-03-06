@@ -1196,7 +1196,7 @@ classdef ForceMap < matlab.mixin.Copyable
                 % Acetic acid (HAc)
                 exp32='HAc';
                 pat=regexpPattern(exp32,"IgnoreCase",true);
-                ext32=extract(obj.Name,pat);\
+                ext32=extract(obj.Name,pat);
                 % CAPS buffer
                 exp33='CAPS';
                 pat=regexpPattern(exp33,"IgnoreCase",true);
