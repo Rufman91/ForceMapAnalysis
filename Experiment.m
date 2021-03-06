@@ -920,11 +920,11 @@ classdef Experiment < matlab.mixin.Copyable
             %obj.preprocessing
                        
             % force map loop
-            %for ii=1:obj.NumFiles
+            %for ii=1:3
             for ii=1:obj.NumFiles    
-                %obj.FM{ii}.base_and_tilt('linear');           
+                obj.FM{ii}.base_and_tilt('linear');           
                 obj.FM{ii}.fc_chipprop
-                %obj.FM{ii}.fc_based_ret_correction
+                obj.FM{ii}.fc_based_ret_correction
             end
         end
                 
@@ -991,7 +991,7 @@ classdef Experiment < matlab.mixin.Copyable
                sprintf('Force Map No. %d of %d',ii,obj.NumFiles) % Gives current Force Map Position
                % Run the chosen functions
                obj.FM{ii}.estimate_cp_hardsurface
-               obj.FM{ii}.fc_print(XMin,XMax,YMin, YMax);     
+               obj.FM{ii}.fc_print(XMin,XMax,YMin,YMax);     
              %  obj.save_experiment;        % Save immediately after each force curve
             end    
         end
@@ -1058,7 +1058,7 @@ classdef Experiment < matlab.mixin.Copyable
             %obj.save_experiment        % Save immediately after each force curve
         end
         
-        function SMFS_print_sort_cantilever(obj,StartDate,EndDate)
+        function SMFS_print_sort_specific(obj,StartDate,EndDate,XMin,XMax,YMin,YMax)
             % SMFS_print_sort: A function to plot all force curves of all
             % force maps sorted by different properties 
             % Comment: Date format is: 'YYYY.MM.DD'
@@ -1070,8 +1070,16 @@ classdef Experiment < matlab.mixin.Copyable
             if nargin<2
                 StartDate='0000.00.00';
                 EndDate='2999.00.00';
+                XMin= -inf;     % Limit of the X-axis in meters (m)  
+                XMax= inf;      % Limit of the X-axis in meters (m)
+                YMin= -inf;     % Limit of the Y-axis in Newtons (N)   
+                YMax= inf;      % Limit of the Y-axis in Newtons (N)
             elseif nargin<3
                 EndDate='2999.00.00';
+                XMin= -inf;     % Limit of the X-axis in meters (m)  
+                XMax= inf;      % Limit of the X-axis in meters (m)
+                YMin= -inf;     % Limit of the Y-axis in Newtons (N)   
+                YMax= inf;      % Limit of the Y-axis in Newtons (N)
             end
             % Loop over the imported force maps
              for ii=1:obj.NumFiles
@@ -1099,18 +1107,19 @@ classdef Experiment < matlab.mixin.Copyable
                     continue
                 end  
                 % Define variables for the folder name
-                SMFSFlagConvert=num2str(obj.SMFSFlag(ii));
+                %SMFSFlagConvert=num2str(obj.SMFSFlag(ii));
                 StartDateMod=strrep(StartDate,'.','');
                 EndDateMod=strrep(EndDate,'.','');                
                 %foldername=append('FM_Flag',SMFSFlagConvert,'_',obj.FM{ii}.ChipCant,'_',StartDateMod,'-',EndDateMod); % Defines the folder name
-                foldername=append('FM_',obj.FM{ii}.ChipCant,'_',StartDateMod,'-',EndDateMod);
+                %foldername=append('FM_',obj.FM{ii}.ChipCant,'_',StartDateMod,'-',EndDateMod);
+                foldername=append('FM_',obj.FM{ii}.Substrate,'_',obj.FM{ii}.EnvCond,'_',StartDateMod,'-',EndDateMod);                
                 warning('off','all'); % To not showing the warning that the same folder is created each loop
                 mkdir(foldername);
                 warning('on','all');
                 cd(foldername)         
                % Run the chosen functions
                obj.FM{ii}.estimate_cp_hardsurface      
-               obj.FM{ii}.fc_print
+               obj.FM{ii}.fc_print(XMin,XMax,YMin,YMax);
                cd(obj.ExperimentFolder) % Move into the folder                           
             end 
             %obj.save_experiment        % Save immediately after each force curve

@@ -1219,7 +1219,7 @@ classdef ForceMap < matlab.mixin.Copyable
                 end
         end
         
-        function fc_print(obj,XMin,XMax,YMin, YMax) % fc ... force curve
+        function fc_print(obj,XMin,XMax,YMin,YMax) % fc ... force curve
             % fc_print: A function to simply plot all force curves of a
             % force map without any selection taking place
             
@@ -1303,7 +1303,7 @@ classdef ForceMap < matlab.mixin.Copyable
         close Figure 1 Figure 2 Figure 3 Figure 4
         end
         
-        function fc_selection(obj,XMin,XMax,YMin, YMax) % fc ... force curve
+        function fc_selection(obj,XMin,XMax,YMin,YMax) % fc ... force curve
             
             % Define remainder situation
             Remainder=mod(obj.NCurves,25);
