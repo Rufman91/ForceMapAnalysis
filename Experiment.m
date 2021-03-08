@@ -1907,23 +1907,37 @@ classdef Experiment < matlab.mixin.Copyable
             Methods = false(6,1);
             Methods(ChosenMethod) = true;
             
-            obj.ReferenceSlopeFlag.SetToOne = Methods(1);
+            obj.ReferenceSlopeFlag.SetAllToValue = Methods(1);
             obj.ReferenceSlopeFlag.UserInput = Methods(2);
             obj.ReferenceSlopeFlag.FromRefFM = Methods(3);
             obj.ReferenceSlopeFlag.FromArea = Methods(4);
             obj.ReferenceSlopeFlag.AutomaticFibril = Methods(5);
             obj.ReferenceSlopeFlag.Automatic = Methods(6);
             
+            % Process all the RefSlope-Methods that can be done frontloaded
+            if obj.ReferenceSlopeFlag.SetAllToValue
+                GetValue = inputdlg('To which value should the reference slopes be set?','Choose a value',1);
+                Value = str2double(GetValue{1});
+                for i=1:obj.NumFiles
+                    obj.FM{i}.set_reference_slope_to_value(Value)
+                end
+            elseif obj.ReferenceSlopeFlag.UserInput
+                for i=1:obj.NumFiles
+                    obj.FM{i}.set_reference_slope_to_user_input
+                end
+            elseif obj.ReferenceSlopeFlag.FromArea
+                for i=1:obj.NumFiles
+                    Mask = obj.FM{i}.create_mask_general;
+                    obj.FM{i}.calculate_reference_slope_from_area(Mask)
+                end
+            end
+            
         end
         
         function reference_slope_calculator(obj,Index)
             
             i = Index;
-            if obj.ReferenceSlopeFlag.SetToOne
-                obj.FM{i}.set_reference_slope_to_one
-            elseif obj.ReferenceSlopeFlag.UserInput
-                obj.FM{i}.set_reference_slope_to_user_input
-            elseif obj.ReferenceSlopeFlag.FromRefFM
+            if obj.ReferenceSlopeFlag.FromRefFM
                 if isempty(obj.RefFM)
                     Warn = warndlg({'There are no reference Force Maps in your Experiment','Please load in one or more reference files'});
                     uiwait(Warn)
@@ -1953,10 +1967,6 @@ classdef Experiment < matlab.mixin.Copyable
                     obj.FM{i}.RefSlope = obj.RefFM{1}.RefSlope;
                     obj.FM{i}.HasRefSlope = true;
                 end
-                
-            elseif obj.ReferenceSlopeFlag.FromArea
-                Mask = obj.FM{i}.create_mask_general;
-                obj.FM{i}.calculate_reference_slope_from_area(Mask)
             elseif obj.ReferenceSlopeFlag.AutomaticFibril
                 Mask = ~obj.FM{i}.FibMask;
                 obj.FM{i}.calculate_reference_slope_from_area(Mask)
@@ -1964,9 +1974,6 @@ classdef Experiment < matlab.mixin.Copyable
                 obj.FM{i}.create_automatic_background_mask
                 Mask = obj.FM{i}.BackgroundMask;
                 obj.FM{i}.calculate_reference_slope_from_area(Mask)
-            else
-                warning(sprintf('Reference slope for %s was set to 1',obj.FM{i}.Name))
-                obj.FM{i}.set_reference_slope_to_one
             end
         end
         
@@ -2048,7 +2055,7 @@ classdef Experiment < matlab.mixin.Copyable
             obj.SPMFlag.FibrilAnalysis = zeros(N,1);
             obj.SPMFlag.Grouping = 0;
             obj.CantileverTipFlag = 0;
-            obj.ReferenceSlopeFlag.SetToOne = false;
+            obj.ReferenceSlopeFlag.SetAllToValue = false;
             obj.ReferenceSlopeFlag.UserInput = false;
             obj.ReferenceSlopeFlag.FromRefFM = false;
             obj.ReferenceSlopeFlag.FromArea = false;
@@ -2468,9 +2475,9 @@ classdef Experiment < matlab.mixin.Copyable
             
             % Create checkboxes
             c(1) = uicontrol(h.bg,'style','radiobutton','units','normalized',...
-                'position',[0.1 0.8 0.8 1/7],'string','Set all RefSlopes to 1');
+                'position',[0.1 0.8 0.8 1/7],'string','Set all RefSlopes to a chosen value');
             c(2) = uicontrol(h.bg,'style','radiobutton','units','normalized',...
-                'position',[0.1 0.65 0.8 1/7],'string','Get values from user input');
+                'position',[0.1 0.65 0.8 1/7],'string','Get RefSlopes from user input for each Force Map individually');
             c(3) = uicontrol(h.bg,'style','radiobutton','units','normalized',...
                 'position',[0.1 0.5 0.8 1/7],'string','Get RefSlopes from Reference Force Maps');
             c(4) = uicontrol(h.bg,'style','radiobutton','units','normalized',...

@@ -2140,8 +2140,8 @@ classdef ForceMap < matlab.mixin.Copyable
             end
         end
         
-        function set_reference_slope_to_one(obj)
-            obj.RefSlope = 1; % BEST.FUNCTION.EVER.WRITTEN.
+        function set_reference_slope_to_value(obj,Value)
+            obj.RefSlope = Value; % BEST.FUNCTION.EVER.WRITTEN.
             obj.HasRefSlope = true;
         end
         
@@ -3254,18 +3254,18 @@ classdef ForceMap < matlab.mixin.Copyable
                 
                 if m == 1
                     subplot(2,3,3)
-                    boxplot(obj.EModOliverPharr(obj.RectApexIndex));
+                    boxplot(obj.EModOliverPharr);
                     xticklabels(obj.Name)
                     title(sprintf('mean = %.2f MPa\nmedian = %.2f MPa\nstd = %.3f MPa',...
-                        nanmean(obj.EModOliverPharr(obj.RectApexIndex))*1e-6,...
-                        nanmedian(obj.EModOliverPharr(obj.RectApexIndex))*1e-6,...
-                        nanstd(obj.EModOliverPharr(obj.RectApexIndex))*1e-6));
+                        nanmean(obj.EModOliverPharr)*1e-6,...
+                        nanmedian(obj.EModOliverPharr)*1e-6,...
+                        nanstd(obj.EModOliverPharr)*1e-6));
                 end
                 
                 subplot(2,3,4)
-                plot(0:obj.NumProfiles+1,obj.RefSlope*ones(obj.NumProfiles+2,1))
+                plot(0:obj.NCurves+1,obj.RefSlope*ones(obj.NCurves+2,1))
                 ylim([0 1.3])
-                xlim([0 obj.NumProfiles+1])
+                xlim([0 obj.NCurves+1])
                 hold on
                 plot(1:obj.NCurves,obj.DZslope,'bO')
                 plot(m,obj.DZslope(m),'rO','MarkerFaceColor','r')
