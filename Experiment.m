@@ -416,7 +416,6 @@ classdef Experiment < matlab.mixin.Copyable
         end
         
     end
-    
     methods
         % methods for sequential data analysis mostly looping over child-classes methods
         
@@ -1651,7 +1650,6 @@ classdef Experiment < matlab.mixin.Copyable
             
         end
     end
-    
     methods
         % auxiliary methods
         
