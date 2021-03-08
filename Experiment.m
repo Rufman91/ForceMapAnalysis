@@ -544,14 +544,18 @@ classdef Experiment < matlab.mixin.Copyable
                     continue
                 end
                 waitbar(i/NLoop,h,sprintf('Processing Fibril %i/%i\nFitting Base Line',i,NLoop));
-                obj.FM{i}.base_and_tilt('linear');
+                if ~obj.FM{i}.BaseAndTiltFlag
+                    obj.FM{i}.base_and_tilt('linear');
+                end
+                
                 obj.FM{i}.calculate_fib_diam();
-                waitbar(i/NLoop,h,sprintf('Processing Fibril %i/%i\nFinding Contact Point',i,NLoop));
                 
                 % contact point estimation happens here
+                waitbar(i/NLoop,h,sprintf('Processing Fibril %i/%i\nFinding Contact Point',i,NLoop));
                 obj.cp_option_converter(CPOption,i);
                 
                 % reference slope calculation happens here
+                waitbar(i/NLoop,h,sprintf('Processing Fibril %i/%i\nProcessing and calculating Reference Slope',i,NLoop));
                 obj.reference_slope_calculator(i);
                 
                 waitbar(i/NLoop,h,sprintf('Processing Fibril %i/%i\nCalculating E-Modulus',i,NLoop));
@@ -663,13 +667,16 @@ classdef Experiment < matlab.mixin.Copyable
                     continue
                 end
                 waitbar(i/NLoop,h,sprintf('Processing ForceMap %i/%i\nFitting Base Line',i,NLoop));
-                obj.FM{i}.base_and_tilt('linear');
-                waitbar(i/NLoop,h,sprintf('Processing ForceMap %i/%i\nFinding Contact Point',i,NLoop));
+                if ~obj.FM{i}.BaseAndTiltFlag
+                    obj.FM{i}.base_and_tilt('linear');
+                end
                 
                 % contact point estimation happens here
+                waitbar(i/NLoop,h,sprintf('Processing ForceMap %i/%i\nFinding Contact Point',i,NLoop));
                 obj.cp_option_converter(CPOption,i);
                 
                 % reference slope calculation happens here
+                waitbar(i/NLoop,h,sprintf('Processing ForceMap %i/%i\nProcessing and calculating Reference Slope',i,NLoop));
                 obj.reference_slope_calculator(i);
                 
                 waitbar(i/NLoop,h,sprintf('Processing ForceMap %i/%i\nCalculating E-Modulus',i,NLoop));
@@ -1950,7 +1957,9 @@ classdef Experiment < matlab.mixin.Copyable
                     end
                     RefIdx = obj.WhichRefMap(i);
                     if ~obj.RefFM{RefIdx}.HasRefSlope
-                        obj.RefFM{RefIdx}.base_and_tilt
+                        if ~obj.RefFM{RefIdx}.BaseAndTiltFlag
+                            obj.RefFM{RefIdx}.base_and_tilt
+                        end
                         obj.RefFM{1}.estimate_cp_old
                         Mask = ones(obj.RefFM{RefIdx}.NumProfiles,obj.RefFM{RefIdx}.NumPoints);
                         obj.RefFM{RefIdx}.calculate_reference_slope_from_area(Mask);
@@ -1959,7 +1968,9 @@ classdef Experiment < matlab.mixin.Copyable
                     obj.FM{i}.HasRefSlope = true;
                 elseif length(obj.RefFM) == 1
                     if ~obj.RefFM{1}.HasRefSlope
-                        obj.RefFM{1}.base_and_tilt
+                        if ~obj.RefFM{1}.BaseAndTiltFlag
+                            obj.RefFM{1}.base_and_tilt
+                        end
                         obj.RefFM{1}.estimate_cp_old
                         Mask = ones(obj.RefFM{1}.NumProfiles,obj.RefFM{1}.NumPoints);
                         obj.RefFM{1}.calculate_reference_slope_from_area(Mask);
@@ -1977,22 +1988,29 @@ classdef Experiment < matlab.mixin.Copyable
             end
         end
         
-        function assign_reference_force_map(obj)
+        function assign_reference_force_map(obj,DefaultValues)
             
-            obj.WhichRefMap = ones(obj.NumFiles,1);
+            
+            obj.WhichRefMap = zeros(obj.NumFiles,1);
             
             NGroups = length(obj.RefFM);
+            
+            if nargin < 2
+                for i=1:NGroups
+                    DefaultValues{i} = 'e.g. 1 2 3 4 8 9 10 or 1:4 8:10';
+                end
+            end
             
             % create the appropriate inputdlg for assigning the groups show
             % a table with numbered map-names in background
             Names = obj.ForceMapNames;
-            Fig = figure('Units', 'Normalized', 'Position',[0.1 0.1 0.3 0.4],'Color','w');
+            Fig = figure('Name','Names and coresponding numbers of your Force Maps','Units', 'Normalized', 'Position',[0.1 0.1 0.3 0.4],'Color','w');
             T = table(Names');
             uitable('Data',T{:,:},'Units', 'Normalized', 'Position',[0, 0, 1, 1]);
             
             for i=1:NGroups
                 prompts{i} = sprintf('Which Force Maps belong to Reference Force Map %i?',i);
-                definput{i} = 'e.g. 1 2 3 4 8 9 10 or 1:4 8:10';
+                definput{i} = DefaultValues{i};
             end
             
             dims = [1 50];
@@ -2002,6 +2020,14 @@ classdef Experiment < matlab.mixin.Copyable
             
             for i=1:NGroups
                 obj.WhichRefMap(str2num(answer{i})) = i;
+            end
+            
+            if  ~isempty(obj.WhichRefMap(obj.WhichRefMap == 0))
+                Warn = warndlg('You need to assign exactly one Reference Map to every Force Map','Parsing Error');
+                close(Fig);
+                uiwait(Warn);
+                obj.assign_reference_force_map(answer)
+                return
             end
             
             obj.AssignedReferenceMaps = true;

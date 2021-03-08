@@ -65,6 +65,7 @@ classdef ForceMap < matlab.mixin.Copyable
         THRet = {}      % vertical tip height retract data in meters
         BasedApp = {}   % approach force data with subtracted base line and tilt in Newton
         BasedRet = {}   % retraction force data with subtracted base line and tilt in Newton
+        BaseAndTiltFlag
     end
     properties
         % Properties related to Contact Point (CP) estimation
@@ -313,6 +314,7 @@ classdef ForceMap < matlab.mixin.Copyable
                 obj.THRet{i} = obj.HHRet{i} - obj.BasedRet{i}/obj.SpringConstant;
             end
             close(h);
+            obj.BaseAndTiltFlag = true;
             %             current = what();
             %             cd(obj.Folder)
             %             savename = sprintf('%s.mat',obj.Name);
@@ -2106,7 +2108,7 @@ classdef ForceMap < matlab.mixin.Copyable
             % Calculate the DZslopes
             k = 1;
             for i=Range'
-                if (Mask(obj.List2Map(i,1),obj.List2Map(i,2)) == 0) &&...
+                if (Mask(obj.List2Map(i,1),obj.List2Map(i,2)) == 1) &&...
                         (obj.ExclMask(obj.List2Map(i,1),obj.List2Map(i,2)) == 1)
                     Z(:,i) = obj.HHRet{i} - obj.CP(i,1);
                     D(:,i) = (obj.BasedRet{i} - obj.CP(i,2))/obj.SpringConstant;
@@ -2728,8 +2730,9 @@ classdef ForceMap < matlab.mixin.Copyable
         end
         
         function initialize_flags(obj)
-           % initialize all flags related to the ForceMap class
-           
+            % initialize all flags related to the ForceMap class
+            
+            obj.BaseAndTiltFlag = false;
             obj.CPFlag.RoV = 0;
             obj.CPFlag.GoF = 0;
             obj.CPFlag.Combo = 0;
@@ -2745,8 +2748,8 @@ classdef ForceMap < matlab.mixin.Copyable
             obj.HasRefSlope = false;
             % SMFS
             obj.SMFSFlag.Min=zeros(1,obj.NCurves);
-            obj.SMFSFlag.Length=zeros(1,obj.NCurves);  
-
+            obj.SMFSFlag.Length=zeros(1,obj.NCurves);
+            
         end
         
         function create_dummy_force_map(obj,NSynthCurves)
