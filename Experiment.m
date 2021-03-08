@@ -416,7 +416,6 @@ classdef Experiment < matlab.mixin.Copyable
         end
         
     end
-    
     methods
         % methods for sequential data analysis mostly looping over child-classes methods
         
@@ -1651,7 +1650,6 @@ classdef Experiment < matlab.mixin.Copyable
             
         end
     end
-    
     methods
         % auxiliary methods
         
@@ -1982,7 +1980,7 @@ classdef Experiment < matlab.mixin.Copyable
                 Mask = ~obj.FM{i}.FibMask;
                 obj.FM{i}.calculate_reference_slope_from_area(Mask)
             elseif obj.ReferenceSlopeFlag.Automatic
-                obj.FM{i}.create_automatic_background_mask
+                obj.FM{i}.create_automatic_background_mask(.8)
                 Mask = obj.FM{i}.BackgroundMask;
                 obj.FM{i}.calculate_reference_slope_from_area(Mask)
             end
