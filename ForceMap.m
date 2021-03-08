@@ -124,6 +124,7 @@ classdef ForceMap < matlab.mixin.Copyable
         IndDepth
         IndentArea
         ProjTipArea
+        HasRefSlope
     end
     properties
         % auxiliary properties to facilitate comparing different methods of
@@ -999,7 +1000,7 @@ classdef ForceMap < matlab.mixin.Copyable
             %             cd(current.path)
         end
         
-         function calculate_fib_diam(obj)
+        function calculate_fib_diam(obj)
             [obj.Apex,obj.ApexIndex] = max(obj.HeightMap(:,:,1).*obj.FibMask,[],2);
             
             if obj.FibrilFlag.Straight == 1
@@ -2100,7 +2101,7 @@ classdef ForceMap < matlab.mixin.Copyable
             end
         end
         
-        function calculate_reference_slope(obj)
+        function calculate_reference_slope_from_area(obj,Mask)
             % Calculates the distribution of DZslopes on the curves
             % that that are neihter on the fibril nor the excluded zones.
             %  the upper 25% of the curve are considered for the
@@ -2111,7 +2112,7 @@ classdef ForceMap < matlab.mixin.Copyable
             % Calculate the DZslopes
             k = 1;
             for i=Range'
-                if (obj.FibMask(obj.List2Map(i,1),obj.List2Map(i,2)) == 0) &&...
+                if (Mask(obj.List2Map(i,1),obj.List2Map(i,2)) == 0) &&...
                         (obj.ExclMask(obj.List2Map(i,1),obj.List2Map(i,2)) == 1)
                     Z(:,i) = obj.HHRet{i} - obj.CP(i,1);
                     D(:,i) = (obj.BasedRet{i} - obj.CP(i,2))/obj.SpringConstant;
@@ -2126,6 +2127,49 @@ classdef ForceMap < matlab.mixin.Copyable
             % Fit the Gaussian
             Gaussian = fitdist(DZslope','Normal');
             obj.RefSlope = Gaussian.mean;
+            obj.HasRefSlope = true;
+        end
+        
+        function set_reference_slope_to_user_input(obj)
+            IsValidInput = false;
+            while ~IsValidInput
+                UsrInput = inputdlg(sprintf('Reference Slope of %s',obj.Name),'Manual Reference Slope');
+                if ~isempty(regexp(UsrInput{1},'[^0-9.]', 'once')) || isempty(UsrInput{1})
+                    IsValidInput = false;
+                    Warn = warndlg('Input can only contain numbers and periods. Please try again');
+                    uiwait(Warn)
+                    continue
+                end
+                obj.RefSlope = str2double(UsrInput{1});
+                obj.HasRefSlope = true;
+                IsValidInput = true;
+            end
+        end
+        
+        function set_reference_slope_to_one(obj)
+            obj.RefSlope = 1; % BEST.FUNCTION.EVER.WRITTEN.
+            obj.HasRefSlope = true;
+        end
+        
+        function Mask = create_mask_general(obj)
+            
+            Mask = logical(zeros(obj.NumProfiles,obj.NumPoints));
+            CheckSum = 100;
+            while CheckSum > 1
+                f = figure('Name','Choose areas');
+                f.WindowState = 'maximized';
+                subplot(2,1,2)
+                surf(imresize(imrotate(obj.HeightMap(:,:,1)',90),[1024 1024]),'LineStyle','none','FaceLighting','gouraud','FaceColor','interp')
+                light('Style','local')
+                subplot(2,1,1)
+                imshow(obj.HeightMap(:,:,1).*~Mask,[min(obj.HeightMap(:,:,1),[],'all') max(obj.HeightMap(:,:,1),[],'all')])
+                title(sprintf('%s: Draw Freehand ROI around areas, that are to be included in the mask\nThe area will be marked and the same map redrawn \n If you are done masking just click on the image once without dragging the cursor',obj.Name))
+                ROI = drawfreehand;
+                CheckSum = length(ROI.Waypoints);
+                TempMask = createMask(ROI);
+                Mask = Mask | TempMask;
+                close(f)
+            end
         end
         
         function create_and_level_height_map(obj)
@@ -2673,7 +2717,8 @@ classdef ForceMap < matlab.mixin.Copyable
             obj.CPFlag.Manual = 0;
             obj.CPFlag.Old = 0;
             obj.CPFlag.CNNopt = 0;
-            obj.CPFlag.HardSurface = 0;            
+            obj.CPFlag.HardSurface = 0;
+            obj.HasRefSlope = false;
             % SMFS
             obj.SMFSFlag.Min=zeros(1,obj.NCurves);
             obj.SMFSFlag.Length=zeros(1,obj.NCurves);  
