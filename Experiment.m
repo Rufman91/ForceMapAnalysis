@@ -135,7 +135,7 @@ classdef Experiment < matlab.mixin.Copyable
             SPM = cell(N,1);
             ExperimentName = obj.ExperimentName;
             ExperimentFolder = obj.ExperimentFolder;
-            if contains(struct2array(ver), 'Parallel Computing Toolbox') && ~obj.NumFiles == 1
+            if contains(struct2array(ver), 'Parallel Computing Toolbox') && ~(obj.NumFiles == 1)
                 parfor i=1:N
                     % for i=1:N Debugging
                     if WhichFiles == 2 || WhichFiles == 0
@@ -1904,6 +1904,7 @@ classdef Experiment < matlab.mixin.Copyable
             Methods = false(6,1);
             Methods(DefaultOption) = true;
             ChosenMethod = obj.reference_slope_parser_gui(Methods);
+            Methods = false(6,1);
             Methods(ChosenMethod) = true;
             
             obj.ReferenceSlopeFlag.SetToOne = Methods(1);
