@@ -2538,7 +2538,7 @@ classdef Experiment < matlab.mixin.Copyable
             c(5) = uicontrol(h.bg,'style','radiobutton','units','normalized',...
                 'position',[0.1 0.2 0.8 1/7],'string','Get RefSlope from automatically identified glass background around fibril');
             c(6) = uicontrol(h.bg,'style','radiobutton','units','normalized',...
-                'position',[0.1 0.05 0.8 1/7],'string','Get RefSlope from automatically identified glass background around object (beta)');
+                'position',[0.1 0.05 0.8 1/7],'string','Get RefSlope from automatically identified glass background around object');
             
             h.bg.SelectedObject = c(find(Methods));
             
