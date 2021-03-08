@@ -2281,23 +2281,25 @@ classdef ForceMap < matlab.mixin.Copyable
             if nargin < 2
                 MaskParam = 0.5;
             end
-            HghtRange = range(obj.HeightMap,'all');
-            HghtMin = min(obj.HeightMap,[],'all');
-            HghtNorm = (obj.HeightMap-HghtMin)/HghtRange;
-            mask = zeros(size(HghtNorm));
-            STDLine = zeros(obj.NumProfiles,obj.NumPoints);
-            [HghtSorted,Idx] = sort(HghtNorm,'descend');
-            for j=1:obj.NumPoints*obj.NumProfiles
-                STDLine(:,j) = std(HghtSorted(:,1:j),0,[2]);
+            mask = zeros(size(obj.HeightMap));
+            HeightList = zeros(obj.NCurves,1);
+            for i=1:obj.NCurves
+                HeightList(i) = -obj.HHApp{i}(end);
             end
-            [~,MaxIdx] = max(STDLine,[],[2]);
-            for i=1:obj.NumProfiles
-                mask(i,Idx(i,1:floor(MaxIdx*MaskParam))) = 1;
+            STDLine = zeros(obj.NCurves,1);
+            [HeightSorted,Idx] = sort(HeightList,'descend');
+            for i=1:obj.NCurves
+                STDLine(i) = std(HeightSorted(1:i));
+            end
+            [~,MaxIdx] = max(STDLine);
+            MapIndex = obj.List2Map(Idx(1:floor(MaxIdx*MaskParam)),:);
+            for i=1:length(MapIndex)
+                mask(MapIndex(i,1),MapIndex(i,2)) = 1;
             end
             mask = logical(mask);
             mask = bwareafilt(mask,1,4);
             
-            obj.BackgroundMask = mask;
+            obj.BackgroundMask = ~mask;
             
             %             current = what();
             %             cd(obj.Folder)
