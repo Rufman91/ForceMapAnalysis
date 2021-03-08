@@ -500,22 +500,6 @@ classdef Experiment < matlab.mixin.Copyable
                 KeepFlagged = 'No';
             end
             
-            if obj.CantileverTipFlag == 1
-                KeepTip = questdlg(sprintf('There already exists data from a deconvoluted tip\nDo you want to skip tip deconvolution and keep old tip data?'),...
-                    'Processing Options',...
-                    'Yes',...
-                    'No',...
-                    'No');
-            else
-                KeepTip = 'No';
-            end
-            
-            if isequal(KeepTip,'No')
-                waitbar(0,h,'deconvoluting cantilever tip...')
-                obj.deconvolute_cantilever_tip;
-            elseif isequal(KeepTip,'Yes')
-            end
-            
             % Preprocessing everything, that needs user input
             answer = questdlg('Do you want to skip manual exclusion of problematic areas?',...
                 'Manual Exclusion',...
@@ -533,6 +517,25 @@ classdef Experiment < matlab.mixin.Copyable
                 obj.FM{i}.manual_exclusion();
             end
             
+            % Setting and calculating preferred method of reference slope
+            obj.reference_slope_parser(5) % The input argument sets the default refslope method to AutomaticFibril
+            
+            % Deconvoluting cantilever tip
+            if obj.CantileverTipFlag == 1
+                KeepTip = questdlg(sprintf('There already exists data from a deconvoluted tip\nDo you want to skip tip deconvolution and keep old tip data?'),...
+                    'Processing Options',...
+                    'Yes',...
+                    'No',...
+                    'No');
+            else
+                KeepTip = 'No';
+            end
+            if isequal(KeepTip,'No')
+                
+                waitbar(0,h,'deconvoluting cantilever tip...')
+                obj.deconvolute_cantilever_tip;
+            elseif isequal(KeepTip,'Yes')
+            end
             
             % Main loop for contact point estimation, Fibril Diameter and
             % Fibril E-Modulus calculation
@@ -547,6 +550,9 @@ classdef Experiment < matlab.mixin.Copyable
                 
                 % contact point estimation happens here
                 obj.cp_option_converter(CPOption,i);
+                
+                % reference slope calculation happens here
+                obj.reference_slope_calculator(i);
                 
                 waitbar(i/NLoop,h,sprintf('Processing Fibril %i/%i\nCalculating E-Modulus',i,NLoop));
                 if isequal(lower(EModOption),'hertz')
@@ -628,6 +634,11 @@ classdef Experiment < matlab.mixin.Copyable
             else
                 KeepFlagged = 'No';
             end
+            
+            % Setting and calculating preferred method of reference slope
+            obj.reference_slope_parser(1)
+            
+            % Deconvolute cantilever tip
             if isequal(lower(EModOption),'oliver')
                 if obj.CantileverTipFlag == 1
                     KeepTip = questdlg(sprintf('There already exists data from a deconvoluted tip\nDo you want to skip tip deconvolution and keep old tip data?'),...
@@ -645,10 +656,6 @@ classdef Experiment < matlab.mixin.Copyable
                 elseif isequal(KeepTip,'Yes')
                 end
             end
-            % Preprocessing everything, that needs user input
-            
-            % Setting and calculating preferred method of reference slope
-            obj.reference_slope_parser
             
             % Main loop for contact point estimation and E-Modulus calculation
             for i=1:NLoop
@@ -662,12 +669,14 @@ classdef Experiment < matlab.mixin.Copyable
                 % contact point estimation happens here
                 obj.cp_option_converter(CPOption,i);
                 
+                % reference slope calculation happens here
+                obj.reference_slope_calculator(i);
+                
                 waitbar(i/NLoop,h,sprintf('Processing ForceMap %i/%i\nCalculating E-Modulus',i,NLoop));
                 if isequal(lower(EModOption),'hertz')
                     obj.FM{i}.calculate_e_mod_hertz(CPOption,'parabolic',1);
                 else
-                    obj.FM{i}.RefSlope = obj.RefFM{1}.RefSlope;
-                    obj.FM{i}.calculate_e_mod_oliverpharr(obj.CantileverTip.ProjArea,0.75,ExternalRefSlope);
+                    obj.FM{i}.calculate_e_mod_oliverpharr(obj.CantileverTip.ProjArea,0.75);
                 end
                 waitbar(i/NLoop,h,sprintf('Processing ForceMap %i/%i\nWrapping Up And Saving',i,NLoop));
                 
@@ -1886,69 +1895,110 @@ classdef Experiment < matlab.mixin.Copyable
             obj.HostName = Host;
         end
         
-        function reference_slope_parser(obj)
+        function reference_slope_parser(obj,DefaultOption)
             
-            Methods = false(4,1);
-            ChosenMethod = obj.reference_slope_parser_gui;
+            if nargin < 2
+                DefaultOption = 1;
+            end
+            
+            Methods = false(6,1);
+            Methods(DefaultOption) = true;
+            ChosenMethod = obj.reference_slope_parser_gui(Methods);
             Methods(ChosenMethod) = true;
             
             obj.ReferenceSlopeFlag.SetToOne = Methods(1);
             obj.ReferenceSlopeFlag.UserInput = Methods(2);
             obj.ReferenceSlopeFlag.FromRefFM = Methods(3);
             obj.ReferenceSlopeFlag.FromArea = Methods(4);
-    
-            for i=1:obj.NumFiles
-                if obj.ReferenceSlopeFlag.SetToOne
-                    obj.FM{i}.set_reference_slope_to_one
-                elseif obj.ReferenceSlopeFlag.UserInput
-                    obj.FM{i}.set_reference_slope_to_user_input
-                elseif obj.ReferenceSlopeFlag.FromRefFM
-                    if isempty(obj.RefFM)
-                        Warn = warndlg({'There are no reference Force Maps in your Experiment','Please load in one or more reference files'});
-                        uiwait(Warn)
-                        obj.load_in_reference_maps
-                    end
-                    
-                    if length(obj.RefFM) > 1
-                        if ~obj.AssignedReferenceMaps
-                            obj.assign_reference_force_map
-                        end
-                        RefIdx = obj.WhichRefMap(i);
-                        if ~obj.RefFM{RefIdx}.HasRefSlope
-                            obj.RefFM{RefIdx}.base_and_tilt
-                            Mask = ones(obj.RefFM{RefIdx}.NumProfiles,obj.RefFM{RefIdx}.NumPoints);
-                            obj.RefFM{RefIdx}.calculate_reference_slope_from_area(Mask);
-                        end
-                        obj.FM{i}.RefSlope = obj.RefFM{RefIdx}.RefSlope;
-                        obj.FM{i}.HasRefSlope = true;
-                    elseif length(obj.RefFM) == 1
-                        if ~obj.RefFM{1}.HasRefSlope
-                            obj.RefFM{1}.base_and_tilt
-                            Mask = ones(obj.RefFM{1}.NumProfiles,obj.RefFM{1}.NumPoints);
-                            obj.RefFM{1}.calculate_reference_slope_from_area(Mask);
-                        end
-                        obj.FM{i}.RefSlope = obj.RefFM{1}.RefSlope;
-                        obj.FM{i}.HasRefSlope = true;
-                    end
-                        
-                elseif obj.ReferenceSlopeFlag.FromArea
-                    Mask = obj.FM{i}.create_mask_general;
-                    obj.FM{i}.calculate_reference_slope_from_area(Mask)
-                else
-                    warning(sprintf('Reference slope for %s was set to 1',obj.FM{i}.Name))
-                    obj.FM{i}.set_reference_slope_to_one
-                end
-            end
+            obj.ReferenceSlopeFlag.AutomaticFibril = Methods(5);
+            obj.ReferenceSlopeFlag.Automatic = Methods(6);
             
+        end
+        
+        function reference_slope_calculator(obj,Index)
+            
+            i = Index;
+            if obj.ReferenceSlopeFlag.SetToOne
+                obj.FM{i}.set_reference_slope_to_one
+            elseif obj.ReferenceSlopeFlag.UserInput
+                obj.FM{i}.set_reference_slope_to_user_input
+            elseif obj.ReferenceSlopeFlag.FromRefFM
+                if isempty(obj.RefFM)
+                    Warn = warndlg({'There are no reference Force Maps in your Experiment','Please load in one or more reference files'});
+                    uiwait(Warn)
+                    obj.load_in_reference_maps
+                end
+                
+                if length(obj.RefFM) > 1
+                    if ~obj.AssignedReferenceMaps
+                        obj.assign_reference_force_map
+                    end
+                    RefIdx = obj.WhichRefMap(i);
+                    if ~obj.RefFM{RefIdx}.HasRefSlope
+                        obj.RefFM{RefIdx}.base_and_tilt
+                        obj.RefFM{1}.estimate_cp_old
+                        Mask = ones(obj.RefFM{RefIdx}.NumProfiles,obj.RefFM{RefIdx}.NumPoints);
+                        obj.RefFM{RefIdx}.calculate_reference_slope_from_area(Mask);
+                    end
+                    obj.FM{i}.RefSlope = obj.RefFM{RefIdx}.RefSlope;
+                    obj.FM{i}.HasRefSlope = true;
+                elseif length(obj.RefFM) == 1
+                    if ~obj.RefFM{1}.HasRefSlope
+                        obj.RefFM{1}.base_and_tilt
+                        obj.RefFM{1}.estimate_cp_old
+                        Mask = ones(obj.RefFM{1}.NumProfiles,obj.RefFM{1}.NumPoints);
+                        obj.RefFM{1}.calculate_reference_slope_from_area(Mask);
+                    end
+                    obj.FM{i}.RefSlope = obj.RefFM{1}.RefSlope;
+                    obj.FM{i}.HasRefSlope = true;
+                end
+                
+            elseif obj.ReferenceSlopeFlag.FromArea
+                Mask = obj.FM{i}.create_mask_general;
+                obj.FM{i}.calculate_reference_slope_from_area(Mask)
+            elseif obj.ReferenceSlopeFlag.AutomaticFibril
+                Mask = ~obj.FM{i}.FibMask;
+                obj.FM{i}.calculate_reference_slope_from_area(Mask)
+            elseif obj.ReferenceSlopeFlag.Automatic
+                obj.FM{i}.create_automatic_background_mask
+                Mask = obj.FM{i}.BackgroundMask;
+                obj.FM{i}.calculate_reference_slope_from_area(Mask)
+            else
+                warning(sprintf('Reference slope for %s was set to 1',obj.FM{i}.Name))
+                obj.FM{i}.set_reference_slope_to_one
+            end
         end
         
         function assign_reference_force_map(obj)
             
             obj.WhichRefMap = ones(obj.NumFiles,1);
             
+            NGroups = length(obj.RefFM);
             
+            % create the appropriate inputdlg for assigning the groups show
+            % a table with numbered map-names in background
+            Names = obj.ForceMapNames;
+            Fig = figure('Units', 'Normalized', 'Position',[0.1 0.1 0.3 0.4],'Color','w');
+            T = table(Names');
+            uitable('Data',T{:,:},'Units', 'Normalized', 'Position',[0, 0, 1, 1]);
+            
+            for i=1:NGroups
+                prompts{i} = sprintf('Which Force Maps belong to Reference Force Map %i?',i);
+                definput{i} = 'e.g. 1 2 3 4 8 9 10 or 1:4 8:10';
+            end
+            
+            dims = [1 50];
+            opts.WindowStyle = 'normal';
+            dlgtitle = 'Assign a the Force Maps to their respective Reference Maps';
+            answer = inputdlg(prompts,dlgtitle,dims,definput,opts);
+            
+            for i=1:NGroups
+                obj.WhichRefMap(str2num(answer{i})) = i;
+            end
             
             obj.AssignedReferenceMaps = true;
+            close(Fig);
+            
         end
         
         function load_in_reference_maps(obj)
@@ -2001,6 +2051,8 @@ classdef Experiment < matlab.mixin.Copyable
             obj.ReferenceSlopeFlag.UserInput = false;
             obj.ReferenceSlopeFlag.FromRefFM = false;
             obj.ReferenceSlopeFlag.FromArea = false;
+            obj.ReferenceSlopeFlag.AutomaticFibril = false;
+            obj.ReferenceSlopeFlag.Automatic = false;
             obj.AssignedReferenceMaps = false;
         end
         
@@ -2401,11 +2453,11 @@ classdef Experiment < matlab.mixin.Copyable
             clear maskROI Igray backgroundI leng width
         end
         
-        function Out = reference_slope_parser_gui()
+        function Out = reference_slope_parser_gui(Methods)
             % Create figure
-            left = 0.4;
+            left = 0.3;
             bottom = 0.4;
-            width = 0.2;
+            width = 0.4;
             height = 0.15;
             h.f = figure('units','normalized','position',[left bottom width height],...
                 'toolbar','none','menu','none');
@@ -2415,13 +2467,19 @@ classdef Experiment < matlab.mixin.Copyable
             
             % Create checkboxes
             c(1) = uicontrol(h.bg,'style','radiobutton','units','normalized',...
-                'position',[0.2 0.8 0.8 1/7],'string','Set all RefSlopes to 1');
+                'position',[0.1 0.8 0.8 1/7],'string','Set all RefSlopes to 1');
             c(2) = uicontrol(h.bg,'style','radiobutton','units','normalized',...
-                'position',[0.2 0.6 0.8 1/7],'string','Get values from user input');
+                'position',[0.1 0.65 0.8 1/7],'string','Get values from user input');
             c(3) = uicontrol(h.bg,'style','radiobutton','units','normalized',...
-                'position',[0.2 0.4 0.8 1/7],'string','Get RefSlopes from Reference Force Maps');
+                'position',[0.1 0.5 0.8 1/7],'string','Get RefSlopes from Reference Force Maps');
             c(4) = uicontrol(h.bg,'style','radiobutton','units','normalized',...
-                'position',[0.2 0.2 0.8 1/7],'string','Get RefSlopes from chosen area on Force Map');
+                'position',[0.1 0.35 0.8 1/7],'string','Get RefSlopes from chosen area on Force Map');
+            c(5) = uicontrol(h.bg,'style','radiobutton','units','normalized',...
+                'position',[0.1 0.2 0.8 1/7],'string','Get RefSlope from automatically identified glass background around fibril');
+            c(6) = uicontrol(h.bg,'style','radiobutton','units','normalized',...
+                'position',[0.1 0.05 0.8 1/7],'string','Get RefSlope from automatically identified glass background around object (beta)');
+            
+            h.bg.SelectedObject = c(find(Methods));
             
             h.bg.Visible = 'on';
             

@@ -105,6 +105,7 @@ classdef ForceMap < matlab.mixin.Copyable
         FibDiam = []    % Estimated fibril diameter
         FibDiamSTD      % Estimated fibril diameter std
         FibMask         % Logical mask marking the whole fibril
+        BackgroundMask  % Logical mask marking the glass/mica/even-substrate background
         ExclMask        % Manually chosen areas that are to be excluded for calculations of fibril EMod, FibDiam, DBanding etc.
         Apex            % Value of highest pixel in each profile
         RectApex        % Value of rectified apex location in each profile
@@ -909,14 +910,12 @@ classdef ForceMap < matlab.mixin.Copyable
             end
         end
         
-        function EMod = calculate_e_mod_oliverpharr(obj,TipProjArea,CurvePercent,ExternalRefSlope)
+        function EMod = calculate_e_mod_oliverpharr(obj,TipProjArea,CurvePercent)
+            
             if nargin < 3
                 CurvePercent = 0.75;
             end
-            if nargin < 4
-                CurvePercent = 0.75;
-                ExternalRefSlope = false;
-            end
+            
             Range = find(obj.SelectedCurves);
             Epsilon = 0.73; % Correction constant from Oliver Pharr Method (1992)
             Beta = 1.0226; %Correction constant from Oliver Pharr Method (1992)
@@ -927,11 +926,6 @@ classdef ForceMap < matlab.mixin.Copyable
             obj.Stiffness = zeros(obj.NCurves,1);
             obj.IndDepth = zeros(obj.NCurves,1);
             obj.IndentArea = zeros(obj.NCurves,1);
-            
-            if ExternalRefSlope == false
-                obj.calculate_reference_slope();
-            end
-            
             for i=Range'
                 Z(:,i) = obj.HHRet{i} - obj.CP(i,1);
                 D(:,i) = (obj.BasedRet{i} - obj.CP(i,2))/obj.SpringConstant;
@@ -2280,6 +2274,36 @@ classdef ForceMap < matlab.mixin.Copyable
             %             cd(current.path)
         end
         
+        function create_automatic_background_mask(obj,MaskParam)
+            
+            if nargin < 2
+                MaskParam = 0.5;
+            end
+            HghtRange = range(obj.HeightMap,'all');
+            HghtMin = min(obj.HeightMap,[],'all');
+            HghtNorm = (obj.HeightMap-HghtMin)/HghtRange;
+            mask = zeros(size(HghtNorm));
+            STDLine = zeros(obj.NumProfiles,obj.NumPoints);
+            [HghtSorted,Idx] = sort(HghtNorm,'descend');
+            for j=1:obj.NumPoints*obj.NumProfiles
+                STDLine(:,j) = std(HghtSorted(:,1:j),0,[2]);
+            end
+            [~,MaxIdx] = max(STDLine,[],[2]);
+            for i=1:obj.NumProfiles
+                mask(i,Idx(i,1:floor(MaxIdx*MaskParam))) = 1;
+            end
+            mask = logical(mask);
+            mask = bwareafilt(mask,1,4);
+            
+            obj.BackgroundMask = mask;
+            
+            %             current = what();
+            %             cd(obj.Folder)
+            %             savename = sprintf('%s.mat',obj.Name);
+            %             save(savename,'obj')
+            %             cd(current.path)
+        end
+        
         function check_for_new_host(obj)
             % check_for_new_host(obj)
             %
@@ -3243,30 +3267,30 @@ classdef ForceMap < matlab.mixin.Copyable
                 ylim([0 1.3])
                 xlim([0 obj.NumProfiles+1])
                 hold on
-                plot(1:obj.NumProfiles,obj.DZslope(obj.RectApexIndex),'bO')
-                plot(m,obj.DZslope(obj.RectApexIndex(m)),'rO','MarkerFaceColor','r')
+                plot(1:obj.NCurves,obj.DZslope,'bO')
+                plot(m,obj.DZslope(m),'rO','MarkerFaceColor','r')
                 xlabel('Index')
                 ylabel('DZ-Slope')
                 legend(sprintf('Glass Reference Slope = %.3f',obj.RefSlope))
                 hold off
                 
                 subplot(2,3,5)
-                plot(obj.IndDepth(obj.RectApexIndex)*1e9,...
-                    obj.EModOliverPharr(obj.RectApexIndex)*1e-6,'bO')
+                plot(obj.IndDepth*1e9,...
+                    obj.EModOliverPharr*1e-6,'bO')
                 hold on
-                plot(obj.IndDepth(obj.RectApexIndex(m))*1e9,...
-                    obj.EModOliverPharr(obj.RectApexIndex(m))*1e-6,'rO','MarkerFaceColor','r')
+                plot(obj.IndDepth(m)*1e9,...
+                    obj.EModOliverPharr(m)*1e-6,'rO','MarkerFaceColor','r')
                 xlabel('Indentation Depth [nm]')
                 ylabel('Elastic Modulus [MPa]')
                 hold off
                 
                 subplot(2,3,6)
-                plot(obj.IndDepth(obj.RectApexIndex)*1e9,...
-                    obj.IndentArea(obj.RectApexIndex),'bO','MarkerSize',10,'MarkerFaceColor','b')
+                plot(obj.IndDepth*1e9,...
+                    obj.IndentArea,'bO','MarkerSize',10,'MarkerFaceColor','b')
                 hold on
-                plot(obj.IndDepth(obj.RectApexIndex(m))*1e9,...
-                    obj.IndentArea(obj.RectApexIndex(m)),'rO','MarkerSize',10,'MarkerFaceColor','r')
-                Xmax = round(max(obj.IndDepth(obj.RectApexIndex))*1e9+5);
+                plot(obj.IndDepth(m)*1e9,...
+                    obj.IndentArea(m),'rO','MarkerSize',10,'MarkerFaceColor','r')
+                Xmax = round(max(obj.IndDepth)*1e9+5);
                 xlim([0 Xmax])
                 plot(1:Xmax,obj.ProjTipArea(1:Xmax),'Color','black')
                 xlabel('Indentation Depth [nm]')
@@ -3331,21 +3355,21 @@ classdef ForceMap < matlab.mixin.Copyable
                 
                 if m == 1
                     subplot(2,2,3)
-                    boxplot(obj.EModHertz(obj.RectApexIndex));
+                    boxplot(obj.EModHertz);
                     xticklabels(obj.Name)
                     title(sprintf('mean = %.2f MPa\nmedian = %.2f MPa\nstd = %.3f MPa',...
-                        nanmean(obj.EModHertz(obj.RectApexIndex))*1e-6,...
-                        nanmedian(obj.EModHertz(obj.RectApexIndex))*1e-6,...
-                        nanstd(obj.EModHertz(obj.RectApexIndex))*1e-6));
+                        nanmean(obj.EModHertz)*1e-6,...
+                        nanmedian(obj.EModHertz)*1e-6,...
+                        nanstd(obj.EModHertz)*1e-6));
                 end
                 
                 
                 subplot(2,2,4)
-                plot((obj.IndDepthHertz(obj.RectApexIndex))*1e9,...
-                    obj.EModHertz(obj.RectApexIndex)*1e-6,'bO')
+                plot((obj.IndDepthHertz)*1e9,...
+                    obj.EModHertz*1e-6,'bO')
                 hold on
-                plot((obj.IndDepthHertz(obj.RectApexIndex(m)))*1e9,...
-                    obj.EModHertz(obj.RectApexIndex(m))*1e-6,'rO','MarkerFaceColor','r')
+                plot((obj.IndDepthHertz(m))*1e9,...
+                    obj.EModHertz(m)*1e-6,'rO','MarkerFaceColor','r')
                 xlabel('Indentation Depth [nm]')
                 ylabel('Elastic Modulus [MPa]')
                 hold off
