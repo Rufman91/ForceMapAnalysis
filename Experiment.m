@@ -13,21 +13,26 @@ classdef Experiment < matlab.mixin.Copyable
         FM
         EMod
         RefFM
+        WhichRefMap
         SPM
         SurfPot
-        FMFlag
-        SPMFlag
         GroupFM
         GroupSPM
         DropoutNet
         CP_CNN
         CantileverTip
-        CantileverTipFlag
         idxSubstrate
         idxEnvCond
+    end
+    properties
+        % All the Flags
+        FMFlag
+        SPMFlag
         SMFSFlag
         SMFSFlagPrint
-        
+        ReferenceSlopeFlag
+        CantileverTipFlag
+        AssignedReferenceMaps
     end
     
     methods
@@ -171,13 +176,8 @@ classdef Experiment < matlab.mixin.Copyable
                     obj.RefFM{i} = ForceMap(MapFullFile{N+i},obj.ExperimentFolder);
                 end
             end
-            obj.FMFlag.FibrilAnalysis = zeros(N,1);
-            obj.FMFlag.ForceMapAnalysis = zeros(N,1);
-            obj.FMFlag.Preprocessed = zeros(N,1);
-            obj.FMFlag.Grouping = 0;
-            obj.SPMFlag.FibrilAnalysis = zeros(N,1);
-            obj.SPMFlag.Grouping = 0;
-            obj.CantileverTipFlag = 0;
+            
+            obj.initialize_flags
             
 %             if WhichFiles == 2 || WhichFiles == 0
 %                 obj.grouping_force_map();
@@ -606,7 +606,7 @@ classdef Experiment < matlab.mixin.Copyable
             %%%%%% RECOMMENDED %%%%%%
             % CPOption = 'Zoomsweep' ... CNN-based method
             %%%%%% RECOMMENDED %%%%%%
-            % CPOption = 'Old' ... old method for contact point estimation
+            % CPOption = 'Old' ... old method for contact point estimation 
             % CPOption = 'RoV' ... RoV method for contact point estimation
             % CPOption = 'GoF' ... GoF method for contact point estimation
             % CPOption = 'Combo' ... RoV and GoF combined method for contact point estimation
@@ -618,7 +618,7 @@ classdef Experiment < matlab.mixin.Copyable
             % Oliver-Pharr-like method (O. Andriotis 2014)
             
             h = waitbar(0,'setting up','Units','normalized','Position',[0.4 0.3 0.2 0.1]);
-            NLoop = length(obj.ForceMapNames);
+            NLoop = obj.NumFiles;
             if sum(obj.FMFlag.ForceMapAnalysis) >= 1
                 KeepFlagged = questdlg(sprintf('Some maps have been processed already.\nDo you want to skip them and keep old results?'),...
                     'Processing Options',...
@@ -646,31 +646,9 @@ classdef Experiment < matlab.mixin.Copyable
                 end
             end
             % Preprocessing everything, that needs user input
-            answer = questdlg('Do you want to skip manual exclusion of problematic areas?',...
-                'Manual Exclusion',...
-                'Yes',...
-                'No','No');
-            for i=1:NLoop
-                if isequal(KeepFlagged,'Yes') && obj.FMFlag.ForceMapAnalysis(i) == 1
-                    continue
-                end
-                obj.FM{i}.create_and_level_height_map();
-                if isequal(answer,'Yes')
-                    continue
-                end
-                obj.FM{i}.manual_exclusion();
-            end
             
-            % preprocess reference ForceMaps
-            if isequal(lower(EModOption),'oliver')
-                ExternalRefSlope = true;
-                waitbar(0,h,'Processing reference ForceMaps')
-                for i=1:length(obj.RefFM)
-                    obj.RefFM{i}.base_and_tilt('linear');
-                    obj.cp_option_converter(CPOption,i,ExternalRefSlope);
-                    obj.RefFM{i}.calculate_reference_slope;
-                end
-            end
+            % Setting and calculating preferred method of reference slope
+            obj.reference_slope_parser
             
             % Main loop for contact point estimation and E-Modulus calculation
             for i=1:NLoop
@@ -1908,6 +1886,124 @@ classdef Experiment < matlab.mixin.Copyable
             obj.HostName = Host;
         end
         
+        function reference_slope_parser(obj)
+            
+            Methods = false(4,1);
+            ChosenMethod = obj.reference_slope_parser_gui;
+            Methods(ChosenMethod) = true;
+            
+            obj.ReferenceSlopeFlag.SetToOne = Methods(1);
+            obj.ReferenceSlopeFlag.UserInput = Methods(2);
+            obj.ReferenceSlopeFlag.FromRefFM = Methods(3);
+            obj.ReferenceSlopeFlag.FromArea = Methods(4);
+    
+            for i=1:obj.NumFiles
+                if obj.ReferenceSlopeFlag.SetToOne
+                    obj.FM{i}.set_reference_slope_to_one
+                elseif obj.ReferenceSlopeFlag.UserInput
+                    obj.FM{i}.set_reference_slope_to_user_input
+                elseif obj.ReferenceSlopeFlag.FromRefFM
+                    if isempty(obj.RefFM)
+                        Warn = warndlg({'There are no reference Force Maps in your Experiment','Please load in one or more reference files'});
+                        uiwait(Warn)
+                        obj.load_in_reference_maps
+                    end
+                    
+                    if length(obj.RefFM) > 1
+                        if ~obj.AssignedReferenceMaps
+                            obj.assign_reference_force_map
+                        end
+                        RefIdx = obj.WhichRefMap(i);
+                        if ~obj.RefFM{RefIdx}.HasRefSlope
+                            obj.RefFM{RefIdx}.base_and_tilt
+                            Mask = ones(obj.RefFM{RefIdx}.NumProfiles,obj.RefFM{RefIdx}.NumPoints);
+                            obj.RefFM{RefIdx}.calculate_reference_slope_from_area(Mask);
+                        end
+                        obj.FM{i}.RefSlope = obj.RefFM{RefIdx}.RefSlope;
+                        obj.FM{i}.HasRefSlope = true;
+                    elseif length(obj.RefFM) == 1
+                        if ~obj.RefFM{1}.HasRefSlope
+                            obj.RefFM{1}.base_and_tilt
+                            Mask = ones(obj.RefFM{1}.NumProfiles,obj.RefFM{1}.NumPoints);
+                            obj.RefFM{1}.calculate_reference_slope_from_area(Mask);
+                        end
+                        obj.FM{i}.RefSlope = obj.RefFM{1}.RefSlope;
+                        obj.FM{i}.HasRefSlope = true;
+                    end
+                        
+                elseif obj.ReferenceSlopeFlag.FromArea
+                    Mask = obj.FM{i}.create_mask_general;
+                    obj.FM{i}.calculate_reference_slope_from_area(Mask)
+                else
+                    warning(sprintf('Reference slope for %s was set to 1',obj.FM{i}.Name))
+                    obj.FM{i}.set_reference_slope_to_one
+                end
+            end
+            
+        end
+        
+        function assign_reference_force_map(obj)
+            
+            obj.WhichRefMap = ones(obj.NumFiles,1);
+            
+            
+            
+            obj.AssignedReferenceMaps = true;
+        end
+        
+        function load_in_reference_maps(obj)
+            
+            prompt = 'Enter Number of reference force maps';
+            dlgtitle = 'Experiment Layout';
+            dims = [1 35];
+            definput = {'1'};
+            answerRefN = inputdlg(prompt,dlgtitle,dims,definput);
+            NRef = str2double(answerRefN{1});
+            
+            MapFullFile = {};
+            k = 1;
+            while length(MapFullFile) < NRef
+                Title = sprintf('Choose one or more REFERENCEs .jpk-force-map or .jpk-qi-data files. %i/%i',length(MapFullFile),NRef);
+                [TempFile,TempPath] = uigetfile({'*.jpk-force-map;*.jpk-qi-data',...
+                    'Valid Types (*.jpk-force-map,*.jpk-qi-data)'},...
+                    Title,'MultiSelect','on');
+                if  ~iscell(TempFile)
+                    MapFullFile{k} = fullfile(TempPath,TempFile);
+                    k = k + 1;
+                else
+                    for i=1:length(TempFile)
+                        MapFullFile{k} = fullfile(TempPath,TempFile{i});
+                        k = k + 1;
+                    end
+                end
+                clear TempFile
+            end
+            
+            for i=1:NRef
+                TempID = sprintf('ReferenceMap-%i',i);
+                TempRefFM{i,1} = ForceMap(MapFullFile{i},obj.ExperimentFolder,TempID);
+            end
+            
+            obj.RefFM = TempRefFM;
+            
+        end
+        
+        function initialize_flags(obj)
+            N = obj.NumFiles;
+            obj.FMFlag.FibrilAnalysis = zeros(N,1);
+            obj.FMFlag.ForceMapAnalysis = zeros(N,1);
+            obj.FMFlag.Preprocessed = zeros(N,1);
+            obj.FMFlag.Grouping = 0;
+            obj.SPMFlag.FibrilAnalysis = zeros(N,1);
+            obj.SPMFlag.Grouping = 0;
+            obj.CantileverTipFlag = 0;
+            obj.ReferenceSlopeFlag.SetToOne = false;
+            obj.ReferenceSlopeFlag.UserInput = false;
+            obj.ReferenceSlopeFlag.FromRefFM = false;
+            obj.ReferenceSlopeFlag.FromArea = false;
+            obj.AssignedReferenceMaps = false;
+        end
+        
     end
     methods(Static)
         % Static auxilary methods mainly for tip deconvolution (code by Orestis Andriotis)
@@ -2303,6 +2399,51 @@ classdef Experiment < matlab.mixin.Copyable
             
             
             clear maskROI Igray backgroundI leng width
+        end
+        
+        function Out = reference_slope_parser_gui()
+            % Create figure
+            left = 0.4;
+            bottom = 0.4;
+            width = 0.2;
+            height = 0.15;
+            h.f = figure('units','normalized','position',[left bottom width height],...
+                'toolbar','none','menu','none');
+            
+            h.bg = uibuttongroup('Visible','off',...
+                  'Position',[0.1 0.15 0.8 0.8]);
+            
+            % Create checkboxes
+            c(1) = uicontrol(h.bg,'style','radiobutton','units','normalized',...
+                'position',[0.2 0.8 0.8 1/7],'string','Set all RefSlopes to 1');
+            c(2) = uicontrol(h.bg,'style','radiobutton','units','normalized',...
+                'position',[0.2 0.6 0.8 1/7],'string','Get values from user input');
+            c(3) = uicontrol(h.bg,'style','radiobutton','units','normalized',...
+                'position',[0.2 0.4 0.8 1/7],'string','Get RefSlopes from Reference Force Maps');
+            c(4) = uicontrol(h.bg,'style','radiobutton','units','normalized',...
+                'position',[0.2 0.2 0.8 1/7],'string','Get RefSlopes from chosen area on Force Map');
+            
+            h.bg.Visible = 'on';
+            
+            % Create OK pushbutton
+            h.p = uicontrol('style','pushbutton','units','normalized',...
+                'position',[0.4 0.05 0.2 0.1],'string','OK',...
+                'callback',@p_close);
+            % Pushbutton callback
+%             function p_call(varargin)
+%                 vals = get(h.c,'Value');
+%                 set(h.c(3),'Value',1)
+%                 checked = find([vals{:}]);
+%                 disp(checked)
+%             end
+
+            function p_close(varargin)
+                vals = get(c,'Value');
+                checked = find([vals{:}]);
+                Out = checked;
+                close(h.f)
+            end
+            uiwait(h.f)
         end
         
     end
