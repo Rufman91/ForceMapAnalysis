@@ -2606,53 +2606,42 @@ classdef ForceMap < matlab.mixin.Copyable
             obj.YSize = str2double(tline(where+1:end));
             
             %   Velocity
-            clear tline where;
-            frewind(fileID);
-            B=strfind(A,strcat(obj.FileType,'.settings.force-settings.start-option.velocity='));
-            if isempty(B)
-                warning("Could not find Z-tip-velocity in header. Calculating from Z-Length and Extension-Time instead")
-                
-                if isequal(obj.FileType,'force-scan-map')
-                    clear tline where;
-                    frewind(fileID);
-                    B=strfind(A,'force-scan-map.settings.force-settings.extend-scan-time=');
-                    fseek(fileID,B,'cof');
-                    tline = fgetl(fileID);
-                    where=strfind(tline,'=');
-                    ExtendTime = str2double(tline(where+1:end));
-                    
-                    clear tline where;
-                    frewind(fileID);
-                    B=strfind(A,'force-scan-map.settings.force-settings.relative-z-start=');
-                    fseek(fileID,B,'cof');
-                    tline = fgetl(fileID);
-                    where=strfind(tline,'=');
-                    ZLength = str2double(tline(where+1:end));
-                elseif isequal(obj.FileType,'quantitative-imaging-map')
-                    clear tline where;
-                    frewind(fileID);
-                    B=strfind(A,'quantitative-imaging-map.settings.force-settings.extend.duration=');
-                    fseek(fileID,B,'cof');
-                    tline = fgetl(fileID);
-                    where=strfind(tline,'=');
-                    ExtendTime = str2double(tline(where+1:end));
-                    
-                    clear tline where;
-                    frewind(fileID);
-                    B=strfind(A,'quantitative-imaging-map.settings.force-settings.extend.z-start=');
-                    fseek(fileID,B,'cof');
-                    tline = fgetl(fileID);
-                    where=strfind(tline,'=');
-                    ZLength = str2double(tline(where+1:end));
-                end
-                
-                obj.Velocity = ZLength/ExtendTime;
-            else
+            
+            if isequal(obj.FileType,'force-scan-map')
+                clear tline where;
+                frewind(fileID);
+                B=strfind(A,strcat(obj.FileType,'.settings.force-settings.extend-scan-time='));
                 fseek(fileID,B,'cof');
                 tline = fgetl(fileID);
                 where=strfind(tline,'=');
-                obj.Velocity = str2double(tline(where+1:end));
+                ExtendTime = str2double(tline(where+1:end));
+                
+                clear tline where;
+                frewind(fileID);
+                B=strfind(A,strcat(obj.FileType,'.settings.force-settings.relative-z-start='));
+                fseek(fileID,B,'cof');
+                tline = fgetl(fileID);
+                where=strfind(tline,'=');
+                ZLength = str2double(tline(where+1:end));
+            elseif isequal(obj.FileType,'quantitative-imaging-map')
+                clear tline where;
+                frewind(fileID);
+                B=strfind(A,'quantitative-imaging-map.settings.force-settings.extend.duration=');
+                fseek(fileID,B,'cof');
+                tline = fgetl(fileID);
+                where=strfind(tline,'=');
+                ExtendTime = str2double(tline(where+1:end));
+                
+                clear tline where;
+                frewind(fileID);
+                B=strfind(A,'quantitative-imaging-map.settings.force-settings.extend.z-start=');
+                fseek(fileID,B,'cof');
+                tline = fgetl(fileID);
+                where=strfind(tline,'=');
+                ZLength = str2double(tline(where+1:end));
             end
+            
+            obj.Velocity = ZLength/ExtendTime;
             
             %   GridAngle
             clear tline where;
