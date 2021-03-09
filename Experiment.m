@@ -488,6 +488,10 @@ classdef Experiment < matlab.mixin.Copyable
             % EModOption = 'Oliver' ... E-Modulus calculation through
             % Oliver-Pharr-like method (O. Andriotis 2014)
             
+            obj.write_to_log_file('Analysis Function','force_map_analysis_fibril()','start')
+            obj.write_to_log_file('Contact Point Option',CPOption)
+            obj.write_to_log_file('EMod Option',EModOption)
+            
             h = waitbar(0,'setting up','Units','normalized','Position',[0.4 0.3 0.2 0.1]);
             NLoop = length(obj.ForceMapNames);
             if sum(obj.FMFlag.FibrilAnalysis) >= 1
@@ -520,6 +524,21 @@ classdef Experiment < matlab.mixin.Copyable
             % Setting and calculating preferred method of reference slope
             obj.reference_slope_parser(5) % The input argument sets the default refslope method to AutomaticFibril
             
+            if obj.ReferenceSlopeFlag.SetAllToValue
+                RefSlopeOption = 'SetAllToValue';
+            elseif obj.ReferenceSlopeFlag.UserInput
+                RefSlopeOption = 'UserInput';
+            elseif obj.ReferenceSlopeFlag.FromRefFM
+                RefSlopeOption = 'FromRefFM';
+            elseif obj.ReferenceSlopeFlag.FromArea
+                RefSlopeOption = 'FromArea';
+            elseif obj.ReferenceSlopeFlag.AutomaticFibril
+                RefSlopeOption = 'AutomaticFibril';
+            elseif obj.ReferenceSlopeFlag.Automatic
+                RefSlopeOption = 'Automatic';
+            end
+            obj.write_to_log_file('Reference Slope Option',RefSlopeOption)
+            
             % Deconvoluting cantilever tip
             if obj.CantileverTipFlag == 1
                 KeepTip = questdlg(sprintf('There already exists data from a deconvoluted tip\nDo you want to skip tip deconvolution and keep old tip data?'),...
@@ -547,6 +566,9 @@ classdef Experiment < matlab.mixin.Copyable
                 if ~obj.FM{i}.BaseAndTiltFlag
                     obj.FM{i}.base_and_tilt('linear');
                 end
+                if i == 1
+                    obj.write_to_log_file('Baseline and Tilt option','linear')
+                end
                 
                 obj.FM{i}.calculate_fib_diam();
                 
@@ -561,8 +583,15 @@ classdef Experiment < matlab.mixin.Copyable
                 waitbar(i/NLoop,h,sprintf('Processing Fibril %i/%i\nCalculating E-Modulus',i,NLoop));
                 if isequal(lower(EModOption),'hertz')
                     obj.FM{i}.calculate_e_mod_hertz(CPOption,'parabolic',1);
+                    if i == 1
+                        obj.write_to_log_file('Hertzian Tip-Shape','parabolic')
+                        obj.write_to_log_file('Hertzian CurvePercent','1')
+                    end
                 else
                     obj.FM{i}.calculate_e_mod_oliverpharr(obj.CantileverTip.ProjArea,0.75);
+                    if i == 1
+                        obj.write_to_log_file('OliverPharr CurvePercent','0.75')
+                    end
                 end
                 waitbar(i/NLoop,h,sprintf('Processing Fibril %i/%i\nWrapping Up And Saving',i,NLoop));
                 
@@ -601,6 +630,7 @@ classdef Experiment < matlab.mixin.Copyable
             obj.save_experiment;
             
             close(h);
+            obj.write_to_log_file('','','end')
         end
         
         function force_map_analysis_general(obj,CPOption,EModOption)
@@ -627,6 +657,10 @@ classdef Experiment < matlab.mixin.Copyable
             % EModOption = 'Oliver' ... E-Modulus calculation through
             % Oliver-Pharr-like method (O. Andriotis 2014)
             
+            obj.write_to_log_file('Analysis Function','force_map_analysis_general()','start')
+            obj.write_to_log_file('Contact Point Option',CPOption)
+            obj.write_to_log_file('EMod Option',EModOption)
+            
             h = waitbar(0,'setting up','Units','normalized','Position',[0.4 0.3 0.2 0.1]);
             NLoop = obj.NumFiles;
             if sum(obj.FMFlag.ForceMapAnalysis) >= 1
@@ -641,6 +675,21 @@ classdef Experiment < matlab.mixin.Copyable
             
             % Setting and calculating preferred method of reference slope
             obj.reference_slope_parser(1)
+            
+            if obj.ReferenceSlopeFlag.SetAllToValue
+                RefSlopeOption = 'SetAllToValue';
+            elseif obj.ReferenceSlopeFlag.UserInput
+                RefSlopeOption = 'UserInput';
+            elseif obj.ReferenceSlopeFlag.FromRefFM
+                RefSlopeOption = 'FromRefFM';
+            elseif obj.ReferenceSlopeFlag.FromArea
+                RefSlopeOption = 'FromArea';
+            elseif obj.ReferenceSlopeFlag.AutomaticFibril
+                RefSlopeOption = 'AutomaticFibril';
+            elseif obj.ReferenceSlopeFlag.Automatic
+                RefSlopeOption = 'Automatic';
+            end
+            obj.write_to_log_file('Reference Slope Option',RefSlopeOption)
             
             % Deconvolute cantilever tip
             if isequal(lower(EModOption),'oliver')
@@ -669,6 +718,9 @@ classdef Experiment < matlab.mixin.Copyable
                 waitbar(i/NLoop,h,sprintf('Processing ForceMap %i/%i\nFitting Base Line',i,NLoop));
                 if ~obj.FM{i}.BaseAndTiltFlag
                     obj.FM{i}.base_and_tilt('linear');
+                if i == 1
+                    obj.write_to_log_file('Baseline and Tilt option','linear')
+                end
                 end
                 
                 % contact point estimation happens here
@@ -682,8 +734,15 @@ classdef Experiment < matlab.mixin.Copyable
                 waitbar(i/NLoop,h,sprintf('Processing ForceMap %i/%i\nCalculating E-Modulus',i,NLoop));
                 if isequal(lower(EModOption),'hertz')
                     obj.FM{i}.calculate_e_mod_hertz(CPOption,'parabolic',1);
+                    if i == 1
+                        obj.write_to_log_file('Hertzian Tip-Shape','parabolic')
+                        obj.write_to_log_file('Hertzian CurvePercent','1')
+                    end
                 else
                     obj.FM{i}.calculate_e_mod_oliverpharr(obj.CantileverTip.ProjArea,0.75);
+                    if i == 1
+                        obj.write_to_log_file('OliverPharr CurvePercent','0.75')
+                    end
                 end
                 waitbar(i/NLoop,h,sprintf('Processing ForceMap %i/%i\nWrapping Up And Saving',i,NLoop));
                 
