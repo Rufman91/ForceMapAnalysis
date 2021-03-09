@@ -5,6 +5,7 @@ classdef Experiment < matlab.mixin.Copyable
         ExperimentFolder    % Shows Folder where Experiment is saved
         HostOS              % Shows the current operating system
         HostName            % Shows the current Host (User of running machine)
+        CurrentLogFile
         ForceMapNames       % Shows names of the force maps
         ForceMapFolders
         SurfacePotentialMapFolders
@@ -2086,6 +2087,83 @@ classdef Experiment < matlab.mixin.Copyable
             obj.ReferenceSlopeFlag.AutomaticFibril = false;
             obj.ReferenceSlopeFlag.Automatic = false;
             obj.AssignedReferenceMaps = false;
+        end
+        
+        function write_to_log_file(obj,Name, Value, StartEnd)
+            % creates a Log-file that tracks all important analysis
+            % parameters aswell as the current git branch and hash of the
+            % current commit. All data analysis done this way should then
+            % be reproducible down the line by downloading the
+            % corresponding program version from GitHub and running with
+            % the same parameters. 
+            % This function is meant to be called multiple times in a
+            % Experiment wrapper method (e.g. force_map_analysis_general())
+            % Arguments:
+            % Name: Name of the stored parameter in the log-file
+            % Value: Value of the stored parameter (duh)
+            % StartEnd = none, 'start', 'end'
+            %       'start'... will create the logfile and write the
+            %       GitInfo and the current date and time into the file
+            %       header. The first function call should log the called
+            %       wrapper-method
+            %       none ... Leaving out the StartEnd argument will just
+            %       append the Name Value pair to the existing file
+            %       'end'... will append a last comment to the file,
+            %       confirming that the analysis has terminated
+            %       successfully and should therefore only be called as the
+            %       very last Line in a wrapper-method.
+            %
+            %   NOTE: calling with 'end' will IGNORE whatever
+            %   was written into Name and Value. However, you still need to
+            %   Pass something in for those arguments, e.g.:
+            %       obj.write_to_log_file('foo','bar','end')
+            
+            Current = what();
+            cd(obj.ExperimentFolder)
+            
+            if nargin == 4
+                if isequal(lower(StartEnd),'start')
+                    DateTime = datestr(now,30);
+                    obj.CurrentLogFile = strcat('AnalysisLog',DateTime,'.txt');
+                    fid = fopen( obj.CurrentLogFile, 'wt' );
+                    if fid == -1
+                        error('Cannot open log file.');
+                    end
+                    fclose(fid);
+                    
+                    % Change to source code folder, get GitInfo and then
+                    % change back to ExperimentFolder
+                    Source = which('ForceMap');
+                    Source = Source(1:end-11);
+                    cd(Source)
+                    GitInfo = getGitInfo();
+                    cd(obj.ExperimentFolder);
+                    
+                    obj.write_to_log_file('Date and Time',datestr(now,0))
+                    obj.write_to_log_file('Branch',GitInfo.branch)
+                    obj.write_to_log_file('Hash of current commit',GitInfo.hash)
+                    obj.write_to_log_file('Remote',GitInfo.remote)
+                    obj.write_to_log_file('URL',GitInfo.url)
+                elseif isequal(lower(StartEnd),'end')
+                    obj.write_to_log_file('Analysis ended successfully',':D')
+                    obj.CurrentLogFile = [];
+                    cd(Current.path);
+                    return
+                end
+            end
+            
+            Value = char(Value);
+            
+            fid = fopen(obj.CurrentLogFile, 'a');
+            if fid == -1
+                error('Cannot open log file.');
+            end
+            
+            fprintf(fid, '%s: %s\n', Name, Value);
+            
+            fclose(fid);
+            cd(Current.path);
+            
         end
         
     end
