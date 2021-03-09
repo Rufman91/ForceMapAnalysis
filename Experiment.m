@@ -1080,6 +1080,11 @@ classdef Experiment < matlab.mixin.Copyable
                 XMax= inf;      % Limit of the X-axis in meters (m)
                 YMin= -inf;     % Limit of the Y-axis in Newtons (N)   
                 YMax= inf;      % Limit of the Y-axis in Newtons (N)
+            elseif nargin<4
+                XMin= -inf;     % Limit of the X-axis in meters (m)  
+                XMax= inf;      % Limit of the X-axis in meters (m)
+                YMin= -inf;     % Limit of the Y-axis in Newtons (N)   
+                YMax= inf;      % Limit of the Y-axis in Newtons (N)
             end
             % Loop over the imported force maps
              for ii=1:obj.NumFiles
