@@ -65,6 +65,7 @@ classdef ForceMap < matlab.mixin.Copyable
         THRet = {}      % vertical tip height retract data in meters
         BasedApp = {}   % approach force data with subtracted base line and tilt in Newton
         BasedRet = {}   % retraction force data with subtracted base line and tilt in Newton
+        BaseAndTiltFlag
     end
     properties
         % Properties related to Contact Point (CP) estimation
@@ -105,6 +106,7 @@ classdef ForceMap < matlab.mixin.Copyable
         FibDiam = []    % Estimated fibril diameter
         FibDiamSTD      % Estimated fibril diameter std
         FibMask         % Logical mask marking the whole fibril
+        BackgroundMask  % Logical mask marking the glass/mica/even-substrate background
         ExclMask        % Manually chosen areas that are to be excluded for calculations of fibril EMod, FibDiam, DBanding etc.
         Apex            % Value of highest pixel in each profile
         RectApex        % Value of rectified apex location in each profile
@@ -124,6 +126,7 @@ classdef ForceMap < matlab.mixin.Copyable
         IndDepth
         IndentArea
         ProjTipArea
+        HasRefSlope
     end
     properties
         % auxiliary properties to facilitate comparing different methods of
@@ -311,6 +314,7 @@ classdef ForceMap < matlab.mixin.Copyable
                 obj.THRet{i} = obj.HHRet{i} - obj.BasedRet{i}/obj.SpringConstant;
             end
             close(h);
+            obj.BaseAndTiltFlag = true;
             %             current = what();
             %             cd(obj.Folder)
             %             savename = sprintf('%s.mat',obj.Name);
@@ -908,14 +912,12 @@ classdef ForceMap < matlab.mixin.Copyable
             end
         end
         
-        function EMod = calculate_e_mod_oliverpharr(obj,TipProjArea,CurvePercent,ExternalRefSlope)
+        function EMod = calculate_e_mod_oliverpharr(obj,TipProjArea,CurvePercent)
+            
             if nargin < 3
                 CurvePercent = 0.75;
             end
-            if nargin < 4
-                CurvePercent = 0.75;
-                ExternalRefSlope = false;
-            end
+            
             Range = find(obj.SelectedCurves);
             Epsilon = 0.73; % Correction constant from Oliver Pharr Method (1992)
             Beta = 1.0226; %Correction constant from Oliver Pharr Method (1992)
@@ -926,11 +928,6 @@ classdef ForceMap < matlab.mixin.Copyable
             obj.Stiffness = zeros(obj.NCurves,1);
             obj.IndDepth = zeros(obj.NCurves,1);
             obj.IndentArea = zeros(obj.NCurves,1);
-            
-            if ExternalRefSlope == false
-                obj.calculate_reference_slope();
-            end
-            
             for i=Range'
                 Z(:,i) = obj.HHRet{i} - obj.CP(i,1);
                 D(:,i) = (obj.BasedRet{i} - obj.CP(i,2))/obj.SpringConstant;
@@ -999,7 +996,7 @@ classdef ForceMap < matlab.mixin.Copyable
             %             cd(current.path)
         end
         
-         function calculate_fib_diam(obj)
+        function calculate_fib_diam(obj)
             [obj.Apex,obj.ApexIndex] = max(obj.HeightMap(:,:,1).*obj.FibMask,[],2);
             
             if obj.FibrilFlag.Straight == 1
@@ -2124,7 +2121,7 @@ classdef ForceMap < matlab.mixin.Copyable
             end
         end
         
-        function calculate_reference_slope(obj)
+        function calculate_reference_slope_from_area(obj,Mask)
             % Calculates the distribution of DZslopes on the curves
             % that that are neihter on the fibril nor the excluded zones.
             %  the upper 25% of the curve are considered for the
@@ -2135,7 +2132,7 @@ classdef ForceMap < matlab.mixin.Copyable
             % Calculate the DZslopes
             k = 1;
             for i=Range'
-                if (obj.FibMask(obj.List2Map(i,1),obj.List2Map(i,2)) == 0) &&...
+                if (Mask(obj.List2Map(i,1),obj.List2Map(i,2)) == 1) &&...
                         (obj.ExclMask(obj.List2Map(i,1),obj.List2Map(i,2)) == 1)
                     Z(:,i) = obj.HHRet{i} - obj.CP(i,1);
                     D(:,i) = (obj.BasedRet{i} - obj.CP(i,2))/obj.SpringConstant;
@@ -2150,6 +2147,49 @@ classdef ForceMap < matlab.mixin.Copyable
             % Fit the Gaussian
             Gaussian = fitdist(DZslope','Normal');
             obj.RefSlope = Gaussian.mean;
+            obj.HasRefSlope = true;
+        end
+        
+        function set_reference_slope_to_user_input(obj)
+            IsValidInput = false;
+            while ~IsValidInput
+                UsrInput = inputdlg(sprintf('Reference Slope of %s',obj.Name),'Manual Reference Slope');
+                if ~isempty(regexp(UsrInput{1},'[^0-9.]', 'once')) || isempty(UsrInput{1})
+                    IsValidInput = false;
+                    Warn = warndlg('Input can only contain numbers and periods. Please try again');
+                    uiwait(Warn)
+                    continue
+                end
+                obj.RefSlope = str2double(UsrInput{1});
+                obj.HasRefSlope = true;
+                IsValidInput = true;
+            end
+        end
+        
+        function set_reference_slope_to_value(obj,Value)
+            obj.RefSlope = Value; % BEST.FUNCTION.EVER.WRITTEN.
+            obj.HasRefSlope = true;
+        end
+        
+        function Mask = create_mask_general(obj)
+            
+            Mask = logical(zeros(obj.NumProfiles,obj.NumPoints));
+            CheckSum = 100;
+            while CheckSum > 1
+                f = figure('Name','Choose areas');
+                f.WindowState = 'maximized';
+                subplot(2,1,2)
+                surf(imresize(imrotate(obj.HeightMap(:,:,1)',90),[1024 1024]),'LineStyle','none','FaceLighting','gouraud','FaceColor','interp')
+                light('Style','local')
+                subplot(2,1,1)
+                imshow(obj.HeightMap(:,:,1).*~Mask,[min(obj.HeightMap(:,:,1),[],'all') max(obj.HeightMap(:,:,1),[],'all')])
+                title(sprintf('%s: Draw Freehand ROI around areas, that are to be included in the mask\nThe area will be marked and the same map redrawn \n If you are done masking just click on the image once without dragging the cursor',obj.Name))
+                ROI = drawfreehand;
+                CheckSum = length(ROI.Waypoints);
+                TempMask = createMask(ROI);
+                Mask = Mask | TempMask;
+                close(f)
+            end
         end
         
         function create_and_level_height_map(obj)
@@ -2252,6 +2292,38 @@ classdef ForceMap < matlab.mixin.Copyable
                 mask = bwareafilt(mask,1,4);
             end
             obj.FibMask = mask;
+            
+            %             current = what();
+            %             cd(obj.Folder)
+            %             savename = sprintf('%s.mat',obj.Name);
+            %             save(savename,'obj')
+            %             cd(current.path)
+        end
+        
+        function create_automatic_background_mask(obj,MaskParam)
+            
+            if nargin < 2
+                MaskParam = 0.5;
+            end
+            mask = zeros(size(obj.HeightMap));
+            HeightList = zeros(obj.NCurves,1);
+            for i=1:obj.NCurves
+                HeightList(i) = -obj.HHApp{i}(end);
+            end
+            STDLine = zeros(obj.NCurves,1);
+            [HeightSorted,Idx] = sort(HeightList,'descend');
+            for i=1:obj.NCurves
+                STDLine(i) = std(HeightSorted(1:i));
+            end
+            [~,MaxIdx] = max(STDLine);
+            MapIndex = obj.List2Map(Idx(1:floor(MaxIdx*MaskParam)),:);
+            for i=1:length(MapIndex)
+                mask(MapIndex(i,1),MapIndex(i,2)) = 1;
+            end
+            mask = logical(mask);
+            mask = bwareafilt(mask,1,4);
+            
+            obj.BackgroundMask = ~mask;
             
             %             current = what();
             %             cd(obj.Folder)
@@ -2558,53 +2630,42 @@ classdef ForceMap < matlab.mixin.Copyable
             obj.YSize = str2double(tline(where+1:end));
             
             %   Velocity
-            clear tline where;
-            frewind(fileID);
-            B=strfind(A,strcat(obj.FileType,'.settings.force-settings.start-option.velocity='));
-            if isempty(B)
-                warning("Could not find Z-tip-velocity in header. Calculating from Z-Length and Extension-Time instead")
-                
-                if isequal(obj.FileType,'force-scan-map')
-                    clear tline where;
-                    frewind(fileID);
-                    B=strfind(A,'force-scan-map.settings.force-settings.extend-scan-time=');
-                    fseek(fileID,B,'cof');
-                    tline = fgetl(fileID);
-                    where=strfind(tline,'=');
-                    ExtendTime = str2double(tline(where+1:end));
-                    
-                    clear tline where;
-                    frewind(fileID);
-                    B=strfind(A,'force-scan-map.settings.force-settings.relative-z-start=');
-                    fseek(fileID,B,'cof');
-                    tline = fgetl(fileID);
-                    where=strfind(tline,'=');
-                    ZLength = str2double(tline(where+1:end));
-                elseif isequal(obj.FileType,'quantitative-imaging-map')
-                    clear tline where;
-                    frewind(fileID);
-                    B=strfind(A,'quantitative-imaging-map.settings.force-settings.extend.duration=');
-                    fseek(fileID,B,'cof');
-                    tline = fgetl(fileID);
-                    where=strfind(tline,'=');
-                    ExtendTime = str2double(tline(where+1:end));
-                    
-                    clear tline where;
-                    frewind(fileID);
-                    B=strfind(A,'quantitative-imaging-map.settings.force-settings.extend.z-start=');
-                    fseek(fileID,B,'cof');
-                    tline = fgetl(fileID);
-                    where=strfind(tline,'=');
-                    ZLength = str2double(tline(where+1:end));
-                end
-                
-                obj.Velocity = ZLength/ExtendTime;
-            else
+            
+            if isequal(obj.FileType,'force-scan-map')
+                clear tline where;
+                frewind(fileID);
+                B=strfind(A,strcat(obj.FileType,'.settings.force-settings.extend-scan-time='));
                 fseek(fileID,B,'cof');
                 tline = fgetl(fileID);
                 where=strfind(tline,'=');
-                obj.Velocity = str2double(tline(where+1:end));
+                ExtendTime = str2double(tline(where+1:end));
+                
+                clear tline where;
+                frewind(fileID);
+                B=strfind(A,strcat(obj.FileType,'.settings.force-settings.relative-z-start='));
+                fseek(fileID,B,'cof');
+                tline = fgetl(fileID);
+                where=strfind(tline,'=');
+                ZLength = str2double(tline(where+1:end));
+            elseif isequal(obj.FileType,'quantitative-imaging-map')
+                clear tline where;
+                frewind(fileID);
+                B=strfind(A,'quantitative-imaging-map.settings.force-settings.extend.duration=');
+                fseek(fileID,B,'cof');
+                tline = fgetl(fileID);
+                where=strfind(tline,'=');
+                ExtendTime = str2double(tline(where+1:end));
+                
+                clear tline where;
+                frewind(fileID);
+                B=strfind(A,'quantitative-imaging-map.settings.force-settings.extend.z-start=');
+                fseek(fileID,B,'cof');
+                tline = fgetl(fileID);
+                where=strfind(tline,'=');
+                ZLength = str2double(tline(where+1:end));
             end
+            
+            obj.Velocity = ZLength/ExtendTime;
             
             %   GridAngle
             clear tline where;
@@ -2684,8 +2745,9 @@ classdef ForceMap < matlab.mixin.Copyable
         end
         
         function initialize_flags(obj)
-           % initialize all flags related to the ForceMap class
-           
+            % initialize all flags related to the ForceMap class
+            
+            obj.BaseAndTiltFlag = false;
             obj.CPFlag.RoV = 0;
             obj.CPFlag.GoF = 0;
             obj.CPFlag.Combo = 0;
@@ -2697,11 +2759,12 @@ classdef ForceMap < matlab.mixin.Copyable
             obj.CPFlag.Manual = 0;
             obj.CPFlag.Old = 0;
             obj.CPFlag.CNNopt = 0;
-            obj.CPFlag.HardSurface = 0;            
+            obj.CPFlag.HardSurface = 0;
+            obj.HasRefSlope = false;
             % SMFS
             obj.SMFSFlag.Min=zeros(1,obj.NCurves);
-            obj.SMFSFlag.Length=zeros(1,obj.NCurves);  
-
+            obj.SMFSFlag.Length=zeros(1,obj.NCurves);
+            
         end
         
         function create_dummy_force_map(obj,NSynthCurves)
@@ -3209,43 +3272,43 @@ classdef ForceMap < matlab.mixin.Copyable
                 
                 if m == 1
                     subplot(2,3,3)
-                    boxplot(obj.EModOliverPharr(obj.RectApexIndex));
+                    boxplot(obj.EModOliverPharr);
                     xticklabels(obj.Name)
                     title(sprintf('mean = %.2f MPa\nmedian = %.2f MPa\nstd = %.3f MPa',...
-                        nanmean(obj.EModOliverPharr(obj.RectApexIndex))*1e-6,...
-                        nanmedian(obj.EModOliverPharr(obj.RectApexIndex))*1e-6,...
-                        nanstd(obj.EModOliverPharr(obj.RectApexIndex))*1e-6));
+                        nanmean(obj.EModOliverPharr)*1e-6,...
+                        nanmedian(obj.EModOliverPharr)*1e-6,...
+                        nanstd(obj.EModOliverPharr)*1e-6));
                 end
                 
                 subplot(2,3,4)
-                plot(0:obj.NumProfiles+1,obj.RefSlope*ones(obj.NumProfiles+2,1))
+                plot(0:obj.NCurves+1,obj.RefSlope*ones(obj.NCurves+2,1))
                 ylim([0 1.3])
-                xlim([0 obj.NumProfiles+1])
+                xlim([0 obj.NCurves+1])
                 hold on
-                plot(1:obj.NumProfiles,obj.DZslope(obj.RectApexIndex),'bO')
-                plot(m,obj.DZslope(obj.RectApexIndex(m)),'rO','MarkerFaceColor','r')
+                plot(1:obj.NCurves,obj.DZslope,'bO')
+                plot(m,obj.DZslope(m),'rO','MarkerFaceColor','r')
                 xlabel('Index')
                 ylabel('DZ-Slope')
                 legend(sprintf('Glass Reference Slope = %.3f',obj.RefSlope))
                 hold off
                 
                 subplot(2,3,5)
-                plot(obj.IndDepth(obj.RectApexIndex)*1e9,...
-                    obj.EModOliverPharr(obj.RectApexIndex)*1e-6,'bO')
+                plot(obj.IndDepth*1e9,...
+                    obj.EModOliverPharr*1e-6,'bO')
                 hold on
-                plot(obj.IndDepth(obj.RectApexIndex(m))*1e9,...
-                    obj.EModOliverPharr(obj.RectApexIndex(m))*1e-6,'rO','MarkerFaceColor','r')
+                plot(obj.IndDepth(m)*1e9,...
+                    obj.EModOliverPharr(m)*1e-6,'rO','MarkerFaceColor','r')
                 xlabel('Indentation Depth [nm]')
                 ylabel('Elastic Modulus [MPa]')
                 hold off
                 
                 subplot(2,3,6)
-                plot(obj.IndDepth(obj.RectApexIndex)*1e9,...
-                    obj.IndentArea(obj.RectApexIndex),'bO','MarkerSize',10,'MarkerFaceColor','b')
+                plot(obj.IndDepth*1e9,...
+                    obj.IndentArea,'bO','MarkerSize',10,'MarkerFaceColor','b')
                 hold on
-                plot(obj.IndDepth(obj.RectApexIndex(m))*1e9,...
-                    obj.IndentArea(obj.RectApexIndex(m)),'rO','MarkerSize',10,'MarkerFaceColor','r')
-                Xmax = round(max(obj.IndDepth(obj.RectApexIndex))*1e9+5);
+                plot(obj.IndDepth(m)*1e9,...
+                    obj.IndentArea(m),'rO','MarkerSize',10,'MarkerFaceColor','r')
+                Xmax = round(max(obj.IndDepth)*1e9+5);
                 xlim([0 Xmax])
                 plot(1:Xmax,obj.ProjTipArea(1:Xmax),'Color','black')
                 xlabel('Indentation Depth [nm]')
@@ -3310,21 +3373,21 @@ classdef ForceMap < matlab.mixin.Copyable
                 
                 if m == 1
                     subplot(2,2,3)
-                    boxplot(obj.EModHertz(obj.RectApexIndex));
+                    boxplot(obj.EModHertz);
                     xticklabels(obj.Name)
                     title(sprintf('mean = %.2f MPa\nmedian = %.2f MPa\nstd = %.3f MPa',...
-                        nanmean(obj.EModHertz(obj.RectApexIndex))*1e-6,...
-                        nanmedian(obj.EModHertz(obj.RectApexIndex))*1e-6,...
-                        nanstd(obj.EModHertz(obj.RectApexIndex))*1e-6));
+                        nanmean(obj.EModHertz)*1e-6,...
+                        nanmedian(obj.EModHertz)*1e-6,...
+                        nanstd(obj.EModHertz)*1e-6));
                 end
                 
                 
                 subplot(2,2,4)
-                plot((obj.IndDepthHertz(obj.RectApexIndex))*1e9,...
-                    obj.EModHertz(obj.RectApexIndex)*1e-6,'bO')
+                plot((obj.IndDepthHertz)*1e9,...
+                    obj.EModHertz*1e-6,'bO')
                 hold on
-                plot((obj.IndDepthHertz(obj.RectApexIndex(m)))*1e9,...
-                    obj.EModHertz(obj.RectApexIndex(m))*1e-6,'rO','MarkerFaceColor','r')
+                plot((obj.IndDepthHertz(m))*1e9,...
+                    obj.EModHertz(m)*1e-6,'rO','MarkerFaceColor','r')
                 xlabel('Indentation Depth [nm]')
                 ylabel('Elastic Modulus [MPa]')
                 hold off
