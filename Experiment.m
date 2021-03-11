@@ -386,7 +386,7 @@ classdef Experiment < matlab.mixin.Copyable
     methods(Static)
         % Static methods related with Experiment-file handling
         
-        function E = load()
+        function E = load(Fullfile)
             % E = load()
             %
             % recommended way of loading an existing Experiment() from its
@@ -395,9 +395,11 @@ classdef Experiment < matlab.mixin.Copyable
             % and, if so, updating object properties and setting
             % CPFlag.CNNOpt = 0
             
-            [File,Path] = uigetfile('*.mat','Choose Experiment .mat from folder');
-            Fullfile = fullfile(Path,File);
-            disp('Loading Experiment... this can take a while for larger Experiments')
+            if nargin < 1
+                [File,Path] = uigetfile('*.mat','Choose Experiment .mat from folder');
+                Fullfile = fullfile(Path,File);
+                disp('Loading Experiment... this can take a while for larger Experiments')
+            end
             load(Fullfile);
             
             E = obj;
@@ -754,6 +756,7 @@ classdef Experiment < matlab.mixin.Copyable
             obj.save_experiment;
             
             close(h);
+            obj.write_to_log_file('','','end')
         end
         
         function surface_potential_analysis_fibril(obj)
