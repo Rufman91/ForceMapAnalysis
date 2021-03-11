@@ -755,6 +755,7 @@ classdef Experiment < matlab.mixin.Copyable
             obj.save_experiment;
             
             close(h);
+            obj.write_to_log_file('','','end')
         end
         
         function surface_potential_analysis_fibril(obj)

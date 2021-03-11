@@ -2609,7 +2609,11 @@ classdef ForceMap < matlab.mixin.Copyable
             %   MaxPonintsPerCurve
             clear tline where;
             frewind(fileID);
-            B=strfind(A,strcat(obj.FileType,'.settings.force-settings.extend-k-length='));
+            if isequal(obj.FileType,'force-scan-map')
+                B=strfind(A,strcat(obj.FileType,'.settings.force-settings.extend-k-length='));
+            elseif isequal(obj.FileType,'quantitative-imaging-map')
+                B=strfind(A,strcat(obj.FileType,'.settings.force-settings.extend.num-points='));
+            end
             fseek(fileID,B,'cof');
             tline = fgetl(fileID);
             where=strfind(tline,'=');
