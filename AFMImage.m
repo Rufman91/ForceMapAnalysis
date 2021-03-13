@@ -78,10 +78,11 @@ classdef AFMImage < matlab.mixin.Copyable
                 TempID = 'AFMImage detached from Experiment-class 1';
             end
             
-            obj.define_afm_color_map
+            obj.define_afm_color_map(0.35)
             
             obj.initialize_flags
             
+            obj.Name = obj.parse_file_name(ImageFullFile);
             obj.ID = TempID;
             
             % get OS and use appropriate fitting system command
@@ -96,6 +97,31 @@ classdef AFMImage < matlab.mixin.Copyable
             obj.load_image_channels(ImageFullFile);
             
             
+            
+        end
+        
+    end
+    
+    methods(Static)
+        % Static Main Methods
+        
+        function [OutImage] = subtract_line_fit_hist(InImage,NumProfiles,CutOff)
+            
+            NumPoints = length(InImage(1,:));
+            CutOff = ceil(CutOff*NumPoints);
+            
+            for i=1:NumProfiles
+                Line = InImage(i,:)';
+                [~, SortedIndex] = sort(Line,'ascend');
+                LineFit = polyfit(SortedIndex(1:CutOff),Line(SortedIndex(1:CutOff)),1);
+                LineEval = [1:NumPoints]'*LineFit(1) + LineFit(2);
+                Line = Line - LineEval;
+                InImage(i,:) = Line;
+            end
+            OutImage = InImage;
+        end
+        
+        function [OutMask] = mask_background(Image)
             
         end
         
@@ -397,10 +423,13 @@ classdef AFMImage < matlab.mixin.Copyable
             end
         end
         
-        function define_afm_color_map(obj)
-            CMap(:,1) = (0:1/255:1).*2;
-            CMap(:,2) = (0:1/255:1).*2 - 0.5;
-            CMap(:,3) = (0:1/255:1).*2 - 1;
+        function define_afm_color_map(obj,PlusBrightness)
+            if nargin < 1
+                PlusBrightness = .35;
+            end
+            CMap(:,1) = (0:1/255:1).*2 + PlusBrightness;
+            CMap(:,2) = (0:1/255:1).*2 - 0.5 + PlusBrightness;
+            CMap(:,3) = (0:1/255:1).*2 - 1 + PlusBrightness;
             CMap(CMap < 0) = 0;
             CMap(CMap > 1) = 1;
             
@@ -441,6 +470,21 @@ classdef AFMImage < matlab.mixin.Copyable
             obj.HasLockInPhase = false;
             obj.HasVerticalDeflection = false;
             
+        end
+        
+    end
+    
+    methods(Static)
+        % Static auxiliary methods.
+        function Name = parse_file_name(FullFile)
+            % Parses filename to fill property Name. Static method to
+            % possibly be used in other constructors aswell
+            FileSepPos = strfind(FullFile,filesep);
+            FileExtPos = strfind(FullFile,'.');
+            File = FullFile(FileSepPos(end)+1:FileExtPos(end)-1);
+            File = replace(File,'_','-');
+            
+            Name = File;
         end
         
     end
