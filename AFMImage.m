@@ -51,7 +51,8 @@ classdef AFMImage < matlab.mixin.Copyable
     end
     properties
         % Properties related to Image processing/segmenting/classification
-        
+        CMap
+        MaskBackground
     end
     properties
         % All the Flags
@@ -72,10 +73,12 @@ classdef AFMImage < matlab.mixin.Copyable
             % as all available channel-data
             
             if nargin == 0
-                [File, Path] = uigetfile('*.jpk','Choose a jpk image file')
+                [File, Path] = uigetfile('*.jpk','Choose a jpk image file');
                 ImageFullFile = fullfile(Path, File);
-                TempID = 'AFMImage detached from Experiment-class';
+                TempID = 'AFMImage detached from Experiment-class 1';
             end
+            
+            obj.define_afm_color_map
             
             obj.initialize_flags
             
@@ -317,6 +320,8 @@ classdef AFMImage < matlab.mixin.Copyable
                     end
                 end
                 
+                afm_image = afm_image(end:-1:1,:); % mirror Y-pixels to flip image to same orientation as in jpk data processing
+                
                 if isequal(Channel_Name,'Height') && isequal(trace_type_flag,'Trace')
                     obj.Height.Trace = afm_image;
                     obj.Height.Multiplier = multiplyer;
@@ -390,6 +395,17 @@ classdef AFMImage < matlab.mixin.Copyable
                 end
                 
             end
+        end
+        
+        function define_afm_color_map(obj)
+            CMap(:,1) = (0:1/255:1).*2;
+            CMap(:,2) = (0:1/255:1).*2 - 0.5;
+            CMap(:,3) = (0:1/255:1).*2 - 1;
+            CMap(CMap < 0) = 0;
+            CMap(CMap > 1) = 1;
+            
+            obj.CMap = CMap;
+            
         end
         
         function check_for_new_host(obj)
