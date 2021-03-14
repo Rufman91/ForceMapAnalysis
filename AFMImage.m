@@ -78,7 +78,7 @@ classdef AFMImage < matlab.mixin.Copyable
                 TempID = 'AFMImage detached from Experiment-class 1';
             end
             
-            obj.define_afm_color_map(0.35)
+            obj. CMap = obj.define_afm_color_map(0.35)
             
             obj.initialize_flags
             
@@ -123,6 +123,17 @@ classdef AFMImage < matlab.mixin.Copyable
         
         function [OutMask] = mask_background(Image)
             
+        end
+        
+        function CMap = define_afm_color_map(PlusBrightness)
+            if nargin == 0
+                PlusBrightness = .35;
+            end
+            CMap(:,1) = (0:1/255:1).*2 + PlusBrightness;
+            CMap(:,2) = (0:1/255:1).*2 - 0.5 + PlusBrightness;
+            CMap(:,3) = (0:1/255:1).*2 - 1 + PlusBrightness;
+            CMap(CMap < 0) = 0;
+            CMap(CMap > 1) = 1;
         end
         
     end
@@ -421,20 +432,6 @@ classdef AFMImage < matlab.mixin.Copyable
                 end
                 
             end
-        end
-        
-        function define_afm_color_map(obj,PlusBrightness)
-            if nargin < 1
-                PlusBrightness = .35;
-            end
-            CMap(:,1) = (0:1/255:1).*2 + PlusBrightness;
-            CMap(:,2) = (0:1/255:1).*2 - 0.5 + PlusBrightness;
-            CMap(:,3) = (0:1/255:1).*2 - 1 + PlusBrightness;
-            CMap(CMap < 0) = 0;
-            CMap(CMap > 1) = 1;
-            
-            obj.CMap = CMap;
-            
         end
         
         function check_for_new_host(obj)
