@@ -96,8 +96,6 @@ classdef AFMImage < matlab.mixin.Copyable
             
             obj.load_image_channels(ImageFullFile);
             
-            
-            
         end
         
     end
@@ -134,6 +132,40 @@ classdef AFMImage < matlab.mixin.Copyable
             CMap(:,3) = (0:1/255:1).*2 - 1 + PlusBrightness;
             CMap(CMap < 0) = 0;
             CMap(CMap > 1) = 1;
+        end
+        
+        function OutImage = deconvolute_by_mathematical_morphology(InImage,ErodingGeometry)
+            
+            if ~isequal(size(InImage),size(ErodingGeometry))
+                error('The Image and the Eroding Geometry need to have the same pixel-dimensions')
+            end
+            MaxPeakValue = max(ErodingGeometry,[],'all');
+            [PeakIndexX,PeakIndexY] = find(ErodingGeometry==MaxPeakValue);
+            EGPixelsX = size(ErodingGeometry,1);
+            EGPixelsY = size(ErodingGeometry,2);
+            InPixelsX = size(InImage,1);
+            InPixelsY = size(InImage,2);
+            OutImage=ones(InPixelsX,InPixelsY); %creates the empty image array
+            
+            
+            h = waitbar(0,'Please wait, Processing...');
+            
+            %loops over all the elements and find the minimum value of w and allocate it
+            for j=1:InPixelsY %loops over points in image output
+                waitbar(j/InPixelsY);
+                s_ymin=max(-j,-PeakIndexY); %determines the allowed range for tip scanning
+                s_ymax=min(EGPixelsY-PeakIndexY,InPixelsY-j)-1; %idem
+                for i=1:InPixelsX %loops over points in other direction in image output
+                    s_xmin=max(-PeakIndexX,-i); %determines allowed range for tip scanning
+                    s_xmax=min(EGPixelsX-PeakIndexX,InPixelsX-i)-1; %idem
+                    TempMat = InImage((i+1+s_xmin ):(i+1+s_xmax),(j+1+s_ymin):(j+1+s_ymax))-...
+                        ErodingGeometry((s_xmin+PeakIndexX+1):(s_xmax+PeakIndexX+1),...
+                        +(1+PeakIndexY+s_ymin):(1+PeakIndexY+s_ymax));
+                    minimum=min(TempMat,[],'all'); %checks if w is minimum
+                    OutImage(i,j)=minimum; %allocates the minimum value
+                end
+            end
+            close(h);
         end
         
     end
@@ -482,6 +514,89 @@ classdef AFMImage < matlab.mixin.Copyable
             File = replace(File,'_','-');
             
             Name = File;
+        end
+        
+        function [Cone,SizeOfPixelX,SizeOfPixelY] = cone(ConePixelX,ConePixelY,ConeHeigth,ScanSizeX,ScanSizeY,ConeTipRadius)
+            %cone.m, version 1.1
+            %The file creates a TGT1 grating surface with a cone peaking at the centre
+            %of the sample. The angle of the is assumed to be 50 degrees and the height
+            %is taken to be equal to the scan height. The radius of the cone tip can be
+            %changed so that different levels of accuracy may be achieved.
+            %Ask the user for the size of the scan.
+            
+            %Variables
+            height_cone=ConeHeigth;
+            angle_cone=50;
+            height_loss=(ConeTipRadius*cosd(angle_cone/2))/(tand(angle_cone/2))+(ConeTipRadius*sind(angle_cone/2))-ConeTipRadius;
+            %Calculates the height that is lost from a perfect tip when a rounded tip
+            %is used instead.
+            height_tip=height_cone+height_loss;%The ideal tip is derived from the required
+            %height of the cone (from the scan height) and the amount of height loss
+            %experienced for the desired grating radius. This value is then used to
+            %generate the ideal cone with a perfect tip such that when the curved tip
+            %is added the height of the cone is equal to the scan height.
+            
+            radius_cone=tand(angle_cone/2)*height_tip; %Calculates the cone radius.
+            Cone=zeros(ConePixelX,ConePixelY); %initiates a flat surface of size equal to scan.
+            SizeOfPixelX=ScanSizeX/ConePixelX;
+            SizeOfPixelY=ScanSizeY/ConePixelY;
+            Cone(floor(ConePixelX/2), floor(ConePixelY/2))=height_tip; % Positions the cone.
+            max_pixel_movement_x=floor(radius_cone/SizeOfPixelX); %Radius of cone divided
+            %by size of a pixel to find the maximal number of pixels in line in the
+            %cone radius.
+            max_pixel_movement_y=floor(radius_cone/SizeOfPixelY);
+            
+            %Determine the limits of the cone whether it fits completely in the image
+            %or not. Done for each dimension and limit using the centre of the image as
+            %a reference.
+            if ConePixelX/2-max_pixel_movement_x>=1
+                limit_x_1=ConePixelX/2-max_pixel_movement_x;
+            else limit_x_1=1;
+            end
+            
+            if ConePixelX/2+max_pixel_movement_x<=ConePixelX
+                limit_x_2=ConePixelX/2+max_pixel_movement_x;
+            else limit_x_2=ConePixelX;
+            end
+            
+            if ConePixelY/2-max_pixel_movement_y>=1
+                limit_y_1=ConePixelY/2-max_pixel_movement_y;
+            else limit_y_1=1;
+            end
+            
+            if ConePixelY/2+max_pixel_movement_y<=ConePixelY
+                limit_y_2=ConePixelY/2+max_pixel_movement_y;
+            else limit_y_2=ConePixelY;
+            end
+            
+            
+            curve_start_height = height_tip - ((ConeTipRadius*cosd(angle_cone/2))/(tand(angle_cone/2)));
+            %Calculates the hieght at which the cone leaves from a constant gradient
+            %into the curved profile.
+            
+            %Generates the cone
+            for i=limit_x_1:limit_x_2
+                for j=limit_y_1:limit_y_2
+                    distance=sqrt(((ConePixelX/2-i)*SizeOfPixelX)^2+((ConePixelY/2-j)*SizeOfPixelY)^2);
+                    %Distance of point i,j with reference from the centre of the image.
+                    
+                    curve_height=sqrt(((ConeTipRadius)^2)-(distance^2))-(ConeTipRadius*sind(angle_cone/2));
+                    %The absolute hieght of each point of the curved tip.
+                    
+                    if distance<=radius_cone;
+                        Cone(i,j)=(radius_cone-distance)*height_tip/radius_cone;
+                        %If the dstance is smaller than than the radius then the
+                        %constant slope of the cone is generated.
+                    end
+                    
+                    if distance<=ConeTipRadius*cosd(angle_cone/2);
+                        Cone(i,j) = curve_height + curve_start_height;
+                        %If the distance is smaller than the radius of the curved peak
+                        %radius then the curved peak is assumed.
+                    end
+                    
+                end
+            end
         end
         
     end
