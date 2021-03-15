@@ -1214,6 +1214,20 @@ classdef ForceMap < matlab.mixin.Copyable
                 else
                     obj.EnvCond='PBS'; % Phosphate buffered saline
                 end
+                % Long linker
+                exp41='long';
+                pat=regexpPattern(exp41,"IgnoreCase",true);
+                ext41=extract(obj.Name,pat);
+                % Short linker
+                exp42='short';
+                pat=regexpPattern(exp42,"IgnoreCase",true);
+                ext42=extract(obj.Name,pat);              
+                % Linker
+                if isempty(ext41)==0
+                    obj.EnvCond='long'; % long linker
+                elseif isempty(ext42)==0
+                    obj.EnvCond='short'; % short linker                
+                end
         end
         
         function fc_print(obj,XMin,XMax,YMin,YMax) % fc ... force curve
