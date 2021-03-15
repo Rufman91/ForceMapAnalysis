@@ -35,6 +35,7 @@ classdef ForceMap < matlab.mixin.Copyable
         NCurves         % number of curves on the force map
         NumProfiles     % number of scanned profiles along the YSize of the force map
         NumPoints       % number of scanned points per profile along the XSize of the force map
+        MaxPointsPerCurve
         XSize           % Size of imaged window in X-direction
         YSize           % Size of imaged window in Y-direction
         Velocity        % Approach and retraction velocity as defined in the force map settings
@@ -929,12 +930,12 @@ classdef ForceMap < matlab.mixin.Copyable
             obj.IndDepth = zeros(obj.NCurves,1);
             obj.IndentArea = zeros(obj.NCurves,1);
             for i=Range'
-                Z(:,i) = obj.HHRet{i} - obj.CP(i,1);
-                D(:,i) = (obj.BasedRet{i} - obj.CP(i,2))/obj.SpringConstant;
-                Zmax(i) = max(Z(:,i));
-                Dmax(i) = max(D(:,i));
-                DCurvePercent = D(D(:,i)>=(1-CurvePercent)*Dmax(i),i);
-                ZCurvePercent = Z(1:length(DCurvePercent),i);
+                Z = obj.HHRet{i} - obj.CP(i,1);
+                D = (obj.BasedRet{i} - obj.CP(i,2))/obj.SpringConstant;
+                Zmax(i) = max(Z);
+                Dmax(i) = max(D);
+                DCurvePercent = D(D>=(1-CurvePercent)*Dmax(i));
+                ZCurvePercent = Z(1:length(DCurvePercent));
                 LineFit = polyfit(ZCurvePercent,DCurvePercent,1);
                 obj.DZslope(i) = LineFit(1);
                 Hmax(i) = Zmax(i) - Dmax(i);
@@ -2642,6 +2643,19 @@ classdef ForceMap < matlab.mixin.Copyable
             tline = fgetl(fileID);
             where=strfind(tline,'=');
             obj.YSize = str2double(tline(where+1:end));
+            
+            %   MaxPonintsPerCurve
+            clear tline where;
+            frewind(fileID);
+            if isequal(obj.FileType,'force-scan-map')
+                B=strfind(A,strcat(obj.FileType,'.settings.force-settings.extend-k-length='));
+            elseif isequal(obj.FileType,'quantitative-imaging-map')
+                B=strfind(A,strcat(obj.FileType,'.settings.force-settings.extend.num-points='));
+            end
+            fseek(fileID,B,'cof');
+            tline = fgetl(fileID);
+            where=strfind(tline,'=');
+            obj.MaxPointsPerCurve = str2double(tline(where+1:end));
             
             %   Velocity
             

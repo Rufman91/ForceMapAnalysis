@@ -5,6 +5,7 @@ classdef Experiment < matlab.mixin.Copyable
         ExperimentFolder    % Shows Folder where Experiment is saved
         HostOS              % Shows the current operating system
         HostName            % Shows the current Host (User of running machine)
+        CurrentLogFile
         ForceMapNames       % Shows names of the force maps
         ForceMapFolders
         SurfacePotentialMapFolders
@@ -385,7 +386,7 @@ classdef Experiment < matlab.mixin.Copyable
     methods(Static)
         % Static methods related with Experiment-file handling
         
-        function E = load()
+        function E = load(Fullfile)
             % E = load()
             %
             % recommended way of loading an existing Experiment() from its
@@ -394,9 +395,11 @@ classdef Experiment < matlab.mixin.Copyable
             % and, if so, updating object properties and setting
             % CPFlag.CNNOpt = 0
             
-            [File,Path] = uigetfile('*.mat','Choose Experiment .mat from folder');
-            Fullfile = fullfile(Path,File);
-            disp('Loading Experiment... this can take a while for larger Experiments')
+            if nargin < 1
+                [File,Path] = uigetfile('*.mat','Choose Experiment .mat from folder');
+                Fullfile = fullfile(Path,File);
+                disp('Loading Experiment... this can take a while for larger Experiments')
+            end
             load(Fullfile);
             
             E = obj;
@@ -488,6 +491,10 @@ classdef Experiment < matlab.mixin.Copyable
             % EModOption = 'Oliver' ... E-Modulus calculation through
             % Oliver-Pharr-like method (O. Andriotis 2014)
             
+            obj.write_to_log_file('Analysis Function','force_map_analysis_fibril()','start')
+            obj.write_to_log_file('Contact Point Option',CPOption)
+            obj.write_to_log_file('EMod Option',EModOption)
+            
             h = waitbar(0,'setting up','Units','normalized','Position',[0.4 0.3 0.2 0.1]);
             NLoop = length(obj.ForceMapNames);
             if sum(obj.FMFlag.FibrilAnalysis) >= 1
@@ -520,6 +527,21 @@ classdef Experiment < matlab.mixin.Copyable
             % Setting and calculating preferred method of reference slope
             obj.reference_slope_parser(5) % The input argument sets the default refslope method to AutomaticFibril
             
+            if obj.ReferenceSlopeFlag.SetAllToValue
+                RefSlopeOption = 'SetAllToValue';
+            elseif obj.ReferenceSlopeFlag.UserInput
+                RefSlopeOption = 'UserInput';
+            elseif obj.ReferenceSlopeFlag.FromRefFM
+                RefSlopeOption = 'FromRefFM';
+            elseif obj.ReferenceSlopeFlag.FromArea
+                RefSlopeOption = 'FromArea';
+            elseif obj.ReferenceSlopeFlag.AutomaticFibril
+                RefSlopeOption = 'AutomaticFibril';
+            elseif obj.ReferenceSlopeFlag.Automatic
+                RefSlopeOption = 'Automatic';
+            end
+            obj.write_to_log_file('Reference Slope Option',RefSlopeOption)
+            
             % Deconvoluting cantilever tip
             if obj.CantileverTipFlag == 1
                 KeepTip = questdlg(sprintf('There already exists data from a deconvoluted tip\nDo you want to skip tip deconvolution and keep old tip data?'),...
@@ -547,6 +569,9 @@ classdef Experiment < matlab.mixin.Copyable
                 if ~obj.FM{i}.BaseAndTiltFlag
                     obj.FM{i}.base_and_tilt('linear');
                 end
+                if i == 1
+                    obj.write_to_log_file('Baseline and Tilt option','linear')
+                end
                 
                 obj.FM{i}.calculate_fib_diam();
                 
@@ -561,8 +586,15 @@ classdef Experiment < matlab.mixin.Copyable
                 waitbar(i/NLoop,h,sprintf('Processing Fibril %i/%i\nCalculating E-Modulus',i,NLoop));
                 if isequal(lower(EModOption),'hertz')
                     obj.FM{i}.calculate_e_mod_hertz(CPOption,'parabolic',1);
+                    if i == 1
+                        obj.write_to_log_file('Hertzian Tip-Shape','parabolic')
+                        obj.write_to_log_file('Hertzian CurvePercent','1')
+                    end
                 else
                     obj.FM{i}.calculate_e_mod_oliverpharr(obj.CantileverTip.ProjArea,0.75);
+                    if i == 1
+                        obj.write_to_log_file('OliverPharr CurvePercent','0.75')
+                    end
                 end
                 waitbar(i/NLoop,h,sprintf('Processing Fibril %i/%i\nWrapping Up And Saving',i,NLoop));
                 
@@ -601,6 +633,7 @@ classdef Experiment < matlab.mixin.Copyable
             obj.save_experiment;
             
             close(h);
+            obj.write_to_log_file('','','end')
         end
         
         function force_map_analysis_general(obj,CPOption,EModOption)
@@ -627,6 +660,10 @@ classdef Experiment < matlab.mixin.Copyable
             % EModOption = 'Oliver' ... E-Modulus calculation through
             % Oliver-Pharr-like method (O. Andriotis 2014)
             
+            obj.write_to_log_file('Analysis Function','force_map_analysis_general()','start')
+            obj.write_to_log_file('Contact Point Option',CPOption)
+            obj.write_to_log_file('EMod Option',EModOption)
+            
             h = waitbar(0,'setting up','Units','normalized','Position',[0.4 0.3 0.2 0.1]);
             NLoop = obj.NumFiles;
             if sum(obj.FMFlag.ForceMapAnalysis) >= 1
@@ -641,6 +678,21 @@ classdef Experiment < matlab.mixin.Copyable
             
             % Setting and calculating preferred method of reference slope
             obj.reference_slope_parser(1)
+            
+            if obj.ReferenceSlopeFlag.SetAllToValue
+                RefSlopeOption = 'SetAllToValue';
+            elseif obj.ReferenceSlopeFlag.UserInput
+                RefSlopeOption = 'UserInput';
+            elseif obj.ReferenceSlopeFlag.FromRefFM
+                RefSlopeOption = 'FromRefFM';
+            elseif obj.ReferenceSlopeFlag.FromArea
+                RefSlopeOption = 'FromArea';
+            elseif obj.ReferenceSlopeFlag.AutomaticFibril
+                RefSlopeOption = 'AutomaticFibril';
+            elseif obj.ReferenceSlopeFlag.Automatic
+                RefSlopeOption = 'Automatic';
+            end
+            obj.write_to_log_file('Reference Slope Option',RefSlopeOption)
             
             % Deconvolute cantilever tip
             if isequal(lower(EModOption),'oliver')
@@ -669,6 +721,9 @@ classdef Experiment < matlab.mixin.Copyable
                 waitbar(i/NLoop,h,sprintf('Processing ForceMap %i/%i\nFitting Base Line',i,NLoop));
                 if ~obj.FM{i}.BaseAndTiltFlag
                     obj.FM{i}.base_and_tilt('linear');
+                if i == 1
+                    obj.write_to_log_file('Baseline and Tilt option','linear')
+                end
                 end
                 
                 % contact point estimation happens here
@@ -682,8 +737,15 @@ classdef Experiment < matlab.mixin.Copyable
                 waitbar(i/NLoop,h,sprintf('Processing ForceMap %i/%i\nCalculating E-Modulus',i,NLoop));
                 if isequal(lower(EModOption),'hertz')
                     obj.FM{i}.calculate_e_mod_hertz(CPOption,'parabolic',1);
+                    if i == 1
+                        obj.write_to_log_file('Hertzian Tip-Shape','parabolic')
+                        obj.write_to_log_file('Hertzian CurvePercent','1')
+                    end
                 else
                     obj.FM{i}.calculate_e_mod_oliverpharr(obj.CantileverTip.ProjArea,0.75);
+                    if i == 1
+                        obj.write_to_log_file('OliverPharr CurvePercent','0.75')
+                    end
                 end
                 waitbar(i/NLoop,h,sprintf('Processing ForceMap %i/%i\nWrapping Up And Saving',i,NLoop));
                 
@@ -694,6 +756,7 @@ classdef Experiment < matlab.mixin.Copyable
             obj.save_experiment;
             
             close(h);
+            obj.write_to_log_file('','','end')
         end
         
         function surface_potential_analysis_fibril(obj)
@@ -2120,6 +2183,83 @@ classdef Experiment < matlab.mixin.Copyable
             obj.ReferenceSlopeFlag.AutomaticFibril = false;
             obj.ReferenceSlopeFlag.Automatic = false;
             obj.AssignedReferenceMaps = false;
+        end
+        
+        function write_to_log_file(obj,Name, Value, StartEnd)
+            % creates a Log-file that tracks all important analysis
+            % parameters aswell as the current git branch and hash of the
+            % current commit. All data analysis done this way should then
+            % be reproducible down the line by downloading the
+            % corresponding program version from GitHub and running with
+            % the same parameters. 
+            % This function is meant to be called multiple times in a
+            % Experiment wrapper method (e.g. force_map_analysis_general())
+            % Arguments:
+            % Name: Name of the stored parameter in the log-file
+            % Value: Value of the stored parameter (duh)
+            % StartEnd = none, 'start', 'end'
+            %       'start'... will create the logfile and write the
+            %       GitInfo and the current date and time into the file
+            %       header. The first function call should log the called
+            %       wrapper-method
+            %       none ... Leaving out the StartEnd argument will just
+            %       append the Name Value pair to the existing file
+            %       'end'... will append a last comment to the file,
+            %       confirming that the analysis has terminated
+            %       successfully and should therefore only be called as the
+            %       very last Line in a wrapper-method.
+            %
+            %   NOTE: calling with 'end' will IGNORE whatever
+            %   was written into Name and Value. However, you still need to
+            %   Pass something in for those arguments, e.g.:
+            %       obj.write_to_log_file('foo','bar','end')
+            
+            Current = what();
+            cd(obj.ExperimentFolder)
+            
+            if nargin == 4
+                if isequal(lower(StartEnd),'start')
+                    DateTime = datestr(now,30);
+                    obj.CurrentLogFile = strcat('AnalysisLog',DateTime,'.txt');
+                    fid = fopen( obj.CurrentLogFile, 'wt' );
+                    if fid == -1
+                        error('Cannot open log file.');
+                    end
+                    fclose(fid);
+                    
+                    % Change to source code folder, get GitInfo and then
+                    % change back to ExperimentFolder
+                    Source = which('ForceMap');
+                    Source = Source(1:end-11);
+                    cd(Source)
+                    GitInfo = getGitInfo();
+                    cd(obj.ExperimentFolder);
+                    
+                    obj.write_to_log_file('Date and Time',datestr(now,0))
+                    obj.write_to_log_file('Branch',GitInfo.branch)
+                    obj.write_to_log_file('Hash of current commit',GitInfo.hash)
+                    obj.write_to_log_file('Remote',GitInfo.remote)
+                    obj.write_to_log_file('URL',GitInfo.url)
+                elseif isequal(lower(StartEnd),'end')
+                    obj.write_to_log_file('Analysis ended successfully',':D')
+                    obj.CurrentLogFile = [];
+                    cd(Current.path);
+                    return
+                end
+            end
+            
+            Value = char(Value);
+            
+            fid = fopen(obj.CurrentLogFile, 'a');
+            if fid == -1
+                error('Cannot open log file.');
+            end
+            
+            fprintf(fid, '%s: %s\n', Name, Value);
+            
+            fclose(fid);
+            cd(Current.path);
+            
         end
         
     end
