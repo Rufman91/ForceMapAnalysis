@@ -2052,7 +2052,7 @@ classdef ForceMap < matlab.mixin.Copyable
             current = what();
             cd(obj.Folder)
             savename = sprintf('%s.mat',obj.Name);
-            save(savename,'obj')
+            save(savename,'obj','-v7.3')
             cd(current.path)
             savemsg = sprintf('Changes to ForceMap %s saved to %s',obj.Name,obj.Folder);
             disp(savemsg);

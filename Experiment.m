@@ -164,6 +164,7 @@ classdef Experiment < matlab.mixin.Copyable
             obj.SPM = SPM;
             for i=1:N
                 if WhichFiles == 2 || WhichFiles == 0
+                    TempID = sprintf('Reference-%s-%i',ExperimentName,i);
                     obj.ForceMapFolders{i} = obj.FM{i}.Folder;
                     obj.ForceMapNames{i} = obj.FM{i}.Name;
                 elseif WhichFiles == 1 || WhichFiles == 0
