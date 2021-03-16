@@ -24,6 +24,7 @@ classdef AFMImage < matlab.mixin.Copyable
         OriginY
         ScanSizeX
         ScanSizeY
+        ScanAngle
         NumPixelsX
         NumPixelsY
         IGain
@@ -36,6 +37,16 @@ classdef AFMImage < matlab.mixin.Copyable
         TipVelocity
         Sensitivity
         SpringConstant
+    end
+    properties
+        % Additional properties needed during (ErrorSignal)channel readout
+        Baseline_Raw
+        Bline_adjust
+        SetP_V
+        Raw
+        SetP_m
+        SetP_N
+        Baseline_N
     end
     properties
         % All possible image channels. The Channels are themselves structs
@@ -311,7 +322,75 @@ classdef AFMImage < matlab.mixin.Copyable
         
         function read_in_contact_header(obj,FileInfo)
             
-            % TODO
+            flag_data=strsplit(FileInfo(1).UnknownTags(find([FileInfo(1).UnknownTags.ID]==32830)).Value)';
+            
+            flag=find(~cellfun(@isempty,strfind(flag_data,'setpoint-feedback-settings.i-gain')));
+            if(~isempty(flag))
+                obj.IGain=cellfun(@str2double, flag_data(flag+2,1));
+            else
+                obj.IGain=nan;
+            end
+            flag=find(~cellfun(@isempty,strfind(flag_data,'setpoint-feedback-settings.p-gain')));
+            if(~isempty(flag))
+                obj.PGain=cellfun(@str2double, flag_data(flag+2,1));
+            else
+                obj.PGain=nan;
+            end
+            
+            if(~isempty(find([FileInfo(1).UnknownTags.ID]==33028)))&&(~isempty(find([FileInfo(1).UnknownTags.ID]==32980)))
+                obj.Sensitivity=(FileInfo(1).UnknownTags(find([FileInfo(1).UnknownTags.ID]==33028)).Value)/(FileInfo(1).UnknownTags(find([FileInfo(1).UnknownTags.ID]==32980)).Value);
+            else
+                warning('No Sensitivity calibration slot found, image is uncalibarated')
+                Uncalibrated=1;
+                obj.Sensitivity=1;
+            end
+            
+            if(~isempty(find([FileInfo(1).UnknownTags.ID]==33076)))&&(~isempty(find([FileInfo(1).UnknownTags.ID]==32980)))
+                obj.SpringConstant=(FileInfo(1).UnknownTags(find([FileInfo(1).UnknownTags.ID]==33076)).Value)/(FileInfo(1).UnknownTags(find([FileInfo(1).UnknownTags.ID]==33028)).Value);
+            else
+                warning('No Spring Constant calibration slot found, image is uncalibarated')
+                Uncalibrated=1;
+                obj.SpringConstant=1;
+            end
+            
+            if(~isempty(find([FileInfo(1).UnknownTags.ID]==32836)))
+                obj.ScanAngle=rad2deg(FileInfo(1).UnknownTags(find([FileInfo(1).UnknownTags.ID]==32836)).Value);
+            else
+                warning('No Scan Angle slot found')
+                obj.ScanAngle=nan;
+            end
+            
+            if(FileInfo(1).UnknownTags(find([FileInfo(1).UnknownTags.ID]==32820)).Value==1)
+                obj.Baseline_Raw=((FileInfo(1).UnknownTags(find([FileInfo(1).UnknownTags.ID]==32819)).Value-FileInfo(1).UnknownTags(find([FileInfo(1).UnknownTags.ID]==32821)).Value)-FileInfo(1).UnknownTags(find([FileInfo(1).UnknownTags.ID]==32980)).Value);
+                obj.Bline_adjust='Yes';
+            else
+                obj.Baseline_Raw=((FileInfo(1).UnknownTags(find([FileInfo(1).UnknownTags.ID]==32819)).Value)-FileInfo(1).UnknownTags(find([FileInfo(1).UnknownTags.ID]==32980)).Value);
+                obj.Bline_adjust='No';
+            end
+            
+            obj.SetP_V=obj.Baseline_Raw;
+            
+            if(~isempty(find([FileInfo(1).UnknownTags.ID]==32981)))&&(~isempty(find([FileInfo(1).UnknownTags.ID]==32980)))
+                obj.Raw=(obj.Baseline_Raw-(FileInfo(1).UnknownTags(find([FileInfo(1).UnknownTags.ID]==32981)).Value))/(FileInfo(1).UnknownTags(find([FileInfo(1).UnknownTags.ID]==32980)).Value); % Setpoint in Volts [V]
+            else
+                warning('No Baseline correction found')
+                obj.Raw=obj.SetP_V;
+                
+            end
+            
+            if(~isempty(find([FileInfo(1).UnknownTags.ID]==33028)))&&(~isempty(find([FileInfo(1).UnknownTags.ID]==33029)))
+                obj.SetP_m=(obj.Raw)*(FileInfo(1).UnknownTags(find([FileInfo(1).UnknownTags.ID]==33028)).Value)+(FileInfo(1).UnknownTags(find([FileInfo(1).UnknownTags.ID]==33029)).Value); % Setpoint in meters [m]
+            else
+                warning('No Setpoint (in meters) calibration slot found, image might be uncalibarated')
+                obj.SetP_m=(obj.Raw);
+            end
+            
+            if(~isempty(find([FileInfo(1).UnknownTags.ID]==33076)))&&(~isempty(find([FileInfo(1).UnknownTags.ID]==33077)))
+                obj.SetP_N=(obj.Raw)*(FileInfo(1).UnknownTags(find([FileInfo(1).UnknownTags.ID]==33076)).Value)+(FileInfo(1).UnknownTags(find([FileInfo(1).UnknownTags.ID]==33077)).Value); % Setpoint in force [N]
+            else
+                warning('No Setpoint (in Newton) calibration slot found, image might be uncalibarated')
+                obj.SetP_N=(obj.Raw);
+            end
             
         end
         
@@ -381,10 +460,10 @@ classdef AFMImage < matlab.mixin.Copyable
                 if(~strcmp(Channel_Name,'Vertical Deflection'))
                     afm_image=((double(imread(ImageFullFile,i))*multiplyer))+offset;
                 else
-                    if(strcmp(Bline_adjust,'No'))
+                    if(strcmp(obj.Bline_adjust,'No'))
                         afm_image=((double(imread(ImageFullFile,i))*multiplyer))+offset;
                     else
-                        Details_Img.Baseline_N=(Baseline_Raw*multiplyer)+offset;
+                        obj.Baseline_N=(obj.Baseline_Raw*multiplyer)+offset;
                         afm_image=((double(imread(ImageFullFile,i))*multiplyer))+offset;
                     end
                 end
@@ -523,6 +602,7 @@ classdef AFMImage < matlab.mixin.Copyable
             %is taken to be equal to the scan height. The radius of the cone tip can be
             %changed so that different levels of accuracy may be achieved.
             %Ask the user for the size of the scan.
+            %Code adapted from original code by O. Andriotis(2014)
             
             %Variables
             height_cone=ConeHeigth;
