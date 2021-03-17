@@ -74,6 +74,7 @@ classdef ForceMap < matlab.mixin.Copyable
         RoV = {}        % ratio of variance curve for CP estiamation
         GoF = {}        % goodness of fit curve for each selected curve
         CP              % chosen contact point (CP) for every selected curve, which is then used in E module fitting
+        CP_SnapIn       % Prefered CP-method for data with snap-in-effect (most data from air)
         CP_RoV          % CP estimated with the ratio of variance method
         CP_GoF          % CP estimated with the goodness of fit method
         CP_Combo        % CP estimated with a combination of the GoF and RoV methods
@@ -321,6 +322,41 @@ classdef ForceMap < matlab.mixin.Copyable
             %             savename = sprintf('%s.mat',obj.Name);
             %             save(savename,'obj')
             %             cd(current.path)
+        end
+        
+        function estimate_cp_snap_in(obj)
+            % Takes the first point that crosses the approach baseline
+            % starting from the max indent and sets the CP as the
+            % interpolated point between the two nearest points to the
+            % baseline (above and below)
+            
+            h = waitbar(0,'Setting up...','Name',obj.Name);
+            Range = find(obj.SelectedCurves);
+            for i=Range'
+                waitbar(i/obj.NCurves,h,'Finding contact point for Snap-In curve...');
+                AboveZeroBool = zeros(length(obj.BasedApp{i}),1);
+                AboveZeroBool(find(obj.BasedApp{i}>0)) = 1;
+                k = 0;
+                while AboveZeroBool(end-k)
+                    k = k + 1;
+                end
+                if k<5
+                    obj.CP(i,1) = obj.HHApp{i}(end);
+                    obj.CP(i,2) = obj.BasedApp{i}(end);
+                    obj.CP_SnapIn(i,:) = obj.CP(i,:);
+                    continue
+                end
+                    
+                AboveBase = [obj.HHApp{i}(end-(k-1)) obj.BasedApp{i}(end-(k-1))];
+                BelowBase = [obj.HHApp{i}(end-k) obj.BasedApp{i}(end-k)];
+                obj.CP(i,1) = mean([AboveBase(1) BelowBase(1)]);
+                obj.CP(i,2) = 0;
+                obj.CP_SnapIn(i,:) = obj.CP(i,:);
+                clear AboveZeroBool
+            end
+            close(h)
+            obj.CPFlag.SnapIn = true;
+            
         end
         
         function estimate_cp_rov(obj,batchsize)
@@ -2738,6 +2774,7 @@ classdef ForceMap < matlab.mixin.Copyable
             % initialize all flags related to the ForceMap class
             
             obj.BaseAndTiltFlag = false;
+            obj.CPFlag.SnapIn = 0;
             obj.CPFlag.RoV = 0;
             obj.CPFlag.GoF = 0;
             obj.CPFlag.Combo = 0;
@@ -2787,7 +2824,7 @@ classdef ForceMap < matlab.mixin.Copyable
         % methods for visualization, plotting, statistics and quality control
         
         
-        function fig = show_force_curve(obj,ZoomMult,k)
+        function show_force_curve(obj,ZoomMult,k,fig)
             if nargin < 2
                 jRange = find(obj.SelectedCurves);
                 k = jRange(randi(length(jRange)));
@@ -2797,17 +2834,27 @@ classdef ForceMap < matlab.mixin.Copyable
                 jRange = find(obj.SelectedCurves);
                 k = jRange(randi(length(jRange)));
             end
-            fig = figure('Units','normalized',...
-                'Position',[0.6 0.1 0.4 0.8],...
-                'Color','white',...
-                'Name',obj.Name);
-            
+            if nargin < 4
+                fig = figure('Units','normalized',...
+                    'Position',[0.6 0.1 0.4 0.8],...
+                    'Color','white',...
+                    'Name',obj.Name);
+            end
             subplot(2,1,1)
             title(sprintf('Curve Nr.%i of %s',k,obj.Name))
             hold on
             plot(obj.HHApp{k}*1e9,obj.BasedApp{k}*1e9,obj.HHRet{k}*1e9,obj.BasedRet{k}*1e9,'LineWidth',1.5);
             Legends = {'Approach','Retract'};
             
+            if obj.CPFlag.SnapIn == 1
+                plot(obj.CP_SnapIn(k,1)*1e9, obj.CP_SnapIn(k,2)*1e9,'O',...
+                    'LineWidth',1.5,...
+                    'MarkerSize',7,...
+                    'MarkerEdgeColor','k',...
+                    'MarkerFaceColor','r');
+                Legends{end+1} = 'SnapIn';
+                xlim([(obj.HHApp{k}(1)+ZoomMult*(obj.CP_SnapIn(k,1) - obj.HHApp{k}(1)))*1e9 inf]);
+            end
             if obj.CPFlag.Manual == 1
                 plot(obj.Man_CP(k,1)*1e9, obj.Man_CP(k,2)*1e9,'O',...
                     'LineWidth',1.5,...
@@ -2941,9 +2988,12 @@ classdef ForceMap < matlab.mixin.Copyable
                 MapPos2 = size(obj.Map2List,2);
             end
             k = obj.Map2List(MapPos1,MapPos2);
-            close(fig)
             try
-                obj.show_force_curve(ZoomMult,k);
+                hold off
+                cla(fig.Children(1))
+                cla(fig.Children(2))
+                cla(fig.Children(3))
+                obj.show_force_curve(ZoomMult,k,fig);
             catch
             end
         end

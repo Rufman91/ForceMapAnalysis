@@ -470,6 +470,8 @@ classdef Experiment < matlab.mixin.Copyable
         function force_map_analysis_fibril(obj,CPOption,EModOption)
             % force_map_analysis_fibril(obj,CPOption,EModOption)
             %
+            % CPOption = 'Snap-In' ... Preferred Option for data with
+            % snap-in effect
             % CPOption = 'Fast' ...(Default) contact point estimation through single
             % pass through CNN
             % CPOption = 'Dropout' ... contact point estimation through
@@ -639,6 +641,8 @@ classdef Experiment < matlab.mixin.Copyable
         function force_map_analysis_general(obj,CPOption,EModOption)
             % force_map_analysis_general(obj,CPOption,EModOption)
             %
+            % CPOption = 'Snap-In' ... Preferred Option for data with
+            % snap-in effect
             % CPOption = 'Fast' ...(Default) contact point estimation through single
             % pass through CNN
             % CPOption = 'Dropout' ... contact point estimation through
@@ -778,6 +782,9 @@ classdef Experiment < matlab.mixin.Copyable
                 RefFM = false;
             end
             if RefFM == false
+                if isequal(lower(CPOption),'snap-in')
+                    obj.FM{i}.estimate_cp_snap_in();
+                end
                 if isequal(lower(CPOption),'rov')
                     obj.FM{i}.estimate_cp_rov();
                 end
@@ -815,6 +822,9 @@ classdef Experiment < matlab.mixin.Copyable
                     obj.FM{i}.estimate_cp_cnn(obj.CP_CNN,'Zoomsweep',NumPasses);
                 end
             elseif RefFM == true
+                if isequal(lower(CPOption),'snap-in')
+                    obj.FM{i}.estimate_cp_snap_in();
+                end
                 if isequal(lower(CPOption),'rov')
                     obj.RefFM{i}.estimate_cp_rov();
                 end
