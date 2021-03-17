@@ -2261,6 +2261,13 @@ classdef Experiment < matlab.mixin.Copyable
                 end
             end
             
+            if islogical(Value)
+                if Value
+                    Value = 'true';
+                else
+                    Value = 'false';
+                end
+            end
             Value = char(Value);
             
             fid = fopen(obj.CurrentLogFile, 'a');
