@@ -748,7 +748,7 @@ classdef ForceMap < matlab.mixin.Copyable
                     unload(j,2) = obj.Ret{i}(j);
                 end
                 [obj.LoadOld{i},obj.UnloadOld{i},Position,vDef] = ContactPoint_sort(load,unload);
-                obj.CP(i,2) = vDef*obj.SpringConstant;
+                obj.CP(i,2) = obj.BasedApp{i}(Position);
                 obj.CP(i,1) = obj.HHApp{i}(Position);
                 obj.CP_Old(i,1) =obj.CP(i,1);
                 obj.CP_Old(i,2) =obj.CP(i,2);
@@ -968,7 +968,7 @@ classdef ForceMap < matlab.mixin.Copyable
             end
             for i=1:obj.NumProfiles
                 for j=1:obj.NumPoints
-                    obj.EModMapHertz(i,j,1) = (obj.EModHertz(mod(i,2)*j+(1-mod(i,2))*(obj.NumPoints-(j-1))+(obj.NumProfiles-i)*obj.NumPoints));
+                    obj.EModMapHertz(i,j,1) = obj.EModHertz(obj.Map2List(i,j));
                 end
             end
             
@@ -1028,9 +1028,10 @@ classdef ForceMap < matlab.mixin.Copyable
             
             obj.EModOliverPharr = EMod;
             % Write values into EModMapOliverPharr
+            
             for i=1:obj.NumProfiles
                 for j=1:obj.NumPoints
-                    obj.EModMapOliverPharr(i,j,1) = (obj.EModOliverPharr(mod(i,2)*j+(1-mod(i,2))*(obj.NumPoints-(j-1))+(obj.NumProfiles-i)*obj.NumPoints));
+                    obj.EModMapOliverPharr(i,j,1) = obj.EModOliverPharr(obj.Map2List(i,j));
                 end
             end
         end
@@ -2239,14 +2240,36 @@ classdef ForceMap < matlab.mixin.Copyable
             % results
             k = 1;
             obj.List2Map = zeros(obj.NCurves,2);
-            for i=1:obj.NumProfiles
-                for j=1:obj.NumPoints
-                    obj.HeightMap(i,j) = -max(obj.HHApp{mod(i,2)*j+(1-mod(i,2))*(obj.NumPoints-(j-1))+(obj.NumProfiles-i)*obj.NumPoints});
-                    obj.Map2List(i,j) = k;
-                    obj.List2Map(k,:) = [i j];
-                    k = k + 1;
+            if isequal(obj.FileType,'quantitative-imaging-map')
+                for i=1:obj.NumProfiles
+                    for j=1:obj.NumPoints
+                        obj.Map2List(i,j) = k;
+                        obj.List2Map(k,:) = [i j];
+                        k = k + 1;
+                    end
+                end
+            elseif isequal(obj.FileType,'force-scan-map')
+                for i=1:obj.NumProfiles
+                    if ~mod(i,2)
+                        for j=1:obj.NumPoints
+                            obj.Map2List(i,j) = k;
+                            obj.List2Map(k,:) = [i j];
+                            k = k + 1;
+                        end
+                    else
+                        for j=1:obj.NumPoints
+                            obj.Map2List(i,obj.NumPoints-j+1) = k;
+                            obj.List2Map(k,:) = [i obj.NumPoints-j+1];
+                            k = k + 1;
+                        end
+                    end
                 end
             end
+            Max = zeros(obj.NCurves,1);
+            for i=1:obj.NCurves
+                Max(i) = -max(obj.HHApp{i});
+            end
+            obj.HeightMap = obj.convert_data_list_to_map(Max);
             % Create an Exclusion Mask with the standard deviation method
             MaskParam = 0.65;
             HghtRange = range(obj.HeightMap,'all');
@@ -3035,6 +3058,17 @@ classdef ForceMap < matlab.mixin.Copyable
                 obj.show_force_curve(ZoomMult,k,fig);
             catch
             end
+        end
+        
+        function Map = convert_data_list_to_map(obj,List)
+            
+            Map = zeros(obj.NumProfiles,obj.NumPoints);
+            for i=1:obj.NumProfiles
+                for j=1:obj.NumPoints
+                    Map(i,j) = List(obj.Map2List(i,j));
+                end
+            end
+            
         end
         
         function Fig = show_analyzed_fibril(obj)
