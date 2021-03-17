@@ -5,6 +5,7 @@ classdef Experiment < matlab.mixin.Copyable
         ExperimentFolder    % Shows Folder where Experiment is saved
         HostOS              % Shows the current operating system
         HostName            % Shows the current Host (User of running machine)
+        CurrentLogFile
         ForceMapNames       % Shows names of the force maps
         ForceMapFolders
         SurfacePotentialMapFolders
@@ -13,21 +14,26 @@ classdef Experiment < matlab.mixin.Copyable
         FM
         EMod
         RefFM
+        WhichRefMap
         SPM
         SurfPot
-        FMFlag
-        SPMFlag
         GroupFM
         GroupSPM
         DropoutNet
         CP_CNN
         CantileverTip
-        CantileverTipFlag
         idxSubstrate
         idxEnvCond
+    end
+    properties
+        % All the Flags
+        FMFlag
+        SPMFlag
         SMFSFlag
         SMFSFlagPrint
-        
+        ReferenceSlopeFlag
+        CantileverTipFlag
+        AssignedReferenceMaps
     end
     
     methods
@@ -130,7 +136,7 @@ classdef Experiment < matlab.mixin.Copyable
             SPM = cell(N,1);
             ExperimentName = obj.ExperimentName;
             ExperimentFolder = obj.ExperimentFolder;
-            if contains(struct2array(ver), 'Parallel Computing Toolbox') && ~obj.NumFiles == 1
+            if contains(struct2array(ver), 'Parallel Computing Toolbox') && ~(obj.NumFiles == 1)
                 parfor i=1:N
                     % for i=1:N Debugging
                     if WhichFiles == 2 || WhichFiles == 0
@@ -158,6 +164,7 @@ classdef Experiment < matlab.mixin.Copyable
             obj.SPM = SPM;
             for i=1:N
                 if WhichFiles == 2 || WhichFiles == 0
+                    TempID = sprintf('Reference-%s-%i',ExperimentName,i);
                     obj.ForceMapFolders{i} = obj.FM{i}.Folder;
                     obj.ForceMapNames{i} = obj.FM{i}.Name;
                 elseif WhichFiles == 1 || WhichFiles == 0
@@ -171,13 +178,8 @@ classdef Experiment < matlab.mixin.Copyable
                     obj.RefFM{i} = ForceMap(MapFullFile{N+i},obj.ExperimentFolder);
                 end
             end
-            obj.FMFlag.FibrilAnalysis = zeros(N,1);
-            obj.FMFlag.ForceMapAnalysis = zeros(N,1);
-            obj.FMFlag.Preprocessed = zeros(N,1);
-            obj.FMFlag.Grouping = 0;
-            obj.SPMFlag.FibrilAnalysis = zeros(N,1);
-            obj.SPMFlag.Grouping = 0;
-            obj.CantileverTipFlag = 0;
+            
+            obj.initialize_flags
             
 %             if WhichFiles == 2 || WhichFiles == 0
 %                 obj.grouping_force_map();
@@ -384,7 +386,7 @@ classdef Experiment < matlab.mixin.Copyable
     methods(Static)
         % Static methods related with Experiment-file handling
         
-        function E = load()
+        function E = load(Fullfile)
             % E = load()
             %
             % recommended way of loading an existing Experiment() from its
@@ -393,9 +395,11 @@ classdef Experiment < matlab.mixin.Copyable
             % and, if so, updating object properties and setting
             % CPFlag.CNNOpt = 0
             
-            [File,Path] = uigetfile('*.mat','Choose Experiment .mat from folder');
-            Fullfile = fullfile(Path,File);
-            disp('Loading Experiment... this can take a while for larger Experiments')
+            if nargin < 1
+                [File,Path] = uigetfile('*.mat','Choose Experiment .mat from folder');
+                Fullfile = fullfile(Path,File);
+                disp('Loading Experiment... this can take a while for larger Experiments')
+            end
             load(Fullfile);
             
             E = obj;
@@ -416,7 +420,6 @@ classdef Experiment < matlab.mixin.Copyable
         end
         
     end
-    
     methods
         % methods for sequential data analysis mostly looping over child-classes methods
         
@@ -467,6 +470,8 @@ classdef Experiment < matlab.mixin.Copyable
         function force_map_analysis_fibril(obj,CPOption,EModOption)
             % force_map_analysis_fibril(obj,CPOption,EModOption)
             %
+            % CPOption = 'Snap-In' ... Preferred Option for data with
+            % snap-in effect
             % CPOption = 'Fast' ...(Default) contact point estimation through single
             % pass through CNN
             % CPOption = 'Dropout' ... contact point estimation through
@@ -488,6 +493,10 @@ classdef Experiment < matlab.mixin.Copyable
             % EModOption = 'Oliver' ... E-Modulus calculation through
             % Oliver-Pharr-like method (O. Andriotis 2014)
             
+            obj.write_to_log_file('Analysis Function','force_map_analysis_fibril()','start')
+            obj.write_to_log_file('Contact Point Option',CPOption)
+            obj.write_to_log_file('EMod Option',EModOption)
+            
             h = waitbar(0,'setting up','Units','normalized','Position',[0.4 0.3 0.2 0.1]);
             NLoop = length(obj.ForceMapNames);
             if sum(obj.FMFlag.FibrilAnalysis) >= 1
@@ -498,22 +507,6 @@ classdef Experiment < matlab.mixin.Copyable
                     'No');
             else
                 KeepFlagged = 'No';
-            end
-            
-            if obj.CantileverTipFlag == 1
-                KeepTip = questdlg(sprintf('There already exists data from a deconvoluted tip\nDo you want to skip tip deconvolution and keep old tip data?'),...
-                    'Processing Options',...
-                    'Yes',...
-                    'No',...
-                    'No');
-            else
-                KeepTip = 'No';
-            end
-            
-            if isequal(KeepTip,'No')
-                waitbar(0,h,'deconvoluting cantilever tip...')
-                obj.deconvolute_cantilever_tip;
-            elseif isequal(KeepTip,'Yes')
             end
             
             % Preprocessing everything, that needs user input
@@ -533,6 +526,40 @@ classdef Experiment < matlab.mixin.Copyable
                 obj.FM{i}.manual_exclusion();
             end
             
+            % Setting and calculating preferred method of reference slope
+            obj.reference_slope_parser(5) % The input argument sets the default refslope method to AutomaticFibril
+            
+            if obj.ReferenceSlopeFlag.SetAllToValue
+                RefSlopeOption = 'SetAllToValue';
+            elseif obj.ReferenceSlopeFlag.UserInput
+                RefSlopeOption = 'UserInput';
+            elseif obj.ReferenceSlopeFlag.FromRefFM
+                RefSlopeOption = 'FromRefFM';
+            elseif obj.ReferenceSlopeFlag.FromArea
+                RefSlopeOption = 'FromArea';
+            elseif obj.ReferenceSlopeFlag.AutomaticFibril
+                RefSlopeOption = 'AutomaticFibril';
+            elseif obj.ReferenceSlopeFlag.Automatic
+                RefSlopeOption = 'Automatic';
+            end
+            obj.write_to_log_file('Reference Slope Option',RefSlopeOption)
+            
+            % Deconvoluting cantilever tip
+            if obj.CantileverTipFlag == 1
+                KeepTip = questdlg(sprintf('There already exists data from a deconvoluted tip\nDo you want to skip tip deconvolution and keep old tip data?'),...
+                    'Processing Options',...
+                    'Yes',...
+                    'No',...
+                    'No');
+            else
+                KeepTip = 'No';
+            end
+            if isequal(KeepTip,'No')
+                
+                waitbar(0,h,'deconvoluting cantilever tip...')
+                obj.deconvolute_cantilever_tip;
+            elseif isequal(KeepTip,'Yes')
+            end
             
             % Main loop for contact point estimation, Fibril Diameter and
             % Fibril E-Modulus calculation
@@ -541,18 +568,35 @@ classdef Experiment < matlab.mixin.Copyable
                     continue
                 end
                 waitbar(i/NLoop,h,sprintf('Processing Fibril %i/%i\nFitting Base Line',i,NLoop));
-                obj.FM{i}.base_and_tilt('linear');
+                if ~obj.FM{i}.BaseAndTiltFlag
+                    obj.FM{i}.base_and_tilt('linear');
+                end
+                if i == 1
+                    obj.write_to_log_file('Baseline and Tilt option','linear')
+                end
+                
                 obj.FM{i}.calculate_fib_diam();
-                waitbar(i/NLoop,h,sprintf('Processing Fibril %i/%i\nFinding Contact Point',i,NLoop));
                 
                 % contact point estimation happens here
+                waitbar(i/NLoop,h,sprintf('Processing Fibril %i/%i\nFinding Contact Point',i,NLoop));
                 obj.cp_option_converter(CPOption,i);
+                
+                % reference slope calculation happens here
+                waitbar(i/NLoop,h,sprintf('Processing Fibril %i/%i\nProcessing and calculating Reference Slope',i,NLoop));
+                obj.reference_slope_calculator(i);
                 
                 waitbar(i/NLoop,h,sprintf('Processing Fibril %i/%i\nCalculating E-Modulus',i,NLoop));
                 if isequal(lower(EModOption),'hertz')
                     obj.FM{i}.calculate_e_mod_hertz(CPOption,'parabolic',1);
+                    if i == 1
+                        obj.write_to_log_file('Hertzian Tip-Shape','parabolic')
+                        obj.write_to_log_file('Hertzian CurvePercent','1')
+                    end
                 else
                     obj.FM{i}.calculate_e_mod_oliverpharr(obj.CantileverTip.ProjArea,0.75);
+                    if i == 1
+                        obj.write_to_log_file('OliverPharr CurvePercent','0.75')
+                    end
                 end
                 waitbar(i/NLoop,h,sprintf('Processing Fibril %i/%i\nWrapping Up And Saving',i,NLoop));
                 
@@ -591,11 +635,14 @@ classdef Experiment < matlab.mixin.Copyable
             obj.save_experiment;
             
             close(h);
+            obj.write_to_log_file('','','end')
         end
         
         function force_map_analysis_general(obj,CPOption,EModOption)
             % force_map_analysis_general(obj,CPOption,EModOption)
             %
+            % CPOption = 'Snap-In' ... Preferred Option for data with
+            % snap-in effect
             % CPOption = 'Fast' ...(Default) contact point estimation through single
             % pass through CNN
             % CPOption = 'Dropout' ... contact point estimation through
@@ -606,7 +653,7 @@ classdef Experiment < matlab.mixin.Copyable
             %%%%%% RECOMMENDED %%%%%%
             % CPOption = 'Zoomsweep' ... CNN-based method
             %%%%%% RECOMMENDED %%%%%%
-            % CPOption = 'Old' ... old method for contact point estimation
+            % CPOption = 'Old' ... old method for contact point estimation 
             % CPOption = 'RoV' ... RoV method for contact point estimation
             % CPOption = 'GoF' ... GoF method for contact point estimation
             % CPOption = 'Combo' ... RoV and GoF combined method for contact point estimation
@@ -617,8 +664,12 @@ classdef Experiment < matlab.mixin.Copyable
             % EModOption = 'Oliver' ... E-Modulus calculation through
             % Oliver-Pharr-like method (O. Andriotis 2014)
             
+            obj.write_to_log_file('Analysis Function','force_map_analysis_general()','start')
+            obj.write_to_log_file('Contact Point Option',CPOption)
+            obj.write_to_log_file('EMod Option',EModOption)
+            
             h = waitbar(0,'setting up','Units','normalized','Position',[0.4 0.3 0.2 0.1]);
-            NLoop = length(obj.ForceMapNames);
+            NLoop = obj.NumFiles;
             if sum(obj.FMFlag.ForceMapAnalysis) >= 1
                 KeepFlagged = questdlg(sprintf('Some maps have been processed already.\nDo you want to skip them and keep old results?'),...
                     'Processing Options',...
@@ -628,6 +679,26 @@ classdef Experiment < matlab.mixin.Copyable
             else
                 KeepFlagged = 'No';
             end
+            
+            % Setting and calculating preferred method of reference slope
+            obj.reference_slope_parser(1)
+            
+            if obj.ReferenceSlopeFlag.SetAllToValue
+                RefSlopeOption = 'SetAllToValue';
+            elseif obj.ReferenceSlopeFlag.UserInput
+                RefSlopeOption = 'UserInput';
+            elseif obj.ReferenceSlopeFlag.FromRefFM
+                RefSlopeOption = 'FromRefFM';
+            elseif obj.ReferenceSlopeFlag.FromArea
+                RefSlopeOption = 'FromArea';
+            elseif obj.ReferenceSlopeFlag.AutomaticFibril
+                RefSlopeOption = 'AutomaticFibril';
+            elseif obj.ReferenceSlopeFlag.Automatic
+                RefSlopeOption = 'Automatic';
+            end
+            obj.write_to_log_file('Reference Slope Option',RefSlopeOption)
+            
+            % Deconvolute cantilever tip
             if isequal(lower(EModOption),'oliver')
                 if obj.CantileverTipFlag == 1
                     KeepTip = questdlg(sprintf('There already exists data from a deconvoluted tip\nDo you want to skip tip deconvolution and keep old tip data?'),...
@@ -645,32 +716,6 @@ classdef Experiment < matlab.mixin.Copyable
                 elseif isequal(KeepTip,'Yes')
                 end
             end
-            % Preprocessing everything, that needs user input
-            answer = questdlg('Do you want to skip manual exclusion of problematic areas?',...
-                'Manual Exclusion',...
-                'Yes',...
-                'No','No');
-            for i=1:NLoop
-                if isequal(KeepFlagged,'Yes') && obj.FMFlag.ForceMapAnalysis(i) == 1
-                    continue
-                end
-                obj.FM{i}.create_and_level_height_map();
-                if isequal(answer,'Yes')
-                    continue
-                end
-                obj.FM{i}.manual_exclusion();
-            end
-            
-            % preprocess reference ForceMaps
-            if isequal(lower(EModOption),'oliver')
-                ExternalRefSlope = true;
-                waitbar(0,h,'Processing reference ForceMaps')
-                for i=1:length(obj.RefFM)
-                    obj.RefFM{i}.base_and_tilt('linear');
-                    obj.cp_option_converter(CPOption,i,ExternalRefSlope);
-                    obj.RefFM{i}.calculate_reference_slope;
-                end
-            end
             
             % Main loop for contact point estimation and E-Modulus calculation
             for i=1:NLoop
@@ -678,18 +723,35 @@ classdef Experiment < matlab.mixin.Copyable
                     continue
                 end
                 waitbar(i/NLoop,h,sprintf('Processing ForceMap %i/%i\nFitting Base Line',i,NLoop));
-                obj.FM{i}.base_and_tilt('linear');
-                waitbar(i/NLoop,h,sprintf('Processing ForceMap %i/%i\nFinding Contact Point',i,NLoop));
+                if ~obj.FM{i}.BaseAndTiltFlag
+                    obj.FM{i}.base_and_tilt('linear');
+                if i == 1
+                    obj.write_to_log_file('Baseline and Tilt option','linear')
+                end
+                end
                 
                 % contact point estimation happens here
+                waitbar(i/NLoop,h,sprintf('Processing ForceMap %i/%i\nFinding Contact Point',i,NLoop));
                 obj.cp_option_converter(CPOption,i);
+                
+                % reference slope calculation happens here
+                waitbar(i/NLoop,h,sprintf('Processing ForceMap %i/%i\nProcessing and calculating Reference Slope',i,NLoop));
+                obj.reference_slope_calculator(i);
                 
                 waitbar(i/NLoop,h,sprintf('Processing ForceMap %i/%i\nCalculating E-Modulus',i,NLoop));
                 if isequal(lower(EModOption),'hertz')
-                    obj.FM{i}.calculate_e_mod_hertz(CPOption,'parabolic',1);
+                    AllowXShift = true;
+                    obj.FM{i}.calculate_e_mod_hertz(CPOption,'parabolic',1,AllowXShift);
+                    if i == 1
+                        obj.write_to_log_file('Hertzian Tip-Shape','parabolic')
+                        obj.write_to_log_file('Hertzian CurvePercent','1')
+                        obj.write_to_log_file('Allow X-Shift',AllowXShift)
+                    end
                 else
-                    obj.FM{i}.RefSlope = obj.RefFM{1}.RefSlope;
-                    obj.FM{i}.calculate_e_mod_oliverpharr(obj.CantileverTip.ProjArea,0.75,ExternalRefSlope);
+                    obj.FM{i}.calculate_e_mod_oliverpharr(obj.CantileverTip.ProjArea,0.75);
+                    if i == 1
+                        obj.write_to_log_file('OliverPharr CurvePercent','0.75')
+                    end
                 end
                 waitbar(i/NLoop,h,sprintf('Processing ForceMap %i/%i\nWrapping Up And Saving',i,NLoop));
                 
@@ -700,6 +762,7 @@ classdef Experiment < matlab.mixin.Copyable
             obj.save_experiment;
             
             close(h);
+            obj.write_to_log_file('','','end')
         end
         
         function surface_potential_analysis_fibril(obj)
@@ -721,6 +784,9 @@ classdef Experiment < matlab.mixin.Copyable
                 RefFM = false;
             end
             if RefFM == false
+                if isequal(lower(CPOption),'snap-in')
+                    obj.FM{i}.estimate_cp_snap_in();
+                end
                 if isequal(lower(CPOption),'rov')
                     obj.FM{i}.estimate_cp_rov();
                 end
@@ -758,6 +824,9 @@ classdef Experiment < matlab.mixin.Copyable
                     obj.FM{i}.estimate_cp_cnn(obj.CP_CNN,'Zoomsweep',NumPasses);
                 end
             elseif RefFM == true
+                if isequal(lower(CPOption),'snap-in')
+                    obj.FM{i}.estimate_cp_snap_in();
+                end
                 if isequal(lower(CPOption),'rov')
                     obj.RefFM{i}.estimate_cp_rov();
                 end
@@ -1657,7 +1726,6 @@ classdef Experiment < matlab.mixin.Copyable
             
         end
     end
-    
     methods
         % auxiliary methods
         
@@ -1906,6 +1974,271 @@ classdef Experiment < matlab.mixin.Copyable
             
             obj.HostOS = OS;
             obj.HostName = Host;
+        end
+        
+        function reference_slope_parser(obj,DefaultOption)
+            
+            if nargin < 2
+                DefaultOption = 1;
+            end
+            
+            Methods = false(6,1);
+            Methods(DefaultOption) = true;
+            ChosenMethod = obj.reference_slope_parser_gui(Methods);
+            Methods = false(6,1);
+            Methods(ChosenMethod) = true;
+            
+            obj.ReferenceSlopeFlag.SetAllToValue = Methods(1);
+            obj.ReferenceSlopeFlag.UserInput = Methods(2);
+            obj.ReferenceSlopeFlag.FromRefFM = Methods(3);
+            obj.ReferenceSlopeFlag.FromArea = Methods(4);
+            obj.ReferenceSlopeFlag.AutomaticFibril = Methods(5);
+            obj.ReferenceSlopeFlag.Automatic = Methods(6);
+            
+            % Process all the RefSlope-Methods that can be done frontloaded
+            if obj.ReferenceSlopeFlag.SetAllToValue
+                GetValue = inputdlg('To which value should the reference slopes be set?','Choose a value',1);
+                Value = str2double(GetValue{1});
+                for i=1:obj.NumFiles
+                    obj.FM{i}.set_reference_slope_to_value(Value)
+                end
+            elseif obj.ReferenceSlopeFlag.UserInput
+                for i=1:obj.NumFiles
+                    obj.FM{i}.set_reference_slope_to_user_input
+                end
+            elseif obj.ReferenceSlopeFlag.FromArea
+                for i=1:obj.NumFiles
+                    Mask = obj.FM{i}.create_mask_general;
+                    obj.FM{i}.calculate_reference_slope_from_area(Mask)
+                end
+            end
+            
+        end
+        
+        function reference_slope_calculator(obj,Index)
+            
+            i = Index;
+            if obj.ReferenceSlopeFlag.FromRefFM
+                if isempty(obj.RefFM)
+                    Warn = warndlg({'There are no reference Force Maps in your Experiment','Please load in one or more reference files'});
+                    uiwait(Warn)
+                    obj.load_in_reference_maps
+                end
+                
+                if length(obj.RefFM) > 1
+                    if ~obj.AssignedReferenceMaps
+                        obj.assign_reference_force_map
+                    end
+                    RefIdx = obj.WhichRefMap(i);
+                    if ~obj.RefFM{RefIdx}.HasRefSlope
+                        if ~obj.RefFM{RefIdx}.BaseAndTiltFlag
+                            obj.RefFM{RefIdx}.base_and_tilt
+                        end
+                        obj.RefFM{1}.estimate_cp_old
+                        Mask = ones(obj.RefFM{RefIdx}.NumProfiles,obj.RefFM{RefIdx}.NumPoints);
+                        obj.RefFM{RefIdx}.calculate_reference_slope_from_area(Mask);
+                    end
+                    obj.FM{i}.RefSlope = obj.RefFM{RefIdx}.RefSlope;
+                    obj.FM{i}.HasRefSlope = true;
+                elseif length(obj.RefFM) == 1
+                    if ~obj.RefFM{1}.HasRefSlope
+                        if ~obj.RefFM{1}.BaseAndTiltFlag
+                            obj.RefFM{1}.base_and_tilt
+                        end
+                        obj.RefFM{1}.estimate_cp_old
+                        Mask = ones(obj.RefFM{1}.NumProfiles,obj.RefFM{1}.NumPoints);
+                        obj.RefFM{1}.calculate_reference_slope_from_area(Mask);
+                    end
+                    obj.FM{i}.RefSlope = obj.RefFM{1}.RefSlope;
+                    obj.FM{i}.HasRefSlope = true;
+                end
+            elseif obj.ReferenceSlopeFlag.AutomaticFibril
+                Mask = ~obj.FM{i}.FibMask;
+                obj.FM{i}.calculate_reference_slope_from_area(Mask)
+            elseif obj.ReferenceSlopeFlag.Automatic
+                obj.FM{i}.create_automatic_background_mask(.8)
+                Mask = obj.FM{i}.BackgroundMask;
+                obj.FM{i}.calculate_reference_slope_from_area(Mask)
+            end
+        end
+        
+        function assign_reference_force_map(obj,DefaultValues)
+            
+            
+            obj.WhichRefMap = zeros(obj.NumFiles,1);
+            
+            NGroups = length(obj.RefFM);
+            
+            if nargin < 2
+                for i=1:NGroups
+                    DefaultValues{i} = 'e.g. 1 2 3 4 8 9 10 or 1:4 8:10';
+                end
+            end
+            
+            % create the appropriate inputdlg for assigning the groups show
+            % a table with numbered map-names in background
+            Names = obj.ForceMapNames;
+            Fig = figure('Name','Names and coresponding numbers of your Force Maps','Units', 'Normalized', 'Position',[0.1 0.1 0.3 0.4],'Color','w');
+            T = table(Names');
+            uitable('Data',T{:,:},'Units', 'Normalized', 'Position',[0, 0, 1, 1]);
+            
+            for i=1:NGroups
+                prompts{i} = sprintf('Which Force Maps belong to Reference Force Map %i?',i);
+                definput{i} = DefaultValues{i};
+            end
+            
+            dims = [1 50];
+            opts.WindowStyle = 'normal';
+            dlgtitle = 'Assign a the Force Maps to their respective Reference Maps';
+            answer = inputdlg(prompts,dlgtitle,dims,definput,opts);
+            
+            for i=1:NGroups
+                obj.WhichRefMap(str2num(answer{i})) = i;
+            end
+            
+            if  ~isempty(obj.WhichRefMap(obj.WhichRefMap == 0))
+                Warn = warndlg('You need to assign exactly one Reference Map to every Force Map','Parsing Error');
+                close(Fig);
+                uiwait(Warn);
+                obj.assign_reference_force_map(answer)
+                return
+            end
+            
+            obj.AssignedReferenceMaps = true;
+            close(Fig);
+            
+        end
+        
+        function load_in_reference_maps(obj)
+            
+            prompt = 'Enter Number of reference force maps';
+            dlgtitle = 'Experiment Layout';
+            dims = [1 35];
+            definput = {'1'};
+            answerRefN = inputdlg(prompt,dlgtitle,dims,definput);
+            NRef = str2double(answerRefN{1});
+            
+            MapFullFile = {};
+            k = 1;
+            while length(MapFullFile) < NRef
+                Title = sprintf('Choose one or more REFERENCEs .jpk-force-map or .jpk-qi-data files. %i/%i',length(MapFullFile),NRef);
+                [TempFile,TempPath] = uigetfile({'*.jpk-force-map;*.jpk-qi-data',...
+                    'Valid Types (*.jpk-force-map,*.jpk-qi-data)'},...
+                    Title,'MultiSelect','on');
+                if  ~iscell(TempFile)
+                    MapFullFile{k} = fullfile(TempPath,TempFile);
+                    k = k + 1;
+                else
+                    for i=1:length(TempFile)
+                        MapFullFile{k} = fullfile(TempPath,TempFile{i});
+                        k = k + 1;
+                    end
+                end
+                clear TempFile
+            end
+            
+            for i=1:NRef
+                TempID = sprintf('ReferenceMap-%i',i);
+                TempRefFM{i,1} = ForceMap(MapFullFile{i},obj.ExperimentFolder,TempID);
+            end
+            
+            obj.RefFM = TempRefFM;
+            
+        end
+        
+        function initialize_flags(obj)
+            N = obj.NumFiles;
+            obj.FMFlag.FibrilAnalysis = zeros(N,1);
+            obj.FMFlag.ForceMapAnalysis = zeros(N,1);
+            obj.FMFlag.Preprocessed = zeros(N,1);
+            obj.FMFlag.Grouping = 0;
+            obj.SPMFlag.FibrilAnalysis = zeros(N,1);
+            obj.SPMFlag.Grouping = 0;
+            obj.CantileverTipFlag = 0;
+            obj.ReferenceSlopeFlag.SetAllToValue = false;
+            obj.ReferenceSlopeFlag.UserInput = false;
+            obj.ReferenceSlopeFlag.FromRefFM = false;
+            obj.ReferenceSlopeFlag.FromArea = false;
+            obj.ReferenceSlopeFlag.AutomaticFibril = false;
+            obj.ReferenceSlopeFlag.Automatic = false;
+            obj.AssignedReferenceMaps = false;
+        end
+        
+        function write_to_log_file(obj,Name, Value, StartEnd)
+            % creates a Log-file that tracks all important analysis
+            % parameters aswell as the current git branch and hash of the
+            % current commit. All data analysis done this way should then
+            % be reproducible down the line by downloading the
+            % corresponding program version from GitHub and running with
+            % the same parameters. 
+            % This function is meant to be called multiple times in a
+            % Experiment wrapper method (e.g. force_map_analysis_general())
+            % Arguments:
+            % Name: Name of the stored parameter in the log-file
+            % Value: Value of the stored parameter (duh)
+            % StartEnd = none, 'start', 'end'
+            %       'start'... will create the logfile and write the
+            %       GitInfo and the current date and time into the file
+            %       header. The first function call should log the called
+            %       wrapper-method
+            %       none ... Leaving out the StartEnd argument will just
+            %       append the Name Value pair to the existing file
+            %       'end'... will append a last comment to the file,
+            %       confirming that the analysis has terminated
+            %       successfully and should therefore only be called as the
+            %       very last Line in a wrapper-method.
+            %
+            %   NOTE: calling with 'end' will IGNORE whatever
+            %   was written into Name and Value. However, you still need to
+            %   Pass something in for those arguments, e.g.:
+            %       obj.write_to_log_file('foo','bar','end')
+            
+            Current = what();
+            cd(obj.ExperimentFolder)
+            
+            if nargin == 4
+                if isequal(lower(StartEnd),'start')
+                    DateTime = datestr(now,30);
+                    obj.CurrentLogFile = strcat('AnalysisLog',DateTime,'.txt');
+                    fid = fopen( obj.CurrentLogFile, 'wt' );
+                    if fid == -1
+                        error('Cannot open log file.');
+                    end
+                    fclose(fid);
+                    
+                    % Change to source code folder, get GitInfo and then
+                    % change back to ExperimentFolder
+                    Source = which('ForceMap');
+                    Source = Source(1:end-11);
+                    cd(Source)
+                    GitInfo = getGitInfo();
+                    cd(obj.ExperimentFolder);
+                    
+                    obj.write_to_log_file('Date and Time',datestr(now,0))
+                    obj.write_to_log_file('Branch',GitInfo.branch)
+                    obj.write_to_log_file('Hash of current commit',GitInfo.hash)
+                    obj.write_to_log_file('Remote',GitInfo.remote)
+                    obj.write_to_log_file('URL',GitInfo.url)
+                elseif isequal(lower(StartEnd),'end')
+                    obj.write_to_log_file('Analysis ended successfully',':D')
+                    obj.CurrentLogFile = [];
+                    cd(Current.path);
+                    return
+                end
+            end
+            
+            Value = char(Value);
+            
+            fid = fopen(obj.CurrentLogFile, 'a');
+            if fid == -1
+                error('Cannot open log file.');
+            end
+            
+            fprintf(fid, '%s: %s\n', Name, Value);
+            
+            fclose(fid);
+            cd(Current.path);
+            
         end
         
     end
@@ -2303,6 +2636,57 @@ classdef Experiment < matlab.mixin.Copyable
             
             
             clear maskROI Igray backgroundI leng width
+        end
+        
+        function Out = reference_slope_parser_gui(Methods)
+            % Create figure
+            left = 0.3;
+            bottom = 0.4;
+            width = 0.4;
+            height = 0.15;
+            h.f = figure('units','normalized','position',[left bottom width height],...
+                'toolbar','none','menu','none');
+            
+            h.bg = uibuttongroup('Visible','off',...
+                  'Position',[0.1 0.15 0.8 0.8]);
+            
+            % Create checkboxes
+            c(1) = uicontrol(h.bg,'style','radiobutton','units','normalized',...
+                'position',[0.1 0.8 0.8 1/7],'string','Set all RefSlopes to a chosen value');
+            c(2) = uicontrol(h.bg,'style','radiobutton','units','normalized',...
+                'position',[0.1 0.65 0.8 1/7],'string','Get RefSlopes from user input for each Force Map individually');
+            c(3) = uicontrol(h.bg,'style','radiobutton','units','normalized',...
+                'position',[0.1 0.5 0.8 1/7],'string','Get RefSlopes from Reference Force Maps');
+            c(4) = uicontrol(h.bg,'style','radiobutton','units','normalized',...
+                'position',[0.1 0.35 0.8 1/7],'string','Get RefSlopes from chosen area on Force Map');
+            c(5) = uicontrol(h.bg,'style','radiobutton','units','normalized',...
+                'position',[0.1 0.2 0.8 1/7],'string','Get RefSlope from automatically identified glass background around fibril');
+            c(6) = uicontrol(h.bg,'style','radiobutton','units','normalized',...
+                'position',[0.1 0.05 0.8 1/7],'string','Get RefSlope from automatically identified glass background around object');
+            
+            h.bg.SelectedObject = c(find(Methods));
+            
+            h.bg.Visible = 'on';
+            
+            % Create OK pushbutton
+            h.p = uicontrol('style','pushbutton','units','normalized',...
+                'position',[0.4 0.05 0.2 0.1],'string','OK',...
+                'callback',@p_close);
+            % Pushbutton callback
+%             function p_call(varargin)
+%                 vals = get(h.c,'Value');
+%                 set(h.c(3),'Value',1)
+%                 checked = find([vals{:}]);
+%                 disp(checked)
+%             end
+
+            function p_close(varargin)
+                vals = get(c,'Value');
+                checked = find([vals{:}]);
+                Out = checked;
+                close(h.f)
+            end
+            uiwait(h.f)
         end
         
     end
