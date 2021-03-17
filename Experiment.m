@@ -740,10 +740,12 @@ classdef Experiment < matlab.mixin.Copyable
                 
                 waitbar(i/NLoop,h,sprintf('Processing ForceMap %i/%i\nCalculating E-Modulus',i,NLoop));
                 if isequal(lower(EModOption),'hertz')
-                    obj.FM{i}.calculate_e_mod_hertz(CPOption,'parabolic',1);
+                    AllowXShift = true;
+                    obj.FM{i}.calculate_e_mod_hertz(CPOption,'parabolic',1,AllowXShift);
                     if i == 1
                         obj.write_to_log_file('Hertzian Tip-Shape','parabolic')
                         obj.write_to_log_file('Hertzian CurvePercent','1')
+                        obj.write_to_log_file('Allow X-Shift',AllowXShift)
                     end
                 else
                     obj.FM{i}.calculate_e_mod_oliverpharr(obj.CantileverTip.ProjArea,0.75);

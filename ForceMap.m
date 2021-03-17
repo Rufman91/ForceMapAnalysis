@@ -75,6 +75,7 @@ classdef ForceMap < matlab.mixin.Copyable
         GoF = {}        % goodness of fit curve for each selected curve
         CP              % chosen contact point (CP) for every selected curve, which is then used in E module fitting
         CP_SnapIn       % Prefered CP-method for data with snap-in-effect (most data from air)
+        CP_HertzFitted  % Computed from the 0-Point of the fit calculated in Hertz-Sneddon model with AllowXShift = true
         CP_RoV          % CP estimated with the ratio of variance method
         CP_GoF          % CP estimated with the goodness of fit method
         CP_Combo        % CP estimated with a combination of the GoF and RoV methods
@@ -341,9 +342,10 @@ classdef ForceMap < matlab.mixin.Copyable
                     k = k + 1;
                 end
                 if k<5
-                    obj.CP(i,1) = obj.HHApp{i}(end);
-                    obj.CP(i,2) = obj.BasedApp{i}(end);
+                    obj.CP(i,1) = obj.HHApp{i}(floor(.5*end));
+                    obj.CP(i,2) = obj.BasedApp{i}(floor(.5*end));
                     obj.CP_SnapIn(i,:) = obj.CP(i,:);
+                    obj.SelectedCurves(i) = 0;
                     continue
                 end
                     
@@ -861,7 +863,7 @@ classdef ForceMap < matlab.mixin.Copyable
             obj.CPFlag.HardSurface = 1;
         end
         
-        function [E,HertzFit] = calculate_e_mod_hertz(obj,CPType,TipShape,curve_percent)
+        function [E,HertzFit] = calculate_e_mod_hertz(obj,CPType,TipShape,curve_percent,AllowXShift)
             % [E,HertzFit] = calculate_e_mod_hertz(obj,CPType,TipShape,curve_percent)
             %
             % calculate the E modulus of the chosen curves using the CP
@@ -872,6 +874,9 @@ classdef ForceMap < matlab.mixin.Copyable
             end
             if ~exist('TipShape','var') && ~ischar(TipShape)
                 TipShape = 'parabolic';
+            end
+            if nargin < 5
+                AllowXShift = false;
             end
             iRange = find(obj.SelectedCurves);
             obj.EModHertz = zeros(obj.NCurves,1);
@@ -888,6 +893,8 @@ classdef ForceMap < matlab.mixin.Copyable
                     CP = obj.CP_Combo(i,:);
                 elseif isequal(lower(CPType),'manual')
                     CP = obj.Man_CP(i,:);
+                elseif isequal(lower(CPType),'snap-in')
+                    CP = obj.CP_SnapIn(i,:);
                 else
                     CP = obj.CP(i,:);
                 end
@@ -905,11 +912,20 @@ classdef ForceMap < matlab.mixin.Copyable
                 force = force/RangeF;
                 tip_h = tip_h/RangeTH;
                 if isequal(TipShape,'parabolic')
-                    s = fitoptions('Method','NonlinearLeastSquares',...
-                        'Lower',10^(-30),...
-                        'Upper',inf,...
-                        'Startpoint',1);
-                    f = fittype('a*(x)^(3/2)','options',s);
+                    if AllowXShift
+                        s = fitoptions('Method','NonlinearLeastSquares',...
+                            'Lower',[10^(-5) 0],...
+                            'Upper',[inf inf],...
+                            'MaxIter',100,...
+                            'Startpoint',[1 0]);
+                        f = fittype('a*(x+b)^(3/2)','options',s);
+                    else
+                        s = fitoptions('Method','NonlinearLeastSquares',...
+                            'Lower',10^(-5),...
+                            'Upper',inf,...
+                            'Startpoint',1);
+                        f = fittype('a*(x)^(3/2)','options',s);
+                    end
                     Hertzfit = fit(tip_h,...
                         force,f);
                     % calculate E module based on the Hertz model. Be careful
@@ -929,6 +945,14 @@ classdef ForceMap < matlab.mixin.Copyable
                 % correctly later
                 warning('off','all');
                 Hertzfit.a = Hertzfit.a*RangeF/RangeTH^(3/2);
+                if AllowXShift
+                Hertzfit.b = Hertzfit.b*RangeTH;
+                obj.CP_HertzFitted(i,1) = CP(1)-Hertzfit.b;
+                obj.CP_HertzFitted(i,2) = CP(2);
+                obj.CP(i,:) = obj.CP_HertzFitted(i,:);
+                % Not sure about this one
+                % obj.IndDepthHertz(i) = obj.IndDepthHertz(i) + Hertzfit.b;
+                end
                 warning('on','all');
                 obj.HertzFit{i} = Hertzfit;
                 
@@ -947,6 +971,11 @@ classdef ForceMap < matlab.mixin.Copyable
                     obj.EModMapHertz(i,j,1) = (obj.EModHertz(mod(i,2)*j+(1-mod(i,2))*(obj.NumPoints-(j-1))+(obj.NumProfiles-i)*obj.NumPoints));
                 end
             end
+            
+            if AllowXShift
+                obj.CPFlag.HertzFitted = 1;
+            end
+            
         end
         
         function EMod = calculate_e_mod_oliverpharr(obj,TipProjArea,CurvePercent)
@@ -2775,6 +2804,7 @@ classdef ForceMap < matlab.mixin.Copyable
             
             obj.BaseAndTiltFlag = false;
             obj.CPFlag.SnapIn = 0;
+            obj.CPFlag.HertzFitted = 0;
             obj.CPFlag.RoV = 0;
             obj.CPFlag.GoF = 0;
             obj.CPFlag.Combo = 0;
@@ -2846,6 +2876,15 @@ classdef ForceMap < matlab.mixin.Copyable
             plot(obj.HHApp{k}*1e9,obj.BasedApp{k}*1e9,obj.HHRet{k}*1e9,obj.BasedRet{k}*1e9,'LineWidth',1.5);
             Legends = {'Approach','Retract'};
             
+            if obj.CPFlag.HertzFitted == 1
+                plot(obj.CP_HertzFitted(k,1)*1e9, obj.CP_HertzFitted(k,2)*1e9,'O',...
+                    'LineWidth',1.5,...
+                    'MarkerSize',7,...
+                    'MarkerEdgeColor','k',...
+                    'MarkerFaceColor',[0.4940 0.1840 0.5560]);
+                Legends{end+1} = 'Origin of Hertz-Sneddon fit';
+                xlim([(obj.HHApp{k}(1)+ZoomMult*(obj.CP_SnapIn(k,1) - obj.HHApp{k}(1)))*1e9 inf]);
+            end
             if obj.CPFlag.SnapIn == 1
                 plot(obj.CP_SnapIn(k,1)*1e9, obj.CP_SnapIn(k,2)*1e9,'O',...
                     'LineWidth',1.5,...
@@ -3398,7 +3437,9 @@ classdef ForceMap < matlab.mixin.Copyable
                 X = obj.THApp{m} - obj.CP(m,1);
                 X(X<0) = [];
                 HertzModelX = 0:range(X)/100:2*max(X);
-                HertzModelY = feval(obj.HertzFit{m},HertzModelX);
+                FitModel = obj.HertzFit{m};
+                FitModel.b = 0;
+                HertzModelY = feval(FitModel,HertzModelX);
                 
                 plot(HertzModelX(HertzModelY<=max(obj.BasedApp{m} - obj.CP(m,2))),HertzModelY(HertzModelY<=max(obj.BasedApp{m} - obj.CP(m,2))),...
                     obj.THApp{m} - obj.CP(m,1),obj.BasedApp{m} - obj.CP(m,2),...
@@ -3423,15 +3464,20 @@ classdef ForceMap < matlab.mixin.Copyable
                 
                 
                 subplot(2,2,4)
-                plot((obj.IndDepthHertz)*1e9,...
-                    obj.EModHertz*1e-6,'bO')
-                hold on
-                plot((obj.IndDepthHertz(m))*1e9,...
-                    obj.EModHertz(m)*1e-6,'rO','MarkerFaceColor','r')
-                xlabel('Indentation Depth [nm]')
-                ylabel('Elastic Modulus [MPa]')
+                if obj.NCurves <= 512
+                    plot((obj.IndDepthHertz)*1e9,...
+                        obj.EModHertz*1e-6,'bO')
+                    hold on
+                    plot((obj.IndDepthHertz(m))*1e9,...
+                        obj.EModHertz(m)*1e-6,'rO','MarkerFaceColor','r')
+                    xlabel('Indentation Depth [nm]')
+                    ylabel('Elastic Modulus [MPa]')
+                else
+                    histogram((obj.IndDepthHertz)*1e9)
+                    xlabel('Indentation Depth [nm]')
+                end    
                 hold off
-                
+                    
                 pause(PauseTime)
                 if m<obj.NCurves
                     m = m + 1;
