@@ -926,16 +926,22 @@ classdef ForceMap < matlab.mixin.Copyable
                             'Startpoint',1);
                         f = fittype('a*(x)^(3/2)','options',s);
                     end
-                    Hertzfit = fit(tip_h,...
-                        force,f);
-                    % calculate E module based on the Hertz model. Be careful
-                    % to convert to unnormalized data again
-                    if isempty(obj.FibDiam)
-                        R_eff = obj.TipRadius*1e-9;
-                    else
-                        R_eff = 1/(1/(obj.TipRadius*1e-9) + 1/(obj.FibDiam/2));
+                    try
+                        Hertzfit = fit(tip_h,...
+                            force,f);
+                        % calculate E module based on the Hertz model. Be careful
+                        % to convert to unnormalized data again
+                        if isempty(obj.FibDiam)
+                            R_eff = obj.TipRadius*1e-9;
+                        else
+                            R_eff = 1/(1/(obj.TipRadius*1e-9) + 1/(obj.FibDiam/2));
+                        end
+                        EMod = 3*(Hertzfit.a*RangeF/RangeTH^(3/2))/(4*sqrt(R_eff))*(1-obj.PoissonR^2);
+                    catch
+                        EMod = nan;
+                        Hertzfit.a = 0;
+                        Hertzfit.b = 0;
                     end
-                    EMod = 3*(Hertzfit.a*RangeF/RangeTH^(3/2))/(4*sqrt(R_eff))*(1-obj.PoissonR^2);
                 elseif isequal(shape,'spherical')
                 elseif isequal(shape,'conical')
                 elseif isequal(shape,'pyramid')
