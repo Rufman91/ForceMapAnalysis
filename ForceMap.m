@@ -880,6 +880,7 @@ classdef ForceMap < matlab.mixin.Copyable
             end
             iRange = find(obj.SelectedCurves);
             obj.EModHertz = zeros(obj.NCurves,1);
+            obj.IndDepthHertz = zeros(obj.NCurves,1);
             for i=iRange'
                 if isequal(lower(CPType),'cnn')
                     CP = obj.CP(i,:);
@@ -901,7 +902,8 @@ classdef ForceMap < matlab.mixin.Copyable
                 force = obj.BasedApp{i} - CP(2);
                 tip_h = (obj.HHApp{i} - CP(1)) - force/obj.SpringConstant;
                 tip_h(tip_h < 0) = [];
-                obj.IndDepthHertz(i) = max(tip_h);
+                Max = max(tip_h);
+                obj.IndDepthHertz(i) = Max(1);
                 % delete everything below curve_percent of the maximum
                 % force
                 force(1:(length(force)-length(tip_h))) = [];
