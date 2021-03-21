@@ -6,16 +6,24 @@ classdef Experiment < matlab.mixin.Copyable
         HostOS              % Shows the current operating system
         HostName            % Shows the current Host (User of running machine)
         CurrentLogFile
-        ForceMapNames       % Shows names of the force maps
+        FM
+        NumForceMaps
+        ForceMapNames       
         ForceMapFolders
+        RefFM
+        NumReferenceForceMaps
+        ReferenceForceMapNames
+        ReferenceForceMapFolders
+        I
+        NumAFMImages
+        AFMImageNames
+        AFMImageFolders
+        SPM
+        NumSurfacePotentialMaps
         SurfacePotentialMapFolders
         SurfacePotentialMapNames
-        NumFiles
-        FM
         EMod
-        RefFM
         WhichRefMap
-        SPM
         SurfPot
         GroupFM
         GroupSPM
@@ -41,160 +49,98 @@ classdef Experiment < matlab.mixin.Copyable
         
         function obj = Experiment()
             
-            % Force Maps + KPFM or only one of them?
-            answer = questdlg('What kind of measurements were done?', ...
-                'Experiment Type',...
-                'Surface Potential Maps','Indentation Force/QI Maps','Both','Indentation Force/QI Maps');
-            % Handle response
-            switch answer
-                case 'Surface Potential Maps'
-                    WhichFiles = 1;
-                case 'Indentation Force/QI Maps'
-                    WhichFiles = 2;
-                case 'Both'
-                    WhichFiles = 0;
-            end
-            
-            % How many Specimens were tested? Multiple measurements per
-            % specimen?
-            prompt = {'Enter Number of force maps','How would you like to name the Experiment?'};
-            dlgtitle = 'Experiment Layout';
-            dims = [1 35];
-            definput = {'10','YourExperimentName'};
-            answer = inputdlg(prompt,dlgtitle,dims,definput);
-            
-            % ReferenceSlopeMaps
-            answerRef = questdlg('Are there any force maps from reference material (glass, mica)?','Reference Slope Data','Yes','No','No');
-            
-            if isequal(answerRef,'Yes')
-                prompt = 'Enter Number of reference force maps';
-                dlgtitle = 'Experiment Layout';
-                dims = [1 35];
-                definput = {'1'};
-                answerRefN = inputdlg(prompt,dlgtitle,dims,definput);
-                NRef = str2double(answerRefN{1});
-            else
-                NRef = 0;
-            end
-            
             % Set HostOS and HostName properties
-            FullOS = computer;
-            OS = FullOS(1:3);
-            if isequal(OS,'PCW')
-                Host = getenv('COMPUTERNAME');
-            elseif isequal(OS,'GLN')
-                Host = getenv('HOSTNAME');
-            elseif isequal(OS,'MAC')
-                Host = getenv('HOSTNAME');
-            end
-            obj.HostOS = OS;
-            obj.HostName = Host;
+            obj.check_for_new_host
             
-            obj.NumFiles = str2double(answer{1});
-            obj.ExperimentName = answer{2};
+            % get Experiment name and layout from user
+            isNew = true;
+            [FileTypes, NumFiles, ExperimentName] = obj.constructor_user_input_parser(isNew);
+            
+            % set Name and choose Experiment folder
+            obj.ExperimentName = ExperimentName;
             current = what();
             ParentFolder = uigetdir(current.path,'Choose a Folder where the Experiment is to be saved');
             mkdir(ParentFolder,obj.ExperimentName);
             obj.ExperimentFolder = fullfile(ParentFolder,obj.ExperimentName,filesep);
-            N = obj.NumFiles;
-            MapFullFile = {};
-            k = 1;
-            while length(MapFullFile) < N
-                Title = sprintf('Choose one or more .jpk-force-map or .jpk-qi-data files. %i/%i',length(MapFullFile),N);
-                [TempFile,TempPath] = uigetfile({'*.jpk-force-map;*.jpk-qi-data',...
-                    'Valid Types (*.jpk-force-map,*.jpk-qi-data)'},...
-                    Title,'MultiSelect','on');
-                if  ~iscell(TempFile)
-                    MapFullFile{k} = fullfile(TempPath,TempFile);
-                    k = k + 1;
-                else
-                    for i=1:length(TempFile)
-                        MapFullFile{k} = fullfile(TempPath,TempFile{i});
-                        k = k + 1;
-                    end
-                end
-                clear TempFile
-            end
             
-            while length(MapFullFile) < N + NRef
-                Title = sprintf('Choose one or more REFERENCE .jpk-force-map or .jpk-qi-data files. %i/%i',length(MapFullFile)-N,NRef);
-                [TempFile,TempPath] = uigetfile({'*.jpk-force-map;*.jpk-qi-data',...
-                    'Valid Types (*.jpk-force-map,*.jpk-qi-data)'},...
-                    Title,'MultiSelect','on');
-                if  ~iscell(TempFile)
-                    MapFullFile{k} = fullfile(TempPath,TempFile);
-                    k = k + 1;
-                else
-                    for i=1:length(TempFile)
-                        MapFullFile{k} = fullfile(TempPath,TempFile{i});
-                        k = k + 1;
-                    end
-                end
-                clear TempFile
-            end
-            FM = cell(N,1);
-            SPM = cell(N,1);
-            ExperimentName = obj.ExperimentName;
-            ExperimentFolder = obj.ExperimentFolder;
-            if contains(struct2array(ver), 'Parallel Computing Toolbox') && ~(obj.NumFiles == 1)
-                parfor i=1:N
-                    % for i=1:N Debugging
-                    if WhichFiles == 2 || WhichFiles == 0
-                        TempID = sprintf('%s-%i',ExperimentName,i);
-                        FM{i} = ForceMap(MapFullFile{i},ExperimentFolder,TempID);
-                    elseif WhichFiles == 1 || WhichFiles == 0
-                        SPM{i} = SurfacePotentialMap();
-                    end
-                end
-            else
-                for i=1:N
-                    % for i=1:N Debugging
-                    if WhichFiles == 2 || WhichFiles == 0
-                        TempID = sprintf('%s-%i',ExperimentName,i);
-                        FM{i} = ForceMap(MapFullFile{i},ExperimentFolder,TempID);
-                    elseif WhichFiles == 1 || WhichFiles == 0
-                        SPM{i} = SurfacePotentialMap();
-                    end
-                end
-            end
-            
-            % Assign the objects created in the parfor loop to the
-            % Experiment object
-            obj.FM = FM;
-            obj.SPM = SPM;
-            for i=1:N
-                if WhichFiles == 2 || WhichFiles == 0
-                    TempID = sprintf('Reference-%s-%i',ExperimentName,i);
-                    obj.ForceMapFolders{i} = obj.FM{i}.Folder;
-                    obj.ForceMapNames{i} = obj.FM{i}.Name;
-                elseif WhichFiles == 1 || WhichFiles == 0
-                    obj.SurfacePotentialMapFolders{i} = obj.SPM{i}.Folder;
-                    obj.SurfacePotentialMapNames{i} = obj.SPM{i}.Name;
-                end
-            end
-            
-            for i=1:NRef
-                if WhichFiles == 2 || WhichFiles == 0
-                    obj.RefFM{i} = ForceMap(MapFullFile{N+i},obj.ExperimentFolder);
-                end
-            end
+            % get paths of requested files and load them in
+            obj.get_paths_and_load_files(FileTypes,NumFiles,isNew)
             
             obj.initialize_flags
-            
-%             if WhichFiles == 2 || WhichFiles == 0
-%                 obj.grouping_force_map();
-%             elseif WhichFiles == 1 || WhichFiles == 0
-%                 obj.grouping_surface_potential_map();
-%             end
             
             Temp = load('DropoutNetFinal.mat');
             obj.DropoutNet = Temp.MC14_Drop;
             Temp2 = load('CP_CNN_Final.mat');
             obj.CP_CNN = Temp2.CNN;
             
-            obj.check_for_new_host();
-            
             obj.save_experiment();
+        end
+        function get_paths_and_load_files(obj,FileTypes,NumFiles,isNew)
+            
+            if nargin<4
+                isNew = false;
+            end
+            if isNew
+                obj.FM = cell(0,0);
+                obj.NumForceMaps = 0;
+                obj.ForceMapNames = cell(0,0);
+                obj.ForceMapFolders = cell(0,0);
+                obj.RefFM = cell(0,0);
+                obj.NumReferenceForceMaps = 0;
+                obj.ReferenceForceMapNames = cell(0,0);
+                obj.ReferenceForceMapFolders = cell(0,0);
+                obj.I = cell(0,0);
+                obj.NumAFMImages = 0;
+                obj.AFMImageNames = cell(0,0);
+                obj.AFMImageFolders = cell(0,0);
+                obj.SPM = cell(0,0);
+                obj.NumSurfacePotentialMaps = 0;
+                obj.SurfacePotentialMapFolders = cell(0,0);
+                obj.SurfacePotentialMapNames = cell(0,0);
+            end
+            
+            if FileTypes(1)
+                AllowedFiles = {'*.jpk-force-map;*.jpk-qi-data',...
+                    'Valid Types (*.jpk-force-map,*.jpk-qi-data)'};
+                FMFullFile = obj.get_file_paths('Choose one or more Force/QI Map files',AllowedFiles,NumFiles(1));
+            end
+            if FileTypes(4)
+                AllowedFiles = {'*.jpk-force-map;*.jpk-qi-data',...
+                    'Valid Types (*.jpk-force-map,*.jpk-qi-data)'};
+                RefFMFullFile = obj.get_file_paths('Choose one or more Reference Force/QI Map files',AllowedFiles,NumFiles(4));
+            end
+            if FileTypes(2)
+                AllowedFiles = {'*.jpk',...
+                    'Valid Types (*.jpk)'};
+                IFullFile = obj.get_file_paths('Choose one or more AFM Image files',AllowedFiles,NumFiles(2));
+            end
+            if FileTypes(3)
+                AllowedFiles = {'*.csv',...
+                    'Valid Types (*.csv)'};
+                SPMFullFile = obj.get_file_paths('Choose one or more Surface Potential Map files',AllowedFiles,NumFiles(3));
+            end
+            
+            if FileTypes(1)
+                for i=(obj.NumForceMaps+1):(obj.NumForceMaps+NumFiles(1))
+                    
+                end
+            end
+            if FileTypes(4)
+                for i=(obj.NumReferenceForceMaps+1):(obj.NumReferenceForceMaps+NumFiles(4))
+                    
+                end
+            end
+            if FileTypes(2)
+                for i=(obj.NumAFMImages+1):(obj.NumAFMImages+NumFiles(2))
+                    
+                end
+            end
+            if FileTypes(3)
+                for i=(obj.NumSurfacePotentialMaps+1):(obj.NumSurfacePotentialMaps+NumFiles(3))
+                    
+                end
+            end
+            
         end
         
         function Out = add_data(obj)
@@ -2147,21 +2093,29 @@ classdef Experiment < matlab.mixin.Copyable
         end
         
         function initialize_flags(obj)
-            N = obj.NumFiles;
-            obj.FMFlag.FibrilAnalysis = zeros(N,1);
-            obj.FMFlag.ForceMapAnalysis = zeros(N,1);
-            obj.FMFlag.Preprocessed = zeros(N,1);
+            NFM = obj.NumForceMaps;
+            obj.FMFlag.FibrilAnalysis = zeros(NFM,1);
+            obj.FMFlag.ForceMapAnalysis = zeros(NFM,1);
+            obj.FMFlag.Preprocessed = zeros(NFM,1);
             obj.FMFlag.Grouping = 0;
-            obj.SPMFlag.FibrilAnalysis = zeros(N,1);
+            NSPM = obj.NumSurfacePotentialMaps;
+            obj.SPMFlag.FibrilAnalysis = zeros(NSPM,1);
             obj.SPMFlag.Grouping = 0;
+            
             obj.CantileverTipFlag = 0;
+            
             obj.ReferenceSlopeFlag.SetAllToValue = false;
             obj.ReferenceSlopeFlag.UserInput = false;
             obj.ReferenceSlopeFlag.FromRefFM = false;
             obj.ReferenceSlopeFlag.FromArea = false;
             obj.ReferenceSlopeFlag.AutomaticFibril = false;
             obj.ReferenceSlopeFlag.Automatic = false;
-            obj.AssignedReferenceMaps = false;
+            if obj.NumReferenceForceMaps > 0
+                obj.ReferenceSlopeFlag.FromRefFM = true;
+                obj.AssignedReferenceMaps = true;
+            else
+                obj.AssignedReferenceMaps = false;
+            end
         end
         
         function write_to_log_file(obj,Name, Value, StartEnd)
@@ -2694,6 +2648,142 @@ classdef Experiment < matlab.mixin.Copyable
                 close(h.f)
             end
             uiwait(h.f)
+        end
+        
+        function [Checked,NumberOfFiles,ExperimentName] = constructor_user_input_parser(isNew)
+            
+            if nargin<1
+                isNew = false;
+            end
+            
+            % Create figure
+            left = 0.3;
+            bottom = 0.4;
+            width = 0.3;
+            height = 0.3;
+            h.f = figure('Name','Choose Experiment name and which file types have to be loaded','units','normalized','position',[left bottom width height],...
+                'toolbar','none','menu','none');
+            
+            h.name = uibuttongroup('Visible','on',...
+                'Position',[0.1 0.75 0.8 0.2]);
+            NameText = uicontrol(h.name,'Style','text','units','normalized',...
+                'position',[0.1 0.1 0.5 .4],'string','Name of Experiment');
+            NameEdit = uicontrol(h.name,'Style','edit','units','normalized',...
+                'position',[0.6 0.1 0.3 .4],'string','choose a name');
+            
+            if ~isNew
+                set(NameEdit,'Enable','off');
+                set(NameEdit,'String','');
+                ExperimentName = [];
+            end
+            
+            h.bg = uibuttongroup('Visible','off',...
+                  'Position',[0.1 0.15 0.8 0.6]);
+            
+            % Create checkboxes for filetypes
+            c(1) = uicontrol(h.bg,'style','checkbox','units','normalized',...
+                'position',[0.1 0.8 0.5 1/7],'string','Force/QI Maps',...
+                'Callback',@checked_box);
+            c(2) = uicontrol(h.bg,'style','checkbox','units','normalized',...
+                'position',[0.1 0.3 0.5 1/7],'string',"AFM Image files",...
+                'Callback',@checked_box);
+            c(3) = uicontrol(h.bg,'style','checkbox','units','normalized',...
+                'position',[0.1 0.1 0.5 1/7],'string','Surface Potential Maps',...
+                'Callback',@checked_box);
+            c(7) = uicontrol(h.bg,'style','checkbox','units','normalized',...
+                'position',[0.2 0.6 0.5 1/7],'string','Reference Force Maps',...
+                'Callback',@has_reference_maps);
+            
+            
+            c(4) = uicontrol(h.bg,'style','edit','units','normalized',...
+                'position',[0.6 0.8 0.3 1/7],'string','Number of Force/QI Maps');
+            c(5) = uicontrol(h.bg,'style','edit','units','normalized',...
+                'position',[0.6 0.3 0.3 1/7],'string',"Number of AFM Images");
+            c(6) = uicontrol(h.bg,'style','edit','units','normalized',...
+                'position',[0.6 0.1 0.3 1/7],'string','Number of Surface Potential Maps');
+            c(8) = uicontrol(h.bg,'style','edit','units','normalized',...
+                'position',[0.6 0.6 0.3 1/7],'string','Number Reference Force Maps');
+            
+            set(c([4:8]),'Enable','off')
+            h.bg.Visible = 'on';
+            
+            % Create OK pushbutton
+            h.p = uicontrol('style','pushbutton','units','normalized',...
+                'position',[0.4 0.05 0.2 0.1],'string','OK',...
+                'callback',@p_close);
+            % Pushbutton callback
+%             function p_call(varargin)
+%                 vals = get(h.c,'Value');
+%                 set(h.c(3),'Value',1)
+%                 checked = find([vals{:}]);
+%                 disp(checked)
+%             end
+
+            function checked_box(varargin)
+                vals = get(c,'Value');
+                for i=1:3
+                    if vals{i}
+                        set(c(i+3),'Enable','on');
+                        if i==1
+                            set(c(7),'Enable','on');
+                        end
+                    else
+                        set(c(i+3),'Enable','off');
+                    end
+                end
+            end
+            
+            function has_reference_maps(varargin)
+                vals = get(c,'Value');
+                if vals{7}
+                    set(c(8),'Enable','on');
+                else
+                    set(c(8),'Enable','off');
+                end
+            end
+            
+            function p_close(varargin)
+                vals = get(c,'Value');
+                Checked = [vals{[1:3 7]}];
+                Strings = get(c,'String');
+                NumberOfFiles = zeros(1,4);
+                for i=[4:6 8]
+                    CurString = str2num(Strings{i});
+                    if isempty(CurString)
+                        continue
+                    end
+                    if i==8
+                        NumberOfFiles(4) = CurString;
+                        continue
+                    end
+                    NumberOfFiles(i-3) = CurString;
+                end
+                ExperimentName = get(NameEdit,'string');
+                close(h.f)
+            end
+            uiwait(h.f)
+        end
+        
+        function MapFullFile = get_file_paths(PromptString,AllowedFiles,NumFiles)
+            N = NumFiles;
+            MapFullFile = {};
+            k = 1;
+            while length(MapFullFile) < N
+                PromptString = append(PromptString,' %i/%i');
+                Title = sprintf(PromptString,length(MapFullFile),N);
+                [TempFile,TempPath] = uigetfile(AllowedFiles,...
+                    Title,'MultiSelect','on');
+                if  ~iscell(TempFile)
+                    MapFullFile{k} = fullfile(TempPath,TempFile);
+                    k = k + 1;
+                else
+                    for i=1:length(TempFile)
+                        MapFullFile{k} = fullfile(TempPath,TempFile{i});
+                        k = k + 1;
+                    end
+                end
+                clear TempFile
+            end
         end
         
     end
