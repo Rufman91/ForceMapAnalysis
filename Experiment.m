@@ -6,22 +6,26 @@ classdef Experiment < matlab.mixin.Copyable
         HostOS              % Shows the current operating system
         HostName            % Shows the current Host (User of running machine)
         CurrentLogFile
-        FM
+        FM                  % Cellarray containing Force/QI Maps
         NumForceMaps
         ForceMapNames       
         ForceMapFolders
-        RefFM
+        RefFM               % Cellarray containing reference Force/QI Maps
         NumReferenceForceMaps
         ReferenceForceMapNames
         ReferenceForceMapFolders
-        I
+        I                   % Cellarray containing AFM-Images
         NumAFMImages
         AFMImageNames
         AFMImageFolders
-        SPM
+        SPM                 % Cellarray containging Surface Potential Maps (to be made obsolete by AFMImage in the future)
         NumSurfacePotentialMaps
         SurfacePotentialMapFolders
         SurfacePotentialMapNames
+        CantileverTips      % Cellarray containing images of Cantilever Tips from TGT-1 grating for deconvolution
+        NumCantileverTips
+        CantileverTipNames
+        CantileverTipFolders
         EMod
         WhichRefMap
         SurfPot
@@ -56,6 +60,22 @@ classdef Experiment < matlab.mixin.Copyable
             isNew = true;
             [FileTypes, NumFiles, ExperimentName] = obj.constructor_user_input_parser(isNew);
             
+            if isequal(FileTypes,'Cancel')
+                obj = [];
+                return
+            end
+            
+            for i=1:length(FileTypes)
+                while FileTypes(i) && ~NumFiles(i)
+                    warndlg('All "Number of *"-inputs have to be non-zero integers')
+                    [FileTypes, NumFiles, ExperimentName] = obj.constructor_user_input_parser(isNew,FileTypes, NumFiles, ExperimentName);
+                    if isequal(FileTypes,'Cancel')
+                        obj = [];
+                        return
+                    end
+                end
+            end
+            
             % set Name and choose Experiment folder
             obj.ExperimentName = ExperimentName;
             current = what();
@@ -75,12 +95,15 @@ classdef Experiment < matlab.mixin.Copyable
             
             obj.save_experiment();
         end
+        
         function get_paths_and_load_files(obj,FileTypes,NumFiles,isNew)
             
             if nargin<4
                 isNew = false;
             end
             if isNew
+                % set everything to zero if creating new experiment.
+                % otherwise skip and just add new entries
                 obj.FM = cell(0,0);
                 obj.NumForceMaps = 0;
                 obj.ForceMapNames = cell(0,0);
@@ -104,42 +127,49 @@ classdef Experiment < matlab.mixin.Copyable
                     'Valid Types (*.jpk-force-map,*.jpk-qi-data)'};
                 FMFullFile = obj.get_file_paths('Choose one or more Force/QI Map files',AllowedFiles,NumFiles(1));
             end
-            if FileTypes(4)
+            if FileTypes(2)
                 AllowedFiles = {'*.jpk-force-map;*.jpk-qi-data',...
                     'Valid Types (*.jpk-force-map,*.jpk-qi-data)'};
-                RefFMFullFile = obj.get_file_paths('Choose one or more Reference Force/QI Map files',AllowedFiles,NumFiles(4));
+                RefFMFullFile = obj.get_file_paths('Choose one or more Reference Force/QI Map files',AllowedFiles,NumFiles(2));
             end
-            if FileTypes(2)
+            if FileTypes(3)
                 AllowedFiles = {'*.jpk',...
                     'Valid Types (*.jpk)'};
-                IFullFile = obj.get_file_paths('Choose one or more AFM Image files',AllowedFiles,NumFiles(2));
-            end
-            if FileTypes(3)
-                AllowedFiles = {'*.csv',...
-                    'Valid Types (*.csv)'};
-                SPMFullFile = obj.get_file_paths('Choose one or more Surface Potential Map files',AllowedFiles,NumFiles(3));
-            end
-            
-            if FileTypes(1)
-                for i=(obj.NumForceMaps+1):(obj.NumForceMaps+NumFiles(1))
-                    
-                end
+                IFullFile = obj.get_file_paths('Choose one or more AFM Image files',AllowedFiles,NumFiles(3));
             end
             if FileTypes(4)
-                for i=(obj.NumReferenceForceMaps+1):(obj.NumReferenceForceMaps+NumFiles(4))
-                    
+                AllowedFiles = {'*.csv',...
+                    'Valid Types (*.csv)'};
+                SPMFullFile = obj.get_file_paths('Choose one or more Surface Potential Map files',AllowedFiles,NumFiles(4));
+            end
+            if FileTypes(5)
+                AllowedFiles = {'*.jpk',...
+                    'Valid Types (*.jpk)'};
+                CantTipFullFile = obj.get_file_paths('Choose one or more Cantilever Tip files',AllowedFiles,NumFiles(5));
+            end
+            
+            for i=1:5
+                for j=1:NumFiles(i)
+                    TempID = sprintf('%s-%i',obj.ExperimentName,sum(NumFiles(1:i))-NumFiles(1)+j);
+                    if i == 1 && FileTypes(i)
+                        TempCell{j,i} = ForceMap(FMFullFile{j},obj.ExperimentFolder,TempID);
+                    end
+                    if i == 2 && FileTypes(i)
+                        TempCell{j,i} = ForceMap(RefFMFullFile{j},obj.ExperimentFolder,TempID);
+                    end
+                    if i == 3 && FileTypes(i)
+                        TempCell{j,i} = AFMImage(IFullFile{j},obj.ExperimentFolder,TempID);
+                    end
+                    if i == 4 && FileTypes(i)
+                        TempCell{j,i} = SurfacePotentialMap(SPMFullFile{j},TempID);
+                    end
+                    if i == 5 && FileTypes(i)
+                        TempCell{j,i} = AFMImage(CantTipFullFile{j},obj.ExperimentFolder,TempID);
+                    end
                 end
             end
-            if FileTypes(2)
-                for i=(obj.NumAFMImages+1):(obj.NumAFMImages+NumFiles(2))
-                    
-                end
-            end
-            if FileTypes(3)
-                for i=(obj.NumSurfacePotentialMaps+1):(obj.NumSurfacePotentialMaps+NumFiles(3))
-                    
-                end
-            end
+            
+            % TODO: load Tempcells into right Experiment properties
             
         end
         
@@ -2650,26 +2680,26 @@ classdef Experiment < matlab.mixin.Copyable
             uiwait(h.f)
         end
         
-        function [Checked,NumberOfFiles,ExperimentName] = constructor_user_input_parser(isNew)
+        function [Checked,NumberOfFiles,ExperimentName] = constructor_user_input_parser(isNew,Checked, NumberOfFiles, ExperimentName)
             
             if nargin<1
                 isNew = false;
             end
             
             % Create figure
-            left = 0.3;
-            bottom = 0.4;
-            width = 0.3;
-            height = 0.3;
-            h.f = figure('Name','Choose Experiment name and which file types have to be loaded','units','normalized','position',[left bottom width height],...
+            left = 700;
+            bottom = 350;
+            width = 600;
+            height = 375;
+            h.f = figure('Name','Choose Experiment name and which file types have to be loaded','units','pixels','position',[left bottom width height],...
                 'toolbar','none','menu','none');
             
-            h.name = uibuttongroup('Visible','on',...
-                'Position',[0.1 0.75 0.8 0.2]);
-            NameText = uicontrol(h.name,'Style','text','units','normalized',...
-                'position',[0.1 0.1 0.5 .4],'string','Name of Experiment');
-            NameEdit = uicontrol(h.name,'Style','edit','units','normalized',...
-                'position',[0.6 0.1 0.3 .4],'string','choose a name');
+            h.name = uibuttongroup('Visible','on','Units','pixels',...
+                'Position',[50 305 500 50]);
+            NameText = uicontrol(h.name,'Style','text','units','pixels',...
+                'position',[25 10 200 25],'string','Name of Experiment');
+            NameEdit = uicontrol(h.name,'Style','edit','units','pixels',...
+                'position',[250 10 200 25],'string','choose a name');
             
             if ~isNew
                 set(NameEdit,'Enable','off');
@@ -2677,86 +2707,103 @@ classdef Experiment < matlab.mixin.Copyable
                 ExperimentName = [];
             end
             
-            h.bg = uibuttongroup('Visible','off',...
-                  'Position',[0.1 0.15 0.8 0.6]);
+            h.bg = uibuttongroup('Visible','off','Units','pixels',...
+                  'Position',[50 85 500 215]);
             
             % Create checkboxes for filetypes
-            c(1) = uicontrol(h.bg,'style','checkbox','units','normalized',...
-                'position',[0.1 0.8 0.5 1/7],'string','Force/QI Maps',...
+            c(1) = uicontrol(h.bg,'style','checkbox','units','pixels',...
+                'position',[25 165 200 25],'string','Force/QI Maps',...
                 'Callback',@checked_box);
-            c(2) = uicontrol(h.bg,'style','checkbox','units','normalized',...
-                'position',[0.1 0.3 0.5 1/7],'string',"AFM Image files",...
-                'Callback',@checked_box);
-            c(3) = uicontrol(h.bg,'style','checkbox','units','normalized',...
-                'position',[0.1 0.1 0.5 1/7],'string','Surface Potential Maps',...
-                'Callback',@checked_box);
-            c(7) = uicontrol(h.bg,'style','checkbox','units','normalized',...
-                'position',[0.2 0.6 0.5 1/7],'string','Reference Force Maps',...
+            c(2) = uicontrol(h.bg,'style','checkbox','units','pixels',...
+                'position',[75 130 200 25],'string','Reference Force Maps',...
                 'Callback',@has_reference_maps);
+            c(3) = uicontrol(h.bg,'style','checkbox','units','pixels',...
+                'position',[25 95 200 25],'string','AFM Image files',...
+                'Callback',@checked_box);
+            c(4) = uicontrol(h.bg,'style','checkbox','units','pixels',...
+                'position',[25 60 200 25],'string',"Surface Potential Maps",...
+                'Callback',@checked_box);
+            c(5) = uicontrol(h.bg,'style','checkbox','units','pixels',...
+                'position',[25 25 200 25],'string','Cantilever Tip data',...
+                'Callback',@checked_box);
             
             
-            c(4) = uicontrol(h.bg,'style','edit','units','normalized',...
-                'position',[0.6 0.8 0.3 1/7],'string','Number of Force/QI Maps');
-            c(5) = uicontrol(h.bg,'style','edit','units','normalized',...
-                'position',[0.6 0.3 0.3 1/7],'string',"Number of AFM Images");
-            c(6) = uicontrol(h.bg,'style','edit','units','normalized',...
-                'position',[0.6 0.1 0.3 1/7],'string','Number of Surface Potential Maps');
-            c(8) = uicontrol(h.bg,'style','edit','units','normalized',...
-                'position',[0.6 0.6 0.3 1/7],'string','Number Reference Force Maps');
+            c(6) = uicontrol(h.bg,'style','edit','units','pixels',...
+                'position',[250 165 200 25],'string','Number of Force/QI Maps');
+            c(7) = uicontrol(h.bg,'style','edit','units','pixels',...
+                'position',[300 130 150 25],'string','Number of Reference Force Maps');
+            c(8) = uicontrol(h.bg,'style','edit','units','pixels',...
+                'position',[250 95 200 25],'string','Number of AFM Images');
+            c(9) = uicontrol(h.bg,'style','edit','units','pixels',...
+                'position',[250 60 200 25],'string',"Number of Surface Potential Maps");
+            c(10) = uicontrol(h.bg,'style','edit','units','pixels',...
+                'position',[250 25 200 25],'string','Number of Cantilevers');
             
-            set(c([4:8]),'Enable','off')
+            set(c([6:10]),'Enable','off')
             h.bg.Visible = 'on';
             
             % Create OK pushbutton
-            h.p = uicontrol('style','pushbutton','units','normalized',...
-                'position',[0.4 0.05 0.2 0.1],'string','OK',...
+            h.p = uicontrol('style','pushbutton','units','pixels',...
+                'position',[50 25 200 50],'string','OK',...
                 'callback',@p_close);
-            % Pushbutton callback
-%             function p_call(varargin)
-%                 vals = get(h.c,'Value');
-%                 set(h.c(3),'Value',1)
-%                 checked = find([vals{:}]);
-%                 disp(checked)
-%             end
+            % Create cancel button
+            h.Cancel = uicontrol('style','pushbutton','units','pixels',...
+                'position',[300 25 200 50],'string','Cancel',...
+                'callback',@pushed_cancel);
 
+            if nargin == 4
+                set(NameEdit,'string',ExperimentName);
+                set(c(find(Checked)),'value',1);
+                set(c(find(Checked)+5),'Enable','on');
+                for i=1:5
+                    set(c(i+5),'string',num2str(NumberOfFiles(i)));
+                end
+            end
+
+            function pushed_cancel(varargin)
+                ExperimentName = zeros(10,1);
+                NumberOfFiles = zeros(10,1);
+                Checked = 'Cancel';
+                close(h.f)
+            end
+            
             function checked_box(varargin)
                 vals = get(c,'Value');
-                for i=1:3
+                for i=[1 3:5]
                     if vals{i}
-                        set(c(i+3),'Enable','on');
+                        set(c(i+5),'Enable','on');
                         if i==1
-                            set(c(7),'Enable','on');
+                            set(c(2),'Enable','on');
                         end
                     else
-                        set(c(i+3),'Enable','off');
+                        if i==1
+                            set(c(2),'Enable','off');
+                        end
+                        set(c(i+5),'Enable','off');
                     end
                 end
             end
             
             function has_reference_maps(varargin)
                 vals = get(c,'Value');
-                if vals{7}
-                    set(c(8),'Enable','on');
+                if vals{2}
+                    set(c(7),'Enable','on');
                 else
-                    set(c(8),'Enable','off');
+                    set(c(7),'Enable','off');
                 end
             end
             
             function p_close(varargin)
                 vals = get(c,'Value');
-                Checked = [vals{[1:3 7]}];
+                Checked = [vals{[1:5]}];
                 Strings = get(c,'String');
-                NumberOfFiles = zeros(1,4);
-                for i=[4:6 8]
+                NumberOfFiles = zeros(1,5);
+                for i=6:10
                     CurString = str2num(Strings{i});
                     if isempty(CurString)
                         continue
                     end
-                    if i==8
-                        NumberOfFiles(4) = CurString;
-                        continue
-                    end
-                    NumberOfFiles(i-3) = CurString;
+                    NumberOfFiles(i-5) = CurString;
                 end
                 ExperimentName = get(NameEdit,'string');
                 close(h.f)
