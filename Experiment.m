@@ -120,56 +120,144 @@ classdef Experiment < matlab.mixin.Copyable
                 obj.NumSurfacePotentialMaps = 0;
                 obj.SurfacePotentialMapFolders = cell(0,0);
                 obj.SurfacePotentialMapNames = cell(0,0);
+                obj.CantileverTips = cell(0,0);
+                obj.NumCantileverTips = 0;
+                obj.CantileverTipNames = cell(0,0);
+                obj.CantileverTipFolders = cell(0,0);
             end
+            
+            % Need to assign something to *FullFile. Otherwise parfor will
+            % crash
+            FMFullFile = cell(max(NumFiles),1);
+            RefFMFullFile = cell(max(NumFiles),1);
+            IFullFile = cell(max(NumFiles),1);
+            SPMFullFile = cell(max(NumFiles),1);
+            CantTipFullFile = cell(max(NumFiles),1);
             
             if FileTypes(1)
                 AllowedFiles = {'*.jpk-force-map;*.jpk-qi-data',...
                     'Valid Types (*.jpk-force-map,*.jpk-qi-data)'};
-                FMFullFile = obj.get_file_paths('Choose one or more Force/QI Map files',AllowedFiles,NumFiles(1));
+                Tmp = obj.get_file_paths('Choose one or more Force/QI Map files',AllowedFiles,NumFiles(1));
+                FMFullFile(1:length(Tmp)) = Tmp;
             end
             if FileTypes(2)
                 AllowedFiles = {'*.jpk-force-map;*.jpk-qi-data',...
                     'Valid Types (*.jpk-force-map,*.jpk-qi-data)'};
-                RefFMFullFile = obj.get_file_paths('Choose one or more Reference Force/QI Map files',AllowedFiles,NumFiles(2));
+                Tmp = obj.get_file_paths('Choose one or more Reference Force/QI Map files',AllowedFiles,NumFiles(2));
+                RefFMFullFile(1:length(Tmp)) = Tmp;
             end
             if FileTypes(3)
                 AllowedFiles = {'*.jpk',...
                     'Valid Types (*.jpk)'};
-                IFullFile = obj.get_file_paths('Choose one or more AFM Image files',AllowedFiles,NumFiles(3));
+                Tmp = obj.get_file_paths('Choose one or more AFM Image files',AllowedFiles,NumFiles(3));
+                IFullFile(1:length(Tmp)) = Tmp;
             end
             if FileTypes(4)
-                AllowedFiles = {'*.csv',...
-                    'Valid Types (*.csv)'};
-                SPMFullFile = obj.get_file_paths('Choose one or more Surface Potential Map files',AllowedFiles,NumFiles(4));
+                AllowedFiles = {'*.sdf',...
+                    'Valid Types (*.sdf)'};
+                Tmp = obj.get_file_paths('Choose one or more Surface Potential Map files',AllowedFiles,NumFiles(4));
+                SPMFullFile(1:length(Tmp)) = Tmp;
             end
             if FileTypes(5)
                 AllowedFiles = {'*.jpk',...
                     'Valid Types (*.jpk)'};
-                CantTipFullFile = obj.get_file_paths('Choose one or more Cantilever Tip files',AllowedFiles,NumFiles(5));
+                Tmp = obj.get_file_paths('Choose one or more Cantilever Tip files',AllowedFiles,NumFiles(5));
+                CantTipFullFile(1:length(Tmp)) = Tmp;
             end
             
-            for i=1:5
-                for j=1:NumFiles(i)
-                    TempID = sprintf('%s-%i',obj.ExperimentName,sum(NumFiles(1:i))-NumFiles(1)+j);
-                    if i == 1 && FileTypes(i)
-                        TempCell{j,i} = ForceMap(FMFullFile{j},obj.ExperimentFolder,TempID);
+            StartID = obj.NumAFMImages + obj.NumCantileverTips + obj.NumForceMaps + obj.NumReferenceForceMaps + obj.NumSurfacePotentialMaps + 1;
+            IDs = StartID:(StartID + sum(NumFiles)-1);
+            TempCell = cell(max(NumFiles),5);
+            TempID = cell(max(NumFiles),5);
+            L = max(NumFiles);
+            
+            if contains(struct2array(ver), 'Parallel Computing Toolbox') && (sum(NumFiles(1:2)) > 1)
+                for i=1:5
+                    parfor j=1:L
+                        if (j+sum(NumFiles(1:i))-NumFiles(i)) <= length(IDs)
+                            TempID{j,i} = sprintf('%s-%i',obj.ExperimentName,IDs(j+sum(NumFiles(1:i))-NumFiles(i)));
+                        end
+                        if i == 1 && FileTypes(i) && (j<=NumFiles(i))
+                            TempCell{j,i} = ForceMap(FMFullFile{j},obj.ExperimentFolder,TempID{j,i});
+                        end
+                        if i == 2 && FileTypes(i) && (j<=NumFiles(i))
+                            TempCell{j,i} = ForceMap(RefFMFullFile{j},obj.ExperimentFolder,TempID{j,i});
+                        end
+                        if i == 3 && FileTypes(i) && (j<=NumFiles(i))
+                            TempCell{j,i} = AFMImage(IFullFile{j},obj.ExperimentFolder,TempID{j,i});
+                        end
+                        if i == 4 && FileTypes(i) && (j<=NumFiles(i))
+                            TempCell{j,i} = SurfacePotentialMap(SPMFullFile{j},TempID{j,i});
+                        end
+                        if i == 5 && FileTypes(i) && (j<=NumFiles(i))
+                            TempCell{j,i} = AFMImage(CantTipFullFile{j},obj.ExperimentFolder,TempID{j,i});
+                        end
                     end
-                    if i == 2 && FileTypes(i)
-                        TempCell{j,i} = ForceMap(RefFMFullFile{j},obj.ExperimentFolder,TempID);
-                    end
-                    if i == 3 && FileTypes(i)
-                        TempCell{j,i} = AFMImage(IFullFile{j},obj.ExperimentFolder,TempID);
-                    end
-                    if i == 4 && FileTypes(i)
-                        TempCell{j,i} = SurfacePotentialMap(SPMFullFile{j},TempID);
-                    end
-                    if i == 5 && FileTypes(i)
-                        TempCell{j,i} = AFMImage(CantTipFullFile{j},obj.ExperimentFolder,TempID);
+                end
+            else
+                for i=1:5
+                    for j=1:NumFiles(i)
+                        TempID{j,i} = sprintf('%s-%i',obj.ExperimentName,IDs(j+sum(NumFiles(1:i))-NumFiles(i)));
+                        if i == 1 && FileTypes(i)
+                            TempCell{j,i} = ForceMap(FMFullFile{j},obj.ExperimentFolder,TempID{j,i});
+                        end
+                        if i == 2 && FileTypes(i)
+                            TempCell{j,i} = ForceMap(RefFMFullFile{j},obj.ExperimentFolder,TempID{j,i});
+                        end
+                        if i == 3 && FileTypes(i)
+                            TempCell{j,i} = AFMImage(IFullFile{j},obj.ExperimentFolder,TempID{j,i});
+                        end
+                        if i == 4 && FileTypes(i)
+                            TempCell{j,i} = SurfacePotentialMap(SPMFullFile{j},TempID{j,i});
+                        end
+                        if i == 5 && FileTypes(i)
+                            TempCell{j,i} = AFMImage(CantTipFullFile{j},obj.ExperimentFolder,TempID{j,i});
+                        end
                     end
                 end
             end
             
-            % TODO: load Tempcells into right Experiment properties
+            % Now write everything into the obj
+            for i=1:5
+                for j=1:NumFiles(i)
+                    if i == 1 && FileTypes(i)
+                        Idx = obj.NumForceMaps+j;
+                        obj.FM{Idx} = TempCell{j,i};
+                        obj.ForceMapNames{Idx} = obj.FM{Idx}.Name;
+                        obj.ForceMapFolders{Idx} = obj.FM{Idx}.Folder;
+                    end
+                    if i == 2 && FileTypes(i)
+                        Idx = obj.NumReferenceForceMaps+j;
+                        obj.RefFM{Idx} = TempCell{j,i};
+                        obj.ReferenceForceMapNames{Idx} = obj.RefFM{Idx}.Name;
+                        obj.ReferenceForceMapFolders{Idx} = obj.RefFM{Idx}.Folder;
+                    end
+                    if i == 3 && FileTypes(i)
+                        Idx = obj.NumAFMImages+j;
+                        obj.I{Idx} = TempCell{j,i};
+                        obj.AFMImageNames{Idx} = obj.I{Idx}.Name;
+                        obj.AFMImageFolders{Idx} = 'Placeholder';
+                    end
+                    if i == 4 && FileTypes(i)
+                        Idx = obj.NumSurfacePotentialMaps+j;
+                        obj.SPM{Idx} = TempCell{j,i};
+                        obj.SurfacePotentialMapNames{Idx} = obj.SPM{Idx}.Name;
+                        obj.SurfacePotentialMapFolders{Idx} = obj.SPM{Idx}.Folder;
+                    end
+                    if i == 5 && FileTypes(i)
+                        Idx = obj.NumCantileverTips+j;
+                        obj.CantileverTips{Idx} = TempCell{j,i};
+                        obj.CantileverTipNames{Idx} = obj.CantileverTips{Idx}.Name;
+                        obj.CantileverTipFolders{Idx} = 'Placeholder';
+                    end
+                end
+            end
+            
+            obj.NumForceMaps = obj.NumForceMaps + NumFiles(1);
+            obj.NumReferenceForceMaps = obj.NumReferenceForceMaps + NumFiles(2);
+            obj.NumAFMImages = obj.NumAFMImages + NumFiles(3);
+            obj.NumSurfacePotentialMaps = obj.NumSurfacePotentialMaps + NumFiles(4);
+            obj.NumCantileverTips = obj.NumCantileverTips + NumFiles(5);
             
         end
         
@@ -181,111 +269,41 @@ classdef Experiment < matlab.mixin.Copyable
             SaveCopy = obj.copy_experiment;
             
             try
-            % Force Maps + KPFM or only one of them?
-            answer = questdlg('What kind of measurements were done?', ...
-                'Experiment Type',...
-                'Surface Potential Maps','Indentation Force Maps','Both','Indentation Force Maps');
-            % Handle response
-            switch answer
-                case 'Surface Potential Maps'
-                    WhichFiles = 1;
-                case 'Indentation Force Maps'
-                    WhichFiles = 2;
-                case 'Both'
-                    WhichFiles = 0;
-            end
-            
-            % How many Specimens were tested? Multiple measurements per
-            % specimen?
-            prompt = {'Enter Number of additional force maps'};
-            dlgtitle = 'How many files to add?';
-            dims = [1 35];
-            definput = {'5'};
-            answer = inputdlg(prompt,dlgtitle,dims,definput);
-            
-            NOld = SaveCopy.NumFiles;
-            NumNewFiles = str2double(answer{1});
-            SaveCopy.NumFiles = NOld + NumNewFiles;
-            N = NumNewFiles;
-            MapFullFile = {};
-            k = 1;
-            while length(MapFullFile) < N
-                Title = sprintf('Choose one or more .jpk-force-map files. %i/%i',length(MapFullFile),N);
-                [TempFile,TempPath] = uigetfile({'*.jpk-force-map;*.jpk-qi-data',...
-                    'Valid Types (*.jpk-force-map,*.jpk-qi-data)'},...
-                    Title,'MultiSelect','on');
-                if  ~iscell(TempFile)
-                    MapFullFile{k} = fullfile(TempPath,TempFile);
-                    k = k + 1;
-                else
-                    for i=1:length(TempFile)
-                        MapFullFile{k} = fullfile(TempPath,TempFile{i});
-                        k = k + 1;
-                    end
+                
+                % Set HostOS and HostName properties
+                SaveCopy.check_for_new_host
+                
+                % get Experiment name and layout from user
+                isNew = false;
+                [FileTypes, NumFiles, ExperimentName] = SaveCopy.constructor_user_input_parser(isNew);
+                
+                if isequal(FileTypes,'Cancel')
+                    SaveCopy = [];
+                    return
                 end
-                clear TempFile
-            end
-            
-            % Load maps into Experiment with parfor-loop
-            FM = cell(SaveCopy.NumFiles,1);
-            SPM = cell(SaveCopy.NumFiles,1);
-            FM(1:NOld) = SaveCopy.FM;
-            SPM(1:NOld) = SaveCopy.SPM;
-            ExperimentName = obj.ExperimentName;
-            ExperimentFolder = obj.ExperimentFolder;
-            if contains(struct2array(ver), 'Parallel Computing Toolbox')
-                parfor i=1:N
-                    if WhichFiles == 2 || WhichFiles == 0
-                        TempID = sprintf('%s-%i',ExperimentName,NOld+i);
-                        FM{NOld+i} = ForceMap(MapFullFile{i},ExperimentFolder,TempID);
-                    elseif WhichFiles == 1 || WhichFiles == 0
-                        SPM{NOld+i} = SurfacePotentialMap();
-                    end
-                end
-            else
-                for i=1:N
-                    if WhichFiles == 2 || WhichFiles == 0
-                        TempID = sprintf('%s-%i',ExperimentName,NOld+i);
-                        FM{NOld+i} = ForceMap(MapFullFile{i},ExperimentFolder,TempID);
-                    elseif WhichFiles == 1 || WhichFiles == 0
-                        SPM{NOld+i} = SurfacePotentialMap();
+                
+                for i=1:length(FileTypes)
+                    while FileTypes(i) && ~NumFiles(i)
+                        warndlg('All "Number of *"-inputs have to be non-zero integers')
+                        [FileTypes, NumFiles, ExperimentName] = SaveCopy.constructor_user_input_parser(isNew,FileTypes, NumFiles, ExperimentName);
+                        if isequal(FileTypes,'Cancel')
+                            SaveCopy = [];
+                            return
+                        end
                     end
                 end
                 
-            end
-            % Assign the objects created in the parfor loop to the
-            % Experiment object
-            SaveCopy.FM = FM;
-            SaveCopy.SPM = SPM;
-            for i=1:N
-                if WhichFiles == 2 || WhichFiles == 0
-                    SaveCopy.ForceMapFolders{NOld+i} = SaveCopy.FM{NOld+i}.Folder;
-                    SaveCopy.ForceMapNames{NOld+i} = SaveCopy.FM{NOld+i}.Name;
-                elseif WhichFiles == 1 || WhichFiles == 0
-                    SaveCopy.SurfacePotentialMapFolders{NOld+i} = SaveCopy.SPM{NOld+i}.Folder;
-                    SaveCopy.SurfacePotentialMapNames{NOld+i} = SaveCopy.SPM{NOld+i}.Name;
-                end
-            end
-            
-            SaveCopy.FMFlag.FibrilAnalysis(NOld+1:NOld+N) = zeros(N,1);
-            SaveCopy.FMFlag.ForceMapAnalysis(NOld+1:NOld+N) = zeros(N,1);
-            SaveCopy.FMFlag.Preprocessed(NOld+1:NOld+N) = zeros(N,1);
-            SaveCopy.FMFlag.Grouping = 0;
-            SaveCopy.SPMFlag.FibrilAnalysis(NOld+1:NOld+N) = zeros(N,1);
-            SaveCopy.SPMFlag.Grouping = 0;
-            
-%             if WhichFiles == 2 || WhichFiles == 0
-%                 obj.grouping_force_map();
-%             elseif WhichFiles == 1 || WhichFiles == 0
-%                 obj.grouping_surface_potential_map();
-%             end
-
-            Out = SaveCopy;
-            Out.save_experiment
-            warning('Did you read the warning above?');
+                % get paths of requested files and load them in
+                SaveCopy.get_paths_and_load_files(FileTypes,NumFiles,isNew)
+                
+                % SaveCopy.initialize_flags % What to do with this?
+                
+                Out = SaveCopy;
+                Out.save_experiment
+                warning('Did you read the warning above?');
             catch ME
                 disp('data adding failed. restored original experiment object')
-                fclose('all')
+                fclose('all');
                 cd(obj.ExperimentFolder)
                 
                 % Check for and remove any temporary folders that were
@@ -302,26 +320,6 @@ classdef Experiment < matlab.mixin.Copyable
                 Out = obj;
             end
             
-        end
-        
-        function load_data(obj)
-            for i=1:obj.NumFiles
-                obj.FM{i} = ForceMap(obj.ForceMapFolders{i},obj.ForceMapNames{i});
-                obj.SPM{i} = SurfacePotentialMap(obj.SurfacePotentialMapFolders{i},obj.SurfacePotentialMapNames{i});
-            end
-        end
-        
-        function save_data(obj)
-            disp('saving');
-            for i=1:obj.NumFiles
-                disp('')
-                obj.FM{i}.save();
-                obj.ForceMapFolders{i} = obj.FM{i}.Folder;
-                obj.ForceMapNames{i} = obj.FM{i}.Name;
-                obj.SPM{i}.save();
-                obj.SurfacePotentialMapFolders{i} = obj.SPM{i}.Folder;
-                obj.SurfacePotentialMapNames{i} = obj.SPM{i}.Name;
-            end
         end
         
         function save_experiment(obj)
@@ -343,18 +341,36 @@ classdef Experiment < matlab.mixin.Copyable
             % are copied and not only referenced to
             
             ExperimentCopy = obj.copy;
-            for i=1:obj.NumFiles
+            for i=1:max([obj.NumAFMImages obj.NumCantileverTips obj.NumForceMaps obj.NumReferenceForceMaps obj.NumSurfacePotentialMaps])
                 if i<=length(obj.FM)
                     MCFM = metaclass(obj.FM{i});
+                end
+                if i<=length(obj.RefFM)
+                    MCRefFM = metaclass(obj.RefFM{i});
+                end
+                if i<=length(obj.I)
+                    MCI = metaclass(obj.I{i});
                 end
                 if i<=length(obj.SPM)
                     MCSPM = metaclass(obj.SPM{i});
                 end
+                if i<=length(obj.CantileverTips)
+                    MCCantileverTips = metaclass(obj.CantileverTips{i});
+                end
                 if i<=length(obj.FM) && ~isempty(MCFM.SuperclassList) && isequal(MCFM.SuperclassList.Name,'matlab.mixin.Copyable')
                     ExperimentCopy.FM{i} = obj.FM{i}.copy;
                 end
+                if i<=length(obj.RefFM) && ~isempty(MCRefFM.SuperclassList) && isequal(MCRefFM.SuperclassList.Name,'matlab.mixin.Copyable')
+                    ExperimentCopy.RefFM{i} = obj.RefFM{i}.copy;
+                end
+                if i<=length(obj.I) && ~isempty(MCI.SuperclassList) && isequal(MCI.SuperclassList.Name,'matlab.mixin.Copyable')
+                    ExperimentCopy.I{i} = obj.I{i}.copy;
+                end
                 if i<=length(obj.SPM) && ~isempty(MCSPM.SuperclassList) && isequal(MCSPM.SuperclassList.Name,'matlab.mixin.Copyable')
                     ExperimentCopy.SPM{i} = obj.SPM{i}.copy;
+                end
+                if i<=length(obj.CantileverTips) && ~isempty(MCCantileverTips.SuperclassList) && isequal(MCCantileverTips.SuperclassList.Name,'matlab.mixin.Copyable')
+                    ExperimentCopy.CantileverTips{i} = obj.CantileverTips{i}.copy;
                 end
             end
         end
@@ -645,7 +661,7 @@ classdef Experiment < matlab.mixin.Copyable
             obj.write_to_log_file('EMod Option',EModOption)
             
             h = waitbar(0,'setting up','Units','normalized','Position',[0.4 0.3 0.2 0.1]);
-            NLoop = obj.NumFiles;
+            NLoop = obj.NumForceMaps;
             if sum(obj.FMFlag.ForceMapAnalysis) >= 1
                 KeepFlagged = questdlg(sprintf('Some maps have been processed already.\nDo you want to skip them and keep old results?'),...
                     'Processing Options',...
@@ -950,7 +966,7 @@ classdef Experiment < matlab.mixin.Copyable
         
         function min_batch(obj)
             
-            for ii=1:obj.NumFiles
+            for ii=1:obj.NumForceMaps
                obj.FM{ii}.base_and_tilt('linear');
                obj.FM{ii}.min_force; 
             end
@@ -962,7 +978,7 @@ classdef Experiment < matlab.mixin.Copyable
             % typically required functions for further analysis
             %obj.preprocessing
             % force map loop
-            %for ii=1:obj.NumFiles
+            %for ii=1:obj.NumForceMaps
             for ii=270    
                 obj.FM{ii}.fc_chipprop
             end
@@ -976,10 +992,10 @@ classdef Experiment < matlab.mixin.Copyable
             % Needed function
             obj.preprocessing
             % Loop over the imported force maps
-            for ii=1:obj.NumFiles
-            %for ii=46:obj.NumFiles % Debugging
+            for ii=1:obj.NumForceMaps
+            %for ii=46:obj.NumForceMaps % Debugging
             % Command window output
-                sprintf('Force Map No. %d of %d',ii,obj.NumFiles) % Gives current Force Map Position
+                sprintf('Force Map No. %d of %d',ii,obj.NumForceMaps) % Gives current Force Map Position
                 obj.FM{ii}.base_and_tilt
                 obj.FM{ii}.estimate_cp_hardsurface
                 obj.FM{ii}.fc_based_ret_correction  
@@ -1006,15 +1022,15 @@ classdef Experiment < matlab.mixin.Copyable
             cd(currpath); 
             
             % Loop over the imported force maps
-            %for ii=1:obj.NumFiles
-            for ii=88:obj.NumFiles % Debugging
+            %for ii=1:obj.NumForceMaps
+            for ii=88:obj.NumForceMaps % Debugging
             % Presort condition 
                 if ~obj.SMFSFlag(ii)   % Selects all flagged 1 force maps
                 %if obj.SMFSFlag(ii)     % Selects all flagged 0 force maps
                     continue
                 end
                % Command window output
-               sprintf('Force Map No. %d of %d',ii,obj.NumFiles) % Gives current Force Map Position
+               sprintf('Force Map No. %d of %d',ii,obj.NumForceMaps) % Gives current Force Map Position
                % Run the chosen functions
                obj.FM{ii}.estimate_cp_hardsurface
                obj.FM{ii}.fc_print;     
@@ -1037,7 +1053,7 @@ classdef Experiment < matlab.mixin.Copyable
                 EndDate='2999.00.00';
             end
             % Loop over the imported force maps
-             for ii=1:obj.NumFiles
+             for ii=1:obj.NumForceMaps
                 % Needed function
                 obj.FM{ii}.fc_chipprop
          
@@ -1099,7 +1115,7 @@ classdef Experiment < matlab.mixin.Copyable
                 EndDate='2999.00.00';
             end
             % Loop over the imported force maps
-             for ii=1:obj.NumFiles
+             for ii=1:obj.NumForceMaps
                 % Needed function
                 obj.FM{ii}.fc_chipprop
                         
@@ -1152,10 +1168,10 @@ classdef Experiment < matlab.mixin.Copyable
             cd(currpath); 
             
             % Loop over the imported force maps
-            for ii=1:obj.NumFiles
+            for ii=1:obj.NumForceMaps
             %for ii=3:5 % Debugging
                % Command window output
-               sprintf('Force Map No. %d of %d',ii,obj.NumFiles) % Gives current Force Map Position
+               sprintf('Force Map No. %d of %d',ii,obj.NumForceMaps) % Gives current Force Map Position
                % Run the chosen functions
                obj.FM{ii}.estimate_cp_hardsurface
                obj.FM{ii}.fc_selection;     
@@ -1180,7 +1196,7 @@ classdef Experiment < matlab.mixin.Copyable
             
             warning('The following methods were programmed for specific use cases and are yet to be generalized! However, you can of course adjust them for your own use, though its probably easier to just take the processed raw data from your Experiment and do your own statistics')
             
-            N = obj.NumFiles;
+            N = obj.NumForceMaps;
             obj.grouping_force_map();
             
             % Ask user which groups are to be compared
@@ -1361,7 +1377,7 @@ classdef Experiment < matlab.mixin.Copyable
             
             %%%%%%% DISCLAIMER: just works for specific cases at the moment %%%%%%%
             
-            N = obj.NumFiles;
+            N = obj.NumSurfacePotentialMaps;
             
             % Ask user which groups are to be compared
             prompt = 'Specialize which groups are to be tested against which';
@@ -1441,7 +1457,7 @@ classdef Experiment < matlab.mixin.Copyable
             
             warning('The following methods were programmed for specific use cases and are yet to be generalized! However, you can of course adjust them for your own use, though its probably easier to just take the processed raw data from your Experiment and do your own statistics')
             
-            N = obj.NumFiles;
+            N = obj.NumForceMaps;
             
             % Ask user which groups are to be compared
             prompt = 'Specialize which groups are to be tested against which';
@@ -1523,7 +1539,7 @@ classdef Experiment < matlab.mixin.Copyable
             
             warning('The following methods were programmed for specific use cases and are yet to be generalized! However, you can of course adjust them for your own use, though its probably easier to just take the processed raw data from your Experiment and do your own statistics')
             
-            N = obj.NumFiles;
+            N = obj.NumSurfacePotentialMaps;
             
             % Ask user which groups are to be compared
             prompt = 'Specialize which groups are to be tested against which';
@@ -1911,7 +1927,7 @@ classdef Experiment < matlab.mixin.Copyable
             Sorted = sort(Cumulative);
             RadiusNM = mean(Sorted(1:round(Niter/2)));
             obj.CantileverTip.RadiusNM = RadiusNM;
-            for i=1:obj.NumFiles
+            for i=1:obj.NumForceMaps
                 obj.FM{i}.TipRadius = RadiusNM;
             end
         end
@@ -1975,15 +1991,15 @@ classdef Experiment < matlab.mixin.Copyable
             if obj.ReferenceSlopeFlag.SetAllToValue
                 GetValue = inputdlg('To which value should the reference slopes be set?','Choose a value',1);
                 Value = str2double(GetValue{1});
-                for i=1:obj.NumFiles
+                for i=1:obj.NumForceMaps
                     obj.FM{i}.set_reference_slope_to_value(Value)
                 end
             elseif obj.ReferenceSlopeFlag.UserInput
-                for i=1:obj.NumFiles
+                for i=1:obj.NumForceMaps
                     obj.FM{i}.set_reference_slope_to_user_input
                 end
             elseif obj.ReferenceSlopeFlag.FromArea
-                for i=1:obj.NumFiles
+                for i=1:obj.NumForceMaps
                     Mask = obj.FM{i}.create_mask_general;
                     obj.FM{i}.calculate_reference_slope_from_area(Mask)
                 end
@@ -2041,7 +2057,7 @@ classdef Experiment < matlab.mixin.Copyable
         function assign_reference_force_map(obj,DefaultValues)
             
             
-            obj.WhichRefMap = zeros(obj.NumFiles,1);
+            obj.WhichRefMap = zeros(obj.NumForceMaps,1);
             
             NGroups = length(obj.RefFM);
             
@@ -2751,6 +2767,8 @@ classdef Experiment < matlab.mixin.Copyable
                 'position',[300 25 200 50],'string','Cancel',...
                 'callback',@pushed_cancel);
 
+            set(c(2),'Enable','off');
+            
             if nargin == 4
                 set(NameEdit,'string',ExperimentName);
                 set(c(find(Checked)),'value',1);
@@ -2778,6 +2796,8 @@ classdef Experiment < matlab.mixin.Copyable
                     else
                         if i==1
                             set(c(2),'Enable','off');
+                            set(c(2),'value',0);
+                            set(c(7),'Enable','off');
                         end
                         set(c(i+5),'Enable','off');
                     end

@@ -89,7 +89,7 @@ classdef AFMImage < matlab.mixin.Copyable
                 TempID = 'AFMImage detached from Experiment-class 1';
             end
             
-            obj. CMap = obj.define_afm_color_map(0.35)
+            obj. CMap = obj.define_afm_color_map(0.35);
             
             obj.initialize_flags
             
