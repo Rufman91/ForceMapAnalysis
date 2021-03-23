@@ -962,8 +962,7 @@ classdef Experiment < matlab.mixin.Copyable
         
         function min_batch(obj)
             
-            for ii=1:obj.NumFiles
-               obj.FM{ii}.base_and_tilt('linear');
+            for ii=1:obj.NumFiles            
                obj.FM{ii}.min_force;
                obj.MinFM(ii)=min(obj.FM{ii}.MinRet);
             end
@@ -973,7 +972,7 @@ classdef Experiment < matlab.mixin.Copyable
         function SMFS_preprocessing(obj)
             % SMFS_preprocessing: A function to run a bundle of other 
             % typically required functions for further analysis
-            %obj.preprocessing
+            % obj.preprocessing
                        
             % force map loop
             %for ii=1:3
@@ -988,17 +987,14 @@ classdef Experiment < matlab.mixin.Copyable
             % SMFS_presorting: This function allows to conduct an automated presorting of the force curves 
             % The function flags force curves and whole force maps that are
             % non-functionalize
+            % Needed function: obj.preprocessing
             
-            % Needed function
-            obj.preprocessing
             % Loop over the imported force maps
             for ii=1:obj.NumFiles
             %for ii=46:obj.NumFiles % Debugging
             % Command window output
-                sprintf('Force Map No. %d of %d',ii,obj.NumFiles) % Gives current Force Map Position
-                obj.FM{ii}.base_and_tilt
+                sprintf('Force Map No. %d of %d',ii,obj.NumFiles) % Gives current Force Map Position            
                 obj.FM{ii}.estimate_cp_hardsurface
-                obj.FM{ii}.fc_based_ret_correction  
                 obj.FM{ii}.fc_selection_procedure
                     if nnz(obj.FM{ii}.SMFSFlag.Min)<20 % Only if more than 20 force curves fulfil the citeria the whole force map is considered successfully functionalized
                         obj.SMFSFlag(ii)=0;
@@ -1010,14 +1006,9 @@ classdef Experiment < matlab.mixin.Copyable
                
         function SMFS_print(obj,XMin,XMax,YMin,YMax)
             % SMFS_print: A function to simply plot all force curves of all
-            % force maps loaded and calssified based on the SMFS Flag 
-           
-%             XMin=-700e-9;    
-%             XMax=50e-9;  
-%             YMin=-inf;
-%             YMin=-obj.MinFM;  
-%             YMax=100e-12;    
-            
+            % force maps loaded and calssified based on the SMFS Flag
+            % Needed function: obj.presorting
+                     
             % Input variable adaptation
             if nargin < 2
                 XMin= -inf;     % Limit of the X-axis in meters (m)  
@@ -1025,28 +1016,31 @@ classdef Experiment < matlab.mixin.Copyable
                 YMin= -inf;     % Limit of the Y-axis in Newtons (N)   
                 YMax= inf;      % Limit of the Y-axis in Newtons (N)
             end
+            if nargin < 4         
+                XMax= 50e-9;      % Limit of the X-axis in meters (m)
+                YMax= 100e-12;      % Limit of the Y-axis in Newtons (N)
+            end
             
             % Change into the Folder of Interest
             cd(obj.ExperimentFolder) % Move into the folder 
             % Create folders for saving the produced figures
-            % foldername='FM_raw_Fig';    % Defines the folder name
-            foldername='FM_presort1';    % Defines the folder name
+            foldername='FM_test';    % for debugging
+            % foldername='FM_unsorted';    % Defines the folder name
             mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
             currpath=fullfile(obj.ExperimentFolder,foldername);
             cd(currpath); 
             
             % Loop over the imported force maps
-            for ii=1:obj.NumFiles
-            %for ii=3:obj.NumFiles % Debugging
+            % for ii=1:obj.NumFiles
+            for ii=1:4 % Debugging
             % Presort condition 
-                if ~obj.SMFSFlag(ii)   % Selects all flagged 1 force maps
+              %  if ~obj.SMFSFlag(ii)   % Selects all flagged 1 force maps
                 %if obj.SMFSFlag(ii)     % Selects all flagged 0 force maps
-                    continue
-                end
+               %     continue
+               %end
                % Command window output
                sprintf('Force Map No. %d of %d',ii,obj.NumFiles) % Gives current Force Map Position
                % Run the chosen functions
-               obj.FM{ii}.estimate_cp_hardsurface
                obj.FM{ii}.fc_print(XMin,XMax,YMin,YMax);     
              %  obj.save_experiment;        % Save immediately after each force curve
             end    

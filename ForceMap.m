@@ -142,11 +142,13 @@ classdef ForceMap < matlab.mixin.Copyable
     properties
         % SMFS related 
         MinRet          % Minimum value of the adhesion force
+        Linker          % Used NHS-PEG-MI Linker (short or long) 
         Substrate       % Used substrate for the measurement 
         EnvCond         % Environmental condition during the experiment
         ChipCant        % AFM-Chip number and Cantilever label
         Chipbox         % AFM-Chipbox number (in Roman numerals)
         ModDate         % Modified Date is a modification of the poperty Date. Dots are removed
+        ModTime         % Modified Date is a modification of the poperty Date. Dots are removed
         SMFSFlag        %
         BasedRetCorr    % BasedRet data corrected
     end
@@ -1225,9 +1227,9 @@ classdef ForceMap < matlab.mixin.Copyable
                 ext42=extract(obj.Name,pat);              
                 % Linker
                 if isempty(ext41)==0
-                    obj.EnvCond='long'; % long linker
+                    obj.Linker='long'; % long linker
                 elseif isempty(ext42)==0
-                    obj.EnvCond='short'; % short linker                
+                    obj.Linker='short'; % short linker                
                 end
         end
         
@@ -1236,7 +1238,8 @@ classdef ForceMap < matlab.mixin.Copyable
             % force map without any selection taking place
             
             % Remove dots in obj.Date
-            obj.ModDate=strrep(obj.Date,'.','');
+            obj.ModDate=strrep(obj.Date,'.','-');
+            obj.ModTime=strrep(obj.Time,'.','-');
    
             if nargin < 2
                 XMin= -inf;
@@ -1249,11 +1252,14 @@ classdef ForceMap < matlab.mixin.Copyable
             NFigures=floor(obj.NCurves./25);
             if Remainder ~= 0
                 NFigures=NFigures+1;
-            end    
+            end 
+                      
             % Define variables for the figure name
             VelocityConvert=num2str(obj.Velocity*1e+9); % Convert into nm
-            %figname=strcat(obj.ID,{'-'},obj.ModDate,{'-'},obj.Velocity,{'-'},obj.Name);
-            figname=strcat(obj.ID,{'-'},obj.ModDate,{'-'},VelocityConvert,{'-'},obj.Substrate,{'-'},obj.EnvCond,{'-'},obj.Chipbox,{'-'},obj.ChipCant);
+            % Classification criteria
+            %figname=strcat(obj.ID,{'-'},obj.ModDate,{'-'},VelocityConvert,{'-'},obj.Name);
+            %figname=strcat(obj.ID,{'-'},obj.ModDate,{'-'},VelocityConvert,{'-'},obj.Substrate,{'-'},obj.EnvCond,{'-'},obj.Chipbox,{'-'},obj.ChipCant);
+            figname=strcat(obj.ModDate,{'_'},obj.ModTime,{'_'},VelocityConvert,{'_'},obj.Linker,{'_'},obj.Substrate,{'_'},obj.EnvCond,{'_'},obj.Chipbox,{'_'},obj.ChipCant),{'_'},obj.ID,;
             figname=char(figname);
             %% Figure loop
             for ii=1:NFigures           
@@ -1307,7 +1313,7 @@ classdef ForceMap < matlab.mixin.Copyable
             %% Save figures
             %%% Define the name for the figure title    
             partname=sprintf('-p%d',ii);        
-           % fullname=sprintf('%s%s',figname,partname);
+            % fullname=sprintf('%s%s',figname,partname);
             fullname=sprintf('%s%s',figname,partname);
             %%% Save the current figure in the current folder
             print(gcf,fullname,'-dpng'); 
@@ -1323,10 +1329,13 @@ classdef ForceMap < matlab.mixin.Copyable
             if Remainder ~= 0
                 NFigures=NFigures+1;
             end    
-            %% Figure loop          
-            %figname=strcat(obj.ID,{'-'},obj.ModDate,{'-'},obj.Velocity,{'-'},obj.Name);
-            figname=strcat(obj.ID,{'-'},obj.ModDate,{'-'},obj.Velocity,{'-'},obj.Substrate,{'-'},obj.EnvCond,{'-'},obj.Chipbox,{'-'},obj.ChipCant);
+            
+            % Classification criteria
+            %figname=strcat(obj.ID,{'-'},obj.ModDate,{'-'},VelocityConvert{'-'},obj.Name);
+            %figname=strcat(obj.ID,{'-'},obj.ModDate,{'-'},VelocityConvert,{'-'},obj.Substrate,{'-'},obj.EnvCond,{'-'},obj.Chipbox,{'-'},obj.ChipCant);
+            figname=strcat(obj.ID,{'-'},obj.ModDate,{'-'},VelocityConvert,{'-'},obj.Linker,{'-'},obj.Substrate,{'-'},obj.EnvCond,{'-'},obj.Chipbox,{'-'},obj.ChipCant);
             figname=char(figname);
+            %% Figure loop   
             for ii=1:NFigures           
             % Figure    
             h_fig=figure(ii);
@@ -1512,11 +1521,11 @@ classdef ForceMap < matlab.mixin.Copyable
             ThreshDist=abs(obj.THRet{kk}-obj.CP_HardSurface(kk,1)+ThresholdDist);
             [~, ThreshIdx]=min(ThreshDist);
             % Check if the force curve is selected 
-                if (obj.BasedApp{kk}(ThreshIdx)-obj.BasedRetCorr{kk}(ThreshIdx))>ThreshValue
-                    obj.SMFSFlag.Min(kk)=1;
-                else
-                    obj.SMFSFlag.Min(kk)=0;
-                end
+             %   if (obj.BasedApp{kk}(ThreshIdx)-obj.BasedRetCorr{kk}(ThreshIdx))>ThreshValue
+             %       obj.SMFSFlag.Min(kk)=1;
+             %   else
+             %       obj.SMFSFlag.Min(kk)=0;
+             %   end
             end           
 %             %% Appendix
 %             close all
