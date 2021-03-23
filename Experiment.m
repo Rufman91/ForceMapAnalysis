@@ -165,6 +165,7 @@ classdef Experiment < matlab.mixin.Copyable
             obj.SPM = SPM;
             for i=1:N
                 if WhichFiles == 2 || WhichFiles == 0
+                    TempID = sprintf('Reference-%s-%i',ExperimentName,i);
                     obj.ForceMapFolders{i} = obj.FM{i}.Folder;
                     obj.ForceMapNames{i} = obj.FM{i}.Name;
                 elseif WhichFiles == 1 || WhichFiles == 0
@@ -470,6 +471,8 @@ classdef Experiment < matlab.mixin.Copyable
         function force_map_analysis_fibril(obj,CPOption,EModOption)
             % force_map_analysis_fibril(obj,CPOption,EModOption)
             %
+            % CPOption = 'Snap-In' ... Preferred Option for data with
+            % snap-in effect
             % CPOption = 'Fast' ...(Default) contact point estimation through single
             % pass through CNN
             % CPOption = 'Dropout' ... contact point estimation through
@@ -639,6 +642,8 @@ classdef Experiment < matlab.mixin.Copyable
         function force_map_analysis_general(obj,CPOption,EModOption)
             % force_map_analysis_general(obj,CPOption,EModOption)
             %
+            % CPOption = 'Snap-In' ... Preferred Option for data with
+            % snap-in effect
             % CPOption = 'Fast' ...(Default) contact point estimation through single
             % pass through CNN
             % CPOption = 'Dropout' ... contact point estimation through
@@ -736,10 +741,12 @@ classdef Experiment < matlab.mixin.Copyable
                 
                 waitbar(i/NLoop,h,sprintf('Processing ForceMap %i/%i\nCalculating E-Modulus',i,NLoop));
                 if isequal(lower(EModOption),'hertz')
-                    obj.FM{i}.calculate_e_mod_hertz(CPOption,'parabolic',1);
+                    AllowXShift = true;
+                    obj.FM{i}.calculate_e_mod_hertz(CPOption,'parabolic',1,AllowXShift);
                     if i == 1
                         obj.write_to_log_file('Hertzian Tip-Shape','parabolic')
                         obj.write_to_log_file('Hertzian CurvePercent','1')
+                        obj.write_to_log_file('Allow X-Shift',AllowXShift)
                     end
                 else
                     obj.FM{i}.calculate_e_mod_oliverpharr(obj.CantileverTip.ProjArea,0.75);
@@ -778,6 +785,9 @@ classdef Experiment < matlab.mixin.Copyable
                 RefFM = false;
             end
             if RefFM == false
+                if isequal(lower(CPOption),'snap-in')
+                    obj.FM{i}.estimate_cp_snap_in();
+                end
                 if isequal(lower(CPOption),'rov')
                     obj.FM{i}.estimate_cp_rov();
                 end
@@ -815,6 +825,9 @@ classdef Experiment < matlab.mixin.Copyable
                     obj.FM{i}.estimate_cp_cnn(obj.CP_CNN,'Zoomsweep',NumPasses);
                 end
             elseif RefFM == true
+                if isequal(lower(CPOption),'snap-in')
+                    obj.FM{i}.estimate_cp_snap_in();
+                end
                 if isequal(lower(CPOption),'rov')
                     obj.RefFM{i}.estimate_cp_rov();
                 end
@@ -2242,6 +2255,13 @@ classdef Experiment < matlab.mixin.Copyable
                 end
             end
             
+            if islogical(Value)
+                if Value
+                    Value = 'true';
+                else
+                    Value = 'false';
+                end
+            end
             Value = char(Value);
             
             fid = fopen(obj.CurrentLogFile, 'a');
