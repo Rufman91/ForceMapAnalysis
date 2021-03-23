@@ -1,6 +1,7 @@
 classdef Experiment < matlab.mixin.Copyable
     
     properties
+        % Essential properties for File and subclass management
         ExperimentName      % Shows name of the experiment
         ExperimentFolder    % Shows Folder where Experiment is saved
         HostOS              % Shows the current operating system
@@ -26,6 +27,9 @@ classdef Experiment < matlab.mixin.Copyable
         NumCantileverTips
         CantileverTipNames
         CantileverTipFolders
+    end
+    properties
+        % Non-essential properties
         EMod
         WhichRefMap
         SurfPot
