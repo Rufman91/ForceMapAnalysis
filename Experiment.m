@@ -1044,8 +1044,8 @@ classdef Experiment < matlab.mixin.Copyable
             cd(currpath); 
             
             % Loop over the imported force maps
-            % for ii=1:obj.NumFiles
-            for ii=1:2 % Debugging
+             for ii=1:obj.NumFiles
+            %for ii=1:2 % Debugging
             % Presort condition 
               %  if ~obj.SMFSFlag(ii)   % Selects all flagged 1 force maps
                 %if obj.SMFSFlag(ii)     % Selects all flagged 0 force maps

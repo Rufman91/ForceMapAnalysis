@@ -143,7 +143,7 @@ classdef ForceMap < matlab.mixin.Copyable
     end
     properties
         % SMFS related 
-        MinRet          % Minimum value of the adhesion force
+        MinRet          % Minimum retention data which represents the maximum adhesion force
         Linker          % Used NHS-PEG-MI Linker (short or long) 
         Substrate       % Used substrate for the measurement 
         EnvCond         % Environmental condition during the experiment
@@ -153,6 +153,8 @@ classdef ForceMap < matlab.mixin.Copyable
         ModTime         % Modified Date is a modification of the poperty Date. Dots are removed
         SMFSFlag        %
         BasedRetCorr    % BasedRet data corrected
+        MinRetSel       % Minimum retention data within a selected range on the x-axis which represents the maximum adhesion force within a selected distance range
+        EndIdx          % Index correspoding to a predefined value
     end
     
     methods
@@ -1159,12 +1161,30 @@ classdef ForceMap < matlab.mixin.Copyable
             close(f)
         end        
 
+        function [EndIdx] = find_idx(obj)
+            % Finds the corresponding indices of an array of data points
+            
+            % Define the corresponding data points            
+            xEnd=-50e-9;  % Value on the x-axis
+            % Read out the index of interest                    
+            for ii=1:obj.NCurves
+            EndLogical=obj.THRet{ii}-obj.CP_HardSurface(ii,1)<xEnd; % Determine the elements that fulfil the logical argument           
+            EndIdx(ii)=find(EndLogical,1,'first'); % Read out the index of the first cell that fulfil the argument
+            
+            obj.EndIdx = EndIdx(ii);
+            end
+            
+        end
+        
         function [MinApp] = min_force(obj)           
+            
             for ii=1:obj.NCurves
             MinApp(ii)=min(obj.BasedApp{ii});
             MinRet(ii)=min(obj.BasedRet{ii}); 
+            MinRetSel(ii)=min(obj.BasedRet{ii}(1:obj.EndIdx(ii))); % Determines the minimum adhesion value within the selected area
             end
             obj.MinRet = MinRet;
+            obj.MinRetSel = MinRetSel;
         end
         
         function fc_based_ret_correction(obj,DataShareStart,DataShareEnd)  
