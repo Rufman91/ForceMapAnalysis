@@ -66,6 +66,12 @@ classdef AFMImage < matlab.mixin.Copyable
         MaskBackground
     end
     properties
+        ErodedTip
+        DepthDependendTipRadius
+        DepthDependendTipShape
+        ProjectedTipArea
+    end
+    properties
         % All the Flags
         HasHeight
         HasHeightMeasured
@@ -74,6 +80,7 @@ classdef AFMImage < matlab.mixin.Copyable
         HasLockInAmplitude
         HasLockInPhase
         HasVerticalDeflection
+        DeconvolutedCantileverTip
     end
     
     methods
@@ -89,7 +96,7 @@ classdef AFMImage < matlab.mixin.Copyable
                 TempID = 'AFMImage detached from Experiment-class 1';
             end
             
-            obj. CMap = obj.define_afm_color_map(0.35)
+            obj. CMap = obj.define_afm_color_map(0.35);
             
             obj.initialize_flags
             
@@ -109,12 +116,33 @@ classdef AFMImage < matlab.mixin.Copyable
             
         end
         
+        function deconvolute_cantilever_tip(obj)
+            
+            Based = imgaussfilt(obj.subtract_line_fit_hist(obj.HeightMeasured.Trace,obj.NumPixelsY,0.4));
+            obj.MaskBackground = obj.mask_background_by_threshold(Based,1);
+            Based = obj.masked_plane_fit(Based,obj.MaskBackground);
+            ConeHeight = range(Based,'all');
+            Cone = obj.cone(obj.NumPixelsX,obj.NumPixelsY,ConeHeight,obj.ScanSizeX,obj.ScanSizeY,10e-9);
+            obj.ErodedTip = obj.deconvolute_by_mathematical_morphology(Based,Cone);
+            
+            StepSize = 1e-9;
+            
+            PixelSizeX = obj.ScanSizeX/obj.NumPixelsX;
+            PixelSizeY = obj.ScanSizeY/obj.NumPixelsY;
+            
+            obj.ProjectedTipArea = obj.calculate_projected_area(obj.ErodedTip,PixelSizeX,PixelSizeY,StepSize);
+            
+            [obj.DepthDependendTipRadius,obj.DepthDependendTipShape] = obj.calculate_depth_dependend_tip_data(obj.ProjectedTipArea,RangePercent);
+            
+            obj.DeconvolutedCantileverTip = true;
+        end
+        
     end
     
     methods(Static)
         % Static Main Methods
         
-        function [OutImage] = subtract_line_fit_hist(InImage,NumProfiles,CutOff)
+        function OutImage = subtract_line_fit_hist(InImage,NumProfiles,CutOff)
             
             NumPoints = length(InImage(1,:));
             CutOff = ceil(CutOff*NumPoints);
@@ -130,8 +158,52 @@ classdef AFMImage < matlab.mixin.Copyable
             OutImage = InImage;
         end
         
-        function [OutMask] = mask_background(Image)
+        function OutMask = mask_background_by_threshold(Image,PercentOfRange)
             
+            if nargin < 2
+                PercentOfRange = 5;
+            end
+            
+            Thresh = range(Image,'all')*PercentOfRange/100;
+            [Row,Col] = find((abs(Image)<=Thresh));
+            OutMask = zeros(size(Image));
+            for i=1:length(Row)
+                OutMask(Row(i),Col(i)) = 1;
+            end
+            
+        end
+        
+        function OutImage = masked_plane_fit(Image,Mask)
+            
+            % Convert Image to Point Cloud for plane fit
+            [X,Y,Z] = AFMImage.convert_masked_to_point_cloud(Image,Mask);
+            
+            [Norm,~,Point] = AFMImage.affine_fit([X Y Z]);
+            Plane = zeros(size(Image));
+            % Create the plane that can then be subtracted from the
+            % complete height data to generate the leveled height data.
+            for i=1:size(Image,1)
+                for j=1:size(Image,2)
+                    Plane(i,j) = (Point(3)-Norm(1)/Norm(3)*i-Norm(2)/Norm(3)*j);
+                end
+            end
+            
+            OutImage = Image - Plane;
+        end
+        
+        function ProjectedArea = calculate_projected_area(Image,PixelSizeX,PixelSizeY,StepSize)
+            
+            MinImage = min(Image,[],'all');
+            MaxImage = max(Image,[],'all');
+            
+            Thresh = MaxImage;
+            k = 1;
+            while Thresh >= MinImage
+                NumPointsInArea = length(find(Image >= Thresh));
+                ProjectedArea(k) = NumPointsInArea*PixelSizeX*PixelSizeY;
+                Thresh = Thresh -StepSize;
+                k = k + 1;
+            end
         end
         
         function CMap = define_afm_color_map(PlusBrightness)
@@ -159,7 +231,7 @@ classdef AFMImage < matlab.mixin.Copyable
             OutImage=ones(InPixelsX,InPixelsY); %creates the empty image array
             
             
-            h = waitbar(0,'Please wait, Processing...');
+            h = waitbar(0,'Please wait, processing deconvolution...');
             
             %loops over all the elements and find the minimum value of w and allocate it
             for j=1:InPixelsY %loops over points in image output
@@ -177,6 +249,34 @@ classdef AFMImage < matlab.mixin.Copyable
                 end
             end
             close(h);
+        end
+        
+        function [DepthDependendTipRadius,DepthDependendTipShape] = calculate_depth_dependend_tip_data(ProjectedTipArea,RangePercent)
+            
+            if nargin < 2
+                RangePercent = 100;
+            end
+            
+            MaxIdx = floor(RangePercent/100*length(ProjectedTipArea));
+            
+            DepthDependendTipRadius = zeros(MaxIdx,1);
+            DepthDependendTipShape = cell(MaxIdx,1);
+            
+            % Fit a sphere and a parabola for every depthstep and choose
+            % the one with better fit. Start at 5nm ind. depth 
+            for i=5:MaxIdx
+                % fit a parabola
+                
+                % fit a sphere
+                
+                % choose the better fit and fill Output
+            end
+            % Fill the first 4 nm with the data from the 5th nm
+            for i=1:4
+                DepthDependendTipRadius(i) = DepthDependendTipRadius(5);
+                DepthDependendTipShape(i) = DepthDependendTipShape(5);
+            end
+            
         end
         
     end
@@ -578,6 +678,7 @@ classdef AFMImage < matlab.mixin.Copyable
             obj.HasLockInPhase = false;
             obj.HasVerticalDeflection = false;
             
+            obj.DeconvolutedCantileverTip = false;
         end
         
     end
@@ -676,6 +777,44 @@ classdef AFMImage < matlab.mixin.Copyable
                     end
                     
                 end
+            end
+        end
+        
+        function [n,V,p] = affine_fit(X)
+            %Computes the plane that fits best (lest square of the normal distance
+            %to the plane) a set of sample points.
+            %INPUTS:
+            %
+            %X: a N by 3 matrix where each line is a sample point
+            %
+            %OUTPUTS:
+            %
+            %n : a unit (column) vector normal to the plane
+            %V : a 3 by 2 matrix. The columns of V form an orthonormal basis of the
+            %plane
+            %p : a point belonging to the plane
+            %
+            %NB: this code actually works in any dimension (2,3,4,...)
+            %Author: Adrien Leygue
+            %Date: August 30 2013
+            
+            %the mean of the samples belongs to the plane
+            p = mean(X,1);
+            
+            %The samples are reduced:
+            R = bsxfun(@minus,X,p);
+            %Computation of the principal directions if the samples cloud
+            [V,D] = eig(R'*R);
+            %Extract the output from the eigenvectors
+            n = V(:,1);
+            V = V(:,2:end);
+        end
+        
+        function [X,Y,Z] = convert_masked_to_point_cloud(Image,Mask)
+            [X,Y] = find(Mask);
+            Z = zeros(length(X),1);
+            for i=1:length(X)
+                Z(i) = Image(X(i),Y(i));
             end
         end
         
