@@ -32,12 +32,12 @@ classdef Experiment < matlab.mixin.Copyable
         % Non-essential properties
         EMod
         WhichRefMap
+        WhichTip
         SurfPot
         GroupFM
         GroupSPM
         DropoutNet
         CP_CNN
-        CantileverTip
         idxSubstrate
         idxEnvCond
     end
@@ -48,8 +48,9 @@ classdef Experiment < matlab.mixin.Copyable
         SMFSFlag
         SMFSFlagPrint
         ReferenceSlopeFlag
-        CantileverTipFlag
         AssignedReferenceMaps
+        CantileverTipFlag
+        AssignedCantileverTips
     end
     
     methods
@@ -540,21 +541,28 @@ classdef Experiment < matlab.mixin.Copyable
             end
             obj.write_to_log_file('Reference Slope Option',RefSlopeOption)
             
-            % Deconvoluting cantilever tip
-            if obj.CantileverTipFlag == 1
-                KeepTip = questdlg(sprintf('There already exists data from a deconvoluted tip\nDo you want to skip tip deconvolution and keep old tip data?'),...
-                    'Processing Options',...
-                    'Yes',...
-                    'No',...
-                    'No');
-            else
-                KeepTip = 'No';
-            end
-            if isequal(KeepTip,'No')
-                
-                waitbar(0,h,'deconvoluting cantilever tip...')
-                obj.deconvolute_cantilever_tip;
-            elseif isequal(KeepTip,'Yes')
+            % Deconvoluting cantilever tip(s)
+            if isequal(lower(EModOption),'oliver')
+                if obj.NumCantileverTips == 0
+                    Warn = warndlg('You need to load in TGT-1 images of your cantilever for this kind of analysis');
+                    uiwait(Warn);
+                    IsValid = false;
+                    while ~IsValid
+                        UsrInput = inputdlg('How many tips were used in this Experiment?');
+                        NumTips = str2num(UsrInput{1});
+                        IsValid = isnumeric(NumTips)&&~isempty(NumTips);
+                    end
+                    obj.get_paths_and_load_files([0 0 0 0 1],[0 0 0 0 ceil(NumTips)],false);
+                end
+                if ~obj.AssignedCantileverTips
+                    obj.assign_cantilever_tips
+                end
+                % Check if all needed tips are deconvoluted, if not, do it
+                for i=1:obj.NumForceMaps
+                    if ~obj.CantileverTips{obj.WhichTip(i)}.DeconvolutedCantileverTip
+                        obj.CantileverTips{obj.WhichTip(i)}.deconvolute_cantilever_tip;
+                    end
+                end
             end
             
             % Main loop for contact point estimation, Fibril Diameter and
@@ -589,7 +597,7 @@ classdef Experiment < matlab.mixin.Copyable
                         obj.write_to_log_file('Hertzian CurvePercent','1')
                     end
                 else
-                    obj.FM{i}.calculate_e_mod_oliverpharr(obj.CantileverTip.ProjArea,0.75);
+                    obj.FM{i}.calculate_e_mod_oliverpharr(obj.CantileverTips{obj.WhichTip(i)}.ProjectedTipArea,0.75);
                     if i == 1
                         obj.write_to_log_file('OliverPharr CurvePercent','0.75')
                     end
@@ -600,7 +608,6 @@ classdef Experiment < matlab.mixin.Copyable
                     close(Fig{i-1})
                 end
                 Fig{i} = obj.FM{i}.show_analyzed_fibril();
-                obj.FM{i}.save();
                 obj.FMFlag.FibrilAnalysis(i) = 1;
             end
             
@@ -694,22 +701,27 @@ classdef Experiment < matlab.mixin.Copyable
             end
             obj.write_to_log_file('Reference Slope Option',RefSlopeOption)
             
-            % Deconvolute cantilever tip
+            % Deconvoluting cantilever tip(s)
             if isequal(lower(EModOption),'oliver')
-                if obj.CantileverTipFlag == 1
-                    KeepTip = questdlg(sprintf('There already exists data from a deconvoluted tip\nDo you want to skip tip deconvolution and keep old tip data?'),...
-                        'Processing Options',...
-                        'Yes',...
-                        'No',...
-                        'No');
-                else
-                    KeepTip = 'No';
+                if obj.NumCantileverTips == 0
+                    Warn = warndlg('You need to load in TGT-1 images of your cantilever for this kind of analysis');
+                    uiwait(Warn);
+                    IsValid = false;
+                    while ~IsValid
+                        UsrInput = inputdlg('How many tips were used in this Experiment?');
+                        NumTips = str2num(UsrInput{1});
+                        IsValid = isnumeric(NumTips)&&~isempty(NumTips);
+                    end
+                    obj.get_paths_and_load_files([0 0 0 0 1],[0 0 0 0 ceil(NumTips)],false);
                 end
-                
-                if isequal(KeepTip,'No')
-                    waitbar(0,h,'deconvoluting cantilever tip...')
-                    obj.deconvolute_cantilever_tip;
-                elseif isequal(KeepTip,'Yes')
+                if ~obj.AssignedCantileverTips
+                    obj.assign_cantilever_tips
+                end
+                % Check if all needed tips are deconvoluted, if not, do it
+                for i=1:obj.NumForceMaps
+                    if ~obj.CantileverTips{obj.WhichTip(i)}.DeconvolutedCantileverTip
+                        obj.CantileverTips{obj.WhichTip(i)}.deconvolute_cantilever_tip;
+                    end
                 end
             end
             
@@ -744,14 +756,13 @@ classdef Experiment < matlab.mixin.Copyable
                         obj.write_to_log_file('Allow X-Shift',AllowXShift)
                     end
                 else
-                    obj.FM{i}.calculate_e_mod_oliverpharr(obj.CantileverTip.ProjArea,0.75);
+                    obj.FM{i}.calculate_e_mod_oliverpharr(obj.CantileverTips{obj.WhichTip(i)}.ProjectedTipArea,0.75);
                     if i == 1
                         obj.write_to_log_file('OliverPharr CurvePercent','0.75')
                     end
                 end
                 waitbar(i/NLoop,h,sprintf('Processing ForceMap %i/%i\nWrapping Up And Saving',i,NLoop));
                 
-                obj.FM{i}.save();
                 obj.FMFlag.ForceMapAnalysis(i) = 1;
             end
             
@@ -1725,145 +1736,6 @@ classdef Experiment < matlab.mixin.Copyable
     methods
         % auxiliary methods
         
-        function deconvolute_cantilever_tip(obj)
-            %deconvolute_tip.m
-            %Deconvolutes an image of TGT1 grating to obtain the AFM tip using an
-            %envelope algorithm. Goes through all the ibw files in the folder and
-            %calculates the tip shape. The tip shape is then saved in a new ibw file
-            %called "probe_tip_NAME OF THE SCAN.ibw"
-            %The ibw files used to find the tip is required to have a ZSensor record as
-            %channel 4
-            %! ! !ONLY THE ZSENSOR IMAGE IN THE NEW FILE REPRESENTS THE TIP ! ! !
-            
-            %requires readibw.m, getinfo.m, scalescan.m, cone.m, getpeak.m,
-            %minimiseW.m, writedata.m
-            
-            system_chosen='W';
-            
-            %Step 1: AFM tip reconstruction
-            
-            % ---------------------------- FOR SINGLE FILE ----------------------------
-            [filename,pathname]=uigetfile('*.jpk','Filedirectory of AFM tip image');
-            [~,name,~] = fileparts(filename);
-            varname=cell(1,1);
-            ImDir=fullfile(pathname,filename);
-            % for i = 1:length(flist); ********  FOR MULTIPLE FILES ********
-            i=1;
-            info=imfinfo(ImDir);
-            k=1;
-            for j = 2:size(info,1)
-                istring(k,1)=find([info(j).UnknownTags.ID]==32851);
-                s_name=info(j).UnknownTags(istring(k,1)).Value;
-                % ONLY THE MEASURED HEIGHT RETRACE IMAGES ARE STORED FOR ANALYSIS
-                % OLD version
-                % s1: is a character of the tagged image which specifies the image channel
-                % and the image direction i.e. trace or retrace.
-                s1={['channel.name : capacitiveSensorHeight' char(10) 'channel.type : channel' char(10) 'retrace : true' char(10) 'type : channel-retrace' char(10) '']};
-                % NEW version
-                % By NEW version we mean the JPK Software Version 5.0.72 which was updated
-                % after the hard drive replacement. With this version the tags are changed.
-                % The measurd height and image is located in a different position of the
-                % UnkwownTag.
-                % s2: is a character as is in the newer version that speficies the image
-                % channel and the imaging direction, i.e. trace or retrace.
-                s2={['channel.name : measuredHeight' char(10) 'channel.type : channel' char(10) 'retrace : true' char(10) 'type : channel-retrace' char(10) '']};
-                % You will probably need this line for a further updated version!
-                
-                if isequal(s_name,s1{1,1})==1
-                    pos(i,1)=j;
-                    
-                elseif isequal(s_name,s2{1,1})==1
-                    pos(i,1)=j;
-                    
-                end
-                k=k+1;
-            end
-            % end ********  FOR MULTIPLE FILES ********
-            
-            %
-            % i=3
-            % for i = 1:length(flist);********  FOR MULTIPLE FILES ********
-            
-            data=double(imread(ImDir,pos(i,1)));  %read height data from each file
-            
-            
-            
-            
-            %finding the scansize and the image pixelsize
-            %scansize
-            iscansizex=find([info(1).UnknownTags.ID]==32834); % location of the scan size in um
-            iscansizey=find([info(1).UnknownTags.ID]==32835); % location of the scan size in um
-            Scansizex=info(1).UnknownTags(iscansizex).Value*10^6; %in um
-            Scansizey=info(1).UnknownTags(iscansizey).Value*10^6; %in um
-            %pixelsize
-            %        pixels_x = info(2).Width;
-            %        pixels_yt = info(2).Height;
-            
-            %finding the multiplier and the offset value
-            imult=find([info(pos(i,1)).UnknownTags.ID]==33028);
-            ioffset=find([info(pos(i,1)).UnknownTags.ID]==33029);
-            
-            
-            mult=info(pos(i,1)).UnknownTags(imult).Value; %calls multiplier of the jpk file
-            offset=info(pos(i,1)).UnknownTags(ioffset).Value;   %calls offset of the jpk file
-            himage = (offset + data.*mult); %Calculate real height data by applying offset and mult to the var data
-            
-            
-            
-            s = strrep(ImDir,'.jpk','');%define variable 'filename'
-            name_list(i,1)=cellstr(s);
-            varname{i,1}=himage;
-            % end;********  FOR MULTIPLE FILES ********
-            clear flist i himage s  imult ioffset iscansizex iscansizey ...
-                data offset mult info s1 s2 pos ans istring j k s_name ext
-            %clears temporary variables
-            
-            
-            varname{1,1} = obj.planefit_tgt1(varname{1,1});
-            
-            
-            for i = 1:length(name_list) %loop through all the ibw files
-                
-                %     if size(varname,3)<4
-                %         disp(['Error! Channel 4 is missing in ' name_list{i} '.ibw']);
-                %         disp('Please ensure that the Z Sensor data is recorded on channel 4');
-                %         disp('Proceeding to next file');
-                %     else
-                [z, height]=obj.scalescan(varname{i,1}); %put the ZSensor scan image in the positive range
-                pixelz_x=size(z,1);
-                pixelz_y=size(z,2);
-                [s,size_pixel_x,size_pixel_y] = obj.cone(pixelz_x, pixelz_y, height,filename); %generate the perfect cone of TGT1
-                [max_x, max_y] = obj.getpeak(s); %find location of the tip peak
-                pixels_x=size(s,1);
-                pixels_y=size(s,2);
-                
-                v = genvarname(['probe_tip']);
-                g = strcat(name_list{i},'.jpk');
-                eval([v ' = obj.minimiseW(z,s,pixelz_x,pixelz_y,pixels_x,pixels_y,max_x, max_y);']); %calculate the tip geometry
-            end
-            
-            
-            [depth_num(:,1), projected_area(:,1)] = obj.proj_area(...
-                probe_tip,Scansizex*10^-6);
-            % depth_num in NANOMETERS
-            % projected_area in METERS
-            % Store the tip data in a structure variable
-            Tip.data = probe_tip;
-            Tip.ProjArea = projected_area; % in METERS
-            Tip.HeightData = depth_num; % in NANOMETERS
-            Tip.XaxisSizeUM = Scansizex;
-            Tip.YaxisSizeUM = Scansizey;
-            
-            % write relevant tip deconv data into experiment property
-            % obj.CantileverTip
-            
-            obj.CantileverTip = Tip;
-            obj.CantileverTipFlag = 1;
-            
-            tipdataname = sprintf('%s\%s.mat',obj.ExperimentFolder,name);
-            save(tipdataname)
-        end
-        
         function RadiusNM = calculate_tip_radius(obj,TipDepthNM)
             if nargin < 2
                 TipDepthNM = 20;
@@ -2105,6 +1977,52 @@ classdef Experiment < matlab.mixin.Copyable
             
         end
         
+        function assign_cantilever_tips(obj,DefaultValues)
+            
+            obj.WhichTip = zeros(obj.NumForceMaps,1);
+            
+            NGroups = obj.NumCantileverTips;
+            
+            if nargin < 2
+                for i=1:NGroups
+                    DefaultValues{i} = 'e.g. 1 2 3 4 8 9 10 or 1:4 8:10';
+                end
+            end
+            
+            % create the appropriate inputdlg for assigning the groups show
+            % a table with numbered map-names in background
+            Names = obj.ForceMapNames;
+            Fig = figure('Name','Names and corresponding numbers of your Force Maps','Units', 'pixels', 'Position',[100 200 400 800],'Color','w');
+            T = table(Names');
+            uitable('Data',T{:,:},'Units', 'Normalized', 'Position',[0, 0, 1, 1]);
+            
+            for i=1:NGroups
+                prompts{i} = sprintf('Which Force Maps belong to Cantilever Tip %i, %s?',i,obj.CantileverTipNames{i});
+                definput{i} = DefaultValues{i};
+            end
+            
+            dims = [1 50];
+            opts.WindowStyle = 'normal';
+            dlgtitle = 'Assign the Force Maps to their respective Cantilever Tips';
+            answer = inputdlg(prompts,dlgtitle,dims,definput,opts);
+            
+            for i=1:NGroups
+                obj.WhichTip(str2num(answer{i})) = i;
+            end
+            
+            if  ~isempty(obj.WhichTip(obj.WhichTip == 0))
+                Warn = warndlg('You need to assign exactly one Tip to every Force Map','Parsing Error');
+                close(Fig);
+                uiwait(Warn);
+                obj.assign_cantilever_tips(answer)
+                return
+            end
+            
+            obj.AssignedCantileverTips = true;
+            close(Fig);
+            
+        end
+        
         function load_in_reference_maps(obj)
             
             prompt = 'Enter Number of reference force maps';
@@ -2152,8 +2070,17 @@ classdef Experiment < matlab.mixin.Copyable
             obj.SPMFlag.FibrilAnalysis = zeros(NSPM,1);
             obj.SPMFlag.Grouping = 0;
             
-            obj.CantileverTipFlag = 0;
+            obj.CantileverTipFlag = false;
+            if obj.NumCantileverTips > 0
+                obj.CantileverTipFlag = true;
+            end
+            obj.AssignedCantileverTips = false;
+            if obj.NumCantileverTips == 1
+                obj.WhichTip = ones(obj.NumForceMaps,1);
+                obj.AssignedCantileverTips = true;
+            end
             
+            obj.AssignedReferenceMaps = false;
             obj.ReferenceSlopeFlag.SetAllToValue = false;
             obj.ReferenceSlopeFlag.UserInput = false;
             obj.ReferenceSlopeFlag.FromRefFM = false;
@@ -2162,9 +2089,6 @@ classdef Experiment < matlab.mixin.Copyable
             obj.ReferenceSlopeFlag.Automatic = false;
             if obj.NumReferenceForceMaps > 0
                 obj.ReferenceSlopeFlag.FromRefFM = true;
-                obj.AssignedReferenceMaps = true;
-            else
-                obj.AssignedReferenceMaps = false;
             end
         end
         
@@ -2257,88 +2181,6 @@ classdef Experiment < matlab.mixin.Copyable
         % Static auxilary methods mainly for tip deconvolution (code by Orestis Andriotis)
         % and Experiment() loading
         
-        function [depth_num, projected_area] = proj_area(shape,image_x_axis)
-            % shape=probe_tip_tgt1_run12_0002;
-            % image_x_axis = 1.5e-6
-            % close all
-            % figure;
-            % meshc(shape)
-            
-            % % convert to gray scale
-            I_gray=mat2gray(shape);
-            %
-            % % mask
-            % % At what threshold of the maximum height do you want to mask the data
-            
-            y=0.1;
-            I_mask = (I_gray > y);
-            boundary=bwboundaries((I_gray > y));
-            
-            
-            
-            figure;
-            subplot(1,2,2)
-            imshow(I_mask)
-            title('Binary mask')
-            subplot(1,2,1)
-            imshow(I_gray)
-            title('Image & Masked area')
-            
-            hold on
-            p=patch(boundary{1}(:,2),boundary{1}(:,1),'g','EdgeColor', [0.8 1 0.4]);
-            set(p,'FaceAlpha',0.2)
-            hold off
-            
-            
-            % steps
-            
-            hmax = max(max(shape)).*10^9; % NANOMETERS
-            hmin = min(min(shape)).*10^9; % NANOMETERS
-            
-            h_abs = hmax-hmin; % absolute height NANOMETERS
-            
-            prompt = {...
-                'Step size (in nanometer):'};
-            dlg_title = 'Input data';
-            num_lines = 1;
-            def = {'1'};
-            answer = inputdlg(prompt,dlg_title,num_lines,def);
-            step = str2double(cell2mat(answer(1,1)));
-            % Stores the reference slope, the radius
-            clear prompt dlg_title num_lines def answer;
-            % step = 1; % 1 nanometer step
-            % I_tip_bin=(I_gray > y);
-            % I_tip = I_gray.*I_tip_bin;
-            
-            
-            
-            
-            
-            pixel_step = step./h_abs;
-            clear depth_points
-            
-            depth_points(:,1) = 1:-pixel_step:y;
-            
-            % estimate area with BWAREA matlab function.
-            % clear area_bin
-            k=1;
-            for i=1:-pixel_step:y;
-                
-                area_bin(k,1) = bwarea((I_gray > i));
-                
-                k=k+1;
-            end
-            
-            
-            size_pixel_x=image_x_axis/length(shape); % in METERS
-            area_per_pixel=size_pixel_x.^2; % in SQUARE METERS
-            
-            depth_num(:,1)= 0:step:(1-y)*h_abs; % in NANOMETERS
-            
-            projected_area=area_per_pixel.*area_bin; % in SQUARE METERS
-            
-        end
-        
         function wdata = getinfo(filename)
             %getinfo.m
             %reads header info and extracts wave data from ibw file
@@ -2363,290 +2205,6 @@ classdef Experiment < matlab.mixin.Copyable
                 wdata(:,:,i) = fread(fid,[x,y],d);%read wave data into 3d array
             end
             fclose(fid);
-        end
-        
-        function [leveled_scan,height]= scalescan(scan)
-            %scalescan.m
-            %moves the image in the positive scale so that its minimum height is 0
-            
-            leveled_scan=scan-min(scan(:)); %min(scan(:)) is faster than min(min(scan))
-            height=max(leveled_scan(:)); %idem
-        end
-        
-        function [shape,size_pixel_x,size_pixel_y] = cone(pixel_x,pixel_y,height,name_scan)
-            %cone.m, version 1.1
-            %The file creates a TGT1 grating surface with a cone peaking at the centre
-            %of the sample. The angle of the is assumed to be 50 degrees and the height
-            %is taken to be equal to the scan height. The radius of the cone tip can be
-            %changed so that different levels of accuracy may be achieved.
-            %Ask the user for the size of the scan.
-            prompt = {['What is the scanning range in micrometres for  ' name_scan '.ibw ?']};
-            dlg_title = 'Scan Size';
-            num_lines= 1;
-            def     = {'1.5'};
-            answer = inputdlg(prompt,dlg_title,num_lines,def);
-            size_scan= (str2num(cell2mat(answer(1,1))))*1e-6;
-            
-            %Asks the user for the radius of the grating peak.
-            prompt = {'What is the radius of the grating tip in nanometres?'};
-            dlg_title = 'Grating Tip Radius';
-            num_lines= 1;
-            def     = {'5'};
-            answer = inputdlg(prompt,dlg_title,num_lines,def);
-            peak_radius= (str2num(cell2mat(answer(1,1))))*1e-9;
-            
-            %Variables
-            height_cone=height;
-            angle_cone=50;
-            height_loss=(peak_radius*cosd(angle_cone/2))/(tand(angle_cone/2))+(peak_radius*sind(angle_cone/2))-peak_radius;
-            %Calculates the height that is lost from a perfect tip when a rounded tip
-            %is used instead.
-            height_tip=height_cone+height_loss;%The ideal tip is derived from the required
-            %height of the cone (from the scan height) and the amount of height loss
-            %experienced for the desired grating radius. This value is then used to
-            %generate the ideal cone with a perfect tip such that when the curved tip
-            %is added the height of the cone is equal to the scan height.
-            
-            radius_cone=tand(angle_cone/2)*height_tip; %Calculates the cone radius.
-            shape=zeros(pixel_x,pixel_y); %initiates a flat surface of size equal to scan.
-            size_pixel_x=size_scan/pixel_x;
-            size_pixel_y=size_scan/pixel_y;
-            shape(floor(pixel_x/2), floor(pixel_y/2))=height_tip; % Positions the cone.
-            max_pixel_movement_x=floor(radius_cone/size_pixel_x); %Radius of cone divided
-            %by size of a pixel to find the maximal number of pixels in line in the
-            %cone radius.
-            max_pixel_movement_y=floor(radius_cone/size_pixel_y);
-            
-            %Determine the limits of the cone whether it fits completely in the image
-            %or not. Done for each dimension and limit using the centre of the image as
-            %a reference.
-            if pixel_x/2-max_pixel_movement_x>=1
-                limit_x_1=pixel_x/2-max_pixel_movement_x;
-            else limit_x_1=1;
-            end
-            
-            if pixel_x/2+max_pixel_movement_x<=pixel_x
-                limit_x_2=pixel_x/2+max_pixel_movement_x;
-            else limit_x_2=pixel_x;
-            end
-            
-            if pixel_y/2-max_pixel_movement_y>=1
-                limit_y_1=pixel_y/2-max_pixel_movement_y;
-            else limit_y_1=1;
-            end
-            
-            if pixel_y/2+max_pixel_movement_y<=pixel_y
-                limit_y_2=pixel_y/2+max_pixel_movement_y;
-            else limit_y_2=pixel_y;
-            end
-            
-            
-            curve_start_height = height_tip - ((peak_radius*cosd(angle_cone/2))/(tand(angle_cone/2)));
-            %Calculates the hieght at which the cone leaves from a constant gradient
-            %into the curved profile.
-            
-            %Generates the cone
-            for i=limit_x_1:limit_x_2
-                for j=limit_y_1:limit_y_2
-                    distance=sqrt(((pixel_x/2-i)*size_pixel_x)^2+((pixel_y/2-j)*size_pixel_y)^2);
-                    %Distance of point i,j with reference from the centre of the image.
-                    
-                    curve_height=sqrt(((peak_radius)^2)-(distance^2))-(peak_radius*sind(angle_cone/2));
-                    %The absolute hieght of each point of the curved tip.
-                    
-                    if distance<=radius_cone;
-                        shape(i,j)=(radius_cone-distance)*height_tip/radius_cone;
-                        %If the dstance is smaller than than the radius then the
-                        %constant slope of the cone is generated.
-                    end
-                    
-                    if distance<=peak_radius*cosd(angle_cone/2);
-                        shape(i,j) = curve_height + curve_start_height;
-                        %If the distance is smaller than the radius of the curved peak
-                        %radius then the curved peak is assumed.
-                    end
-                    
-                end
-            end
-        end
-        
-        function [max_x, max_y] = getpeak(scan)
-            %getpeak.m
-            %Returns the coordinates of the peak of the image
-            
-            [c,i]=max(scan);
-            [c,max_y]=max(c);
-            max_x=i(max_y);
-        end
-        
-        function tip=minimiseW(z,s,pixelz_x,pixelz_y,pixels_x,pixels_y,max_x,max_y)
-            %minimiseW.m
-            %Minimises the w function w(x,y,x',y')=z(x',y')-s(x-x',y-y') to erode the
-            %image. Returns the real image of the sample or the tip shape depending on
-            %the input s. To obtain the tip shape, s must be the sample. To
-            %obtain the eroded image, s must be the tip upside down.
-            
-            tip=ones(pixelz_x,pixelz_y); %creates the empty image array
-            
-            h = waitbar(0,'Please wait, Processing...');
-            
-            %loops over all the elements and find the minimum value of w and allocate it
-            for j=1:pixelz_y %loops over points in image output
-                waitbar(j/pixelz_y);
-                s_ymin=max(-j,-max_y); %determines the allowed range for tip scanning
-                s_ymax=min(pixels_y-max_y,pixelz_y-j)-1; %idem
-                for i=1:pixelz_x %loops over points in other direction in image output
-                    s_xmin=max(-max_x,-i); %determines allowed range for tip scanning
-                    s_xmax=min(pixels_x-max_x,pixelz_x-i)-1; %idem
-                    %need to add 1 for matrix starts on row 1 and not 0
-                    minimum=z(i+s_xmin+1,j+s_ymin+1)-s(s_xmin+max_x+1,s_ymin+max_y+1);
-                    for k=s_xmin:s_xmax %loop over points in tip
-                        for l=s_ymin:s_ymax %idem
-                            %need to add 1 for matrix starts on row 1 and not 0
-                            temp=z(i+k+1,j+l+1)-s(k+max_x+1,l+max_y+1); %calculate w.
-                            minimum=min(temp,minimum); %checks if w is minimum
-                        end
-                    end
-                    tip(i,j)=minimum; %allocates the minimum value
-                end
-            end
-            close(h);
-        end
-        
-        function image_pfit = planefit_tgt1(image)
-            
-            
-            %
-            % image=varname{1,1};
-            leng = length(image);
-            width = length(image);
-            
-            Igray = mat2gray(image); %convert to gray scale
-            
-            % select ROI to mask
-            
-            figure;
-            subplot(1,2,1)
-            hold on
-            title('median filter')
-            % imagesc(himage_filt2)
-            imagesc(Igray)
-            axis([0 width 0 leng])
-            axis square
-            % colorbar
-            caxis([0 1])
-            set(gca,'FontSize',8)
-            %create mask of interest
-            maskROI=roipoly;
-            % Invert mask
-            maskROI = (maskROI ==0);
-            % plot the mask region of interest
-            
-            subplot(1,2,2)
-            hold on
-            
-            title('mask')
-            imagesc(flip(maskROI,1))
-            axis([0 width 0 leng])
-            axis square
-            caxis([0 1])
-            set(gca,'FontSize',8)
-            
-            
-            
-            backgroundI=image.*maskROI;
-            
-            
-            %
-            %prealocate matrices and vectors for planefit
-            %matrix for x-coordinate vector
-            A=zeros(leng,width);
-            %matrix for y-coordinate vector
-            B=zeros(leng,width);
-            %matrix including height data of background
-            C=backgroundI;
-            %matrices for creating vectors including x,y coordinates of original image
-            %size
-            %matrix including x positions
-            D=zeros(leng,width);
-            %matrix including y positions
-            E=zeros(leng,width);
-            %matrix including height values of the fitted plane
-            F=zeros(leng,width);
-            %filling matrix with the specific x and y values
-            for i=1:leng
-                A(i,:)=1:width;
-                B(i,:)=i*ones(1,width);
-                D(i,:)=1:width;
-                E(i,:)=1:width;
-                F(i,:)=i*ones(1,width);
-            end
-            
-            %apply mask on all the matrices
-            A=A.*maskROI;
-            B=B.*maskROI;
-            
-            %creating vectors out of the matrices
-            xx=reshape(A',[numel(A),1]);
-            yy=reshape(B',[numel(B),1]);
-            zz=reshape(C',[numel(C),1]);
-            xo=reshape(E',[numel(E),1]);
-            yo=reshape(F',[numel(F),1]);
-            zo=zeros(leng*width,1);
-            
-            %deleting all positions where height was set zero from masking
-            X=[xx,yy,zz];
-            X(~any(X,2),:)=[];  %rows where x,y,z are empty should be taken out
-            %rebuild xx,yy,zz vectors of Matrix X
-            xx=X(:,1);
-            yy=X(:,2);
-            zz=X(:,3);
-            
-            %plnefitting by fit a linear function to each data line of background image
-            linefit=D; %this matrix should constist of flattened lines
-            for l=1:leng
-                ins=find(yy==l,1,'first');
-                inl=find(yy==l,1,'last');
-                P=polyfit(xx(ins:inl,1),zz(ins:inl,1),1);
-                linefit(l,:)=polyval(P,D(l,:));
-            end
-            image_pfit=image-linefit;
-            
-            %
-            figure;
-            
-            subplot(1,2,1)
-            hold on
-            grid on
-            % plot original image
-            mesh(image,'facealpha',0.6);
-            axis tight
-            axis square
-            view([-32,20])
-            % plot original image
-            mesh(linefit,'FaceColor',[0.5 0.5 0.3],'FaceAlpha',0.3,'EdgeColor','none');
-            colormap jet
-            set(gca,'FontSize',8)
-            zlabel('Height (m)')
-            
-            subplot(1,2,2)
-            
-            hold on
-            grid on
-            % plot planefited image
-            mesh(image_pfit,'facealpha',0.8);
-            axis tight
-            axis square
-            colormap jet
-            view([-32,20])
-            set(gca,'FontSize',8)
-            zlabel('Height (m)')
-            
-%             waitforbuttonpress
-            close all
-            
-            
-            clear maskROI Igray backgroundI leng width
         end
         
         function Out = reference_slope_parser_gui(Methods)
