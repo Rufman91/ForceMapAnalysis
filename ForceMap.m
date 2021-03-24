@@ -35,6 +35,7 @@ classdef ForceMap < matlab.mixin.Copyable
         NCurves         % number of curves on the force map
         NumProfiles     % number of scanned profiles along the YSize of the force map
         NumPoints       % number of scanned points per profile along the XSize of the force map
+        NumSegments     % number of segments
         MaxPointsPerCurve
         XSize           % Size of imaged window in X-direction
         YSize           % Size of imaged window in Y-direction
