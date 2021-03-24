@@ -1325,7 +1325,8 @@ classdef ForceMap < matlab.mixin.Copyable
             % Classification criteria
             %figname=strcat(obj.ID,{'-'},obj.ModDate,{'-'},VelocityConvert,{'-'},obj.Name);
             %figname=strcat(obj.ID,{'-'},obj.ModDate,{'-'},VelocityConvert,{'-'},obj.Substrate,{'-'},obj.EnvCond,{'-'},obj.Chipbox,{'-'},obj.ChipCant);
-            figname=strcat(obj.ModDate,{'_'},obj.ModTime,{'_'},VelocityConvert,{'_'},obj.Linker,{'_'},obj.Substrate,{'_'},obj.EnvCond,{'_'},obj.Chipbox,{'_'},obj.ChipCant),{'_'},obj.ID,;
+            %figname=strcat(obj.ModDate,{'_'},obj.ModTime,{'_'},obj.Linker,{'_'},obj.ID,{'_'},obj.Substrate,{'_'},obj.EnvCond,{'_'},VelocityConvert,{'_'},obj.Chipbox,{'_'},obj.ChipCant);
+            figname=strcat(obj.ModDate,{'_'},obj.ModTime,{'_'},obj.ID,{'_'},obj.Substrate,{'_'},obj.EnvCond,{'_'},VelocityConvert,{'_'},obj.Chipbox,{'_'},obj.ChipCant);
             figname=char(figname);
             %% Figure loop
             for ii=1:NFigures           
@@ -1354,7 +1355,8 @@ classdef ForceMap < matlab.mixin.Copyable
                     % Tile jj
                     kk=jj+25*(ii-1);
                     %%% Define some variables
-                    x50=-50e-9; % Defines 100nm
+                    x50=-50e-9; % Defines 50nm
+                    x150=-150e-9; % Defines 150nm
                     x500=-500e-9; % Defines 500nm
                     % Plot tile
                     ax=nexttile;      
@@ -1364,8 +1366,9 @@ classdef ForceMap < matlab.mixin.Copyable
                     grid on
                     plot(obj.THApp{kk}-obj.CP_HardSurface(kk,1),obj.BasedApp{kk});
                     plot(obj.THRet{kk}-obj.CP_HardSurface(kk,1),obj.BasedRetCorr{kk});
-                    line([x50 x50], ylim,'Color','k'); % Draws a vertical line                  
-                    line([x500 x500], ylim,'Color','k'); % Draws a vertical line
+                    xline(x50,'Color','r'); % Draws a vertical line
+                    xline(x150,'Color','r'); % Draws a vertical line   
+                    xline(x500,'Color','r'); % Draws a vertical line
                     % Title for each Subplot
                     ti=title(sprintf('%i',kk),'Color','k');                                     
                     ti.Units='normalized'; % Set units to 'normalized'  

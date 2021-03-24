@@ -1037,15 +1037,15 @@ classdef Experiment < matlab.mixin.Copyable
             % Change into the Folder of Interest
             cd(obj.ExperimentFolder) % Move into the folder 
             % Create folders for saving the produced figures
-            foldername='FM_test';    % for debugging
-            % foldername='FM_unsorted';    % Defines the folder name
+            %foldername='FM_test';    % for debugging
+            foldername='FM_unsorted';    % Defines the folder name
             mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
             currpath=fullfile(obj.ExperimentFolder,foldername);
             cd(currpath); 
             
             % Loop over the imported force maps
             % for ii=1:obj.NumFiles
-            for ii=1:4 % Debugging
+            for ii=1:2 % Debugging
             % Presort condition 
               %  if ~obj.SMFSFlag(ii)   % Selects all flagged 1 force maps
                 %if obj.SMFSFlag(ii)     % Selects all flagged 0 force maps
