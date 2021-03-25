@@ -1059,25 +1059,32 @@ classdef Experiment < matlab.mixin.Copyable
             end    
         end
         
-        function SMFS_print_sort(obj,StartDate,EndDate)
+        function SMFS_print_sort(obj,StartDate,EndDate,XMin,XMax,YMin,YMax)
             % SMFS_print_sort: A function to plot all force curves of all
             % force maps sorted by different properties 
             % Comment: Date format is: 'YYYY.MM.DD'
-            
+            % Needed function: obj.FM{ii}.fc_chipprop, obj.FM{ii}.estimate_cp_hardsurface
+         
             % Change into the Folder of Interest
             cd(obj.ExperimentFolder) % Move into the folder 
             % Input variable adaptation
-            if nargin<2
+            if nargin<2      
+                XMin= -inf;     % Limit of the X-axis in meters (m)  
+                XMax= inf;      % Limit of the X-axis in meters (m)
+                YMin= -inf;     % Limit of the Y-axis in Newtons (N)   
+                YMax= inf;      % Limit of the Y-axis in Newtons (N)
                 StartDate='0000.00.00';
                 EndDate='2999.00.00';
-            elseif nargin<3
+        %    elseif nargin<6
+         %       XMax= 50e-9;      % Limit of the X-axis in meters (m)
+          %      YMax= 100e-12;      % Limit of the Y-axis in Newtons (N)
+            elseif nargin<6    
+                StartDate='0000.00.00';
                 EndDate='2999.00.00';
             end
             % Loop over the imported force maps
              for ii=1:obj.NumFiles
-                % Needed function
-                obj.FM{ii}.fc_chipprop
-         
+                
                 %if ~obj.SMFSFlag(ii)     % Selects all flagged 1 force maps
                 if obj.SMFSFlag(ii)     % Selects all flagged 0 force maps
                     continue
@@ -1107,14 +1114,14 @@ classdef Experiment < matlab.mixin.Copyable
                 VelocityConvert=num2str(obj.FM{ii}.Velocity*1e+9); % Convert into nm
                 StartDateMod=strrep(StartDate,'.','');
                 EndDateMod=strrep(EndDate,'.','');
-                foldername=append('FM_Flag',SMFSFlagConvert,'_',VelocityConvert,'_',obj.FM{ii}.Substrate,'_',obj.FM{ii}.EnvCond,'_',StartDateMod,'-',EndDateMod); % Defines the folder name
+                %foldername=append('FM_Flag',SMFSFlagConvert,'_',VelocityConvert,'_',obj.FM{ii}.Substrate,'_',obj.FM{ii}.EnvCond,'_',StartDateMod,'-',EndDateMod); % Defines the folder name
+                foldername=append(obj.FM{ii}.Substrate,'_',obj.FM{ii}.EnvCond,'_',StartDateMod,'-',EndDateMod); % Defines the folder name 
                 warning('off','all'); % To not showing the warning that the same folder is created each loop
                 mkdir(foldername);
                 warning('on','all');
                 cd(foldername)         
-               % Run the chosen functions
-               obj.FM{ii}.estimate_cp_hardsurface      
-               obj.FM{ii}.fc_print
+               % Run the chosen functions    
+               obj.FM{ii}.fc_print(XMin,XMax,YMin,YMax)
                cd(obj.ExperimentFolder) % Move into the folder 
                obj.SMFSFlagPrint(ii)=1;               
             end 
@@ -1213,6 +1220,13 @@ classdef Experiment < matlab.mixin.Copyable
                obj.FM{ii}.fc_selection;     
                %obj.save_experiment;        % Save immediately after each force curve
             end    
+        end
+                
+        function SMFS_histo_force(obj)
+            % for ii=1:obj.NumFiles
+            for ii=1:3 %  Debugging
+            histogram(obj.FM{ii}.MinRetSel)
+            end
         end
         
         

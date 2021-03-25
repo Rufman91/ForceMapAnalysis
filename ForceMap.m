@@ -155,6 +155,7 @@ classdef ForceMap < matlab.mixin.Copyable
         BasedRetCorr    % BasedRet data corrected
         MinRetSel       % Minimum retention data within a selected range on the x-axis which represents the maximum adhesion force within a selected distance range
         EndIdx          % Index correspoding to a predefined value
+        RetAdhEnergy    % Adhesion Energy of the retraction curve
     end
     
     methods
@@ -1170,14 +1171,14 @@ classdef ForceMap < matlab.mixin.Copyable
             for ii=1:obj.NCurves
             EndLogical=obj.THRet{ii}-obj.CP_HardSurface(ii,1)<xEnd; % Determine the elements that fulfil the logical argument           
             EndIdx(ii)=find(EndLogical,1,'first'); % Read out the index of the first cell that fulfil the argument
-            
-            obj.EndIdx = EndIdx(ii);
+            obj.EndIdx = EndIdx;
             end
             
         end
         
         function [MinApp] = min_force(obj)           
-            
+            % Determine maximum adhesion forces - either for the whole
+            % dataset or for a selection
             for ii=1:obj.NCurves
             MinApp(ii)=min(obj.BasedApp{ii});
             MinRet(ii)=min(obj.BasedRet{ii}); 
@@ -1186,6 +1187,98 @@ classdef ForceMap < matlab.mixin.Copyable
             obj.MinRet = MinRet;
             obj.MinRetSel = MinRetSel;
         end
+       
+        
+        function fc_adhesion_energy(obj,DataShareStart,DataShareEnd)
+            if nargin <2
+                DataShareStart=0.01; % 1%
+                DataShareEnd=0.06; % 6%
+            end
+            
+            % Loop over all force curves
+            for kk=1:100
+                DataPts=size(obj.BasedRet{kk}); % Determine the quantity of data points in the force curve
+                LimitIdx1=round(DataPts(1)*DataShareStart); % Determine the corresponidng index
+                LimitIdx2=round(DataPts(1)*DataShareEnd);
+                CorrMean=mean(obj.BasedRet{kk}(DataPts(1)-LimitIdx2:DataPts(1)-LimitIdx1,1)); % Calculate the mean of the difference data
+                obj.BasedRetCorr2{kk}=obj.BasedRet{kk}-CorrMean; % Correct the BasedRet data with the mean of the correction data
+                
+                % Allocate data
+                xApp=obj.THApp{kk}-obj.CP_HardSurface(kk);
+                xRet=obj.THRet{kk}-obj.CP_HardSurface(kk);
+                yApp=obj.BasedApp{kk};
+                yRet=obj.BasedRetCorr2{kk};
+                yAppLim=yApp;
+                yRetLim=yRet;
+                
+                % Set all values above the zero line of the x-axis 0
+                limit1=0;   % Define the limit
+                yAppLim(yAppLim>limit1)=0;
+                yRetLim(yRetLim>limit1)=0;
+                yAppLim1=yAppLim;
+                yRetLim1=yRetLim;
+                % Set all values < -20pN also 0
+                limit2=-20e-12;  % Define the limit
+                yAppLim(yAppLim>limit2)=0;
+                yRetLim(yRetLim>limit2)=0;
+                yAppLim2=yAppLim;
+                yRetLim2=yRetLim;
+                
+                % Determine the adhesion energy
+                IntAppLim2(kk)=trapz(xApp,yAppLim2); % Integrate the modified approach data
+                IntRetLim2(kk)=trapz(xRet,yRetLim2); % Integrate the modified retraction data
+            end
+            
+            obj.RetAdhEnergy(kk)=IntRetLim2(kk);
+            
+            % % %% Appendix
+            %  close all
+            % % Graphical preview
+            % h_fig=figure(1);
+            % h_fig.Color='white'; % changes the background color of the figure
+            % h_fig.Units='normalized'; % Defines the units
+            % h_fig.OuterPosition=[0 0 1 1];% changes the size of the to the whole screen
+            % h_fig.PaperOrientation='landscape';
+            % %% Plotting the tiles
+            % t = tiledlayout(3,3);
+            % %t.TileSpacing = 'compact';
+            % %t.Padding = 'compact';
+            % t.TileSpacing = 'none'; % To reduce the spacing between the tiles
+            % t.Padding = 'none'; % To reduce the padding of perimeter of a tile
+            % nexttile
+            % hold on
+            % grid on
+            % plot(xApp,yApp,'g');
+            % plot(xRet,obj.BasedRet{kk},'r');
+            % plot(xRet,yRet,'b');
+            % nexttile
+            % hold on
+            % grid on
+            % plot(xRet,obj.BasedRet{kk},'r');
+            % plot(xRet,obj.BasedRet{kk},'r');
+            % plot(xRet(DataPts(1)-LimitIdx2:DataPts(1)-LimitIdx1,1),obj.BasedRet{kk}(DataPts(1)-LimitIdx2:DataPts(1)-LimitIdx1,1),'b');
+            % plot(xRet,BasedRetCorr2{fm},'g');
+            % nexttile;
+            % area(xApp,yApp)
+            % nexttile;
+            % area(xRet,yRet)
+            % nexttile;
+            % area(xApp,yAppLim1)
+            % nexttile;
+            % area(xRet,yRetLim1)
+            % nexttile;
+            % area(xApp,yAppLim2)
+            % nexttile;
+            % area(xRet,yRetLim2)
+            % nexttile
+            % hold on
+            % grid on
+            % plot(xApp,yApp,'g');
+            % plot(xRet,yRet,'b');
+            % area(xRet,yRetLim2)
+            
+        end
+
         
         function fc_based_ret_correction(obj,DataShareStart,DataShareEnd)  
             % fc_based_ret_correction: A function to correct for an AFM
@@ -1193,9 +1286,9 @@ classdef ForceMap < matlab.mixin.Copyable
             % data
         if nargin <2
             DataShareStart=0.05; % 5%
-            DataShareEnd=0.1; % 1%
+            DataShareEnd=0.1; % 10%
         end
-        % loop over all force curves  
+        % Loop over all force curves  
         for kk=1:100
             DataPts=size(obj.BasedApp{kk}); % Determine the quantity of data points in the force curve 
             LimitIdx1=round(DataPts(1)*DataShareStart); % Determine the corresponidng index
