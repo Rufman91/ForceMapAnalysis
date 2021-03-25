@@ -848,12 +848,28 @@ classdef AFMImage < matlab.mixin.Copyable
             V = V(:,2:end);
         end
         
-        function [X,Y,Z] = convert_masked_to_point_cloud(Image,Mask)
+        function [X,Y,Z] = convert_masked_to_point_cloud(Image,Mask,ScanSizeX,ScanSizeY,OriginX,OriginY)
+            
+            if nargin<4
+                ScanSizeX = 1;
+                ScanSizeY = 1;
+                OriginX = 0;
+                OriginY = 0;
+            end
+            if nargin<6
+                OriginX = 0;
+                OriginY = 0;
+            end
+            
+            
             [X,Y] = find(Mask);
             Z = zeros(length(X),1);
             for i=1:length(X)
                 Z(i) = Image(X(i),Y(i));
             end
+            
+            X = X.*ScanSizeX - OriginX;
+            Y = Y.*ScanSizeY - OriginY;
         end
         
     end
