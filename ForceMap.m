@@ -36,6 +36,9 @@ classdef ForceMap < matlab.mixin.Copyable
         NumProfiles     % number of scanned profiles along the YSize of the force map
         NumPoints       % number of scanned points per profile along the XSize of the force map
         NumSegments     % number of segments
+        SeriesTime      % ongoing time from start of experiment to end
+        SegDuration     % duration of one segment
+        SegFrequency    % frequency of one segment
         MaxPointsPerCurve
         XSize           % Size of imaged window in X-direction
         YSize           % Size of imaged window in Y-direction
@@ -2667,6 +2670,52 @@ classdef ForceMap < matlab.mixin.Copyable
                 tline(where+1:end)... % this is the number
                 );
             
+            % NumSegments    
+            clear tline where;
+            frewind(fileID);
+            B=strfind(A,strcat(obj.FileType,'.settings.force-settings.segments.size='));
+            if isempty(B)
+                clear tline where;
+                frewind(fileID);
+            else
+                fseek(fileID,B,'cof');
+                tline = fgetl(fileID);
+                where=strfind(tline,'=');
+                obj.NumSegments = str2double(tline(where+1:end)); %not str2num?
+                
+                for i=1:obj.NumSegments
+                    clear tline where;
+                    frewind(fileID);
+                    B=strfind(A,strcat(obj.FileType,'.settings.force-settings.segment.',string((i-1)),'.duration='));
+                    fseek(fileID,B,'cof');
+                    tline = fgetl(fileID);
+                    where=strfind(tline,'=');
+                    obj.SegDuration{i} = str2double(tline(where+1:end)); %not str2num?
+                    
+                    if i == 1
+                        obj.SeriesTime{i} = obj.SegDuration{i};
+                    else
+                        obj.SeriesTime{i} = obj.SegDuration{i-1}+obj.SegDuration{i};
+                    end
+                    
+                    clear tline where;
+                    frewind(fileID);
+                    B=strfind(A,strcat(obj.FileType,'.settings.force-settings.segment.',string((i-1)),'.frequency='));
+                    if isempty(B)
+                        obj.SegFrequency{i} = 0.0;
+                    else
+                        fseek(fileID,B,'cof');
+                        tline = fgetl(fileID);
+                        where=strfind(tline,'=');
+                        obj.SegFrequency{i} = str2double(tline(where+1:end));
+                    end
+                end
+            end
+
+                
+                
+                
+            
             %   NumProfiles
             clear tline where;
             frewind(fileID);
@@ -2703,10 +2752,10 @@ classdef ForceMap < matlab.mixin.Copyable
             where=strfind(tline,'=');
             obj.YSize = str2double(tline(where+1:end));
             
-            %   MaxPonintsPerCurve
+            %   MaxPointsPerCurve
             clear tline where;
             frewind(fileID);
-            if isequal(obj.FileType,'force-scan-map')
+            if isequal(obj.FileType,'force-scan-map') && ~isprop(obj,obj.NumSegments)
                 B=strfind(A,strcat(obj.FileType,'.settings.force-settings.extend-k-length='));
             elseif isequal(obj.FileType,'quantitative-imaging-map')
                 B=strfind(A,strcat(obj.FileType,'.settings.force-settings.extend.num-points='));
@@ -2718,7 +2767,7 @@ classdef ForceMap < matlab.mixin.Copyable
             
             %   Velocity
             
-            if isequal(obj.FileType,'force-scan-map')
+            if isequal(obj.FileType,'force-scan-map') && ~isprop(obj,obj.NumSegments)
                 clear tline where;
                 frewind(fileID);
                 B=strfind(A,strcat(obj.FileType,'.settings.force-settings.extend-scan-time='));
