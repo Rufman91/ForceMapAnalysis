@@ -62,7 +62,9 @@ classdef ForceMap < matlab.mixin.Copyable
         % Curve data Properties
         
         App = {}        % approach force data in Newton
+        Force = {}      % all force data in Newton
         Ret = {}        % retraction force data in Newton
+        Height = {}     % all height data in Newton
         HHApp = {}      % capacitive-sensor-height approach data in meters
         HHRet = {}      % capacitive-sensor-height retract data in meters
         HHType          % Type of Head Height.(Default is capacitiveSensorHeight; switches to measuredHeight, if default does'nt exist)
@@ -2822,6 +2824,41 @@ classdef ForceMap < matlab.mixin.Copyable
         
         function load_force_curves(obj,TempFolder)
             
+          if isprop(obj,'NumSegments')  
+            obj.HHType = 'capacitiveSensorHeight';
+            for i=1:obj.NCurves
+                for j=1:obj.NumSegments
+                    HeaderFileDirectory = fullfile(TempFolder,'shared-data','header.properties');
+                    SegmentHeaderFileDirectory = fullfile(TempFolder,'index',string((i-1)),'segments',string((j-1)),'segment-header.properties');
+                    HeightDataDirectory = fullfile(TempFolder,'index',string((i-1)),'segments',string((j-1)),'channels','capacitiveSensorHeight.dat');
+                    vDefDataDirectory = fullfile(TempFolder,'index',string((i-1)),'segments',string((j-1)),'channels','vDeflection.dat');
+
+                    if ~isfile(HeightDataDirectory) || isequal(obj.HHType,'measuredHeight')
+                        HeightDataDirectory = fullfile(TempFolder,'index',string((i-1)),'segments',string((j-1)),'channels','measuredHeight.dat');
+                        obj.HHType = 'measuredHeight';
+                    end
+                    if ~isfile(HeightDataDirectory) || isequal(obj.HHType,'Height')
+                        HeightDataDirectory = fullfile(TempFolder,'index',string((i-1)),'segments',string((j-1)),'channels','Height.dat');
+                        obj.HHType = 'Height';
+                    end
+                    
+                    
+                    [TempHHApp,obj.Force{i,j},obj.SpringConstant,obj.Sensitivity]=...
+                        obj.writedata(HeaderFileDirectory,SegmentHeaderFileDirectory,...
+                        HeightDataDirectory,vDefDataDirectory,obj.HHType);
+
+                    obj.Height{i,j} = -TempHHApp;
+                    obj.Force{i,j} = obj.Force{i,j}.*obj.SpringConstant;
+                    clear TempHHApp
+                    
+                    obj.HHApp{i} = obj.Height{i,1};
+                    obj.App{i} = obj.Force{i,1}.*obj.SpringConstant;
+           
+                end
+            end
+            
+          else
+            
             obj.HHType = 'capacitiveSensorHeight';
             for i=1:obj.NCurves
                 HeaderFileDirectory = fullfile(TempFolder,'shared-data','header.properties');
@@ -2880,6 +2917,7 @@ classdef ForceMap < matlab.mixin.Copyable
                 obj.Ret{i} = obj.Ret{i}.*obj.SpringConstant;
                 clear TempHHRet
             end
+          end
         end
         
         function initialize_flags(obj)
