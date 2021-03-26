@@ -1639,20 +1639,20 @@ classdef ForceMap < matlab.mixin.Copyable
         
         function [HeadHeight ,Force,spring_constant,sensitivity]=...
                 writedata(HeaderFileDirectory,SegmentHeaderFileDirectory,...
-                HeighDataDirectory,vDelfDataDirectory,HHType)
+                HeightDataDirectory,vDelfDataDirectory,HHType)
             % Author: Orestis Andriotis (slightly changed and adapted by Manuel Rufin)
             % HeaderFileDirectory: file directory of the main header properties. There
             % is the information about the scaling factors to convert the raw data.
             % SegmentHeaderFileDirectory: file directory of the header of each segment.
             % Each segment means the loading (#0) and unloading (#1).
             
-            % HeighDataDirectory: file directory of capacitiveSensorHeight.dat file
+            % HeightDataDirectory: file directory of capacitiveSensorHeight.dat file
             % vDelfDataDirectory: file directory of vDeflection.dat file
             %
             
             % HeaderFileDirectory = headerDir;
             % SegmentHeaderFileDirectory=segHeaderDir;
-            % HeighDataDirectory=heightdir;
+            % HeightDataDirectory=heightdir;
             % vDelfDataDirectory=vDefldir;
             % find the number of total points
             A=fileread(SegmentHeaderFileDirectory);
@@ -1672,7 +1672,7 @@ classdef ForceMap < matlab.mixin.Copyable
             
             % Read the height measured data and the vertical deflection.
             % Reading the raw height data into a column of length n
-            fileID = fopen(HeighDataDirectory);
+            fileID = fopen(HeightDataDirectory);
             % fread(fileID,sizeA,precision,skip,machinefmt)
             RawHeight = fread(fileID,n,'int32',0,'b'); %raw data
             fclose(fileID);
@@ -1707,7 +1707,7 @@ classdef ForceMap < matlab.mixin.Copyable
             
             Force = deflmeter;
             
-            clear tline SegmentHeaderFileDirectory HeighDataDirectory...
+            clear tline SegmentHeaderFileDirectory HeightDataDirectory...
                 vDelfDataDirectory mult_height_volts offset_height_volts...
                 mult_height_meters offset_height_meters...
                 mult_vDefl_volts offset_vDefl_volts...
@@ -2695,7 +2695,7 @@ classdef ForceMap < matlab.mixin.Copyable
                     if i == 1
                         obj.SeriesTime{i} = obj.SegDuration{i};
                     else
-                        obj.SeriesTime{i} = obj.SegDuration{i-1}+obj.SegDuration{i};
+                        obj.SeriesTime{i} = obj.SeriesTime{i-1}+obj.SegDuration{i};
                     end
                     
                     clear tline where;
@@ -2755,7 +2755,7 @@ classdef ForceMap < matlab.mixin.Copyable
             %   MaxPointsPerCurve
             clear tline where;
             frewind(fileID);
-            if isequal(obj.FileType,'force-scan-map') && ~isprop(obj,obj.NumSegments)
+            if isequal(obj.FileType,'force-scan-map') && ~isprop(obj,'NumSegments')
                 B=strfind(A,strcat(obj.FileType,'.settings.force-settings.extend-k-length='));
             elseif isequal(obj.FileType,'quantitative-imaging-map')
                 B=strfind(A,strcat(obj.FileType,'.settings.force-settings.extend.num-points='));
@@ -2767,7 +2767,7 @@ classdef ForceMap < matlab.mixin.Copyable
             
             %   Velocity
             
-            if isequal(obj.FileType,'force-scan-map') && ~isprop(obj,obj.NumSegments)
+            if isequal(obj.FileType,'force-scan-map') && ~isprop(obj,'NumSegments')
                 clear tline where;
                 frewind(fileID);
                 B=strfind(A,strcat(obj.FileType,'.settings.force-settings.extend-scan-time='));
@@ -2783,6 +2783,7 @@ classdef ForceMap < matlab.mixin.Copyable
                 tline = fgetl(fileID);
                 where=strfind(tline,'=');
                 ZLength = str2double(tline(where+1:end));
+                obj.Velocity = ZLength/ExtendTime;
             elseif isequal(obj.FileType,'quantitative-imaging-map')
                 clear tline where;
                 frewind(fileID);
@@ -2799,9 +2800,10 @@ classdef ForceMap < matlab.mixin.Copyable
                 tline = fgetl(fileID);
                 where=strfind(tline,'=');
                 ZLength = str2double(tline(where+1:end));
+                obj.Velocity = ZLength/ExtendTime;
             end
             
-            obj.Velocity = ZLength/ExtendTime;
+            
             
             %   GridAngle
             clear tline where;
