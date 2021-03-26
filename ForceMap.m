@@ -39,6 +39,11 @@ classdef ForceMap < matlab.mixin.Copyable
         SeriesTime      % ongoing time from start of experiment to end
         SegDuration     % duration of one segment
         SegFrequency    % frequency of one segment
+        SegNumPoints    % number of points in every segment
+        SecPerPoint     % seconds per point
+        TStart          % starting time for time vektor
+        TEnd            % ending time for time vektor
+        SegTime            % time vektor
         MaxPointsPerCurve
         XSize           % Size of imaged window in X-direction
         YSize           % Size of imaged window in Y-direction
@@ -2700,6 +2705,27 @@ classdef ForceMap < matlab.mixin.Copyable
                         obj.SeriesTime{i} = obj.SeriesTime{i-1}+obj.SegDuration{i};
                     end
                     
+                    clear tline where;
+                    frewind(fileID);
+                    B=strfind(A,strcat(obj.FileType,'.settings.force-settings.segment.',string((i-1)),'.num-points='));
+                    fseek(fileID,B,'cof');
+                    tline = fgetl(fileID);
+                    where=strfind(tline,'=');
+                    obj.SegNumPoints{i} = str2double(tline(where+1:end));
+                    
+                    obj.SecPerPoint{i} = obj.SegDuration{i}/obj.SegNumPoints{i};
+                    
+                    if i == 1
+                        obj.TStart{i} = obj.SecPerPoint{i};
+                    else 
+                        obj.TStart{i} = obj.SeriesTime{i-1}+obj.SecPerPoint{i};
+                    end
+                    
+                    obj.TEnd{i} = obj.SeriesTime{i};
+                    obj.SegTime{i} = obj.TStart{i}:obj.SecPerPoint{i}:obj.TEnd{i};
+                        
+                        
+                        
                     clear tline where;
                     frewind(fileID);
                     B=strfind(A,strcat(obj.FileType,'.settings.force-settings.segment.',string((i-1)),'.frequency='));
