@@ -59,6 +59,7 @@ classdef AFMImage < matlab.mixin.Copyable
         LockInPhase
         LateralDeflection
         VerticalDeflection
+        Processed
     end
     properties
         % Properties related to Image processing/segmenting/classification
@@ -80,6 +81,7 @@ classdef AFMImage < matlab.mixin.Copyable
         HasLockInAmplitude
         HasLockInPhase
         HasVerticalDeflection
+        HasProcessed
         DeconvolutedCantileverTip
     end
     
@@ -137,6 +139,10 @@ classdef AFMImage < matlab.mixin.Copyable
             obj.DeconvolutedCantileverTip = true;
         end
         
+        function base_image()
+            
+        end
+        
     end
     
     methods(Static)
@@ -146,6 +152,22 @@ classdef AFMImage < matlab.mixin.Copyable
             
             NumPoints = length(InImage(1,:));
             CutOff = ceil(CutOff*NumPoints);
+            
+            for i=1:NumProfiles
+                Line = InImage(i,:)';
+                [~, SortedIndex] = sort(Line,'ascend');
+                LineFit = polyfit(SortedIndex(1:CutOff),Line(SortedIndex(1:CutOff)),1);
+                LineEval = [1:NumPoints]'*LineFit(1) + LineFit(2);
+                Line = Line - LineEval;
+                InImage(i,:) = Line;
+            end
+            OutImage = InImage;
+        end
+        
+        function subtract_line_fit_automatically(InImage)
+            if nargin<2
+                Mask = ones(size(InImage));
+            end
             
             for i=1:NumProfiles
                 Line = InImage(i,:)';
@@ -209,7 +231,7 @@ classdef AFMImage < matlab.mixin.Copyable
         
         function CMap = define_afm_color_map(PlusBrightness)
             if nargin == 0
-                PlusBrightness = .35;
+                PlusBrightness = 0;
             end
             CMap(:,1) = (0:1/255:1).*2 + PlusBrightness;
             CMap(:,2) = (0:1/255:1).*2 - 0.5 + PlusBrightness;
@@ -715,6 +737,7 @@ classdef AFMImage < matlab.mixin.Copyable
             obj.HasLockInAmplitude = false;
             obj.HasLockInPhase = false;
             obj.HasVerticalDeflection = false;
+            obj.HasProcessed = false;
             
             obj.DeconvolutedCantileverTip = false;
         end
