@@ -1229,6 +1229,19 @@ classdef Experiment < matlab.mixin.Copyable
             end
         end
         
+        function SMFS_analysis(obj,Condition,Substrate)
+           
+            %for ii=1:obj.NumFiles
+            for ii=276:obj.NumFiles % Debugging
+            % Adhesion energy
+            if obj.FM{ii}.EnvCond==Condition %&& obj.FM{ii}.Substrate==Substrate
+            obj.FM{ii}.fc_adhesion_energy
+            else
+            continue
+            end
+            
+            end
+        end
         
     end
     methods

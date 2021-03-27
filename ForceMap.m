@@ -156,6 +156,7 @@ classdef ForceMap < matlab.mixin.Copyable
         MinRetSel       % Minimum retention data within a selected range on the x-axis which represents the maximum adhesion force within a selected distance range
         EndIdx          % Index correspoding to a predefined value
         RetAdhEnergy    % Adhesion Energy of the retraction curve
+        PullingLength   % Pulling length in meters (m)
     end
     
     methods
@@ -1231,54 +1232,110 @@ classdef ForceMap < matlab.mixin.Copyable
             
             obj.RetAdhEnergy(kk)=IntRetLim2(kk);
             
-            % % %% Appendix
-            %  close all
-            % % Graphical preview
-            % h_fig=figure(1);
-            % h_fig.Color='white'; % changes the background color of the figure
-            % h_fig.Units='normalized'; % Defines the units
-            % h_fig.OuterPosition=[0 0 1 1];% changes the size of the to the whole screen
-            % h_fig.PaperOrientation='landscape';
-            % %% Plotting the tiles
-            % t = tiledlayout(3,3);
-            % %t.TileSpacing = 'compact';
-            % %t.Padding = 'compact';
-            % t.TileSpacing = 'none'; % To reduce the spacing between the tiles
-            % t.Padding = 'none'; % To reduce the padding of perimeter of a tile
-            % nexttile
-            % hold on
-            % grid on
-            % plot(xApp,yApp,'g');
-            % plot(xRet,obj.BasedRet{kk},'r');
-            % plot(xRet,yRet,'b');
-            % nexttile
-            % hold on
-            % grid on
-            % plot(xRet,obj.BasedRet{kk},'r');
-            % plot(xRet,obj.BasedRet{kk},'r');
-            % plot(xRet(DataPts(1)-LimitIdx2:DataPts(1)-LimitIdx1,1),obj.BasedRet{kk}(DataPts(1)-LimitIdx2:DataPts(1)-LimitIdx1,1),'b');
-            % plot(xRet,BasedRetCorr2{fm},'g');
-            % nexttile;
-            % area(xApp,yApp)
-            % nexttile;
-            % area(xRet,yRet)
-            % nexttile;
-            % area(xApp,yAppLim1)
-            % nexttile;
-            % area(xRet,yRetLim1)
-            % nexttile;
-            % area(xApp,yAppLim2)
-            % nexttile;
-            % area(xRet,yRetLim2)
-            % nexttile
-            % hold on
-            % grid on
-            % plot(xApp,yApp,'g');
-            % plot(xRet,yRet,'b');
-            % area(xRet,yRetLim2)
-            
+%             % %% Appendix
+%             close all
+%             % Graphical preview
+%             h_fig=figure(1);
+%             h_fig.Color='white'; % changes the background color of the figure
+%             h_fig.Units='normalized'; % Defines the units
+%             h_fig.OuterPosition=[0 0 1 1];% changes the size of the to the whole screen
+%             h_fig.PaperOrientation='landscape';
+%             %% Plotting the tiles
+%             t = tiledlayout(3,3);
+%             %t.TileSpacing = 'compact';
+%             %t.Padding = 'compact';
+%             t.TileSpacing = 'none'; % To reduce the spacing between the tiles
+%             t.Padding = 'none'; % To reduce the padding of perimeter of a tile
+%             nexttile
+%             hold on
+%             grid on
+%             plot(xApp,yApp,'g');
+%             plot(xRet,obj.BasedRet{fc},'r');
+%             plot(xRet,yRet,'b');
+%             nexttile
+%             hold on
+%             grid on
+%             plot(xRet,obj.BasedRet{fc},'r');
+%             plot(xRet,obj.BasedRet{fc},'r');
+%             plot(xRet(DataPts(1)-LimitIdx2:DataPts(1)-LimitIdx1,1),obj.BasedRet{fc}(DataPts(1)-LimitIdx2:DataPts(1)-LimitIdx1,1),'b');
+%             plot(xRet,BasedRetCorr2{fc},'g');
+%             nexttile;
+%             area(xApp,yApp,'FaceColor','y')
+%             nexttile;
+%             area(xRet,yRet,'FaceColor','y')
+%             nexttile;
+%             area(xApp,yAppLim1,'FaceColor','y')
+%             nexttile;
+%             area(xRet,yRetLim1,'FaceColor','y')
+%             nexttile;
+%             area(xApp,yAppLim2,'FaceColor','y')
+%             nexttile;
+%             area(xRet,yRetLim2,'FaceColor','y')
+%             nexttile
+%             hold on
+%             grid on
+%             plot(xApp,yApp,'g');
+%             plot(xRet,yRet,'b');
+%             area(xRet,yRetLim2,'FaceColor','y')        
         end
 
+        function fc_pulling_length(obj)
+            
+            %% Determine BasedRetCorr2
+            DataShareStart=0.01; % 5%
+            DataShareEnd=0.06; % 10%
+            
+            % loop over all force curves
+            %   for kk=1:100
+            DataPts=size(obj.BasedRet{ii}); % Determine the quantity of data points in the force curve
+            LimitIdx1=round(DataPts(1)*DataShareStart); % Determine the corresponidng index
+            LimitIdx2=round(DataPts(1)*DataShareEnd);
+            CorrMean=mean(obj.BasedRet{ii}(DataPts(1)-LimitIdx2:DataPts(1)-LimitIdx1,1)); % Calculate the mean of the difference data
+            CorrStd=std(obj.BasedRet{ii}(DataPts(1)-LimitIdx2:DataPts(1)-LimitIdx1,1));   % Calculate the standard deviation of the difference data
+            BasedRetCorr2{ii}=obj.BasedRet{ii}-CorrMean; % Correct the BasedRet data with the mean of the correction data
+            
+            
+            %% Allocate data
+            xApp=obj.THApp{ii}-obj.CP_HardSurface(fc);
+            xRet=obj.THRet{ii}-obj.CP_HardSurface(fc);
+            yApp=obj.BasedApp{ii};
+            yRet=BasedRetCorr2{ii};
+            
+            %%
+            InterceptIdx=find(yRet<CorrMean-CorrStd*6,1,'last'); % Finds the index of the value that fulfils the condition
+            yIntercept=yRet(InterceptIdx); % Corresponding y-value of the index
+            xIntercept=xRet(InterceptIdx); % Corresponding x-value of the index
+            
+            obj.PullingLength=xIntercept*-1;
+            
+            % %% Appendix
+            close all
+            % Graphical preview
+            h_fig=figure(1);
+            h_fig.Color='white'; % changes the background color of the figure
+            h_fig.Units='normalized'; % Defines the units
+            h_fig.OuterPosition=[0 0 1 1];% changes the size of the to the whole screen
+            h_fig.PaperOrientation='landscape';
+            %% Plotting the tiles
+            t = tiledlayout(3,3);
+            %t.TileSpacing = 'compact';
+            %t.Padding = 'compact';
+            t.TileSpacing = 'none'; % To reduce the spacing between the tiles
+            t.Padding = 'none'; % To reduce the padding of perimeter of a tile
+            nexttile
+            hold on
+            grid on
+            plot(xApp,yApp,'b');
+            plot(xRet,yRet,'r');
+            nexttile
+            hold on
+            grid on
+            plot(xApp,yApp,'b');
+            plot(xRet,yRet,'r');
+            plot(xIntercept,yIntercept,'*','MarkerSize',10,'MarkerEdgeColor','g')
+            
+            
+        end
         
         function fc_based_ret_correction(obj,DataShareStart,DataShareEnd)  
             % fc_based_ret_correction: A function to correct for an AFM
@@ -1326,6 +1383,7 @@ classdef ForceMap < matlab.mixin.Copyable
         % line([x500 x500], ylim,'Color','k'); % Draws a vertical line
         end
         
+      
         function fc_chipprop(obj)
                  
                 % Chip number and Cantilever
