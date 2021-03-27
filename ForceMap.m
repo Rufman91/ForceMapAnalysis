@@ -152,7 +152,8 @@ classdef ForceMap < matlab.mixin.Copyable
         ModDate         % Modified Date is a modification of the poperty Date. Dots are removed
         ModTime         % Modified Date is a modification of the poperty Date. Dots are removed
         SMFSFlag        %
-        BasedRetCorr    % BasedRet data corrected
+        BasedRetCorr    % BasedRet data corrected based on a selection of the approach data
+        BasedRetCorr2   % BasedRet data corrected based on a selection of the retraction data
         MinRetSel       % Minimum retention data within a selected range on the x-axis which represents the maximum adhesion force within a selected distance range
         EndIdx          % Index correspoding to a predefined value
         RetAdhEnergy    % Adhesion Energy of the retraction curve
@@ -1337,22 +1338,38 @@ classdef ForceMap < matlab.mixin.Copyable
             
         end
         
-        function fc_based_ret_correction(obj,DataShareStart,DataShareEnd)  
+        function fc_based_ret_correction(obj,DataShareStartApp,DataShareEndApp,DataShareStartRet,DataShareEndRet)  
             % fc_based_ret_correction: A function to correct for an AFM
             % based baseline deviation between the approach and retraction
             % data
         if nargin <2
-            DataShareStart=0.05; % 5%
-            DataShareEnd=0.1; % 10%
+            DataShareStartApp=0.05; % 5%
+            DataShareEndApp=0.1; % 10%
+            DataShareStartRet=0.01; % 1%
+            DataShareEndRet=0.06; % 5%
         end
         % Loop over all force curves  
         for kk=1:100
-            DataPts=size(obj.BasedApp{kk}); % Determine the quantity of data points in the force curve 
-            LimitIdx1=round(DataPts(1)*DataShareStart); % Determine the corresponidng index
-            LimitIdx2=round(DataPts(1)*DataShareEnd);
-            CorrMean=mean(abs(obj.BasedApp{kk}(LimitIdx1:LimitIdx2,1))-abs(obj.BasedRet{kk}(DataPts(1)-LimitIdx2:DataPts(1)-LimitIdx1,1))); % Calculate the mean of the difference data
-            obj.BasedRetCorr{kk}=obj.BasedRet{kk}-CorrMean; % Correct the BasedRet data with the mean of the correction data
-        end        
+            % Correction based on the approach data
+            DataPtsApp=size(obj.BasedApp{kk}); % Determine the quantity of data points in the force curve 
+            LimitIdxApp1=round(DataPtsApp(1)*DataShareStartApp); % Determine the corresponidng index
+            LimitIdxApp2=round(DataPtsApp(1)*DataShareEndApp);
+            CorrMeanApp=mean(abs(obj.BasedApp{kk}(LimitIdxApp1:LimitIdxApp2,1))-abs(obj.BasedRet{kk}(DataPtsApp(1)-LimitIdxApp2:DataPtsApp(1)-LimitIdxApp1,1))); % Calculate the mean of the difference data
+            CorrStdApp=std(obj.BasedApp{kk}(DataPtsApp(1)-LimitIdxApp2:DataPtsApp(1)-LimitIdxApp1,1));  
+           
+            obj.BasedRetCorr{kk}=obj.BasedRet{kk}-CorrMeanApp; % Correct the BasedRet data with the mean of the correction data
+            
+            % Correction based on the retraction data
+            DataPtsRet=size(obj.BasedRet{ii}); % Determine the quantity of data points in the force curve 
+            LimitIdxRet1=round(DataPtsRet(1)*DataShareStartRet); % Determine the corresponidng index
+            LimitIdxRet2=round(DataPtsRet(1)*DataShareEndRet);
+            CorrMeanRet=mean(obj.BasedRet{kk}(DataPtsRet(1)-LimitIdxRet2:DataPtsRet(1)-LimitIdxRet1,1)); % Calculate the mean of the difference data
+            CorrStdRet=std(obj.BasedRet{kk}(DataPtsRet(1)-LimitIdxRet2:DataPtsRet(1)-LimitIdxRet1,1));   % Calculate the standard deviation of the difference data
+            
+            obj.BasedRetCorr2{kk}=obj.BasedRet{ii}-CorrMeanRet; % Correct the BasedRet data with the mean of the correction data
+          
+        end   
+             
         % %% Appendix
         % close all
         % % Define variables
