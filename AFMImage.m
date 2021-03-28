@@ -98,7 +98,7 @@ classdef AFMImage < matlab.mixin.Copyable
                 TempID = 'AFMImage detached from Experiment-class 1';
             end
             
-            obj. CMap = obj.define_afm_color_map(0.35);
+            obj. CMap = obj.define_afm_color_map(0);
             
             obj.initialize_flags
             
@@ -148,9 +148,10 @@ classdef AFMImage < matlab.mixin.Copyable
     methods(Static)
         % Static Main Methods
         
-        function OutImage = subtract_line_fit_hist(InImage,NumProfiles,CutOff)
+        function OutImage = subtract_line_fit_hist(InImage,CutOff)
             
-            NumPoints = length(InImage(1,:));
+            NumProfiles = size(InImage,1);
+            NumPoints = size(InImage,2);
             CutOff = ceil(CutOff*NumPoints);
             
             for i=1:NumProfiles
@@ -337,6 +338,72 @@ classdef AFMImage < matlab.mixin.Copyable
                 DepthDependendTipShape(i) = DepthDependendTipShape(5);
             end
             
+        end
+        
+    end
+    
+    methods
+        % Methods for image visualisation and output
+        function show_processed_image(obj)
+            % TODO: implement ui elements for customization
+            Brightness = 0;
+            BarToImageRatio = 1/5;
+            
+            h.Fig = figure('Name',sprintf('[Processed] %s',obj.Name),...
+                'Units','pixels',...
+                'Position',[200 200 1024 512],...
+                'Color','k');
+            
+            h.ImAx = subplot(10,10,[1:8 11:18 21:28 31:38 41:48 51:58 61:68]); %dont ask...
+            h.I = imshow(obj.Processed*1e9,[],'Colormap',obj.define_afm_color_map(Brightness));
+            h.I.ButtonDownFcn = @get_and_draw_profile;
+            hold on
+            AFMImage.draw_scalebar_into_current_image(obj.NumPixelsX,obj.ScanSizeX,BarToImageRatio);
+            c = colorbar;
+            c.FontSize = round(22*(obj.NumPixelsX/1024));
+            c.Color = 'w';
+            c.Label.String = 'Height [nm]';
+            c.Label.FontSize = round(32*(obj.NumPixelsX/1024));
+            c.Label.Color = 'w';
+            
+            h.B(1) = uicontrol('style','togglebutton',...
+                'String','Cross Section',...
+                'units','normalized',...
+                'position',[.8 .4 .1 .05]);
+           
+            function get_and_draw_profile(varargin)
+                if ~get(h.B(1),'Value')
+                    return
+                end
+                h.Line.Visible = 'off';
+                h.Line = drawline('Color','b','Parent',h.ImAx);
+                Pos1 = [h.Line.Position(1,1) h.Line.Position(1,2)];
+                Pos2 = [h.Line.Position(2,1) h.Line.Position(2,2)];
+                if norm(Pos1-Pos2)==0
+                    get_and_draw_profile;
+                    return
+                end
+                Profile = improfile(obj.Processed,[Pos1(1) Pos2(1)],[Pos1(2) Pos2(2)]);
+                Len = norm(Pos1-Pos2)/obj.NumPixelsX*obj.ScanSizeX;
+                Points = [0:1/(length(Profile)-1):1].*Len;
+                [MultiplierY,UnitY,~] = AFMImage.parse_unit_scale(range(Profile),'m',1);
+                [MultiplierX,UnitX,~] = AFMImage.parse_unit_scale(range(Points),'m',1);
+                Ax = subplot(10,10,[71:100]);
+                P = plot(Points.*MultiplierX,Profile.*MultiplierY);
+                grid on
+                Ax.Color = 'k';
+                Ax.LineWidth = 1;
+                Ax.FontSize = 18;
+                Ax.XColor = 'w';
+                Ax.YColor = 'w';
+                Ax.GridColor = 'w';
+                xlabel(sprintf('[%s]',UnitX))
+                ylabel(sprintf('Height [%s]',UnitY))
+                xlim([0 Points(end).*MultiplierX])
+                P.LineWidth = 2;
+                P.Color = 'b';
+            end
+            uiwait(h.Fig)
         end
         
     end
@@ -893,6 +960,86 @@ classdef AFMImage < matlab.mixin.Copyable
             
             X = X.*ScanSizeX - OriginX;
             Y = Y.*ScanSizeY - OriginY;
+        end
+        
+        function R = draw_scalebar_into_current_image(NumPixelsX,ScanSizeX,BarToImageRatio)
+            
+            if nargin < 5
+                BarToImageRatio = 1/5;
+            end
+            
+            ScalebarThickness = 1/40;
+            DistFromBorder = 0.1;
+            
+            [Multiplier,Unit,SnapTo] = AFMImage.parse_unit_scale(ScanSizeX,'m',BarToImageRatio);
+            
+            Width = (SnapTo)/(ScanSizeX*Multiplier);
+            Height = ScalebarThickness;
+            Left = 1-Width*(1+DistFromBorder);
+            Bottom = 1-(DistFromBorder-Height);
+            
+            R = rectangle('Position',[Left Bottom Width Height].*NumPixelsX);
+            R.FaceColor = 'w';
+            R.EdgeColor = 'k';
+            R.LineWidth = 2;
+            
+            
+            A = text((Left+Width/2)*NumPixelsX,(Bottom-Height)*NumPixelsX,sprintf('%i %s',SnapTo,Unit),'HorizontalAlignment','center');
+            A.Color = 'w';
+            A.FontSize = round(32*(NumPixelsX/1024));
+            A.FontWeight = 'bold';
+            
+            
+        end
+        
+        function [Multiplier,Unit,SnapTo] = parse_unit_scale(ScanSize,Unit,Mult)
+            
+            ScaleSize = ScanSize*Mult;
+            
+            if (ScaleSize < 1e-11)
+                Multiplier = 1e12;
+                Prefix = 'p';
+                SnapTo = round(ScaleSize*Multiplier,0);
+            elseif (ScaleSize < 1e-10) && (ScaleSize >= 1e-11)
+                Multiplier = 1e12;
+                Prefix = 'p';
+                SnapTo = round(ScaleSize*Multiplier,-1);
+            elseif (ScaleSize < 1e-9) && (ScaleSize >= 1e-10)
+                Multiplier = 1e12;
+                Prefix = 'p';
+                SnapTo = round(ScaleSize*Multiplier,-2);
+            elseif (ScaleSize < 1e-8) && (ScaleSize >= 1e-9)
+                Multiplier = 1e9;
+                Prefix = 'n';
+                SnapTo = round(ScaleSize*Multiplier,0);
+            elseif (ScaleSize < 1e-7) && (ScaleSize >= 1e-8)
+                Multiplier = 1e9;
+                Prefix = 'n';
+                SnapTo = round(ScaleSize*Multiplier,-1);
+            elseif (ScaleSize < 1e-6) && (ScaleSize >= 1e-7)
+                Multiplier = 1e9;
+                Prefix = 'n';
+                SnapTo = round(ScaleSize*Multiplier,-2);
+            elseif (ScaleSize < 1e-5) && (ScaleSize >= 1e-6)
+                Multiplier = 1e6;
+                Prefix = '\mu';
+                SnapTo = round(ScaleSize*Multiplier,0);
+            elseif (ScaleSize < 1e-4) && (ScaleSize >= 1e-5)
+                Multiplier = 1e6;
+                Prefix = '\mu';
+                SnapTo = round(ScaleSize*Multiplier,-1);
+            elseif (ScaleSize < 1e-3) && (ScaleSize >= 1e-4)
+                Multiplier = 1e6;
+                Prefix = '\mu';
+                SnapTo = round(ScaleSize*Multiplier,-2);
+            else
+                Multiplier = 1;
+                Prefix = '';
+                SnapTo = round(ScaleSize*Multiplier);
+            end
+            
+            Unit = sprintf('%s%s',Prefix,Unit);
+            
         end
         
     end
