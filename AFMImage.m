@@ -344,7 +344,7 @@ classdef AFMImage < matlab.mixin.Copyable
     
     methods
         % Methods for image visualisation and output
-        function show_processed_image(obj)
+        function show_image(obj)
             % TODO: implement ui elements for customization
             Brightness = 0;
             BarToImageRatio = 1/5;
@@ -354,29 +354,149 @@ classdef AFMImage < matlab.mixin.Copyable
                 'Position',[200 200 1024 512],...
                 'Color','k');
             
-            h.ImAx = subplot(10,10,[1:8 11:18 21:28 31:38 41:48 51:58 61:68]); %dont ask...
-            h.I = imshow(obj.Processed*1e9,[],'Colormap',obj.define_afm_color_map(Brightness));
-            h.I.ButtonDownFcn = @get_and_draw_profile;
-            hold on
-            AFMImage.draw_scalebar_into_current_image(obj.NumPixelsX,obj.ScanSizeX,BarToImageRatio);
-            c = colorbar;
-            c.FontSize = round(22*(obj.NumPixelsX/1024));
-            c.Color = 'w';
-            c.Label.String = 'Height [nm]';
-            c.Label.FontSize = round(32*(obj.NumPixelsX/1024));
-            c.Label.Color = 'w';
-            
             h.B(1) = uicontrol('style','togglebutton',...
                 'String','Cross Section',...
                 'units','normalized',...
-                'position',[.8 .4 .1 .05]);
-           
-            function get_and_draw_profile(varargin)
+                'position',[.85 .5 .1 .05]);
+            
+            k = 1;
+            
+            PopUp = obj.string_of_existing();
+            
+            h.B(4) = uicontrol('style','text',...
+                'String','Channel 1',...
+                'units','normalized',...
+                'position',[.85 .85 .1 .05]);
+            
+            h.B(2) = uicontrol('style','popupmenu',...
+                'String',PopUp,...
+                'units','normalized',...
+                'position',[.85 .8 .1 .05],...
+                'Callback',@draw_channel_1);
+            
+%             set(h.B(2),'Value',)
+            
+            h.B(5) = uicontrol('style','text',...
+                'String','Channel 2',...
+                'units','normalized',...
+                'position',[.85 .7 .1 .05]);
+            
+            h.B(3) = uicontrol('style','popupmenu',...
+                'String',PopUp,...
+                'units','normalized',...
+                'position',[.85 .65 .1 .05],...
+                'Callback',@draw_channel_2);
+            
+            h.hasCrossSection = 0;
+            h.hasChannel2 = 0;
+            h.B(2).Value = 2;
+            draw_channel_1
+            
+            function draw_channel_1(varargin)
+                Channel1 = h.B(2).String{h.B(2).Value};
+                LeftRight = 'Left';
+                if h.hasChannel2 && h.hasCrossSection
+                    FullPart = 'PartTwo';
+                elseif h.hasChannel2 && ~h.hasCrossSection
+                    FullPart = 'FullTwo';
+                elseif ~h.hasChannel2 && h.hasCrossSection
+                    FullPart = 'PartOne';
+                elseif ~h.hasChannel2 && ~h.hasCrossSection
+                    FullPart = 'FullOne';
+                end
+                h.hasChannel1 = true;
+                switch Channel1
+                    case 'Height(Trace)'
+                        draw_height_image(LeftRight,FullPart,'Trace')
+                    case 'Height(Retrace)'
+                        draw_height_image(LeftRight,FullPart,'Retrace')
+                    case 'Height-Measured(Trace)'
+                        draw_height_measured_image(LeftRight,FullPart,'Trace')
+                    case 'Height-Measured(Retrace)'
+                        draw_height_measured_image(LeftRight,FullPart,'Retrace')
+                    case 'ErrorSignal(Trace)'
+                        draw_error_signal_image(LeftRight,FullPart,'Trace')
+                    case 'ErrorSignal(Retrace)'
+                        draw_error_signal_image(LeftRight,FullPart,'Retrace')
+                    case 'LateralDeflection(Trace)'
+                        draw_lateral_deflection_image(LeftRight,FullPart,'Trace')
+                    case 'LateralDeflection(Retrace)'
+                        draw_lateral_deflection_image(LeftRight,FullPart,'Retrace')
+                    case 'LockInAmplitude(Trace)'
+                        draw_processed_image(LeftRight,FullPart,'Trace')
+                    case 'LockInAmplitude(Retrace)'
+                        draw_processed_image(LeftRight,FullPart,'Retrace')
+                    case 'LockInPhase(Trace)'
+                        draw_processed_image(LeftRight,FullPart,'Trace')
+                    case 'LockInPhase(Retrace)'
+                        draw_processed_image(LeftRight,FullPart,'Retrace')
+                    case 'VerticalDeflection(Trace)'
+                        draw_processed_image(LeftRight,FullPart,'Trace')
+                    case 'VerticalDeflection(Retrace)'
+                        draw_processed_image(LeftRight,FullPart,'Retrace')
+                    case 'Processed'
+                        draw_processed_image(LeftRight,FullPart)
+                    case 'none'
+                        h.hasChannel1 = 0;
+                        draw_channel_2
+                end
+            end
+            
+            function draw_channel_2(varargin)
+                Channel2 = h.B(3).String{h.B(3).Value};
+                LeftRight = 'Right';
+                if h.hasChannel1 && h.hasCrossSection
+                    FullPart = 'PartTwo';
+                elseif h.hasChannel1 && ~h.hasCrossSection
+                    FullPart = 'FullTwo';
+                elseif ~h.hasChannel1 && h.hasCrossSection
+                    FullPart = 'PartOne';
+                elseif ~h.hasChannel1 && ~h.hasCrossSection
+                    FullPart = 'FullOne';
+                end
+                h.hasChannel2 = true;
+                switch Channel2
+                    case 'Height(Trace)'
+                        draw_height_image(LeftRight,FullPart,'Trace')
+                    case 'Height(Retrace)'
+                        draw_height_image(LeftRight,FullPart,'Retrace')
+                    case 'Height-Measured(Trace)'
+                        draw_height_measured_image(LeftRight,FullPart,'Trace')
+                    case 'Height-Measured(Retrace)'
+                        draw_height_measured_image(LeftRight,FullPart,'Retrace')
+                    case 'ErrorSignal(Trace)'
+                        draw_error_signal_image(LeftRight,FullPart,'Trace')
+                    case 'ErrorSignal(Retrace)'
+                        draw_error_signal_image(LeftRight,FullPart,'Retrace')
+                    case 'LateralDeflection(Trace)'
+                        draw_lateral_deflection_image(LeftRight,FullPart,'Trace')
+                    case 'LateralDeflection(Retrace)'
+                        draw_lateral_deflection_image(LeftRight,FullPart,'Retrace')
+                    case 'LockInAmplitude(Trace)'
+                        draw_processed_image(LeftRight,FullPart,'Trace')
+                    case 'LockInAmplitude(Retrace)'
+                        draw_processed_image(LeftRight,FullPart,'Retrace')
+                    case 'LockInPhase(Trace)'
+                        draw_processed_image(LeftRight,FullPart,'Trace')
+                    case 'LockInPhase(Retrace)'
+                        draw_processed_image(LeftRight,FullPart,'Retrace')
+                    case 'VerticalDeflection(Trace)'
+                        draw_processed_image(LeftRight,FullPart,'Trace')
+                    case 'VerticalDeflection(Retrace)'
+                        draw_processed_image(LeftRight,FullPart,'Retrace')
+                    case 'Processed'
+                        draw_processed_image(LeftRight,FullPart)
+                    case 'none'
+                        h.hasChannel2 = 0;
+                        draw_channel_1
+                end
+            end
+            
+            function moving_cross_section(src,evt)
+                evname = evt.EventName;
                 if ~get(h.B(1),'Value')
                     return
                 end
-                h.Line.Visible = 'off';
-                h.Line = drawline('Color','b','Parent',h.ImAx);
                 Pos1 = [h.Line.Position(1,1) h.Line.Position(1,2)];
                 Pos2 = [h.Line.Position(2,1) h.Line.Position(2,2)];
                 if norm(Pos1-Pos2)==0
@@ -403,6 +523,78 @@ classdef AFMImage < matlab.mixin.Copyable
                 P.LineWidth = 2;
                 P.Color = 'b';
             end
+            
+            function get_and_draw_profile(varargin)
+                if ~get(h.B(1),'Value')
+                    return
+                end
+                h.Line.Visible = 'off';
+                h.Line = drawline('Color','b','Parent',h.ImAx);
+                addlistener(h.Line,'MovingROI',@moving_cross_section);
+                addlistener(h.Line,'ROIMoved',@moving_cross_section);
+                Pos1 = [h.Line.Position(1,1) h.Line.Position(1,2)];
+                Pos2 = [h.Line.Position(2,1) h.Line.Position(2,2)];
+                if norm(Pos1-Pos2)==0
+                    get_and_draw_profile;
+                    return
+                end
+                Profile = improfile(obj.Processed,[Pos1(1) Pos2(1)],[Pos1(2) Pos2(2)]);
+                Len = norm(Pos1-Pos2)/obj.NumPixelsX*obj.ScanSizeX;
+                Points = [0:1/(length(Profile)-1):1].*Len;
+                [MultiplierY,UnitY,~] = AFMImage.parse_unit_scale(range(Profile),'m',1);
+                [MultiplierX,UnitX,~] = AFMImage.parse_unit_scale(range(Points),'m',1);
+                Ax = subplot(10,10,[71:100]);
+                P = plot(Points.*MultiplierX,Profile.*MultiplierY);
+                grid on
+                Ax.Color = 'k';
+                Ax.LineWidth = 1;
+                Ax.FontSize = 18;
+                Ax.XColor = 'w';
+                Ax.YColor = 'w';
+                Ax.GridColor = 'w';
+                xlabel(sprintf('[%s]',UnitX))
+                ylabel(sprintf('Height [%s]',UnitY))
+                xlim([0 Points(end).*MultiplierX])
+                P.LineWidth = 2;
+                P.Color = 'b';
+            end
+            
+            function draw_processed_image(LeftRight,FullPart,TraceRetrace)
+                Index = 1;
+                if isequal(FullPart,'FullOne')
+                    Domain = [1:8 11:18 21:28 31:38 41:48 51:58 61:68 71:78 81:88 91:98];
+                elseif isequal(FullPart,'FullTwo')
+                    if isequal(LeftRight,'Left')
+                    Domain = [1:4 11:14 21:24 31:34 41:44 51:54 61:64 71:74 81:84 91:94];
+                    else
+                    Domain = [5:8 15:18 25:28 35:38 45:48 55:58 65:68 75:78 85:88 95:98];
+                    Index = 2;
+                    end
+                elseif isequal(FullPart,'PartOne')
+                    Domain = [1:8 11:18 21:28 31:38 41:48 51:58 61:68 71:78];
+                elseif isequal(FullPart,'PartTwo')
+                    if isequal(LeftRight,'Left')
+                    Domain = [1:4 11:14 21:24 31:34 41:44 51:54 61:64];
+                    Index = 1;
+                    else
+                    Domain = [5:8 15:18 25:28 35:38 45:48 55:58 65:68];
+                    Index = 2;
+                    end
+                end
+                [Multiplier,Unit,~] = AFMImage.parse_unit_scale(obj.ScanSizeX,'m',1);
+                h.ImAx(Index) = subplot(10,10,Domain);
+                h.I(Index) = imshow(obj.Processed*Multiplier,[],'Colormap',obj.define_afm_color_map(Brightness));
+                h.I(Index).ButtonDownFcn = @get_and_draw_profile;
+                hold on
+                AFMImage.draw_scalebar_into_current_image(obj.NumPixelsX,obj.ScanSizeX,BarToImageRatio,h.ImAx(1).Position(3));
+                c = colorbar;
+                c.FontSize = round(22*(obj.NumPixelsX/1024));
+                c.Color = 'w';
+                c.Label.String = sprintf('Height [%s]',Unit);
+                c.Label.FontSize = round(32*(obj.NumPixelsX/1024));
+                c.Label.Color = 'w';
+            end
+            
             uiwait(h.Fig)
         end
         
@@ -809,6 +1001,50 @@ classdef AFMImage < matlab.mixin.Copyable
             obj.DeconvolutedCantileverTip = false;
         end
         
+        function PopUp = string_of_existing(obj)
+            PopUp{1} = 'none';
+            k = 2;
+            if obj.HasProcessed
+                PopUp{k} = 'Processed';
+                k = k + 1;
+            end
+            if obj.HasHeight
+                PopUp{k} = 'Height(Trace)';
+                PopUp{k+1} = 'Height(Retrace)';
+                k = k + 2;
+            end
+            if obj.HasHeightMeasured
+                PopUp{k} = 'Height-Measured(Trace)';
+                PopUp{k+1} = 'Height-Measured(Retrace)';
+                k = k + 2;
+            end
+            if obj.HasErrorSignal
+                PopUp{k} = 'ErrorSignal(Trace)';
+                PopUp{k+1} = 'ErrorSignal(Retrace)';
+                k = k + 2;
+            end
+            if obj.HasLateralDeflection
+                PopUp{k} = 'LateralDeflection(Trace)';
+                PopUp{k+1} = 'LateralDeflection(Retrace)';
+                k = k + 2;
+            end
+            if obj.HasLockInAmplitude
+                PopUp{k} = 'LockInAmplitude(Trace)';
+                PopUp{k+1} = 'LockInAmplitude(Retrace)';
+                k = k + 2;
+            end
+            if obj.HasLockInPhase
+                PopUp{k} = 'LockInPhase(Trace)';
+                PopUp{k+1} = 'LockInPhase(Retrace)';
+                k = k + 2;
+            end
+            if obj.HasVerticalDeflection
+                PopUp{k} = 'VerticalDeflection(Trace)';
+                PopUp{k+1} = 'VerticalDeflection(Retrace)';
+                k = k + 2;
+            end
+        end
+        
     end
     
     methods(Static)
@@ -962,7 +1198,7 @@ classdef AFMImage < matlab.mixin.Copyable
             Y = Y.*ScanSizeY - OriginY;
         end
         
-        function R = draw_scalebar_into_current_image(NumPixelsX,ScanSizeX,BarToImageRatio)
+        function R = draw_scalebar_into_current_image(NumPixelsX,ScanSizeX,BarToImageRatio,FontSizeMult)
             
             if nargin < 5
                 BarToImageRatio = 1/5;
@@ -986,7 +1222,7 @@ classdef AFMImage < matlab.mixin.Copyable
             
             A = text((Left+Width/2)*NumPixelsX,(Bottom-Height)*NumPixelsX,sprintf('%i %s',SnapTo,Unit),'HorizontalAlignment','center');
             A.Color = 'w';
-            A.FontSize = round(32*(NumPixelsX/1024));
+            A.FontSize = round(32*(NumPixelsX/1024*FontSizeMult));
             A.FontWeight = 'bold';
             
             

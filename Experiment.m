@@ -404,11 +404,26 @@ classdef Experiment < matlab.mixin.Copyable
             
             E.check_for_new_host();
             FMFolder = fullfile(Path,filesep,'ForceData');
-            for i=1:E.NumFiles
+            for i=1:E.NumForceMaps
                 if ~isempty(E.FM{i})
                     E.FM{i}.check_for_new_host();
                     E.FM{i}.Folder = FMFolder;
                     E.ForceMapFolders{i} = FMFolder;
+                end
+            end
+            for i=1:E.NumAFMImages
+                if ~isempty(E.I{i})
+                    E.I{i}.check_for_new_host();
+                end
+            end
+            for i=1:E.NumReferenceForceMaps
+                if ~isempty(E.RefFM{i})
+                    E.RefFM{i}.check_for_new_host();
+                end
+            end
+            for i=1:E.NumCantileverTips
+                if ~isempty(E.CantileverTips{i})
+                    E.CantileverTips{i}.check_for_new_host();
                 end
             end
             
@@ -786,6 +801,7 @@ classdef Experiment < matlab.mixin.Copyable
                 for j=1:NIter
                     obj.I{i}.Processed = obj.I{i}.subtract_line_fit_hist(obj.I{i}.Processed, UpperLim);
                 end
+                obj.I{i}.HasProcessed = 1;
             end
             close(h)
         end
