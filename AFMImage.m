@@ -59,11 +59,18 @@ classdef AFMImage < matlab.mixin.Copyable
         LockInPhase
         LateralDeflection
         VerticalDeflection
+        Processed
     end
     properties
         % Properties related to Image processing/segmenting/classification
         CMap
         MaskBackground
+    end
+    properties
+        ErodedTip
+        DepthDependendTipRadius
+        DepthDependendTipShape
+        ProjectedTipArea
     end
     properties
         % All the Flags
@@ -74,6 +81,8 @@ classdef AFMImage < matlab.mixin.Copyable
         HasLockInAmplitude
         HasLockInPhase
         HasVerticalDeflection
+        HasProcessed
+        DeconvolutedCantileverTip
     end
     
     methods
@@ -89,7 +98,7 @@ classdef AFMImage < matlab.mixin.Copyable
                 TempID = 'AFMImage detached from Experiment-class 1';
             end
             
-            obj. CMap = obj.define_afm_color_map(0.35)
+            obj. CMap = obj.define_afm_color_map(0);
             
             obj.initialize_flags
             
@@ -109,14 +118,40 @@ classdef AFMImage < matlab.mixin.Copyable
             
         end
         
+        function deconvolute_cantilever_tip(obj)
+            
+            Based = imgaussfilt(obj.subtract_line_fit_hist(obj.HeightMeasured.Trace,obj.NumPixelsY,0.4));
+            obj.MaskBackground = obj.mask_background_by_threshold(Based,1);
+            Based = obj.masked_plane_fit(Based,obj.MaskBackground);
+            ConeHeight = range(Based,'all');
+            Cone = obj.cone(obj.NumPixelsX,obj.NumPixelsY,ConeHeight,obj.ScanSizeX,obj.ScanSizeY,10e-9);
+            obj.ErodedTip = obj.deconvolute_by_mathematical_morphology(Based,Cone);
+            
+            StepSize = 1e-9;
+            
+            PixelSizeX = obj.ScanSizeX/obj.NumPixelsX;
+            PixelSizeY = obj.ScanSizeY/obj.NumPixelsY;
+            
+            obj.ProjectedTipArea = obj.calculate_projected_area(obj.ErodedTip,PixelSizeX,PixelSizeY,StepSize);
+            
+            [obj.DepthDependendTipRadius,obj.DepthDependendTipShape] = obj.calculate_depth_dependend_tip_data(obj.ProjectedTipArea,RangePercent);
+            
+            obj.DeconvolutedCantileverTip = true;
+        end
+        
+        function base_image()
+            
+        end
+        
     end
     
     methods(Static)
         % Static Main Methods
         
-        function [OutImage] = subtract_line_fit_hist(InImage,NumProfiles,CutOff)
+        function OutImage = subtract_line_fit_hist(InImage,CutOff)
             
-            NumPoints = length(InImage(1,:));
+            NumProfiles = size(InImage,1);
+            NumPoints = size(InImage,2);
             CutOff = ceil(CutOff*NumPoints);
             
             for i=1:NumProfiles
@@ -130,13 +165,74 @@ classdef AFMImage < matlab.mixin.Copyable
             OutImage = InImage;
         end
         
-        function [OutMask] = mask_background(Image)
+        function subtract_line_fit_automatically(InImage)
+            if nargin<2
+                Mask = ones(size(InImage));
+            end
             
+            for i=1:NumProfiles
+                Line = InImage(i,:)';
+                [~, SortedIndex] = sort(Line,'ascend');
+                LineFit = polyfit(SortedIndex(1:CutOff),Line(SortedIndex(1:CutOff)),1);
+                LineEval = [1:NumPoints]'*LineFit(1) + LineFit(2);
+                Line = Line - LineEval;
+                InImage(i,:) = Line;
+            end
+            OutImage = InImage;
+        end
+        
+        function OutMask = mask_background_by_threshold(Image,PercentOfRange)
+            
+            if nargin < 2
+                PercentOfRange = 5;
+            end
+            
+            Thresh = range(Image,'all')*PercentOfRange/100;
+            [Row,Col] = find((abs(Image)<=Thresh));
+            OutMask = zeros(size(Image));
+            for i=1:length(Row)
+                OutMask(Row(i),Col(i)) = 1;
+            end
+            
+        end
+        
+        function OutImage = masked_plane_fit(Image,Mask)
+            
+            % Convert Image to Point Cloud for plane fit
+            [X,Y,Z] = AFMImage.convert_masked_to_point_cloud(Image,Mask);
+            
+            [Norm,~,Point] = AFMImage.affine_fit([X Y Z]);
+            Plane = zeros(size(Image));
+            % Create the plane that can then be subtracted from the
+            % complete height data to generate the leveled height data.
+            for i=1:size(Image,1)
+                for j=1:size(Image,2)
+                    Plane(i,j) = (Point(3)-Norm(1)/Norm(3)*i-Norm(2)/Norm(3)*j);
+                end
+            end
+            
+            OutImage = Image - Plane;
+        end
+        
+        function ProjectedArea = calculate_projected_area(Image,PixelSizeX,PixelSizeY,StepSize)
+            
+            MinImage = min(Image,[],'all');
+            MaxImage = max(Image,[],'all');
+            
+            Thresh = MaxImage;
+            k = 1;
+            while Thresh >= MinImage
+                NumPointsInArea = length(find(Image >= Thresh));
+                ProjectedArea(k) = NumPointsInArea*PixelSizeX*PixelSizeY;
+                Thresh = Thresh -StepSize;
+                k = k + 1;
+            end
+            ProjectedArea = ProjectedArea';
         end
         
         function CMap = define_afm_color_map(PlusBrightness)
             if nargin == 0
-                PlusBrightness = .35;
+                PlusBrightness = 0;
             end
             CMap(:,1) = (0:1/255:1).*2 + PlusBrightness;
             CMap(:,2) = (0:1/255:1).*2 - 0.5 + PlusBrightness;
@@ -159,7 +255,7 @@ classdef AFMImage < matlab.mixin.Copyable
             OutImage=ones(InPixelsX,InPixelsY); %creates the empty image array
             
             
-            h = waitbar(0,'Please wait, Processing...');
+            h = waitbar(0,'Please wait, processing deconvolution...');
             
             %loops over all the elements and find the minimum value of w and allocate it
             for j=1:InPixelsY %loops over points in image output
@@ -177,6 +273,336 @@ classdef AFMImage < matlab.mixin.Copyable
                 end
             end
             close(h);
+        end
+        
+        function [DepthDependendTipRadius,DepthDependendTipShape] = calculate_depth_dependend_tip_data(ProjectedTipArea,RangePercent)
+            
+            if nargin < 2
+                RangePercent = 100;
+            end
+            
+            MaxIdx = floor(RangePercent/100*length(ProjectedTipArea));
+            ProjectedTipArea = ProjectedTipArea*(1e9)^2;
+            DepthDependendTipRadius = zeros(MaxIdx,1);
+            DepthDependendTipShape = cell(MaxIdx,1);
+            
+            % Fit a sphere and a parabola for every depthstep and choose
+            % the one with better fit. Start at 5nm ind. depth 
+            for i=5:MaxIdx
+                % fit projected area of a parabolic tip
+                SphOpt = fitoptions('Method','NonlinearLeastSquares',...
+                    'Lower',0,...
+                    'Upper',inf,...
+                    'MaxIter',4000,...
+                    'StartPoint',1e-6,...
+                    'Normalize','off',...
+                    'DiffMaxChange',1e20,...
+                    'DiffMinChange',1e-20,...
+                    'MaxFunEvals',4000,...
+                    'TolFun',1e-20,...
+                    'TolX',1e-20);
+                ProjAParabola = fittype('pi*a*x',...
+                    'dependent',{'y'},'independent',{'x'},...
+                    'coefficients',{'a'},...
+                    'options',SphOpt);
+                Depth = [1:i]';
+                [ParabolaFit,GoFParabola] = fit(Depth,...
+                    ProjectedTipArea(1:i),...
+                    ProjAParabola);
+                RParabola = 1/(2*ParabolaFit.a);
+                % fit projected area of a spherical tip
+                ProjASphere = fittype('(R^2-(R-x)^2)',...
+                    'dependent',{'y'},'independent',{'x'},...
+                    'coefficients',{'R'},...
+                    'options',SphOpt);
+                [SphereFit,GoFSphere] = fit(Depth,...
+                    ProjectedTipArea(1:i),...
+                    ProjASphere);
+                RSphere = SphereFit.R;
+                if GoFParabola.rmse <= GoFSphere.rmse
+                    DepthDependendTipRadius(i) = RParabola;
+                    DepthDependendTipShape{i} = 'parabolic';
+                else
+                    DepthDependendTipRadius(i) = RSphere;
+                    DepthDependendTipShape{i} = 'spherical';
+                end
+                plot(Depth,ProjectedTipArea(1:i),'rO',Depth,feval(SphereFit,Depth),'b',Depth,feval(ParabolaFit,Depth),'g')
+                legend({'Proj. A. from Eroded Tip','Proj. A. Spherical Fit','Proj. A. Parabolic Fit'})
+                title({'Spherical Fit',sprintf('Radius:%d nm  Depth:%i nm GoF.rmse: %d',SphereFit.R,i,GoFSphere.rmse),...
+                    'Parabolic Fit',sprintf('Radius:%d nm  Depth:%i nm GoF.rmse: %d',RParabola,i,GoFParabola.rmse)})
+                % choose the better fit and fill Output
+            end
+            % Fill the first 4 nm with the data from the 5th nm
+            for i=1:4
+                DepthDependendTipRadius(i) = DepthDependendTipRadius(5);
+                DepthDependendTipShape(i) = DepthDependendTipShape(5);
+            end
+            
+        end
+        
+    end
+    
+    methods
+        % Methods for image visualisation and output
+        function show_image(obj)
+            % TODO: implement ui elements for customization
+            Brightness = 0;
+            BarToImageRatio = 1/5;
+            
+            h.Fig = figure('Name',sprintf('[Processed] %s',obj.Name),...
+                'Units','pixels',...
+                'Position',[200 200 1024 512],...
+                'Color','k');
+            
+            h.B(1) = uicontrol('style','togglebutton',...
+                'String','Cross Section',...
+                'units','normalized',...
+                'position',[.85 .5 .1 .05],...
+                'Callback',@cross_section_toggle);
+            
+            PopUp = obj.string_of_existing();
+            
+            h.B(4) = uicontrol('style','text',...
+                'String','Channel 1',...
+                'units','normalized',...
+                'position',[.85 .85 .1 .05]);
+            
+            h.B(2) = uicontrol('style','popupmenu',...
+                'String',PopUp,...
+                'units','normalized',...
+                'position',[.85 .8 .1 .05],...
+                'Callback',@draw_channel_1);
+            
+            h.B(5) = uicontrol('style','text',...
+                'String','Channel 2',...
+                'units','normalized',...
+                'position',[.85 .7 .1 .05]);
+            
+            h.B(3) = uicontrol('style','popupmenu',...
+                'String',PopUp,...
+                'units','normalized',...
+                'position',[.85 .65 .1 .05],...
+                'Callback',@draw_channel_2);
+            
+            h.hasCrossSection = 0;
+            h.hasChannel2 = 0;
+            h.B(2).Value = 2;
+            draw_channel_1
+            
+            function cross_section_toggle(varargin)
+                h.hasCrossSection = ~h.hasCrossSection;
+                draw_channel_1
+                draw_channel_2
+            end
+            
+            function draw_channel_1(varargin)
+                Channel1 = h.B(2).String{h.B(2).Value};
+                LeftRight = 'Left';
+                if h.hasChannel2 && h.hasCrossSection
+                    FullPart = 'PartTwo';
+                elseif h.hasChannel2 && ~h.hasCrossSection
+                    FullPart = 'FullTwo';
+                elseif ~h.hasChannel2 && h.hasCrossSection
+                    FullPart = 'PartOne';
+                elseif ~h.hasChannel2 && ~h.hasCrossSection
+                    FullPart = 'FullOne';
+                end
+                h.hasChannel1 = true;
+                switch Channel1
+                    case 'Height(Trace)'
+                        draw_height_image(LeftRight,FullPart,'Trace')
+                    case 'Height(Retrace)'
+                        draw_height_image(LeftRight,FullPart,'Retrace')
+                    case 'Height-Measured(Trace)'
+                        draw_height_measured_image(LeftRight,FullPart,'Trace')
+                    case 'Height-Measured(Retrace)'
+                        draw_height_measured_image(LeftRight,FullPart,'Retrace')
+                    case 'ErrorSignal(Trace)'
+                        draw_error_signal_image(LeftRight,FullPart,'Trace')
+                    case 'ErrorSignal(Retrace)'
+                        draw_error_signal_image(LeftRight,FullPart,'Retrace')
+                    case 'LateralDeflection(Trace)'
+                        draw_lateral_deflection_image(LeftRight,FullPart,'Trace')
+                    case 'LateralDeflection(Retrace)'
+                        draw_lateral_deflection_image(LeftRight,FullPart,'Retrace')
+                    case 'LockInAmplitude(Trace)'
+                        draw_processed_image(LeftRight,FullPart,'Trace')
+                    case 'LockInAmplitude(Retrace)'
+                        draw_processed_image(LeftRight,FullPart,'Retrace')
+                    case 'LockInPhase(Trace)'
+                        draw_processed_image(LeftRight,FullPart,'Trace')
+                    case 'LockInPhase(Retrace)'
+                        draw_processed_image(LeftRight,FullPart,'Retrace')
+                    case 'VerticalDeflection(Trace)'
+                        draw_processed_image(LeftRight,FullPart,'Trace')
+                    case 'VerticalDeflection(Retrace)'
+                        draw_processed_image(LeftRight,FullPart,'Retrace')
+                    case 'Processed'
+                        draw_processed_image(LeftRight,FullPart)
+                    case 'none'
+                        h.hasChannel1 = 0;
+                        draw_channel_2
+                end
+            end
+            
+            function draw_channel_2(varargin)
+                Channel2 = h.B(3).String{h.B(3).Value};
+                LeftRight = 'Right';
+                if h.hasChannel1 && h.hasCrossSection
+                    FullPart = 'PartTwo';
+                elseif h.hasChannel1 && ~h.hasCrossSection
+                    FullPart = 'FullTwo';
+                elseif ~h.hasChannel1 && h.hasCrossSection
+                    FullPart = 'PartOne';
+                elseif ~h.hasChannel1 && ~h.hasCrossSection
+                    FullPart = 'FullOne';
+                end
+                h.hasChannel2 = true;
+                switch Channel2
+                    case 'Height(Trace)'
+                        draw_height_image(LeftRight,FullPart,'Trace')
+                    case 'Height(Retrace)'
+                        draw_height_image(LeftRight,FullPart,'Retrace')
+                    case 'Height-Measured(Trace)'
+                        draw_height_measured_image(LeftRight,FullPart,'Trace')
+                    case 'Height-Measured(Retrace)'
+                        draw_height_measured_image(LeftRight,FullPart,'Retrace')
+                    case 'ErrorSignal(Trace)'
+                        draw_error_signal_image(LeftRight,FullPart,'Trace')
+                    case 'ErrorSignal(Retrace)'
+                        draw_error_signal_image(LeftRight,FullPart,'Retrace')
+                    case 'LateralDeflection(Trace)'
+                        draw_lateral_deflection_image(LeftRight,FullPart,'Trace')
+                    case 'LateralDeflection(Retrace)'
+                        draw_lateral_deflection_image(LeftRight,FullPart,'Retrace')
+                    case 'LockInAmplitude(Trace)'
+                        draw_processed_image(LeftRight,FullPart,'Trace')
+                    case 'LockInAmplitude(Retrace)'
+                        draw_processed_image(LeftRight,FullPart,'Retrace')
+                    case 'LockInPhase(Trace)'
+                        draw_processed_image(LeftRight,FullPart,'Trace')
+                    case 'LockInPhase(Retrace)'
+                        draw_processed_image(LeftRight,FullPart,'Retrace')
+                    case 'VerticalDeflection(Trace)'
+                        draw_processed_image(LeftRight,FullPart,'Trace')
+                    case 'VerticalDeflection(Retrace)'
+                        draw_processed_image(LeftRight,FullPart,'Retrace')
+                    case 'Processed'
+                        draw_processed_image(LeftRight,FullPart)
+                    case 'none'
+                        h.hasChannel2 = 0;
+                        draw_channel_1
+                end
+            end
+            
+            function moving_cross_section(src,evt)
+                evname = evt.EventName;
+                if ~get(h.B(1),'Value')
+                    return
+                end
+                Pos1 = [h.Line.Position(1,1) h.Line.Position(1,2)];
+                Pos2 = [h.Line.Position(2,1) h.Line.Position(2,2)];
+                if norm(Pos1-Pos2)==0
+                    get_and_draw_profile;
+                    return
+                end
+                Profile = improfile(obj.Processed,[Pos1(1) Pos2(1)],[Pos1(2) Pos2(2)]);
+                Len = norm(Pos1-Pos2)/obj.NumPixelsX*obj.ScanSizeX;
+                Points = [0:1/(length(Profile)-1):1].*Len;
+                [MultiplierY,UnitY,~] = AFMImage.parse_unit_scale(range(Profile),'m',1);
+                [MultiplierX,UnitX,~] = AFMImage.parse_unit_scale(range(Points),'m',1);
+                Ax = subplot(10,10,[71:100]);
+                P = plot(Points.*MultiplierX,Profile.*MultiplierY);
+                grid on
+                Ax.Color = 'k';
+                Ax.LineWidth = 1;
+                Ax.FontSize = 18;
+                Ax.XColor = 'w';
+                Ax.YColor = 'w';
+                Ax.GridColor = 'w';
+                xlabel(sprintf('[%s]',UnitX))
+                ylabel(sprintf('Height [%s]',UnitY))
+                xlim([0 Points(end).*MultiplierX])
+                P.LineWidth = 2;
+                P.Color = 'b';
+            end
+            
+            function get_and_draw_profile_channel_1(varargin)
+                if ~get(h.B(1),'Value')
+                    return
+                end
+                h.Line.Visible = 'off';
+                h.Line = drawline('Color','b','Parent',h.ImAx(1));
+                addlistener(h.Line,'MovingROI',@moving_cross_section);
+                addlistener(h.Line,'ROIMoved',@moving_cross_section);
+                Pos1 = [h.Line.Position(1,1) h.Line.Position(1,2)];
+                Pos2 = [h.Line.Position(2,1) h.Line.Position(2,2)];
+                if norm(Pos1-Pos2)==0
+                    get_and_draw_profile_channel_1;
+                    return
+                end
+                Profile = improfile(obj.Processed,[Pos1(1) Pos2(1)],[Pos1(2) Pos2(2)]);
+                Len = norm(Pos1-Pos2)/obj.NumPixelsX*obj.ScanSizeX;
+                Points = [0:1/(length(Profile)-1):1].*Len;
+                [MultiplierY,UnitY,~] = AFMImage.parse_unit_scale(range(Profile),'m',1);
+                [MultiplierX,UnitX,~] = AFMImage.parse_unit_scale(range(Points),'m',1);
+                Ax = subplot(10,10,[71:100]);
+                P = plot(Points.*MultiplierX,Profile.*MultiplierY);
+                grid on
+                Ax.Color = 'k';
+                Ax.LineWidth = 1;
+                Ax.FontSize = 18;
+                Ax.XColor = 'w';
+                Ax.YColor = 'w';
+                Ax.GridColor = 'w';
+                xlabel(sprintf('[%s]',UnitX))
+                ylabel(sprintf('Height [%s]',UnitY))
+                xlim([0 Points(end).*MultiplierX])
+                P.LineWidth = 2;
+                P.Color = 'b';
+            end
+            
+            function draw_processed_image(LeftRight,FullPart,TraceRetrace)
+                Index = 1;
+                if isequal(FullPart,'FullOne')
+                    Domain = [1:8 11:18 21:28 31:38 41:48 51:58 61:68 71:78 81:88 91:98];
+                elseif isequal(FullPart,'FullTwo')
+                    if isequal(LeftRight,'Left')
+                    Domain = [1:4 11:14 21:24 31:34 41:44 51:54 61:64 71:74 81:84 91:94];
+                    else
+                    Domain = [5:8 15:18 25:28 35:38 45:48 55:58 65:68 75:78 85:88 95:98];
+                    Index = 2;
+                    end
+                elseif isequal(FullPart,'PartOne')
+                    Domain = [1:8 11:18 21:28 31:38 41:48 51:58 61:68 71:78];
+                elseif isequal(FullPart,'PartTwo')
+                    if isequal(LeftRight,'Left')
+                    Domain = [1:4 11:14 21:24 31:34 41:44 51:54 61:64];
+                    Index = 1;
+                    else
+                    Domain = [5:8 15:18 25:28 35:38 45:48 55:58 65:68];
+                    Index = 2;
+                    end
+                end
+                [Multiplier,Unit,~] = AFMImage.parse_unit_scale(obj.ScanSizeX,'m',1);
+                h.ImAx(Index) = subplot(10,10,Domain);
+                h.I(Index) = imshow(obj.Processed*Multiplier,[],'Colormap',obj.define_afm_color_map(Brightness));
+                if Index == 1
+                    h.I(Index).ButtonDownFcn = @get_and_draw_profile_channel_1;
+                else
+                    h.I(Index).ButtonDownFcn = @get_and_draw_profile_channel_2;
+                end
+                hold on
+                AFMImage.draw_scalebar_into_current_image(obj.NumPixelsX,obj.ScanSizeX,BarToImageRatio,h.ImAx(Index).Position(3));
+                c = colorbar;
+                c.FontSize = round(22*(obj.NumPixelsX/1024));
+                c.Color = 'w';
+                c.Label.String = sprintf('Height [%s]',Unit);
+                c.Label.FontSize = round(32*(obj.NumPixelsX/1024));
+                c.Label.Color = 'w';
+            end
+            
+            uiwait(h.Fig)
         end
         
     end
@@ -577,7 +1003,53 @@ classdef AFMImage < matlab.mixin.Copyable
             obj.HasLockInAmplitude = false;
             obj.HasLockInPhase = false;
             obj.HasVerticalDeflection = false;
+            obj.HasProcessed = false;
             
+            obj.DeconvolutedCantileverTip = false;
+        end
+        
+        function PopUp = string_of_existing(obj)
+            PopUp{1} = 'none';
+            k = 2;
+            if obj.HasProcessed
+                PopUp{k} = 'Processed';
+                k = k + 1;
+            end
+            if obj.HasHeight
+                PopUp{k} = 'Height(Trace)';
+                PopUp{k+1} = 'Height(Retrace)';
+                k = k + 2;
+            end
+            if obj.HasHeightMeasured
+                PopUp{k} = 'Height-Measured(Trace)';
+                PopUp{k+1} = 'Height-Measured(Retrace)';
+                k = k + 2;
+            end
+            if obj.HasErrorSignal
+                PopUp{k} = 'ErrorSignal(Trace)';
+                PopUp{k+1} = 'ErrorSignal(Retrace)';
+                k = k + 2;
+            end
+            if obj.HasLateralDeflection
+                PopUp{k} = 'LateralDeflection(Trace)';
+                PopUp{k+1} = 'LateralDeflection(Retrace)';
+                k = k + 2;
+            end
+            if obj.HasLockInAmplitude
+                PopUp{k} = 'LockInAmplitude(Trace)';
+                PopUp{k+1} = 'LockInAmplitude(Retrace)';
+                k = k + 2;
+            end
+            if obj.HasLockInPhase
+                PopUp{k} = 'LockInPhase(Trace)';
+                PopUp{k+1} = 'LockInPhase(Retrace)';
+                k = k + 2;
+            end
+            if obj.HasVerticalDeflection
+                PopUp{k} = 'VerticalDeflection(Trace)';
+                PopUp{k+1} = 'VerticalDeflection(Retrace)';
+                k = k + 2;
+            end
         end
         
     end
@@ -677,6 +1149,140 @@ classdef AFMImage < matlab.mixin.Copyable
                     
                 end
             end
+        end
+        
+        function [n,V,p] = affine_fit(X)
+            %Computes the plane that fits best (lest square of the normal distance
+            %to the plane) a set of sample points.
+            %INPUTS:
+            %
+            %X: a N by 3 matrix where each line is a sample point
+            %
+            %OUTPUTS:
+            %
+            %n : a unit (column) vector normal to the plane
+            %V : a 3 by 2 matrix. The columns of V form an orthonormal basis of the
+            %plane
+            %p : a point belonging to the plane
+            %
+            %NB: this code actually works in any dimension (2,3,4,...)
+            %Author: Adrien Leygue
+            %Date: August 30 2013
+            
+            %the mean of the samples belongs to the plane
+            p = mean(X,1);
+            
+            %The samples are reduced:
+            R = bsxfun(@minus,X,p);
+            %Computation of the principal directions if the samples cloud
+            [V,D] = eig(R'*R);
+            %Extract the output from the eigenvectors
+            n = V(:,1);
+            V = V(:,2:end);
+        end
+        
+        function [X,Y,Z] = convert_masked_to_point_cloud(Image,Mask,ScanSizeX,ScanSizeY,OriginX,OriginY)
+            
+            if nargin<4
+                ScanSizeX = 1;
+                ScanSizeY = 1;
+                OriginX = 0;
+                OriginY = 0;
+            end
+            if nargin<6
+                OriginX = 0;
+                OriginY = 0;
+            end
+            
+            
+            [X,Y] = find(Mask);
+            Z = zeros(length(X),1);
+            for i=1:length(X)
+                Z(i) = Image(X(i),Y(i));
+            end
+            
+            X = X.*ScanSizeX - OriginX;
+            Y = Y.*ScanSizeY - OriginY;
+        end
+        
+        function R = draw_scalebar_into_current_image(NumPixelsX,ScanSizeX,BarToImageRatio,FontSizeMult)
+            
+            if nargin < 5
+                BarToImageRatio = 1/5;
+            end
+            
+            ScalebarThickness = 1/40;
+            DistFromBorder = 0.1;
+            
+            [Multiplier,Unit,SnapTo] = AFMImage.parse_unit_scale(ScanSizeX,'m',BarToImageRatio);
+            
+            Width = (SnapTo)/(ScanSizeX*Multiplier);
+            Height = ScalebarThickness;
+            Left = 1-Width*(1+DistFromBorder);
+            Bottom = 1-(DistFromBorder-Height);
+            
+            R = rectangle('Position',[Left Bottom Width Height].*NumPixelsX);
+            R.FaceColor = 'w';
+            R.EdgeColor = 'k';
+            R.LineWidth = 2;
+            
+            
+            A = text((Left+Width/2)*NumPixelsX,(Bottom-Height)*NumPixelsX,sprintf('%i %s',SnapTo,Unit),'HorizontalAlignment','center');
+            A.Color = 'w';
+            A.FontSize = round(32*(NumPixelsX/1024*FontSizeMult));
+            A.FontWeight = 'bold';
+            
+            
+        end
+        
+        function [Multiplier,Unit,SnapTo] = parse_unit_scale(ScanSize,Unit,Mult)
+            
+            ScaleSize = ScanSize*Mult;
+            
+            if (ScaleSize < 1e-11)
+                Multiplier = 1e12;
+                Prefix = 'p';
+                SnapTo = round(ScaleSize*Multiplier,0);
+            elseif (ScaleSize < 1e-10) && (ScaleSize >= 1e-11)
+                Multiplier = 1e12;
+                Prefix = 'p';
+                SnapTo = round(ScaleSize*Multiplier,-1);
+            elseif (ScaleSize < 1e-9) && (ScaleSize >= 1e-10)
+                Multiplier = 1e12;
+                Prefix = 'p';
+                SnapTo = round(ScaleSize*Multiplier,-2);
+            elseif (ScaleSize < 1e-8) && (ScaleSize >= 1e-9)
+                Multiplier = 1e9;
+                Prefix = 'n';
+                SnapTo = round(ScaleSize*Multiplier,0);
+            elseif (ScaleSize < 1e-7) && (ScaleSize >= 1e-8)
+                Multiplier = 1e9;
+                Prefix = 'n';
+                SnapTo = round(ScaleSize*Multiplier,-1);
+            elseif (ScaleSize < 1e-6) && (ScaleSize >= 1e-7)
+                Multiplier = 1e9;
+                Prefix = 'n';
+                SnapTo = round(ScaleSize*Multiplier,-2);
+            elseif (ScaleSize < 1e-5) && (ScaleSize >= 1e-6)
+                Multiplier = 1e6;
+                Prefix = '\mu';
+                SnapTo = round(ScaleSize*Multiplier,0);
+            elseif (ScaleSize < 1e-4) && (ScaleSize >= 1e-5)
+                Multiplier = 1e6;
+                Prefix = '\mu';
+                SnapTo = round(ScaleSize*Multiplier,-1);
+            elseif (ScaleSize < 1e-3) && (ScaleSize >= 1e-4)
+                Multiplier = 1e6;
+                Prefix = '\mu';
+                SnapTo = round(ScaleSize*Multiplier,-2);
+            else
+                Multiplier = 1;
+                Prefix = '';
+                SnapTo = round(ScaleSize*Multiplier);
+            end
+            
+            Unit = sprintf('%s%s',Prefix,Unit);
+            
         end
         
     end
