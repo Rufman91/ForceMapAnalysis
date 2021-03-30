@@ -574,7 +574,7 @@ classdef Experiment < matlab.mixin.Copyable
                 end
                 % Check if all needed tips are deconvoluted, if not, do it
                 for i=1:obj.NumForceMaps
-                    if ~obj.CantileverTips{obj.WhichTip(i)}.DeconvolutedCantileverTip
+                    if ~obj.CantileverTips{obj.WhichTip(i)}.hasDeconvolutedCantileverTip
                         obj.CantileverTips{obj.WhichTip(i)}.deconvolute_cantilever_tip;
                     end
                 end
@@ -734,7 +734,7 @@ classdef Experiment < matlab.mixin.Copyable
                 end
                 % Check if all needed tips are deconvoluted, if not, do it
                 for i=1:obj.NumForceMaps
-                    if ~obj.CantileverTips{obj.WhichTip(i)}.DeconvolutedCantileverTip
+                    if ~obj.CantileverTips{obj.WhichTip(i)}.hasDeconvolutedCantileverTip
                         obj.CantileverTips{obj.WhichTip(i)}.deconvolute_cantilever_tip;
                     end
                 end
