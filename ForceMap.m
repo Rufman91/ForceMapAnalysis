@@ -878,7 +878,7 @@ classdef ForceMap < matlab.mixin.Copyable
             % [E,HertzFit] = calculate_e_mod_hertz(obj,CPType,TipShape,curve_percent)
             %
             % calculate the E modulus of the chosen curves using the CP
-            % type chosen in the arguments fitting the lower curve_percent
+            % type chosen in the arguments fitting the upper curve_percent
             % part of the curves
             if ~exist('curve_percent','var') && ischar('curve_percent')
                 curve_percent = 0.75;
@@ -3020,7 +3020,9 @@ classdef ForceMap < matlab.mixin.Copyable
             subplot(2,1,1)
             title(sprintf('Curve Nr.%i of %s',k,obj.Name))
             hold on
-            plot(obj.HHApp{k}*1e9,obj.BasedApp{k}*1e9,obj.HHRet{k}*1e9,obj.BasedRet{k}*1e9,'LineWidth',1.5);
+            [MultiplierX,UnitX,~] = AFMImage.parse_unit_scale(range(obj.HHRet{k}),'m',10);
+            [MultiplierY,UnitY,~] = AFMImage.parse_unit_scale(range(obj.BasedRet{k}),'N',10);
+            plot(obj.HHApp{k}*MultiplierX,obj.BasedApp{k}*MultiplierY,obj.HHRet{k}*MultiplierX,obj.BasedRet{k}*MultiplierY,'LineWidth',1.5);
             Legends = {'Approach','Retract'};
             
             if obj.CPFlag.HertzFitted == 1
@@ -3133,8 +3135,8 @@ classdef ForceMap < matlab.mixin.Copyable
             
             legend(Legends,...
                 'Location','northwest');
-            xlabel('Cantilever Head Height [nm]');
-            ylabel('vDeflection-Force [nN]');
+            xlabel(sprintf('Cantilever Head Height [%s]',UnitX));
+            ylabel(sprintf('vDeflection-Force [%s]',UnitY));
             grid on
             grid minor
             %             dim = [0.4 0.3 0.6 0.6];
@@ -3679,135 +3681,3 @@ classdef ForceMap < matlab.mixin.Copyable
     end
     
 end
-
-% Function Graveyard
-
-%%%%% this constructor method version goes together with Martin
-%%%%% Handelhausers .py-script for .jpk-force-map -> .cvs
-%%%%% conversion. Might be needed at some point in the future.
-%         function obj = ForceMap(mapfilepath,mapname)
-%             %%% Constructor of the class
-%
-%             % Specify the folder where the files live. And import them.
-%             % Also get curent folder and return to it after import of
-%             % files.
-%             % Assigns the properties that can be found in the jpk-file
-%             % already
-%
-%             current = what();
-%
-%             % determine if ForceMap is given a loadpath for existing .mat
-%             if nargin > 0
-%                 cd(mapfilepath);
-%                 file = dir(sprintf('%s.mat',mapname));
-%                 load(file.name);
-%                 cd(current.path);
-%                 msg = sprintf('loading %s',obj.Name);
-%                 disp(msg);
-%                 disp('loading successfull')
-%                 return
-%             end
-%
-%             quest = 'Do you want to load an already existing .mat file of the force map?';
-%             answer = questdlg(quest,'Load map...','...from .mat-file','...from .cvs-folder','...from .cvs-folder');
-%             if isequal(answer, '...from .mat-file')
-%                 [mapfile, mapfilepath] = uigetfile();
-%                 cd(mapfilepath);
-%                 load(mapfile,'-mat');
-%                 cd(current.path);
-%                 msg = sprintf('loading %s',obj.Name);
-%                 disp(msg);
-%                 disp('loading successfull')
-%                 obj.Folder = mapfilepath;
-%                 return
-%             else
-%             end
-%
-%
-%             obj.Folder = uigetdir;
-%             cd(obj.Folder);
-%             splitfolder = strsplit(obj.Folder,'\');
-%             obj.Name = string(splitfolder(end));
-%             msg = sprintf('loading %s',obj.Name);
-%             disp(msg);
-%
-%             % Get a list of all files in the folder with the desired file name pattern.
-%             % Change to whatever pattern you used for the names of your force map files.
-%             filePattern = fullfile(obj.Folder, '*.csv');
-%             theFiles = dir(filePattern);
-%             % Check to make sure files of specified patterns have been found
-%             if length(theFiles) < 1
-%                 errorMessage = 'No files of the specified name pattern have been found in the current directory';
-%                 uiwait(warndlg(errorMessage));
-%                 return;
-%             end
-%
-%             % Import data from csv-files
-%             import_header = importdata(theFiles(2).name);
-%             k = 1;
-%             for i=1:length(import_header)
-%                 if isempty(strfind(import_header{i},'start-option.'))
-%                     obj.Header{k,1} = import_header{i};
-%                     k = k + 1;
-%                 end
-%             end
-%             for i=1:length(obj.Header)
-%                 split = strsplit(obj.Header{i,1},",");
-%                 if length(split) > 1
-%                     obj.Header{i,2} = str2double(split{2});
-%                     obj.Header{i,1} = split{1};
-%                 else
-%                 end
-%             end
-%             % Apply scaling multipliers from header to curve data and
-%             % delete placeholder data points from curves where piezo range
-%             % was too small
-%             TempApp = readmatrix(theFiles(1).name);
-%             TempHHApp = readmatrix(theFiles(3).name)*(-obj.Header{9,2}) - obj.Header{8,2};
-%             obj.NCurves = obj.Header{5,2}*obj.Header{6,2};
-%
-%             for i=1:obj.NCurves
-%                 DelNApp = round(TempApp(end,i),6,'significant');
-%                 if DelNApp == round(TempApp(end-1,i),6,'significant')
-%                     DelMap = DelNApp;
-%                     k = 1;
-%                     while DelNApp == round(TempApp(end-k,i),6,'significant')
-%                         k = k + 1;
-%                     end
-%                     obj.App{i} = TempApp(1:(end-k),i);
-%                 else
-%                     obj.App{i} = TempApp(:,i);
-%                 end
-%                 obj.HHApp{i} = TempHHApp(1:length(obj.App{i}),i);
-%             end
-%
-%             for i=1:obj.NCurves
-%                 if round(obj.App{i}(end),6,'significant') == DelMap
-%                     obj.App{i}(end) = [];
-%                     obj.HHApp{i}(end) = [];
-%                 end
-%             end
-%
-%             obj.HHRet = mat2cell(readmatrix(theFiles(4).name)*obj.Header{11,2},...
-%                 [obj.Header{3,2}],ones(obj.Header{5,2}*obj.Header{6,2},1));
-%             obj.Ret = mat2cell(readmatrix(theFiles(5).name),...
-%                 [obj.Header{3,2}],ones(obj.Header{5,2}*obj.Header{6,2},1));
-%             obj.PixApp = obj.Header{2,2};
-%             obj.PixRet = obj.Header{3,2};
-%             obj.Sensitivity = obj.Header{16,2};
-%             obj.SelectedCurves = ones(obj.NCurves,1);
-%             obj.Man_CP = zeros(obj.NCurves,2);
-%             obj.NumProfiles = obj.Header{6,2};
-%             obj.NumPoints = obj.Header{5,2};
-%             obj.SpringConstant = obj.Header{17,2};
-%
-%             obj.create_and_level_height_map();
-%
-%             cd(current.path);
-%             current = what();
-%             cd(obj.Folder)
-%             savename = sprintf('%s.mat',obj.Name);
-%             save(savename,'obj')
-%             cd(current.path)
-%             disp('loading successfull. object saved in objects folder')
-%         end

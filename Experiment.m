@@ -404,11 +404,26 @@ classdef Experiment < matlab.mixin.Copyable
             
             E.check_for_new_host();
             FMFolder = fullfile(Path,filesep,'ForceData');
-            for i=1:E.NumFiles
+            for i=1:E.NumForceMaps
                 if ~isempty(E.FM{i})
                     E.FM{i}.check_for_new_host();
                     E.FM{i}.Folder = FMFolder;
                     E.ForceMapFolders{i} = FMFolder;
+                end
+            end
+            for i=1:E.NumAFMImages
+                if ~isempty(E.I{i})
+                    E.I{i}.check_for_new_host();
+                end
+            end
+            for i=1:E.NumReferenceForceMaps
+                if ~isempty(E.RefFM{i})
+                    E.RefFM{i}.check_for_new_host();
+                end
+            end
+            for i=1:E.NumCantileverTips
+                if ~isempty(E.CantileverTips{i})
+                    E.CantileverTips{i}.check_for_new_host();
                 end
             end
             
@@ -559,7 +574,7 @@ classdef Experiment < matlab.mixin.Copyable
                 end
                 % Check if all needed tips are deconvoluted, if not, do it
                 for i=1:obj.NumForceMaps
-                    if ~obj.CantileverTips{obj.WhichTip(i)}.DeconvolutedCantileverTip
+                    if ~obj.CantileverTips{obj.WhichTip(i)}.hasDeconvolutedCantileverTip
                         obj.CantileverTips{obj.WhichTip(i)}.deconvolute_cantilever_tip;
                     end
                 end
@@ -719,7 +734,7 @@ classdef Experiment < matlab.mixin.Copyable
                 end
                 % Check if all needed tips are deconvoluted, if not, do it
                 for i=1:obj.NumForceMaps
-                    if ~obj.CantileverTips{obj.WhichTip(i)}.DeconvolutedCantileverTip
+                    if ~obj.CantileverTips{obj.WhichTip(i)}.hasDeconvolutedCantileverTip
                         obj.CantileverTips{obj.WhichTip(i)}.deconvolute_cantilever_tip;
                     end
                 end
@@ -770,6 +785,25 @@ classdef Experiment < matlab.mixin.Copyable
             
             close(h);
             obj.write_to_log_file('','','end')
+        end
+        
+        function image_analysis_base_on_even_background(obj,UpperLim,NIter)
+            
+            if nargin < 2
+                UpperLim = 1;
+                NIter = 1;
+            end
+            %main loop
+            h = waitbar(0,'setting up...');
+            for i=1:obj.NumAFMImages
+                waitbar(i/obj.NumAFMImages,h,{sprintf('Processing %i/%i:',i,obj.NumAFMImages),sprintf('%s',obj.I{i}.Name)});
+                obj.I{i}.Processed = obj.I{i}.subtract_line_fit_hist(obj.I{i}.HeightMeasured.Trace, UpperLim);
+                for j=1:NIter
+                    obj.I{i}.Processed = obj.I{i}.subtract_line_fit_hist(obj.I{i}.Processed, UpperLim);
+                end
+                obj.I{i}.HasProcessed = 1;
+            end
+            close(h)
         end
         
         function surface_potential_analysis_fibril(obj)
