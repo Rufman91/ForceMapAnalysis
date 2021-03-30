@@ -1110,13 +1110,13 @@ classdef Experiment < matlab.mixin.Copyable
             % Change into the Folder of Interest
             cd(obj.ExperimentFolder) % Move into the folder 
             % Input variable adaptation
-            if nargin<2      
+            if nargin<2
+                StartDate='0000.00.00';
+                EndDate='2999.00.00';
                 XMin= -inf;     % Limit of the X-axis in meters (m)  
                 XMax= inf;      % Limit of the X-axis in meters (m)
                 YMin= -inf;     % Limit of the Y-axis in Newtons (N)   
                 YMax= inf;      % Limit of the Y-axis in Newtons (N)
-                StartDate='0000.00.00';
-                EndDate='2999.00.00';
         %    elseif nargin<6
          %       XMax= 50e-9;      % Limit of the X-axis in meters (m)
           %      YMax= 100e-12;      % Limit of the Y-axis in Newtons (N)
@@ -1129,9 +1129,9 @@ classdef Experiment < matlab.mixin.Copyable
                 % Needed function
                 obj.FM{ii}.fc_chipprop
                 %if ~obj.SMFSFlag(ii)     % Selects all flagged 1 force maps
-                if obj.SMFSFlag(ii)     % Selects all flagged 0 force maps
-                    continue
-                end
+                %if obj.SMFSFlag(ii)     % Selects all flagged 0 force maps
+                %    continue
+                %end
                 % Remove the dots in the dates               
                 FMDate=split(obj.FM{ii}.Date,'.');
                 StartDateSplit=split(StartDate,'.');
@@ -1265,27 +1265,169 @@ classdef Experiment < matlab.mixin.Copyable
             end    
         end
                 
-        function SMFS_histo_force(obj)
-            % for ii=1:obj.NumFiles
-            for ii=1:3 %  Debugging
-            histogram(obj.FM{ii}.MinRetSel)
-            end
+        function SMFS_analysis_classified(obj)
+            % Trial 10: Mica-HOH
+            % Cantilever 3
+            ii=235;
+            jj=236;
+                C3=cat(2,obj.FM{ii}.RetAdhEnergy,obj.FM{jj}.RetAdhEnergy);
+                C3Mean=mean(C3);
+                C3Std=std(C3);
+                C3Pull=cat(2,obj.FM{ii}.PullingLength ,obj.FM{jj}.PullingLength);
+                C3PullMean=mean(C3Pull);
+                C3PullStd=std(C3Pull);
+            % Cantilever 4
+            kk=241;
+            ll=242;
+                C4=cat(2,obj.FM{kk}.RetAdhEnergy,obj.FM{ll}.RetAdhEnergy);
+                C4Mean=mean(C4);
+                C4Std=std(C4);
+                C4Pull=cat(2,obj.FM{kk}.PullingLength ,obj.FM{ll}.PullingLength);
+                C4PullMean=mean(C4Pull);
+                C4PullStd=std(C4Pull);
+%             % Cantilever 5
+%             mm=245;
+%             nn=246;
+%                 C5=cat(2,obj.FM{mm}.RetAdhEnergy,obj.FM{nn}.RetAdhEnergy);
+%                 C5Mean=mean(C5);
+%                 C5Std=std(C5);
+%                 C5Pull=cat(2,obj.FM{mm}.PullingLength ,obj.FM{nn}.PullingLength);
+%                 C5PullMean=mean(C5Pull);
+%                 C5PullStd=std(C5Pull);
+            % Cantilever 7
+            oo=261;
+                C7=obj.FM{oo}.RetAdhEnergy;
+                C7Mean=mean(C7);
+                C7Std=std(C7);
+                C7Pull=obj.FM{oo}.PullingLength;
+                C7PullMean=mean(C7Pull);
+                C7PullStd=std(C7Pull);
+             % Concatenate arrays
+             CantRetAdhEnergyMean=cat(1,C3Mean,C4Mean,C7Mean);
+             CantRetAdhEnergyStd=cat(1,C3Std,C4Std,C7Std);
+             CantPullingLengthMean=cat(1,C3PullMean,C4PullMean,C7PullMean);
+             CantPullingLengthStd=cat(1,C3PullStd,C4PullStd,C7PullStd);
+             CantRetAdhCorrPullinglength=CantRetAdhEnergyMean./CantPullingLengthMean;
+             
+            % figure 1
+            h_fig=figure(1);
+            h_fig.Color='white'; % changes the background color of the figure
+            h_fig.Units='normalized'; % Defines the units
+            h_fig.OuterPosition=[0 0 1 1];% changes the size of the to the whole screen
+            h_fig.PaperOrientation='landscape';
+            [columns,~]=size(CantRetAdhEnergyMean);
+            errlow=CantRetAdhEnergyStd*-1;
+            errhigh=CantRetAdhEnergyStd;
+            xbar=1:1:columns;
+            % bar chart
+            bar(xbar,CantRetAdhEnergyMean)
+            hold on
+            er = errorbar(xbar,CantRetAdhEnergyMean,errhigh,errlow);    
+            er.Color = [0 0 0];                            
+            er.LineStyle = 'none';
+            hold off
+            %%% Axes 
+            ax = gca; % current axes
+            ax.FontSize = 20;
+            ax.XLabel.String = 'Cantilever';
+            ax.XLabel.FontSize = 20;
+            ax.YLabel.String = 'Adhesion Energy (N*m)';
+            ax.YLabel.FontSize = 20;
+            % figure 2
+            h_fig=figure(2);
+            h_fig.Color='white'; % changes the background color of the figure
+            h_fig.Units='normalized'; % Defines the units
+            h_fig.OuterPosition=[0 0 1 1];% changes the size of the to the whole screen
+            h_fig.PaperOrientation='landscape';
+            [columns,~]=size(CantPullingLengthMean);
+            errlow=CantPullingLengthStd*-1;
+            errhigh=CantPullingLengthStd;
+            xbar=1:1:columns;
+            % bar chart
+            bar(xbar,CantPullingLengthMean)
+            hold on
+            er = errorbar(xbar,CantPullingLengthMean,errhigh,errlow);    
+            er.Color = [0 0 0];                            
+            er.LineStyle = 'none';
+            hold off
+            %%% Axes 
+            ax = gca; % current axes
+            ax.FontSize = 20;
+            ax.XLabel.String = 'Cantilever';
+            ax.XLabel.FontSize = 20;
+            ax.YLabel.String = 'Pulling length (m)';
+            ax.YLabel.FontSize = 20;
+            % figure 3
+            h_fig=figure(3);
+            h_fig.Color='white'; % changes the background color of the figure
+            h_fig.Units='normalized'; % Defines the units
+            h_fig.OuterPosition=[0 0 1 1];% changes the size of the to the whole screen
+            h_fig.PaperOrientation='landscape';
+            [columns,~]=size(CantRetAdhCorrPullinglength);
+            xbar=1:1:columns;
+            % bar chart
+            bar(xbar,CantRetAdhCorrPullinglength)
+            %%% Axes 
+            ax = gca; % current axes
+            ax.FontSize = 20;
+            ax.XLabel.String = 'Cantilever';
+            ax.XLabel.FontSize = 20;
+            ax.YLabel.String = 'Ahesion Energy / Pulling length (N)';
+            ax.YLabel.FontSize = 20;
+        
         end
         
-        function SMFS_analysis(obj,Condition,Substrate)
+        function SMFS_analysis(obj,XMin,XMax,YMin,YMax)
            
+            % Input variable adaptation
+            if nargin<2
+                XMin= -inf;     % Limit of the X-axis in meters (m)  
+                XMax= inf;      % Limit of the X-axis in meters (m)
+                YMin= -inf;     % Limit of the Y-axis in Newtons (N)   
+                YMax= inf;      % Limit of the Y-axis in Newtons (N)
+            end
+            if nargin < 4         
+                XMax= 50e-9;      % Limit of the X-axis in meters (m)
+                YMax= 100e-12;      % Limit of the Y-axis in Newtons (N)
+            end
+            %% Folder
+            % Change into the Folder of Interest
+            cd(obj.ExperimentFolder) % Move into the folder 
+            % Create folders for saving the produced figures
+            %foldername='FM_test';    % for debugging
+            foldername='FM_analysis';    % Defines the folder name
+            mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
+            currpath=fullfile(obj.ExperimentFolder,foldername);
+            cd(currpath); 
+            %% loop
             %for ii=1:obj.NumFiles
-            for ii=276:obj.NumFiles % Debugging
+            for ii=261 % Debugging
+            sprintf('Force map No. %d',ii);
+            % Pulling length
+            obj.FM{ii}.fc_pulling_length
             % Adhesion energy
-            if obj.FM{ii}.EnvCond==Condition %&& obj.FM{ii}.Substrate==Substrate
+            %if obj.FM{ii}.EnvCond==Condition %&& obj.FM{ii}.Substrate==Substrate
             obj.FM{ii}.fc_adhesion_energy
-            else
-            continue
+            obj.FM{ii}.fc_print_adhenergy_pulllength(XMin,XMax,YMin,YMax)
+            %else
+            %continue
+            %end            
+            end
+           % obj.RetAdhEnergyMean=
+        end
+        
+        function SMFS_figure(obj,XMin,XMax,YMin,YMax)
+            
+            if nargin < 2
+                XMin= -inf;
+                XMax= inf;
+                YMin= -inf;
+                YMax= inf;
             end
             
-            end
+            ii=93;
+            obj.FM{ii}.fc_figure(XMin,XMax,YMin,YMax)
         end
-        
     end
     methods
         %%%   WARNING! %%%

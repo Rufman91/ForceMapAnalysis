@@ -154,10 +154,25 @@ classdef ForceMap < matlab.mixin.Copyable
         SMFSFlag        %
         BasedRetCorr    % BasedRet data corrected based on a selection of the approach data
         BasedRetCorr2   % BasedRet data corrected based on a selection of the retraction data
+        CorrMeanApp     % Mean of a selection of the approach data for baseline correction
+        CorrStdApp      % Corresponding standard deviation of the selection of the approach data for baseline correction
+        CorrMeanRet     % Mean of a selection of the retraction data for baseline correction
+        CorrStdRet      % Corresponding standard deviation of the selection of the retraction data for baseline correction
+        CorrMeanApp1     % Mean of a selection of the approach data for baseline correction
+        CorrStdApp1     % Corresponding standard deviation of the selection of the approach data for baseline correction
+        CorrMeanRet1     % Mean of a selection of the retraction data for baseline correction
+        CorrStdRet1      % Corresponding standard deviation of the selection of the retraction data for baseline correction  
         MinRetSel       % Minimum retention data within a selected range on the x-axis which represents the maximum adhesion force within a selected distance range
         EndIdx          % Index correspoding to a predefined value
+        yRetLim2        % Modified retraction data to allow a valid integration
         RetAdhEnergy    % Adhesion Energy of the retraction curve
+        FMRetAdhEnergyMean  % Mean of the adhesion energy of a force map
+        FMRetAdhEnergyStd   % Standard deviation of the adhesion energy of a force map
+        PullingLengthIdx % Index of the data point identified as pulling length value
         PullingLength   % Pulling length in meters (m)
+        FMPullingLengthMean  % Mean pulling length of a force map in meters (m)   
+        FMPullingLengthMin   % Min pulling length of a force map in meters (m) 
+        FMPullingLengthMax   % Max pulling length of a force map in meters (m) 
     end
     
     methods
@@ -1198,154 +1213,6 @@ classdef ForceMap < matlab.mixin.Copyable
             obj.MinRetSel = MinRetSel;
         end
        
-        
-        function fc_adhesion_energy(obj,DataShareStart,DataShareEnd)
-            if nargin <2
-                DataShareStart=0.01; % 1%
-                DataShareEnd=0.06; % 6%
-            end
-            
-            % Loop over all force curves
-            for kk=1:100
-                DataPts=size(obj.BasedRet{kk}); % Determine the quantity of data points in the force curve
-                LimitIdx1=round(DataPts(1)*DataShareStart); % Determine the corresponidng index
-                LimitIdx2=round(DataPts(1)*DataShareEnd);
-                CorrMean=mean(obj.BasedRet{kk}(DataPts(1)-LimitIdx2:DataPts(1)-LimitIdx1,1)); % Calculate the mean of the difference data
-                obj.BasedRetCorr2{kk}=obj.BasedRet{kk}-CorrMean; % Correct the BasedRet data with the mean of the correction data
-                
-                % Allocate data
-                xApp=obj.THApp{kk}-obj.CP_HardSurface(kk);
-                xRet=obj.THRet{kk}-obj.CP_HardSurface(kk);
-                yApp=obj.BasedApp{kk};
-                yRet=obj.BasedRetCorr2{kk};
-                yAppLim=yApp;
-                yRetLim=yRet;
-                
-                % Set all values above the zero line of the x-axis 0
-                limit1=0;   % Define the limit
-                yAppLim(yAppLim>limit1)=0;
-                yRetLim(yRetLim>limit1)=0;
-                yAppLim1=yAppLim;
-                yRetLim1=yRetLim;
-                % Set all values < -20pN also 0
-                limit2=-20e-12;  % Define the limit
-                yAppLim(yAppLim>limit2)=0;
-                yRetLim(yRetLim>limit2)=0;
-                yAppLim2=yAppLim;
-                yRetLim2=yRetLim;
-                
-                % Determine the adhesion energy
-                IntAppLim2(kk)=trapz(xApp,yAppLim2); % Integrate the modified approach data
-                IntRetLim2(kk)=trapz(xRet,yRetLim2); % Integrate the modified retraction data
-            end
-            
-            obj.RetAdhEnergy(kk)=IntRetLim2(kk);
-            
-%             % %% Appendix
-%             close all
-%             % Graphical preview
-%             h_fig=figure(1);
-%             h_fig.Color='white'; % changes the background color of the figure
-%             h_fig.Units='normalized'; % Defines the units
-%             h_fig.OuterPosition=[0 0 1 1];% changes the size of the to the whole screen
-%             h_fig.PaperOrientation='landscape';
-%             %% Plotting the tiles
-%             t = tiledlayout(3,3);
-%             %t.TileSpacing = 'compact';
-%             %t.Padding = 'compact';
-%             t.TileSpacing = 'none'; % To reduce the spacing between the tiles
-%             t.Padding = 'none'; % To reduce the padding of perimeter of a tile
-%             nexttile
-%             hold on
-%             grid on
-%             plot(xApp,yApp,'g');
-%             plot(xRet,obj.BasedRet{fc},'r');
-%             plot(xRet,yRet,'b');
-%             nexttile
-%             hold on
-%             grid on
-%             plot(xRet,obj.BasedRet{fc},'r');
-%             plot(xRet,obj.BasedRet{fc},'r');
-%             plot(xRet(DataPts(1)-LimitIdx2:DataPts(1)-LimitIdx1,1),obj.BasedRet{fc}(DataPts(1)-LimitIdx2:DataPts(1)-LimitIdx1,1),'b');
-%             plot(xRet,BasedRetCorr2{fc},'g');
-%             nexttile;
-%             area(xApp,yApp,'FaceColor','y')
-%             nexttile;
-%             area(xRet,yRet,'FaceColor','y')
-%             nexttile;
-%             area(xApp,yAppLim1,'FaceColor','y')
-%             nexttile;
-%             area(xRet,yRetLim1,'FaceColor','y')
-%             nexttile;
-%             area(xApp,yAppLim2,'FaceColor','y')
-%             nexttile;
-%             area(xRet,yRetLim2,'FaceColor','y')
-%             nexttile
-%             hold on
-%             grid on
-%             plot(xApp,yApp,'g');
-%             plot(xRet,yRet,'b');
-%             area(xRet,yRetLim2,'FaceColor','y')        
-        end
-
-        function fc_pulling_length(obj)
-            
-            %% Determine BasedRetCorr2
-            DataShareStart=0.01; % 5%
-            DataShareEnd=0.06; % 10%
-            
-            % loop over all force curves
-            %   for kk=1:100
-            DataPts=size(obj.BasedRet{ii}); % Determine the quantity of data points in the force curve
-            LimitIdx1=round(DataPts(1)*DataShareStart); % Determine the corresponidng index
-            LimitIdx2=round(DataPts(1)*DataShareEnd);
-            CorrMean=mean(obj.BasedRet{ii}(DataPts(1)-LimitIdx2:DataPts(1)-LimitIdx1,1)); % Calculate the mean of the difference data
-            CorrStd=std(obj.BasedRet{ii}(DataPts(1)-LimitIdx2:DataPts(1)-LimitIdx1,1));   % Calculate the standard deviation of the difference data
-            BasedRetCorr2{ii}=obj.BasedRet{ii}-CorrMean; % Correct the BasedRet data with the mean of the correction data
-            
-            
-            %% Allocate data
-            xApp=obj.THApp{ii}-obj.CP_HardSurface(fc);
-            xRet=obj.THRet{ii}-obj.CP_HardSurface(fc);
-            yApp=obj.BasedApp{ii};
-            yRet=BasedRetCorr2{ii};
-            
-            %%
-            InterceptIdx=find(yRet<CorrMean-CorrStd*6,1,'last'); % Finds the index of the value that fulfils the condition
-            yIntercept=yRet(InterceptIdx); % Corresponding y-value of the index
-            xIntercept=xRet(InterceptIdx); % Corresponding x-value of the index
-            
-            obj.PullingLength=xIntercept*-1;
-            
-            % %% Appendix
-            close all
-            % Graphical preview
-            h_fig=figure(1);
-            h_fig.Color='white'; % changes the background color of the figure
-            h_fig.Units='normalized'; % Defines the units
-            h_fig.OuterPosition=[0 0 1 1];% changes the size of the to the whole screen
-            h_fig.PaperOrientation='landscape';
-            %% Plotting the tiles
-            t = tiledlayout(3,3);
-            %t.TileSpacing = 'compact';
-            %t.Padding = 'compact';
-            t.TileSpacing = 'none'; % To reduce the spacing between the tiles
-            t.Padding = 'none'; % To reduce the padding of perimeter of a tile
-            nexttile
-            hold on
-            grid on
-            plot(xApp,yApp,'b');
-            plot(xRet,yRet,'r');
-            nexttile
-            hold on
-            grid on
-            plot(xApp,yApp,'b');
-            plot(xRet,yRet,'r');
-            plot(xIntercept,yIntercept,'*','MarkerSize',10,'MarkerEdgeColor','g')
-            
-            
-        end
-        
         function fc_based_ret_correction(obj,DataShareStartApp,DataShareEndApp,DataShareStartRet,DataShareEndRet)  
             % fc_based_ret_correction: A function to correct for an AFM
             % based baseline deviation between the approach and retraction
@@ -1357,27 +1224,24 @@ classdef ForceMap < matlab.mixin.Copyable
             DataShareEndRet=0.06; % 5%
         end
         % Loop over all force curves  
-        for kk=1:100
+        for ii=1:100
             % Correction based on the approach data
-            DataPtsApp=size(obj.BasedApp{kk}); % Determine the quantity of data points in the force curve 
+            DataPtsApp=size(obj.BasedApp{ii}); % Determine the quantity of data points in the force curve 
             LimitIdxApp1=round(DataPtsApp(1)*DataShareStartApp); % Determine the corresponidng index
             LimitIdxApp2=round(DataPtsApp(1)*DataShareEndApp);
-            CorrMeanApp=mean(abs(obj.BasedApp{kk}(LimitIdxApp1:LimitIdxApp2,1))-abs(obj.BasedRet{kk}(DataPtsApp(1)-LimitIdxApp2:DataPtsApp(1)-LimitIdxApp1,1))); % Calculate the mean of the difference data
-            CorrStdApp=std(obj.BasedApp{kk}(DataPtsApp(1)-LimitIdxApp2:DataPtsApp(1)-LimitIdxApp1,1));  
-           
-            obj.BasedRetCorr{kk}=obj.BasedRet{kk}-CorrMeanApp; % Correct the BasedRet data with the mean of the correction data
+            obj.CorrMeanApp1(ii)=mean(abs(obj.BasedApp{ii}(LimitIdxApp1:LimitIdxApp2,1))-abs(obj.BasedRet{ii}(DataPtsApp(1)-LimitIdxApp2:DataPtsApp(1)-LimitIdxApp1,1))); % Calculate the mean of the difference data
+            obj.CorrStdApp1(ii)=std(obj.BasedApp{ii}(DataPtsApp(1)-LimitIdxApp2:DataPtsApp(1)-LimitIdxApp1,1));             
+            obj.BasedRetCorr{ii}=obj.BasedRet{ii}-obj.CorrMeanApp1(ii); % Correct the BasedRet data with the mean of the correction data
             
             % Correction based on the retraction data
             DataPtsRet=size(obj.BasedRet{ii}); % Determine the quantity of data points in the force curve 
             LimitIdxRet1=round(DataPtsRet(1)*DataShareStartRet); % Determine the corresponidng index
             LimitIdxRet2=round(DataPtsRet(1)*DataShareEndRet);
-            CorrMeanRet=mean(obj.BasedRet{kk}(DataPtsRet(1)-LimitIdxRet2:DataPtsRet(1)-LimitIdxRet1,1)); % Calculate the mean of the difference data
-            CorrStdRet=std(obj.BasedRet{kk}(DataPtsRet(1)-LimitIdxRet2:DataPtsRet(1)-LimitIdxRet1,1));   % Calculate the standard deviation of the difference data
-            
-            obj.BasedRetCorr2{kk}=obj.BasedRet{ii}-CorrMeanRet; % Correct the BasedRet data with the mean of the correction data
-          
+            obj.CorrMeanRet1(ii)=mean(obj.BasedRet{ii}(DataPtsRet(1)-LimitIdxRet2:DataPtsRet(1)-LimitIdxRet1,1)); % Calculate the mean of the difference data
+            obj.CorrStdRet1(ii)=std(obj.BasedRet{ii}(DataPtsRet(1)-LimitIdxRet2:DataPtsRet(1)-LimitIdxRet1,1));   % Calculate the standard deviation of the difference data            
+            obj.BasedRetCorr2{ii}=obj.BasedRet{ii}-obj.CorrMeanRet1(ii); % Correct the BasedRet data with the mean of the correction data          
         end   
-             
+              
         % %% Appendix
         % close all
         % % Define variables
@@ -1407,8 +1271,7 @@ classdef ForceMap < matlab.mixin.Copyable
         % line([x100 x100], ylim,'Color','k'); % Draws a vertical line
         % line([x500 x500], ylim,'Color','k'); % Draws a vertical line
         end
-        
-      
+             
         function fc_chipprop(obj)
                  
                 % Chip number and Cantilever
@@ -1494,7 +1357,129 @@ classdef ForceMap < matlab.mixin.Copyable
                     obj.Linker='short'; % short linker                
                 end
         end
-        
+                   
+        function fc_adhesion_energy(obj)
+            
+            % Loop over all force curves
+            for ii=1:100
+                % Allocate data
+                xApp=obj.THApp{ii}-obj.CP_HardSurface(ii);
+                xRet=obj.THRet{ii}-obj.CP_HardSurface(ii);
+                yAppLim=obj.BasedApp{ii};
+                yRetLim=obj.BasedRetCorr2{ii};
+                % Define variables
+                limit1=0;   % Define the limit
+                limit2=-20e-12;  % Define the limit
+                % Set all values = limit1 and < limit2 = 0
+                yAppLim(yAppLim>limit1)=0;  % Set all values above the zero line of the x-axis 0
+                yRetLim(yRetLim>limit1)=0;  % Set all values above the zero line of the x-axis 0
+                yAppLim1=yAppLim;
+                yRetLim1=yRetLim;                           
+                yAppLim(yAppLim>limit2)=0;
+                yRetLim(yRetLim>limit2)=0;
+                yAppLim2=yAppLim;
+                obj.yRetLim2{ii}=yRetLim;
+                
+                % Determine the adhesion energy
+                IntAppLim2(ii)=trapz(xApp,yAppLim); % Integrate the modified approach data
+                IntRetLim2(ii)=trapz(xRet,yRetLim); % Integrate the modified retraction data
+                
+                obj.RetAdhEnergy(ii)=IntRetLim2(ii);
+            end
+                obj.FMRetAdhEnergyMean=mean(obj.RetAdhEnergy);
+                obj.FMRetAdhEnergyStd=std(obj.RetAdhEnergy);
+            
+%             % %% Appendix
+%             close all
+%             % Graphical preview
+%             h_fig=figure(1);
+%             h_fig.Color='white'; % changes the background color of the figure
+%             h_fig.Units='normalized'; % Defines the units
+%             h_fig.OuterPosition=[0 0 1 1];% changes the size of the to the whole screen
+%             h_fig.PaperOrientation='landscape';
+%             %% Plotting the tiles
+%             t = tiledlayout(3,3);
+%             %t.TileSpacing = 'compact';
+%             %t.Padding = 'compact';
+%             t.TileSpacing = 'none'; % To reduce the spacing between the tiles
+%             t.Padding = 'none'; % To reduce the padding of perimeter of a tile
+%             nexttile
+%             hold on
+%             grid on
+%             plot(xApp,yApp,'g');
+%             plot(xRet,obj.BasedRet{fc},'r');
+%             plot(xRet,yRet,'b');
+%             nexttile
+%             hold on
+%             grid on
+%             plot(xRet,obj.BasedRet{fc},'r');
+%             plot(xRet,obj.BasedRet{fc},'r');
+%             plot(xRet(DataPts(1)-LimitIdx2:DataPts(1)-LimitIdx1,1),obj.BasedRet{fc}(DataPts(1)-LimitIdx2:DataPts(1)-LimitIdx1,1),'b');
+%             plot(xRet,BasedRetCorr2{fc},'g');
+%             nexttile;
+%             area(xApp,yApp,'FaceColor','y')
+%             nexttile;
+%             area(xRet,yRet,'FaceColor','y')
+%             nexttile;
+%             area(xApp,yAppLim1,'FaceColor','y')
+%             nexttile;
+%             area(xRet,yRetLim1,'FaceColor','y')
+%             nexttile;
+%             area(xApp,yAppLim2,'FaceColor','y')
+%             nexttile;
+%             area(xRet,yRetLim2,'FaceColor','y')
+%             nexttile
+%             hold on
+%             grid on
+%             plot(xApp,yApp,'g');
+%             plot(xRet,yRet,'b');
+%             area(xRet,yRetLim2,'FaceColor','y')        
+        end
+
+        function fc_pulling_length(obj)
+            sigma=4;
+            for ii=1:100                  
+            % Allocate data
+            xApp=obj.THApp{ii}-obj.CP_HardSurface(ii);
+            xRet=obj.THRet{ii}-obj.CP_HardSurface(ii);
+            yApp=obj.BasedApp{ii};
+            yRet=obj.BasedRetCorr2{ii};
+            
+            % Determine the pulling length 
+            obj.PullingLengthIdx(ii)=find(yRet<obj.CorrMeanRet1(ii)-obj.CorrStdRet1(ii)*sigma,1,'last'); % Finds the index of the value that fulfils the condition         
+            obj.PullingLength(ii)=abs(xRet(obj.PullingLengthIdx(ii))); % Corresponding x-value of the index
+            end
+            obj.FMPullingLengthMean=mean(obj.PullingLength);
+            obj.FMPullingLengthMin=min(obj.PullingLength);
+            obj.FMPullingLengthMax=max(obj.PullingLength);
+            
+            % %% Appendix
+%             close all
+%             % Graphical preview
+%             h_fig=figure(1);
+%             h_fig.Color='white'; % changes the background color of the figure
+%             h_fig.Units='normalized'; % Defines the units
+%             h_fig.OuterPosition=[0 0 1 1];% changes the size of the to the whole screen
+%             h_fig.PaperOrientation='landscape';
+%             %% Plotting the tiles
+%             t = tiledlayout(3,3);
+%             %t.TileSpacing = 'compact';
+%             %t.Padding = 'compact';
+%             t.TileSpacing = 'none'; % To reduce the spacing between the tiles
+%             t.Padding = 'none'; % To reduce the padding of perimeter of a tile
+%             nexttile
+%             hold on
+%             grid on
+%             plot(xApp,yApp,'b');
+%             plot(xRet,yRet,'r');
+%             nexttile
+%             hold on
+%             grid on
+%             plot(xApp,yApp,'b');
+%             plot(xRet,yRet,'r');
+%             plot(xIntercept,yIntercept,'*','MarkerSize',10,'MarkerEdgeColor','g')                      
+        end
+                             
         function fc_print(obj,XMin,XMax,YMin,YMax) % fc ... force curve
             % fc_print: A function to simply plot all force curves of a
             % force map without any selection taking place
@@ -1586,6 +1571,82 @@ classdef ForceMap < matlab.mixin.Copyable
         close Figure 1 Figure 2 Figure 3 Figure 4
         end
         
+        function fc_print_adhenergy_pulllength(obj,XMin,XMax,YMin,YMax) % fc ... force curve
+            % fc_print: A function to simply plot all force curves of a
+            % force map without any selection taking place
+            if nargin < 2
+                XMin= -inf;
+                XMax= inf;
+                YMin= -inf;
+                YMax= inf;
+            end
+            % Define remainder situation
+            Remainder=mod(obj.NCurves,25);
+            NFigures=floor(obj.NCurves./25);
+            if Remainder ~= 0
+                NFigures=NFigures+1;
+            end
+            % Define variables for the figure name
+            VelocityConvert=num2str(obj.Velocity*1e+9); % Convert into nm
+            % Classification criteria
+            figname=strcat(obj.ModDate,{'_'},obj.ModTime,{'_'},obj.ID,{'_'},obj.Substrate,{'_'},obj.EnvCond,{'_'},VelocityConvert,{'_'},obj.Chipbox,{'_'},obj.ChipCant);
+            figname=char(figname);
+            %% figure loop
+            for ii=1:NFigures
+                % Allocate data
+                xApp=obj.THApp{ii}-obj.CP_HardSurface(ii);
+                xRet=obj.THRet{ii}-obj.CP_HardSurface(ii);
+                yApp=obj.BasedApp{ii};
+                yRet=obj.BasedRetCorr2{ii};               
+                % figure
+                h_fig=figure(ii);
+                h_fig.Color='white'; % changes the background color of the figure
+                h_fig.Units='normalized'; % Defines the units
+                h_fig.OuterPosition=[0 0 1 1];% changes the size of the to the whole screen
+                h_fig.PaperOrientation='landscape';
+                h_fig.Name=figname;      
+                %% Plotting the tiles
+                t = tiledlayout(5,5);
+                %t.TileSpacing = 'compact';
+                %t.Padding = 'compact';
+                t.TileSpacing = 'none'; % To reduce the spacing between the tiles
+                t.Padding = 'none'; % To reduce the padding of perimeter of a tile
+                % Defining variables
+                if ii==NFigures && Remainder~=0
+                    NLoop=Remainder;
+                else
+                    NLoop=25;
+                end
+                %% Plot loop
+                for jj=1:NLoop
+                    % Tile jj
+                    kk=jj+25*(ii-1);
+                    ax=nexttile;
+                    ax.XLim = [XMin XMax];
+                    ax.YLim = [YMin YMax];
+                    hold on
+                    grid on
+                    plot(obj.THApp{kk}-obj.CP_HardSurface(kk),obj.BasedApp{kk},'b');
+                    plot(obj.THRet{kk}-obj.CP_HardSurface(kk),obj.BasedRetCorr2{kk},'r');
+                    %plot(xRet(obj.PullingLengthIdx(kk)),yRet(obj.PullingLengthIdx(kk)),'*','MarkerSize',10,'MarkerEdgeColor','g')
+                    plot(obj.THRet{kk}(obj.PullingLengthIdx(kk))-obj.CP_HardSurface(kk),obj.BasedRetCorr2{kk}(obj.PullingLengthIdx(kk)),'*','MarkerSize',10,'MarkerEdgeColor','g')
+                    area(obj.THRet{kk}-obj.CP_HardSurface(kk),obj.yRetLim2{kk},'FaceColor','y')
+                    % Title for each Subplot
+                    ti=title(sprintf('%i',kk),'Color','k');
+                    ti.Units='normalized'; % Set units to 'normalized'
+                    ti.Position=[0.5,1]; % Position the subplot title within the subplot
+                end
+            %% Save figures
+            %%% Define the name for the figure title    
+            partname=sprintf('-p%d',ii);        
+            % fullname=sprintf('%s%s',figname,partname);
+            fullname=sprintf('%s%s',figname,partname);
+            %%% Save the current figure in the current folder
+            print(gcf,fullname,'-dpng');
+            end
+            close Figure 1 Figure 2 Figure 3 Figure 4
+        end
+                
         function fc_selection(obj,XMin,XMax,YMin,YMax) % fc ... force curve
             
             % Define remainder situation
@@ -1813,8 +1874,82 @@ classdef ForceMap < matlab.mixin.Copyable
 %             line([x500 x500], ylim,'Color','k'); % Draws a vertical line      
         end
        
-   end  
-        
+        function fc_figure(obj,XMin,XMax,YMin,YMax)
+            
+            % Define RGB colours
+            RGB1=[0 26 255]./255;  % Blue 
+            RGB2=[255 119 0]./255; % Orange
+            RGB10=[205 207 208]./255; % Grey
+            
+            % Define some variables
+            kk=89;
+            VelocityConvert=num2str(obj.Velocity*1e+9); % Convert into nm
+            figname=strcat(obj.ModDate,{'_'},obj.ModTime,{'_'},obj.ID,{'_'},obj.Substrate,{'_'},obj.EnvCond,{'_'},VelocityConvert,{'_'},obj.Chipbox,{'_'},obj.ChipCant);
+            figname=char(figname);
+%             
+%                area(obj.THRet{kk}-obj.CP_HardSurface(kk),obj.yRetLim2{kk},'FaceColor',RGB10)
+%             plot(obj.THApp{kk}-obj.CP_HardSurface(kk),obj.BasedApp{kk},'Color',RGB1,'LineWidth',4);
+%             plot(obj.THRet{kk}-obj.CP_HardSurface(kk),obj.BasedRetCorr2{kk},'Color',RGB2,'LineWidth',4);     
+%          
+            % Allocate data
+           xApp1=(obj.THApp{kk}-obj.CP_HardSurface(kk))*-1e9;
+          %  xApp1b=(obj.THApp{kk})*-1e9;
+            yApp1=(obj.BasedApp{kk})*1e9;
+            xRet1=(obj.THRet{kk}-obj.CP_HardSurface(kk))*-1e9;
+            xRet1b=(obj.THRet{kk})*-1e9;
+      %      yRet1=(obj.BasedRetCorr2{kk})*1e9;
+            yRet1b=(obj.BasedRet{kk})*1e9;
+         %   yRet2=(obj.yRetLim2{kk})*1e9;
+            
+            if nargin < 2
+                XMin= -inf;
+                XMax= inf;
+                YMin= -inf;
+                YMax= inf;
+            end
+            
+            % Figure
+            h_fig=figure(7);
+            h_fig.Color='white'; % changes the background color of the figure
+            h_fig.Units='normalized'; % Defines the units
+            h_fig.OuterPosition=[0 0 1 1];% changes the size of the to the whole screen
+            h_fig.PaperOrientation='landscape';
+            h_fig.Name=figname;
+            % Plot
+            hold on
+            grid on
+          %  area(xRet1,yRet2,'FaceColor',RGB10);
+            plot(xApp1,yApp1,'Color',RGB1,'LineWidth',4);
+            plot(xRet1,yRet1b,'Color',RGB2,'LineWidth',4);     
+            % Title for each Subplot
+           % ti=title(sprintf('Typical force-distance curve',kk),'Color','k');
+           % ti.Units='normalized'; % Set units to 'normalized'
+           % ti.Position=[0.5,1]; % Position the subplot title within the subplot
+            % Legend
+            % legend('Approach','Retraction','Location','best')
+            %%% Axes
+            ax = gca; % current axes
+            ax.FontSize = 20;
+           % ax.XTick=[];
+            ax.XTickLabel=[];
+           % ax.YTick=[];
+            ax.YTickLabel=[];
+          %  ax.XLabel.String = 'Tip-Substrate separation (nm)';
+            ax.XLabel.FontSize = 20;
+         %   ax.YLabel.String = 'Force (nN)';
+            ax.YLabel.FontSize = 20;
+            ax.XLim = [XMin XMax];
+            ax.YLim = [YMin YMax];
+            %% Save figures
+            %%% Define the name for the figure title
+            partname=sprintf('-ForceCurve%d',kk);
+            % fullname=sprintf('%s%s',figname,partname);
+            fullname=sprintf('%s%s',figname,partname);
+            %%% Save the current figure in the current folder
+            print(gcf,fullname,'-dpng');
+        end
+       
+    end      
     methods (Static)
         % Auxiliary methods
         
