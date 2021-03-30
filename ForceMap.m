@@ -3273,7 +3273,9 @@ classdef ForceMap < matlab.mixin.Copyable
             subplot(2,1,1)
             title(sprintf('Curve Nr.%i of %s',k,obj.Name))
             hold on
-            plot(obj.HHApp{k}*1e9,obj.BasedApp{k}*1e9,obj.HHRet{k}*1e9,obj.BasedRet{k}*1e9,'LineWidth',1.5);
+            [MultiplierX,UnitX,~] = AFMImage.parse_unit_scale(range(obj.HHRet{k}),'m',10);
+            [MultiplierY,UnitY,~] = AFMImage.parse_unit_scale(range(obj.BasedRet{k}),'N',10);
+            plot(obj.HHApp{k}*MultiplierX,obj.BasedApp{k}*MultiplierY,obj.HHRet{k}*MultiplierX,obj.BasedRet{k}*MultiplierY,'LineWidth',1.5);
             Legends = {'Approach','Retract'};
             
             if obj.CPFlag.HertzFitted == 1
@@ -3386,8 +3388,8 @@ classdef ForceMap < matlab.mixin.Copyable
             
             legend(Legends,...
                 'Location','northwest');
-            xlabel('Cantilever Head Height [nm]');
-            ylabel('vDeflection-Force [nN]');
+            xlabel(sprintf('Cantilever Head Height [%s]',UnitX));
+            ylabel(sprintf('vDeflection-Force [%s]',UnitY));
             grid on
             grid minor
             %             dim = [0.4 0.3 0.6 0.6];
