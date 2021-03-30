@@ -357,9 +357,8 @@ classdef AFMImage < matlab.mixin.Copyable
             h.B(1) = uicontrol('style','togglebutton',...
                 'String','Cross Section',...
                 'units','normalized',...
-                'position',[.85 .5 .1 .05]);
-            
-            k = 1;
+                'position',[.85 .5 .1 .05],...
+                'Callback',@cross_section_toggle);
             
             PopUp = obj.string_of_existing();
             
@@ -373,8 +372,6 @@ classdef AFMImage < matlab.mixin.Copyable
                 'units','normalized',...
                 'position',[.85 .8 .1 .05],...
                 'Callback',@draw_channel_1);
-            
-%             set(h.B(2),'Value',)
             
             h.B(5) = uicontrol('style','text',...
                 'String','Channel 2',...
@@ -391,6 +388,12 @@ classdef AFMImage < matlab.mixin.Copyable
             h.hasChannel2 = 0;
             h.B(2).Value = 2;
             draw_channel_1
+            
+            function cross_section_toggle(varargin)
+                h.hasCrossSection = ~h.hasCrossSection;
+                draw_channel_1
+                draw_channel_2
+            end
             
             function draw_channel_1(varargin)
                 Channel1 = h.B(2).String{h.B(2).Value};
@@ -524,18 +527,18 @@ classdef AFMImage < matlab.mixin.Copyable
                 P.Color = 'b';
             end
             
-            function get_and_draw_profile(varargin)
+            function get_and_draw_profile_channel_1(varargin)
                 if ~get(h.B(1),'Value')
                     return
                 end
                 h.Line.Visible = 'off';
-                h.Line = drawline('Color','b','Parent',h.ImAx);
+                h.Line = drawline('Color','b','Parent',h.ImAx(1));
                 addlistener(h.Line,'MovingROI',@moving_cross_section);
                 addlistener(h.Line,'ROIMoved',@moving_cross_section);
                 Pos1 = [h.Line.Position(1,1) h.Line.Position(1,2)];
                 Pos2 = [h.Line.Position(2,1) h.Line.Position(2,2)];
                 if norm(Pos1-Pos2)==0
-                    get_and_draw_profile;
+                    get_and_draw_profile_channel_1;
                     return
                 end
                 Profile = improfile(obj.Processed,[Pos1(1) Pos2(1)],[Pos1(2) Pos2(2)]);
@@ -584,9 +587,13 @@ classdef AFMImage < matlab.mixin.Copyable
                 [Multiplier,Unit,~] = AFMImage.parse_unit_scale(obj.ScanSizeX,'m',1);
                 h.ImAx(Index) = subplot(10,10,Domain);
                 h.I(Index) = imshow(obj.Processed*Multiplier,[],'Colormap',obj.define_afm_color_map(Brightness));
-                h.I(Index).ButtonDownFcn = @get_and_draw_profile;
+                if Index == 1
+                    h.I(Index).ButtonDownFcn = @get_and_draw_profile_channel_1;
+                else
+                    h.I(Index).ButtonDownFcn = @get_and_draw_profile_channel_2;
+                end
                 hold on
-                AFMImage.draw_scalebar_into_current_image(obj.NumPixelsX,obj.ScanSizeX,BarToImageRatio,h.ImAx(1).Position(3));
+                AFMImage.draw_scalebar_into_current_image(obj.NumPixelsX,obj.ScanSizeX,BarToImageRatio,h.ImAx(Index).Position(3));
                 c = colorbar;
                 c.FontSize = round(22*(obj.NumPixelsX/1024));
                 c.Color = 'w';
