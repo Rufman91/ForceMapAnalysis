@@ -158,10 +158,6 @@ classdef ForceMap < matlab.mixin.Copyable
         CorrStdApp      % Corresponding standard deviation of the selection of the approach data for baseline correction
         CorrMeanRet     % Mean of a selection of the retraction data for baseline correction
         CorrStdRet      % Corresponding standard deviation of the selection of the retraction data for baseline correction
-        CorrMeanApp1     % Mean of a selection of the approach data for baseline correction
-        CorrStdApp1     % Corresponding standard deviation of the selection of the approach data for baseline correction
-        CorrMeanRet1     % Mean of a selection of the retraction data for baseline correction
-        CorrStdRet1      % Corresponding standard deviation of the selection of the retraction data for baseline correction  
         MinRetSel       % Minimum retention data within a selected range on the x-axis which represents the maximum adhesion force within a selected distance range
         EndIdx          % Index correspoding to a predefined value
         yRetLim2        % Modified retraction data to allow a valid integration
@@ -1229,17 +1225,17 @@ classdef ForceMap < matlab.mixin.Copyable
             DataPtsApp=size(obj.BasedApp{ii}); % Determine the quantity of data points in the force curve 
             LimitIdxApp1=round(DataPtsApp(1)*DataShareStartApp); % Determine the corresponidng index
             LimitIdxApp2=round(DataPtsApp(1)*DataShareEndApp);
-            obj.CorrMeanApp1(ii)=mean(abs(obj.BasedApp{ii}(LimitIdxApp1:LimitIdxApp2,1))-abs(obj.BasedRet{ii}(DataPtsApp(1)-LimitIdxApp2:DataPtsApp(1)-LimitIdxApp1,1))); % Calculate the mean of the difference data
-            obj.CorrStdApp1(ii)=std(obj.BasedApp{ii}(DataPtsApp(1)-LimitIdxApp2:DataPtsApp(1)-LimitIdxApp1,1));             
-            obj.BasedRetCorr{ii}=obj.BasedRet{ii}-obj.CorrMeanApp1(ii); % Correct the BasedRet data with the mean of the correction data
+            obj.CorrMeanApp(ii)=mean(abs(obj.BasedApp{ii}(LimitIdxApp1:LimitIdxApp2,1))-abs(obj.BasedRet{ii}(DataPtsApp(1)-LimitIdxApp2:DataPtsApp(1)-LimitIdxApp1,1))); % Calculate the mean of the difference data
+            obj.CorrStdApp(ii)=std(obj.BasedApp{ii}(DataPtsApp(1)-LimitIdxApp2:DataPtsApp(1)-LimitIdxApp1,1));             
+            obj.BasedRetCorr{ii}=obj.BasedRet{ii}-obj.CorrMeanApp(ii); % Correct the BasedRet data with the mean of the correction data
             
             % Correction based on the retraction data
             DataPtsRet=size(obj.BasedRet{ii}); % Determine the quantity of data points in the force curve 
             LimitIdxRet1=round(DataPtsRet(1)*DataShareStartRet); % Determine the corresponidng index
             LimitIdxRet2=round(DataPtsRet(1)*DataShareEndRet);
-            obj.CorrMeanRet1(ii)=mean(obj.BasedRet{ii}(DataPtsRet(1)-LimitIdxRet2:DataPtsRet(1)-LimitIdxRet1,1)); % Calculate the mean of the difference data
-            obj.CorrStdRet1(ii)=std(obj.BasedRet{ii}(DataPtsRet(1)-LimitIdxRet2:DataPtsRet(1)-LimitIdxRet1,1));   % Calculate the standard deviation of the difference data            
-            obj.BasedRetCorr2{ii}=obj.BasedRet{ii}-obj.CorrMeanRet1(ii); % Correct the BasedRet data with the mean of the correction data          
+            obj.CorrMeanRet(ii)=mean(obj.BasedRet{ii}(DataPtsRet(1)-LimitIdxRet2:DataPtsRet(1)-LimitIdxRet1,1)); % Calculate the mean of the difference data
+            obj.CorrStdApp(ii)=std(obj.BasedRet{ii}(DataPtsRet(1)-LimitIdxRet2:DataPtsRet(1)-LimitIdxRet1,1));   % Calculate the standard deviation of the difference data            
+            obj.BasedRetCorr2{ii}=obj.BasedRet{ii}-obj.CorrMeanRet(ii); % Correct the BasedRet data with the mean of the correction data          
         end   
               
         % %% Appendix
@@ -1446,7 +1442,7 @@ classdef ForceMap < matlab.mixin.Copyable
             yRet=obj.BasedRetCorr2{ii};
             
             % Determine the pulling length 
-            obj.PullingLengthIdx(ii)=find(yRet<obj.CorrMeanRet1(ii)-obj.CorrStdRet1(ii)*sigma,1,'last'); % Finds the index of the value that fulfils the condition         
+            obj.PullingLengthIdx(ii)=find(yRet<obj.CorrMeanRet(ii)-obj.CorrStdApp(ii)*sigma,1,'last'); % Finds the index of the value that fulfils the condition         
             obj.PullingLength(ii)=abs(xRet(obj.PullingLengthIdx(ii))); % Corresponding x-value of the index
             end
             obj.FMPullingLengthMean=mean(obj.PullingLength);
