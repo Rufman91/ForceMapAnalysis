@@ -1024,6 +1024,30 @@ classdef Experiment < matlab.mixin.Copyable
           %  obj.save_experiment
         end
         
+        function [m,n,NumFigures] = adjust_tiled_layout(obj,NumFcMax)
+            
+            if nargin < 2
+                NumFcMax=25; % The maximum of allowed plots per figure
+            end
+            
+            for ii=1:obj.NumForceMaps
+                %for ii=1:8 %for debugging
+                NumFcUncorrupt(ii)=nnz(obj.FM{ii}.SMFSFlag.Uncorrupt); % Determine the number of uncorrupted force curves
+                if ~any(NumFcUncorrupt(ii))    
+                    continue
+                end
+                NumFigures=ceil(NumFcUncorrupt(ii)./NumFcMax); % Determine the number of figures
+                Remainder=mod(NumFcUncorrupt(ii),NumFcMax); % Check for remainder
+                if Remainder ~= 0
+                    m(ii)=floor(sqrt(Remainder)); % Determine the number of rows in the figure
+                    n(ii)=ceil(sqrt(Remainder)); % Determine the number of columns in the figure
+                else
+                    m(ii)=sqrt(NumFcMax);
+                    n(ii)=m(ii);
+                end
+            end
+        end
+        
         function SMFS_preprocessing(obj)
             % SMFS_preprocessing: A function to run a bundle of other 
             % typically required functions for further analysis

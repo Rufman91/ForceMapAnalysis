@@ -1208,8 +1208,8 @@ classdef ForceMap < matlab.mixin.Copyable
             obj.MinRet = MinRet;
             obj.MinRetSel = MinRetSel;
         end
-       
-        function fc_based_ret_correction(obj,DataShareStartApp,DataShareEndApp,DataShareStartRet,DataShareEndRet)  
+          
+        function fc_based_ret_correction(obj,DataShareStartApp,DataShareEndApp,DataShareStartRet,DataShareEndRet)
             % fc_based_ret_correction: A function to correct for an AFM
             % based baseline deviation between the approach and retraction
             % data
@@ -1581,12 +1581,6 @@ classdef ForceMap < matlab.mixin.Copyable
                 XMax= inf;
                 YMin= -inf;
                 YMax= inf;
-            end
-            % Define remainder situation
-            Remainder=mod(obj.NCurves,25);
-            NFigures=floor(obj.NCurves./25);
-            if Remainder ~= 0
-                NFigures=NFigures+1;
             end
             % Define variables for the figure name
             VelocityConvert=num2str(obj.Velocity*1e+9); % Convert into nm
