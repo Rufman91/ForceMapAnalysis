@@ -396,6 +396,10 @@ classdef AFMImage < matlab.mixin.Copyable
             
             function cross_section_toggle(varargin)
                 h.hasCrossSection = ~h.hasCrossSection;
+                try
+                    delete(h.ImAx(3));
+                catch
+                end
                 draw_channel_1
                 draw_channel_2
             end
@@ -462,15 +466,15 @@ classdef AFMImage < matlab.mixin.Copyable
                 Points = [0:1/(length(Profile)-1):1].*Len;
                 [MultiplierY,UnitY,~] = AFMImage.parse_unit_scale(range(Profile),h.BaseUnit{1},1);
                 [MultiplierX,UnitX,~] = AFMImage.parse_unit_scale(range(Points),'m',1);
-                Ax = subplot(10,10,[71:78 81:88 91:98]);
+                h.ImAx(3) = subplot(10,10,[71:78 81:88 91:98]);
                 P = plot(Points.*MultiplierX,Profile.*MultiplierY);
                 grid on
-                Ax.Color = 'k';
-                Ax.LineWidth = 1;
-                Ax.FontSize = 18;
-                Ax.XColor = 'w';
-                Ax.YColor = 'w';
-                Ax.GridColor = 'w';
+                h.ImAx(3).Color = 'k';
+                h.ImAx(3).LineWidth = 1;
+                h.ImAx(3).FontSize = 18;
+                h.ImAx(3).XColor = 'w';
+                h.ImAx(3).YColor = 'w';
+                h.ImAx(3).GridColor = 'w';
                 xlabel(sprintf('[%s]',UnitX))
                 ylabel(sprintf('%s [%s]',h.Channel{1},UnitY))
                 xlim([0 Points(end).*MultiplierX])
@@ -494,15 +498,15 @@ classdef AFMImage < matlab.mixin.Copyable
                 Points = [0:1/(length(Profile)-1):1].*Len;
                 [MultiplierY,UnitY,~] = AFMImage.parse_unit_scale(range(Profile),h.BaseUnit{2},1);
                 [MultiplierX,UnitX,~] = AFMImage.parse_unit_scale(range(Points),'m',1);
-                Ax = subplot(10,10,[71:78 81:88 91:98]);
+                h.ImAx(3) = subplot(10,10,[71:78 81:88 91:98]);
                 P = plot(Points.*MultiplierX,Profile.*MultiplierY);
                 grid on
-                Ax.Color = 'k';
-                Ax.LineWidth = 1;
-                Ax.FontSize = 18;
-                Ax.XColor = 'w';
-                Ax.YColor = 'w';
-                Ax.GridColor = 'w';
+                h.ImAx(3).Color = 'k';
+                h.ImAx(3).LineWidth = 1;
+                h.ImAx(3).FontSize = 18;
+                h.ImAx(3).XColor = 'w';
+                h.ImAx(3).YColor = 'w';
+                h.ImAx(3).GridColor = 'w';
                 xlabel(sprintf('[%s]',UnitX))
                 ylabel(sprintf('%s [%s]',h.Channel{2},UnitY))
                 xlim([0 Points(end).*MultiplierX])
@@ -534,15 +538,15 @@ classdef AFMImage < matlab.mixin.Copyable
                 Points = [0:1/(length(Profile)-1):1].*Len;
                 [MultiplierY,UnitY,~] = AFMImage.parse_unit_scale(range(Profile),h.BaseUnit{1},1);
                 [MultiplierX,UnitX,~] = AFMImage.parse_unit_scale(range(Points),'m',1);
-                Ax = subplot(10,10,[71:78 81:88 91:98]);
+                h.ImAx(3) = subplot(10,10,[71:78 81:88 91:98]);
                 P = plot(Points.*MultiplierX,Profile.*MultiplierY);
                 grid on
-                Ax.Color = 'k';
-                Ax.LineWidth = 1;
-                Ax.FontSize = 18;
-                Ax.XColor = 'w';
-                Ax.YColor = 'w';
-                Ax.GridColor = 'w';
+                h.ImAx(3).Color = 'k';
+                h.ImAx(3).LineWidth = 1;
+                h.ImAx(3).FontSize = 18;
+                h.ImAx(3).XColor = 'w';
+                h.ImAx(3).YColor = 'w';
+                h.ImAx(3).GridColor = 'w';
                 xlabel(sprintf('[%s]',UnitX))
                 ylabel(sprintf('%s [%s]',h.Channel{1},UnitY))
                 xlim([0 Points(end).*MultiplierX])
@@ -574,15 +578,15 @@ classdef AFMImage < matlab.mixin.Copyable
                 Points = [0:1/(length(Profile)-1):1].*Len;
                 [MultiplierY,UnitY,~] = AFMImage.parse_unit_scale(range(Profile),h.BaseUnit{2},1);
                 [MultiplierX,UnitX,~] = AFMImage.parse_unit_scale(range(Points),'m',1);
-                Ax = subplot(10,10,[71:78 81:88 91:98]);
+                h.ImAx(3) = subplot(10,10,[71:78 81:88 91:98]);
                 P = plot(Points.*MultiplierX,Profile.*MultiplierY);
                 grid on
-                Ax.Color = 'k';
-                Ax.LineWidth = 1;
-                Ax.FontSize = 18;
-                Ax.XColor = 'w';
-                Ax.YColor = 'w';
-                Ax.GridColor = 'w';
+                h.ImAx(3).Color = 'k';
+                h.ImAx(3).LineWidth = 1;
+                h.ImAx(3).FontSize = 18;
+                h.ImAx(3).XColor = 'w';
+                h.ImAx(3).YColor = 'w';
+                h.ImAx(3).GridColor = 'w';
                 xlabel(sprintf('[%s]',UnitX))
                 ylabel(sprintf('%s [%s]',h.Channel{2},UnitY))
                 xlim([0 Points(end).*MultiplierX])
@@ -591,27 +595,32 @@ classdef AFMImage < matlab.mixin.Copyable
             end
             
             function draw_image(LeftRight,FullPart)
-                Index = 1;
+                if isequal(LeftRight,'Left')
+                    Index = 1;
+                elseif isequal(LeftRight,'Right')
+                    Index = 2;
+                end
                 BarToImageRatio = 1/5;
-                PlusBrightness = 0;
+                try
+                    delete(h.ImAx(Index));
+                    delete(h.I(Index));
+                catch
+                end
                 if isequal(FullPart,'FullOne')
-                    Domain = [1:8 11:18 21:28 31:38 41:48 51:58 61:68 71:78 81:88 91:98];
+                    h.ImAx(Index) = axes(h.Fig,'Position',[0.1 0.1 .6 .8]);
                 elseif isequal(FullPart,'FullTwo')
                     if isequal(LeftRight,'Left')
-                    Domain = [1:4 11:14 21:24 31:34 41:44 51:54 61:64 71:74 81:84 91:94];
+                    h.ImAx(Index) = axes(h.Fig,'Position',[0.12 0.1 .3 .8]);
                     else
-                    Domain = [5:8 15:18 25:28 35:38 45:48 55:58 65:68 75:78 85:88 95:98];
-                    Index = 2;
+                    h.ImAx(Index) = axes(h.Fig,'Position',[.47 0.1 .3 .8]);
                     end
                 elseif isequal(FullPart,'PartOne')
-                    Domain = [1:8 11:18 21:28 31:38 41:48 51:58 61:68];
+                    h.ImAx(Index) = axes(h.Fig,'Position',[0.1 .35 .6 .6]);
                 elseif isequal(FullPart,'PartTwo')
                     if isequal(LeftRight,'Left')
-                    Domain = [1:4 11:14 21:24 31:34 41:44 51:54 61:64];
-                    Index = 1;
+                    h.ImAx(Index) = axes(h.Fig,'Position',[0.12 .35 .3 .6]);
                     else
-                    Domain = [5:8 15:18 25:28 35:38 45:48 55:58 65:68];
-                    Index = 2;
+                    h.ImAx(Index) = axes(h.Fig,'Position',[0.47 .35 .3 .6]);
                     end
                 end
                 
@@ -678,6 +687,11 @@ classdef AFMImage < matlab.mixin.Copyable
                         h.Image{Index} = obj.Processed;
                         ColorPattern = obj.CMap;
                     case 'none'
+                        try
+                            delete(h.ImAx(Index));
+                            delete(h.I(Index));
+                        catch
+                        end
                         if Index == 1
                             h.hasChannel1 = 0;
                         elseif Index == 2
@@ -687,14 +701,6 @@ classdef AFMImage < matlab.mixin.Copyable
                 end
                 
                 [Multiplier,Unit,~] = AFMImage.parse_unit_scale(range(h.Image{Index},'all'),h.BaseUnit{Index},1);
-                h.ImAx(Index) = subplot(10,10,Domain);
-                set(gca,'LooseInset',get(gca,'TightInset'));
-%                 if Index == 1
-%                     Shift = 0;
-%                 else
-%                     Shift = 1;
-%                 end
-%                 h.ImAx(Index).InnerPosition(1) = 0.06+Shift*h.ImAx(Index).InnerPosition(3);
                 h.I(Index) = imshow(h.Image{Index}*Multiplier,[],'Colormap',ColorPattern);
                 if Index == 1
                     h.I(Index).ButtonDownFcn = @get_and_draw_profile_channel_1;
@@ -702,18 +708,21 @@ classdef AFMImage < matlab.mixin.Copyable
                     h.I(Index).ButtonDownFcn = @get_and_draw_profile_channel_2;
                 end
                 hold on
-                AFMImage.draw_scalebar_into_current_image(obj.NumPixelsX,obj.ScanSizeX,BarToImageRatio,h.ImAx(Index).Position(3));
+                CurrentAxHeight = round(h.Fig.Position(4)*h.ImAx(Index).Position(4));
+                AFMImage.draw_scalebar_into_current_image(obj.NumPixelsX,obj.ScanSizeX,BarToImageRatio,CurrentAxHeight);
                 c = colorbar;
-                c.FontSize = round(18*(obj.NumPixelsX/1024));
+                c.FontSize = round(18*(CurrentAxHeight/756));
                 c.Color = 'w';
                 c.Label.String = sprintf('%s [%s]',h.Channel{Index},Unit);
-                c.Label.FontSize = round(22*(obj.NumPixelsX/1024));
+                c.Label.FontSize = round(22*(CurrentAxHeight/756));
                 c.Label.Color = 'w';
             end
             
             function save_figure_to_file(varargin)
-                Pos = h.Fig.InnerPosition;
-                Frame = getframe(h.Fig);
+                
+                Frame = print('-RGBImage','-r300');
+                
+                Frame = [];
                 
                 filter = {'*.png';'*.tif'};
                 [file, path] = uiputfile(filter);
@@ -1331,6 +1340,8 @@ classdef AFMImage < matlab.mixin.Copyable
                 BarToImageRatio = 1/5;
             end
             
+            FontSizeMult = FontSizeMult/NumPixelsX;
+            
             ScalebarThickness = 1/40;
             DistFromBorder = 0.1;
             
@@ -1346,10 +1357,10 @@ classdef AFMImage < matlab.mixin.Copyable
             R.EdgeColor = 'k';
             R.LineWidth = 2;
             
-            
-            A = text((Left+Width/2)*NumPixelsX,(Bottom-Height)*NumPixelsX,sprintf('%i %s',SnapTo,Unit),'HorizontalAlignment','center');
+            FontSize = round(42*FontSizeMult);
+            A = text((Left+Width/2)*NumPixelsX,(Bottom-Height)*NumPixelsX-FontSize/2,sprintf('%i %s',SnapTo,Unit),'HorizontalAlignment','center');
             A.Color = 'w';
-            A.FontSize = round(32*(NumPixelsX/1024*FontSizeMult));
+            A.FontSize = FontSize;
             A.FontWeight = 'bold';
             
             
