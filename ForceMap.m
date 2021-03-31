@@ -43,7 +43,8 @@ classdef ForceMap < matlab.mixin.Copyable
         SecPerPoint     % seconds per point
         TStart          % starting time for time vektor
         TEnd            % ending time for time vektor
-        SegTime            % time vektor
+        SegTime         % time vektor
+        InterpTime      % time vector for interpolation
         MaxPointsPerCurve
         XSize           % Size of imaged window in X-direction
         YSize           % Size of imaged window in Y-direction
@@ -2723,7 +2724,8 @@ classdef ForceMap < matlab.mixin.Copyable
                     
                     obj.TEnd{i} = obj.SeriesTime{i};
                     obj.SegTime{i} = obj.TStart{i}:obj.SecPerPoint{i}:obj.TEnd{i};
-                        
+                    obj.InterpTime{i} = obj.TStart{i}:0.000001:obj.TEnd{i};
+                    obj.InterpTime{i} = obj.InterpTime{i}.';    
                         
                         
                     clear tline where;
