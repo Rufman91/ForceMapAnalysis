@@ -797,11 +797,20 @@ classdef Experiment < matlab.mixin.Copyable
             h = waitbar(0,'setting up...');
             for i=1:obj.NumAFMImages
                 waitbar(i/obj.NumAFMImages,h,{sprintf('Processing %i/%i:',i,obj.NumAFMImages),sprintf('%s',obj.I{i}.Name)});
-                obj.I{i}.Processed = obj.I{i}.subtract_line_fit_hist(obj.I{i}.HeightMeasured.Trace, UpperLim);
-                for j=1:NIter
-                    obj.I{i}.Processed = obj.I{i}.subtract_line_fit_hist(obj.I{i}.Processed, UpperLim);
+                [Processed,Index] = obj.I{i}.get_channel('Processed');
+                Height = obj.I{i}.get_channel('Height (Trace)');
+                if isempty(Processed)
+                    Processed = Height;
+                    Processed.Name = 'Processed';
+                    Index = length(obj.I{i}.Channel)+1;
+                    obj.I{i}.NumChannels = Index;
                 end
-                obj.I{i}.HasProcessed = 1;
+                Processed.Image = obj.I{i}.subtract_line_fit_hist(Height.Image, UpperLim);
+                for j=1:NIter
+                    Processed.Image = obj.I{i}.subtract_line_fit_hist(Processed.Image, UpperLim);
+                end
+                obj.I{i}.Channel(Index) = Processed;
+                obj.I{i}.hasProcessed = 1;
             end
             close(h)
         end

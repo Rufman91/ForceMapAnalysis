@@ -49,17 +49,13 @@ classdef AFMImage < matlab.mixin.Copyable
         Baseline_N
     end
     properties
-        % All possible image channels. The Channels are themselves structs
-        % containing some infos and the imagedata in their raw and
-        % processed form.
-        Height
-        HeightMeasured
-        ErrorSignal
-        LockInAmplitude
-        LockInPhase
-        LateralDeflection
-        VerticalDeflection
-        Processed
+        % All possible image channels. The Channels are all part of the
+        % struct Channel and should each contain the properties Image,
+        % Unit, Name, ScanSizeX, ScanSizeY, NumPixelsX, NumPixelsY,
+        % ScanAngle, OriginX and OriginY. This might seem redundant but
+        % allows for image cropping, image-overlays and easy addition of
+        % other kinds of image-data (e.g. AdhesionMaps, EModMaps)
+        Channel
     end
     properties
         % Properties related to Image processing/segmenting/classification
@@ -74,15 +70,17 @@ classdef AFMImage < matlab.mixin.Copyable
     end
     properties
         % All the Flags
-        HasHeight
-        HasHeightMeasured
-        HasErrorSignal
-        HasLateralDeflection
-        HasLockInAmplitude
-        HasLockInPhase
-        HasVerticalDeflection
-        HasProcessed
-        HasDeconvolutedCantileverTip
+        hasSensitivity
+        hasSpringConstant
+        hasHeight
+        hasHeightMeasured
+        hasErrorSignal
+        hasLateralDeflection
+        hasLockInAmplitude
+        hasLockInPhase
+        hasVerticalDeflection
+        hasProcessed
+        hasDeconvolutedCantileverTip
     end
     
     methods
@@ -116,6 +114,24 @@ classdef AFMImage < matlab.mixin.Copyable
             
             obj.load_image_channels(ImageFullFile);
             
+        end
+        
+        function [ChannelStruct,Index] = get_channel(obj,ChannelName)
+            k = 0;
+            for i=1:length(obj.Channel)
+                if isequal(obj.Channel(i).Name,ChannelName)
+                    ChannelStruct = obj.Channel(i);
+                    Index = i;
+                    k = k+1;
+                end
+            end
+            if k > 1
+                warning(sprintf('Caution! There are more than one channels named %s (%i)',ChannelName,k))
+            end
+            if k == 0
+                ChannelStruct = [];
+                Index = [];
+            end
         end
         
         function deconvolute_cantilever_tip(obj)
@@ -347,7 +363,7 @@ classdef AFMImage < matlab.mixin.Copyable
         function show_image(obj)
             % TODO: implement ui elements for customization
             
-            h.Fig = figure('Name',sprintf('[Processed] %s',obj.Name),...
+            h.Fig = figure('Name',sprintf('%s',obj.Name),...
                 'Units','pixels',...
                 'Position',[200 200 1024 512],...
                 'Color','k');
@@ -391,7 +407,13 @@ classdef AFMImage < matlab.mixin.Copyable
             h.Line = [];
             h.hasCrossSection = 0;
             h.hasChannel2 = 0;
-            h.B(2).Value = 2;
+            [~,DefIndex] = obj.get_channel('Processed');
+            if isempty(DefIndex)
+                DefIndex = 2;
+            else
+                DefIndex = DefIndex + 1;
+            end
+            h.B(2).Value = DefIndex;
             draw_channel_1
             
             function cross_section_toggle(varargin)
@@ -457,10 +479,6 @@ classdef AFMImage < matlab.mixin.Copyable
                 end
                 Pos1 = [h.Line.Position(1,1) h.Line.Position(1,2)];
                 Pos2 = [h.Line.Position(2,1) h.Line.Position(2,2)];
-                if norm(Pos1-Pos2)==0
-                    get_and_draw_profile;
-                    return
-                end
                 Profile = improfile(h.Image{1},[Pos1(1) Pos2(1)],[Pos1(2) Pos2(2)]);
                 Len = norm(Pos1-Pos2)/obj.NumPixelsX*obj.ScanSizeX;
                 Points = [0:1/(length(Profile)-1):1].*Len;
@@ -625,79 +643,23 @@ classdef AFMImage < matlab.mixin.Copyable
                 end
                 
                 h.Channel{Index} = h.B(1+Index).String{h.B(1+Index).Value};
-                switch h.Channel{Index}
-                    case 'Height(Trace)'
-                        h.BaseUnit{Index} = 'm';
-                        h.Image{Index} = obj.Height.Trace;
-                        ColorPattern = obj.CMap;
-                    case 'Height(Retrace)'
-                        h.BaseUnit{Index} = 'm';
-                        h.Image{Index} = obj.Height.ReTrace;
-                        ColorPattern = obj.CMap;
-                    case 'Height-Measured(Trace)'
-                        h.BaseUnit{Index} = 'm';
-                        h.Image{Index} = obj.HeightMeasured.Trace;
-                        ColorPattern = obj.CMap;
-                    case 'Height-Measured(Retrace)'
-                        h.BaseUnit{Index} = 'm';
-                        h.Image{Index} = obj.HeightMeasured.ReTrace;
-                        ColorPattern = obj.CMap;
-                    case 'ErrorSignal(Trace)'
-                        h.BaseUnit{Index} = 'V';
-                        h.Image{Index} = obj.ErrorSignal.Trace;
-                        ColorPattern = obj.CMap;
-                    case 'ErrorSignal(Retrace)'
-                        h.BaseUnit{Index} = 'V';
-                        h.Image{Index} = obj.ErrorSignal.ReTrace;
-                        ColorPattern = obj.CMap;
-                    case 'LateralDeflection(Trace)'
-                        h.BaseUnit{Index} = 'm';
-                        h.Image{Index} = obj.LateralDeflection.Trace;
-                        ColorPattern = obj.CMap;
-                    case 'LateralDeflection(Retrace)'
-                        h.BaseUnit{Index} = 'm';
-                        h.Image{Index} = obj.LateralDeflection.ReTrace;
-                        ColorPattern = obj.CMap;
-                    case 'LockInAmplitude(Trace)'
-                        h.BaseUnit{Index} = 'm';
-                        h.Image{Index} = obj.LockInAmplitude.Trace;
-                        ColorPattern = obj.CMap;
-                    case 'LockInAmplitude(Retrace)'
-                        h.BaseUnit{Index} = 'm';
-                        h.Image{Index} = obj.LockInAmplitude.ReTrace;
-                        ColorPattern = obj.CMap;
-                    case 'LockInPhase(Trace)'
-                        h.BaseUnit{Index} = 'deg';
-                        h.Image{Index} = obj.LockInPhase.Trace;
-                        ColorPattern = obj.CMap;
-                    case 'LockInPhase(Retrace)'
-                        h.BaseUnit{Index} = 'deg';
-                        h.Image{Index} = obj.LockInPhase.ReTrace;
-                        ColorPattern = obj.CMap;
-                    case 'VerticalDeflection(Trace)'
-                        h.BaseUnit{Index} = 'm';
-                        h.Image{Index} = obj.Height.Trace;
-                        ColorPattern = obj.CMap;
-                    case 'VerticalDeflection(Retrace)'
-                        h.BaseUnit{Index} = 'm';
-                        h.Image{Index} = obj.Height.Trace;
-                        ColorPattern = obj.CMap;
-                    case 'Processed'
-                        h.BaseUnit{Index} = 'm';
-                        h.Image{Index} = obj.Processed;
-                        ColorPattern = obj.CMap;
-                    case 'none'
-                        try
-                            delete(h.ImAx(Index));
-                            delete(h.I(Index));
-                        catch
-                        end
-                        if Index == 1
-                            h.hasChannel1 = 0;
-                        elseif Index == 2
-                            h.hasChannel2 = 0;
-                        end
-                        return
+                if isequal(h.Channel{Index},'none')
+                    try
+                        delete(h.ImAx(Index));
+                        delete(h.I(Index));
+                    catch
+                    end
+                    if Index == 1
+                        h.hasChannel1 = 0;
+                    elseif Index == 2
+                        h.hasChannel2 = 0;
+                    end
+                    return
+                else
+                    [Channel,ChannelIndex] = obj.get_channel(h.Channel{Index});
+                    h.Image{Index} = Channel.Image;
+                    h.BaseUnit{Index} = Channel.Unit;
+                    ColorPattern = obj.CMap;
                 end
                 
                 [Multiplier,Unit,~] = AFMImage.parse_unit_scale(range(h.Image{Index},'all'),h.BaseUnit{Index},1);
@@ -709,7 +671,7 @@ classdef AFMImage < matlab.mixin.Copyable
                 end
                 hold on
                 CurrentAxHeight = round(h.Fig.Position(4)*h.ImAx(Index).Position(4));
-                AFMImage.draw_scalebar_into_current_image(obj.NumPixelsX,obj.ScanSizeX,BarToImageRatio,CurrentAxHeight);
+                AFMImage.draw_scalebar_into_current_image(Channel.NumPixelsX,Channel.ScanSizeX,BarToImageRatio,CurrentAxHeight);
                 c = colorbar;
                 c.FontSize = round(18*(CurrentAxHeight/756));
                 c.Color = 'w';
@@ -861,16 +823,20 @@ classdef AFMImage < matlab.mixin.Copyable
             try
                 obj.Sensitivity = FileInfo(1).UnknownTags(find([FileInfo(1).UnknownTags.ID]==33028)).Value/...
                     FileInfo(1).UnknownTags(find([FileInfo(1).UnknownTags.ID]==32980)).Value;
+                obj.hasSensitivity = true;
             catch
                 obj.Sensitivity = nan;
                 warning ("Couldn't determine sensitivity. Image isn't calibrated")
+                obj.hasSensitivity =false;
             end
             try
                 obj.SpringConstant = FileInfo(1).UnknownTags(find([FileInfo(1).UnknownTags.ID]==33076)).Value/...
                     FileInfo(1).UnknownTags(find([FileInfo(1).UnknownTags.ID]==33028)).Value;
+                obj.hasSpringConstant = true;
             catch
                 obj.SpringConstant = nan;
                 warning ("Couldn't determine spring constant. Image isn't calibrated")
+                obj.hasSpringConstant = false;
             end
             
         end
@@ -894,18 +860,22 @@ classdef AFMImage < matlab.mixin.Copyable
             
             if(~isempty(find([FileInfo(1).UnknownTags.ID]==33028)))&&(~isempty(find([FileInfo(1).UnknownTags.ID]==32980)))
                 obj.Sensitivity=(FileInfo(1).UnknownTags(find([FileInfo(1).UnknownTags.ID]==33028)).Value)/(FileInfo(1).UnknownTags(find([FileInfo(1).UnknownTags.ID]==32980)).Value);
+                obj.hasSensitivity = true;
             else
                 warning('No Sensitivity calibration slot found, image is uncalibarated')
                 Uncalibrated=1;
+                obj.hasSensitivity = false;
                 obj.Sensitivity=1;
             end
             
             if(~isempty(find([FileInfo(1).UnknownTags.ID]==33076)))&&(~isempty(find([FileInfo(1).UnknownTags.ID]==32980)))
                 obj.SpringConstant=(FileInfo(1).UnknownTags(find([FileInfo(1).UnknownTags.ID]==33076)).Value)/(FileInfo(1).UnknownTags(find([FileInfo(1).UnknownTags.ID]==33028)).Value);
+                obj.hasSpringConstant = true;
             else
                 warning('No Spring Constant calibration slot found, image is uncalibarated')
                 Uncalibrated=1;
                 obj.SpringConstant=1;
+                obj.hasSpringConstant = false;
             end
             
             if(~isempty(find([FileInfo(1).UnknownTags.ID]==32836)))
@@ -966,9 +936,9 @@ classdef AFMImage < matlab.mixin.Copyable
                 for k=1:size(strsp,1)
                     if(strcmp(strsp{k,1},'retrace')==1)
                         if(strcmp(strsp{k+2,1},'true'))
-                            trace_type_flag='ReTrace';
+                            trace_type_flag=' (Retrace)';
                         else
-                            trace_type_flag='Trace';
+                            trace_type_flag=' (Trace)';
                         end
                         break
                     end
@@ -1025,77 +995,29 @@ classdef AFMImage < matlab.mixin.Copyable
                 
                 afm_image = afm_image(end:-1:1,:); % mirror Y-pixels to flip image to same orientation as in jpk data processing
                 
-                if isequal(Channel_Name,'Height') && isequal(trace_type_flag,'Trace')
-                    obj.Height.Trace = afm_image;
-                    obj.Height.Multiplier = multiplyer;
-                    obj.Height.Offset = offset;
-                    obj.HasHeight = true;
-                elseif isequal(Channel_Name,'Height (measured)') && isequal(trace_type_flag,'Trace')
-                    obj.HeightMeasured.Trace = afm_image;
-                    obj.HeightMeasured.Multiplier = multiplyer;
-                    obj.HeightMeasured.Offset = offset;
-                    obj.HasHeightMeasured = true;
-                elseif isequal(Channel_Name,'Lock-In Amplitude') && isequal(trace_type_flag,'Trace')
-                    obj.LockInAmplitude.Trace = afm_image;
-                    obj.LockInAmplitude.Multiplier = multiplyer;
-                    obj.LockInAmplitude.Offset = offset;
-                    obj.HasLockInAmplitude = true;
-                elseif isequal(Channel_Name,'Lock-In Phase') && isequal(trace_type_flag,'Trace')
-                    obj.LockInPhase.Trace = afm_image;
-                    obj.LockInPhase.Multiplier = multiplyer;
-                    obj.LockInPhase.Offset = offset;
-                    obj.HasLockInPhase = true;
-                elseif isequal(Channel_Name,'Error Signal') && isequal(trace_type_flag,'Trace')
-                    obj.ErrorSignal.Trace = afm_image;
-                    obj.ErrorSignal.Multiplier = multiplyer;
-                    obj.ErrorSignal.Offset = offset;
-                    obj.HasErrorSignal = true;
-                elseif isequal(Channel_Name,'Lateral Deflection') && isequal(trace_type_flag,'Trace')
-                    obj.LateralDeflection.Trace = afm_image;
-                    obj.LateralDeflection.Multiplier = multiplyer;
-                    obj.LateralDeflection.Offset = offset;
-                    obj.HasLateralDeflection = true;
-                elseif isequal(Channel_Name,'Vertical Deflection') && isequal(trace_type_flag,'Trace')
-                    obj.VerticalDeflection.Trace = afm_image;
-                    obj.VerticalDeflection.Multiplier = multiplyer;
-                    obj.VerticalDeflection.Offset = offset;
-                    obj.HasVerticalDeflection = true;
-                elseif isequal(Channel_Name,'Height') && isequal(trace_type_flag,'ReTrace')
-                    obj.Height.ReTrace = afm_image;
-                    obj.Height.Multiplier = multiplyer;
-                    obj.Height.Offset = offset;
-                    obj.HasHeight = true;
-                elseif isequal(Channel_Name,'Height (measured)') && isequal(trace_type_flag,'ReTrace')
-                    obj.HeightMeasured.ReTrace = afm_image;
-                    obj.HeightMeasured.Multiplier = multiplyer;
-                    obj.HeightMeasured.Offset = offset;
-                    obj.HasHeightMeasured = true;
-                elseif isequal(Channel_Name,'Lock-In Amplitude') && isequal(trace_type_flag,'ReTrace')
-                    obj.LockInAmplitude.ReTrace = afm_image;
-                    obj.LockInAmplitude.Multiplier = multiplyer;
-                    obj.LockInAmplitude.Offset = offset;
-                    obj.HasLockInAmplitude = true;
-                elseif isequal(Channel_Name,'Lock-In Phase') && isequal(trace_type_flag,'ReTrace')
-                    obj.LockInPhase.ReTrace = afm_image;
-                    obj.LockInPhase.Multiplier = multiplyer;
-                    obj.LockInPhase.Offset = offset;
-                    obj.HasLockInPhase = true;
-                elseif isequal(Channel_Name,'Error Signal') && isequal(trace_type_flag,'ReTrace')
-                    obj.ErrorSignal.ReTrace = afm_image;
-                    obj.ErrorSignal.Multiplier = multiplyer;
-                    obj.ErrorSignal.Offset = offset;
-                    obj.HasErrorSignal = true;
-                elseif isequal(Channel_Name,'Lateral Deflection') && isequal(trace_type_flag,'ReTrace')
-                    obj.LateralDeflection.ReTrace = afm_image;
-                    obj.LateralDeflection.Multiplier = multiplyer;
-                    obj.LateralDeflection.Offset = offset;
-                    obj.HasLateralDeflection = true;
-                elseif isequal(Channel_Name,'Vertical Deflection') && isequal(trace_type_flag,'ReTrace')
-                    obj.VerticalDeflection.ReTrace = afm_image;
-                    obj.VerticalDeflection.Multiplier = multiplyer;
-                    obj.VerticalDeflection.Offset = offset;
-                    obj.HasVerticalDeflection = true;
+                obj.Channel(i-1).Image = afm_image;
+                obj.Channel(i-1).Name = strcat(Channel_Name,' ',trace_type_flag);
+                if isequal(Channel_Name,'Height') ||...
+                        isequal(Channel_Name,'Height (measured)') ||...
+                        (isequal(Channel_Name,'Lock-In Amplitude') && obj.hasSensitivity) ||...
+                        (isequal(Channel_Name,'Vertical Deflection') && obj.hasSensitivity && ~obj.hasSpringConstant)
+                    obj.Channel(i-1).Unit = 'm';
+                elseif isequal(Channel_Name,'Lock-In Phase')
+                    obj.Channel(i-1).Unit = 'deg';
+                elseif isequal(Channel_Name,'Vertical Deflection') && obj.hasSensitivity && obj.hasSpringConstant
+                    obj.Channel(i-1).Unit = 'N';
+                elseif isequal(Channel_Name,'Error Signal') ||...
+                        (isequal(Channel_Name,'Lock-In Amplitude') && ~obj.hasSensitivity && ~obj.hasSpringConstant) ||...
+                        isequal(Channel_Name,'Lateral Deflection')
+                    obj.Channel(i-1).Unit = 'V';
                 end
+                obj.Channel(i-1).NumPixelsX = obj.NumPixelsX;
+                obj.Channel(i-1).NumPixelsY = obj.NumPixelsY;
+                obj.Channel(i-1).ScanSizeX = obj.ScanSizeX;
+                obj.Channel(i-1).ScanSizeY = obj.ScanSizeY;
+                obj.Channel(i-1).OriginX = obj.OriginX;
+                obj.Channel(i-1).OriginY = obj.OriginY;
+                obj.Channel(i-1).Angle = obj.ScanAngle;
                 
             end
         end
@@ -1126,58 +1048,24 @@ classdef AFMImage < matlab.mixin.Copyable
         
         function initialize_flags(obj)
             
-            obj.HasHeight = false;
-            obj.HasHeightMeasured = false;
-            obj.HasLateralDeflection = false;
-            obj.HasLockInAmplitude = false;
-            obj.HasLockInPhase = false;
-            obj.HasVerticalDeflection = false;
-            obj.HasProcessed = false;
+            obj.hasHeight = false;
+            obj.hasHeightMeasured = false;
+            obj.hasErrorSignal = false;
+            obj.hasLateralDeflection = false;
+            obj.hasLockInAmplitude = false;
+            obj.hasLockInPhase = false;
+            obj.hasVerticalDeflection = false;
+            obj.hasProcessed = false;
+            obj.hasSensitivity = false;
+            obj.hasSpringConstant = false;
             
             obj.hasDeconvolutedCantileverTip = false;
         end
         
         function PopUp = string_of_existing(obj)
             PopUp{1} = 'none';
-            k = 2;
-            if obj.HasProcessed
-                PopUp{k} = 'Processed';
-                k = k + 1;
-            end
-            if obj.HasHeight
-                PopUp{k} = 'Height(Trace)';
-                PopUp{k+1} = 'Height(Retrace)';
-                k = k + 2;
-            end
-            if obj.HasHeightMeasured
-                PopUp{k} = 'Height-Measured(Trace)';
-                PopUp{k+1} = 'Height-Measured(Retrace)';
-                k = k + 2;
-            end
-            if obj.HasErrorSignal
-                PopUp{k} = 'ErrorSignal(Trace)';
-                PopUp{k+1} = 'ErrorSignal(Retrace)';
-                k = k + 2;
-            end
-            if obj.HasLateralDeflection
-                PopUp{k} = 'LateralDeflection(Trace)';
-                PopUp{k+1} = 'LateralDeflection(Retrace)';
-                k = k + 2;
-            end
-            if obj.HasLockInAmplitude
-                PopUp{k} = 'LockInAmplitude(Trace)';
-                PopUp{k+1} = 'LockInAmplitude(Retrace)';
-                k = k + 2;
-            end
-            if obj.HasLockInPhase
-                PopUp{k} = 'LockInPhase(Trace)';
-                PopUp{k+1} = 'LockInPhase(Retrace)';
-                k = k + 2;
-            end
-            if obj.HasVerticalDeflection
-                PopUp{k} = 'VerticalDeflection(Trace)';
-                PopUp{k+1} = 'VerticalDeflection(Retrace)';
-                k = k + 2;
+            for i=1:length(obj.Channel)
+                PopUp{i+1} = obj.Channel(i).Name;
             end
         end
         
