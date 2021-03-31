@@ -1400,8 +1400,8 @@ classdef Experiment < matlab.mixin.Copyable
             currpath=fullfile(obj.ExperimentFolder,foldername);
             cd(currpath); 
             %% loop
-            %for ii=1:obj.NumFiles
-            for ii=261 % Debugging
+            for ii=1:obj.NumForceMaps
+            %for ii=261 % Debugging
             sprintf('Force map No. %d',ii);
             % Pulling length
             obj.FM{ii}.fc_pulling_length

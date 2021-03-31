@@ -26,6 +26,8 @@ classdef ForceMap < matlab.mixin.Copyable
         Name            % name of the force map. taken as the name of the folder, containing the .csv files
         Date            % date when the force map was detected
         Time            % time when the force map was detected
+        DateAdapt       % date with dots removed
+        TimeAdapt       % time with dots removed
         ID              % Identifier for relation to Experiment
         FileVersion     % Version of jpk-force-map file
         FileType        % File Type: force map or qi-map
@@ -149,8 +151,6 @@ classdef ForceMap < matlab.mixin.Copyable
         EnvCond         % Environmental condition during the experiment
         ChipCant        % AFM-Chip number and Cantilever label
         Chipbox         % AFM-Chipbox number (in Roman numerals)
-        ModDate         % Modified Date is a modification of the poperty Date. Dots are removed
-        ModTime         % Modified Date is a modification of the poperty Date. Dots are removed
         SMFSFlag        %
         BasedRetCorr    % BasedRet data corrected based on a selection of the approach data
         BasedRetCorr2   % BasedRet data corrected based on a selection of the retraction data
@@ -1358,6 +1358,9 @@ classdef ForceMap < matlab.mixin.Copyable
             
             % Loop over all force curves
             for ii=1:100
+                if ~obj.SMFSFlag.Uncorrupt(ii)     % Selects all flagged 1 
+                continue
+                end
                 % Allocate data
                 xApp=obj.THApp{ii}-obj.CP_HardSurface(ii);
                 xRet=obj.THRet{ii}-obj.CP_HardSurface(ii);
@@ -1434,7 +1437,10 @@ classdef ForceMap < matlab.mixin.Copyable
 
         function fc_pulling_length(obj)
             sigma=4;
-            for ii=1:100                  
+            for ii=1:100
+            if ~obj.SMFSFlag.Uncorrupt(ii)     % Selects all flagged 1 
+            continue
+            end
             % Allocate data
             xApp=obj.THApp{ii}-obj.CP_HardSurface(ii);
             xRet=obj.THRet{ii}-obj.CP_HardSurface(ii);
@@ -1480,9 +1486,8 @@ classdef ForceMap < matlab.mixin.Copyable
             % fc_print: A function to simply plot all force curves of a
             % force map without any selection taking place
             
-            % Remove dots in obj.Date
-            obj.ModDate=strrep(obj.Date,'.','-');
-            obj.ModTime=strrep(obj.Time,'.','-');
+            
+           
    
             if nargin < 2
                 XMin= -inf;
@@ -1500,10 +1505,10 @@ classdef ForceMap < matlab.mixin.Copyable
             % Define variables for the figure name
             VelocityConvert=num2str(obj.Velocity*1e+9); % Convert into nm
             % Classification criteria
-            %figname=strcat(obj.ID,{'-'},obj.ModDate,{'-'},VelocityConvert,{'-'},obj.Name);
-            %figname=strcat(obj.ID,{'-'},obj.ModDate,{'-'},VelocityConvert,{'-'},obj.Substrate,{'-'},obj.EnvCond,{'-'},obj.Chipbox,{'-'},obj.ChipCant);
-            %figname=strcat(obj.ModDate,{'_'},obj.ModTime,{'_'},obj.Linker,{'_'},obj.ID,{'_'},obj.Substrate,{'_'},obj.EnvCond,{'_'},VelocityConvert,{'_'},obj.Chipbox,{'_'},obj.ChipCant);
-            figname=strcat(obj.ModDate,{'_'},obj.ModTime,{'_'},obj.ID,{'_'},obj.Substrate,{'_'},obj.EnvCond,{'_'},VelocityConvert,{'_'},obj.Chipbox,{'_'},obj.ChipCant);
+            %figname=strcat(obj.ID,{'-'},obj.DateAdapt,{'-'},VelocityConvert,{'-'},obj.Name);
+            %figname=strcat(obj.ID,{'-'},obj.DateAdapt,{'-'},VelocityConvert,{'-'},obj.Substrate,{'-'},obj.EnvCond,{'-'},obj.Chipbox,{'-'},obj.ChipCant);
+            %figname=strcat(obj.DateAdapt,{'_'},obj.TimeAdapt,{'_'},obj.Linker,{'_'},obj.ID,{'_'},obj.Substrate,{'_'},obj.EnvCond,{'_'},VelocityConvert,{'_'},obj.Chipbox,{'_'},obj.ChipCant);
+            figname=strcat(obj.DateAdapt,{'_'},obj.TimeAdapt,{'_'},obj.ID,{'_'},obj.Substrate,{'_'},obj.EnvCond,{'_'},VelocityConvert,{'_'},obj.Chipbox,{'_'},obj.ChipCant);
             figname=char(figname);
             %% Figure loop
             for ii=1:NFigures           
@@ -1586,7 +1591,7 @@ classdef ForceMap < matlab.mixin.Copyable
             % Define variables for the figure name
             VelocityConvert=num2str(obj.Velocity*1e+9); % Convert into nm
             % Classification criteria
-            figname=strcat(obj.ModDate,{'_'},obj.ModTime,{'_'},obj.ID,{'_'},obj.Substrate,{'_'},obj.EnvCond,{'_'},VelocityConvert,{'_'},obj.Chipbox,{'_'},obj.ChipCant);
+            figname=strcat(obj.DateAdapt,{'_'},obj.TimeAdapt,{'_'},obj.ID,{'_'},obj.Substrate,{'_'},obj.EnvCond,{'_'},VelocityConvert,{'_'},obj.Chipbox,{'_'},obj.ChipCant);
             figname=char(figname);
             %% figure loop
             for ii=1:NFigures
@@ -1618,6 +1623,9 @@ classdef ForceMap < matlab.mixin.Copyable
                 for jj=1:NLoop
                     % Tile jj
                     kk=jj+25*(ii-1);
+                    if ~obj.SMFSFlag.Uncorrupt(kk)     % Selects all flagged 1 
+                    continue
+                    end
                     ax=nexttile;
                     ax.XLim = [XMin XMax];
                     ax.YLim = [YMin YMax];
@@ -1661,9 +1669,9 @@ classdef ForceMap < matlab.mixin.Copyable
             % Define variables for the figure name
             VelocityConvert=num2str(obj.Velocity*1e+9); % Convert into nm
             % Classification criteria
-            %figname=strcat(obj.ID,{'-'},obj.ModDate,{'-'},VelocityConvert{'-'},obj.Name);
-            %figname=strcat(obj.ID,{'-'},obj.ModDate,{'-'},VelocityConvert,{'-'},obj.Substrate,{'-'},obj.EnvCond,{'-'},obj.Chipbox,{'-'},obj.ChipCant);
-            figname=strcat(obj.ID,{'-'},obj.ModDate,{'-'},VelocityConvert,{'-'},obj.Linker,{'-'},obj.Substrate,{'-'},obj.EnvCond,{'-'},obj.Chipbox,{'-'},obj.ChipCant);
+            %figname=strcat(obj.ID,{'-'},obj.DateAdapt,{'-'},VelocityConvert{'-'},obj.Name);
+            %figname=strcat(obj.ID,{'-'},obj.DateAdapt,{'-'},VelocityConvert,{'-'},obj.Substrate,{'-'},obj.EnvCond,{'-'},obj.Chipbox,{'-'},obj.ChipCant);
+            figname=strcat(obj.ID,{'-'},obj.DateAdapt,{'-'},VelocityConvert,{'-'},obj.Linker,{'-'},obj.Substrate,{'-'},obj.EnvCond,{'-'},obj.Chipbox,{'-'},obj.ChipCant);
             figname=char(figname);
             %% Figure loop   
             for ii=1:NFigures           
@@ -1878,7 +1886,7 @@ classdef ForceMap < matlab.mixin.Copyable
             % Define some variables
             kk=89;
             VelocityConvert=num2str(obj.Velocity*Xmultiplier); % Convert into nm
-            figname=strcat(obj.ModDate,{'_'},obj.ModTime,{'_'},obj.ID,{'_'},obj.Substrate,{'_'},obj.EnvCond,{'_'},VelocityConvert,{'_'},obj.Chipbox,{'_'},obj.ChipCant);
+            figname=strcat(obj.DateAdapt,{'_'},obj.TimeAdapt,{'_'},obj.ID,{'_'},obj.Substrate,{'_'},obj.EnvCond,{'_'},VelocityConvert,{'_'},obj.Chipbox,{'_'},obj.ChipCant);
             figname=char(figname);
           
             % Allocate data
@@ -2898,6 +2906,8 @@ classdef ForceMap < matlab.mixin.Copyable
                 obj.Date = char(obj.Date{1});
                 obj.Time = regexp(Strings(end,1), exp3, 'match');
                 obj.Time = char(obj.Time{1});
+                obj.DateAdapt=strrep(obj.Date,'.','-'); % Remove dots in obj.Date
+                obj.TimeAdapt=strrep(obj.Time,'.','-'); % Remove dots in obj.Time
                 %%% Create a data folder to store the force data
                 mkdir(DataFolder,'ForceData')
                 obj.Folder = fullfile(DataFolder,'ForceData',filesep);
@@ -2934,6 +2944,8 @@ classdef ForceMap < matlab.mixin.Copyable
                 obj.Date = char(obj.Date{1});
                 obj.Time = regexp(Strings(end,1), exp3, 'match');
                 obj.Time = char(obj.Time{1});
+                obj.DateAdapt=strrep(obj.Date,'.','-'); % Remove dots in obj.Date
+                obj.TimeAdapt=strrep(obj.Time,'.','-'); % Remove dots in obj.Time
                 %%% Create a data folder to store the force data
                 mkdir(DataFolder,'ForceData')
                 obj.Folder = fullfile(DataFolder,'ForceData',filesep);
@@ -2968,6 +2980,8 @@ classdef ForceMap < matlab.mixin.Copyable
                 obj.Date = char(obj.Date{1});
                 obj.Time = regexp(Strings(end,1), exp3, 'match');
                 obj.Time = char(obj.Time{1});
+                obj.DateAdapt=strrep(obj.Date,'.','-'); % Remove dots in obj.Date
+                obj.TimeAdapt=strrep(obj.Time,'.','-'); % Remove dots in obj.Time
                 %%% Create a data folder to store the force data
                 mkdir(DataFolder,'ForceData')
                 obj.Folder = fullfile(DataFolder,'ForceData',filesep);
