@@ -2716,9 +2716,9 @@ classdef ForceMap < matlab.mixin.Copyable
                     obj.SecPerPoint{i} = obj.SegDuration{i}/obj.SegNumPoints{i};
                     
                     if i == 1
-                        obj.TStart{i} = obj.SecPerPoint{i};
+                        obj.TStart{i} = obj.SecPerPoint{i}/2;
                     else 
-                        obj.TStart{i} = obj.SeriesTime{i-1}+obj.SecPerPoint{i};
+                        obj.TStart{i} = obj.SeriesTime{i-1}+(obj.SecPerPoint{i}/2);
                     end
                     
                     obj.TEnd{i} = obj.SeriesTime{i};
