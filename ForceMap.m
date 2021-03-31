@@ -1543,6 +1543,7 @@ classdef ForceMap < matlab.mixin.Copyable
                     grid on
                     plot(obj.THApp{kk}-obj.CP_HardSurface(kk,1),obj.BasedApp{kk});
                     plot(obj.THRet{kk}-obj.CP_HardSurface(kk,1),obj.BasedRetCorr{kk});
+                    plot(obj.THRet{kk}-obj.CP_HardSurface(kk,1),obj.BasedRet{kk});
                     xline(x50,'Color','r'); % Draws a vertical line
                     xline(x150,'Color','r'); % Draws a vertical line   
                     xline(x500,'Color','r'); % Draws a vertical line
@@ -1645,13 +1646,20 @@ classdef ForceMap < matlab.mixin.Copyable
                 
         function fc_selection(obj,XMin,XMax,YMin,YMax) % fc ... force curve
             
+            if nargin < 2
+                XMin= -inf;
+                XMax= inf;
+                YMin= -inf;
+                YMax= inf;
+            end
             % Define remainder situation
             Remainder=mod(obj.NCurves,25);
             NFigures=floor(obj.NCurves./25);
             if Remainder ~= 0
                 NFigures=NFigures+1;
             end    
-            
+            % Define variables for the figure name
+            VelocityConvert=num2str(obj.Velocity*1e+9); % Convert into nm
             % Classification criteria
             %figname=strcat(obj.ID,{'-'},obj.ModDate,{'-'},VelocityConvert{'-'},obj.Name);
             %figname=strcat(obj.ID,{'-'},obj.ModDate,{'-'},VelocityConvert,{'-'},obj.Substrate,{'-'},obj.EnvCond,{'-'},obj.Chipbox,{'-'},obj.ChipCant);
@@ -1671,8 +1679,7 @@ classdef ForceMap < matlab.mixin.Copyable
             %t.TileSpacing = 'compact';
             %t.Padding = 'compact';
             t.TileSpacing = 'none'; % To reduce the spacing between the tiles
-            t.Padding = 'none'; % To reduce the padding of perimeter of a tile
-            
+            t.Padding = 'none'; % To reduce the padding of perimeter of a tile           
             % Defining variables
             if ii==NFigures && Remainder~=0
                 NLoop=Remainder;
@@ -1697,73 +1704,60 @@ classdef ForceMap < matlab.mixin.Copyable
                     line([x100 x100], ylim,'Color','k'); % Draws a vertical line                  
                     line([x500 x500], ylim,'Color','k'); % Draws a vertical line
                     % Title for each Subplot
-                    if obj.SelectedCurves(kk) == 0
+                    if obj.SMFSFlag.Uncorrupt(kk)==0
                         ti=title(sprintf('%i',kk),'Color','r');
-                    elseif obj.SelectedCurves(kk) == 1
+                    elseif obj.SMFSFlag.Uncorrupt(kk)==1
                         ti=title(sprintf('%i',kk),'Color','b');
                     end
                     ti.Units='normalized'; % Set units to 'normalized'  
-                    ti.Position=[0.5,1]; % Position the subplot title within the subplot
-                    % Legend, x- and y-labels
-                    %legend('Approach','Retraction','Location','best')
-                    %xlabel('Tip-sample seperation  (nm)','FontSize',11,'Interpreter','latex');
-                    %ylabel('Force (nN)','FontSize',11,'Interpreter','latex');                  
+                    ti.Position=[0.5,1]; % Position the subplot title within the subplot                 
                 end
                 
                 %% Dialog boxes
-                % Function 'bttnChoiseDialog.m' is needed to excute this section
-                
+                % Function 'bttnChoiseDialog.m' is needed to excute this section               
                 inputOptions={'Select all', 'Select none', 'Select all - except of', 'Select none - except of'}; % Define the input arguments
                 % 'Select all' = 1
                 % 'Select none' = 2
                 % 'Select all - except of' = 3
                 % 'Select none - except of' = 4
-
                 defSelection=inputOptions{1}; % Default selection; Defined selection if the window is closed without choosing a selection possibility
-
                 SelectBttns=bttnChoiseDialog(inputOptions, 'Force curve selection', defSelection,...
                 'Please choose the appropriate button ...'); % Stores the selected button number per figure
-
                 % Case 1: Select all
                 if SelectBttns == 1
-                    obj.SelectedCurves(kk-24:kk) = 1;
+                    obj.SMFSFlag.Uncorrupt(kk-24:kk)=1;
                 end
-
                 % Case 2: Select none
                 if SelectBttns == 2
-                    obj.SelectedCurves(kk-24:kk) = 0;
+                    obj.SMFSFlag.Uncorrupt(kk-24:kk)=0;
                 end
-
                 % Case 3: Select all - except of
                 if SelectBttns == 3
-                    obj.SelectedCurves(kk-24:kk) = 1;
+                    obj.SMFSFlag.Uncorrupt(kk-24:kk)=1;
                     prompt = {'Enter the force curve number you do not want to keep for analysis (For multiple selections just use the space key to separeat entries)'};
                     definput = {''};
                     opts.Interpreter = 'tex';
-                    IndSelec=inputdlg(prompt,'Select all except of ...',[1 150],definput,opts); % Stores the individual selected fc as a cell array of character vectors 
-                    IndSelec=str2num(IndSelec{1}); % Convert the cell array to numerals
-                    obj.SelectedCurves(IndSelec) = 0;
+                    IdxExc=inputdlg(prompt,'Select all except of ...',[1 150],definput,opts); % Stores the individual selected fc as a cell array of character vectors 
+                    IdxExc=str2num(IdxExc{1}); % Convert the cell array to numerals
+                    obj.SMFSFlag.Uncorrupt(IdxExc)=0;
                 end
-
-                if obj.SelectedCurves(kk-24:kk) == 0
-                    t=title(sprintf('%i',kk),'Color','r');
-                    elseif obj.SelectedCurves(kk-24:kk) == 1
-                    t=title(sprintf('%i',kk),'Color','b');
-                end
-        
+                if obj.SMFSFlag.Uncorrupt(kk-24:kk)==0
+                    title(sprintf('%i',kk),'Color','r');
+                elseif obj.SMFSFlag.Uncorrupt(kk-24:kk)==1    
+                    title(sprintf('%i',kk),'Color','b');
+                end        
                 % Case 4: Select none - except of
                 if SelectBttns == 4
-                    obj.SelectedCurves(kk-24:kk) = 0;
+                    obj.SMFSFlag.Uncorrupt(kk-24:kk)=0;
                     prompt = {'Enter the force curve number you want want to keep for analysis (For multiple selections just use the space key to separeat entries)'};
                     definput = {''};
                     opts.Interpreter = 'tex';
-                    IndSelec=inputdlg(prompt,'Select all except of ...',[1 150],definput,opts); % Stores the individual selected fc as a cell array of character vectors 
-                    IndSelec=str2num(IndSelec{1}); % Convert the cell array to numerals
-                    obj.SelectedCurves(IndSelec) = 1;
+                    IdxExc=inputdlg(prompt,'Select all except of ...',[1 150],definput,opts); % Stores the individual selected fc as a cell array of character vectors 
+                    IdxExc=str2num(IdxExc{1}); % Convert the cell array to numerals
+                    obj.SMFSFlag.Uncorrupt(IdxExc)=1;
                 end
             end
-                % Housekeeping
-                close all
+            close all
                 
             %%% Colour highlighting of the force curves regarding the choosen answer and storage in a structure
             %% Figure loop
@@ -1782,14 +1776,12 @@ classdef ForceMap < matlab.mixin.Copyable
                 %t.Padding = 'compact';
                 t.TileSpacing = 'none'; % To reduce the spacing between the tiles
                 t.Padding = 'none'; % To reduce the padding of perimeter of a tile
-
                 % Defining variables
                 if ii==NFigures && Remainder~=0
                     NLoop=Remainder;
                 else
                     NLoop=25;
-                end 
-               
+                end               
                 %% Title loop
                 for jj=1:NLoop
                     % Tile jj
@@ -1802,17 +1794,13 @@ classdef ForceMap < matlab.mixin.Copyable
                     plot(obj.THApp{kk}-obj.CP_HardSurface(kk,1),obj.BasedApp{kk});
                     plot(obj.THRet{kk}-obj.CP_HardSurface(kk,1),obj.BasedRet{kk});                    
                     % Title for each Subplot
-                    if obj.SelectedCurves(kk) == 0
+                    if obj.SMFSFlag.Uncorrupt(kk)==0
                         ti=title(sprintf('%i',kk),'Color','r');
-                    elseif obj.SelectedCurves(kk) == 1
+                    elseif obj.SMFSFlag.Uncorrupt(kk)==1
                         ti=title(sprintf('%i',kk),'Color','b');
                     end
                     ti.Units='normalized'; % Set units to 'normalized'  
-                    ti.Position=[0.5,1]; % Position the subplot title within the subplot
-                    % Legend, x- and y-labels
-                    %legend('Approach','Retraction','Location','best')
-                    %xlabel('Tip-sample seperation  (nm)','FontSize',11,'Interpreter','latex');
-                    %ylabel('Force (nN)','FontSize',11,'Interpreter','latex');                  
+                    ti.Position=[0.5,1]; % Position the subplot title within the subplot                                  
                 end
 
             %% Save figures
@@ -1871,32 +1859,7 @@ classdef ForceMap < matlab.mixin.Copyable
         end
        
         function fc_figure(obj,XMin,XMax,YMin,YMax)
-            
-            % Define RGB colours
-            RGB1=[0 26 255]./255;  % Blue 
-            RGB2=[255 119 0]./255; % Orange
-            RGB10=[205 207 208]./255; % Grey
-            
-            % Define some variables
-            kk=89;
-            VelocityConvert=num2str(obj.Velocity*1e+9); % Convert into nm
-            figname=strcat(obj.ModDate,{'_'},obj.ModTime,{'_'},obj.ID,{'_'},obj.Substrate,{'_'},obj.EnvCond,{'_'},VelocityConvert,{'_'},obj.Chipbox,{'_'},obj.ChipCant);
-            figname=char(figname);
-%             
-%                area(obj.THRet{kk}-obj.CP_HardSurface(kk),obj.yRetLim2{kk},'FaceColor',RGB10)
-%             plot(obj.THApp{kk}-obj.CP_HardSurface(kk),obj.BasedApp{kk},'Color',RGB1,'LineWidth',4);
-%             plot(obj.THRet{kk}-obj.CP_HardSurface(kk),obj.BasedRetCorr2{kk},'Color',RGB2,'LineWidth',4);     
-%          
-            % Allocate data
-           xApp1=(obj.THApp{kk}-obj.CP_HardSurface(kk))*-1e9;
-          %  xApp1b=(obj.THApp{kk})*-1e9;
-            yApp1=(obj.BasedApp{kk})*1e9;
-            xRet1=(obj.THRet{kk}-obj.CP_HardSurface(kk))*-1e9;
-            xRet1b=(obj.THRet{kk})*-1e9;
-      %      yRet1=(obj.BasedRetCorr2{kk})*1e9;
-            yRet1b=(obj.BasedRet{kk})*1e9;
-         %   yRet2=(obj.yRetLim2{kk})*1e9;
-            
+             
             if nargin < 2
                 XMin= -inf;
                 XMax= inf;
@@ -1904,6 +1867,30 @@ classdef ForceMap < matlab.mixin.Copyable
                 YMax= inf;
             end
             
+            % Define RGB colours
+            RGB1=[0 26 255]./255;  % Blue 
+            RGB2=[255 119 0]./255; % Orange
+            RGB10=[205 207 208]./255; % Grey
+              
+            [Xmultiplier,Xunit,~] = AFMImage.parse_unit_scale(1e+9,'nm',1);
+            [Ymultiplier,Yunit,~] = AFMImage.parse_unit_scale(1e+9,'nN',1);
+            
+            % Define some variables
+            kk=89;
+            VelocityConvert=num2str(obj.Velocity*Xmultiplier); % Convert into nm
+            figname=strcat(obj.ModDate,{'_'},obj.ModTime,{'_'},obj.ID,{'_'},obj.Substrate,{'_'},obj.EnvCond,{'_'},VelocityConvert,{'_'},obj.Chipbox,{'_'},obj.ChipCant);
+            figname=char(figname);
+          
+            % Allocate data
+           xApp1=(obj.THApp{kk}-obj.CP_HardSurface(kk))*-Xmultiplier;
+          %  xApp1b=(obj.THApp{kk})*-1e9;
+            yApp1=(obj.BasedApp{kk})*Ymultiplier;
+            xRet1=(obj.THRet{kk}-obj.CP_HardSurface(kk))*-Xmultiplier;
+            xRet1b=(obj.THRet{kk})*-Xmultiplier;
+      %      yRet1=(obj.BasedRetCorr2{kk})*1e9;
+            yRet1b=(obj.BasedRet{kk})*Ymultiplier;
+         %   yRet2=(obj.yRetLim2{kk})*1e9;
+           
             % Figure
             h_fig=figure(7);
             h_fig.Color='white'; % changes the background color of the figure
@@ -1927,12 +1914,12 @@ classdef ForceMap < matlab.mixin.Copyable
             ax = gca; % current axes
             ax.FontSize = 20;
            % ax.XTick=[];
-            ax.XTickLabel=[];
+           % ax.XTickLabel=[];
            % ax.YTick=[];
-            ax.YTickLabel=[];
-          %  ax.XLabel.String = 'Tip-Substrate separation (nm)';
+           % ax.YTickLabel=[];
+            ax.XLabel.String = sprintf('Tip-Substrate separation (%s)',Xunit);
             ax.XLabel.FontSize = 20;
-         %   ax.YLabel.String = 'Force (nN)';
+            ax.YLabel.String = sprintf('Force (%s)',Yunit);
             ax.YLabel.FontSize = 20;
             ax.XLim = [XMin XMax];
             ax.YLim = [YMin YMax];
@@ -3219,6 +3206,7 @@ classdef ForceMap < matlab.mixin.Copyable
             obj.CPFlag.HardSurface = 0;
             obj.HasRefSlope = false;
             % SMFS
+            obj.SMFSFlag.Uncorrupt=ones(1,obj.NCurves);
             obj.SMFSFlag.Min=zeros(1,obj.NCurves);
             obj.SMFSFlag.Length=zeros(1,obj.NCurves);
             

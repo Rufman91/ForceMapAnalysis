@@ -1030,8 +1030,8 @@ classdef Experiment < matlab.mixin.Copyable
             % obj.preprocessing
                        
             % force map loop
-            %for ii=1:obj.NumForceMaps
-            for ii=270   
+            for ii=1:obj.NumForceMaps
+            % for ii=270 % debugging  
                 obj.FM{ii}.fc_chipprop
                 obj.FM{ii}.fc_based_ret_correction
             end
@@ -1086,8 +1086,8 @@ classdef Experiment < matlab.mixin.Copyable
             cd(currpath); 
             
             % Loop over the imported force maps
-            %for ii=1:obj.NumForceMaps
-            for ii=88:obj.NumForceMaps % Debugging
+            for ii=1:obj.NumForceMaps
+            %for ii=88:obj.NumForceMaps % Debugging
             % Presort condition 
               %  if ~obj.SMFSFlag(ii)   % Selects all flagged 1 force maps
                 %if obj.SMFSFlag(ii)     % Selects all flagged 0 force maps
