@@ -176,7 +176,7 @@ classdef Experiment < matlab.mixin.Copyable
             TempID = cell(max(NumFiles),5);
             L = max(NumFiles);
             
-            if contains(struct2array(ver), 'Parallel Computing Toolbox') && (sum(NumFiles(1:2)) > 1)
+            if contains(struct2array(ver), 'Parallel Computing Toolbox') && ((sum(NumFiles(1:2)) > 1) || (sum(NumFiles) > 20))
                 for i=1:5
                     parfor j=1:L
                         if (j+sum(NumFiles(1:i))-NumFiles(i)) <= length(IDs)
@@ -227,33 +227,33 @@ classdef Experiment < matlab.mixin.Copyable
                 for j=1:NumFiles(i)
                     if i == 1 && FileTypes(i)
                         Idx = obj.NumForceMaps+j;
-                        obj.FM{Idx} = TempCell{j,i};
-                        obj.ForceMapNames{Idx} = obj.FM{Idx}.Name;
-                        obj.ForceMapFolders{Idx} = obj.FM{Idx}.Folder;
+                        obj.FM{Idx,1} = TempCell{j,i};
+                        obj.ForceMapNames{Idx,1} = obj.FM{Idx}.Name;
+                        obj.ForceMapFolders{Idx,1} = obj.FM{Idx}.Folder;
                     end
                     if i == 2 && FileTypes(i)
                         Idx = obj.NumReferenceForceMaps+j;
-                        obj.RefFM{Idx} = TempCell{j,i};
-                        obj.ReferenceForceMapNames{Idx} = obj.RefFM{Idx}.Name;
-                        obj.ReferenceForceMapFolders{Idx} = obj.RefFM{Idx}.Folder;
+                        obj.RefFM{Idx,1} = TempCell{j,i};
+                        obj.ReferenceForceMapNames{Idx,1} = obj.RefFM{Idx}.Name;
+                        obj.ReferenceForceMapFolders{Idx,1} = obj.RefFM{Idx}.Folder;
                     end
                     if i == 3 && FileTypes(i)
                         Idx = obj.NumAFMImages+j;
-                        obj.I{Idx} = TempCell{j,i};
-                        obj.AFMImageNames{Idx} = obj.I{Idx}.Name;
-                        obj.AFMImageFolders{Idx} = 'Placeholder';
+                        obj.I{Idx,1} = TempCell{j,i};
+                        obj.AFMImageNames{Idx,1} = obj.I{Idx}.Name;
+                        obj.AFMImageFolders{Idx,1} = 'Placeholder';
                     end
                     if i == 4 && FileTypes(i)
                         Idx = obj.NumSurfacePotentialMaps+j;
-                        obj.SPM{Idx} = TempCell{j,i};
-                        obj.SurfacePotentialMapNames{Idx} = obj.SPM{Idx}.Name;
-                        obj.SurfacePotentialMapFolders{Idx} = obj.SPM{Idx}.Folder;
+                        obj.SPM{Idx,1} = TempCell{j,i};
+                        obj.SurfacePotentialMapNames{Idx,1} = obj.SPM{Idx}.Name;
+                        obj.SurfacePotentialMapFolders{Idx,1} = obj.SPM{Idx}.Folder;
                     end
                     if i == 5 && FileTypes(i)
                         Idx = obj.NumCantileverTips+j;
-                        obj.CantileverTips{Idx} = TempCell{j,i};
-                        obj.CantileverTipNames{Idx} = obj.CantileverTips{Idx}.Name;
-                        obj.CantileverTipFolders{Idx} = 'Placeholder';
+                        obj.CantileverTips{Idx,1} = TempCell{j,i};
+                        obj.CantileverTipNames{Idx,1} = obj.CantileverTips{Idx}.Name;
+                        obj.CantileverTipFolders{Idx,1} = 'Placeholder';
                     end
                 end
             end

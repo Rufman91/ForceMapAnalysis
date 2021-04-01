@@ -18,6 +18,15 @@ classdef AFMImage < matlab.mixin.Copyable
         NumChannels
     end
     properties
+        % All possible image channels. The Channels are all part of the
+        % struct Channel and should each contain the properties Image,
+        % Unit, Name, ScanSizeX, ScanSizeY, NumPixelsX, NumPixelsY,
+        % ScanAngle, OriginX and OriginY. This might seem redundant but
+        % allows for image cropping, image-overlays and easy addition of
+        % other kinds of image-data (e.g. AdhesionMaps, EModMaps)
+        Channel
+    end
+    properties
         % Image Data Properties. All dimensions in SI-units, Angles in
         % degrees
         OriginX
@@ -47,15 +56,6 @@ classdef AFMImage < matlab.mixin.Copyable
         SetP_m
         SetP_N
         Baseline_N
-    end
-    properties
-        % All possible image channels. The Channels are all part of the
-        % struct Channel and should each contain the properties Image,
-        % Unit, Name, ScanSizeX, ScanSizeY, NumPixelsX, NumPixelsY,
-        % ScanAngle, OriginX and OriginY. This might seem redundant but
-        % allows for image cropping, image-overlays and easy addition of
-        % other kinds of image-data (e.g. AdhesionMaps, EModMaps)
-        Channel
     end
     properties
         % Properties related to Image processing/segmenting/classification
@@ -163,6 +163,51 @@ classdef AFMImage < matlab.mixin.Copyable
     
     methods(Static)
         % Static Main Methods
+        
+        function ChannelOut = overlay_two_images(Channel1,Channel2,BackgroundPercent)
+            % ChannelStruct = overlay_two_images(Channel1,Channel2,BackgroundPercent)
+            % Outputs a Channelstruct,that is a copy of Channel2 but with
+            % overlayparameters as to fit on Channel1
+            
+            % Convert both Channel to (optionally) masked Point Clouds
+            Mask1 = AFMImage.mask_background_by_threshold(Channel1.Image,BackgroundPercent);
+            Mask2 = AFMImage.mask_background_by_threshold(Channel2.Image,BackgroundPercent);
+            [X1,Y1,Z1] = AFMImage.convert_masked_to_point_cloud(Channel1.Image,~Mask1,...
+                Channel1.ScanSizeX,Channel1.ScanSizeY,...
+                Channel1.OriginX,Channel1.OriginY,...
+                Channel1.ScanAngle);
+            [X2,Y2,Z2] = AFMImage.convert_masked_to_point_cloud(Channel2.Image,~Mask2,...
+                Channel2.ScanSizeX,Channel2.ScanSizeY,...
+                Channel1.OriginX,Channel1.OriginY,...
+                Channel2.ScanAngle);
+            
+            % Explore Parameters
+            [ShiftX, ShiftY, Angle] = overlay_parameters_by_bayesopt([X1,Y1,Z1],[X2,Y2,Z2]);
+            
+            % Create standard AFMImage-ChannelStruct with new Origin and
+            % ScanAngle
+            ChannelOut = Channel2;
+            ChannelOut.OriginX = Channel2.OriginX + ShiftX;
+            ChannelOut.OriginY = Channel2.OriginY + ShiftY;
+            ChannelOut.ScanAngle = mod(Channel2.ScanAngle + Angle,360);
+        end
+        
+        function [ShiftX, ShiftY, Angle] = overlay_parameters_by_bayesopt(PC1,PC2)
+            % prepare the bayesopt
+            ShiftX = optimizableVariable('ShiftX',[],'Type','double');
+            ShiftY = optimizableVariable('ShiftY',[],'Type','double');
+            Angle = optimizableVariable('Angle',[0,360],'Type','double');
+            fun = @(x)AFMImage.overlay_loss(PC1,PC2,x.ShiftX,x.ShiftY,x.Angle);
+            
+            % do the bayesopt
+            Results = bayesopt(fun,[ShiftX,ShiftY,Angle]);
+        end
+        
+        function Loss = overlay_loss(PC1,PC2,ShiftX,ShiftY,Angle)
+            
+            
+            
+        end
         
         function OutImage = subtract_line_fit_hist(InImage,CutOff)
             
@@ -1017,7 +1062,11 @@ classdef AFMImage < matlab.mixin.Copyable
                 obj.Channel(i-1).ScanSizeY = obj.ScanSizeY;
                 obj.Channel(i-1).OriginX = obj.OriginX;
                 obj.Channel(i-1).OriginY = obj.OriginY;
-                obj.Channel(i-1).Angle = obj.ScanAngle;
+                if ~isempty(obj.ScanAngle)
+                    obj.Channel(i-1).ScanAngle = obj.ScanAngle;
+                else
+                    obj.Channel(i-1).ScanAngle = 0;
+                end
                 
             end
         end
@@ -1198,17 +1247,19 @@ classdef AFMImage < matlab.mixin.Copyable
             V = V(:,2:end);
         end
         
-        function [X,Y,Z] = convert_masked_to_point_cloud(Image,Mask,ScanSizeX,ScanSizeY,OriginX,OriginY)
+        function [X,Y,Z] = convert_masked_to_point_cloud(Image,Mask,ScanSizeX,ScanSizeY,OriginX,OriginY,ScanAngle)
             
             if nargin<4
                 ScanSizeX = 1;
                 ScanSizeY = 1;
                 OriginX = 0;
                 OriginY = 0;
+                ScanAngle = 0;
             end
-            if nargin<6
+            if nargin<7
                 OriginX = 0;
                 OriginY = 0;
+                ScanAngle = 0;
             end
             
             
@@ -1218,8 +1269,31 @@ classdef AFMImage < matlab.mixin.Copyable
                 Z(i) = Image(X(i),Y(i));
             end
             
+            % the rotation is done around the center of the IMAGE and not
+            % the Origin so first shift the origin to mid image, then rotate and finally scale and shift to OriginX/Y;
+            X1 = X - (size(Image,1)/2 + 1);
+            Y1 = Y - (size(Image,2)/2 + 1);
+            X = X1.*cosd(ScanAngle) + Y1.*sind(ScanAngle);
+            Y = -X1.*sind(ScanAngle) + Y1.*cosd(ScanAngle);
+            
             X = X.*ScanSizeX - OriginX;
             Y = Y.*ScanSizeY - OriginY;
+        end
+        
+        function [XOut,YOut] = rotate_and_shift_point_cloud(X,Y,ShiftX,ShiftY,Angle)
+            % Center PC, rotate it and shift it back to original positions
+            CenterX = min(X) + range(X)/2;
+            CenterY = min(Y) + range(Y)/2;
+            X1 = X - CenterX;
+            Y1 = Y - CenterY;
+            X = X1*cosd(Angle) + Y1*sind(Angle);
+            Y = -X1*sind(Angle) + Y1*cosd(Angle);
+            X = X + CenterX;
+            Y = Y + CenterY;
+            
+            % Shift it by InputShift and return
+            XOut = X - ShiftX;
+            YOut = Y - ShiftY;
         end
         
         function R = draw_scalebar_into_current_image(NumPixelsX,ScanSizeX,BarToImageRatio,FontSizeMult)
