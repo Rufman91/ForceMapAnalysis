@@ -1572,80 +1572,7 @@ classdef ForceMap < matlab.mixin.Copyable
             end
         close Figure 1 Figure 2 Figure 3 Figure 4
         end
-        
-        function fc_print_adhenergy_pulllength(obj,XMin,XMax,YMin,YMax) % fc ... force curve
-            % fc_print: A function to simply plot all force curves of a
-            % force map without any selection taking place
-            if nargin < 2
-                XMin= -inf;
-                XMax= inf;
-                YMin= -inf;
-                YMax= inf;
-            end
-            % Define variables for the figure name
-            VelocityConvert=num2str(obj.Velocity*1e+9); % Convert into nm
-            % Classification criteria
-            figname=strcat(obj.DateAdapt,{'_'},obj.TimeAdapt,{'_'},obj.ID,{'_'},obj.Substrate,{'_'},obj.EnvCond,{'_'},VelocityConvert,{'_'},obj.Chipbox,{'_'},obj.ChipCant);
-            figname=char(figname);
-            %% figure loop
-            for ii=1:NFigures
-                % Allocate data
-                xApp=obj.THApp{ii}-obj.CP_HardSurface(ii);
-                xRet=obj.THRet{ii}-obj.CP_HardSurface(ii);
-                yApp=obj.BasedApp{ii};
-                yRet=obj.BasedRetCorr2{ii};               
-                % figure
-                h_fig=figure(ii);
-                h_fig.Color='white'; % changes the background color of the figure
-                h_fig.Units='normalized'; % Defines the units
-                h_fig.OuterPosition=[0 0 1 1];% changes the size of the to the whole screen
-                h_fig.PaperOrientation='landscape';
-                h_fig.Name=figname;      
-                %% Plotting the tiles
-                t = tiledlayout(5,5);
-                %t.TileSpacing = 'compact';
-                %t.Padding = 'compact';
-                t.TileSpacing = 'none'; % To reduce the spacing between the tiles
-                t.Padding = 'none'; % To reduce the padding of perimeter of a tile
-                % Defining variables
-                if ii==NFigures && Remainder~=0
-                    NLoop=Remainder;
-                else
-                    NLoop=25;
-                end
-                %% Plot loop
-                for jj=1:NLoop
-                    % Tile jj
-                    kk=jj+25*(ii-1);
-                    if ~obj.SMFSFlag.Uncorrupt(kk)     % Selects all flagged 1 
-                    continue
-                    end
-                    ax=nexttile;
-                    ax.XLim = [XMin XMax];
-                    ax.YLim = [YMin YMax];
-                    hold on
-                    grid on
-                    plot(obj.THApp{kk}-obj.CP_HardSurface(kk),obj.BasedApp{kk},'b');
-                    plot(obj.THRet{kk}-obj.CP_HardSurface(kk),obj.BasedRetCorr2{kk},'r');
-                    %plot(xRet(obj.PullingLengthIdx(kk)),yRet(obj.PullingLengthIdx(kk)),'*','MarkerSize',10,'MarkerEdgeColor','g')
-                    plot(obj.THRet{kk}(obj.PullingLengthIdx(kk))-obj.CP_HardSurface(kk),obj.BasedRetCorr2{kk}(obj.PullingLengthIdx(kk)),'*','MarkerSize',10,'MarkerEdgeColor','g')
-                    area(obj.THRet{kk}-obj.CP_HardSurface(kk),obj.yRetLim2{kk},'FaceColor','y')
-                    % Title for each Subplot
-                    ti=title(sprintf('%i',kk),'Color','k');
-                    ti.Units='normalized'; % Set units to 'normalized'
-                    ti.Position=[0.5,1]; % Position the subplot title within the subplot
-                end
-            %% Save figures
-            %%% Define the name for the figure title    
-            partname=sprintf('-p%d',ii);        
-            % fullname=sprintf('%s%s',figname,partname);
-            fullname=sprintf('%s%s',figname,partname);
-            %%% Save the current figure in the current folder
-            print(gcf,fullname,'-dpng');
-            end
-            close Figure 1 Figure 2 Figure 3 Figure 4
-        end
-                
+                   
         function fc_selection(obj,XMin,XMax,YMin,YMax) % fc ... force curve
             
             if nargin < 2
@@ -1933,6 +1860,81 @@ classdef ForceMap < matlab.mixin.Copyable
             %%% Save the current figure in the current folder
             print(gcf,fullname,'-dpng');
         end
+        
+        
+           function fc_print_adhenergy_pulllength(obj,XMin,XMax,YMin,YMax,NumFigures,m,n,Remainder) % fc ... force curve
+            % fc_print: A function to simply plot all force curves of a
+            % force map without any selection taking place
+            if nargin < 2
+                XMin= -inf;
+                XMax= inf;
+                YMin= -inf;
+                YMax= inf;
+            end
+            % Define variables for the figure name
+            VelocityConvert=num2str(obj.Velocity*1e+9); % Convert into nm
+            % Classification criteria
+            figname=strcat(obj.DateAdapt,{'_'},obj.TimeAdapt,{'_'},obj.ID,{'_'},obj.Substrate,{'_'},obj.EnvCond,{'_'},VelocityConvert,{'_'},obj.Chipbox,{'_'},obj.ChipCant);
+            figname=char(figname);
+            %% figure loop
+            for ii=1:NumFigures
+                % Allocate data
+                xApp=obj.THApp{ii}-obj.CP_HardSurface(ii);
+                xRet=obj.THRet{ii}-obj.CP_HardSurface(ii);
+                yApp=obj.BasedApp{ii};
+                yRet=obj.BasedRetCorr2{ii};               
+                % figure
+                h_fig=figure(ii);
+                h_fig.Color='white'; % changes the background color of the figure
+                h_fig.Units='normalized'; % Defines the units
+                h_fig.OuterPosition=[0 0 1 1];% changes the size of the to the whole screen
+                h_fig.PaperOrientation='landscape';
+                h_fig.Name=figname;      
+                %% Plotting the tiles
+                t = tiledlayout(m,n);
+                %t.TileSpacing = 'compact';
+                %t.Padding = 'compact';
+                t.TileSpacing = 'none'; % To reduce the spacing between the tiles
+                t.Padding = 'none'; % To reduce the padding of perimeter of a tile
+                % Defining variables
+                if ii==NumFigures && Remainder~=0
+                    NLoop=Remainder;
+                else
+                    NLoop=25;
+                end
+                %% Plot loop
+                for jj=1:NLoop
+                    % Tile jj
+                    kk=jj+25*(ii-1);
+                    if ~obj.SMFSFlag.Uncorrupt(kk)     % Selects all flagged 1 
+                    continue
+                    end
+                    ax=nexttile;
+                    ax.XLim = [XMin XMax];
+                    ax.YLim = [YMin YMax];
+                    hold on
+                    grid on
+                    plot(obj.THApp{kk}-obj.CP_HardSurface(kk),obj.BasedApp{kk},'b');
+                    plot(obj.THRet{kk}-obj.CP_HardSurface(kk),obj.BasedRetCorr2{kk},'r');
+                    %plot(xRet(obj.PullingLengthIdx(kk)),yRet(obj.PullingLengthIdx(kk)),'*','MarkerSize',10,'MarkerEdgeColor','g')
+                    plot(obj.THRet{kk}(obj.PullingLengthIdx(kk))-obj.CP_HardSurface(kk),obj.BasedRetCorr2{kk}(obj.PullingLengthIdx(kk)),'*','MarkerSize',10,'MarkerEdgeColor','g')
+                    area(obj.THRet{kk}-obj.CP_HardSurface(kk),obj.yRetLim2{kk},'FaceColor','y')
+                    % Title for each Subplot
+                    ti=title(sprintf('%i',kk),'Color','k');
+                    ti.Units='normalized'; % Set units to 'normalized'
+                    ti.Position=[0.5,1]; % Position the subplot title within the subplot
+                end
+            %% Save figures
+            %%% Define the name for the figure title    
+            partname=sprintf('-p%d',ii);        
+            % fullname=sprintf('%s%s',figname,partname);
+            fullname=sprintf('%s%s',figname,partname);
+            %%% Save the current figure in the current folder
+            print(gcf,fullname,'-dpng');
+            end
+            close Figure 1 Figure 2 Figure 3 Figure 4
+        end
+      
        
     end      
     methods (Static)
