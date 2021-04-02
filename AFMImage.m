@@ -716,7 +716,8 @@ classdef AFMImage < matlab.mixin.Copyable
                 end
                 hold on
                 CurrentAxHeight = round(h.Fig.Position(4)*h.ImAx(Index).Position(4));
-                AFMImage.draw_scalebar_into_current_image(Channel.NumPixelsX,Channel.ScanSizeX,BarToImageRatio,CurrentAxHeight);
+                CurrentAxWidth = round(h.Fig.Position(3)*h.ImAx(Index).Position(3));
+                AFMImage.draw_scalebar_into_current_image(Channel.NumPixelsX,Channel.NumPixelsY,Channel.ScanSizeX,BarToImageRatio,CurrentAxHeight,CurrentAxWidth);
                 c = colorbar;
                 c.FontSize = round(18*(CurrentAxHeight/756));
                 c.Color = 'w';
@@ -1296,22 +1297,30 @@ classdef AFMImage < matlab.mixin.Copyable
             YOut = Y - ShiftY;
         end
         
-        function R = draw_scalebar_into_current_image(NumPixelsX,ScanSizeX,BarToImageRatio,FontSizeMult)
+        function R = draw_scalebar_into_current_image(NumPixelsX,NumPixelsY,ScanSizeX,BarToImageRatio,CurAxHeight,CurAxWidth)
             
-            if nargin < 5
+            if nargin < 4
                 BarToImageRatio = 1/5;
+                CurAxHeight = NumPixelsY;
+                CurAxWidth = NumPixelsX;
             end
             
-            FontSizeMult = FontSizeMult/NumPixelsX;
+            ImageRatio = NumPixelsY/NumPixelsX;
+            
+            if CurAxHeight/CurAxWidth >= ImageRatio
+                FontSizeMult = CurAxWidth/1000;
+            else
+                FontSizeMult = CurAxHeight/1000;
+            end
             
             ScalebarThickness = 1/40;
-            DistFromBorder = 0.1;
+            DistFromBorder = 0.12;
             
             [Multiplier,Unit,SnapTo] = AFMImage.parse_unit_scale(ScanSizeX,'m',BarToImageRatio);
             
             Width = (SnapTo)/(ScanSizeX*Multiplier);
             Height = ScalebarThickness;
-            Left = 1-Width*(1+DistFromBorder);
+            Left = 1-Width*(1+DistFromBorder*1.5);
             Bottom = 1-(DistFromBorder-Height);
             
             R = rectangle('Position',[Left Bottom Width Height].*NumPixelsX);
