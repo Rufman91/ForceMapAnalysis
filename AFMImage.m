@@ -182,7 +182,7 @@ classdef AFMImage < matlab.mixin.Copyable
                 Channel2.ScanAngle);
             
             % Explore Parameters
-            [ShiftX, ShiftY, Angle] = overlay_parameters_by_bayesopt([X1,Y1,Z1],[X2,Y2,Z2]);
+            [ShiftX, ShiftY, Angle] = AFMImage.overlay_parameters_by_bayesopt([X1,Y1,Z1],[X2,Y2,Z2]);
             
             % Create standard AFMImage-ChannelStruct with new Origin and
             % ScanAngle
@@ -194,9 +194,13 @@ classdef AFMImage < matlab.mixin.Copyable
         
         function [ShiftX, ShiftY, Angle] = overlay_parameters_by_bayesopt(PC1,PC2)
             % prepare the bayesopt
-            ShiftX = optimizableVariable('ShiftX',[],'Type','double');
-            ShiftY = optimizableVariable('ShiftY',[],'Type','double');
-            Angle = optimizableVariable('Angle',[0,360],'Type','double');
+            RangeX1 = range(PC1(:,1));
+            RangeY1 = range(PC1(:,2));
+            RangeX2 = range(PC2(:,1));
+            RangeY2 = range(PC2(:,2));
+            ShiftX = optimizableVariable('ShiftX',[0 sqrt(2)*(RangeX1+RangeX2)*0.8],'Type','real');
+            ShiftY = optimizableVariable('ShiftY',[0 sqrt(2)*(RangeY1+RangeY2)*0.8],'Type','real');
+            Angle = optimizableVariable('Angle',[0,360],'Type','real');
             fun = @(x)AFMImage.overlay_loss(PC1,PC2,x.ShiftX,x.ShiftY,x.Angle);
             
             % do the bayesopt
@@ -205,8 +209,25 @@ classdef AFMImage < matlab.mixin.Copyable
         
         function Loss = overlay_loss(PC1,PC2,ShiftX,ShiftY,Angle)
             
+            PixelDistance = 1.1*norm(PC1(1,1:2) - PC1(2,1:2)); % Multiplier for numerical stability
+            Len1 = length(PC1);
+            Len2 = length(PC2);
+            tic
+            [PC2(:,1),PC2(:,2)] = AFMImage.rotate_and_shift_point_cloud(PC2(:,1),PC2(:,2),ShiftX,ShiftY,Angle);
+            toc
+            k = 1;
+            for i=1:Len2
+                for j=1:Len1
+                    Norm = norm(PC2(i,1:2)-PC1(j,1:2));
+                    if Norm <= PixelDistance
+                        ZDistances(k) = abs(PC1(j,3)-PC2(i,3));
+                        k = k + 1;
+                    end
+                end
+            end
             
-            
+            NumOfNearPoints = length(ZDistances);
+            Loss = sum(ZDistances)+1/NumOfNearPoints;
         end
         
         function OutImage = subtract_line_fit_hist(InImage,CutOff)
@@ -448,6 +469,11 @@ classdef AFMImage < matlab.mixin.Copyable
                 'units','normalized',...
                 'position',[.85 .1 .1 .05],...
                 'Callback',@save_figure_to_file);
+            
+            h.B(7) = uicontrol('style','checkbox',...
+                'String','...with white background',...
+                'units','normalized',...
+                'position',[.85 .05 .1 .04]);
             
             h.Line = [];
             h.hasCrossSection = 0;
@@ -731,16 +757,22 @@ classdef AFMImage < matlab.mixin.Copyable
             end
             
             function save_figure_to_file(varargin)
+                if h.B(7).Value
+                Frame = print('-RGBImage','-r200');
                 
-                Frame = print('-RGBImage','-r300');
+                CroppedFrame = Frame(:,1:round(.82*end),:);
                 
-                Frame = [];
-                
-                filter = {'*.png';'*.tif'};
+                filter = {'*.png';'*.tif';'*.jpg'};
                 [file, path] = uiputfile(filter);
                 
                 FullFile = fullfile(path,file);
-                save(FullFile,'Frame.cdata');
+                imwrite(CroppedFrame,FullFile);
+                else
+                    filter = {'*.png';'*.tif'};
+                    [file, path] = uiputfile(filter);
+                    FullFile = fullfile(path,file);
+                    exportgraphics(h.Fig,FullFile,'Resolution',200,'BackgroundColor','current')
+                end
             end
             
             uiwait(h.Fig)
@@ -1460,6 +1492,24 @@ classdef AFMImage < matlab.mixin.Copyable
             end
             
             Unit = sprintf('%s%s',Prefix,Unit);
+            
+        end
+        
+        function [pBest,IndizesBest,GoFBest,SweepGoF] = line_fit_sweep(Line,StepSizePercent)
+            % AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA Don't
+            % use this!......
+            X = 1:length(Line);
+            Indizes = X;
+            StepSize = StepSizePercent/100;
+            k = 1;
+            for Percentage=1:-StepSize:0
+            [p,S] = polyfit(X(Indizes),Line(Indizes),1);
+            SweepGoF(k) = S.normr;
+            Based = Line - polyval(p,X);
+%             plot(X,Line,'b.',X,polyval(p,X),'r')
+            Indizes = find(Based <= max(Based)*Percentage);
+            k = k + 1;
+            end
             
         end
         
