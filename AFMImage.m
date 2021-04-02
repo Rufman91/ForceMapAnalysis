@@ -532,9 +532,10 @@ classdef AFMImage < matlab.mixin.Copyable
                 h.ImAx(3) = subplot(10,10,[71:78 81:88 91:98]);
                 P = plot(Points.*MultiplierX,Profile.*MultiplierY);
                 grid on
+                CurrentAxHeight = round(h.Fig.Position(4)*h.ImAx(1).Position(4));
                 h.ImAx(3).Color = 'k';
                 h.ImAx(3).LineWidth = 1;
-                h.ImAx(3).FontSize = 18;
+                h.ImAx(3).FontSize = round(22*(CurrentAxHeight/756));
                 h.ImAx(3).XColor = 'w';
                 h.ImAx(3).YColor = 'w';
                 h.ImAx(3).GridColor = 'w';
@@ -564,9 +565,10 @@ classdef AFMImage < matlab.mixin.Copyable
                 h.ImAx(3) = subplot(10,10,[71:78 81:88 91:98]);
                 P = plot(Points.*MultiplierX,Profile.*MultiplierY);
                 grid on
+                CurrentAxHeight = round(h.Fig.Position(4)*h.ImAx(2).Position(4));
                 h.ImAx(3).Color = 'k';
                 h.ImAx(3).LineWidth = 1;
-                h.ImAx(3).FontSize = 18;
+                h.ImAx(3).FontSize = round(22*(CurrentAxHeight/756));
                 h.ImAx(3).XColor = 'w';
                 h.ImAx(3).YColor = 'w';
                 h.ImAx(3).GridColor = 'w';
@@ -604,9 +606,10 @@ classdef AFMImage < matlab.mixin.Copyable
                 h.ImAx(3) = subplot(10,10,[71:78 81:88 91:98]);
                 P = plot(Points.*MultiplierX,Profile.*MultiplierY);
                 grid on
+                CurrentAxHeight = round(h.Fig.Position(4)*h.ImAx(1).Position(4));
                 h.ImAx(3).Color = 'k';
                 h.ImAx(3).LineWidth = 1;
-                h.ImAx(3).FontSize = 18;
+                h.ImAx(3).FontSize = round(22*(CurrentAxHeight/756));
                 h.ImAx(3).XColor = 'w';
                 h.ImAx(3).YColor = 'w';
                 h.ImAx(3).GridColor = 'w';
@@ -644,9 +647,10 @@ classdef AFMImage < matlab.mixin.Copyable
                 h.ImAx(3) = subplot(10,10,[71:78 81:88 91:98]);
                 P = plot(Points.*MultiplierX,Profile.*MultiplierY);
                 grid on
+                CurrentAxHeight = round(h.Fig.Position(4)*h.ImAx(2).Position(4));
                 h.ImAx(3).Color = 'k';
                 h.ImAx(3).LineWidth = 1;
-                h.ImAx(3).FontSize = 18;
+                h.ImAx(3).FontSize = round(22*(CurrentAxHeight/756));
                 h.ImAx(3).XColor = 'w';
                 h.ImAx(3).YColor = 'w';
                 h.ImAx(3).GridColor = 'w';
