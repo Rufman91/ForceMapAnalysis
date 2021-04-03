@@ -164,70 +164,145 @@ classdef AFMImage < matlab.mixin.Copyable
     methods(Static)
         % Static Main Methods
         
-        function ChannelOut = overlay_two_images(Channel1,Channel2,BackgroundPercent)
-            % ChannelStruct = overlay_two_images(Channel1,Channel2,BackgroundPercent)
-            % Outputs a Channelstruct,that is a copy of Channel2 but with
-            % overlayparameters as to fit on Channel1
+        function ChannelOut = overlay_parameters_by_bayesopt(Channel1,Channel2,BackgroundPercent,MaxFunEval)
+            % prepare the bayesopt
             
-            % Convert both Channel to (optionally) masked Point Clouds
             Mask1 = AFMImage.mask_background_by_threshold(Channel1.Image,BackgroundPercent);
             Mask2 = AFMImage.mask_background_by_threshold(Channel2.Image,BackgroundPercent);
-            [X1,Y1,Z1] = AFMImage.convert_masked_to_point_cloud(Channel1.Image,~Mask1,...
-                Channel1.ScanSizeX,Channel1.ScanSizeY,...
-                Channel1.OriginX,Channel1.OriginY,...
-                Channel1.ScanAngle);
-            [X2,Y2,Z2] = AFMImage.convert_masked_to_point_cloud(Channel2.Image,~Mask2,...
-                Channel2.ScanSizeX,Channel2.ScanSizeY,...
-                Channel1.OriginX,Channel1.OriginY,...
-                Channel2.ScanAngle);
             
-            % Explore Parameters
-            [ShiftX, ShiftY, Angle] = AFMImage.overlay_parameters_by_bayesopt([X1,Y1,Z1],[X2,Y2,Z2]);
+            % Assume Channel2 has same angle and origin as Channel1
+            Channel2.OriginX = Channel1.OriginX;
+            Channel2.OriginY = Channel1.OriginY;
+            Channel2.ScanAngle = Channel1.ScanAngle;
+            
+            % Resize the bigger Channel (in ScanSize-per-Pixel) so
+            % imagesizes correspond to ScanSizes. Do nothing, if they are
+            % exactly the same
+            SizePerPixel1 = Channel1.ScanSizeX/Channel1.NumPixelsX;
+            SizePerPixel2 = Channel2.ScanSizeX/Channel2.NumPixelsX;
+            if SizePerPixel1 > SizePerPixel2
+                ScaleMultiplier = SizePerPixel1/SizePerPixel2;
+                Channel1.Image = imresize(Channel1.Image,ScaleMultiplier);
+                Channel1.NumPixelsX = size(Channel1.Image,1);
+                Channel1.NumPixelsY = size(Channel1.Image,2);
+            elseif SizePerPixel1 > SizePerPixel2
+                ScaleMultiplier = SizePerPixel2/SizePerPixel1;
+                Channel2.Image = imresize(Channel2.Image,ScaleMultiplier);
+                Channel2.NumPixelsX = size(Channel2.Image,1);
+                Channel2.NumPixelsY = size(Channel2.Image,2);
+            end
+            
+            
+            
+            ShiftPixX = optimizableVariable(...
+                'ShiftX',[-(Channel1.NumPixelsX + Channel2.NumPixelsX)/2, (Channel1.NumPixelsX + Channel2.NumPixelsX)/2],...
+                'Type','integer');
+            ShiftPixY = optimizableVariable(...
+                'ShiftY',[-(Channel1.NumPixelsY + Channel2.NumPixelsY)/2, (Channel1.NumPixelsY + Channel2.NumPixelsY)/2],...
+                'Type','integer');
+            Angle = optimizableVariable('Angle',[-10,10],'Type','real');
+            fun = @(x)AFMImage.overlay_loss(Channel1,Channel2,~Mask1,~Mask2,x.ShiftX,x.ShiftY,x.Angle);
+            
+            % do the bayesopt
+            if contains(struct2array(ver), 'Parallel Computing Toolbox')
+                Results = bayesopt(fun,[ShiftPixX,ShiftPixY,Angle],...
+                    'MaxObjectiveEvaluations',MaxFunEval,...
+                    'UseParallel',true);
+            else
+                Results = bayesopt(fun,[ShiftPixX,ShiftPixY,Angle],...
+                    'MaxObjectiveEvaluations',MaxFunEval,...
+                    'UseParallel',false);
+            end
+            
+            MinEst = Results.XAtMinEstimatedObjective.Variables;
+            ShiftPixX = MinEst(1);
+            ShiftPixY = MinEst(2);
+            Angle = MinEst(3);
+            [Overlay1,Overlay2,OverlayMask1,OverlayMask2] = AFMImage.overlay_two_images(Channel1,Channel2,ShiftPixX,ShiftPixY,Angle,Mask1,Mask2);
+            figure
+            imshowpair(OverlayMask1,OverlayMask2)
+            
+            MinObj = Results.XAtMinObjective.Variables;
+            ShiftPixX = MinObj(1);
+            ShiftPixY = MinObj(2);
+            Angle = MinObj(3);
+            [Overlay1,Overlay2,OverlayMask1,OverlayMask2] = AFMImage.overlay_two_images(Channel1,Channel2,ShiftPixX,ShiftPixY,Angle,Mask1,Mask2);
+            figure
+            imshowpair(OverlayMask1,OverlayMask2)
             
             % Create standard AFMImage-ChannelStruct with new Origin and
-            % ScanAngle
+            % ScanAngle. Compute real-world-shift from ShiftPixX/Y
+            ShiftX = 1;
+            ShiftY = 1;
             ChannelOut = Channel2;
             ChannelOut.OriginX = Channel2.OriginX + ShiftX;
             ChannelOut.OriginY = Channel2.OriginY + ShiftY;
             ChannelOut.ScanAngle = mod(Channel2.ScanAngle + Angle,360);
         end
         
-        function [ShiftX, ShiftY, Angle] = overlay_parameters_by_bayesopt(PC1,PC2)
-            % prepare the bayesopt
-            RangeX1 = range(PC1(:,1));
-            RangeY1 = range(PC1(:,2));
-            RangeX2 = range(PC2(:,1));
-            RangeY2 = range(PC2(:,2));
-            ShiftX = optimizableVariable('ShiftX',[0 sqrt(2)*(RangeX1+RangeX2)*0.8],'Type','real');
-            ShiftY = optimizableVariable('ShiftY',[0 sqrt(2)*(RangeY1+RangeY2)*0.8],'Type','real');
-            Angle = optimizableVariable('Angle',[0,360],'Type','real');
-            fun = @(x)AFMImage.overlay_loss(PC1,PC2,x.ShiftX,x.ShiftY,x.Angle);
+        function Loss = overlay_loss(Channel1,Channel2,Mask1,Mask2,ShiftPixX,ShiftPixY,Angle)
             
-            % do the bayesopt
-            Results = bayesopt(fun,[ShiftX,ShiftY,Angle]);
+            [Overlay1,Overlay2,OverlayMask1,OverlayMask2] = AFMImage.overlay_two_images(Channel1,Channel2,ShiftPixX,ShiftPixY,Angle,Mask1,Mask2);
+            NullMask1 = zeros(size(OverlayMask1));
+            NullMask2 = zeros(size(OverlayMask1));
+            NullMask1(Overlay1 == 0) = 1;
+            NullMask2(Overlay2 == 0) = 1;
+            NullCombo = ~NullMask1 & ~NullMask2;
+            
+%             XorCombo = ~xor(OverlayMask1,OverlayMask2) & NullCombo;
+%             OverlapIndizes = find(XorCombo);
+            
+            AndCombo = and(OverlayMask1,OverlayMask2) & NullCombo;
+            Loss = -sum(AndCombo,'all');
+%             
+%             WeightedArea = sum(abs(Overlay1(OverlapIndizes))) + sum(abs(Overlay2(OverlapIndizes)));
+%             WeightedDifference = sum(abs(Overlay1(OverlapIndizes)-Overlay2(OverlapIndizes)));
+%             
+%             NormFactor = sum(abs(Overlay1),'all');
+%             
+%             Loss = (WeightedDifference - WeightedArea)/NormFactor;
         end
         
-        function Loss = overlay_loss(PC1,PC2,ShiftX,ShiftY,Angle)
+        function [Overlay1,Overlay2,OverlayMask1,OverlayMask2] = overlay_two_images(Channel1,Channel2,ShiftPixX,ShiftPixY,Angle,Mask1,Mask2)
+            % ChannelStruct = overlay_two_images(Channel1,Channel2,BackgroundPercent)
+            % Outputs a Channelstruct,that is a copy of Channel2 but with
+            % overlayparameters as to fit on Channel1
             
-            PixelDistance = 1.1*norm(PC1(1,1:2) - PC1(2,1:2)); % Multiplier for numerical stability
-            Len1 = length(PC1);
-            Len2 = length(PC2);
-            tic
-            [PC2(:,1),PC2(:,2)] = AFMImage.rotate_and_shift_point_cloud(PC2(:,1),PC2(:,2),ShiftX,ShiftY,Angle);
-            toc
-            k = 1;
-            for i=1:Len2
-                for j=1:Len1
-                    Norm = norm(PC2(i,1:2)-PC1(j,1:2));
-                    if Norm <= PixelDistance
-                        ZDistances(k) = abs(PC1(j,3)-PC2(i,3));
-                        k = k + 1;
-                    end
-                end
+            Channel2.Image = imrotate(Channel2.Image,Angle,'bicubic','loose');
+            C2NumX = Channel2.NumPixelsX;
+            C2NumY = Channel2.NumPixelsY;
+            Channel2.NumPixelsX = size(Channel2.Image,1);
+            Channel2.NumPixelsY = size(Channel2.Image,2);
+            DiffX = Channel2.NumPixelsX - C2NumX;
+            DiffY = Channel2.NumPixelsY - C2NumY;
+            ShiftPixX = ShiftPixX - (floor(DiffX/2)+1);
+            ShiftPixY = ShiftPixY + (ceil(DiffY/2)-1);
+            NumPixOverlayX = 2*Channel1.NumPixelsX + 2*Channel2.NumPixelsX;
+            NumPixOverlayY = 2*Channel1.NumPixelsY + 2*Channel2.NumPixelsY;
+            TempOverlay1 = zeros(NumPixOverlayX,NumPixOverlayY);
+            TempOverlay2 = TempOverlay1;
+            TempOverlayMask1 = TempOverlay1;
+            TempOverlayMask2 = TempOverlay1;
+            X1 = (floor(NumPixOverlayX/2)+1):(floor(NumPixOverlayX/2)+Channel1.NumPixelsX);
+            Y1 = (floor(NumPixOverlayY/2)+1):(floor(NumPixOverlayY/2)+Channel1.NumPixelsY);
+            X2 = (floor(NumPixOverlayX/2)+1-ShiftPixY):(floor(NumPixOverlayX/2)+Channel2.NumPixelsX-ShiftPixY);
+            Y2 =  (floor(NumPixOverlayY/2+ShiftPixX)+1):(floor(NumPixOverlayY/2)+Channel2.NumPixelsY+ShiftPixX);
+            TempOverlay1(X1,Y1) = Channel1.Image;
+            TempOverlay2(X2,Y2) = Channel2.Image;
+            if nargin == 7
+                Mask2 = imrotate(Mask2,Angle,'nearest','loose');
+                TempOverlayMask1(X1,Y1) = Mask1;
+                TempOverlayMask2(X2,Y2) = Mask2;
             end
             
-            NumOfNearPoints = length(ZDistances);
-            Loss = sum(ZDistances)+1/NumOfNearPoints;
+            MinX = min([X1(1) X2(1)]);
+            MaxX = max([X1(end) X2(end)]);
+            MinY = min([Y1(1) Y2(1)]);
+            MaxY = max([Y1(end) Y2(end)]);
+            Overlay1 = TempOverlay1(MinX:MaxX,MinY:MaxY);
+            Overlay2 = TempOverlay2(MinX:MaxX,MinY:MaxY);
+            OverlayMask1 = TempOverlayMask1(MinX:MaxX,MinY:MaxY);
+            OverlayMask2 = TempOverlayMask2(MinX:MaxX,MinY:MaxY);
         end
         
         function OutImage = subtract_line_fit_hist(InImage,CutOff)
