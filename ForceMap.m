@@ -2725,7 +2725,8 @@ classdef ForceMap < matlab.mixin.Copyable
                     obj.TEnd{i} = obj.SeriesTime{i};
                     obj.SegTime{i} = obj.TStart{i}:obj.SecPerPoint{i}:obj.TEnd{i};
                     obj.InterpTime{i} = obj.TStart{i}:0.000001:obj.TEnd{i};
-                    obj.InterpTime{i} = obj.InterpTime{i}.';    
+                    obj.InterpTime{i} = obj.InterpTime{i}.';
+                    obj.SegTime{i} = obj.SegTime{i}.';
                         
                         
                     clear tline where;
@@ -2881,6 +2882,100 @@ classdef ForceMap < matlab.mixin.Copyable
                     
                     obj.HHApp{i} = obj.Height{i,1};
                     obj.App{i} = obj.Force{i,1}.*obj.SpringConstant;
+                    
+                    if obj.SegFrequency{j} ~= 0
+                        % Max values of Force and Height
+                         maxF = max(obj.Force{i,j});
+                         maxH = max(obj.Height{i,j});
+
+                         % Min values of Force and Height
+                         minF = min(obj.Force{i,j});
+                         minH = min(obj.Height{i,j});
+
+                         % Difference max min
+                         DiffF = maxF - minF;
+                         DiffH = maxH - minH;
+
+
+                         % Shift to Zero Line
+                         FZShift{i,j} = obj.Force{i,j}-maxF+(minF/2);
+                         HZShift{i,j} = obj.Force{i,j}-maxF+(minF/2);
+                         
+                         %INTERPOLATION with the purpose to add more points to indentation data
+                         %at every timestep z1_H
+                         FInterp{i,j} = interp1(obj.SegTime{j},FZShift{i,j},obj.InterpTime{j});
+                         HInterp{i,j} = interp1(obj.SegTime{j},HZShift{i,j},obj.InterpTime{j}); 
+                         
+                         %Finding changes in signs from positive to negative, inbetween the zero
+                         %crossing must occur
+                         signchangeF{i,j} = find( diff( sign(FInterp{i,j}) ) ~= 0 );
+                         signchangeH{i,j} = find( diff( sign(HInterp{i,j}) ) ~= 0 );
+
+                         %interpolation and time data where the sign changes
+                         ZeroCrossF{i,j} = FInterp{i,j}(signchangeF{i,j});
+                         ZeroCrossH{i,j} = FInterp{i,j}(signchangeH{i,j});
+                         ZeroCrossTimeF{i,j} = obj.InterpTime{j}(signchangeF{i,j});
+                         ZeroCrossTimeH{i,j} = obj.InterpTime{j}(signchangeH{i,j});
+                         
+                         
+                         %locate the first change of sign:
+                         help_F=signchangeF(1);
+                         help_H=signchangeH(1);
+                         %define the time span between first time step and first change of sign
+                         %which will be a parameter for the sine fit later:
+                         %firstsignchangeF{j} = obj.InterpTime{j}(help_F)-obj.InterpTime{j}(1);
+                         %firstsignchangeH{j} = obj.InterpTime{j}(help_H)-obj.InterpTime{j}(1);
+
+                         % shift the zero crossings to the original height again:
+                         FZLoc{i,j} = ZeroCrossF{i,j}+maxF-(minF/2);
+                         HZLoc{i,j} = ZeroCrossH{i,j}+maxH-(minH/2);
+                         
+                         figure(1)
+                         plot(obj.SegTime{2},FZShift{1,2},'b',  ZeroCrossTimeF{1,2},  ZeroCrossF{1,2}, 'bp')
+                         %hold on
+                         %plot(ZeroCrossTimeF, FZLoc, 'bp')
+                         legend('Data','Approximate Zero-Crossings')
+                         %hold off
+                         grid
+                         title('Force Data and Fitted Curve')
+
+                         % Amplitude
+                         %AmplitudeF=DiffF/2;
+                         %AmplitudeH=DiffH/2;
+
+                         % Estimate period
+                         %PeriodF = 2*mean(diff(ZeroCrossTimeF));
+                         %PeriodH = 2*mean(diff(ZeroCrossTimeH));
+
+                         % Estimate offset
+                         %meanF = mean(obj.Force{i,j});
+                         %meanH = mean(obj.Height{i,j});
+                         
+                         %x = obj.SegTime{j};
+
+                         % Function to fit 
+                         %b(1) (max-min)/2 b(2) FFT b(3) first sign change b(4) mean
+                         %fit = @(b,x)  b(1).*(sin(2*pi*x./b(2) + 2*pi/b(3))) + b(4);    
+                         % Least-Squares cost function:
+                         %fcn = @(b) sum((fit(b,x) - obj.Force{i,j}).^2);       
+                         % Minimise Least-Squares with estimated start values:
+                         %s_F = fminsearch(fcn, [AmplitudeF;  PeriodF;  firstsignchangeF;  meanF]); 
+                         % Spacing of time vector:
+                         %xp = linspace(min(obj.InterpTime{j}),max(obj.InterpTime{j}),100000);
+                         
+                         
+                         % PLOT figure of fitted indentation data
+                         %figure(1)
+                         %plot(obj.SegTime{j},obj.Force{1,j},'b',  xp,fit(s_F,xp), 'r')
+                         %hold on
+                         %plot(ZeroCrossTimeF, FZLoc, 'bp')
+                         %legend('Data','Fitted sine','Approximate Zero-Crossings')
+                         %hold off
+                         %grid
+                         %title('Force Data and Fitted Curve')
+
+
+                    end
            
                 end
             end
