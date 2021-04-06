@@ -815,6 +815,34 @@ classdef Experiment < matlab.mixin.Copyable
             close(h)
         end
         
+        function image_analysis_mask_background(obj,Thresh)
+            
+            if nargin < 2
+                Thresh = 0;
+                Automatic = 'on';
+            else
+                Automatic = 'off';
+            end
+            
+            h = waitbar(0,'setting up...');
+            for i=1:obj.NumAFMImages
+                waitbar(i/obj.NumAFMImages,h,{sprintf('Processing %i/%i:',i,obj.NumAFMImages),sprintf('%s',obj.I{i}.Name)});
+                InChannel = obj.I{i}.get_channel('Processed');
+                OutChannel = InChannel;
+                try
+                    OutChannel.Image = AFMImage.mask_background_by_threshold(InChannel.Image,Thresh,Automatic);
+                catch
+                    warning("Couldn't determine threshold automatically. Taking default of 10%, instead.")
+                    OutChannel.Image = AFMImage.mask_background_by_threshold(InChannel.Image,10,'off');
+                end
+                OutChannel.Name = 'Background Mask';
+                OutChannel.Unit = 'Categorical';
+                obj.I{i}.Channel(end+1) = OutChannel;
+                obj.I{i}.hasBackgroundMask = true;
+            end
+            close(h)
+        end
+        
         function surface_potential_analysis_fibril(obj)
             
         end
