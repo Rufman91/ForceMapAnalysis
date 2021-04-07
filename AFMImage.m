@@ -190,7 +190,7 @@ classdef AFMImage < matlab.mixin.Copyable
         % Static Main Methods
         
         function ChannelOut = overlay_parameters_by_bayesopt(Channel1,Channel2,BackgroundPercent,MinOverlap,AngleRange,UseParallel,MaxFunEval,PreMaxFunEval,NumPreSearches,NClusters)
-            % ChannelOut = overlay_parameters_by_bayesopt(Channel1,Channel2,BackgroundPercent,MinOverlap,AngleRange,UseParallel,MaxFunEval,PreMaxFunEval,NumPreSearches)
+            % ChannelOut = overlay_parameters_by_bayesopt(Channel1,Channel2,BackgroundPercent,MinOverlap,AngleRange,UseParallel,MaxFunEval,PreMaxFunEval,NumPreSearches,NClusters)
             
             % Assume Channel2 has same angle and origin as Channel1
             Channel2.OriginX = Channel1.OriginX;
@@ -272,7 +272,6 @@ classdef AFMImage < matlab.mixin.Copyable
             
             Fig = figure;
             
-            subplot(2,1,1)
             MinObj = Results.XAtMinObjective.Variables;
             ShiftPixX = MinObj(1);
             ShiftPixY = MinObj(2);
@@ -281,8 +280,39 @@ classdef AFMImage < matlab.mixin.Copyable
             imshowpair(OverlayMask1,OverlayMask2)
             title(sprintf('%i,%i,%.3f',ShiftPixX,ShiftPixY,Angle));
             
-            subplot(2,1,2)
-            imshowpair(Overlay1,Overlay2,'montage')
+            Fig = figure;
+            
+            subplot(2,2,1)
+            MinObj = ClusterResults{1}.XAtMinObjective.Variables;
+            ShiftPixX = MinObj(1);
+            ShiftPixY = MinObj(2);
+            Angle = MinObj(3);
+            [Overlay1,Overlay2,OverlayMask1,OverlayMask2] = AFMImage.overlay_two_images(Channel1,Channel2,ShiftPixX,ShiftPixY,Angle,Mask1,Mask2);
+            imshowpair(OverlayMask1,OverlayMask2)
+            title(sprintf('%i,%i,%.3f',ShiftPixX,ShiftPixY,Angle));
+            subplot(2,2,2)
+            MinObj = ClusterResults{2}.XAtMinObjective.Variables;
+            ShiftPixX = MinObj(1);
+            ShiftPixY = MinObj(2);
+            Angle = MinObj(3);
+            [Overlay1,Overlay2,OverlayMask1,OverlayMask2] = AFMImage.overlay_two_images(Channel1,Channel2,ShiftPixX,ShiftPixY,Angle,Mask1,Mask2);
+            imshowpair(OverlayMask1,OverlayMask2)
+            title(sprintf('%i,%i,%.3f',ShiftPixX,ShiftPixY,Angle));
+            subplot(2,2,3)
+            MinObj = ClusterResults{3}.XAtMinObjective.Variables;
+            ShiftPixX = MinObj(1);
+            ShiftPixY = MinObj(2);
+            Angle = MinObj(3);
+            [Overlay1,Overlay2,OverlayMask1,OverlayMask2] = AFMImage.overlay_two_images(Channel1,Channel2,ShiftPixX,ShiftPixY,Angle,Mask1,Mask2);
+            imshowpair(OverlayMask1,OverlayMask2)
+            title(sprintf('%i,%i,%.3f',ShiftPixX,ShiftPixY,Angle));
+            subplot(2,2,4)
+            MinObj = ClusterResults{4}.XAtMinObjective.Variables;
+            ShiftPixX = MinObj(1);
+            ShiftPixY = MinObj(2);
+            Angle = MinObj(3);
+            [Overlay1,Overlay2,OverlayMask1,OverlayMask2] = AFMImage.overlay_two_images(Channel1,Channel2,ShiftPixX,ShiftPixY,Angle,Mask1,Mask2);
+            imshowpair(OverlayMask1,OverlayMask2)
             title(sprintf('%i,%i,%.3f',ShiftPixX,ShiftPixY,Angle));
             
             drawnow
@@ -1728,7 +1758,7 @@ classdef AFMImage < matlab.mixin.Copyable
             NormedVals(:,3) = MinVal(:,3)/Ranges(3);
             
             % Cluster the Points in parameter-space
-            [Indizes,Centroids] = kmeans(NormedVals,NClusters,...
+            [Indizes,~] = kmeans(NormedVals,NClusters,...
                 'Distance','sqeuclidean',...
                 'Display','off',...
                 'Replicates',5);
@@ -1736,9 +1766,21 @@ classdef AFMImage < matlab.mixin.Copyable
             for i=1:NClusters
                 ClusterVal{i} = MinVal(Indizes==i,:);
                 ClusterObj{i} = MinObj(Indizes==i);
-                HalfRange(i,1) = round(std(ClusterVal{i}(:,1)));
-                HalfRange(i,2) = round(std(ClusterVal{i}(:,2)));
-                HalfRange(i,3) = std(ClusterVal{i}(:,3));
+                if round(std(ClusterVal{i}(:,1))) > 0
+                    HalfRange(i,1) = round(std(ClusterVal{i}(:,1)));
+                else
+                    HalfRange(i,1) = 50;
+                end
+                if round(std(ClusterVal{i}(:,2))) > 0
+                    HalfRange(i,2) = round(std(ClusterVal{i}(:,2)));
+                else
+                    HalfRange(i,2) = 50;
+                end
+                if std(ClusterVal{i}(:,3)) > 0
+                    HalfRange(i,3) = std(ClusterVal{i}(:,3));
+                else
+                    HalfRange(i,3) = 5;
+                end
                 [~,Best] = min(ClusterObj{i});
                 BestParam(i,:) = ClusterVal{i}(Best,:);
             end
