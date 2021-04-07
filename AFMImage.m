@@ -405,7 +405,7 @@ classdef AFMImage < matlab.mixin.Copyable
             OutImage = InImage;
         end
         
-        function OutImage = subtract_automatic_line_fit_hist(InImage)
+        function OutImage = subtract_line_fit_diffhist_method(InImage)
             
             NumProfiles = size(InImage,1);
             NumPoints = size(InImage,2);
@@ -422,18 +422,30 @@ classdef AFMImage < matlab.mixin.Copyable
             OutImage = InImage;
         end
         
-        function subtract_line_fit_automatically(InImage)
-            if nargin<2
-                Mask = ones(size(InImage));
-            end
-            
+        function OutImage = subtract_line_fit_std_method(InImage)
+            NumProfiles = size(InImage,1);
+            NumPoints = size(InImage,2);
             for i=1:NumProfiles
-                Line = InImage(i,:)';
-                [~, SortedIndex] = sort(Line,'ascend');
-                LineFit = polyfit(SortedIndex(1:CutOff),Line(SortedIndex(1:CutOff)),1);
+                Line = InImage(i,:);
+                Line = reshape(Line,[],1);
+                [Sorted,Indizes] = sort(Line,'descend');
+                InvSampleRate = ceil(NumPoints/32^2);
+                k = 1;
+                for i=1:InvSampleRate:NumPoints
+                    STDLine(k) =  std(Sorted(1:i));
+                    k = k + 1;
+                end
+                [~,PeakIdx] = findpeaks(STDLine);
+                if isempty(PeakIdx)
+                    ThreshIndex = 1;
+                else
+                    ThreshIndex = PeakIdx(end);
+                end
+                LineFit = polyfit(Indizes(ThreshIndex:end),Line(Indizes(ThreshIndex:end)),1);
                 LineEval = [1:NumPoints]'*LineFit(1) + LineFit(2);
                 Line = Line - LineEval;
                 InImage(i,:) = Line;
+                Line = [];
             end
             OutImage = InImage;
         end
@@ -1737,7 +1749,12 @@ classdef AFMImage < matlab.mixin.Copyable
         
         function CutOff = automatic_cutoff(Input)
             
-            NumSamples = round(numel(Input)/10);
+            if sum(Input,'all')==0
+                CutOff = 0;
+                return
+            end
+            
+            NumSamples = ceil(numel(Input)/10);
             Input = reshape(Input,[],1);
             Thresholds = [max(Input):-range(Input)/(NumSamples-1):min(Input)];
             InRangeLine = zeros(NumSamples,1);
