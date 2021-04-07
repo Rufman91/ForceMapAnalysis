@@ -2906,6 +2906,15 @@ classdef ForceMap < matlab.mixin.Copyable
                          FInterp{i,j} = interp1(obj.SegTime{j},FZShift{i,j},obj.InterpTime{j});
                          HInterp{i,j} = interp1(obj.SegTime{j},HZShift{i,j},obj.InterpTime{j}); 
                          
+                         %Finding the rows where NaNs are located due to interpolation:
+                         row_F = find(isnan(FInterp{i,j}));
+                         row_H = find(isnan(HInterp{i,j}));
+
+                         %also deleting those rows from the timestep vector z1_H:
+                         obj.InterpTime{j}(row_F,:)=[];
+                         %deleting NaN from interpolated indentation data:
+                         FInterp{i,j} = rmmissing(FInterp{i,j});
+               
                          %Finding changes in signs from positive to negative, inbetween the zero
                          %crossing must occur
                          signchangeF{i,j} = find( diff( sign(FInterp{i,j}) ) ~= 0 );
@@ -2915,22 +2924,22 @@ classdef ForceMap < matlab.mixin.Copyable
                          ZeroCrossF{i,j} = FInterp{i,j}(signchangeF{i,j});
                          ZeroCrossH{i,j} = HInterp{i,j}(signchangeH{i,j});
                          ZeroCrossTimeF{i,j} = obj.InterpTime{j}(signchangeF{i,j});
-                         ZeroCrossTimeH{i,j} = obj.InterpTime{j}(signchangeH{i,j});
+                         %ZeroCrossTimeH{i,j} = obj.InterpTime{j}(signchangeH{i,j});
                          
                          
                          %locate the first change of sign:
                          help_F=signchangeF{i,j}(1);
-                         help_H=signchangeH{i,j}(1);
+                         %help_H=signchangeH{i,j}(1);
                          %define the time span between first time step and first change of sign
                          %which will be a parameter for the sine fit later:
                          firstsignchangeF1 = obj.InterpTime{j}(help_F);
                          firstsignchangeF2 = obj.InterpTime{j}(1);
                          firstsignchangeF = firstsignchangeF1 - firstsignchangeF2;
-                         firstsignchangeH = (obj.InterpTime{j}(help_H))-(obj.InterpTime{j}(1));
+                         %firstsignchangeH = (obj.InterpTime{j}(help_H))-(obj.InterpTime{j}(1));
 
                          % shift the zero crossings to the original height again:
                          FZLoc{i,j} = ZeroCrossF{i,j}+maxF-(DiffF/2);
-                         HZLoc{i,j} = ZeroCrossH{i,j}+maxH-(DiffH/2);
+                         %HZLoc{i,j} = ZeroCrossH{i,j}+maxH-(DiffH/2);
                          
                          figure(1)
                          plot(obj.SegTime{2},FZShift{1,2},'b',  ZeroCrossTimeF{1,2},  ZeroCrossF{1,2}, 'bp')
@@ -2943,15 +2952,15 @@ classdef ForceMap < matlab.mixin.Copyable
 
                          % Amplitude
                          AmplitudeF=(DiffF/2);
-                         AmplitudeH=(DiffH/2);
+                         %AmplitudeH=(DiffH/2);
 
                          % Estimate period
                          PeriodF = 2*mean(diff(ZeroCrossTimeF{i,j}));
-                         PeriodH = 2*mean(diff(ZeroCrossTimeH{i,j}));
+                         %PeriodH = 2*mean(diff(ZeroCrossTimeH{i,j}));
 
                          % Estimate offset
                          meanF = mean(obj.Force{i,j});
-                         meanH = mean(obj.Height{i,j});
+                         %meanH = mean(obj.Height{i,j});
                          
                          x = obj.SegTime{j};
 
@@ -2967,6 +2976,7 @@ classdef ForceMap < matlab.mixin.Copyable
                          
                          
                          % PLOT figure of fitted indentation data
+                        
                          figure(2)
                          plot(obj.SegTime{2},obj.Force{1,2},'b',  xp,fit(s_F,xp), 'r')
                          hold on
@@ -2975,6 +2985,26 @@ classdef ForceMap < matlab.mixin.Copyable
                          hold off
                          grid
                          title('Force Data and Fitted Curve')
+                         
+                         %Version LSQCURVEFIT
+                        fun = @(d,x)d(1).*(sin(2*pi*x./d(2) + 2*pi/d(3)));
+                        x0 = [AmplitudeF;  PeriodF;  firstsignchangeF;];
+                        Y_H = lsqcurvefit(fun,x0,x,obj.Force{i,j});
+                        times = linspace(x(1),x(end));
+                        figure(3)
+                        plot(obj.SegTime{2},FZShift{1,2},'b',times,fun(Y_H,times),'r')
+                        legend('Data','Fitted sine')
+                        title('Indentation Data and Fitted Curve with LSQCURVEFIT')
+                        
+                        %PLOT figure of fitted sine of indentation and force
+                         %sine with the fitted parameters for force:
+                       Y_Fo = s_F(1).*(sin(2*pi*x./s_F(2) + 2*pi/s_F(3)));
+                        
+                           figure(4)
+                           plot (x,Y_Fo,'r')
+                           grid
+                           legend('fitted indentation','fitted force')
+                           title('Fitted Sine Indentation and Force')
 
 
                     end
