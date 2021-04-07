@@ -189,10 +189,8 @@ classdef AFMImage < matlab.mixin.Copyable
     methods(Static)
         % Static Main Methods
         
-        function ChannelOut = overlay_parameters_by_bayesopt(Channel1,Channel2,BackgroundPercent,MaxFunEval,UseParallel,MinOverlap,NumPreSearches)
-            % prepare the bayesopt
-            
-            
+        function ChannelOut = overlay_parameters_by_bayesopt(Channel1,Channel2,BackgroundPercent,MinOverlap,AngleRange,UseParallel,MaxFunEval,PreMaxFunEval,NumPreSearches,NClusters)
+            % ChannelOut = overlay_parameters_by_bayesopt(Channel1,Channel2,BackgroundPercent,MinOverlap,AngleRange,UseParallel,MaxFunEval,PreMaxFunEval,NumPreSearches)
             
             % Assume Channel2 has same angle and origin as Channel1
             Channel2.OriginX = Channel1.OriginX;
@@ -228,39 +226,43 @@ classdef AFMImage < matlab.mixin.Copyable
                 'ShiftPixY',[-floor(Channel1.NumPixelsY/2 + Channel2.NumPixelsY*(1/2-MinOverlap)),...
                 floor(Channel1.NumPixelsY/2 + Channel2.NumPixelsY*(1/2-MinOverlap))],...
                 'Type','integer');
-            Angle = optimizableVariable('Angle',[-10,10],'Type','real');
+            Angle = optimizableVariable('Angle',[-AngleRange/2,AngleRange/2],'Type','real');
             fun = @(x)AFMImage.overlay_loss(Channel1,Channel2,~Mask1,~Mask2,...
                 x.ShiftPixX,x.ShiftPixY,x.Angle);
             
-            TempMaxFunEval = floor(MaxFunEval/3);
-            
             if contains(struct2array(ver), 'Parallel Computing Toolbox') && UseParallel
-                Pool = gcp;
                 parfor i=1:NumPreSearches
                     TempResults{i} = bayesopt(fun,[ShiftPixX,ShiftPixY,Angle],...
-                        'MaxObjectiveEvaluations',TempMaxFunEval,...
+                        'MaxObjectiveEvaluations',PreMaxFunEval,...
                         'AcquisitionFunctionName','expected-improvement-plus',...
                         'UseParallel',false);
-                    MinRes(i) = TempResults{i}.MinObjective;
-                    MinEst{i} = TempResults{i}.XAtMinEstimatedObjective.Variables;
+                    MinObj(i) = TempResults{i}.MinObjective;
+                    MinVal(i,:) = TempResults{i}.XAtMinObjective.Variables;
                 end
-                [~,Best] = min(MinRes);
-                ShiftPixX = optimizableVariable(...
-                    'ShiftPixX',[(MinEst{Best}(1) - floor(range(ShiftPixX.Range)/10)),...
-                    (MinEst{Best}(1) + floor(range(ShiftPixX.Range)/10))],...
-                    'Type','integer');
-                ShiftPixY = optimizableVariable(...
-                    'ShiftPixY',[(MinEst{Best}(2) - floor(range(ShiftPixY.Range)/10)),...
-                    (MinEst{Best}(2) + floor(range(ShiftPixY.Range)/10))],...
-                    'Type','integer');
-                Angle = optimizableVariable(...
-                    'Angle',[(MinEst{Best}(3) - floor(range(Angle.Range)/10)),...
-                    (MinEst{Best}(3) + floor(range(Angle.Range)/10))],...
-                    'Type','real');
-                Results = bayesopt(fun,[ShiftPixX,ShiftPixY,Angle],...
+                Ranges = [range(ShiftPixX.Range),range(ShiftPixY.Range),range(Angle.Range)];
+                [BestParam,HalfRange] = AFMImage.choose_best_from_cluster(MinVal,MinObj,NClusters,Ranges);
+                parfor i=1:NClusters
+                    ShiftPixX = optimizableVariable(...
+                        'ShiftPixX',[BestParam(i,1)-HalfRange(i,1),...
+                        BestParam(i,1)+HalfRange(i,1)],...
+                        'Type','integer');
+                    ShiftPixY = optimizableVariable(...
+                        'ShiftPixY',[BestParam(i,2)-HalfRange(i,2),...
+                        BestParam(i,2)+HalfRange(i,2)],...
+                        'Type','integer');
+                    Angle = optimizableVariable(...
+                        'Angle',[BestParam(i,3)-HalfRange(i,3),...
+                        BestParam(i,3)+HalfRange(i,3)],...
+                        'Type','real');
+                    ClusterResults{i} = bayesopt(fun,[ShiftPixX,ShiftPixY,Angle],...
                         'MaxObjectiveEvaluations',MaxFunEval,...
                         'AcquisitionFunctionName','lower-confidence-bound',...
                         'UseParallel',false);
+                    ClusterMin(i) = ClusterResults{i}.MinObjective;
+                end
+                
+                [~,Best] = min(ClusterMin);
+                Results = ClusterResults{Best};
             else
                 Results = bayesopt(fun,[ShiftPixX,ShiftPixY,Angle],...
                         'MaxObjectiveEvaluations',MaxFunEval,...
@@ -283,6 +285,7 @@ classdef AFMImage < matlab.mixin.Copyable
             imshowpair(Overlay1,Overlay2,'montage')
             title(sprintf('%i,%i,%.3f',ShiftPixX,ShiftPixY,Angle));
             
+            drawnow
             
             % Create standard AFMImage-ChannelStruct with new Origin and
             % ScanAngle. Compute real-world-shift from ShiftPixX/Y
@@ -395,6 +398,23 @@ classdef AFMImage < matlab.mixin.Copyable
                 Line = InImage(i,:)';
                 [~, SortedIndex] = sort(Line,'ascend');
                 LineFit = polyfit(SortedIndex(1:CutOff),Line(SortedIndex(1:CutOff)),1);
+                LineEval = [1:NumPoints]'*LineFit(1) + LineFit(2);
+                Line = Line - LineEval;
+                InImage(i,:) = Line;
+            end
+            OutImage = InImage;
+        end
+        
+        function OutImage = subtract_automatic_line_fit_hist(InImage)
+            
+            NumProfiles = size(InImage,1);
+            NumPoints = size(InImage,2);
+            
+            for i=1:NumProfiles
+                Line = InImage(i,:)';
+                CutOff = AFMImage.automatic_cutoff(Line);
+                Indizes = find(Line<=CutOff);
+                LineFit = polyfit(Indizes,Line(Indizes),1);
                 LineEval = [1:NumPoints]'*LineFit(1) + LineFit(2);
                 Line = Line - LineEval;
                 InImage(i,:) = Line;
@@ -1685,6 +1705,50 @@ classdef AFMImage < matlab.mixin.Copyable
             Indizes = find(Based <= max(Based)*Percentage);
             k = k + 1;
             end
+            
+        end
+        
+        function [BestParam,HalfRange] = choose_best_from_cluster(MinVal,MinObj,NClusters,Ranges)
+            % [BestParam,HalfRange] = AFMImage.choose_best_from_cluster(MinVal,MinObj,NClusters)
+            
+            NormedVals(:,1) = MinVal(:,1)/Ranges(1);
+            NormedVals(:,2) = MinVal(:,2)/Ranges(2);
+            NormedVals(:,3) = MinVal(:,3)/Ranges(3);
+            
+            % Cluster the Points in parameter-space
+            [Indizes,Centroids] = kmeans(NormedVals,NClusters,...
+                'Distance','sqeuclidean',...
+                'Display','off',...
+                'Replicates',5);
+            
+            for i=1:NClusters
+                ClusterVal{i} = MinVal(Indizes==i,:);
+                ClusterObj{i} = MinObj(Indizes==i);
+                HalfRange(i,1) = round(std(ClusterVal{i}(:,1)));
+                HalfRange(i,2) = round(std(ClusterVal{i}(:,2)));
+                HalfRange(i,3) = std(ClusterVal{i}(:,3));
+                [~,Best] = min(ClusterObj{i});
+                BestParam(i,:) = ClusterVal{i}(Best,:);
+            end
+            
+            
+            
+        end
+        
+        function CutOff = automatic_cutoff(Input)
+            
+            NumSamples = round(numel(Input)/10);
+            Input = reshape(Input,[],1);
+            Thresholds = [max(Input):-range(Input)/(NumSamples-1):min(Input)];
+            InRangeLine = zeros(NumSamples,1);
+            for i=1:NumSamples
+                InRangeLine(i) = length(Input(Input >= Thresholds(i)));
+            end
+            
+            DiffIRL = diff(InRangeLine);
+            [~,MaxIndex] = max(DiffIRL);
+            
+            CutOff = Thresholds(MaxIndex);
             
         end
         
