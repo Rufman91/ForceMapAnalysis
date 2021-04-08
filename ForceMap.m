@@ -2726,7 +2726,7 @@ classdef ForceMap < matlab.mixin.Copyable
                     obj.TEnd{i} = obj.SeriesTime{i};
                     obj.SegTime{i} = obj.TStart{i}:obj.SecPerPoint{i}:obj.TEnd{i};
                     obj.InterpTimeF{i} = obj.TStart{i}:0.000001:obj.TEnd{i};
-                    obj.InterpTimeH{i} = obj.TStart{i}:0.00001:obj.TEnd{i};
+                    obj.InterpTimeH{i} = obj.TStart{i}:0.000001:obj.TEnd{i};
                     obj.InterpTimeF{i} = obj.InterpTimeF{i}.';
                     obj.InterpTimeH{i} = obj.InterpTimeH{i}.';
                     obj.SegTime{i} = obj.SegTime{i}.';
@@ -2885,6 +2885,10 @@ classdef ForceMap < matlab.mixin.Copyable
                     
                     obj.HHApp{i} = obj.Height{i,1};
                     obj.App{i} = obj.Force{i,1}.*obj.SpringConstant;
+                    
+                    obj.HHRet{i} = obj.Height{i,obj.NumSegments};
+                    obj.Ret{i} = obj.Force{i,obj.NumSegments}.*obj.SpringConstant;
+
                     
                     if obj.SegFrequency{j} ~= 0
                         % Max values of Force and Height
