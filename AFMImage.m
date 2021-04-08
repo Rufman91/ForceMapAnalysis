@@ -711,6 +711,55 @@ classdef AFMImage < matlab.mixin.Copyable
                 'units','normalized',...
                 'position',[.85 .05 .1 .04]);
             
+            h.B(8) = uicontrol('style','slider',...
+                'Value',1,...
+                'Units','normalized',...
+                'Position',[.85 .78 .07 .02],...
+                'Callback',@changed_slider);
+            
+            h.B(9) = uicontrol('style','slider',...
+                'Value',0,...
+                'Units','normalized',...
+                'Position',[.85 .76 .07 .02],...
+                'Callback',@changed_slider);
+            
+            h.B(10) = uicontrol('style','slider',...
+                'Value',1,...
+                'Units','normalized',...
+                'Position',[.85 .63 .07 .02],...
+                'Callback',@changed_slider);
+            
+            h.B(11) = uicontrol('style','slider',...
+                'Value',0,...
+                'Units','normalized',...
+                'Position',[.85 .61 .07 .02],...
+                'Callback',@changed_slider);
+            
+            h.B(12) = uicontrol('style','text',...
+                'String','Max',...
+                'Units','normalized',...
+                'Position',[.92 .78 .03 .02]);
+            
+            h.B(13) = uicontrol('style','text',...
+                'String','Min',...
+                'Units','normalized',...
+                'Position',[.92 .76 .03 .02]);
+            
+            h.B(14) = uicontrol('style','text',...
+                'String','Max',...
+                'Units','normalized',...
+                'Position',[.92 .63 .03 .02]);
+            
+            h.B(15) = uicontrol('style','text',...
+                'String','Min',...
+                'Units','normalized',...
+                'Position',[.92 .61 .03 .02]);
+            
+            h.Channel1Max = 1;
+            h.Channel1Min = 0;
+            h.Channel2Max = 1;
+            h.Channel2Min = 0;
+            
             h.Line = [];
             h.hasCrossSection = 0;
             h.hasChannel2 = 0;
@@ -973,8 +1022,21 @@ classdef AFMImage < matlab.mixin.Copyable
                     ColorPattern = obj.CMap;
                 end
                 
-                [Multiplier,Unit,~] = AFMImage.parse_unit_scale(range(h.Image{Index},'all'),h.BaseUnit{Index},1);
-                h.I(Index) = imshow(h.Image{Index}*Multiplier,[],'Colormap',ColorPattern);
+                CurImage = h.Image{Index};
+                
+                Range = range(CurImage,'all');
+                if Index==1
+                    CutMax = Range*h.Channel1Max + min(CurImage,[],'all');
+                    CutMin = Range*h.Channel1Min + min(CurImage,[],'all');
+                elseif Index==2
+                    CutMax = Range*h.Channel2Max + min(CurImage,[],'all');
+                    CutMin = Range*h.Channel2Min + min(CurImage,[],'all');
+                end
+                CurImage(CurImage>CutMax) = CutMax;
+                CurImage(CurImage<CutMin) = CutMin;
+                
+                [Multiplier,Unit,~] = AFMImage.parse_unit_scale(range(CurImage,'all'),h.BaseUnit{Index},1);
+                h.I(Index) = imshow(CurImage*Multiplier,[],'Colormap',ColorPattern);
                 if Index == 1
                     h.I(Index).ButtonDownFcn = @get_and_draw_profile_channel_1;
                 else
@@ -990,6 +1052,32 @@ classdef AFMImage < matlab.mixin.Copyable
                 c.Label.String = sprintf('%s [%s]',h.Channel{Index},Unit);
                 c.Label.FontSize = round(22*(CurrentAxHeight/756));
                 c.Label.Color = 'w';
+            end
+            
+            function changed_slider(varargin)
+                C1Max = get(h.B(8),'value');
+                C1Min = get(h.B(9),'value');
+                C2Max = get(h.B(10),'value');
+                C2Min = get(h.B(11),'value');
+                
+                if C1Max <= C1Min
+                    C1Min = C1Max*0.9;
+                    set(h.B(8),'value',C1Max);
+                    set(h.B(9),'value',C1Min);
+                end
+                if C2Max <= C2Min
+                    C2Min = C2Max*0.9;
+                    set(h.B(10),'value',C2Max);
+                    set(h.B(11),'value',C2Min);
+                end
+                
+                h.Channel1Max = C1Max;
+                h.Channel1Min = C1Min;
+                h.Channel2Max = C2Max;
+                h.Channel2Min = C2Min;
+                
+                draw_channel_1
+                draw_channel_2
             end
             
             function save_figure_to_file(varargin)
