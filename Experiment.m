@@ -61,35 +61,23 @@ classdef Experiment < matlab.mixin.Copyable
             % Set HostOS and HostName properties
             obj.check_for_new_host
             
-            % get Experiment name and layout from user
-            isNew = true;
-            [FileTypes, NumFiles, ExperimentName] = obj.constructor_user_input_parser(isNew);
+            % set Name and choose Experiment folder
+            [ExperimentName, ParentFolder] = uiputfile('*.mat','Select Experiment Name and Parent Folder');
+            obj.ExperimentName = ExperimentName(1:end-4);
+            current = what();
+            mkdir(ParentFolder,obj.ExperimentName);
+            obj.ExperimentFolder = fullfile(ParentFolder,obj.ExperimentName,filesep);
             
-            if isequal(FileTypes,'Cancel')
+            % get Experiment filesnames and paths from user input
+            [FileTypes, FullFileCell, IsValid] = obj.constructor_user_input_parser();
+            
+            if ~IsValid
                 obj = [];
                 return
             end
             
-            for i=1:length(FileTypes)
-                while FileTypes(i) && ~NumFiles(i)
-                    warndlg('All "Number of *"-inputs have to be non-zero integers')
-                    [FileTypes, NumFiles, ExperimentName] = obj.constructor_user_input_parser(isNew,FileTypes, NumFiles, ExperimentName);
-                    if isequal(FileTypes,'Cancel')
-                        obj = [];
-                        return
-                    end
-                end
-            end
-            
-            % set Name and choose Experiment folder
-            obj.ExperimentName = ExperimentName;
-            current = what();
-            ParentFolder = uigetdir(current.path,'Choose a Folder where the Experiment is to be saved');
-            mkdir(ParentFolder,obj.ExperimentName);
-            obj.ExperimentFolder = fullfile(ParentFolder,obj.ExperimentName,filesep);
-            
             % get paths of requested files and load them in
-            obj.get_paths_and_load_files(FileTypes,NumFiles,isNew)
+            obj.get_paths_and_load_files(FileTypes, FullFileCell)
             
             obj.initialize_flags
             
@@ -2329,66 +2317,57 @@ classdef Experiment < matlab.mixin.Copyable
             uiwait(h.f)
         end
         
-        function [Checked,NumberOfFiles,ExperimentName] = constructor_user_input_parser(isNew,Checked, NumberOfFiles, ExperimentName)
+        function [FileTypes,FullFileCell,IsValid] = constructor_user_input_parser()
             
-            if nargin<1
-                isNew = false;
-            end
+            IsValid = false;
+            FullFileCell = cell(1,5);
+            FileTypes = zeros(1,5);
             
             % Create figure
             left = 700;
             bottom = 350;
             width = 600;
             height = 375;
-            h.f = figure('Name','Choose Experiment name and which file types have to be loaded','units','pixels','position',[left bottom width height],...
+            h.f = figure('Name','Data loader for valid file types','units','pixels','position',[left bottom width height],...
                 'toolbar','none','menu','none');
-            
-            h.name = uibuttongroup('Visible','on','Units','pixels',...
-                'Position',[50 305 500 50]);
-            NameText = uicontrol(h.name,'Style','text','units','pixels',...
-                'position',[25 10 200 25],'string','Name of Experiment');
-            NameEdit = uicontrol(h.name,'Style','edit','units','pixels',...
-                'position',[250 10 200 25],'string','choose a name');
-            
-            if ~isNew
-                set(NameEdit,'Enable','off');
-                set(NameEdit,'String','');
-                ExperimentName = [];
-            end
             
             h.bg = uibuttongroup('Visible','off','Units','pixels',...
                   'Position',[50 85 500 215]);
             
             % Create checkboxes for filetypes
-            c(1) = uicontrol(h.bg,'style','checkbox','units','pixels',...
-                'position',[25 165 200 25],'string','Force/QI Maps',...
-                'Callback',@checked_box);
-            c(2) = uicontrol(h.bg,'style','checkbox','units','pixels',...
-                'position',[75 130 200 25],'string','Reference Force Maps',...
-                'Callback',@has_reference_maps);
-            c(3) = uicontrol(h.bg,'style','checkbox','units','pixels',...
-                'position',[25 95 200 25],'string','AFM Image files',...
-                'Callback',@checked_box);
-            c(4) = uicontrol(h.bg,'style','checkbox','units','pixels',...
-                'position',[25 60 200 25],'string',"Surface Potential Maps",...
-                'Callback',@checked_box);
-            c(5) = uicontrol(h.bg,'style','checkbox','units','pixels',...
-                'position',[25 25 200 25],'string','Cantilever Tip data',...
-                'Callback',@checked_box);
+            c(1) = uicontrol(h.bg,'style','text','units','pixels',...
+                'position',[25 165 200 25],'string','Force/QI Maps');
+            c(2) = uicontrol(h.bg,'style','text','units','pixels',...
+                'position',[75 130 200 25],'string','Reference Force Maps');
+            c(3) = uicontrol(h.bg,'style','text','units','pixels',...
+                'position',[25 95 200 25],'string','AFM Image files');
+            c(4) = uicontrol(h.bg,'style','text','units','pixels',...
+                'position',[25 60 200 25],'string',"Surface Potential Maps");
+            c(5) = uicontrol(h.bg,'style','text','units','pixels',...
+                'position',[25 25 200 25],'string','Cantilever Tip data');
             
+            HeightPos = [165 130 95 60 25];
             
-            c(6) = uicontrol(h.bg,'style','edit','units','pixels',...
-                'position',[250 165 200 25],'string','Number of Force/QI Maps');
-            c(7) = uicontrol(h.bg,'style','edit','units','pixels',...
-                'position',[300 130 150 25],'string','Number of Reference Force Maps');
-            c(8) = uicontrol(h.bg,'style','edit','units','pixels',...
-                'position',[250 95 200 25],'string','Number of AFM Images');
-            c(9) = uicontrol(h.bg,'style','edit','units','pixels',...
-                'position',[250 60 200 25],'string',"Number of Surface Potential Maps");
-            c(10) = uicontrol(h.bg,'style','edit','units','pixels',...
-                'position',[250 25 200 25],'string','Number of Cantilevers');
+            for i=1:5
+                h.ListBox(i) = uicontrol(h.bg,...
+                    'Style','listbox',...
+                    'Max',1000000,'Min',1,...
+                    'Units','pixels',...
+                    'Position',[250 HeightPos(i) 200 25]);
+            end
             
-            set(c([6:10]),'Enable','off')
+            % Get back the java component associated to the axis
+            % NB1: See §3.7.2 of Undocumented Secrets of Matlab Java Programming
+            % NB2: or use findjobj, or javaObjectEDT for drop support onto other component types
+            warning('off')
+            jFrame = get(handle(h.f), 'JavaFrame');
+            warning ('on')
+            jAxis = jFrame.getAxisComponent();
+            
+            % Add listener for drop operations
+            DropListener(jAxis, ... % The component to be observed
+                'DropFcn', @(s, e)onDrop(h.f, s, e)); % Function to call on drop operation
+            
             h.bg.Visible = 'on';
             
             % Create OK pushbutton
@@ -2399,68 +2378,90 @@ classdef Experiment < matlab.mixin.Copyable
             h.Cancel = uicontrol('style','pushbutton','units','pixels',...
                 'position',[300 25 200 50],'string','Cancel',...
                 'callback',@pushed_cancel);
-
-            set(c(2),'Enable','off');
             
-            if nargin == 4
-                set(NameEdit,'string',ExperimentName);
-                set(c(find(Checked)),'value',1);
-                set(c(find(Checked)+5),'Enable','on');
-                for i=1:5
-                    set(c(i+5),'string',num2str(NumberOfFiles(i)));
-                end
-            end
-
             function pushed_cancel(varargin)
-                ExperimentName = zeros(10,1);
-                NumberOfFiles = zeros(10,1);
-                Checked = 'Cancel';
+                FullFileCell = zeros(10,1);
+                FileTypes = 'Cancel';
                 close(h.f)
-            end
-            
-            function checked_box(varargin)
-                vals = get(c,'Value');
-                for i=[1 3:5]
-                    if vals{i}
-                        set(c(i+5),'Enable','on');
-                        if i==1
-                            set(c(2),'Enable','on');
-                        end
-                    else
-                        if i==1
-                            set(c(2),'Enable','off');
-                            set(c(2),'value',0);
-                            set(c(7),'Enable','off');
-                        end
-                        set(c(i+5),'Enable','off');
-                    end
-                end
-            end
-            
-            function has_reference_maps(varargin)
-                vals = get(c,'Value');
-                if vals{2}
-                    set(c(7),'Enable','on');
-                else
-                    set(c(7),'Enable','off');
-                end
             end
             
             function p_close(varargin)
-                vals = get(c,'Value');
-                Checked = [vals{[1:5]}];
-                Strings = get(c,'String');
-                NumberOfFiles = zeros(1,5);
-                for i=6:10
-                    CurString = str2num(Strings{i});
-                    if isempty(CurString)
-                        continue
-                    end
-                    NumberOfFiles(i-5) = CurString;
-                end
-                ExperimentName = get(NameEdit,'string');
+                FileTypes = [1 1 1 1 1];
+                FullFileCell = zeros(1,5);
+                IsValid = true;
                 close(h.f)
             end
+            
+            function onDrop(fig, listener, evtArg) %#ok<INUSL>
+                %[
+                % Get back the dropped data
+                
+                PointerPosition = get(0, 'PointerLocation');
+                FileTypeIndex = which_listbox(PointerPosition);
+                if isequal(FileTypeIndex,'invalid')
+                    evtArg.DropComplete(false);
+                    return
+                end
+                data = evtArg.GetTransferableData();
+                
+                % Is it transferable as a list of files
+                if (data.IsTransferableAsFileList)
+                    
+                    NewString = data.TransferAsFileList;
+                    OldString = get(h.ListBox(FileTypeIndex),'String');
+                    OldString(end+1:length(NewString)) = NewString;
+                    
+                    % TODO: A TON OF STUFF. START HERE YOU TIRED FOOL but
+                    % first you're allowed to make yourself some coffee.
+                    % hellyeah coffe! Is this helping me get a a better
+                    % writer? yeah.... idk man... maybe not .... maybe go
+                    % fuck yourself
+                    
+                    h.FullFileCell = 
+                    
+                    h.FileNameCell = 
+                    
+                    % Indicate to the source that drop has completed
+                    evtArg.DropComplete(true);
+                    
+                    disp(FileTypeIndex)
+                    
+                elseif (data.IsTransferableAsString)
+                    
+                    % Not interested
+                    evtArg.DropComplete(false);
+                    
+                else
+                    
+                    % Not interested
+                    evtArg.DropComplete(false);
+                    
+                end
+                %]
+            end
+            
+            function FileTypeIndex = which_listbox(PPos)
+                
+                FigPos = get(h.f,'Position');
+                BGPos = get(h.bg,'Position');
+                
+                for i=1:5
+                    Pos = get(h.ListBox(i),'InnerPosition');
+                    Pos(1) = Pos(1) + FigPos(1) + BGPos(1);
+                    Pos(2) = Pos(2) + FigPos(2) + BGPos(2);
+                    if (PPos(1) <= (Pos(1)+Pos(3))) &&...
+                            (PPos(2) <= (Pos(2)+Pos(4))) &&...
+                            (PPos(1) >= Pos(1)) &&...
+                            (PPos(2) >= Pos(2))
+                        FileTypeIndex = i;
+                        return
+                    else
+                        FileTypeIndex = 'invalid';
+                    end
+                end
+                
+            end
+            
             uiwait(h.f)
         end
         
