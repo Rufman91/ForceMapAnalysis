@@ -61,35 +61,22 @@ classdef Experiment < matlab.mixin.Copyable
             % Set HostOS and HostName properties
             obj.check_for_new_host
             
-            % get Experiment name and layout from user
-            isNew = true;
-            [FileTypes, NumFiles, ExperimentName] = obj.constructor_user_input_parser(isNew);
+            % set Name and choose Experiment folder
+            [ExperimentName, ParentFolder] = uiputfile('*.mat','Select Experiment Name and Parent Folder');
+            obj.ExperimentName = ExperimentName(1:end-4);
+            mkdir(ParentFolder,obj.ExperimentName);
+            obj.ExperimentFolder = fullfile(ParentFolder,obj.ExperimentName,filesep);
             
-            if isequal(FileTypes,'Cancel')
+            % get Experiment filenames and paths from user input
+            [FileTypes, FullFileStruct, IsValid] = obj.constructor_user_input_parser(obj.ExperimentName,obj.HostOS);
+            
+            if ~IsValid
                 obj = [];
                 return
             end
             
-            for i=1:length(FileTypes)
-                while FileTypes(i) && ~NumFiles(i)
-                    warndlg('All "Number of *"-inputs have to be non-zero integers')
-                    [FileTypes, NumFiles, ExperimentName] = obj.constructor_user_input_parser(isNew,FileTypes, NumFiles, ExperimentName);
-                    if isequal(FileTypes,'Cancel')
-                        obj = [];
-                        return
-                    end
-                end
-            end
-            
-            % set Name and choose Experiment folder
-            obj.ExperimentName = ExperimentName;
-            current = what();
-            ParentFolder = uigetdir(current.path,'Choose a Folder where the Experiment is to be saved');
-            mkdir(ParentFolder,obj.ExperimentName);
-            obj.ExperimentFolder = fullfile(ParentFolder,obj.ExperimentName,filesep);
-            
             % get paths of requested files and load them in
-            obj.get_paths_and_load_files(FileTypes,NumFiles,isNew)
+            obj.take_paths_and_load_files(FileTypes,FullFileStruct,true)
             
             obj.initialize_flags
             
@@ -101,7 +88,7 @@ classdef Experiment < matlab.mixin.Copyable
             obj.save_experiment();
         end
         
-        function get_paths_and_load_files(obj,FileTypes,NumFiles,isNew)
+        function take_paths_and_load_files(obj,FileTypes,FullFileStruct,isNew)
             
             if nargin<4
                 isNew = false;
@@ -133,42 +120,26 @@ classdef Experiment < matlab.mixin.Copyable
             
             % Need to assign something to *FullFile. Otherwise parfor will
             % crash
+            for i=1:5
+                if isempty(FullFileStruct(i).FullFile{1})
+                    NumFiles(i) = 0;
+                else
+                    NumFiles(i) = length(FullFileStruct(i).FullFile);
+                end
+            end
+            
             FMFullFile = cell(max(NumFiles),1);
             RefFMFullFile = cell(max(NumFiles),1);
             IFullFile = cell(max(NumFiles),1);
             SPMFullFile = cell(max(NumFiles),1);
             CantTipFullFile = cell(max(NumFiles),1);
             
-            if FileTypes(1)
-                AllowedFiles = {'*.jpk-force-map;*.jpk-qi-data',...
-                    'Valid Types (*.jpk-force-map,*.jpk-qi-data)'};
-                Tmp = obj.get_file_paths('Choose one or more Force/QI Map files',AllowedFiles,NumFiles(1));
-                FMFullFile(1:length(Tmp)) = Tmp;
-            end
-            if FileTypes(2)
-                AllowedFiles = {'*.jpk-force-map;*.jpk-qi-data',...
-                    'Valid Types (*.jpk-force-map,*.jpk-qi-data)'};
-                Tmp = obj.get_file_paths('Choose one or more Reference Force/QI Map files',AllowedFiles,NumFiles(2));
-                RefFMFullFile(1:length(Tmp)) = Tmp;
-            end
-            if FileTypes(3)
-                AllowedFiles = {'*.jpk',...
-                    'Valid Types (*.jpk)'};
-                Tmp = obj.get_file_paths('Choose one or more AFM Image files',AllowedFiles,NumFiles(3));
-                IFullFile(1:length(Tmp)) = Tmp;
-            end
-            if FileTypes(4)
-                AllowedFiles = {'*.sdf',...
-                    'Valid Types (*.sdf)'};
-                Tmp = obj.get_file_paths('Choose one or more Surface Potential Map files',AllowedFiles,NumFiles(4));
-                SPMFullFile(1:length(Tmp)) = Tmp;
-            end
-            if FileTypes(5)
-                AllowedFiles = {'*.jpk',...
-                    'Valid Types (*.jpk)'};
-                Tmp = obj.get_file_paths('Choose one or more Cantilever Tip files',AllowedFiles,NumFiles(5));
-                CantTipFullFile(1:length(Tmp)) = Tmp;
-            end
+            FMFullFile(1:NumFiles(1)) = FullFileStruct(1).FullFile;
+            RefFMFullFile(1:NumFiles(2)) = FullFileStruct(2).FullFile;
+            IFullFile(1:NumFiles(3)) = FullFileStruct(3).FullFile;
+            SPMFullFile(1:NumFiles(4)) = FullFileStruct(4).FullFile;
+            CantTipFullFile(1:NumFiles(5)) = FullFileStruct(5).FullFile;
+            
             
             StartID = obj.NumAFMImages + obj.NumCantileverTips + obj.NumForceMaps + obj.NumReferenceForceMaps + obj.NumSurfacePotentialMaps + 1;
             IDs = StartID:(StartID + sum(NumFiles)-1);
@@ -280,26 +251,15 @@ classdef Experiment < matlab.mixin.Copyable
                 
                 % get Experiment name and layout from user
                 isNew = false;
-                [FileTypes, NumFiles, ExperimentName] = SaveCopy.constructor_user_input_parser(isNew);
+                [FileTypes, FullFileStruct, isValid] = SaveCopy.constructor_user_input_parser(obj.ExperimentName,obj.HostOS);
                 
-                if isequal(FileTypes,'Cancel')
+                if ~isValid
                     SaveCopy = [];
                     return
                 end
                 
-                for i=1:length(FileTypes)
-                    while FileTypes(i) && ~NumFiles(i)
-                        warndlg('All "Number of *"-inputs have to be non-zero integers')
-                        [FileTypes, NumFiles, ExperimentName] = SaveCopy.constructor_user_input_parser(isNew,FileTypes, NumFiles, ExperimentName);
-                        if isequal(FileTypes,'Cancel')
-                            SaveCopy = [];
-                            return
-                        end
-                    end
-                end
-                
                 % get paths of requested files and load them in
-                SaveCopy.get_paths_and_load_files(FileTypes,NumFiles,isNew)
+                SaveCopy.take_paths_and_load_files(FileTypes,FullFileStruct,isNew)
                 
                 % SaveCopy.initialize_flags % What to do with this?
                 
@@ -2329,161 +2289,357 @@ classdef Experiment < matlab.mixin.Copyable
             uiwait(h.f)
         end
         
-        function [Checked,NumberOfFiles,ExperimentName] = constructor_user_input_parser(isNew,Checked, NumberOfFiles, ExperimentName)
+        function [FileTypes,OutStruct,IsValid] = constructor_user_input_parser(ExperimentName,OS)
             
-            if nargin<1
-                isNew = false;
-            end
+            IsValid = false;
+            OutStruct = struct('FullFile',{cell(1,1),cell(1,1),cell(1,1),cell(1,1),cell(1,1)});
+            FileTypes = zeros(1,5);
+            
+            Initial = what();
+            h.LastFolder = Initial.path;
             
             % Create figure
-            left = 700;
-            bottom = 350;
-            width = 600;
-            height = 375;
-            h.f = figure('Name','Choose Experiment name and which file types have to be loaded','units','pixels','position',[left bottom width height],...
+            left = 0.2;
+            bottom = 0.1;
+            width = .6;
+            height = 0.8;
+            h.f = figure('Name',sprintf('%s: Data loader',ExperimentName),'units','normalized','position',[left bottom width height],...
                 'toolbar','none','menu','none');
             
-            h.name = uibuttongroup('Visible','on','Units','pixels',...
-                'Position',[50 305 500 50]);
-            NameText = uicontrol(h.name,'Style','text','units','pixels',...
-                'position',[25 10 200 25],'string','Name of Experiment');
-            NameEdit = uicontrol(h.name,'Style','edit','units','pixels',...
-                'position',[250 10 200 25],'string','choose a name');
+            % Create texttitles for filetypes
+            c(1) = uicontrol(h.f,'style','text','units','normalized',...
+                'position',[.05 .93 .2 .05],'string','Force/QI Maps',...
+                'FontSize',16);
+            c(2) = uicontrol(h.f,'style','text','units','normalized',...
+                'position',[.05 .75 .2 .05],'string','Reference Force Maps',...
+                'FontSize',16);
+            c(3) = uicontrol(h.f,'style','text','units','normalized',...
+                'position',[.05 .58 .2 .05],'string','AFM Image files',...
+                'FontSize',16);
+            c(4) = uicontrol(h.f,'style','text','units','normalized',...
+                'position',[.05 .39 .2 .05],'string',"Surface Potential Maps",...
+                'FontSize',16);
+            c(5) = uicontrol(h.f,'style','text','units','normalized',...
+                'position',[.05 .21 .2 .05],'string','Cantilever Tip data',...
+                'FontSize',16);
             
-            if ~isNew
-                set(NameEdit,'Enable','off');
-                set(NameEdit,'String','');
-                ExperimentName = [];
+            c(6) = uicontrol(h.f,'style','pushbutton','units','normalized',...
+                'position',[.05 .88 .1 .05],'string','Open Browser',...
+                'Callback',@open_browser);
+            c(7) = uicontrol(h.f,'style','pushbutton','units','normalized',...
+                'position',[.05 .7 .1 .05],'string','Open Browser',...
+                'Callback',@open_browser);
+            c(8) = uicontrol(h.f,'style','pushbutton','units','normalized',...
+                'position',[.05 .53 .1 .05],'string','Open Browser',...
+                'Callback',@open_browser);
+            c(9) = uicontrol(h.f,'style','pushbutton','units','normalized',...
+                'position',[.05 .34 .1 .05],'string',"Open Browser",...
+                'Callback',@open_browser);
+            c(10) = uicontrol(h.f,'style','pushbutton','units','normalized',...
+                'position',[.05 .16 .1 .05],'string','Open Browser',...
+                'Callback',@open_browser);
+            
+            c(11) = uicontrol(h.f,'style','pushbutton','units','normalized',...
+                'position',[.15 .88 .1 .05],'string','Delete Selected',...
+                'Callback',@delete_selected);
+            c(12) = uicontrol(h.f,'style','pushbutton','units','normalized',...
+                'position',[.15 .7 .1 .05],'string','Delete Selected',...
+                'Callback',@delete_selected);
+            c(13) = uicontrol(h.f,'style','pushbutton','units','normalized',...
+                'position',[.15 .53 .1 .05],'string','Delete Selected',...
+                'Callback',@delete_selected);
+            c(14) = uicontrol(h.f,'style','pushbutton','units','normalized',...
+                'position',[.15 .34 .1 .05],'string',"Delete Selected",...
+                'Callback',@delete_selected);
+            c(15) = uicontrol(h.f,'style','pushbutton','units','normalized',...
+                'position',[.15 .16 .1 .05],'string','Delete Selected',...
+                'Callback',@delete_selected);
+            
+            HeightPos = [.82 .64 .46 .28 .1];
+            
+            for i=1:5
+                h.ListBox(i) = uicontrol(h.f,...
+                    'Style','listbox',...
+                    'Max',1000000,'Min',1,...
+                    'Units','normalized',...
+                    'Position',[.3 HeightPos(i) .65 .16]);
             end
             
-            h.bg = uibuttongroup('Visible','off','Units','pixels',...
-                  'Position',[50 85 500 215]);
-            
-            % Create checkboxes for filetypes
-            c(1) = uicontrol(h.bg,'style','checkbox','units','pixels',...
-                'position',[25 165 200 25],'string','Force/QI Maps',...
-                'Callback',@checked_box);
-            c(2) = uicontrol(h.bg,'style','checkbox','units','pixels',...
-                'position',[75 130 200 25],'string','Reference Force Maps',...
-                'Callback',@has_reference_maps);
-            c(3) = uicontrol(h.bg,'style','checkbox','units','pixels',...
-                'position',[25 95 200 25],'string','AFM Image files',...
-                'Callback',@checked_box);
-            c(4) = uicontrol(h.bg,'style','checkbox','units','pixels',...
-                'position',[25 60 200 25],'string',"Surface Potential Maps",...
-                'Callback',@checked_box);
-            c(5) = uicontrol(h.bg,'style','checkbox','units','pixels',...
-                'position',[25 25 200 25],'string','Cantilever Tip data',...
-                'Callback',@checked_box);
-            
-            
-            c(6) = uicontrol(h.bg,'style','edit','units','pixels',...
-                'position',[250 165 200 25],'string','Number of Force/QI Maps');
-            c(7) = uicontrol(h.bg,'style','edit','units','pixels',...
-                'position',[300 130 150 25],'string','Number of Reference Force Maps');
-            c(8) = uicontrol(h.bg,'style','edit','units','pixels',...
-                'position',[250 95 200 25],'string','Number of AFM Images');
-            c(9) = uicontrol(h.bg,'style','edit','units','pixels',...
-                'position',[250 60 200 25],'string',"Number of Surface Potential Maps");
-            c(10) = uicontrol(h.bg,'style','edit','units','pixels',...
-                'position',[250 25 200 25],'string','Number of Cantilevers');
-            
-            set(c([6:10]),'Enable','off')
-            h.bg.Visible = 'on';
+            if isequal(upper(OS),'PCW')
+                % Get back the java component associated to the axis
+                % NB1: See §3.7.2 of Undocumented Secrets of Matlab Java Programming
+                % NB2: or use findjobj, or javaObjectEDT for drop support onto other component types
+                warning('off')
+                jFrame = get(handle(h.f), 'JavaFrame');
+                warning ('on')
+                jAxis = jFrame.getAxisComponent();
+                % Add listener for drop operations
+                DropListener(jAxis, ... % The component to be observed
+                    'DropFcn', @(s, e)onDrop(h.f, s, e)); % Function to call on drop operation
+                h.DragNDrop = uicontrol(h.f,'style','text','units','normalized',...
+                    'position',[.3 .025 .65 .05],...
+                    'string','Drag and Drop files into boxes or load from browser',...
+                    'FontSize',20);
+            end
             
             % Create OK pushbutton
-            h.p = uicontrol('style','pushbutton','units','pixels',...
-                'position',[50 25 200 50],'string','OK',...
+            h.p = uicontrol('style','pushbutton','units','normalized',...
+                'position',[.05 .025 .1 .05],'string','Confirm',...
                 'callback',@p_close);
             % Create cancel button
-            h.Cancel = uicontrol('style','pushbutton','units','pixels',...
-                'position',[300 25 200 50],'string','Cancel',...
+            h.Cancel = uicontrol('style','pushbutton','units','normalized',...
+                'position',[.15 .025 .1 .05],'string','Cancel',...
                 'callback',@pushed_cancel);
-
-            set(c(2),'Enable','off');
             
-            if nargin == 4
-                set(NameEdit,'string',ExperimentName);
-                set(c(find(Checked)),'value',1);
-                set(c(find(Checked)+5),'Enable','on');
-                for i=1:5
-                    set(c(i+5),'string',num2str(NumberOfFiles(i)));
-                end
-            end
-
             function pushed_cancel(varargin)
-                ExperimentName = zeros(10,1);
-                NumberOfFiles = zeros(10,1);
-                Checked = 'Cancel';
+                OutStruct = [];
+                FileTypes = 'Cancel';
+                IsValid = false;
                 close(h.f)
-            end
-            
-            function checked_box(varargin)
-                vals = get(c,'Value');
-                for i=[1 3:5]
-                    if vals{i}
-                        set(c(i+5),'Enable','on');
-                        if i==1
-                            set(c(2),'Enable','on');
-                        end
-                    else
-                        if i==1
-                            set(c(2),'Enable','off');
-                            set(c(2),'value',0);
-                            set(c(7),'Enable','off');
-                        end
-                        set(c(i+5),'Enable','off');
-                    end
-                end
-            end
-            
-            function has_reference_maps(varargin)
-                vals = get(c,'Value');
-                if vals{2}
-                    set(c(7),'Enable','on');
-                else
-                    set(c(7),'Enable','off');
-                end
             end
             
             function p_close(varargin)
-                vals = get(c,'Value');
-                Checked = [vals{[1:5]}];
-                Strings = get(c,'String');
-                NumberOfFiles = zeros(1,5);
-                for i=6:10
-                    CurString = str2num(Strings{i});
-                    if isempty(CurString)
-                        continue
+                for i=1:5
+                    if isempty(OutStruct(i).FullFile{1})
+                        FileTypes(i) = 0;
+                    else
+                        FileTypes(i) = 1;
                     end
-                    NumberOfFiles(i-5) = CurString;
                 end
-                ExperimentName = get(NameEdit,'string');
+                IsValid = true;
                 close(h.f)
             end
-            uiwait(h.f)
-        end
-        
-        function MapFullFile = get_file_paths(PromptString,AllowedFiles,NumFiles)
-            N = NumFiles;
-            MapFullFile = {};
-            k = 1;
-            while length(MapFullFile) < N
-                PromptString = append(PromptString,' %i/%i');
-                Title = sprintf(PromptString,length(MapFullFile),N);
-                [TempFile,TempPath] = uigetfile(AllowedFiles,...
-                    Title,'MultiSelect','on');
-                if  ~iscell(TempFile)
-                    MapFullFile{k} = fullfile(TempPath,TempFile);
+            
+            function onDrop(fig, listener, evtArg) %#ok<INUSL>
+                %[
+                % Get back the dropped data
+                Screen = get(groot);
+                ScreenSize = Screen.ScreenSize;
+                PointerPosition = get(0, 'PointerLocation');
+                RelPointerPosition = PointerPosition./[ScreenSize(3) ScreenSize(4)];
+                Index = which_listbox(RelPointerPosition);
+                if isequal(Index,'invalid')
+                    evtArg.DropComplete(false);
+                    return
+                end
+                data = evtArg.GetTransferableData();
+                
+                % Is it transferable as a list of files
+                if (data.IsTransferableAsFileList)
+                    
+                    TempFileCell = data.TransferAsFileList;
+                    
+                    % For some reason the order of the chosen files gets
+                    % swapped seemingly randomly. Can't fix it for now
+%                     ShiftCell = cell(1,length(TempFileCell)+1);
+%                     ShiftCell(2:end) = TempFileCell;
+%                     ShiftCell(1) = TempFileCell(end);
+%                     TempFileCell(1:end) = ShiftCell(1:end-1);
+
+                    k = 1;
+                    DelIdx = [];
+                    for i=1:length(TempFileCell)
+                        SplitString = split(TempFileCell{i},filesep);
+                        TempTempFile{i} = SplitString{end};
+                        SplitName = split(TempTempFile{i},'.');
+                        FileExtension = SplitName{end};
+                        if ((Index == 1) || (Index == 2)) &&...
+                                (isequal(FileExtension,'jpk-force-map') || isequal(FileExtension,'jpk-qi-data'))
+                            % All Good
+                        elseif ((Index == 3) || (Index == 5)) &&...
+                                (isequal(FileExtension,'jpk'))
+                            % All Good
+                        elseif (Index == 4)&&...
+                                (isequal(FileExtension,'sdf'))
+                            % All Good
+                        else
+                            DelIdx(k) = i;
+                            k = k + 1;
+                        end
+                    end
+                    
+                    if ~isempty(DelIdx)
+                        TempTempFile(DelIdx) = [];
+                        TempFileCell(DelIdx) = [];
+                    end
+                    
+                    k = 1;
+                    if  ~iscell(TempTempFile)
+                        TempFile{1} = TempTempFile;
+                        TempFileCell{k} = fullfile(TempPath,TempFile{1});
+                        k = k + 1;
+                    else
+                        TempFile = TempTempFile';
+                    end
+                    OldFiles = h.ListBox(Index).String;
+                    if ~iscell(OldFiles)
+                        NewFiles = TempFile;
+                    else
+                        NewFiles = cell(length(OldFiles)+length(TempFile),1);
+                        for i=1:length(OldFiles)
+                            NewFiles{i} = OldFiles{i};
+                        end
+                        for i=1:length(TempFile)
+                            NewFiles{i+length(OldFiles)} = TempFile{i};
+                        end
+                    end
+                    
+                    if (length(OutStruct(Index).FullFile) == 1) && isempty(OutStruct(Index).FullFile{1})
+                        OldLength = 0;
+                    else
+                        OldLength = length(OutStruct(Index).FullFile);
+                    end
+                    
+                    for i=1:length(TempFile)
+                        OutStruct(Index).FullFile{i+OldLength} = TempFileCell{i};
+                    end
+                    
+                    
+                    set(h.ListBox(Index),'String',NewFiles)
+                    OutStruct(Index).FullFile
+                    
+                    % Indicate to the source that drop has completed
+                    evtArg.DropComplete(true);
+                    
+                elseif (data.IsTransferableAsString)
+                    
+                    % Not interested
+                    evtArg.DropComplete(false);
+                    
+                else
+                    
+                    % Not interested
+                    evtArg.DropComplete(false);
+                    
+                end
+                %]
+            end
+            
+            function open_browser(varargin)
+                
+                ButtonPos = get(varargin{2}.Source,'InnerPosition');
+                switch ButtonPos(2)
+                    case .16
+                        Index = 5;
+                        AllowedFiles = {'*.jpk',...
+                            'Valid Types (*.jpk)'};
+                    case .34
+                        Index = 4;
+                        AllowedFiles = {'*.sdf',...
+                            'Valid Types (*.sdf)'};
+                    case .53
+                        Index = 3;
+                        AllowedFiles = {'*.jpk',...
+                            'Valid Types (*.jpk)'};
+                    case .7
+                        Index = 2;
+                        AllowedFiles = {'*.jpk-force-map;*.jpk-qi-data',...
+                            'Valid Types (*.jpk-force-map,*.jpk-qi-data)'};
+                    case .88
+                        Index = 1;
+                        AllowedFiles = {'*.jpk-force-map;*.jpk-qi-data',...
+                            'Valid Types (*.jpk-force-map,*.jpk-qi-data)'};
+                end
+                
+                current = what();
+                cd(h.LastFolder)
+                [TempTempFile,TempPath] = uigetfile(AllowedFiles,...
+                    'MultiSelect','on');
+                if isempty(TempTempFile)
+                    return
+                end
+                k = 1;
+                if  ~iscell(TempTempFile)
+                    TempFile{1} = TempTempFile;
+                    TempFileCell{k} = fullfile(TempPath,TempFile{1});
                     k = k + 1;
                 else
+                    TempFile = TempTempFile';
                     for i=1:length(TempFile)
-                        MapFullFile{k} = fullfile(TempPath,TempFile{i});
+                        TempFileCell{k} = fullfile(TempPath,TempFile{i});
                         k = k + 1;
                     end
                 end
-                clear TempFile
+                h.LastFolder = TempPath;
+                cd(current.path)
+                OldFiles = h.ListBox(Index).String;
+                if ~iscell(OldFiles)
+                    NewFiles = TempFile;
+                else
+                    NewFiles = cell(length(OldFiles)+length(TempFile),1);
+                    for i=1:length(OldFiles)
+                        NewFiles{i} = OldFiles{i};
+                    end
+                    for i=1:length(TempFile)
+                        NewFiles{i+length(OldFiles)} = TempFile{i};
+                    end
+                end
+                
+                if (length(OutStruct(Index).FullFile) == 1) && isempty(OutStruct(Index).FullFile{1})
+                    OldLength = 0;
+                else
+                    OldLength = length(OutStruct(Index).FullFile);
+                end
+                
+                for i=1:length(TempFile)
+                    OutStruct(Index).FullFile{i+OldLength} = TempFileCell{i};
+                end
+                
+                
+                set(h.ListBox(Index),'String',NewFiles)
+                OutStruct(Index).FullFile
             end
+            
+            function delete_selected(varargin)
+                
+                ButtonPos = get(varargin{2}.Source,'InnerPosition');
+                switch ButtonPos(2)
+                    case .16
+                        Index = 5;
+                    case .34
+                        Index = 4;
+                    case .53
+                        Index = 3;
+                    case .7
+                        Index = 2;
+                    case .88
+                        Index = 1;
+                end
+                
+                OldString = get(h.ListBox(Index),'String');
+                DeleteIdx = get(h.ListBox(Index),'Value');
+                OldString(DeleteIdx) = [];
+                OutStruct(Index).FullFile(DeleteIdx) = [];
+                
+                set(h.ListBox(Index),'Value',1); 
+                set(h.ListBox(Index),'String',OldString);    
+                OutStruct(Index).FullFile
+            end
+            
+            function FileTypeIndex = which_listbox(PPos)
+                
+                FigPos = get(h.f,'Position');
+                
+                for i=1:5
+                    Pos = get(h.ListBox(i),'InnerPosition');
+                    Pos(1) = Pos(1)*FigPos(3) + FigPos(1);
+                    Pos(2) = Pos(2)*FigPos(4) + FigPos(2);
+                    Pos(3) = Pos(1)*FigPos(3) + FigPos(1);
+                    Pos(4) = Pos(2)*FigPos(4) + FigPos(2);
+                    if (PPos(1) <= (Pos(1)+Pos(3)*FigPos(3))) &&...
+                            (PPos(2) <= (Pos(2)+Pos(4)*FigPos(4))) &&...
+                            (PPos(1) >= Pos(1)) &&...
+                            (PPos(2) >= Pos(2))
+                        FileTypeIndex = i;
+                        return
+                    else
+                        FileTypeIndex = 'invalid';
+                    end
+                end
+                
+            end
+            
+            uiwait(h.f)
         end
         
     end
