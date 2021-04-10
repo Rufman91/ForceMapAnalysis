@@ -138,21 +138,28 @@ classdef AFMImage < matlab.mixin.Copyable
         
         function deconvolute_cantilever_tip(obj)
             
-            Based = imgaussfilt(obj.subtract_line_fit_hist(obj.HeightMeasured.Trace,obj.NumPixelsY,0.4));
-            obj.MaskBackground = obj.mask_background_by_threshold(Based,1);
-            Based = obj.masked_plane_fit(Based,obj.MaskBackground);
+            Channel = obj.get_channel('Height (measured) (Trace)');
+            Based = imgaussfilt(obj.subtract_line_fit_hist(Channel.Image,0.4));
+            obj.Channel(end+1) = Channel;
+            obj.Channel(end).Name = 'Background Mask';
+            obj.Channel(end).Unit = 'Logical';
+            obj.Channel(end).Image = obj.mask_background_by_threshold(Based,1);
+            Based = obj.masked_plane_fit(Based,obj.Channel(end).Image);
             ConeHeight = range(Based,'all');
             Cone = obj.cone(obj.NumPixelsX,obj.NumPixelsY,ConeHeight,obj.ScanSizeX,obj.ScanSizeY,10e-9);
-            obj.ErodedTip = obj.deconvolute_by_mathematical_morphology(Based,Cone);
+            obj.Channel(end+1) = Channel;
+            obj.Channel(end).Name = 'Eroded Tip';
+            obj.Channel(end).Unit = 'm';
+            obj.Channel(end).Image = obj.deconvolute_by_mathematical_morphology(Based,Cone);
             
             StepSize = 1e-9;
             
             PixelSizeX = obj.ScanSizeX/obj.NumPixelsX;
             PixelSizeY = obj.ScanSizeY/obj.NumPixelsY;
             
-            obj.ProjectedTipArea = obj.calculate_projected_area(obj.ErodedTip,PixelSizeX,PixelSizeY,StepSize);
+            obj.ProjectedTipArea = obj.calculate_projected_area(obj.Channel(end).Image,PixelSizeX,PixelSizeY,StepSize);
             
-            [obj.DepthDependendTipRadius,obj.DepthDependendTipShape] = obj.calculate_depth_dependend_tip_data(obj.ProjectedTipArea,RangePercent);
+%             [obj.DepthDependendTipRadius,obj.DepthDependendTipShape] = obj.calculate_depth_dependend_tip_data(obj.ProjectedTipArea,RangePercent);
             
             obj.hasDeconvolutedCantileverTip = true;
         end
