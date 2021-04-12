@@ -2886,8 +2886,9 @@ classdef ForceMap < matlab.mixin.Copyable
                     obj.HHApp{i} = obj.Height{i,1};
                     obj.App{i} = obj.Force{i,1}.*obj.SpringConstant;
                     
-                    obj.HHRet{i} = obj.Height{i,obj.NumSegments};
-                    obj.Ret{i} = obj.Force{i,obj.NumSegments}.*obj.SpringConstant;
+                    lastseg = obj.NumSegments - 1;
+                    %obj.HHRet{i} = obj.Height{i,lastseg};
+                    %obj.Ret{i} = obj.Force{i,lastseg}.*obj.SpringConstant;
 
                     
                     if obj.SegFrequency{j} ~= 0
@@ -2951,7 +2952,7 @@ classdef ForceMap < matlab.mixin.Copyable
                          HZLoc{i,j} = ZeroCrossH{i,j}+maxH-(DiffH/2);
                          
                          figure(1)
-                         plot(obj.SegTime{2},FZShift{1,2},'b',  ZeroCrossTimeF{1,2},  ZeroCrossF{1,2}, 'bp')
+                         plot(obj.SegTime{j},FZShift{1,j},'b',  ZeroCrossTimeF{1,j},  ZeroCrossF{1,j}, 'bp')
                          %hold on
                          %plot(ZeroCrossTimeF, FZLoc, 'bp')
                          legend('Data','Approximate Zero-Crossings')
@@ -2997,9 +2998,9 @@ classdef ForceMap < matlab.mixin.Copyable
                          % PLOT figure of fitted indentation data
                         
                          figure(2)
-                         plot(obj.SegTime{2},obj.Force{1,2},'b',  xpF,fit(s_F,xpF), 'r')
+                         plot(obj.SegTime{j},obj.Force{1,j},'b',  xpF,fit(s_F,xpF), 'r')
                          hold on
-                         plot(ZeroCrossTimeF{1,2}, FZLoc{1,2}, 'bp')
+                         plot(ZeroCrossTimeF{1,j}, FZLoc{1,j}, 'bp')
                          legend('Data','Fitted sine','Approximate Zero-Crossings')
                          hold off
                          grid
@@ -3008,33 +3009,25 @@ classdef ForceMap < matlab.mixin.Copyable
                          % PLOT figure of fitted indentation data
                         
                          figure(5)
-                         plot(obj.SegTime{2},obj.Height{1,2},'b',  xpH,fit(s_H,xpH), 'r')
+                         plot(obj.SegTime{j},obj.Height{1,j},'b',  xpH,fit(s_H,xpH), 'r')
                          hold on
-                         plot(ZeroCrossTimeH{1,2}, HZLoc{1,2}, 'bp')
+                         plot(ZeroCrossTimeH{1,j}, HZLoc{1,j}, 'bp')
                          legend('Data','Fitted sine','Approximate Zero-Crossings')
                          hold off
                          grid
                          title('Height Data and Fitted Curve')
                          
-                         %Version LSQCURVEFIT
-                        fun = @(d,x)d(1).*(sin(2*pi*x./d(2) + 2*pi/d(3)));
-                        x0 = [AmplitudeF;  PeriodF;  firstsignchangeF;];
-                        Y_H = lsqcurvefit(fun,x0,x,obj.Force{i,j});
-                        times = linspace(x(1),x(end));
-                        figure(3)
-                        plot(obj.SegTime{2},FZShift{1,2},'b',times,fun(Y_H,times),'r')
-                        legend('Data','Fitted sine')
-                        title('Indentation Data and Fitted Curve with LSQCURVEFIT')
-                        
+                       
                         %PLOT figure of fitted sine of indentation and force
-                         %sine with the fitted parameters for force:
-                       Y_Fo = s_F(1).*(sin(2*pi*x./s_F(2) + 2*pi/s_F(3)));
+                        %sine with the fitted parameters for force:
+                        Y_Fo = s_F(1).*(sin(2*pi*x./s_F(2) + 2*pi/s_F(3)));
+                        Y_H = s_H(1).*(sin(2*pi*x./s_H(2) + 2*pi/s_H(3)));
                         
-                           figure(4)
-                           plot (x,Y_Fo,'r')
-                           grid
-                           legend('fitted indentation','fitted force')
-                           title('Fitted Sine Indentation and Force')
+                        figure(4)
+                        plot (x,Y_H,'b', x,Y_Fo,'r')
+                        grid
+                        legend('fitted indentation','fitted force')
+                        title('Fitted Sine Indentation and Force')
 
 
                     end
@@ -3103,6 +3096,7 @@ classdef ForceMap < matlab.mixin.Copyable
                 clear TempHHRet
             end
           end
+ 
         end
         
         function initialize_flags(obj)
