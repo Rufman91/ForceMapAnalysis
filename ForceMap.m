@@ -1588,6 +1588,150 @@ classdef ForceMap < matlab.mixin.Copyable
 %             line([x500 x500], ylim,'Color','k'); % Draws a vertical line      
         end
        
+        function sinus_fit_for_microrheology(obj)
+            
+            if obj.SegFrequency{j} ~= 0
+                % Max values of Force and Height
+                 maxF = max(obj.Force{i,j});
+                 maxH = max(obj.Height{i,j});
+
+                 % Min values of Force and Height
+                 minF = min(obj.Force{i,j});
+                 minH = min(obj.Height{i,j});
+
+                 % Difference max min
+                 DiffF = maxF - minF;
+                 DiffH = maxH - minH;
+
+
+                 % Shift to Zero Line
+                 FZShift{i,j} = obj.Force{i,j}-maxF+(DiffF/2);
+                 HZShift{i,j} = obj.Height{i,j}-maxH+(DiffH/2);
+
+                 %INTERPOLATION with the purpose to add more points to indentation data
+                 %at every timestep z1_H
+                 FInterp{i,j} = interp1(obj.SegTime{j},FZShift{i,j},obj.InterpTimeF{j});
+                 HInterp{i,j} = interp1(obj.SegTime{j},HZShift{i,j},obj.InterpTimeH{j}); 
+
+                 %Finding the rows where NaNs are located due to interpolation:
+                 row_F = find(isnan(FInterp{i,j}));
+                 row_H = find(isnan(HInterp{i,j}));
+
+                 %also deleting those rows from the timestep vector z1_H:
+                 obj.InterpTimeF{j}(row_F,:)=[];
+                 obj.InterpTimeH{j}(row_H,:)=[];
+
+                 %deleting NaN from interpolated indentation data:
+                 FInterp{i,j} = rmmissing(FInterp{i,j});
+                 HInterp{i,j} = rmmissing(HInterp{i,j});
+
+                 %Finding changes in signs from positive to negative, inbetween the zero
+                 %crossing must occur
+                 signchangeF{i,j} = find( diff( sign(FInterp{i,j}) ) ~= 0 );
+                 signchangeH{i,j} = find( diff( sign(HInterp{i,j}) ) ~= 0 );
+
+                 %interpolation and time data where the sign changes
+                 ZeroCrossF{i,j} = FInterp{i,j}(signchangeF{i,j});
+                 ZeroCrossH{i,j} = HInterp{i,j}(signchangeH{i,j});
+                 ZeroCrossTimeF{i,j} = obj.InterpTimeF{j}(signchangeF{i,j});
+                 ZeroCrossTimeH{i,j} = obj.InterpTimeH{j}(signchangeH{i,j});
+
+
+                 %locate the first change of sign:
+                 help_F=signchangeF{i,j}(1);
+                 help_H=signchangeH{i,j}(1);
+
+                 %define the time span between first time step and first change of sign
+                 %which will be a parameter for the sine fit later:
+                 firstsignchangeF = obj.InterpTimeF{j}(help_F) - obj.InterpTimeF{j}(1);
+                 firstsignchangeH = obj.InterpTimeH{j}(help_H)- obj.InterpTimeH{j}(1);
+
+                 % shift the zero crossings to the original height again:
+                 FZLoc{i,j} = ZeroCrossF{i,j}+maxF-(DiffF/2);
+                 HZLoc{i,j} = ZeroCrossH{i,j}+maxH-(DiffH/2);
+
+                 figure(1)
+                 plot(obj.SegTime{j},FZShift{1,j},'b',  ZeroCrossTimeF{1,j},  ZeroCrossF{1,j}, 'bp')
+                 %hold on
+                 %plot(ZeroCrossTimeF, FZLoc, 'bp')
+                 legend('Data','Approximate Zero-Crossings')
+                 %hold off
+                 grid
+                 title('Force Data and Fitted Curve')
+
+                 % Amplitude
+                 AmplitudeF=(DiffF/2);
+                 AmplitudeH=(DiffH/2);
+
+                 % Estimate period
+                 PeriodF = 2*mean(diff(ZeroCrossTimeF{i,j}));
+                 PeriodH = 2*mean(diff(ZeroCrossTimeH{i,j}));
+
+                 % Estimate offset
+                 meanF = mean(obj.Force{i,j});
+                 meanH = mean(obj.Height{i,j});
+
+                 x = obj.SegTime{j};
+
+                 % Function to fit force data 
+                 %b(1) (max-min)/2 b(2) FFT b(3) first sign change b(4) mean
+                 fit = @(b,x)  b(1).*(sin(2*pi*x./b(2) + 2*pi/b(3))) + b(4);    
+                 % Least-Squares cost function:
+                 fcn = @(b) sum((fit(b,x) - obj.Force{i,j}).^2);       
+                 % Minimise Least-Squares with estimated start values:
+                 s_F = fminsearch(fcn, [AmplitudeF;  PeriodF;  firstsignchangeF;  meanF]); 
+                 % Spacing of time vector:
+                 xpF = linspace(min(obj.InterpTimeF{j}),max(obj.InterpTimeF{j}),100000);
+
+                 % Function to fit height data 
+                 %b(1) (max-min)/2 b(2) FFT b(3) first sign change b(4) mean
+                 fit = @(a,x)  a(1).*(sin(2*pi*x./a(2) + 2*pi/a(3))) + a(4);    
+                 % Least-Squares cost function:
+                 fcn = @(a) sum((fit(a,x) - obj.Height{i,j}).^2);       
+                 % Minimise Least-Squares with estimated start values:
+                 s_H = fminsearch(fcn, [AmplitudeH;  PeriodH;  firstsignchangeH;  meanH]); 
+                 % Spacing of time vector:
+                 xpH = linspace(min(obj.InterpTimeH{j}),max(obj.InterpTimeH{j}),100000);
+
+
+                 % PLOT figure of fitted indentation data
+
+                 figure(2)
+                 plot(obj.SegTime{j},obj.Force{1,j},'b',  xpF,fit(s_F,xpF), 'r')
+                 hold on
+                 plot(ZeroCrossTimeF{1,j}, FZLoc{1,j}, 'bp')
+                 legend('Data','Fitted sine','Approximate Zero-Crossings')
+                 hold off
+                 grid
+                 title('Force Data and Fitted Curve')
+
+                 % PLOT figure of fitted indentation data
+
+                 figure(5)
+                 plot(obj.SegTime{j},obj.Height{1,j},'b',  xpH,fit(s_H,xpH), 'r')
+                 hold on
+                 plot(ZeroCrossTimeH{1,j}, HZLoc{1,j}, 'bp')
+                 legend('Data','Fitted sine','Approximate Zero-Crossings')
+                 hold off
+                 grid
+                 title('Height Data and Fitted Curve')
+
+
+                %PLOT figure of fitted sine of indentation and force
+                %sine with the fitted parameters for force:
+                Y_Fo = s_F(1).*(sin(2*pi*x./s_F(2) + 2*pi/s_F(3)));
+                Y_H = s_H(1).*(sin(2*pi*x./s_H(2) + 2*pi/s_H(3)));
+
+                figure(4)
+                plot (x,Y_H,'b', x,Y_Fo,'r')
+                grid
+                legend('fitted indentation','fitted force')
+                title('Fitted Sine Indentation and Force')
+                
+            end
+
+        end
+        
    end  
         
     methods (Static)
@@ -2883,158 +3027,18 @@ classdef ForceMap < matlab.mixin.Copyable
                     obj.Force{i,j} = obj.Force{i,j}.*obj.SpringConstant;
                     clear TempHHApp
                     
-                    obj.HHApp{i} = obj.Height{i,1};
-                    obj.App{i} = obj.Force{i,1}.*obj.SpringConstant;
                     
-                    lastseg = obj.NumSegments - 1;
-                    %obj.HHRet{i} = obj.Height{i,lastseg};
-                    %obj.Ret{i} = obj.Force{i,lastseg}.*obj.SpringConstant;
-
-                    
-                    if obj.SegFrequency{j} ~= 0
-                        % Max values of Force and Height
-                         maxF = max(obj.Force{i,j});
-                         maxH = max(obj.Height{i,j});
-
-                         % Min values of Force and Height
-                         minF = min(obj.Force{i,j});
-                         minH = min(obj.Height{i,j});
-
-                         % Difference max min
-                         DiffF = maxF - minF;
-                         DiffH = maxH - minH;
-
-
-                         % Shift to Zero Line
-                         FZShift{i,j} = obj.Force{i,j}-maxF+(DiffF/2);
-                         HZShift{i,j} = obj.Height{i,j}-maxH+(DiffH/2);
-                         
-                         %INTERPOLATION with the purpose to add more points to indentation data
-                         %at every timestep z1_H
-                         FInterp{i,j} = interp1(obj.SegTime{j},FZShift{i,j},obj.InterpTimeF{j});
-                         HInterp{i,j} = interp1(obj.SegTime{j},HZShift{i,j},obj.InterpTimeH{j}); 
-                         
-                         %Finding the rows where NaNs are located due to interpolation:
-                         row_F = find(isnan(FInterp{i,j}));
-                         row_H = find(isnan(HInterp{i,j}));
-
-                         %also deleting those rows from the timestep vector z1_H:
-                         obj.InterpTimeF{j}(row_F,:)=[];
-                         obj.InterpTimeH{j}(row_H,:)=[];
-                         
-                         %deleting NaN from interpolated indentation data:
-                         FInterp{i,j} = rmmissing(FInterp{i,j});
-                         HInterp{i,j} = rmmissing(HInterp{i,j});
-               
-                         %Finding changes in signs from positive to negative, inbetween the zero
-                         %crossing must occur
-                         signchangeF{i,j} = find( diff( sign(FInterp{i,j}) ) ~= 0 );
-                         signchangeH{i,j} = find( diff( sign(HInterp{i,j}) ) ~= 0 );
-
-                         %interpolation and time data where the sign changes
-                         ZeroCrossF{i,j} = FInterp{i,j}(signchangeF{i,j});
-                         ZeroCrossH{i,j} = HInterp{i,j}(signchangeH{i,j});
-                         ZeroCrossTimeF{i,j} = obj.InterpTimeF{j}(signchangeF{i,j});
-                         ZeroCrossTimeH{i,j} = obj.InterpTimeH{j}(signchangeH{i,j});
-                         
-                         
-                         %locate the first change of sign:
-                         help_F=signchangeF{i,j}(1);
-                         help_H=signchangeH{i,j}(1);
-                         
-                         %define the time span between first time step and first change of sign
-                         %which will be a parameter for the sine fit later:
-                         firstsignchangeF = obj.InterpTimeF{j}(help_F) - obj.InterpTimeF{j}(1);
-                         firstsignchangeH = obj.InterpTimeH{j}(help_H)- obj.InterpTimeH{j}(1);
-
-                         % shift the zero crossings to the original height again:
-                         FZLoc{i,j} = ZeroCrossF{i,j}+maxF-(DiffF/2);
-                         HZLoc{i,j} = ZeroCrossH{i,j}+maxH-(DiffH/2);
-                         
-                         figure(1)
-                         plot(obj.SegTime{j},FZShift{1,j},'b',  ZeroCrossTimeF{1,j},  ZeroCrossF{1,j}, 'bp')
-                         %hold on
-                         %plot(ZeroCrossTimeF, FZLoc, 'bp')
-                         legend('Data','Approximate Zero-Crossings')
-                         %hold off
-                         grid
-                         title('Force Data and Fitted Curve')
-
-                         % Amplitude
-                         AmplitudeF=(DiffF/2);
-                         AmplitudeH=(DiffH/2);
-
-                         % Estimate period
-                         PeriodF = 2*mean(diff(ZeroCrossTimeF{i,j}));
-                         PeriodH = 2*mean(diff(ZeroCrossTimeH{i,j}));
-
-                         % Estimate offset
-                         meanF = mean(obj.Force{i,j});
-                         meanH = mean(obj.Height{i,j});
-                         
-                         x = obj.SegTime{j};
-
-                         % Function to fit force data 
-                         %b(1) (max-min)/2 b(2) FFT b(3) first sign change b(4) mean
-                         fit = @(b,x)  b(1).*(sin(2*pi*x./b(2) + 2*pi/b(3))) + b(4);    
-                         % Least-Squares cost function:
-                         fcn = @(b) sum((fit(b,x) - obj.Force{i,j}).^2);       
-                         % Minimise Least-Squares with estimated start values:
-                         s_F = fminsearch(fcn, [AmplitudeF;  PeriodF;  firstsignchangeF;  meanF]); 
-                         % Spacing of time vector:
-                         xpF = linspace(min(obj.InterpTimeF{j}),max(obj.InterpTimeF{j}),100000);
-                         
-                         % Function to fit height data 
-                         %b(1) (max-min)/2 b(2) FFT b(3) first sign change b(4) mean
-                         fit = @(a,x)  a(1).*(sin(2*pi*x./a(2) + 2*pi/a(3))) + a(4);    
-                         % Least-Squares cost function:
-                         fcn = @(a) sum((fit(a,x) - obj.Height{i,j}).^2);       
-                         % Minimise Least-Squares with estimated start values:
-                         s_H = fminsearch(fcn, [AmplitudeH;  PeriodH;  firstsignchangeH;  meanH]); 
-                         % Spacing of time vector:
-                         xpH = linspace(min(obj.InterpTimeH{j}),max(obj.InterpTimeH{j}),100000);
-                         
-                         
-                         % PLOT figure of fitted indentation data
-                        
-                         figure(2)
-                         plot(obj.SegTime{j},obj.Force{1,j},'b',  xpF,fit(s_F,xpF), 'r')
-                         hold on
-                         plot(ZeroCrossTimeF{1,j}, FZLoc{1,j}, 'bp')
-                         legend('Data','Fitted sine','Approximate Zero-Crossings')
-                         hold off
-                         grid
-                         title('Force Data and Fitted Curve')
-                         
-                         % PLOT figure of fitted indentation data
-                        
-                         figure(5)
-                         plot(obj.SegTime{j},obj.Height{1,j},'b',  xpH,fit(s_H,xpH), 'r')
-                         hold on
-                         plot(ZeroCrossTimeH{1,j}, HZLoc{1,j}, 'bp')
-                         legend('Data','Fitted sine','Approximate Zero-Crossings')
-                         hold off
-                         grid
-                         title('Height Data and Fitted Curve')
-                         
-                       
-                        %PLOT figure of fitted sine of indentation and force
-                        %sine with the fitted parameters for force:
-                        Y_Fo = s_F(1).*(sin(2*pi*x./s_F(2) + 2*pi/s_F(3)));
-                        Y_H = s_H(1).*(sin(2*pi*x./s_H(2) + 2*pi/s_H(3)));
-                        
-                        figure(4)
-                        plot (x,Y_H,'b', x,Y_Fo,'r')
-                        grid
-                        legend('fitted indentation','fitted force')
-                        title('Fitted Sine Indentation and Force')
-
-
-                    end
-           
                 end
+                
+                 obj.HHApp{i} = obj.Height{i,1};
+                 obj.App{i} = obj.Force{i,1}.*obj.SpringConstant;
+                    
+                 lastseg = obj.NumSegments - 1;
+                 obj.HHRet{i} = obj.Height{i,lastseg};
+                 obj.Ret{i} = obj.Force{i,lastseg}.*obj.SpringConstant;
+
             end
-            
+         
           else
             
             obj.HHType = 'capacitiveSensorHeight';
