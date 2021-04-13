@@ -18,6 +18,15 @@ classdef AFMImage < matlab.mixin.Copyable
         NumChannels
     end
     properties
+        % All possible image channels. The Channels are all part of the
+        % struct Channel and should each contain the properties Image,
+        % Unit, Name, ScanSizeX, ScanSizeY, NumPixelsX, NumPixelsY,
+        % ScanAngle, OriginX and OriginY. This might seem redundant but
+        % allows for image cropping, image-overlays and easy addition of
+        % other kinds of image-data (e.g. AdhesionMaps, EModMaps)
+        Channel
+    end
+    properties
         % Image Data Properties. All dimensions in SI-units, Angles in
         % degrees
         OriginX
@@ -49,19 +58,6 @@ classdef AFMImage < matlab.mixin.Copyable
         Baseline_N
     end
     properties
-        % All possible image channels. The Channels are themselves structs
-        % containing some infos and the imagedata in their raw and
-        % processed form.
-        Height
-        HeightMeasured
-        ErrorSignal
-        LockInAmplitude
-        LockInPhase
-        LateralDeflection
-        VerticalDeflection
-        Processed
-    end
-    properties
         % Properties related to Image processing/segmenting/classification
         CMap
         MaskBackground
@@ -74,15 +70,19 @@ classdef AFMImage < matlab.mixin.Copyable
     end
     properties
         % All the Flags
-        HasHeight
-        HasHeightMeasured
-        HasErrorSignal
-        HasLateralDeflection
-        HasLockInAmplitude
-        HasLockInPhase
-        HasVerticalDeflection
-        HasProcessed
-        HasDeconvolutedCantileverTip
+        hasSensitivity
+        hasSpringConstant
+        hasHeight
+        hasHeightMeasured
+        hasErrorSignal
+        hasLateralDeflection
+        hasLockInAmplitude
+        hasLockInPhase
+        hasVerticalDeflection
+        hasProcessed
+        hasBackgroundMask
+        hasOverlay
+        hasDeconvolutedCantileverTip
     end
     
     methods
@@ -118,23 +118,99 @@ classdef AFMImage < matlab.mixin.Copyable
             
         end
         
+        function [ChannelStruct,Index] = get_channel(obj,ChannelName)
+            k = 0;
+            for i=1:length(obj.Channel)
+                if isequal(obj.Channel(i).Name,ChannelName)
+                    ChannelStruct = obj.Channel(i);
+                    Index = i;
+                    k = k+1;
+                end
+            end
+            if k > 1
+                warning(sprintf('Caution! There are more than one channels named %s (%i)',ChannelName,k))
+            end
+            if k == 0
+                ChannelStruct = [];
+                Index = [];
+            end
+        end
+        
+        function overlay_wrapper(obj,OverlayedImageClassInstance,BackgroundPercent,MinOverlap,AngleRange,UseParallel,MaxFunEval,PreMaxFunEval,NumPreSearches,NClusters)
+            % overlay_wrapper(obj,OverlayedImageClassInstance,BackgroundPercent,MinOverlap,AngleRange,UseParallel,MaxFunEval,PreMaxFunEval,NumPreSearches,NClusters)
+            
+            if nargin < 3
+                BackgroundPercent = 0;
+                MinOverlap = .6;
+                AngleRange = 30;
+                UseParallel = true;
+                MaxFunEval = 200;
+                PreMaxFunEval = 30;
+                NumPreSearches = 120;
+                NClusters = 6;
+            end
+            
+            Channel1 = obj.get_channel('Processed');
+            Channel2 = OverlayedImageClassInstance.get_channel('Processed');
+            
+            OutChannel = AFMImage.overlay_parameters_by_bayesopt(Channel1,Channel2,BackgroundPercent,MinOverlap,AngleRange,UseParallel,MaxFunEval,PreMaxFunEval,NumPreSearches,NClusters);
+            
+            [Overlay1,Overlay2] = AFMImage.overlay_two_images(Channel1,OutChannel);
+            
+            % Create Overlay Background masks
+            OverlayMask1 = AFMImage.mask_background_by_threshold(Overlay1,BackgroundPercent,'on');
+            OverlayMask2 = AFMImage.mask_background_by_threshold(Overlay2,BackgroundPercent,'on');
+            
+            % write the overlays into the corresponding Class instances
+            SecondOut = OutChannel;
+            SecondMaskOut = OutChannel;
+            SecondOut.Image = Overlay2;
+            SecondMaskOut.Image = OverlayMask2;
+            SecondMaskOut.Unit = 'Logical';
+            SecondMaskOut.Name = 'Overlay Mask';
+            
+            FirstOut = Channel1;
+            FirstMaskOut = Channel1;
+            FirstOut.Image = Overlay1;
+            FirstOut.Name = 'Overlay';
+            FirstMaskOut.Image = OverlayMask1;
+            FirstMaskOut.Unit = 'Logical';
+            FirstMaskOut.Name = 'Overlay Mask';
+            
+            obj.Channel(end+1) = FirstOut;
+            obj.Channel(end+1) = FirstMaskOut;
+            
+            OverlayedImageClassInstance.Channel(end+1) = SecondOut;
+            OverlayedImageClassInstance.Channel(end+1) = SecondMaskOut;
+            
+            obj.hasOverlay = true;
+            OverlayedImageClassInstance.hasOverlay = true;
+        end
+        
         function deconvolute_cantilever_tip(obj)
             
-            Based = imgaussfilt(obj.subtract_line_fit_hist(obj.HeightMeasured.Trace,obj.NumPixelsY,0.4));
-            obj.MaskBackground = obj.mask_background_by_threshold(Based,1);
-            Based = obj.masked_plane_fit(Based,obj.MaskBackground);
+            Channel = obj.get_channel('Height (measured) (Trace)');
+            Based = imgaussfilt(obj.subtract_line_fit_hist(Channel.Image,0.4));
+            obj.Channel(end+1) = Channel;
+            obj.Channel(end).Name = 'Background Mask';
+            obj.Channel(end).Unit = 'Logical';
+            obj.Channel(end).Image = obj.mask_background_by_threshold(Based,1);
+            Based = obj.masked_plane_fit(Based,obj.Channel(end).Image);
             ConeHeight = range(Based,'all');
             Cone = obj.cone(obj.NumPixelsX,obj.NumPixelsY,ConeHeight,obj.ScanSizeX,obj.ScanSizeY,10e-9);
-            obj.ErodedTip = obj.deconvolute_by_mathematical_morphology(Based,Cone);
+            obj.Channel(end+1) = Channel;
+            obj.Channel(end).Name = 'Eroded Tip';
+            obj.Channel(end).Unit = 'm';
+            obj.Channel(end).Image = obj.deconvolute_by_mathematical_morphology(Based,Cone);
             
             StepSize = 1e-9;
             
             PixelSizeX = obj.ScanSizeX/obj.NumPixelsX;
             PixelSizeY = obj.ScanSizeY/obj.NumPixelsY;
             
-            obj.ProjectedTipArea = obj.calculate_projected_area(obj.ErodedTip,PixelSizeX,PixelSizeY,StepSize);
+            obj.ProjectedTipArea = obj.calculate_projected_area(obj.Channel(end).Image,PixelSizeX,PixelSizeY,StepSize);
             
-            [obj.DepthDependendTipRadius,obj.DepthDependendTipShape] = obj.calculate_depth_dependend_tip_data(obj.ProjectedTipArea,RangePercent);
+%             [obj.DepthDependendTipRadius,obj.DepthDependendTipShape] = obj.calculate_depth_dependend_tip_data(obj.ProjectedTipArea,RangePercent);
             
             obj.hasDeconvolutedCantileverTip = true;
         end
@@ -143,10 +219,260 @@ classdef AFMImage < matlab.mixin.Copyable
             
         end
         
+        function subtract_overlayed_image(obj,OverlayedImageClassInstance)
+            
+            if ~obj.hasOverlay
+                warning('Overlay missing from your AFMImage. Determine Overlay pairings and parameters first')
+                return
+            end
+            
+            Channel1 = obj.get_channel('Overlay');
+            Channel2 = OverlayedImageClassInstance.get_channel('Overlay');
+            
+            OutChannel = Channel1;
+            OutChannel.Name = 'Overlay Difference';
+            OutChannel.Image = Channel1.Image - Channel2.Image;
+            [Old,OldIndex] = obj.get_channel('Overlay Difference');
+            if isempty(Old)
+                obj.Channel(end+1) = OutChannel;
+            else
+                obj.Channel(OldIndex) = OutChannel;
+            end
+        end
+        
     end
     
     methods(Static)
         % Static Main Methods
+        
+        function ChannelOut = overlay_parameters_by_bayesopt(Channel1,Channel2,BackgroundPercent,MinOverlap,AngleRange,UseParallel,MaxFunEval,PreMaxFunEval,NumPreSearches,NClusters)
+            % ChannelOut = overlay_parameters_by_bayesopt(Channel1,Channel2,BackgroundPercent,MinOverlap,AngleRange,UseParallel,MaxFunEval,PreMaxFunEval,NumPreSearches,NClusters)
+            
+            % Assume Channel2 has same angle and origin as Channel1
+            Channel2.OriginX = Channel1.OriginX;
+            Channel2.OriginY = Channel1.OriginY;
+            Channel2.ScanAngle = Channel1.ScanAngle;
+            
+            % Resize the bigger Channel (in ScanSize-per-Pixel) so
+            % imagesizes correspond to ScanSizes. Do nothing, if they are
+            % exactly the same
+            SizePerPixel1 = Channel1.ScanSizeX/Channel1.NumPixelsX;
+            SizePerPixel2 = Channel2.ScanSizeX/Channel2.NumPixelsX;
+            if SizePerPixel1 > SizePerPixel2
+                ScaleMultiplier = SizePerPixel1/SizePerPixel2;
+                Channel1.Image = imresize(Channel1.Image,ScaleMultiplier);
+                Channel1.NumPixelsX = size(Channel1.Image,1);
+                Channel1.NumPixelsY = size(Channel1.Image,2);
+            elseif SizePerPixel1 > SizePerPixel2
+                ScaleMultiplier = SizePerPixel2/SizePerPixel1;
+                Channel2.Image = imresize(Channel2.Image,ScaleMultiplier);
+                Channel2.NumPixelsX = size(Channel2.Image,1);
+                Channel2.NumPixelsY = size(Channel2.Image,2);
+            end
+            % Create Background masks
+            Mask1 = AFMImage.mask_background_by_threshold(Channel1.Image,BackgroundPercent,'on');
+            Mask2 = AFMImage.mask_background_by_threshold(Channel2.Image,BackgroundPercent,'on');
+            
+            
+            ShiftPixX = optimizableVariable(...
+                'ShiftPixX',[-floor(Channel1.NumPixelsX/2 + Channel2.NumPixelsX*(1/2-MinOverlap)),...
+                floor(Channel1.NumPixelsX/2 + Channel2.NumPixelsX*(1/2-MinOverlap))],...
+                'Type','integer');
+            ShiftPixY = optimizableVariable(...
+                'ShiftPixY',[-floor(Channel1.NumPixelsY/2 + Channel2.NumPixelsY*(1/2-MinOverlap)),...
+                floor(Channel1.NumPixelsY/2 + Channel2.NumPixelsY*(1/2-MinOverlap))],...
+                'Type','integer');
+            Angle = optimizableVariable('Angle',[-AngleRange/2,AngleRange/2],'Type','real');
+            fun = @(x)AFMImage.overlay_loss(Channel1,Channel2,~Mask1,~Mask2,...
+                x.ShiftPixX,x.ShiftPixY,x.Angle);
+            
+            if contains(struct2array(ver), 'Parallel Computing Toolbox') && UseParallel
+                parfor i=1:NumPreSearches
+                    TempResults{i} = bayesopt(fun,[ShiftPixX,ShiftPixY,Angle],...
+                        'MaxObjectiveEvaluations',PreMaxFunEval,...
+                        'AcquisitionFunctionName','expected-improvement-plus',...
+                        'UseParallel',false);
+                    MinObj(i) = TempResults{i}.MinObjective;
+                    MinVal(i,:) = TempResults{i}.XAtMinObjective.Variables;
+                end
+                Ranges = [range(ShiftPixX.Range),range(ShiftPixY.Range),range(Angle.Range)];
+                [BestParam,HalfRange] = AFMImage.choose_best_from_cluster(MinVal,MinObj,NClusters,Ranges);
+                parfor i=1:NClusters
+                    ShiftPixX = optimizableVariable(...
+                        'ShiftPixX',[BestParam(i,1)-HalfRange(i,1),...
+                        BestParam(i,1)+HalfRange(i,1)],...
+                        'Type','integer');
+                    ShiftPixY = optimizableVariable(...
+                        'ShiftPixY',[BestParam(i,2)-HalfRange(i,2),...
+                        BestParam(i,2)+HalfRange(i,2)],...
+                        'Type','integer');
+                    Angle = optimizableVariable(...
+                        'Angle',[BestParam(i,3)-HalfRange(i,3),...
+                        BestParam(i,3)+HalfRange(i,3)],...
+                        'Type','real');
+                    ClusterResults{i} = bayesopt(fun,[ShiftPixX,ShiftPixY,Angle],...
+                        'MaxObjectiveEvaluations',MaxFunEval,...
+                        'AcquisitionFunctionName','lower-confidence-bound',...
+                        'UseParallel',false);
+                    ClusterMin(i) = ClusterResults{i}.MinObjective;
+                end
+                
+                [~,Best] = min(ClusterMin);
+                Results = ClusterResults{Best};
+            else
+                Results = bayesopt(fun,[ShiftPixX,ShiftPixY,Angle],...
+                        'MaxObjectiveEvaluations',MaxFunEval,...
+                        'AcquisitionFunctionName','lower-confidence-bound',...
+                        'UseParallel',UseParallel);
+            end
+            
+            Fig = figure;
+            
+            MinObj = Results.XAtMinObjective.Variables;
+            MinShiftPixX = MinObj(1);
+            MinShiftPixY = MinObj(2);
+            MinAngle = MinObj(3);
+            [Overlay1,Overlay2,OverlayMask1,OverlayMask2] = AFMImage.overlay_two_images(Channel1,Channel2,MinShiftPixX,MinShiftPixY,MinAngle,Mask1,Mask2);
+            imshowpair(OverlayMask1,OverlayMask2)
+            title(sprintf('%i,%i,%.3f',MinShiftPixX,MinShiftPixY,MinAngle));
+            
+            Fig = figure;
+            
+            subplot(2,2,1)
+            MinObj = ClusterResults{1}.XAtMinObjective.Variables;
+            ShiftPixX = MinObj(1);
+            ShiftPixY = MinObj(2);
+            Angle = MinObj(3);
+            [Overlay1,Overlay2,OverlayMask1,OverlayMask2] = AFMImage.overlay_two_images(Channel1,Channel2,ShiftPixX,ShiftPixY,Angle,Mask1,Mask2);
+            imshowpair(OverlayMask1,OverlayMask2)
+            title(sprintf('%i,%i,%.3f',ShiftPixX,ShiftPixY,Angle));
+            subplot(2,2,2)
+            MinObj = ClusterResults{2}.XAtMinObjective.Variables;
+            ShiftPixX = MinObj(1);
+            ShiftPixY = MinObj(2);
+            Angle = MinObj(3);
+            [Overlay1,Overlay2,OverlayMask1,OverlayMask2] = AFMImage.overlay_two_images(Channel1,Channel2,ShiftPixX,ShiftPixY,Angle,Mask1,Mask2);
+            imshowpair(OverlayMask1,OverlayMask2)
+            title(sprintf('%i,%i,%.3f',ShiftPixX,ShiftPixY,Angle));
+            subplot(2,2,3)
+            MinObj = ClusterResults{3}.XAtMinObjective.Variables;
+            ShiftPixX = MinObj(1);
+            ShiftPixY = MinObj(2);
+            Angle = MinObj(3);
+            [Overlay1,Overlay2,OverlayMask1,OverlayMask2] = AFMImage.overlay_two_images(Channel1,Channel2,ShiftPixX,ShiftPixY,Angle,Mask1,Mask2);
+            imshowpair(OverlayMask1,OverlayMask2)
+            title(sprintf('%i,%i,%.3f',ShiftPixX,ShiftPixY,Angle));
+            subplot(2,2,4)
+            MinObj = ClusterResults{4}.XAtMinObjective.Variables;
+            ShiftPixX = MinObj(1);
+            ShiftPixY = MinObj(2);
+            Angle = MinObj(3);
+            [Overlay1,Overlay2,OverlayMask1,OverlayMask2] = AFMImage.overlay_two_images(Channel1,Channel2,ShiftPixX,ShiftPixY,Angle,Mask1,Mask2);
+            imshowpair(OverlayMask1,OverlayMask2)
+            title(sprintf('%i,%i,%.3f',ShiftPixX,ShiftPixY,Angle));
+            
+            drawnow
+            
+            % Create standard AFMImage-ChannelStruct with new Origin and
+            % ScanAngle. Compute real-world-shift from ShiftPixX/Y
+            ShiftX = MinShiftPixX*Channel2.ScanSizeX/Channel2.NumPixelsX;
+            ShiftY = MinShiftPixY*Channel2.ScanSizeY/Channel2.NumPixelsY;
+            ChannelOut = Channel2;
+            ChannelOut.OriginX = Channel2.OriginX + ShiftX;
+            ChannelOut.OriginY = Channel2.OriginY + ShiftY;
+            ChannelOut.ScanAngle = mod(Channel2.ScanAngle + MinAngle,360);
+            ChannelOut.Name = 'Overlay';
+        end
+        
+        function Loss = overlay_loss(Channel1,Channel2,Mask1,Mask2,ShiftPixX,ShiftPixY,Angle)
+            
+            [Overlay1,Overlay2,OverlayMask1,OverlayMask2] = AFMImage.overlay_two_images(Channel1,Channel2,ShiftPixX,ShiftPixY,Angle,Mask1,Mask2);
+            NullMask1 = zeros(size(OverlayMask1));
+            NullMask2 = zeros(size(OverlayMask1));
+            NullMask1(Overlay1 == 0) = 1;
+            NullMask2(Overlay2 == 0) = 1;
+            NullCombo = ~NullMask1 & ~NullMask2;
+            
+            XorCombo = ~xor(OverlayMask1,OverlayMask2) & NullCombo;
+            OverlapIndizes = find(XorCombo);
+            
+%             AndCombo = and(OverlayMask1,OverlayMask2) & NullCombo;
+%             Loss = -sum(AndCombo,'all');
+            
+            WeightedArea = sum(abs(Overlay1(OverlapIndizes))) + sum(abs(Overlay2(OverlapIndizes)));
+            WeightedDifference = sum(abs(Overlay1(OverlapIndizes)-Overlay2(OverlapIndizes)));
+            
+            NormFactor = sum(abs(Overlay1),'all');
+            
+            Loss = (WeightedDifference*.5 - WeightedArea)/NormFactor;
+        end
+        
+        function [Overlay1,Overlay2,OverlayMask1,OverlayMask2] = overlay_two_images(Channel1,Channel2,ShiftPixX,ShiftPixY,Angle,Mask1,Mask2)
+            
+            % Resize the bigger Channel (in ScanSize-per-Pixel) so
+            % imagesizes correspond to ScanSizes. Do nothing, if they are
+            % exactly the same
+            SizePerPixel1 = Channel1.ScanSizeX/Channel1.NumPixelsX;
+            SizePerPixel2 = Channel2.ScanSizeX/Channel2.NumPixelsX;
+            if SizePerPixel1 > SizePerPixel2
+                ScaleMultiplier = SizePerPixel1/SizePerPixel2;
+                Channel1.Image = imresize(Channel1.Image,ScaleMultiplier);
+                Channel1.NumPixelsX = size(Channel1.Image,1);
+                Channel1.NumPixelsY = size(Channel1.Image,2);
+            elseif SizePerPixel1 > SizePerPixel2
+                ScaleMultiplier = SizePerPixel2/SizePerPixel1;
+                Channel2.Image = imresize(Channel2.Image,ScaleMultiplier);
+                Channel2.NumPixelsX = size(Channel2.Image,1);
+                Channel2.NumPixelsY = size(Channel2.Image,2);
+            end
+            
+            % If no shifts and angles are provided, they will be calculated
+            % from the positional data of the Channel-struct (Operation mode
+            % in standard overlay)
+            if nargin == 2
+                ShiftPixX = (Channel2.OriginX - Channel1.OriginX)*Channel2.NumPixelsX/Channel2.ScanSizeX;
+                ShiftPixY = (Channel2.OriginY - Channel1.OriginY)*Channel2.NumPixelsY/Channel2.ScanSizeY;
+                Angle = Channel2.ScanAngle - Channel1.ScanAngle;
+            end
+            
+            C2NumX = Channel2.NumPixelsX;
+            C2NumY = Channel2.NumPixelsY;
+            Channel2.Image = imrotate(Channel2.Image,Angle,'bicubic','loose');
+            Channel2.NumPixelsX = size(Channel2.Image,1);
+            Channel2.NumPixelsY = size(Channel2.Image,2);
+            DiffX = Channel2.NumPixelsX - C2NumX;
+            DiffY = Channel2.NumPixelsY - C2NumY;
+            ShiftPixX = (ShiftPixX+1) - (floor(DiffX/2)+1);
+            ShiftPixY = (ShiftPixY+1) + (ceil(DiffY/2)-1);
+            NumPixOverlayX = 2*Channel1.NumPixelsX + 2*Channel2.NumPixelsX;
+            NumPixOverlayY = 2*Channel1.NumPixelsY + 2*Channel2.NumPixelsY;
+            TempOverlay1 = zeros(NumPixOverlayX,NumPixOverlayY);
+            TempOverlay2 = TempOverlay1;
+            TempOverlayMask1 = TempOverlay1;
+            TempOverlayMask2 = TempOverlay1;
+            X1 = (floor(NumPixOverlayX/2)+1):(floor(NumPixOverlayX/2)+Channel1.NumPixelsX);
+            Y1 = (floor(NumPixOverlayY/2)+1):(floor(NumPixOverlayY/2)+Channel1.NumPixelsY);
+            X2 = (floor(NumPixOverlayX/2)+1-ShiftPixY):(floor(NumPixOverlayX/2)+Channel2.NumPixelsX-ShiftPixY);
+            Y2 =  (floor(NumPixOverlayY/2+ShiftPixX)+1):(floor(NumPixOverlayY/2)+Channel2.NumPixelsY+ShiftPixX);
+            TempOverlay1(X1,Y1) = Channel1.Image;
+            TempOverlay2(X2,Y2) = Channel2.Image;
+            if nargin == 7
+                Mask2 = imrotate(Mask2,Angle,'nearest','loose');
+                TempOverlayMask1(X1,Y1) = Mask1;
+                TempOverlayMask2(X2,Y2) = Mask2;
+            end
+            
+            MinX = min([X1(1) X2(1)]);
+            MaxX = max([X1(end) X2(end)]);
+            MinY = min([Y1(1) Y2(1)]);
+            MaxY = max([Y1(end) Y2(end)]);
+            Overlay1 = TempOverlay1(MinX:MaxX,MinY:MaxY);
+            Overlay2 = TempOverlay2(MinX:MaxX,MinY:MaxY);
+            if nargin == 7
+                OverlayMask1 = TempOverlayMask1(MinX:MaxX,MinY:MaxY);
+                OverlayMask2 = TempOverlayMask2(MinX:MaxX,MinY:MaxY);
+            end
+        end
         
         function OutImage = subtract_line_fit_hist(InImage,CutOff)
             
@@ -165,15 +491,16 @@ classdef AFMImage < matlab.mixin.Copyable
             OutImage = InImage;
         end
         
-        function subtract_line_fit_automatically(InImage)
-            if nargin<2
-                Mask = ones(size(InImage));
-            end
+        function OutImage = subtract_line_fit_diffhist_method(InImage)
+            
+            NumProfiles = size(InImage,1);
+            NumPoints = size(InImage,2);
             
             for i=1:NumProfiles
                 Line = InImage(i,:)';
-                [~, SortedIndex] = sort(Line,'ascend');
-                LineFit = polyfit(SortedIndex(1:CutOff),Line(SortedIndex(1:CutOff)),1);
+                CutOff = AFMImage.automatic_cutoff(Line);
+                Indizes = find(Line<=CutOff);
+                LineFit = polyfit(Indizes,Line(Indizes),1);
                 LineEval = [1:NumPoints]'*LineFit(1) + LineFit(2);
                 Line = Line - LineEval;
                 InImage(i,:) = Line;
@@ -181,13 +508,60 @@ classdef AFMImage < matlab.mixin.Copyable
             OutImage = InImage;
         end
         
-        function OutMask = mask_background_by_threshold(Image,PercentOfRange)
+        function OutImage = subtract_line_fit_std_method(InImage)
+            NumProfiles = size(InImage,1);
+            NumPoints = size(InImage,2);
+            for i=1:NumProfiles
+                Line = InImage(i,:);
+                Line = reshape(Line,[],1);
+                [Sorted,Indizes] = sort(Line,'descend');
+                InvSampleRate = ceil(NumPoints/32^2);
+                k = 1;
+                for i=1:InvSampleRate:NumPoints
+                    STDLine(k) =  std(Sorted(1:i));
+                    k = k + 1;
+                end
+                [~,PeakIdx] = findpeaks(STDLine);
+                if isempty(PeakIdx)
+                    ThreshIndex = 1;
+                else
+                    ThreshIndex = PeakIdx(end);
+                end
+                LineFit = polyfit(Indizes(ThreshIndex:end),Line(Indizes(ThreshIndex:end)),1);
+                LineEval = [1:NumPoints]'*LineFit(1) + LineFit(2);
+                Line = Line - LineEval;
+                InImage(i,:) = Line;
+                Line = [];
+            end
+            OutImage = InImage;
+        end
+        
+        function OutMask = mask_background_by_threshold(Image,PercentOfRange,AutoMode)
             
             if nargin < 2
                 PercentOfRange = 5;
+                AutoMode = 'off';
             end
             
-            Thresh = range(Image,'all')*PercentOfRange/100;
+            if nargin < 3
+                AutoMode = 'off';
+            end
+            
+            if isequal(lower(AutoMode),'on')
+                VecImage = reshape(Image,1,[]);
+                Sorted = sort(VecImage,'descend');
+                InvSampleRate = ceil(length(VecImage)/32^2);
+                k = 1;
+                for i=1:InvSampleRate:length(VecImage)
+                    STDLine(k) =  std(Sorted(1:i));
+                    k = k + 1;
+                end
+                Peaks = findpeaks(STDLine);
+                Thresh = Peaks(end);
+            else
+                Thresh = range(Image,'all')*PercentOfRange/100;
+            end
+            
             [Row,Col] = find((abs(Image)<=Thresh));
             OutMask = zeros(size(Image));
             for i=1:length(Row)
@@ -347,7 +721,7 @@ classdef AFMImage < matlab.mixin.Copyable
         function show_image(obj)
             % TODO: implement ui elements for customization
             
-            h.Fig = figure('Name',sprintf('[Processed] %s',obj.Name),...
+            h.Fig = figure('Name',sprintf('%s',obj.Name),...
                 'Units','pixels',...
                 'Position',[200 200 1024 512],...
                 'Color','k');
@@ -388,14 +762,78 @@ classdef AFMImage < matlab.mixin.Copyable
                 'position',[.85 .1 .1 .05],...
                 'Callback',@save_figure_to_file);
             
+            h.B(7) = uicontrol('style','checkbox',...
+                'String','...with white background',...
+                'units','normalized',...
+                'position',[.85 .05 .1 .04]);
+            
+            h.B(8) = uicontrol('style','slider',...
+                'Value',1,...
+                'Units','normalized',...
+                'Position',[.85 .78 .07 .02],...
+                'Callback',@changed_slider);
+            
+            h.B(9) = uicontrol('style','slider',...
+                'Value',0,...
+                'Units','normalized',...
+                'Position',[.85 .76 .07 .02],...
+                'Callback',@changed_slider);
+            
+            h.B(10) = uicontrol('style','slider',...
+                'Value',1,...
+                'Units','normalized',...
+                'Position',[.85 .63 .07 .02],...
+                'Callback',@changed_slider);
+            
+            h.B(11) = uicontrol('style','slider',...
+                'Value',0,...
+                'Units','normalized',...
+                'Position',[.85 .61 .07 .02],...
+                'Callback',@changed_slider);
+            
+            h.B(12) = uicontrol('style','text',...
+                'String','Max',...
+                'Units','normalized',...
+                'Position',[.92 .78 .03 .02]);
+            
+            h.B(13) = uicontrol('style','text',...
+                'String','Min',...
+                'Units','normalized',...
+                'Position',[.92 .76 .03 .02]);
+            
+            h.B(14) = uicontrol('style','text',...
+                'String','Max',...
+                'Units','normalized',...
+                'Position',[.92 .63 .03 .02]);
+            
+            h.B(15) = uicontrol('style','text',...
+                'String','Min',...
+                'Units','normalized',...
+                'Position',[.92 .61 .03 .02]);
+            
+            h.Channel1Max = 1;
+            h.Channel1Min = 0;
+            h.Channel2Max = 1;
+            h.Channel2Min = 0;
+            
             h.Line = [];
             h.hasCrossSection = 0;
             h.hasChannel2 = 0;
-            h.B(2).Value = 2;
+            [~,DefIndex] = obj.get_channel('Processed');
+            if isempty(DefIndex)
+                DefIndex = 2;
+            else
+                DefIndex = DefIndex + 1;
+            end
+            h.B(2).Value = DefIndex;
             draw_channel_1
             
             function cross_section_toggle(varargin)
                 h.hasCrossSection = ~h.hasCrossSection;
+                try
+                    delete(h.ImAx(3));
+                catch
+                end
                 draw_channel_1
                 draw_channel_2
             end
@@ -453,24 +891,21 @@ classdef AFMImage < matlab.mixin.Copyable
                 end
                 Pos1 = [h.Line.Position(1,1) h.Line.Position(1,2)];
                 Pos2 = [h.Line.Position(2,1) h.Line.Position(2,2)];
-                if norm(Pos1-Pos2)==0
-                    get_and_draw_profile;
-                    return
-                end
                 Profile = improfile(h.Image{1},[Pos1(1) Pos2(1)],[Pos1(2) Pos2(2)]);
                 Len = norm(Pos1-Pos2)/obj.NumPixelsX*obj.ScanSizeX;
                 Points = [0:1/(length(Profile)-1):1].*Len;
                 [MultiplierY,UnitY,~] = AFMImage.parse_unit_scale(range(Profile),h.BaseUnit{1},1);
                 [MultiplierX,UnitX,~] = AFMImage.parse_unit_scale(range(Points),'m',1);
-                Ax = subplot(10,10,[71:78 81:88 91:98]);
+                h.ImAx(3) = subplot(10,10,[71:78 81:88 91:98]);
                 P = plot(Points.*MultiplierX,Profile.*MultiplierY);
                 grid on
-                Ax.Color = 'k';
-                Ax.LineWidth = 1;
-                Ax.FontSize = 18;
-                Ax.XColor = 'w';
-                Ax.YColor = 'w';
-                Ax.GridColor = 'w';
+                CurrentAxHeight = round(h.Fig.Position(4)*h.ImAx(1).Position(4));
+                h.ImAx(3).Color = 'k';
+                h.ImAx(3).LineWidth = 1;
+                h.ImAx(3).FontSize = round(22*(CurrentAxHeight/756));
+                h.ImAx(3).XColor = 'w';
+                h.ImAx(3).YColor = 'w';
+                h.ImAx(3).GridColor = 'w';
                 xlabel(sprintf('[%s]',UnitX))
                 ylabel(sprintf('%s [%s]',h.Channel{1},UnitY))
                 xlim([0 Points(end).*MultiplierX])
@@ -494,15 +929,16 @@ classdef AFMImage < matlab.mixin.Copyable
                 Points = [0:1/(length(Profile)-1):1].*Len;
                 [MultiplierY,UnitY,~] = AFMImage.parse_unit_scale(range(Profile),h.BaseUnit{2},1);
                 [MultiplierX,UnitX,~] = AFMImage.parse_unit_scale(range(Points),'m',1);
-                Ax = subplot(10,10,[71:78 81:88 91:98]);
+                h.ImAx(3) = subplot(10,10,[71:78 81:88 91:98]);
                 P = plot(Points.*MultiplierX,Profile.*MultiplierY);
                 grid on
-                Ax.Color = 'k';
-                Ax.LineWidth = 1;
-                Ax.FontSize = 18;
-                Ax.XColor = 'w';
-                Ax.YColor = 'w';
-                Ax.GridColor = 'w';
+                CurrentAxHeight = round(h.Fig.Position(4)*h.ImAx(2).Position(4));
+                h.ImAx(3).Color = 'k';
+                h.ImAx(3).LineWidth = 1;
+                h.ImAx(3).FontSize = round(22*(CurrentAxHeight/756));
+                h.ImAx(3).XColor = 'w';
+                h.ImAx(3).YColor = 'w';
+                h.ImAx(3).GridColor = 'w';
                 xlabel(sprintf('[%s]',UnitX))
                 ylabel(sprintf('%s [%s]',h.Channel{2},UnitY))
                 xlim([0 Points(end).*MultiplierX])
@@ -534,15 +970,16 @@ classdef AFMImage < matlab.mixin.Copyable
                 Points = [0:1/(length(Profile)-1):1].*Len;
                 [MultiplierY,UnitY,~] = AFMImage.parse_unit_scale(range(Profile),h.BaseUnit{1},1);
                 [MultiplierX,UnitX,~] = AFMImage.parse_unit_scale(range(Points),'m',1);
-                Ax = subplot(10,10,[71:78 81:88 91:98]);
+                h.ImAx(3) = subplot(10,10,[71:78 81:88 91:98]);
                 P = plot(Points.*MultiplierX,Profile.*MultiplierY);
                 grid on
-                Ax.Color = 'k';
-                Ax.LineWidth = 1;
-                Ax.FontSize = 18;
-                Ax.XColor = 'w';
-                Ax.YColor = 'w';
-                Ax.GridColor = 'w';
+                CurrentAxHeight = round(h.Fig.Position(4)*h.ImAx(1).Position(4));
+                h.ImAx(3).Color = 'k';
+                h.ImAx(3).LineWidth = 1;
+                h.ImAx(3).FontSize = round(22*(CurrentAxHeight/756));
+                h.ImAx(3).XColor = 'w';
+                h.ImAx(3).YColor = 'w';
+                h.ImAx(3).GridColor = 'w';
                 xlabel(sprintf('[%s]',UnitX))
                 ylabel(sprintf('%s [%s]',h.Channel{1},UnitY))
                 xlim([0 Points(end).*MultiplierX])
@@ -574,15 +1011,16 @@ classdef AFMImage < matlab.mixin.Copyable
                 Points = [0:1/(length(Profile)-1):1].*Len;
                 [MultiplierY,UnitY,~] = AFMImage.parse_unit_scale(range(Profile),h.BaseUnit{2},1);
                 [MultiplierX,UnitX,~] = AFMImage.parse_unit_scale(range(Points),'m',1);
-                Ax = subplot(10,10,[71:78 81:88 91:98]);
+                h.ImAx(3) = subplot(10,10,[71:78 81:88 91:98]);
                 P = plot(Points.*MultiplierX,Profile.*MultiplierY);
                 grid on
-                Ax.Color = 'k';
-                Ax.LineWidth = 1;
-                Ax.FontSize = 18;
-                Ax.XColor = 'w';
-                Ax.YColor = 'w';
-                Ax.GridColor = 'w';
+                CurrentAxHeight = round(h.Fig.Position(4)*h.ImAx(2).Position(4));
+                h.ImAx(3).Color = 'k';
+                h.ImAx(3).LineWidth = 1;
+                h.ImAx(3).FontSize = round(22*(CurrentAxHeight/756));
+                h.ImAx(3).XColor = 'w';
+                h.ImAx(3).YColor = 'w';
+                h.ImAx(3).GridColor = 'w';
                 xlabel(sprintf('[%s]',UnitX))
                 ylabel(sprintf('%s [%s]',h.Channel{2},UnitY))
                 xlim([0 Points(end).*MultiplierX])
@@ -591,135 +1029,130 @@ classdef AFMImage < matlab.mixin.Copyable
             end
             
             function draw_image(LeftRight,FullPart)
-                Index = 1;
+                if isequal(LeftRight,'Left')
+                    Index = 1;
+                elseif isequal(LeftRight,'Right')
+                    Index = 2;
+                end
                 BarToImageRatio = 1/5;
-                PlusBrightness = 0;
+                try
+                    delete(h.ImAx(Index));
+                    delete(h.I(Index));
+                catch
+                end
                 if isequal(FullPart,'FullOne')
-                    Domain = [1:8 11:18 21:28 31:38 41:48 51:58 61:68 71:78 81:88 91:98];
+                    h.ImAx(Index) = axes(h.Fig,'Position',[0.1 0.1 .6 .8]);
                 elseif isequal(FullPart,'FullTwo')
                     if isequal(LeftRight,'Left')
-                    Domain = [1:4 11:14 21:24 31:34 41:44 51:54 61:64 71:74 81:84 91:94];
+                    h.ImAx(Index) = axes(h.Fig,'Position',[0.12 0.1 .3 .8]);
                     else
-                    Domain = [5:8 15:18 25:28 35:38 45:48 55:58 65:68 75:78 85:88 95:98];
-                    Index = 2;
+                    h.ImAx(Index) = axes(h.Fig,'Position',[.47 0.1 .3 .8]);
                     end
                 elseif isequal(FullPart,'PartOne')
-                    Domain = [1:8 11:18 21:28 31:38 41:48 51:58 61:68];
+                    h.ImAx(Index) = axes(h.Fig,'Position',[0.1 .35 .6 .6]);
                 elseif isequal(FullPart,'PartTwo')
                     if isequal(LeftRight,'Left')
-                    Domain = [1:4 11:14 21:24 31:34 41:44 51:54 61:64];
-                    Index = 1;
+                    h.ImAx(Index) = axes(h.Fig,'Position',[0.12 .35 .3 .6]);
                     else
-                    Domain = [5:8 15:18 25:28 35:38 45:48 55:58 65:68];
-                    Index = 2;
+                    h.ImAx(Index) = axes(h.Fig,'Position',[0.47 .35 .3 .6]);
                     end
                 end
                 
                 h.Channel{Index} = h.B(1+Index).String{h.B(1+Index).Value};
-                switch h.Channel{Index}
-                    case 'Height(Trace)'
-                        h.BaseUnit{Index} = 'm';
-                        h.Image{Index} = obj.Height.Trace;
-                        ColorPattern = obj.CMap;
-                    case 'Height(Retrace)'
-                        h.BaseUnit{Index} = 'm';
-                        h.Image{Index} = obj.Height.ReTrace;
-                        ColorPattern = obj.CMap;
-                    case 'Height-Measured(Trace)'
-                        h.BaseUnit{Index} = 'm';
-                        h.Image{Index} = obj.HeightMeasured.Trace;
-                        ColorPattern = obj.CMap;
-                    case 'Height-Measured(Retrace)'
-                        h.BaseUnit{Index} = 'm';
-                        h.Image{Index} = obj.HeightMeasured.ReTrace;
-                        ColorPattern = obj.CMap;
-                    case 'ErrorSignal(Trace)'
-                        h.BaseUnit{Index} = 'V';
-                        h.Image{Index} = obj.ErrorSignal.Trace;
-                        ColorPattern = obj.CMap;
-                    case 'ErrorSignal(Retrace)'
-                        h.BaseUnit{Index} = 'V';
-                        h.Image{Index} = obj.ErrorSignal.ReTrace;
-                        ColorPattern = obj.CMap;
-                    case 'LateralDeflection(Trace)'
-                        h.BaseUnit{Index} = 'm';
-                        h.Image{Index} = obj.LateralDeflection.Trace;
-                        ColorPattern = obj.CMap;
-                    case 'LateralDeflection(Retrace)'
-                        h.BaseUnit{Index} = 'm';
-                        h.Image{Index} = obj.LateralDeflection.ReTrace;
-                        ColorPattern = obj.CMap;
-                    case 'LockInAmplitude(Trace)'
-                        h.BaseUnit{Index} = 'm';
-                        h.Image{Index} = obj.LockInAmplitude.Trace;
-                        ColorPattern = obj.CMap;
-                    case 'LockInAmplitude(Retrace)'
-                        h.BaseUnit{Index} = 'm';
-                        h.Image{Index} = obj.LockInAmplitude.ReTrace;
-                        ColorPattern = obj.CMap;
-                    case 'LockInPhase(Trace)'
-                        h.BaseUnit{Index} = 'deg';
-                        h.Image{Index} = obj.LockInPhase.Trace;
-                        ColorPattern = obj.CMap;
-                    case 'LockInPhase(Retrace)'
-                        h.BaseUnit{Index} = 'deg';
-                        h.Image{Index} = obj.LockInPhase.ReTrace;
-                        ColorPattern = obj.CMap;
-                    case 'VerticalDeflection(Trace)'
-                        h.BaseUnit{Index} = 'm';
-                        h.Image{Index} = obj.Height.Trace;
-                        ColorPattern = obj.CMap;
-                    case 'VerticalDeflection(Retrace)'
-                        h.BaseUnit{Index} = 'm';
-                        h.Image{Index} = obj.Height.Trace;
-                        ColorPattern = obj.CMap;
-                    case 'Processed'
-                        h.BaseUnit{Index} = 'm';
-                        h.Image{Index} = obj.Processed;
-                        ColorPattern = obj.CMap;
-                    case 'none'
-                        if Index == 1
-                            h.hasChannel1 = 0;
-                        elseif Index == 2
-                            h.hasChannel2 = 0;
-                        end
-                        return
+                if isequal(h.Channel{Index},'none')
+                    try
+                        delete(h.ImAx(Index));
+                        delete(h.I(Index));
+                    catch
+                    end
+                    if Index == 1
+                        h.hasChannel1 = 0;
+                    elseif Index == 2
+                        h.hasChannel2 = 0;
+                    end
+                    return
+                else
+                    [Channel,ChannelIndex] = obj.get_channel(h.Channel{Index});
+                    h.Image{Index} = Channel.Image;
+                    h.BaseUnit{Index} = Channel.Unit;
+                    ColorPattern = obj.CMap;
                 end
                 
-                [Multiplier,Unit,~] = AFMImage.parse_unit_scale(range(h.Image{Index},'all'),h.BaseUnit{Index},1);
-                h.ImAx(Index) = subplot(10,10,Domain);
-                set(gca,'LooseInset',get(gca,'TightInset'));
-%                 if Index == 1
-%                     Shift = 0;
-%                 else
-%                     Shift = 1;
-%                 end
-%                 h.ImAx(Index).InnerPosition(1) = 0.06+Shift*h.ImAx(Index).InnerPosition(3);
-                h.I(Index) = imshow(h.Image{Index}*Multiplier,[],'Colormap',ColorPattern);
+                CurImage = h.Image{Index};
+                
+                Range = range(CurImage,'all');
+                if Index==1
+                    CutMax = Range*h.Channel1Max + min(CurImage,[],'all');
+                    CutMin = Range*h.Channel1Min + min(CurImage,[],'all');
+                elseif Index==2
+                    CutMax = Range*h.Channel2Max + min(CurImage,[],'all');
+                    CutMin = Range*h.Channel2Min + min(CurImage,[],'all');
+                end
+                CurImage(CurImage>CutMax) = CutMax;
+                CurImage(CurImage<CutMin) = CutMin;
+                
+                [Multiplier,Unit,~] = AFMImage.parse_unit_scale(range(CurImage,'all'),h.BaseUnit{Index},1);
+                h.I(Index) = imshow(CurImage*Multiplier,[],'Colormap',ColorPattern);
                 if Index == 1
                     h.I(Index).ButtonDownFcn = @get_and_draw_profile_channel_1;
                 else
                     h.I(Index).ButtonDownFcn = @get_and_draw_profile_channel_2;
                 end
                 hold on
-                AFMImage.draw_scalebar_into_current_image(obj.NumPixelsX,obj.ScanSizeX,BarToImageRatio,h.ImAx(Index).Position(3));
+                CurrentAxHeight = round(h.Fig.Position(4)*h.ImAx(Index).Position(4));
+                CurrentAxWidth = round(h.Fig.Position(3)*h.ImAx(Index).Position(3));
+                AFMImage.draw_scalebar_into_current_image(Channel.NumPixelsX,Channel.NumPixelsY,Channel.ScanSizeX,BarToImageRatio,CurrentAxHeight,CurrentAxWidth);
                 c = colorbar;
-                c.FontSize = round(18*(obj.NumPixelsX/1024));
+                c.FontSize = round(18*(CurrentAxHeight/756));
                 c.Color = 'w';
                 c.Label.String = sprintf('%s [%s]',h.Channel{Index},Unit);
-                c.Label.FontSize = round(22*(obj.NumPixelsX/1024));
+                c.Label.FontSize = round(22*(CurrentAxHeight/756));
                 c.Label.Color = 'w';
             end
             
-            function save_figure_to_file(varargin)
-                Pos = h.Fig.InnerPosition;
-                Frame = getframe(h.Fig);
+            function changed_slider(varargin)
+                C1Max = get(h.B(8),'value');
+                C1Min = get(h.B(9),'value');
+                C2Max = get(h.B(10),'value');
+                C2Min = get(h.B(11),'value');
                 
-                filter = {'*.png';'*.tif'};
+                if C1Max <= C1Min
+                    C1Min = C1Max*0.9;
+                    set(h.B(8),'value',C1Max);
+                    set(h.B(9),'value',C1Min);
+                end
+                if C2Max <= C2Min
+                    C2Min = C2Max*0.9;
+                    set(h.B(10),'value',C2Max);
+                    set(h.B(11),'value',C2Min);
+                end
+                
+                h.Channel1Max = C1Max;
+                h.Channel1Min = C1Min;
+                h.Channel2Max = C2Max;
+                h.Channel2Min = C2Min;
+                
+                draw_channel_1
+                draw_channel_2
+            end
+            
+            function save_figure_to_file(varargin)
+                if h.B(7).Value
+                Frame = print('-RGBImage','-r200');
+                
+                CroppedFrame = Frame(:,1:round(.82*end),:);
+                
+                filter = {'*.png';'*.tif';'*.jpg'};
                 [file, path] = uiputfile(filter);
                 
                 FullFile = fullfile(path,file);
-                save(FullFile,'Frame.cdata');
+                imwrite(CroppedFrame,FullFile);
+                else
+                    filter = {'*.png';'*.tif'};
+                    [file, path] = uiputfile(filter);
+                    FullFile = fullfile(path,file);
+                    exportgraphics(h.Fig,FullFile,'Resolution',200,'BackgroundColor','current')
+                end
             end
             
             uiwait(h.Fig)
@@ -852,16 +1285,20 @@ classdef AFMImage < matlab.mixin.Copyable
             try
                 obj.Sensitivity = FileInfo(1).UnknownTags(find([FileInfo(1).UnknownTags.ID]==33028)).Value/...
                     FileInfo(1).UnknownTags(find([FileInfo(1).UnknownTags.ID]==32980)).Value;
+                obj.hasSensitivity = true;
             catch
                 obj.Sensitivity = nan;
                 warning ("Couldn't determine sensitivity. Image isn't calibrated")
+                obj.hasSensitivity =false;
             end
             try
                 obj.SpringConstant = FileInfo(1).UnknownTags(find([FileInfo(1).UnknownTags.ID]==33076)).Value/...
                     FileInfo(1).UnknownTags(find([FileInfo(1).UnknownTags.ID]==33028)).Value;
+                obj.hasSpringConstant = true;
             catch
                 obj.SpringConstant = nan;
                 warning ("Couldn't determine spring constant. Image isn't calibrated")
+                obj.hasSpringConstant = false;
             end
             
         end
@@ -885,18 +1322,22 @@ classdef AFMImage < matlab.mixin.Copyable
             
             if(~isempty(find([FileInfo(1).UnknownTags.ID]==33028)))&&(~isempty(find([FileInfo(1).UnknownTags.ID]==32980)))
                 obj.Sensitivity=(FileInfo(1).UnknownTags(find([FileInfo(1).UnknownTags.ID]==33028)).Value)/(FileInfo(1).UnknownTags(find([FileInfo(1).UnknownTags.ID]==32980)).Value);
+                obj.hasSensitivity = true;
             else
                 warning('No Sensitivity calibration slot found, image is uncalibarated')
                 Uncalibrated=1;
+                obj.hasSensitivity = false;
                 obj.Sensitivity=1;
             end
             
             if(~isempty(find([FileInfo(1).UnknownTags.ID]==33076)))&&(~isempty(find([FileInfo(1).UnknownTags.ID]==32980)))
                 obj.SpringConstant=(FileInfo(1).UnknownTags(find([FileInfo(1).UnknownTags.ID]==33076)).Value)/(FileInfo(1).UnknownTags(find([FileInfo(1).UnknownTags.ID]==33028)).Value);
+                obj.hasSpringConstant = true;
             else
                 warning('No Spring Constant calibration slot found, image is uncalibarated')
                 Uncalibrated=1;
                 obj.SpringConstant=1;
+                obj.hasSpringConstant = false;
             end
             
             if(~isempty(find([FileInfo(1).UnknownTags.ID]==32836)))
@@ -957,9 +1398,9 @@ classdef AFMImage < matlab.mixin.Copyable
                 for k=1:size(strsp,1)
                     if(strcmp(strsp{k,1},'retrace')==1)
                         if(strcmp(strsp{k+2,1},'true'))
-                            trace_type_flag='ReTrace';
+                            trace_type_flag=' (Retrace)';
                         else
-                            trace_type_flag='Trace';
+                            trace_type_flag=' (Trace)';
                         end
                         break
                     end
@@ -1016,76 +1457,32 @@ classdef AFMImage < matlab.mixin.Copyable
                 
                 afm_image = afm_image(end:-1:1,:); % mirror Y-pixels to flip image to same orientation as in jpk data processing
                 
-                if isequal(Channel_Name,'Height') && isequal(trace_type_flag,'Trace')
-                    obj.Height.Trace = afm_image;
-                    obj.Height.Multiplier = multiplyer;
-                    obj.Height.Offset = offset;
-                    obj.HasHeight = true;
-                elseif isequal(Channel_Name,'Height (measured)') && isequal(trace_type_flag,'Trace')
-                    obj.HeightMeasured.Trace = afm_image;
-                    obj.HeightMeasured.Multiplier = multiplyer;
-                    obj.HeightMeasured.Offset = offset;
-                    obj.HasHeightMeasured = true;
-                elseif isequal(Channel_Name,'Lock-In Amplitude') && isequal(trace_type_flag,'Trace')
-                    obj.LockInAmplitude.Trace = afm_image;
-                    obj.LockInAmplitude.Multiplier = multiplyer;
-                    obj.LockInAmplitude.Offset = offset;
-                    obj.HasLockInAmplitude = true;
-                elseif isequal(Channel_Name,'Lock-In Phase') && isequal(trace_type_flag,'Trace')
-                    obj.LockInPhase.Trace = afm_image;
-                    obj.LockInPhase.Multiplier = multiplyer;
-                    obj.LockInPhase.Offset = offset;
-                    obj.HasLockInPhase = true;
-                elseif isequal(Channel_Name,'Error Signal') && isequal(trace_type_flag,'Trace')
-                    obj.ErrorSignal.Trace = afm_image;
-                    obj.ErrorSignal.Multiplier = multiplyer;
-                    obj.ErrorSignal.Offset = offset;
-                    obj.HasErrorSignal = true;
-                elseif isequal(Channel_Name,'Lateral Deflection') && isequal(trace_type_flag,'Trace')
-                    obj.LateralDeflection.Trace = afm_image;
-                    obj.LateralDeflection.Multiplier = multiplyer;
-                    obj.LateralDeflection.Offset = offset;
-                    obj.HasLateralDeflection = true;
-                elseif isequal(Channel_Name,'Vertical Deflection') && isequal(trace_type_flag,'Trace')
-                    obj.VerticalDeflection.Trace = afm_image;
-                    obj.VerticalDeflection.Multiplier = multiplyer;
-                    obj.VerticalDeflection.Offset = offset;
-                    obj.HasVerticalDeflection = true;
-                elseif isequal(Channel_Name,'Height') && isequal(trace_type_flag,'ReTrace')
-                    obj.Height.ReTrace = afm_image;
-                    obj.Height.Multiplier = multiplyer;
-                    obj.Height.Offset = offset;
-                    obj.HasHeight = true;
-                elseif isequal(Channel_Name,'Height (measured)') && isequal(trace_type_flag,'ReTrace')
-                    obj.HeightMeasured.ReTrace = afm_image;
-                    obj.HeightMeasured.Multiplier = multiplyer;
-                    obj.HeightMeasured.Offset = offset;
-                    obj.HasHeightMeasured = true;
-                elseif isequal(Channel_Name,'Lock-In Amplitude') && isequal(trace_type_flag,'ReTrace')
-                    obj.LockInAmplitude.ReTrace = afm_image;
-                    obj.LockInAmplitude.Multiplier = multiplyer;
-                    obj.LockInAmplitude.Offset = offset;
-                    obj.HasLockInAmplitude = true;
-                elseif isequal(Channel_Name,'Lock-In Phase') && isequal(trace_type_flag,'ReTrace')
-                    obj.LockInPhase.ReTrace = afm_image;
-                    obj.LockInPhase.Multiplier = multiplyer;
-                    obj.LockInPhase.Offset = offset;
-                    obj.HasLockInPhase = true;
-                elseif isequal(Channel_Name,'Error Signal') && isequal(trace_type_flag,'ReTrace')
-                    obj.ErrorSignal.ReTrace = afm_image;
-                    obj.ErrorSignal.Multiplier = multiplyer;
-                    obj.ErrorSignal.Offset = offset;
-                    obj.HasErrorSignal = true;
-                elseif isequal(Channel_Name,'Lateral Deflection') && isequal(trace_type_flag,'ReTrace')
-                    obj.LateralDeflection.ReTrace = afm_image;
-                    obj.LateralDeflection.Multiplier = multiplyer;
-                    obj.LateralDeflection.Offset = offset;
-                    obj.HasLateralDeflection = true;
-                elseif isequal(Channel_Name,'Vertical Deflection') && isequal(trace_type_flag,'ReTrace')
-                    obj.VerticalDeflection.ReTrace = afm_image;
-                    obj.VerticalDeflection.Multiplier = multiplyer;
-                    obj.VerticalDeflection.Offset = offset;
-                    obj.HasVerticalDeflection = true;
+                obj.Channel(i-1).Image = afm_image;
+                obj.Channel(i-1).Name = strcat(Channel_Name,' ',trace_type_flag);
+                if isequal(Channel_Name,'Height') ||...
+                        isequal(Channel_Name,'Height (measured)') ||...
+                        (isequal(Channel_Name,'Lock-In Amplitude') && obj.hasSensitivity) ||...
+                        (isequal(Channel_Name,'Vertical Deflection') && obj.hasSensitivity && ~obj.hasSpringConstant)
+                    obj.Channel(i-1).Unit = 'm';
+                elseif isequal(Channel_Name,'Lock-In Phase')
+                    obj.Channel(i-1).Unit = 'deg';
+                elseif isequal(Channel_Name,'Vertical Deflection') && obj.hasSensitivity && obj.hasSpringConstant
+                    obj.Channel(i-1).Unit = 'N';
+                elseif isequal(Channel_Name,'Error Signal') ||...
+                        (isequal(Channel_Name,'Lock-In Amplitude') && ~obj.hasSensitivity && ~obj.hasSpringConstant) ||...
+                        isequal(Channel_Name,'Lateral Deflection')
+                    obj.Channel(i-1).Unit = 'V';
+                end
+                obj.Channel(i-1).NumPixelsX = obj.NumPixelsX;
+                obj.Channel(i-1).NumPixelsY = obj.NumPixelsY;
+                obj.Channel(i-1).ScanSizeX = obj.ScanSizeX;
+                obj.Channel(i-1).ScanSizeY = obj.ScanSizeY;
+                obj.Channel(i-1).OriginX = obj.OriginX;
+                obj.Channel(i-1).OriginY = obj.OriginY;
+                if ~isempty(obj.ScanAngle)
+                    obj.Channel(i-1).ScanAngle = obj.ScanAngle;
+                else
+                    obj.Channel(i-1).ScanAngle = 0;
                 end
                 
             end
@@ -1117,58 +1514,25 @@ classdef AFMImage < matlab.mixin.Copyable
         
         function initialize_flags(obj)
             
-            obj.HasHeight = false;
-            obj.HasHeightMeasured = false;
-            obj.HasLateralDeflection = false;
-            obj.HasLockInAmplitude = false;
-            obj.HasLockInPhase = false;
-            obj.HasVerticalDeflection = false;
-            obj.HasProcessed = false;
-            
+            obj.hasHeight = false;
+            obj.hasHeightMeasured = false;
+            obj.hasErrorSignal = false;
+            obj.hasLateralDeflection = false;
+            obj.hasLockInAmplitude = false;
+            obj.hasLockInPhase = false;
+            obj.hasVerticalDeflection = false;
+            obj.hasProcessed = false;
+            obj.hasSensitivity = false;
+            obj.hasSpringConstant = false;
+            obj.hasOverlay = false;
+            obj.hasBackgroundMask = false;
             obj.hasDeconvolutedCantileverTip = false;
         end
         
         function PopUp = string_of_existing(obj)
             PopUp{1} = 'none';
-            k = 2;
-            if obj.HasProcessed
-                PopUp{k} = 'Processed';
-                k = k + 1;
-            end
-            if obj.HasHeight
-                PopUp{k} = 'Height(Trace)';
-                PopUp{k+1} = 'Height(Retrace)';
-                k = k + 2;
-            end
-            if obj.HasHeightMeasured
-                PopUp{k} = 'Height-Measured(Trace)';
-                PopUp{k+1} = 'Height-Measured(Retrace)';
-                k = k + 2;
-            end
-            if obj.HasErrorSignal
-                PopUp{k} = 'ErrorSignal(Trace)';
-                PopUp{k+1} = 'ErrorSignal(Retrace)';
-                k = k + 2;
-            end
-            if obj.HasLateralDeflection
-                PopUp{k} = 'LateralDeflection(Trace)';
-                PopUp{k+1} = 'LateralDeflection(Retrace)';
-                k = k + 2;
-            end
-            if obj.HasLockInAmplitude
-                PopUp{k} = 'LockInAmplitude(Trace)';
-                PopUp{k+1} = 'LockInAmplitude(Retrace)';
-                k = k + 2;
-            end
-            if obj.HasLockInPhase
-                PopUp{k} = 'LockInPhase(Trace)';
-                PopUp{k+1} = 'LockInPhase(Retrace)';
-                k = k + 2;
-            end
-            if obj.HasVerticalDeflection
-                PopUp{k} = 'VerticalDeflection(Trace)';
-                PopUp{k+1} = 'VerticalDeflection(Retrace)';
-                k = k + 2;
+            for i=1:length(obj.Channel)
+                PopUp{i+1} = obj.Channel(i).Name;
             end
         end
         
@@ -1301,17 +1665,19 @@ classdef AFMImage < matlab.mixin.Copyable
             V = V(:,2:end);
         end
         
-        function [X,Y,Z] = convert_masked_to_point_cloud(Image,Mask,ScanSizeX,ScanSizeY,OriginX,OriginY)
+        function [X,Y,Z] = convert_masked_to_point_cloud(Image,Mask,ScanSizeX,ScanSizeY,OriginX,OriginY,ScanAngle)
             
             if nargin<4
                 ScanSizeX = 1;
                 ScanSizeY = 1;
                 OriginX = 0;
                 OriginY = 0;
+                ScanAngle = 0;
             end
-            if nargin<6
+            if nargin<7
                 OriginX = 0;
                 OriginY = 0;
+                ScanAngle = 0;
             end
             
             
@@ -1321,24 +1687,57 @@ classdef AFMImage < matlab.mixin.Copyable
                 Z(i) = Image(X(i),Y(i));
             end
             
+            % the rotation is done around the center of the IMAGE and not
+            % the Origin so first shift the origin to mid image, then rotate and finally scale and shift to OriginX/Y;
+            X1 = X - (size(Image,1)/2 + 1);
+            Y1 = Y - (size(Image,2)/2 + 1);
+            X = X1.*cosd(ScanAngle) + Y1.*sind(ScanAngle);
+            Y = -X1.*sind(ScanAngle) + Y1.*cosd(ScanAngle);
+            
             X = X.*ScanSizeX - OriginX;
             Y = Y.*ScanSizeY - OriginY;
         end
         
-        function R = draw_scalebar_into_current_image(NumPixelsX,ScanSizeX,BarToImageRatio,FontSizeMult)
+        function [XOut,YOut] = rotate_and_shift_point_cloud(X,Y,ShiftX,ShiftY,Angle)
+            % Center PC, rotate it and shift it back to original positions
+            CenterX = min(X) + range(X)/2;
+            CenterY = min(Y) + range(Y)/2;
+            X1 = X - CenterX;
+            Y1 = Y - CenterY;
+            X = X1*cosd(Angle) + Y1*sind(Angle);
+            Y = -X1*sind(Angle) + Y1*cosd(Angle);
+            X = X + CenterX;
+            Y = Y + CenterY;
             
-            if nargin < 5
+            % Shift it by InputShift and return
+            XOut = X - ShiftX;
+            YOut = Y - ShiftY;
+        end
+        
+        function R = draw_scalebar_into_current_image(NumPixelsX,NumPixelsY,ScanSizeX,BarToImageRatio,CurAxHeight,CurAxWidth)
+            
+            if nargin < 4
                 BarToImageRatio = 1/5;
+                CurAxHeight = NumPixelsY;
+                CurAxWidth = NumPixelsX;
+            end
+            
+            ImageRatio = NumPixelsY/NumPixelsX;
+            
+            if CurAxHeight/CurAxWidth >= ImageRatio
+                FontSizeMult = CurAxWidth/1000;
+            else
+                FontSizeMult = CurAxHeight/1000;
             end
             
             ScalebarThickness = 1/40;
-            DistFromBorder = 0.1;
+            DistFromBorder = 0.12;
             
             [Multiplier,Unit,SnapTo] = AFMImage.parse_unit_scale(ScanSizeX,'m',BarToImageRatio);
             
             Width = (SnapTo)/(ScanSizeX*Multiplier);
             Height = ScalebarThickness;
-            Left = 1-Width*(1+DistFromBorder);
+            Left = 1-Width*(1+DistFromBorder*1.5);
             Bottom = 1-(DistFromBorder-Height);
             
             R = rectangle('Position',[Left Bottom Width Height].*NumPixelsX);
@@ -1346,10 +1745,10 @@ classdef AFMImage < matlab.mixin.Copyable
             R.EdgeColor = 'k';
             R.LineWidth = 2;
             
-            
-            A = text((Left+Width/2)*NumPixelsX,(Bottom-Height)*NumPixelsX,sprintf('%i %s',SnapTo,Unit),'HorizontalAlignment','center');
+            FontSize = round(42*FontSizeMult);
+            A = text((Left+Width/2)*NumPixelsX,(Bottom-Height)*NumPixelsX-FontSize/2,sprintf('%i %s',SnapTo,Unit),'HorizontalAlignment','center');
             A.Color = 'w';
-            A.FontSize = round(32*(NumPixelsX/1024*FontSizeMult));
+            A.FontSize = FontSize;
             A.FontWeight = 'bold';
             
             
@@ -1474,6 +1873,85 @@ classdef AFMImage < matlab.mixin.Copyable
             end
             
             Unit = sprintf('%s%s',Prefix,Unit);
+            
+        end
+        
+        function [pBest,IndizesBest,GoFBest,SweepGoF] = line_fit_sweep(Line,StepSizePercent)
+            % AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA Don't
+            % use this!......
+            X = 1:length(Line);
+            Indizes = X;
+            StepSize = StepSizePercent/100;
+            k = 1;
+            for Percentage=1:-StepSize:0
+            [p,S] = polyfit(X(Indizes),Line(Indizes),1);
+            SweepGoF(k) = S.normr;
+            Based = Line - polyval(p,X);
+%             plot(X,Line,'b.',X,polyval(p,X),'r')
+            Indizes = find(Based <= max(Based)*Percentage);
+            k = k + 1;
+            end
+            
+        end
+        
+        function [BestParam,HalfRange] = choose_best_from_cluster(MinVal,MinObj,NClusters,Ranges)
+            % [BestParam,HalfRange] = AFMImage.choose_best_from_cluster(MinVal,MinObj,NClusters)
+            
+            NormedVals(:,1) = MinVal(:,1)/Ranges(1);
+            NormedVals(:,2) = MinVal(:,2)/Ranges(2);
+            NormedVals(:,3) = MinVal(:,3)/Ranges(3);
+            
+            % Cluster the Points in parameter-space
+            [Indizes,~] = kmeans(NormedVals,NClusters,...
+                'Distance','sqeuclidean',...
+                'Display','off',...
+                'Replicates',5);
+            
+            for i=1:NClusters
+                ClusterVal{i} = MinVal(Indizes==i,:);
+                ClusterObj{i} = MinObj(Indizes==i);
+                if round(std(ClusterVal{i}(:,1))) > 0
+                    HalfRange(i,1) = round(std(ClusterVal{i}(:,1)));
+                else
+                    HalfRange(i,1) = 50;
+                end
+                if round(std(ClusterVal{i}(:,2))) > 0
+                    HalfRange(i,2) = round(std(ClusterVal{i}(:,2)));
+                else
+                    HalfRange(i,2) = 50;
+                end
+                if std(ClusterVal{i}(:,3)) > 0
+                    HalfRange(i,3) = std(ClusterVal{i}(:,3));
+                else
+                    HalfRange(i,3) = 5;
+                end
+                [~,Best] = min(ClusterObj{i});
+                BestParam(i,:) = ClusterVal{i}(Best,:);
+            end
+            
+            
+            
+        end
+        
+        function CutOff = automatic_cutoff(Input)
+            
+            if sum(Input,'all')==0
+                CutOff = 0;
+                return
+            end
+            
+            NumSamples = ceil(numel(Input)/10);
+            Input = reshape(Input,[],1);
+            Thresholds = [max(Input):-range(Input)/(NumSamples-1):min(Input)];
+            InRangeLine = zeros(NumSamples,1);
+            for i=1:NumSamples
+                InRangeLine(i) = length(Input(Input >= Thresholds(i)));
+            end
+            
+            DiffIRL = diff(InRangeLine);
+            [~,MaxIndex] = max(DiffIRL);
+            
+            CutOff = Thresholds(MaxIndex);
             
         end
         
