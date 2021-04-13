@@ -1042,11 +1042,24 @@ classdef ForceMap < matlab.mixin.Copyable
                 try
                     obj.IndentArea(i) = ((1-(obj.IndDepth(i)*1e9-floor(obj.IndDepth(i)*1e9)))*TipProjArea(floor(obj.IndDepth(i)*1e9))...
                         + (obj.IndDepth(i)*1e9-floor(obj.IndDepth(i)*1e9))*TipProjArea(ceil(obj.IndDepth(i)*1e9)));
-                    EMod(i) = sqrt(pi/obj.IndentArea(i))*1/Beta*...
-                        obj.Stiffness(i)/2*(1-obj.PoissonR^2);
-                    if EMod(i) <= 0
-                        EMod(i) = NaN;
-                    end
+                      
+                    if isprop(obj,'NumSegments')
+                        for j=1:obj.NumSegments
+                            EMod(i) = sqrt(pi/obj.IndentArea(i))*1/2*...
+                                (1-obj.PoissonR^2)*sin(obj.DeltaPhi)*...
+                                (obj.SineVarsF{i,j}(1)/obj.SineVarsH{i,j}(1));
+                            if EMod(i) <= 0
+                                EMod(i) = NaN;
+                            end
+                        end
+                      
+                      else
+                        EMod(i) = sqrt(pi/obj.IndentArea(i))*1/Beta*...
+                            obj.Stiffness(i)/2*(1-obj.PoissonR^2);
+                        if EMod(i) <= 0
+                            EMod(i) = NaN;
+                        end
+                      end
                 catch
                     EMod(i) = NaN;
                 end
