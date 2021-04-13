@@ -136,6 +136,57 @@ classdef AFMImage < matlab.mixin.Copyable
             end
         end
         
+        function overlay_wrapper(obj,OverlayedImageClassInstance,BackgroundPercent,MinOverlap,AngleRange,UseParallel,MaxFunEval,PreMaxFunEval,NumPreSearches,NClusters)
+            % overlay_wrapper(obj,OverlayedImageClassInstance,BackgroundPercent,MinOverlap,AngleRange,UseParallel,MaxFunEval,PreMaxFunEval,NumPreSearches,NClusters)
+            
+            if nargin < 3
+                BackgroundPercent = 0;
+                MinOverlap = .6;
+                AngleRange = 30;
+                UseParallel = true;
+                MaxFunEval = 200;
+                PreMaxFunEval = 30;
+                NumPreSearches = 120;
+                NClusters = 6;
+            end
+            
+            Channel1 = obj.get_channel('Processed');
+            Channel2 = OverlayedImageClassInstance.get_channel('Processed');
+            
+            OutChannel = AFMImage.overlay_parameters_by_bayesopt(Channel1,Channel2,BackgroundPercent,MinOverlap,AngleRange,UseParallel,MaxFunEval,PreMaxFunEval,NumPreSearches,NClusters);
+            
+            [Overlay1,Overlay2] = AFMImage.overlay_two_images(Channel1,OutChannel);
+            
+            % Create Overlay Background masks
+            OverlayMask1 = AFMImage.mask_background_by_threshold(Overlay1,BackgroundPercent,'on');
+            OverlayMask2 = AFMImage.mask_background_by_threshold(Overlay2,BackgroundPercent,'on');
+            
+            % write the overlays into the corresponding Class instances
+            SecondOut = OutChannel;
+            SecondMaskOut = OutChannel;
+            SecondOut.Image = Overlay2;
+            SecondMaskOut.Image = OverlayMask2;
+            SecondMaskOut.Unit = 'Logical';
+            SecondMaskOut.Name = 'Overlay Mask';
+            
+            FirstOut = Channel1;
+            FirstMaskOut = Channel1;
+            FirstOut.Image = Overlay1;
+            FirstOut.Name = 'Overlay';
+            FirstMaskOut.Image = OverlayMask1;
+            FirstMaskOut.Unit = 'Logical';
+            FirstMaskOut.Name = 'Overlay Mask';
+            
+            obj.Channel(end+1) = FirstOut;
+            obj.Channel(end+1) = FirstMaskOut;
+            
+            OverlayedImageClassInstance.Channel(end+1) = SecondOut;
+            OverlayedImageClassInstance.Channel(end+1) = SecondMaskOut;
+            
+            obj.hasOverlay = true;
+            OverlayedImageClassInstance.hasOverlay = true;
+        end
+        
         function deconvolute_cantilever_tip(obj)
             
             Channel = obj.get_channel('Height (measured) (Trace)');
@@ -168,21 +219,19 @@ classdef AFMImage < matlab.mixin.Copyable
             
         end
         
-        function subtract_overlayed_image(obj)
+        function subtract_overlayed_image(obj,OverlayedImageClassInstance)
             
             if ~obj.hasOverlay
                 warning('Overlay missing from your AFMImage. Determine Overlay pairings and parameters first')
                 return
             end
             
-            Channel1 = obj.get_channel('Processed');
-            Channel2 = obj.get_channel('Overlay');
-            
-            [Overlay1,Overlay2] = AFMImage.overlay_two_images(Channel1,Channel2);
+            Channel1 = obj.get_channel('Overlay');
+            Channel2 = OverlayedImageClassInstance.get_channel('Overlay');
             
             OutChannel = Channel1;
             OutChannel.Name = 'Overlay Difference';
-            OutChannel.Image = Overlay1 - Overlay2;
+            OutChannel.Image = Channel1.Image - Channel2.Image;
             [Old,OldIndex] = obj.get_channel('Overlay Difference');
             if isempty(Old)
                 obj.Channel(end+1) = OutChannel;
@@ -276,6 +325,7 @@ classdef AFMImage < matlab.mixin.Copyable
                         'AcquisitionFunctionName','lower-confidence-bound',...
                         'UseParallel',UseParallel);
             end
+<<<<<<< HEAD
 
 %             Debugging Section
 %               
@@ -325,15 +375,64 @@ classdef AFMImage < matlab.mixin.Copyable
 %             title(sprintf('%i,%i,%.3f',ShiftPixX,ShiftPixY,Angle));
 %             
 %             drawnow
+=======
+            
+            Fig = figure;
+            
+            MinObj = Results.XAtMinObjective.Variables;
+            MinShiftPixX = MinObj(1);
+            MinShiftPixY = MinObj(2);
+            MinAngle = MinObj(3);
+            [Overlay1,Overlay2,OverlayMask1,OverlayMask2] = AFMImage.overlay_two_images(Channel1,Channel2,MinShiftPixX,MinShiftPixY,MinAngle,Mask1,Mask2);
+            imshowpair(OverlayMask1,OverlayMask2)
+            title(sprintf('%i,%i,%.3f',MinShiftPixX,MinShiftPixY,MinAngle));
+            
+            Fig = figure;
+            
+            subplot(2,2,1)
+            MinObj = ClusterResults{1}.XAtMinObjective.Variables;
+            ShiftPixX = MinObj(1);
+            ShiftPixY = MinObj(2);
+            Angle = MinObj(3);
+            [Overlay1,Overlay2,OverlayMask1,OverlayMask2] = AFMImage.overlay_two_images(Channel1,Channel2,ShiftPixX,ShiftPixY,Angle,Mask1,Mask2);
+            imshowpair(OverlayMask1,OverlayMask2)
+            title(sprintf('%i,%i,%.3f',ShiftPixX,ShiftPixY,Angle));
+            subplot(2,2,2)
+            MinObj = ClusterResults{2}.XAtMinObjective.Variables;
+            ShiftPixX = MinObj(1);
+            ShiftPixY = MinObj(2);
+            Angle = MinObj(3);
+            [Overlay1,Overlay2,OverlayMask1,OverlayMask2] = AFMImage.overlay_two_images(Channel1,Channel2,ShiftPixX,ShiftPixY,Angle,Mask1,Mask2);
+            imshowpair(OverlayMask1,OverlayMask2)
+            title(sprintf('%i,%i,%.3f',ShiftPixX,ShiftPixY,Angle));
+            subplot(2,2,3)
+            MinObj = ClusterResults{3}.XAtMinObjective.Variables;
+            ShiftPixX = MinObj(1);
+            ShiftPixY = MinObj(2);
+            Angle = MinObj(3);
+            [Overlay1,Overlay2,OverlayMask1,OverlayMask2] = AFMImage.overlay_two_images(Channel1,Channel2,ShiftPixX,ShiftPixY,Angle,Mask1,Mask2);
+            imshowpair(OverlayMask1,OverlayMask2)
+            title(sprintf('%i,%i,%.3f',ShiftPixX,ShiftPixY,Angle));
+            subplot(2,2,4)
+            MinObj = ClusterResults{4}.XAtMinObjective.Variables;
+            ShiftPixX = MinObj(1);
+            ShiftPixY = MinObj(2);
+            Angle = MinObj(3);
+            [Overlay1,Overlay2,OverlayMask1,OverlayMask2] = AFMImage.overlay_two_images(Channel1,Channel2,ShiftPixX,ShiftPixY,Angle,Mask1,Mask2);
+            imshowpair(OverlayMask1,OverlayMask2)
+            title(sprintf('%i,%i,%.3f',ShiftPixX,ShiftPixY,Angle));
+            
+            drawnow
+>>>>>>> AFMImage-Class
             
             % Create standard AFMImage-ChannelStruct with new Origin and
             % ScanAngle. Compute real-world-shift from ShiftPixX/Y
-            ShiftX = ShiftPixX*Channel2.ScanSizeX/Channel2.NumPixelsX;
-            ShiftY = ShiftPixY*Channel2.ScanSizeY/Channel2.NumPixelsY;
+            ShiftX = MinShiftPixX*Channel2.ScanSizeX/Channel2.NumPixelsX;
+            ShiftY = MinShiftPixY*Channel2.ScanSizeY/Channel2.NumPixelsY;
             ChannelOut = Channel2;
             ChannelOut.OriginX = Channel2.OriginX + ShiftX;
             ChannelOut.OriginY = Channel2.OriginY + ShiftY;
-            ChannelOut.ScanAngle = mod(Channel2.ScanAngle + Angle,360);
+            ChannelOut.ScanAngle = mod(Channel2.ScanAngle + MinAngle,360);
             ChannelOut.Name = 'Overlay';
         end
         
