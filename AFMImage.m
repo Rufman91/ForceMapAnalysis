@@ -325,6 +325,57 @@ classdef AFMImage < matlab.mixin.Copyable
                         'AcquisitionFunctionName','lower-confidence-bound',...
                         'UseParallel',UseParallel);
             end
+<<<<<<< HEAD
+
+%             Debugging Section
+%               
+%             Fig = figure;
+%             
+%             MinObj = Results.XAtMinObjective.Variables;
+%             ShiftPixX = MinObj(1);
+%             ShiftPixY = MinObj(2);
+%             Angle = MinObj(3);
+%             [Overlay1,Overlay2,OverlayMask1,OverlayMask2] = AFMImage.overlay_two_images(Channel1,Channel2,ShiftPixX,ShiftPixY,Angle,Mask1,Mask2);
+%             imshowpair(OverlayMask1,OverlayMask2)
+%             title(sprintf('%i,%i,%.3f',ShiftPixX,ShiftPixY,Angle));
+%             
+%             Fig = figure;
+%             
+%             subplot(2,2,1)
+%             MinObj = ClusterResults{1}.XAtMinObjective.Variables;
+%             ShiftPixX = MinObj(1);
+%             ShiftPixY = MinObj(2);
+%             Angle = MinObj(3);
+%             [Overlay1,Overlay2,OverlayMask1,OverlayMask2] = AFMImage.overlay_two_images(Channel1,Channel2,ShiftPixX,ShiftPixY,Angle,Mask1,Mask2);
+%             imshowpair(OverlayMask1,OverlayMask2)
+%             title(sprintf('%i,%i,%.3f',ShiftPixX,ShiftPixY,Angle));
+%             subplot(2,2,2)
+%             MinObj = ClusterResults{2}.XAtMinObjective.Variables;
+%             ShiftPixX = MinObj(1);
+%             ShiftPixY = MinObj(2);
+%             Angle = MinObj(3);
+%             [Overlay1,Overlay2,OverlayMask1,OverlayMask2] = AFMImage.overlay_two_images(Channel1,Channel2,ShiftPixX,ShiftPixY,Angle,Mask1,Mask2);
+%             imshowpair(OverlayMask1,OverlayMask2)
+%             title(sprintf('%i,%i,%.3f',ShiftPixX,ShiftPixY,Angle));
+%             subplot(2,2,3)
+%             MinObj = ClusterResults{3}.XAtMinObjective.Variables;
+%             ShiftPixX = MinObj(1);
+%             ShiftPixY = MinObj(2);
+%             Angle = MinObj(3);
+%             [Overlay1,Overlay2,OverlayMask1,OverlayMask2] = AFMImage.overlay_two_images(Channel1,Channel2,ShiftPixX,ShiftPixY,Angle,Mask1,Mask2);
+%             imshowpair(OverlayMask1,OverlayMask2)
+%             title(sprintf('%i,%i,%.3f',ShiftPixX,ShiftPixY,Angle));
+%             subplot(2,2,4)
+%             MinObj = ClusterResults{4}.XAtMinObjective.Variables;
+%             ShiftPixX = MinObj(1);
+%             ShiftPixY = MinObj(2);
+%             Angle = MinObj(3);
+%             [Overlay1,Overlay2,OverlayMask1,OverlayMask2] = AFMImage.overlay_two_images(Channel1,Channel2,ShiftPixX,ShiftPixY,Angle,Mask1,Mask2);
+%             imshowpair(OverlayMask1,OverlayMask2)
+%             title(sprintf('%i,%i,%.3f',ShiftPixX,ShiftPixY,Angle));
+%             
+%             drawnow
+=======
             
             Fig = figure;
             
@@ -372,6 +423,7 @@ classdef AFMImage < matlab.mixin.Copyable
             title(sprintf('%i,%i,%.3f',ShiftPixX,ShiftPixY,Angle));
             
             drawnow
+>>>>>>> AFMImage-Class
             
             % Create standard AFMImage-ChannelStruct with new Origin and
             % ScanAngle. Compute real-world-shift from ShiftPixX/Y
