@@ -2378,8 +2378,8 @@ classdef Experiment < matlab.mixin.Copyable
                     'DropFcn', @(s, e)onDrop(h.f, s, e)); % Function to call on drop operation
                 h.DragNDrop = uicontrol(h.f,'style','text','units','normalized',...
                     'position',[.3 .025 .65 .05],...
-                    'string','Drag and Drop files into boxes or load from browser',...
-                    'FontSize',20);
+                    'string','Drag and Drop files into boxes (excl. to Windows and Linux) or load from browser',...
+                    'FontSize',18);
 %             end
             
             % Create OK pushbutton
@@ -2429,12 +2429,7 @@ classdef Experiment < matlab.mixin.Copyable
                     
                     TempFileCell = data.TransferAsFileList;
                     
-                    % For some reason the order of the chosen files gets
-                    % swapped seemingly randomly. Can't fix it for now
-%                     ShiftCell = cell(1,length(TempFileCell)+1);
-%                     ShiftCell(2:end) = TempFileCell;
-%                     ShiftCell(1) = TempFileCell(end);
-%                     TempFileCell(1:end) = ShiftCell(1:end-1);
+                    TempFileCell = sort(TempFileCell);
 
                     k = 1;
                     DelIdx = [];
@@ -2496,7 +2491,6 @@ classdef Experiment < matlab.mixin.Copyable
                     
                     
                     set(h.ListBox(Index),'String',NewFiles)
-                    OutStruct(Index).FullFile
                     
                     % Indicate to the source that drop has completed
                     evtArg.DropComplete(true);
