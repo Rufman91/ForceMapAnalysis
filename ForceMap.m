@@ -120,6 +120,7 @@ classdef ForceMap < matlab.mixin.Copyable
         HeightMap       % height profile map taken from the maximum head-height from approach max(hhapp)
         EModMapHertz    % E modulus profile map. same ordering as HeightMap
         EModMapOliverPharr % """"
+        EModMapMicrorheology % """"
         List2Map        % An R->RxR ((k)->(i,j)) mapping of indices to switch between the two representations
         Map2List        % An RxR->R ((i,j)->(k))mapping of indices to switch between the two representations
         FibDiam = []    % Estimated fibril diameter
@@ -138,6 +139,7 @@ classdef ForceMap < matlab.mixin.Copyable
         Basefit = {}    % fit model used for the baseline fit in the base_and_tilt method
         EModHertz       % List of reduced smaple E-Modulus based on a the Hertz-Sneddon model
         EModOliverPharr % List of reduced sample E-Modulus based on the Oliver-Pharr method
+        EModMicrorheology % List of reduced sample E-Modulus based on the Oliver-Pharr method
         HertzFit        % HertzFit model generated in the calculate_e_mod_hertz method
         IndDepthHertz
         DZslope
@@ -1043,23 +1045,12 @@ classdef ForceMap < matlab.mixin.Copyable
                     obj.IndentArea(i) = ((1-(obj.IndDepth(i)*1e9-floor(obj.IndDepth(i)*1e9)))*TipProjArea(floor(obj.IndDepth(i)*1e9))...
                         + (obj.IndDepth(i)*1e9-floor(obj.IndDepth(i)*1e9))*TipProjArea(ceil(obj.IndDepth(i)*1e9)));
                       
-                    if isprop(obj,'NumSegments')
-                        for j=1:obj.NumSegments
-                            EMod(i) = sqrt(pi/obj.IndentArea(i))*1/2*...
-                                (1-obj.PoissonR^2)*sin(obj.DeltaPhi)*...
-                                (obj.SineVarsF{i,j}(1)/obj.SineVarsH{i,j}(1));
-                            if EMod(i) <= 0
-                                EMod(i) = NaN;
-                            end
-                        end
-                      
-                      else
-                        EMod(i) = sqrt(pi/obj.IndentArea(i))*1/Beta*...
-                            obj.Stiffness(i)/2*(1-obj.PoissonR^2);
-                        if EMod(i) <= 0
-                            EMod(i) = NaN;
-                        end
-                      end
+                    EMod(i) = sqrt(pi/obj.IndentArea(i))*1/Beta*...
+                        obj.Stiffness(i)/2*(1-obj.PoissonR^2);
+                    if EMod(i) <= 0
+                        EMod(i) = NaN;
+                    end
+
                 catch
                     EMod(i) = NaN;
                 end
@@ -1071,6 +1062,71 @@ classdef ForceMap < matlab.mixin.Copyable
             for i=1:obj.NumProfiles
                 for j=1:obj.NumPoints
                     obj.EModMapOliverPharr(i,j,1) = obj.EModOliverPharr(obj.Map2List(i,j));
+                end
+            end
+        end
+        
+        function EModMicrorheology = calculate_e_mod_microrheology(obj,TipProjArea,CurvePercent)
+            
+            if nargin < 3
+                CurvePercent = 0.75;
+            end
+            
+            Range = find(obj.SelectedCurves);
+            Epsilon = 0.73; % Correction constant from Oliver Pharr Method (1992)
+            Beta = 1.0226; %Correction constant from Oliver Pharr Method (1992)
+            obj.EModMicrorheology = zeros(obj.NCurves,3);
+            EModMicrorheology = zeros(obj.NCurves,3);
+            obj.ProjTipArea = TipProjArea;
+            obj.DZslope = zeros(obj.NCurves,1);
+            obj.Stiffness = zeros(obj.NCurves,1);
+            obj.IndDepth = zeros(obj.NCurves,1);
+            obj.IndentArea = zeros(obj.NCurves,1);
+            for i=Range'
+                Z = obj.HHRet{i} - obj.CP(i,1);
+                D = (obj.BasedRet{i} - obj.CP(i,2))/obj.SpringConstant;
+                Zmax(i) = max(Z);
+                Dmax(i) = max(D);
+                DCurvePercent = D(D>=(1-CurvePercent)*Dmax(i));
+                ZCurvePercent = Z(1:length(DCurvePercent));
+                LineFit = polyfit(ZCurvePercent,DCurvePercent,1);
+                obj.DZslope(i) = LineFit(1);
+                Hmax(i) = Zmax(i) - Dmax(i);
+                dD = Dmax(i) - (1-CurvePercent)*Dmax(i);
+                dh = dD*(1./obj.DZslope(i) - 1/(obj.RefSlope));
+                df = dD*obj.SpringConstant;
+                obj.Stiffness(i) = df/dh;
+                Fmax(i) = Dmax(i).*obj.SpringConstant;
+                obj.IndDepth(i) = Hmax(i) - Epsilon.*Fmax(i)/obj.Stiffness(i);
+                % IndentArea is taken as the linear interpolation between
+                % the two numeric values of TipProjArea the Hc(i) falls
+                % inbetween
+                for j=1:obj.NumSegments
+                    try
+                        obj.IndentArea(i) = ((1-(obj.IndDepth(i)*1e9-floor(obj.IndDepth(i)*1e9)))*TipProjArea(floor(obj.IndDepth(i)*1e9))...
+                            + (obj.IndDepth(i)*1e9-floor(obj.IndDepth(i)*1e9))*TipProjArea(ceil(obj.IndDepth(i)*1e9)));
+
+
+                        EModMicrorheology(i,j) = sqrt(pi/obj.IndentArea(i))*1/2*...
+                            (1-obj.PoissonR^2)*sin(obj.DeltaPhi)*...
+                            (obj.SineVarsF{i,j}(1)/obj.SineVarsH{i,j}(1));
+                        
+                        if EModMicrorheology(i,j) <= 0
+                            EModMicrorheology(i,j) = NaN;
+                        end
+
+                    catch
+                        EModMicrorheology(i,j) = NaN;
+                    end
+                end
+            end
+            
+            obj.EModMircorheology = EModMicrorheology;
+            % Write values into EModMapMircorheology
+            
+            for i=1:obj.NumProfiles
+                for j=1:obj.NumPoints
+                    obj.EModMapMircorheology(i,j,1) = obj.EModMircorheology(obj.Map2List(i,j));
                 end
             end
         end
