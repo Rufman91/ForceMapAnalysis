@@ -3024,7 +3024,7 @@ classdef ForceMap < matlab.mixin.Copyable
         
         function load_force_curves(obj,TempFolder)
             
-          if isprop(obj,'NumSegments')  
+          if isprop(obj,'NumSegments')  && obj.NumSegments > 2
             obj.HHType = 'capacitiveSensorHeight';
             for i=1:obj.NCurves
                 for j=1:obj.NumSegments
