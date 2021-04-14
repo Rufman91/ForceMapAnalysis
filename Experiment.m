@@ -62,35 +62,22 @@ classdef Experiment < matlab.mixin.Copyable
             % Set HostOS and HostName properties
             obj.check_for_new_host
             
-            % get Experiment name and layout from user
-            isNew = true;
-            [FileTypes, NumFiles, ExperimentName] = obj.constructor_user_input_parser(isNew);
+            % set Name and choose Experiment folder
+            [ExperimentName, ParentFolder] = uiputfile('*.mat','Select Experiment Name and Parent Folder');
+            obj.ExperimentName = ExperimentName(1:end-4);
+            mkdir(ParentFolder,obj.ExperimentName);
+            obj.ExperimentFolder = fullfile(ParentFolder,obj.ExperimentName,filesep);
             
-            if isequal(FileTypes,'Cancel')
+            % get Experiment filenames and paths from user input
+            [FileTypes, FullFileStruct, IsValid] = obj.constructor_user_input_parser(obj.ExperimentName,obj.HostOS);
+            
+            if ~IsValid
                 obj = [];
                 return
             end
             
-            for i=1:length(FileTypes)
-                while FileTypes(i) && ~NumFiles(i)
-                    warndlg('All "Number of *"-inputs have to be non-zero integers')
-                    [FileTypes, NumFiles, ExperimentName] = obj.constructor_user_input_parser(isNew,FileTypes, NumFiles, ExperimentName);
-                    if isequal(FileTypes,'Cancel')
-                        obj = [];
-                        return
-                    end
-                end
-            end
-            
-            % set Name and choose Experiment folder
-            obj.ExperimentName = ExperimentName;
-            current = what();
-            ParentFolder = uigetdir(current.path,'Choose a Folder where the Experiment is to be saved');
-            mkdir(ParentFolder,obj.ExperimentName);
-            obj.ExperimentFolder = fullfile(ParentFolder,obj.ExperimentName,filesep);
-            
             % get paths of requested files and load them in
-            obj.get_paths_and_load_files(FileTypes,NumFiles,isNew)
+            obj.take_paths_and_load_files(FileTypes,FullFileStruct,true)
             
             obj.initialize_flags
             
@@ -102,7 +89,7 @@ classdef Experiment < matlab.mixin.Copyable
             obj.save_experiment();
         end
         
-        function get_paths_and_load_files(obj,FileTypes,NumFiles,isNew)
+        function take_paths_and_load_files(obj,FileTypes,FullFileStruct,isNew)
             
             if nargin<4
                 isNew = false;
@@ -134,42 +121,26 @@ classdef Experiment < matlab.mixin.Copyable
             
             % Need to assign something to *FullFile. Otherwise parfor will
             % crash
+            for i=1:5
+                if isempty(FullFileStruct(i).FullFile{1})
+                    NumFiles(i) = 0;
+                else
+                    NumFiles(i) = length(FullFileStruct(i).FullFile);
+                end
+            end
+            
             FMFullFile = cell(max(NumFiles),1);
             RefFMFullFile = cell(max(NumFiles),1);
             IFullFile = cell(max(NumFiles),1);
             SPMFullFile = cell(max(NumFiles),1);
             CantTipFullFile = cell(max(NumFiles),1);
             
-            if FileTypes(1)
-                AllowedFiles = {'*.jpk-force-map;*.jpk-qi-data',...
-                    'Valid Types (*.jpk-force-map,*.jpk-qi-data)'};
-                Tmp = obj.get_file_paths('Choose one or more Force/QI Map files',AllowedFiles,NumFiles(1));
-                FMFullFile(1:length(Tmp)) = Tmp;
-            end
-            if FileTypes(2)
-                AllowedFiles = {'*.jpk-force-map;*.jpk-qi-data',...
-                    'Valid Types (*.jpk-force-map,*.jpk-qi-data)'};
-                Tmp = obj.get_file_paths('Choose one or more Reference Force/QI Map files',AllowedFiles,NumFiles(2));
-                RefFMFullFile(1:length(Tmp)) = Tmp;
-            end
-            if FileTypes(3)
-                AllowedFiles = {'*.jpk',...
-                    'Valid Types (*.jpk)'};
-                Tmp = obj.get_file_paths('Choose one or more AFM Image files',AllowedFiles,NumFiles(3));
-                IFullFile(1:length(Tmp)) = Tmp;
-            end
-            if FileTypes(4)
-                AllowedFiles = {'*.sdf',...
-                    'Valid Types (*.sdf)'};
-                Tmp = obj.get_file_paths('Choose one or more Surface Potential Map files',AllowedFiles,NumFiles(4));
-                SPMFullFile(1:length(Tmp)) = Tmp;
-            end
-            if FileTypes(5)
-                AllowedFiles = {'*.jpk',...
-                    'Valid Types (*.jpk)'};
-                Tmp = obj.get_file_paths('Choose one or more Cantilever Tip files',AllowedFiles,NumFiles(5));
-                CantTipFullFile(1:length(Tmp)) = Tmp;
-            end
+            FMFullFile(1:NumFiles(1)) = FullFileStruct(1).FullFile;
+            RefFMFullFile(1:NumFiles(2)) = FullFileStruct(2).FullFile;
+            IFullFile(1:NumFiles(3)) = FullFileStruct(3).FullFile;
+            SPMFullFile(1:NumFiles(4)) = FullFileStruct(4).FullFile;
+            CantTipFullFile(1:NumFiles(5)) = FullFileStruct(5).FullFile;
+            
             
             StartID = obj.NumAFMImages + obj.NumCantileverTips + obj.NumForceMaps + obj.NumReferenceForceMaps + obj.NumSurfacePotentialMaps + 1;
             IDs = StartID:(StartID + sum(NumFiles)-1);
@@ -281,26 +252,15 @@ classdef Experiment < matlab.mixin.Copyable
                 
                 % get Experiment name and layout from user
                 isNew = false;
-                [FileTypes, NumFiles, ExperimentName] = SaveCopy.constructor_user_input_parser(isNew);
+                [FileTypes, FullFileStruct, isValid] = SaveCopy.constructor_user_input_parser(obj.ExperimentName,obj.HostOS);
                 
-                if isequal(FileTypes,'Cancel')
+                if ~isValid
                     SaveCopy = [];
                     return
                 end
                 
-                for i=1:length(FileTypes)
-                    while FileTypes(i) && ~NumFiles(i)
-                        warndlg('All "Number of *"-inputs have to be non-zero integers')
-                        [FileTypes, NumFiles, ExperimentName] = SaveCopy.constructor_user_input_parser(isNew,FileTypes, NumFiles, ExperimentName);
-                        if isequal(FileTypes,'Cancel')
-                            SaveCopy = [];
-                            return
-                        end
-                    end
-                end
-                
                 % get paths of requested files and load them in
-                SaveCopy.get_paths_and_load_files(FileTypes,NumFiles,isNew)
+                SaveCopy.take_paths_and_load_files(FileTypes,FullFileStruct,isNew)
                 
                 % SaveCopy.initialize_flags % What to do with this?
                 
@@ -1389,6 +1349,474 @@ classdef Experiment < matlab.mixin.Copyable
         
     end
     methods
+        % Methods for data visualization spanning all the data
+       
+        function show_image(obj)
+            % TODO: implement ui elements for customization
+            
+            h.Fig = figure('Name',sprintf('%s',obj.ExperimentName),...
+                'Units','pixels',...
+                'Position',[200 200 1024 512],...
+                'Color','k');
+            
+            h.B(1) = uicontrol('style','togglebutton',...
+                'String','Cross Section',...
+                'units','normalized',...
+                'position',[.85 .5 .1 .05],...
+                'Callback',@cross_section_toggle);
+            
+            [ClassPopUp,ClassIndex] = obj.string_of_existing_class_instances();
+            Class{1} = obj.get_class_instance(ClassIndex(1,:));
+            Class{2} = obj.get_class_instance(ClassIndex(1,:));
+            PopUp = Class{1}.string_of_existing();
+            
+            h.B(4) = uicontrol('style','text',...
+                'String','Channel 1',...
+                'units','normalized',...
+                'position',[.85 .9 .15 .05]);
+            
+            
+            h.B(16) = uicontrol('style','popupmenu',...
+                'String',ClassPopUp,...
+                'units','normalized',...
+                'position',[.85 .85 .15 .05],...
+                'Callback',@draw_channel_1);
+            
+            h.B(2) = uicontrol('style','popupmenu',...
+                'String',PopUp,...
+                'units','normalized',...
+                'position',[.85 .8 .1 .05],...
+                'Callback',@draw_channel_1);
+            
+            h.B(5) = uicontrol('style','text',...
+                'String','Channel 2',...
+                'units','normalized',...
+                'position',[.85 .7 .15 .05]);
+            
+            h.B(17) = uicontrol('style','popupmenu',...
+                'String',ClassPopUp,...
+                'units','normalized',...
+                'position',[.85 .65 .15 .05],...
+                'Callback',@draw_channel_2);
+            
+            h.B(3) = uicontrol('style','popupmenu',...
+                'String',PopUp,...
+                'units','normalized',...
+                'position',[.85 .6 .1 .05],...
+                'Callback',@draw_channel_2);
+            
+            h.B(6) = uicontrol('style','pushbutton',...
+                'String','Save Figure',...
+                'units','normalized',...
+                'position',[.85 .1 .1 .05],...
+                'Callback',@save_figure_to_file);
+            
+            h.B(7) = uicontrol('style','checkbox',...
+                'String','...with white background',...
+                'units','normalized',...
+                'position',[.85 .05 .1 .04]);
+            
+            h.B(8) = uicontrol('style','slider',...
+                'Value',1,...
+                'Units','normalized',...
+                'Position',[.85 .78 .1 .02],...
+                'Callback',@changed_slider);
+            
+            h.B(9) = uicontrol('style','slider',...
+                'Value',0,...
+                'Units','normalized',...
+                'Position',[.85 .76 .1 .02],...
+                'Callback',@changed_slider);
+            
+            h.B(10) = uicontrol('style','slider',...
+                'Value',1,...
+                'Units','normalized',...
+                'Position',[.85 .58 .1 .02],...
+                'Callback',@changed_slider);
+            
+            h.B(11) = uicontrol('style','slider',...
+                'Value',0,...
+                'Units','normalized',...
+                'Position',[.85 .56 .1 .02],...
+                'Callback',@changed_slider);
+            
+            h.B(12) = uicontrol('style','text',...
+                'String','Max',...
+                'Units','normalized',...
+                'Position',[.95 .78 .03 .02]);
+            
+            h.B(13) = uicontrol('style','text',...
+                'String','Min',...
+                'Units','normalized',...
+                'Position',[.95 .76 .03 .02]);
+            
+            h.B(14) = uicontrol('style','text',...
+                'String','Max',...
+                'Units','normalized',...
+                'Position',[.95 .58 .03 .02]);
+            
+            h.B(15) = uicontrol('style','text',...
+                'String','Min',...
+                'Units','normalized',...
+                'Position',[.95 .56 .03 .02]);
+            
+            h.Channel1Max = 1;
+            h.Channel1Min = 0;
+            h.Channel2Max = 1;
+            h.Channel2Min = 0;
+            
+            h.Line = [];
+            h.hasCrossSection = 0;
+            h.hasChannel2 = 0;
+            [~,DefIndex] = Class{1}.get_channel('Processed');
+            if isempty(DefIndex)
+                DefIndex = 2;
+            else
+                DefIndex = DefIndex + 1;
+            end
+            h.B(2).Value = DefIndex;
+            draw_channel_1
+            
+            function cross_section_toggle(varargin)
+                h.hasCrossSection = ~h.hasCrossSection;
+                try
+                    delete(h.ImAx(3));
+                catch
+                end
+                draw_channel_1
+                draw_channel_2
+            end
+            
+            function draw_channel_1(varargin)
+                LeftRight = 'Left';
+                if h.hasChannel2 && h.hasCrossSection
+                    FullPart = 'PartTwo';
+                elseif h.hasChannel2 && ~h.hasCrossSection
+                    FullPart = 'FullTwo';
+                elseif ~h.hasChannel2 && h.hasCrossSection
+                    FullPart = 'PartOne';
+                elseif ~h.hasChannel2 && ~h.hasCrossSection
+                    FullPart = 'FullOne';
+                end
+                h.hasChannel1 = true;
+                draw_image(LeftRight,FullPart)
+                if isequal(h.Channel{1},'none')
+                    h.hasChannel1 = false;
+                end
+                if h.hasChannel2 && ~h.OnePass
+                    h.OnePass = true;
+                    draw_channel_2
+                end
+                h.OnePass = false;
+            end
+            
+            function draw_channel_2(varargin)
+                LeftRight = 'Right';
+                if h.hasChannel1 && h.hasCrossSection
+                    FullPart = 'PartTwo';
+                elseif h.hasChannel1 && ~h.hasCrossSection
+                    FullPart = 'FullTwo';
+                elseif ~h.hasChannel1 && h.hasCrossSection
+                    FullPart = 'PartOne';
+                elseif ~h.hasChannel1 && ~h.hasCrossSection
+                    FullPart = 'FullOne';
+                end
+                h.hasChannel2 = true;
+                draw_image(LeftRight,FullPart)
+                if isequal(h.Channel{2},'none')
+                    h.hasChannel2 = false;
+                end
+                if h.hasChannel1 && ~h.OnePass
+                    h.OnePass = true;
+                    draw_channel_1
+                end
+                h.OnePass = false;
+            end
+            
+            function moving_cross_section_channel_1(src,evt)
+                evname = evt.EventName;
+                if ~get(h.B(1),'Value')
+                    return
+                end
+                Pos1 = [h.Line.Position(1,1) h.Line.Position(1,2)];
+                Pos2 = [h.Line.Position(2,1) h.Line.Position(2,2)];
+                Profile = improfile(h.Image{1},[Pos1(1) Pos2(1)],[Pos1(2) Pos2(2)]);
+                Len = norm(Pos1-Pos2)/Class{1}.NumPixelsX*Class{1}.ScanSizeX;
+                Points = [0:1/(length(Profile)-1):1].*Len;
+                [MultiplierY,UnitY,~] = AFMImage.parse_unit_scale(range(Profile),h.BaseUnit{1},1);
+                [MultiplierX,UnitX,~] = AFMImage.parse_unit_scale(range(Points),'m',1);
+                h.ImAx(3) = subplot(10,10,[71:78 81:88 91:98]);
+                P = plot(Points.*MultiplierX,Profile.*MultiplierY);
+                grid on
+                CurrentAxHeight = round(h.Fig.Position(4)*h.ImAx(1).Position(4));
+                h.ImAx(3).Color = 'k';
+                h.ImAx(3).LineWidth = 1;
+                h.ImAx(3).FontSize = round(22*(CurrentAxHeight/756));
+                h.ImAx(3).XColor = 'w';
+                h.ImAx(3).YColor = 'w';
+                h.ImAx(3).GridColor = 'w';
+                xlabel(sprintf('[%s]',UnitX))
+                ylabel(sprintf('%s [%s]',h.Channel{1},UnitY))
+                xlim([0 Points(end).*MultiplierX])
+                P.LineWidth = 2;
+                P.Color = 'b';
+            end
+            
+            function moving_cross_section_channel_2(src,evt)
+                evname = evt.EventName;
+                if ~get(h.B(1),'Value')
+                    return
+                end
+                Pos1 = [h.Line.Position(1,1) h.Line.Position(1,2)];
+                Pos2 = [h.Line.Position(2,1) h.Line.Position(2,2)];
+                if norm(Pos1-Pos2)==0
+                    get_and_draw_profile;
+                    return
+                end
+                Profile = improfile(h.Image{2},[Pos1(1) Pos2(1)],[Pos1(2) Pos2(2)]);
+                Len = norm(Pos1-Pos2)/Class{2}.NumPixelsX*Class{2}.ScanSizeX;
+                Points = [0:1/(length(Profile)-1):1].*Len;
+                [MultiplierY,UnitY,~] = AFMImage.parse_unit_scale(range(Profile),h.BaseUnit{2},1);
+                [MultiplierX,UnitX,~] = AFMImage.parse_unit_scale(range(Points),'m',1);
+                h.ImAx(3) = subplot(10,10,[71:78 81:88 91:98]);
+                P = plot(Points.*MultiplierX,Profile.*MultiplierY);
+                grid on
+                CurrentAxHeight = round(h.Fig.Position(4)*h.ImAx(2).Position(4));
+                h.ImAx(3).Color = 'k';
+                h.ImAx(3).LineWidth = 1;
+                h.ImAx(3).FontSize = round(22*(CurrentAxHeight/756));
+                h.ImAx(3).XColor = 'w';
+                h.ImAx(3).YColor = 'w';
+                h.ImAx(3).GridColor = 'w';
+                xlabel(sprintf('[%s]',UnitX))
+                ylabel(sprintf('%s [%s]',h.Channel{2},UnitY))
+                xlim([0 Points(end).*MultiplierX])
+                P.LineWidth = 2;
+                P.Color = 'b';
+            end
+            
+            function get_and_draw_profile_channel_1(varargin)
+                if ~get(h.B(1),'Value')
+                    return
+                end
+                if ~isempty(h.Line)
+                    if ~isvalid(h.Line)
+                        h.Line = [];
+                    end
+                end
+                h.Line.Visible = 'off';
+                h.Line = drawline('Color','b','Parent',h.ImAx(1));
+                addlistener(h.Line,'MovingROI',@moving_cross_section_channel_1);
+                addlistener(h.Line,'ROIMoved',@moving_cross_section_channel_1);
+                Pos1 = [h.Line.Position(1,1) h.Line.Position(1,2)];
+                Pos2 = [h.Line.Position(2,1) h.Line.Position(2,2)];
+                if norm(Pos1-Pos2)==0
+                    get_and_draw_profile_channel_1;
+                    return
+                end
+                Profile = improfile(h.Image{1},[Pos1(1) Pos2(1)],[Pos1(2) Pos2(2)]);
+                Len = norm(Pos1-Pos2)/Class{1}.NumPixelsX*Class{1}.ScanSizeX;
+                Points = [0:1/(length(Profile)-1):1].*Len;
+                [MultiplierY,UnitY,~] = AFMImage.parse_unit_scale(range(Profile),h.BaseUnit{1},1);
+                [MultiplierX,UnitX,~] = AFMImage.parse_unit_scale(range(Points),'m',1);
+                h.ImAx(3) = subplot(10,10,[71:78 81:88 91:98]);
+                P = plot(Points.*MultiplierX,Profile.*MultiplierY);
+                grid on
+                CurrentAxHeight = round(h.Fig.Position(4)*h.ImAx(1).Position(4));
+                h.ImAx(3).Color = 'k';
+                h.ImAx(3).LineWidth = 1;
+                h.ImAx(3).FontSize = round(22*(CurrentAxHeight/756));
+                h.ImAx(3).XColor = 'w';
+                h.ImAx(3).YColor = 'w';
+                h.ImAx(3).GridColor = 'w';
+                xlabel(sprintf('[%s]',UnitX))
+                ylabel(sprintf('%s [%s]',h.Channel{1},UnitY))
+                xlim([0 Points(end).*MultiplierX])
+                P.LineWidth = 2;
+                P.Color = 'b';
+            end
+            
+            function get_and_draw_profile_channel_2(varargin)
+                if ~get(h.B(1),'Value')
+                    return
+                end
+                if ~isempty(h.Line)
+                    if ~isvalid(h.Line)
+                        h.Line = [];
+                    end
+                end
+                h.Line.Visible = 'off';
+                h.Line = drawline('Color','b','Parent',h.ImAx(2));
+                addlistener(h.Line,'MovingROI',@moving_cross_section_channel_2);
+                addlistener(h.Line,'ROIMoved',@moving_cross_section_channel_2);
+                Pos1 = [h.Line.Position(1,1) h.Line.Position(1,2)];
+                Pos2 = [h.Line.Position(2,1) h.Line.Position(2,2)];
+                if norm(Pos1-Pos2)==0
+                    get_and_draw_profile_channel_2;
+                    return
+                end
+                Profile = improfile(h.Image{2},[Pos1(1) Pos2(1)],[Pos1(2) Pos2(2)]);
+                Len = norm(Pos1-Pos2)/Class{2}.NumPixelsX*Class{2}.ScanSizeX;
+                Points = [0:1/(length(Profile)-1):1].*Len;
+                [MultiplierY,UnitY,~] = AFMImage.parse_unit_scale(range(Profile),h.BaseUnit{2},1);
+                [MultiplierX,UnitX,~] = AFMImage.parse_unit_scale(range(Points),'m',1);
+                h.ImAx(3) = subplot(10,10,[71:78 81:88 91:98]);
+                P = plot(Points.*MultiplierX,Profile.*MultiplierY);
+                grid on
+                CurrentAxHeight = round(h.Fig.Position(4)*h.ImAx(2).Position(4));
+                h.ImAx(3).Color = 'k';
+                h.ImAx(3).LineWidth = 1;
+                h.ImAx(3).FontSize = round(22*(CurrentAxHeight/756));
+                h.ImAx(3).XColor = 'w';
+                h.ImAx(3).YColor = 'w';
+                h.ImAx(3).GridColor = 'w';
+                xlabel(sprintf('[%s]',UnitX))
+                ylabel(sprintf('%s [%s]',h.Channel{2},UnitY))
+                xlim([0 Points(end).*MultiplierX])
+                P.LineWidth = 2;
+                P.Color = 'b';
+            end
+            
+            function draw_image(LeftRight,FullPart)
+                if isequal(LeftRight,'Left')
+                    Index = 1;
+                elseif isequal(LeftRight,'Right')
+                    Index = 2;
+                end
+                BarToImageRatio = 1/5;
+                try
+                    delete(h.ImAx(Index));
+                    delete(h.I(Index));
+                catch
+                end
+                if isequal(FullPart,'FullOne')
+                    h.ImAx(Index) = axes(h.Fig,'Position',[0.1 0.1 .6 .8]);
+                elseif isequal(FullPart,'FullTwo')
+                    if isequal(LeftRight,'Left')
+                    h.ImAx(Index) = axes(h.Fig,'Position',[0.12 0.1 .3 .8]);
+                    else
+                    h.ImAx(Index) = axes(h.Fig,'Position',[.47 0.1 .3 .8]);
+                    end
+                elseif isequal(FullPart,'PartOne')
+                    h.ImAx(Index) = axes(h.Fig,'Position',[0.1 .35 .6 .6]);
+                elseif isequal(FullPart,'PartTwo')
+                    if isequal(LeftRight,'Left')
+                    h.ImAx(Index) = axes(h.Fig,'Position',[0.12 .35 .3 .6]);
+                    else
+                    h.ImAx(Index) = axes(h.Fig,'Position',[0.47 .35 .3 .6]);
+                    end
+                end
+                
+                Class{Index} = obj.get_class_instance(ClassIndex(h.B(15+Index).Value,:));
+                PopUp = Class{Index}.string_of_existing();
+                set(h.B(1+Index),'String',PopUp)
+                
+                if h.B(1+Index).Value > (length(Class{Index}.Channel) + 1)
+                    set(h.B(1+Index),'Value',1)
+                end
+                
+                h.Channel{Index} = h.B(1+Index).String{h.B(1+Index).Value};
+                if isequal(h.Channel{Index},'none')
+                    try
+                        delete(h.ImAx(Index));
+                        delete(h.I(Index));
+                    catch
+                    end
+                    if Index == 1
+                        h.hasChannel1 = 0;
+                    elseif Index == 2
+                        h.hasChannel2 = 0;
+                    end
+                    return
+                else
+                    [Channel,ChannelIndex] = Class{Index}.get_channel(h.Channel{Index});
+                    h.Image{Index} = Channel.Image;
+                    h.BaseUnit{Index} = Channel.Unit;
+                    ColorPattern = Class{Index}.CMap;
+                end
+                
+                CurImage = h.Image{Index};
+                
+                Range = range(CurImage,'all');
+                if Index==1
+                    CutMax = Range*h.Channel1Max + min(CurImage,[],'all');
+                    CutMin = Range*h.Channel1Min + min(CurImage,[],'all');
+                elseif Index==2
+                    CutMax = Range*h.Channel2Max + min(CurImage,[],'all');
+                    CutMin = Range*h.Channel2Min + min(CurImage,[],'all');
+                end
+                CurImage(CurImage>CutMax) = CutMax;
+                CurImage(CurImage<CutMin) = CutMin;
+                
+                [Multiplier,Unit,~] = AFMImage.parse_unit_scale(range(CurImage,'all'),h.BaseUnit{Index},1);
+                h.I(Index) = imshow(CurImage*Multiplier,[],'Colormap',ColorPattern);
+                if Index == 1
+                    h.I(Index).ButtonDownFcn = @get_and_draw_profile_channel_1;
+                else
+                    h.I(Index).ButtonDownFcn = @get_and_draw_profile_channel_2;
+                end
+                hold on
+                CurrentAxHeight = round(h.Fig.Position(4)*h.ImAx(Index).Position(4));
+                CurrentAxWidth = round(h.Fig.Position(3)*h.ImAx(Index).Position(3));
+                AFMImage.draw_scalebar_into_current_image(Channel.NumPixelsX,Channel.NumPixelsY,Channel.ScanSizeX,BarToImageRatio,CurrentAxHeight,CurrentAxWidth);
+                c = colorbar;
+                c.FontSize = round(18*(CurrentAxHeight/756));
+                c.Color = 'w';
+                c.Label.String = sprintf('%s [%s]',h.Channel{Index},Unit);
+                c.Label.FontSize = round(22*(CurrentAxHeight/756));
+                c.Label.Color = 'w';
+            end
+            
+            function changed_slider(varargin)
+                C1Max = get(h.B(8),'value');
+                C1Min = get(h.B(9),'value');
+                C2Max = get(h.B(10),'value');
+                C2Min = get(h.B(11),'value');
+                
+                if C1Max <= C1Min
+                    C1Min = C1Max*0.9;
+                    set(h.B(8),'value',C1Max);
+                    set(h.B(9),'value',C1Min);
+                end
+                if C2Max <= C2Min
+                    C2Min = C2Max*0.9;
+                    set(h.B(10),'value',C2Max);
+                    set(h.B(11),'value',C2Min);
+                end
+                
+                h.Channel1Max = C1Max;
+                h.Channel1Min = C1Min;
+                h.Channel2Max = C2Max;
+                h.Channel2Min = C2Min;
+                
+                draw_channel_1
+                draw_channel_2
+            end
+            
+            function save_figure_to_file(varargin)
+                if h.B(7).Value
+                Frame = print('-RGBImage','-r200');
+                
+                CroppedFrame = Frame(:,1:round(.82*end),:);
+                
+                filter = {'*.png';'*.tif';'*.jpg'};
+                [file, path] = uiputfile(filter);
+                
+                FullFile = fullfile(path,file);
+                imwrite(CroppedFrame,FullFile);
+                else
+                    filter = {'*.png';'*.tif'};
+                    [file, path] = uiputfile(filter);
+                    FullFile = fullfile(path,file);
+                    exportgraphics(h.Fig,FullFile,'Resolution',200,'BackgroundColor','current')
+                end
+            end
+            
+            uiwait(h.Fig)
+        end
+        
+    end
+    methods
         %%%   WARNING! %%%
         % The following methods were programmed for specific use cases
         % and are yet to be generalized! However, you can of course adjust
@@ -2368,6 +2796,48 @@ classdef Experiment < matlab.mixin.Copyable
             
         end
         
+        function [PopUp,ClassIndex] = string_of_existing_class_instances(obj)
+            
+            k = 1;
+            for i=1:obj.NumAFMImages
+                PopUp{k} = sprintf('Image: %s%',obj.I{i}.Name);
+                ClassIndex(k,:) = [1 i];
+                k = k + 1;
+            end
+            for i=1:obj.NumForceMaps
+                PopUp{k} = sprintf('Force Map: %s%',obj.FM{i}.Name);
+                ClassIndex(k,:) = [2 i];
+                k = k + 1;
+            end
+            for i=1:obj.NumReferenceForceMaps
+                PopUp{k} = sprintf('Ref. Force Map: %s%',obj.RefFM{i}.Name);
+                ClassIndex(k,:) = [3 i];
+                k = k + 1;
+            end
+            for i=1:obj.NumCantileverTips
+                PopUp{k} = sprintf('Cant. Tip Image: %s%',obj.CantileverTips{i}.Name);
+                ClassIndex(k,:) = [4 i];
+                k = k + 1;
+            end
+        end
+        
+        function Class = get_class_instance(obj,ClassIndex)
+            
+            if ClassIndex(1) == 1
+                Class = obj.I{ClassIndex(2)};
+            end
+            if ClassIndex(1) == 2
+                Class = obj.FM{ClassIndex(2)};
+            end
+            if ClassIndex(1) == 3
+                Class = obj.RefFM{ClassIndex(2)};
+            end
+            if ClassIndex(1) == 4
+                Class = obj.CantileverTips{ClassIndex(2)};
+            end
+            
+        end
+        
     end
     methods(Static)
         % Static auxilary methods mainly for tip deconvolution (code by Orestis Andriotis)
@@ -2450,161 +2920,351 @@ classdef Experiment < matlab.mixin.Copyable
             uiwait(h.f)
         end
         
-        function [Checked,NumberOfFiles,ExperimentName] = constructor_user_input_parser(isNew,Checked, NumberOfFiles, ExperimentName)
+        function [FileTypes,OutStruct,IsValid] = constructor_user_input_parser(ExperimentName,OS)
             
-            if nargin<1
-                isNew = false;
-            end
+            IsValid = false;
+            OutStruct = struct('FullFile',{cell(1,1),cell(1,1),cell(1,1),cell(1,1),cell(1,1)});
+            FileTypes = zeros(1,5);
+            
+            Initial = what();
+            h.LastFolder = Initial.path;
             
             % Create figure
-            left = 700;
-            bottom = 350;
-            width = 600;
-            height = 375;
-            h.f = figure('Name','Choose Experiment name and which file types have to be loaded','units','pixels','position',[left bottom width height],...
+            left = 0.2;
+            bottom = 0.1;
+            width = .6;
+            height = 0.8;
+            h.f = figure('Name',sprintf('%s: Data loader',ExperimentName),'units','normalized','position',[left bottom width height],...
                 'toolbar','none','menu','none');
             
-            h.name = uibuttongroup('Visible','on','Units','pixels',...
-                'Position',[50 305 500 50]);
-            NameText = uicontrol(h.name,'Style','text','units','pixels',...
-                'position',[25 10 200 25],'string','Name of Experiment');
-            NameEdit = uicontrol(h.name,'Style','edit','units','pixels',...
-                'position',[250 10 200 25],'string','choose a name');
+            % Create texttitles for filetypes
+            c(1) = uicontrol(h.f,'style','text','units','normalized',...
+                'position',[.05 .93 .2 .05],'string','Force/QI Maps',...
+                'FontSize',14);
+            c(2) = uicontrol(h.f,'style','text','units','normalized',...
+                'position',[.05 .75 .2 .05],'string','Reference Force Maps',...
+                'FontSize',14);
+            c(3) = uicontrol(h.f,'style','text','units','normalized',...
+                'position',[.05 .58 .2 .05],'string','AFM Image files',...
+                'FontSize',14);
+            c(4) = uicontrol(h.f,'style','text','units','normalized',...
+                'position',[.05 .39 .2 .05],'string',"Surface Potential Maps",...
+                'FontSize',14);
+            c(5) = uicontrol(h.f,'style','text','units','normalized',...
+                'position',[.05 .21 .2 .05],'string','Cantilever Tip data',...
+                'FontSize',14);
             
-            if ~isNew
-                set(NameEdit,'Enable','off');
-                set(NameEdit,'String','');
-                ExperimentName = [];
+            c(6) = uicontrol(h.f,'style','pushbutton','units','normalized',...
+                'position',[.05 .88 .1 .05],'string','Open Browser',...
+                'Callback',@open_browser);
+            c(7) = uicontrol(h.f,'style','pushbutton','units','normalized',...
+                'position',[.05 .7 .1 .05],'string','Open Browser',...
+                'Callback',@open_browser);
+            c(8) = uicontrol(h.f,'style','pushbutton','units','normalized',...
+                'position',[.05 .53 .1 .05],'string','Open Browser',...
+                'Callback',@open_browser);
+            c(9) = uicontrol(h.f,'style','pushbutton','units','normalized',...
+                'position',[.05 .34 .1 .05],'string',"Open Browser",...
+                'Callback',@open_browser);
+            c(10) = uicontrol(h.f,'style','pushbutton','units','normalized',...
+                'position',[.05 .16 .1 .05],'string','Open Browser',...
+                'Callback',@open_browser);
+            
+            c(11) = uicontrol(h.f,'style','pushbutton','units','normalized',...
+                'position',[.15 .88 .1 .05],'string','Delete Selected',...
+                'Callback',@delete_selected);
+            c(12) = uicontrol(h.f,'style','pushbutton','units','normalized',...
+                'position',[.15 .7 .1 .05],'string','Delete Selected',...
+                'Callback',@delete_selected);
+            c(13) = uicontrol(h.f,'style','pushbutton','units','normalized',...
+                'position',[.15 .53 .1 .05],'string','Delete Selected',...
+                'Callback',@delete_selected);
+            c(14) = uicontrol(h.f,'style','pushbutton','units','normalized',...
+                'position',[.15 .34 .1 .05],'string',"Delete Selected",...
+                'Callback',@delete_selected);
+            c(15) = uicontrol(h.f,'style','pushbutton','units','normalized',...
+                'position',[.15 .16 .1 .05],'string','Delete Selected',...
+                'Callback',@delete_selected);
+            
+            HeightPos = [.82 .64 .46 .28 .1];
+            
+            for i=1:5
+                h.ListBox(i) = uicontrol(h.f,...
+                    'Style','listbox',...
+                    'Max',1000000,'Min',1,...
+                    'Units','normalized',...
+                    'Position',[.3 HeightPos(i) .65 .16]);
             end
             
-            h.bg = uibuttongroup('Visible','off','Units','pixels',...
-                  'Position',[50 85 500 215]);
-            
-            % Create checkboxes for filetypes
-            c(1) = uicontrol(h.bg,'style','checkbox','units','pixels',...
-                'position',[25 165 200 25],'string','Force/QI Maps',...
-                'Callback',@checked_box);
-            c(2) = uicontrol(h.bg,'style','checkbox','units','pixels',...
-                'position',[75 130 200 25],'string','Reference Force Maps',...
-                'Callback',@has_reference_maps);
-            c(3) = uicontrol(h.bg,'style','checkbox','units','pixels',...
-                'position',[25 95 200 25],'string','AFM Image files',...
-                'Callback',@checked_box);
-            c(4) = uicontrol(h.bg,'style','checkbox','units','pixels',...
-                'position',[25 60 200 25],'string',"Surface Potential Maps",...
-                'Callback',@checked_box);
-            c(5) = uicontrol(h.bg,'style','checkbox','units','pixels',...
-                'position',[25 25 200 25],'string','Cantilever Tip data',...
-                'Callback',@checked_box);
-            
-            
-            c(6) = uicontrol(h.bg,'style','edit','units','pixels',...
-                'position',[250 165 200 25],'string','Number of Force/QI Maps');
-            c(7) = uicontrol(h.bg,'style','edit','units','pixels',...
-                'position',[300 130 150 25],'string','Number of Reference Force Maps');
-            c(8) = uicontrol(h.bg,'style','edit','units','pixels',...
-                'position',[250 95 200 25],'string','Number of AFM Images');
-            c(9) = uicontrol(h.bg,'style','edit','units','pixels',...
-                'position',[250 60 200 25],'string',"Number of Surface Potential Maps");
-            c(10) = uicontrol(h.bg,'style','edit','units','pixels',...
-                'position',[250 25 200 25],'string','Number of Cantilevers');
-            
-            set(c([6:10]),'Enable','off')
-            h.bg.Visible = 'on';
+%             if isequal(upper(OS),'PCW')
+                % Get back the java component associated to the axis
+                % NB1: See §3.7.2 of Undocumented Secrets of Matlab Java Programming
+                % NB2: or use findjobj, or javaObjectEDT for drop support onto other component types
+                warning('off')
+                jFrame = get(handle(h.f), 'JavaFrame');
+                warning ('on')
+                jAxis = jFrame.getAxisComponent();
+                % Add listener for drop operations
+                DropListener(jAxis, ... % The component to be observed
+                    'DropFcn', @(s, e)onDrop(h.f, s, e)); % Function to call on drop operation
+                h.DragNDrop = uicontrol(h.f,'style','text','units','normalized',...
+                    'position',[.3 .025 .65 .05],...
+                    'string','Drag and Drop files into boxes (excl. to Windows and Linux) or load from browser',...
+                    'FontSize',18);
+%             end
             
             % Create OK pushbutton
-            h.p = uicontrol('style','pushbutton','units','pixels',...
-                'position',[50 25 200 50],'string','OK',...
+            h.p = uicontrol('style','pushbutton','units','normalized',...
+                'position',[.05 .025 .1 .05],'string','Confirm',...
                 'callback',@p_close);
             % Create cancel button
-            h.Cancel = uicontrol('style','pushbutton','units','pixels',...
-                'position',[300 25 200 50],'string','Cancel',...
+            h.Cancel = uicontrol('style','pushbutton','units','normalized',...
+                'position',[.15 .025 .1 .05],'string','Cancel',...
                 'callback',@pushed_cancel);
-
-            set(c(2),'Enable','off');
             
-            if nargin == 4
-                set(NameEdit,'string',ExperimentName);
-                set(c(find(Checked)),'value',1);
-                set(c(find(Checked)+5),'Enable','on');
-                for i=1:5
-                    set(c(i+5),'string',num2str(NumberOfFiles(i)));
-                end
-            end
-
             function pushed_cancel(varargin)
-                ExperimentName = zeros(10,1);
-                NumberOfFiles = zeros(10,1);
-                Checked = 'Cancel';
+                OutStruct = [];
+                FileTypes = 'Cancel';
+                IsValid = false;
                 close(h.f)
-            end
-            
-            function checked_box(varargin)
-                vals = get(c,'Value');
-                for i=[1 3:5]
-                    if vals{i}
-                        set(c(i+5),'Enable','on');
-                        if i==1
-                            set(c(2),'Enable','on');
-                        end
-                    else
-                        if i==1
-                            set(c(2),'Enable','off');
-                            set(c(2),'value',0);
-                            set(c(7),'Enable','off');
-                        end
-                        set(c(i+5),'Enable','off');
-                    end
-                end
-            end
-            
-            function has_reference_maps(varargin)
-                vals = get(c,'Value');
-                if vals{2}
-                    set(c(7),'Enable','on');
-                else
-                    set(c(7),'Enable','off');
-                end
             end
             
             function p_close(varargin)
-                vals = get(c,'Value');
-                Checked = [vals{[1:5]}];
-                Strings = get(c,'String');
-                NumberOfFiles = zeros(1,5);
-                for i=6:10
-                    CurString = str2num(Strings{i});
-                    if isempty(CurString)
-                        continue
+                for i=1:5
+                    if isempty(OutStruct(i).FullFile{1})
+                        FileTypes(i) = 0;
+                    else
+                        FileTypes(i) = 1;
                     end
-                    NumberOfFiles(i-5) = CurString;
                 end
-                ExperimentName = get(NameEdit,'string');
+                IsValid = true;
                 close(h.f)
             end
-            uiwait(h.f)
-        end
-        
-        function MapFullFile = get_file_paths(PromptString,AllowedFiles,NumFiles)
-            N = NumFiles;
-            MapFullFile = {};
-            k = 1;
-            while length(MapFullFile) < N
-                PromptString = append(PromptString,' %i/%i');
-                Title = sprintf(PromptString,length(MapFullFile),N);
-                [TempFile,TempPath] = uigetfile(AllowedFiles,...
-                    Title,'MultiSelect','on');
-                if  ~iscell(TempFile)
-                    MapFullFile{k} = fullfile(TempPath,TempFile);
+            
+            function onDrop(fig, listener, evtArg) %#ok<INUSL>
+                %[
+                % Get back the dropped data
+                Screen = get(groot);
+                ScreenSize = Screen.ScreenSize;
+                PointerPosition = get(0, 'PointerLocation');
+                RelPointerPosition = PointerPosition./[ScreenSize(3) ScreenSize(4)];
+                Index = which_listbox(RelPointerPosition);
+                if isequal(Index,'invalid')
+                    evtArg.DropComplete(false);
+                    return
+                end
+                data = evtArg.GetTransferableData();
+                
+                % Is it transferable as a list of files
+                if (data.IsTransferableAsFileList)
+                    
+                    TempFileCell = data.TransferAsFileList;
+                    
+                    TempFileCell = sort(TempFileCell);
+
+                    k = 1;
+                    DelIdx = [];
+                    for i=1:length(TempFileCell)
+                        SplitString = split(TempFileCell{i},filesep);
+                        TempTempFile{i} = SplitString{end};
+                        SplitName = split(TempTempFile{i},'.');
+                        FileExtension = SplitName{end};
+                        if ((Index == 1) || (Index == 2)) &&...
+                                (isequal(FileExtension,'jpk-force-map') || isequal(FileExtension,'jpk-qi-data'))
+                            % All Good
+                        elseif ((Index == 3) || (Index == 5)) &&...
+                                (isequal(FileExtension,'jpk'))
+                            % All Good
+                        elseif (Index == 4)&&...
+                                (isequal(FileExtension,'sdf'))
+                            % All Good
+                        else
+                            DelIdx(k) = i;
+                            k = k + 1;
+                        end
+                    end
+                    
+                    if ~isempty(DelIdx)
+                        TempTempFile(DelIdx) = [];
+                        TempFileCell(DelIdx) = [];
+                    end
+                    
+                    k = 1;
+                    if  ~iscell(TempTempFile)
+                        TempFile{1} = TempTempFile;
+                        TempFileCell{k} = fullfile(TempPath,TempFile{1});
+                        k = k + 1;
+                    else
+                        TempFile = TempTempFile';
+                    end
+                    OldFiles = h.ListBox(Index).String;
+                    if ~iscell(OldFiles)
+                        NewFiles = TempFile;
+                    else
+                        NewFiles = cell(length(OldFiles)+length(TempFile),1);
+                        for i=1:length(OldFiles)
+                            NewFiles{i} = OldFiles{i};
+                        end
+                        for i=1:length(TempFile)
+                            NewFiles{i+length(OldFiles)} = TempFile{i};
+                        end
+                    end
+                    
+                    if (length(OutStruct(Index).FullFile) == 1) && isempty(OutStruct(Index).FullFile{1})
+                        OldLength = 0;
+                    else
+                        OldLength = length(OutStruct(Index).FullFile);
+                    end
+                    
+                    for i=1:length(TempFile)
+                        OutStruct(Index).FullFile{i+OldLength} = TempFileCell{i};
+                    end
+                    
+                    
+                    set(h.ListBox(Index),'String',NewFiles)
+                    
+                    % Indicate to the source that drop has completed
+                    evtArg.DropComplete(true);
+                    
+                elseif (data.IsTransferableAsString)
+                    
+                    % Not interested
+                    evtArg.DropComplete(false);
+                    
+                else
+                    
+                    % Not interested
+                    evtArg.DropComplete(false);
+                    
+                end
+                %]
+            end
+            
+            function open_browser(varargin)
+                
+                ButtonPos = get(varargin{2}.Source,'InnerPosition');
+                switch ButtonPos(2)
+                    case .16
+                        Index = 5;
+                        AllowedFiles = {'*.jpk',...
+                            'Valid Types (*.jpk)'};
+                    case .34
+                        Index = 4;
+                        AllowedFiles = {'*.sdf',...
+                            'Valid Types (*.sdf)'};
+                    case .53
+                        Index = 3;
+                        AllowedFiles = {'*.jpk',...
+                            'Valid Types (*.jpk)'};
+                    case .7
+                        Index = 2;
+                        AllowedFiles = {'*.jpk-force-map;*.jpk-qi-data',...
+                            'Valid Types (*.jpk-force-map,*.jpk-qi-data)'};
+                    case .88
+                        Index = 1;
+                        AllowedFiles = {'*.jpk-force-map;*.jpk-qi-data',...
+                            'Valid Types (*.jpk-force-map,*.jpk-qi-data)'};
+                end
+                
+                current = what();
+                cd(h.LastFolder)
+                [TempTempFile,TempPath] = uigetfile(AllowedFiles,...
+                    'MultiSelect','on');
+                if isempty(TempTempFile)
+                    return
+                end
+                k = 1;
+                if  ~iscell(TempTempFile)
+                    TempFile{1} = TempTempFile;
+                    TempFileCell{k} = fullfile(TempPath,TempFile{1});
                     k = k + 1;
                 else
+                    TempFile = TempTempFile';
                     for i=1:length(TempFile)
-                        MapFullFile{k} = fullfile(TempPath,TempFile{i});
+                        TempFileCell{k} = fullfile(TempPath,TempFile{i});
                         k = k + 1;
                     end
                 end
-                clear TempFile
+                h.LastFolder = TempPath;
+                cd(current.path)
+                OldFiles = h.ListBox(Index).String;
+                if ~iscell(OldFiles)
+                    NewFiles = TempFile;
+                else
+                    NewFiles = cell(length(OldFiles)+length(TempFile),1);
+                    for i=1:length(OldFiles)
+                        NewFiles{i} = OldFiles{i};
+                    end
+                    for i=1:length(TempFile)
+                        NewFiles{i+length(OldFiles)} = TempFile{i};
+                    end
+                end
+                
+                if (length(OutStruct(Index).FullFile) == 1) && isempty(OutStruct(Index).FullFile{1})
+                    OldLength = 0;
+                else
+                    OldLength = length(OutStruct(Index).FullFile);
+                end
+                
+                for i=1:length(TempFile)
+                    OutStruct(Index).FullFile{i+OldLength} = TempFileCell{i};
+                end
+                
+                
+                set(h.ListBox(Index),'String',NewFiles)
+                OutStruct(Index).FullFile
             end
+            
+            function delete_selected(varargin)
+                
+                ButtonPos = get(varargin{2}.Source,'InnerPosition');
+                switch ButtonPos(2)
+                    case .16
+                        Index = 5;
+                    case .34
+                        Index = 4;
+                    case .53
+                        Index = 3;
+                    case .7
+                        Index = 2;
+                    case .88
+                        Index = 1;
+                end
+                
+                OldString = get(h.ListBox(Index),'String');
+                DeleteIdx = get(h.ListBox(Index),'Value');
+                OldString(DeleteIdx) = [];
+                OutStruct(Index).FullFile(DeleteIdx) = [];
+                
+                set(h.ListBox(Index),'Value',1); 
+                set(h.ListBox(Index),'String',OldString);    
+                OutStruct(Index).FullFile
+            end
+            
+            function FileTypeIndex = which_listbox(PPos)
+                
+                FigPos = get(h.f,'Position');
+                
+                for i=1:5
+                    Pos = get(h.ListBox(i),'InnerPosition');
+                    Pos(1) = Pos(1)*FigPos(3) + FigPos(1);
+                    Pos(2) = Pos(2)*FigPos(4) + FigPos(2);
+                    Pos(3) = Pos(1)*FigPos(3) + FigPos(1);
+                    Pos(4) = Pos(2)*FigPos(4) + FigPos(2);
+                    if (PPos(1) <= (Pos(1)+Pos(3)*FigPos(3))) &&...
+                            (PPos(2) <= (Pos(2)+Pos(4)*FigPos(4))) &&...
+                            (PPos(1) >= Pos(1)) &&...
+                            (PPos(2) >= Pos(2))
+                        FileTypeIndex = i;
+                        return
+                    else
+                        FileTypeIndex = 'invalid';
+                    end
+                end
+                
+            end
+            
+            uiwait(h.f)
         end
         
     end

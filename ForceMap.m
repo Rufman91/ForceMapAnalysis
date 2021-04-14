@@ -960,7 +960,9 @@ classdef ForceMap < matlab.mixin.Copyable
                     catch
                         EMod = nan;
                         Hertzfit.a = 0;
-                        Hertzfit.b = 0;
+                        if AllowXShift
+                            Hertzfit.b = 0;
+                        end
                     end
                 elseif isequal(shape,'spherical')
                 elseif isequal(shape,'conical')
