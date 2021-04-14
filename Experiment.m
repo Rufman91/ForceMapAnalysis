@@ -1361,6 +1361,474 @@ classdef Experiment < matlab.mixin.Copyable
         
     end
     methods
+        % Methods for data visualization spanning all the data
+       
+        function show_image(obj)
+            % TODO: implement ui elements for customization
+            
+            h.Fig = figure('Name',sprintf('%s',obj.ExperimentName),...
+                'Units','pixels',...
+                'Position',[200 200 1024 512],...
+                'Color','k');
+            
+            h.B(1) = uicontrol('style','togglebutton',...
+                'String','Cross Section',...
+                'units','normalized',...
+                'position',[.85 .5 .1 .05],...
+                'Callback',@cross_section_toggle);
+            
+            [ClassPopUp,ClassIndex] = obj.string_of_existing_class_instances();
+            Class{1} = obj.get_class_instance(ClassIndex(1,:));
+            Class{2} = obj.get_class_instance(ClassIndex(1,:));
+            PopUp = Class{1}.string_of_existing();
+            
+            h.B(4) = uicontrol('style','text',...
+                'String','Channel 1',...
+                'units','normalized',...
+                'position',[.85 .9 .15 .05]);
+            
+            
+            h.B(16) = uicontrol('style','popupmenu',...
+                'String',ClassPopUp,...
+                'units','normalized',...
+                'position',[.85 .85 .15 .05],...
+                'Callback',@draw_channel_1);
+            
+            h.B(2) = uicontrol('style','popupmenu',...
+                'String',PopUp,...
+                'units','normalized',...
+                'position',[.85 .8 .1 .05],...
+                'Callback',@draw_channel_1);
+            
+            h.B(5) = uicontrol('style','text',...
+                'String','Channel 2',...
+                'units','normalized',...
+                'position',[.85 .7 .15 .05]);
+            
+            h.B(17) = uicontrol('style','popupmenu',...
+                'String',ClassPopUp,...
+                'units','normalized',...
+                'position',[.85 .65 .15 .05],...
+                'Callback',@draw_channel_2);
+            
+            h.B(3) = uicontrol('style','popupmenu',...
+                'String',PopUp,...
+                'units','normalized',...
+                'position',[.85 .6 .1 .05],...
+                'Callback',@draw_channel_2);
+            
+            h.B(6) = uicontrol('style','pushbutton',...
+                'String','Save Figure',...
+                'units','normalized',...
+                'position',[.85 .1 .1 .05],...
+                'Callback',@save_figure_to_file);
+            
+            h.B(7) = uicontrol('style','checkbox',...
+                'String','...with white background',...
+                'units','normalized',...
+                'position',[.85 .05 .1 .04]);
+            
+            h.B(8) = uicontrol('style','slider',...
+                'Value',1,...
+                'Units','normalized',...
+                'Position',[.85 .78 .1 .02],...
+                'Callback',@changed_slider);
+            
+            h.B(9) = uicontrol('style','slider',...
+                'Value',0,...
+                'Units','normalized',...
+                'Position',[.85 .76 .1 .02],...
+                'Callback',@changed_slider);
+            
+            h.B(10) = uicontrol('style','slider',...
+                'Value',1,...
+                'Units','normalized',...
+                'Position',[.85 .58 .1 .02],...
+                'Callback',@changed_slider);
+            
+            h.B(11) = uicontrol('style','slider',...
+                'Value',0,...
+                'Units','normalized',...
+                'Position',[.85 .56 .1 .02],...
+                'Callback',@changed_slider);
+            
+            h.B(12) = uicontrol('style','text',...
+                'String','Max',...
+                'Units','normalized',...
+                'Position',[.95 .78 .03 .02]);
+            
+            h.B(13) = uicontrol('style','text',...
+                'String','Min',...
+                'Units','normalized',...
+                'Position',[.95 .76 .03 .02]);
+            
+            h.B(14) = uicontrol('style','text',...
+                'String','Max',...
+                'Units','normalized',...
+                'Position',[.95 .58 .03 .02]);
+            
+            h.B(15) = uicontrol('style','text',...
+                'String','Min',...
+                'Units','normalized',...
+                'Position',[.95 .56 .03 .02]);
+            
+            h.Channel1Max = 1;
+            h.Channel1Min = 0;
+            h.Channel2Max = 1;
+            h.Channel2Min = 0;
+            
+            h.Line = [];
+            h.hasCrossSection = 0;
+            h.hasChannel2 = 0;
+            [~,DefIndex] = Class{1}.get_channel('Processed');
+            if isempty(DefIndex)
+                DefIndex = 2;
+            else
+                DefIndex = DefIndex + 1;
+            end
+            h.B(2).Value = DefIndex;
+            draw_channel_1
+            
+            function cross_section_toggle(varargin)
+                h.hasCrossSection = ~h.hasCrossSection;
+                try
+                    delete(h.ImAx(3));
+                catch
+                end
+                draw_channel_1
+                draw_channel_2
+            end
+            
+            function draw_channel_1(varargin)
+                LeftRight = 'Left';
+                if h.hasChannel2 && h.hasCrossSection
+                    FullPart = 'PartTwo';
+                elseif h.hasChannel2 && ~h.hasCrossSection
+                    FullPart = 'FullTwo';
+                elseif ~h.hasChannel2 && h.hasCrossSection
+                    FullPart = 'PartOne';
+                elseif ~h.hasChannel2 && ~h.hasCrossSection
+                    FullPart = 'FullOne';
+                end
+                h.hasChannel1 = true;
+                draw_image(LeftRight,FullPart)
+                if isequal(h.Channel{1},'none')
+                    h.hasChannel1 = false;
+                end
+                if h.hasChannel2 && ~h.OnePass
+                    h.OnePass = true;
+                    draw_channel_2
+                end
+                h.OnePass = false;
+            end
+            
+            function draw_channel_2(varargin)
+                LeftRight = 'Right';
+                if h.hasChannel1 && h.hasCrossSection
+                    FullPart = 'PartTwo';
+                elseif h.hasChannel1 && ~h.hasCrossSection
+                    FullPart = 'FullTwo';
+                elseif ~h.hasChannel1 && h.hasCrossSection
+                    FullPart = 'PartOne';
+                elseif ~h.hasChannel1 && ~h.hasCrossSection
+                    FullPart = 'FullOne';
+                end
+                h.hasChannel2 = true;
+                draw_image(LeftRight,FullPart)
+                if isequal(h.Channel{2},'none')
+                    h.hasChannel2 = false;
+                end
+                if h.hasChannel1 && ~h.OnePass
+                    h.OnePass = true;
+                    draw_channel_1
+                end
+                h.OnePass = false;
+            end
+            
+            function moving_cross_section_channel_1(src,evt)
+                evname = evt.EventName;
+                if ~get(h.B(1),'Value')
+                    return
+                end
+                Pos1 = [h.Line.Position(1,1) h.Line.Position(1,2)];
+                Pos2 = [h.Line.Position(2,1) h.Line.Position(2,2)];
+                Profile = improfile(h.Image{1},[Pos1(1) Pos2(1)],[Pos1(2) Pos2(2)]);
+                Len = norm(Pos1-Pos2)/Class{1}.NumPixelsX*Class{1}.ScanSizeX;
+                Points = [0:1/(length(Profile)-1):1].*Len;
+                [MultiplierY,UnitY,~] = AFMImage.parse_unit_scale(range(Profile),h.BaseUnit{1},1);
+                [MultiplierX,UnitX,~] = AFMImage.parse_unit_scale(range(Points),'m',1);
+                h.ImAx(3) = subplot(10,10,[71:78 81:88 91:98]);
+                P = plot(Points.*MultiplierX,Profile.*MultiplierY);
+                grid on
+                CurrentAxHeight = round(h.Fig.Position(4)*h.ImAx(1).Position(4));
+                h.ImAx(3).Color = 'k';
+                h.ImAx(3).LineWidth = 1;
+                h.ImAx(3).FontSize = round(22*(CurrentAxHeight/756));
+                h.ImAx(3).XColor = 'w';
+                h.ImAx(3).YColor = 'w';
+                h.ImAx(3).GridColor = 'w';
+                xlabel(sprintf('[%s]',UnitX))
+                ylabel(sprintf('%s [%s]',h.Channel{1},UnitY))
+                xlim([0 Points(end).*MultiplierX])
+                P.LineWidth = 2;
+                P.Color = 'b';
+            end
+            
+            function moving_cross_section_channel_2(src,evt)
+                evname = evt.EventName;
+                if ~get(h.B(1),'Value')
+                    return
+                end
+                Pos1 = [h.Line.Position(1,1) h.Line.Position(1,2)];
+                Pos2 = [h.Line.Position(2,1) h.Line.Position(2,2)];
+                if norm(Pos1-Pos2)==0
+                    get_and_draw_profile;
+                    return
+                end
+                Profile = improfile(h.Image{2},[Pos1(1) Pos2(1)],[Pos1(2) Pos2(2)]);
+                Len = norm(Pos1-Pos2)/Class{2}.NumPixelsX*Class{2}.ScanSizeX;
+                Points = [0:1/(length(Profile)-1):1].*Len;
+                [MultiplierY,UnitY,~] = AFMImage.parse_unit_scale(range(Profile),h.BaseUnit{2},1);
+                [MultiplierX,UnitX,~] = AFMImage.parse_unit_scale(range(Points),'m',1);
+                h.ImAx(3) = subplot(10,10,[71:78 81:88 91:98]);
+                P = plot(Points.*MultiplierX,Profile.*MultiplierY);
+                grid on
+                CurrentAxHeight = round(h.Fig.Position(4)*h.ImAx(2).Position(4));
+                h.ImAx(3).Color = 'k';
+                h.ImAx(3).LineWidth = 1;
+                h.ImAx(3).FontSize = round(22*(CurrentAxHeight/756));
+                h.ImAx(3).XColor = 'w';
+                h.ImAx(3).YColor = 'w';
+                h.ImAx(3).GridColor = 'w';
+                xlabel(sprintf('[%s]',UnitX))
+                ylabel(sprintf('%s [%s]',h.Channel{2},UnitY))
+                xlim([0 Points(end).*MultiplierX])
+                P.LineWidth = 2;
+                P.Color = 'b';
+            end
+            
+            function get_and_draw_profile_channel_1(varargin)
+                if ~get(h.B(1),'Value')
+                    return
+                end
+                if ~isempty(h.Line)
+                    if ~isvalid(h.Line)
+                        h.Line = [];
+                    end
+                end
+                h.Line.Visible = 'off';
+                h.Line = drawline('Color','b','Parent',h.ImAx(1));
+                addlistener(h.Line,'MovingROI',@moving_cross_section_channel_1);
+                addlistener(h.Line,'ROIMoved',@moving_cross_section_channel_1);
+                Pos1 = [h.Line.Position(1,1) h.Line.Position(1,2)];
+                Pos2 = [h.Line.Position(2,1) h.Line.Position(2,2)];
+                if norm(Pos1-Pos2)==0
+                    get_and_draw_profile_channel_1;
+                    return
+                end
+                Profile = improfile(h.Image{1},[Pos1(1) Pos2(1)],[Pos1(2) Pos2(2)]);
+                Len = norm(Pos1-Pos2)/Class{1}.NumPixelsX*Class{1}.ScanSizeX;
+                Points = [0:1/(length(Profile)-1):1].*Len;
+                [MultiplierY,UnitY,~] = AFMImage.parse_unit_scale(range(Profile),h.BaseUnit{1},1);
+                [MultiplierX,UnitX,~] = AFMImage.parse_unit_scale(range(Points),'m',1);
+                h.ImAx(3) = subplot(10,10,[71:78 81:88 91:98]);
+                P = plot(Points.*MultiplierX,Profile.*MultiplierY);
+                grid on
+                CurrentAxHeight = round(h.Fig.Position(4)*h.ImAx(1).Position(4));
+                h.ImAx(3).Color = 'k';
+                h.ImAx(3).LineWidth = 1;
+                h.ImAx(3).FontSize = round(22*(CurrentAxHeight/756));
+                h.ImAx(3).XColor = 'w';
+                h.ImAx(3).YColor = 'w';
+                h.ImAx(3).GridColor = 'w';
+                xlabel(sprintf('[%s]',UnitX))
+                ylabel(sprintf('%s [%s]',h.Channel{1},UnitY))
+                xlim([0 Points(end).*MultiplierX])
+                P.LineWidth = 2;
+                P.Color = 'b';
+            end
+            
+            function get_and_draw_profile_channel_2(varargin)
+                if ~get(h.B(1),'Value')
+                    return
+                end
+                if ~isempty(h.Line)
+                    if ~isvalid(h.Line)
+                        h.Line = [];
+                    end
+                end
+                h.Line.Visible = 'off';
+                h.Line = drawline('Color','b','Parent',h.ImAx(2));
+                addlistener(h.Line,'MovingROI',@moving_cross_section_channel_2);
+                addlistener(h.Line,'ROIMoved',@moving_cross_section_channel_2);
+                Pos1 = [h.Line.Position(1,1) h.Line.Position(1,2)];
+                Pos2 = [h.Line.Position(2,1) h.Line.Position(2,2)];
+                if norm(Pos1-Pos2)==0
+                    get_and_draw_profile_channel_2;
+                    return
+                end
+                Profile = improfile(h.Image{2},[Pos1(1) Pos2(1)],[Pos1(2) Pos2(2)]);
+                Len = norm(Pos1-Pos2)/Class{2}.NumPixelsX*Class{2}.ScanSizeX;
+                Points = [0:1/(length(Profile)-1):1].*Len;
+                [MultiplierY,UnitY,~] = AFMImage.parse_unit_scale(range(Profile),h.BaseUnit{2},1);
+                [MultiplierX,UnitX,~] = AFMImage.parse_unit_scale(range(Points),'m',1);
+                h.ImAx(3) = subplot(10,10,[71:78 81:88 91:98]);
+                P = plot(Points.*MultiplierX,Profile.*MultiplierY);
+                grid on
+                CurrentAxHeight = round(h.Fig.Position(4)*h.ImAx(2).Position(4));
+                h.ImAx(3).Color = 'k';
+                h.ImAx(3).LineWidth = 1;
+                h.ImAx(3).FontSize = round(22*(CurrentAxHeight/756));
+                h.ImAx(3).XColor = 'w';
+                h.ImAx(3).YColor = 'w';
+                h.ImAx(3).GridColor = 'w';
+                xlabel(sprintf('[%s]',UnitX))
+                ylabel(sprintf('%s [%s]',h.Channel{2},UnitY))
+                xlim([0 Points(end).*MultiplierX])
+                P.LineWidth = 2;
+                P.Color = 'b';
+            end
+            
+            function draw_image(LeftRight,FullPart)
+                if isequal(LeftRight,'Left')
+                    Index = 1;
+                elseif isequal(LeftRight,'Right')
+                    Index = 2;
+                end
+                BarToImageRatio = 1/5;
+                try
+                    delete(h.ImAx(Index));
+                    delete(h.I(Index));
+                catch
+                end
+                if isequal(FullPart,'FullOne')
+                    h.ImAx(Index) = axes(h.Fig,'Position',[0.1 0.1 .6 .8]);
+                elseif isequal(FullPart,'FullTwo')
+                    if isequal(LeftRight,'Left')
+                    h.ImAx(Index) = axes(h.Fig,'Position',[0.12 0.1 .3 .8]);
+                    else
+                    h.ImAx(Index) = axes(h.Fig,'Position',[.47 0.1 .3 .8]);
+                    end
+                elseif isequal(FullPart,'PartOne')
+                    h.ImAx(Index) = axes(h.Fig,'Position',[0.1 .35 .6 .6]);
+                elseif isequal(FullPart,'PartTwo')
+                    if isequal(LeftRight,'Left')
+                    h.ImAx(Index) = axes(h.Fig,'Position',[0.12 .35 .3 .6]);
+                    else
+                    h.ImAx(Index) = axes(h.Fig,'Position',[0.47 .35 .3 .6]);
+                    end
+                end
+                
+                Class{Index} = obj.get_class_instance(ClassIndex(h.B(15+Index).Value,:));
+                PopUp = Class{Index}.string_of_existing();
+                set(h.B(1+Index),'String',PopUp)
+                
+                if h.B(1+Index).Value > (length(Class{Index}.Channel) + 1)
+                    set(h.B(1+Index),'Value',1)
+                end
+                
+                h.Channel{Index} = h.B(1+Index).String{h.B(1+Index).Value};
+                if isequal(h.Channel{Index},'none')
+                    try
+                        delete(h.ImAx(Index));
+                        delete(h.I(Index));
+                    catch
+                    end
+                    if Index == 1
+                        h.hasChannel1 = 0;
+                    elseif Index == 2
+                        h.hasChannel2 = 0;
+                    end
+                    return
+                else
+                    [Channel,ChannelIndex] = Class{Index}.get_channel(h.Channel{Index});
+                    h.Image{Index} = Channel.Image;
+                    h.BaseUnit{Index} = Channel.Unit;
+                    ColorPattern = Class{Index}.CMap;
+                end
+                
+                CurImage = h.Image{Index};
+                
+                Range = range(CurImage,'all');
+                if Index==1
+                    CutMax = Range*h.Channel1Max + min(CurImage,[],'all');
+                    CutMin = Range*h.Channel1Min + min(CurImage,[],'all');
+                elseif Index==2
+                    CutMax = Range*h.Channel2Max + min(CurImage,[],'all');
+                    CutMin = Range*h.Channel2Min + min(CurImage,[],'all');
+                end
+                CurImage(CurImage>CutMax) = CutMax;
+                CurImage(CurImage<CutMin) = CutMin;
+                
+                [Multiplier,Unit,~] = AFMImage.parse_unit_scale(range(CurImage,'all'),h.BaseUnit{Index},1);
+                h.I(Index) = imshow(CurImage*Multiplier,[],'Colormap',ColorPattern);
+                if Index == 1
+                    h.I(Index).ButtonDownFcn = @get_and_draw_profile_channel_1;
+                else
+                    h.I(Index).ButtonDownFcn = @get_and_draw_profile_channel_2;
+                end
+                hold on
+                CurrentAxHeight = round(h.Fig.Position(4)*h.ImAx(Index).Position(4));
+                CurrentAxWidth = round(h.Fig.Position(3)*h.ImAx(Index).Position(3));
+                AFMImage.draw_scalebar_into_current_image(Channel.NumPixelsX,Channel.NumPixelsY,Channel.ScanSizeX,BarToImageRatio,CurrentAxHeight,CurrentAxWidth);
+                c = colorbar;
+                c.FontSize = round(18*(CurrentAxHeight/756));
+                c.Color = 'w';
+                c.Label.String = sprintf('%s [%s]',h.Channel{Index},Unit);
+                c.Label.FontSize = round(22*(CurrentAxHeight/756));
+                c.Label.Color = 'w';
+            end
+            
+            function changed_slider(varargin)
+                C1Max = get(h.B(8),'value');
+                C1Min = get(h.B(9),'value');
+                C2Max = get(h.B(10),'value');
+                C2Min = get(h.B(11),'value');
+                
+                if C1Max <= C1Min
+                    C1Min = C1Max*0.9;
+                    set(h.B(8),'value',C1Max);
+                    set(h.B(9),'value',C1Min);
+                end
+                if C2Max <= C2Min
+                    C2Min = C2Max*0.9;
+                    set(h.B(10),'value',C2Max);
+                    set(h.B(11),'value',C2Min);
+                end
+                
+                h.Channel1Max = C1Max;
+                h.Channel1Min = C1Min;
+                h.Channel2Max = C2Max;
+                h.Channel2Min = C2Min;
+                
+                draw_channel_1
+                draw_channel_2
+            end
+            
+            function save_figure_to_file(varargin)
+                if h.B(7).Value
+                Frame = print('-RGBImage','-r200');
+                
+                CroppedFrame = Frame(:,1:round(.82*end),:);
+                
+                filter = {'*.png';'*.tif';'*.jpg'};
+                [file, path] = uiputfile(filter);
+                
+                FullFile = fullfile(path,file);
+                imwrite(CroppedFrame,FullFile);
+                else
+                    filter = {'*.png';'*.tif'};
+                    [file, path] = uiputfile(filter);
+                    FullFile = fullfile(path,file);
+                    exportgraphics(h.Fig,FullFile,'Resolution',200,'BackgroundColor','current')
+                end
+            end
+            
+            uiwait(h.Fig)
+        end
+        
+    end
+    methods
         %%%   WARNING! %%%
         % The following methods were programmed for specific use cases
         % and are yet to be generalized! However, you can of course adjust
@@ -2337,6 +2805,48 @@ classdef Experiment < matlab.mixin.Copyable
             
             fclose(fid);
             cd(Current.path);
+            
+        end
+        
+        function [PopUp,ClassIndex] = string_of_existing_class_instances(obj)
+            
+            k = 1;
+            for i=1:obj.NumAFMImages
+                PopUp{k} = sprintf('Image: %s%',obj.I{i}.Name);
+                ClassIndex(k,:) = [1 i];
+                k = k + 1;
+            end
+            for i=1:obj.NumForceMaps
+                PopUp{k} = sprintf('Force Map: %s%',obj.FM{i}.Name);
+                ClassIndex(k,:) = [2 i];
+                k = k + 1;
+            end
+            for i=1:obj.NumReferenceForceMaps
+                PopUp{k} = sprintf('Ref. Force Map: %s%',obj.RefFM{i}.Name);
+                ClassIndex(k,:) = [3 i];
+                k = k + 1;
+            end
+            for i=1:obj.NumCantileverTips
+                PopUp{k} = sprintf('Cant. Tip Image: %s%',obj.CantileverTips{i}.Name);
+                ClassIndex(k,:) = [4 i];
+                k = k + 1;
+            end
+        end
+        
+        function Class = get_class_instance(obj,ClassIndex)
+            
+            if ClassIndex(1) == 1
+                Class = obj.I{ClassIndex(2)};
+            end
+            if ClassIndex(1) == 2
+                Class = obj.FM{ClassIndex(2)};
+            end
+            if ClassIndex(1) == 3
+                Class = obj.RefFM{ClassIndex(2)};
+            end
+            if ClassIndex(1) == 4
+                Class = obj.CantileverTips{ClassIndex(2)};
+            end
             
         end
         
