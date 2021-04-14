@@ -805,7 +805,7 @@ classdef Experiment < matlab.mixin.Copyable
             obj.write_to_log_file('Reference Slope Option',RefSlopeOption)
             
             % Deconvoluting cantilever tip(s)
-            if isequal(lower(EModOption),'oliver')
+
                 if obj.NumCantileverTips == 0
                     Warn = warndlg('You need to load in TGT-1 images of your cantilever for this kind of analysis');
                     uiwait(Warn);
@@ -826,7 +826,7 @@ classdef Experiment < matlab.mixin.Copyable
                         obj.CantileverTips{obj.WhichTip(i)}.deconvolute_cantilever_tip;
                     end
                 end
-            end
+
             
      
             

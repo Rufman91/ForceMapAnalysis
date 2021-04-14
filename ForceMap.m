@@ -1108,7 +1108,7 @@ classdef ForceMap < matlab.mixin.Copyable
 
 
                         EModMicrorheology(i,j) = sqrt(pi/obj.IndentArea(i))*1/2*...
-                            (1-obj.PoissonR^2)*sin(obj.DeltaPhi)*...
+                            (1-obj.PoissonR^2)*sin(obj.DeltaPhi{i,j})*...
                             (obj.SineVarsF{i,j}(1)/obj.SineVarsH{i,j}(1));
                         
                         if EModMicrorheology(i,j) <= 0
@@ -1121,12 +1121,12 @@ classdef ForceMap < matlab.mixin.Copyable
                 end
             end
             
-            obj.EModMircorheology = EModMicrorheology;
-            % Write values into EModMapMircorheology
+            obj.EModMicrorheology = EModMicrorheology;
+            % Write values into EModMapMicrorheology
             
             for i=1:obj.NumProfiles
                 for j=1:obj.NumPoints
-                    obj.EModMapMircorheology(i,j,1) = obj.EModMircorheology(obj.Map2List(i,j));
+                    obj.EModMapMicrorheology(i,j,1) = obj.EModMicrorheology(obj.Map2List(i,j));
                 end
             end
         end
