@@ -747,6 +747,139 @@ classdef Experiment < matlab.mixin.Copyable
             obj.write_to_log_file('','','end')
         end
         
+        function force_map_analysis_microrheology(obj,CPOption,EModOption)
+            % force_map_analysis_microrheology(obj,CPOption,EModOption)
+            %
+            % CPOption = 'Snap-In' ... Preferred Option for data with
+            % snap-in effect
+            % CPOption = 'Fast' ...(Default) contact point estimation through single
+            % pass through CNN
+            % CPOption = 'Dropout' ... contact point estimation through
+            % averaging over multiple passes through monte carlo dropout
+            % net. NPasses (Default=100) times slower than 'Fast'
+            % CPOption = 'Zoom' ... CNN-based method (still in development)
+            % CPOption = 'ZoomDrop' ... CNN-based method (still in development)
+            %%%%%% RECOMMENDED %%%%%%
+            % CPOption = 'Zoomsweep' ... CNN-based method
+            %%%%%% RECOMMENDED %%%%%%
+            % CPOption = 'Old' ... old method for contact point estimation 
+            % CPOption = 'RoV' ... RoV method for contact point estimation
+            % CPOption = 'GoF' ... GoF method for contact point estimation
+            % CPOption = 'Combo' ... RoV and GoF combined method for contact point estimation
+            % CPOption = 'Manual' ... go through manual CP determination for contact point estimation
+            %
+            % EModOption = 'Hertz' ... E-Modulus calculation through Hertz-Sneddon
+            % method
+            % EModOption = 'Oliver' ... E-Modulus calculation through
+            % Oliver-Pharr-like method (O. Andriotis 2014)
+            
+            obj.write_to_log_file('Analysis Function','force_map_analysis_general()','start')
+            obj.write_to_log_file('Contact Point Option',CPOption)
+            obj.write_to_log_file('EMod Option',EModOption)
+            
+            h = waitbar(0,'setting up','Units','normalized','Position',[0.4 0.3 0.2 0.1]);
+            NLoop = obj.NumForceMaps;
+            if sum(obj.FMFlag.ForceMapAnalysis) >= 1
+                KeepFlagged = questdlg(sprintf('Some maps have been processed already.\nDo you want to skip them and keep old results?'),...
+                    'Processing Options',...
+                    'Yes',...
+                    'No',...
+                    'No');
+            else
+                KeepFlagged = 'No';
+            end
+            
+            % Setting and calculating preferred method of reference slope
+            obj.reference_slope_parser(1)
+            
+            if obj.ReferenceSlopeFlag.SetAllToValue
+                RefSlopeOption = 'SetAllToValue';
+            elseif obj.ReferenceSlopeFlag.UserInput
+                RefSlopeOption = 'UserInput';
+            elseif obj.ReferenceSlopeFlag.FromRefFM
+                RefSlopeOption = 'FromRefFM';
+            elseif obj.ReferenceSlopeFlag.FromArea
+                RefSlopeOption = 'FromArea';
+            elseif obj.ReferenceSlopeFlag.AutomaticFibril
+                RefSlopeOption = 'AutomaticFibril';
+            elseif obj.ReferenceSlopeFlag.Automatic
+                RefSlopeOption = 'Automatic';
+            end
+            obj.write_to_log_file('Reference Slope Option',RefSlopeOption)
+            
+            % Deconvoluting cantilever tip(s)
+            if isequal(lower(EModOption),'oliver')
+                if obj.NumCantileverTips == 0
+                    Warn = warndlg('You need to load in TGT-1 images of your cantilever for this kind of analysis');
+                    uiwait(Warn);
+                    IsValid = false;
+                    while ~IsValid
+                        UsrInput = inputdlg('How many tips were used in this Experiment?');
+                        NumTips = str2num(UsrInput{1});
+                        IsValid = isnumeric(NumTips)&&~isempty(NumTips);
+                    end
+                    obj.get_paths_and_load_files([0 0 0 0 1],[0 0 0 0 ceil(NumTips)],false);
+                end
+                if ~obj.AssignedCantileverTips
+                    obj.assign_cantilever_tips
+                end
+                % Check if all needed tips are deconvoluted, if not, do it
+                for i=1:obj.NumForceMaps
+                    if ~obj.CantileverTips{obj.WhichTip(i)}.hasDeconvolutedCantileverTip
+                        obj.CantileverTips{obj.WhichTip(i)}.deconvolute_cantilever_tip;
+                    end
+                end
+            end
+            
+            obj.FM{i}.sinus_fit_for_microrheology
+            
+            % Main loop for contact point estimation and E-Modulus calculation
+            for i=1:NLoop
+                if isequal(KeepFlagged,'Yes') && obj.FMFlag.ForceMapAnalysis(i) == 1
+                    continue
+                end
+                waitbar(i/NLoop,h,sprintf('Processing ForceMap %i/%i\nFitting Base Line',i,NLoop));
+                if ~obj.FM{i}.BaseAndTiltFlag
+                    obj.FM{i}.base_and_tilt('linear');
+                if i == 1
+                    obj.write_to_log_file('Baseline and Tilt option','linear')
+                end
+                end
+                
+                % contact point estimation happens here
+                waitbar(i/NLoop,h,sprintf('Processing ForceMap %i/%i\nFinding Contact Point',i,NLoop));
+                obj.cp_option_converter(CPOption,i);
+                
+                % reference slope calculation happens here
+                waitbar(i/NLoop,h,sprintf('Processing ForceMap %i/%i\nProcessing and calculating Reference Slope',i,NLoop));
+                obj.reference_slope_calculator(i);
+                
+                waitbar(i/NLoop,h,sprintf('Processing ForceMap %i/%i\nCalculating E-Modulus',i,NLoop));
+                if isequal(lower(EModOption),'hertz')
+                    AllowXShift = true;
+                    obj.FM{i}.calculate_e_mod_hertz(CPOption,'parabolic',1,AllowXShift);
+                    if i == 1
+                        obj.write_to_log_file('Hertzian Tip-Shape','parabolic')
+                        obj.write_to_log_file('Hertzian CurvePercent','1')
+                        obj.write_to_log_file('Allow X-Shift',AllowXShift)
+                    end
+                else
+                    obj.FM{i}.calculate_e_mod_oliverpharr(obj.CantileverTips{obj.WhichTip(i)}.ProjectedTipArea,0.75);
+                    if i == 1
+                        obj.write_to_log_file('OliverPharr CurvePercent','0.75')
+                    end
+                end
+                waitbar(i/NLoop,h,sprintf('Processing ForceMap %i/%i\nWrapping Up And Saving',i,NLoop));
+                
+                obj.FMFlag.ForceMapAnalysis(i) = 1;
+            end
+            
+            obj.save_experiment;
+            
+            close(h);
+            obj.write_to_log_file('','','end')
+        end
+        
         function image_analysis_base_on_even_background(obj,UpperLim,NIter)
             
             if nargin < 2
