@@ -2957,7 +2957,7 @@ classdef ForceMap < matlab.mixin.Copyable
             %   MaxPointsPerCurve
             clear tline where;
             frewind(fileID);
-            if isequal(obj.FileType,'force-scan-map') && ~isprop(obj,'NumSegments')
+            if isequal(obj.FileType,'force-scan-map') && isempty(obj.NumSegments)
                 B=strfind(A,strcat(obj.FileType,'.settings.force-settings.extend-k-length='));
             elseif isequal(obj.FileType,'quantitative-imaging-map')
                 B=strfind(A,strcat(obj.FileType,'.settings.force-settings.extend.num-points='));
@@ -2969,7 +2969,7 @@ classdef ForceMap < matlab.mixin.Copyable
             
             %   Velocity
             
-            if isequal(obj.FileType,'force-scan-map') && ~isprop(obj,'NumSegments')
+            if isequal(obj.FileType,'force-scan-map') && isempty(obj.NumSegments)
                 clear tline where;
                 frewind(fileID);
                 B=strfind(A,strcat(obj.FileType,'.settings.force-settings.extend-scan-time='));
