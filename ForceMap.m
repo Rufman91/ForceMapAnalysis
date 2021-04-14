@@ -1897,6 +1897,8 @@ classdef ForceMap < matlab.mixin.Copyable
                 t.TileSpacing = 'none'; % To reduce the spacing between the tiles
                 t.Padding = 'none'; % To reduce the padding of perimeter of a tile
                 % Defining variables
+         %       -------- Modify 01/04/21
+                % maybe use while condition!
                 if ii==NumFigures && Remainder~=0
                     NLoop=Remainder;
                 else
@@ -1909,6 +1911,7 @@ classdef ForceMap < matlab.mixin.Copyable
                     if ~obj.SMFSFlag.Uncorrupt(kk)     % Selects all flagged 1 
                     continue
                     end
+          %          ---------- end modify 01/04/21
                     ax=nexttile;
                     ax.XLim = [XMin XMax];
                     ax.YLim = [YMin YMax];

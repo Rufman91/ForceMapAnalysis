@@ -1345,7 +1345,7 @@ classdef Experiment < matlab.mixin.Copyable
             % Adhesion energy
             %if obj.FM{ii}.EnvCond==Condition %&& obj.FM{ii}.Substrate==Substrate
             obj.FM{ii}.fc_adhesion_energy
-                obj.FM{ii}.fc_print_adhenergy_pulllength2(XMin,XMax,YMin,YMax,NumFigures,m,n,Remainder)
+                obj.FM{ii}.fc_print_adhenergy_pulllength(XMin,XMax,YMin,YMax,NumFigures,m,n,Remainder)
                 
             end
         end
