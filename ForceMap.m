@@ -1725,14 +1725,14 @@ classdef ForceMap < matlab.mixin.Copyable
                          FZLoc{i,j} = ZeroCrossF{i,j}+maxF-(DiffF/2);
                          HZLoc{i,j} = ZeroCrossH{i,j}+maxH-(DiffH/2);
 
-                         figure(1)
-                         plot(obj.SegTime{j},FZShift{1,j},'b',  ZeroCrossTimeF{1,j},  ZeroCrossF{1,j}, 'bp')
-                         %hold on
-                         %plot(ZeroCrossTimeF, FZLoc, 'bp')
-                         legend('Data','Approximate Zero-Crossings')
-                         %hold off
-                         grid
-                         title('Force Data and Fitted Curve')
+%                          figure(1)
+%                          plot(obj.SegTime{j},FZShift{1,j},'b',  ZeroCrossTimeF{1,j},  ZeroCrossF{1,j}, 'bp')
+%                          %hold on
+%                          %plot(ZeroCrossTimeF, FZLoc, 'bp')
+%                          legend('Data','Approximate Zero-Crossings')
+%                          %hold off
+%                          grid
+%                          title('Force Data and Fitted Curve')
 
                          % Amplitude
                          AmplitudeF=(DiffF/2);
@@ -1797,11 +1797,11 @@ classdef ForceMap < matlab.mixin.Copyable
                         Y_Fo = obj.SineVarsF{i,j}(1).*(sin(2*pi*x./obj.SineVarsF{i,j}(2) + 2*pi/obj.SineVarsF{i,j}(3)));
                         Y_H = obj.SineVarsH{i,j}(1).*(sin(2*pi*x./obj.SineVarsH{i,j}(2) + 2*pi/obj.SineVarsH{i,j}(3)));
 
-                        figure(4)
-                        plot (x,Y_H,'b', x,Y_Fo,'r')
-                        grid
-                        legend('fitted indentation','fitted force')
-                        title('Fitted Sine Indentation and Force')
+%                         figure(4)
+%                         plot (x,Y_H,'b', x,Y_Fo,'r')
+%                         grid
+%                         legend('fitted indentation','fitted force')
+%                         title('Fitted Sine Indentation and Force')
 
                         % phase shift between indentation and force:
                         obj.DeltaPhi{i,j} = abs(2*pi/obj.SineVarsH{i,j}(3)-2*pi/obj.SineVarsF{i,j}(3));

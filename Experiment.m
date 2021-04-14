@@ -747,8 +747,8 @@ classdef Experiment < matlab.mixin.Copyable
             obj.write_to_log_file('','','end')
         end
         
-        function force_map_analysis_microrheology(obj,CPOption,EModOption)
-            % force_map_analysis_microrheology(obj,CPOption,EModOption)
+        function force_map_analysis_microrheology(obj,CPOption)
+            % force_map_analysis_microrheology(obj,CPOption)
             %
             % CPOption = 'Snap-In' ... Preferred Option for data with
             % snap-in effect
@@ -768,14 +768,11 @@ classdef Experiment < matlab.mixin.Copyable
             % CPOption = 'Combo' ... RoV and GoF combined method for contact point estimation
             % CPOption = 'Manual' ... go through manual CP determination for contact point estimation
             %
-            % EModOption = 'Hertz' ... E-Modulus calculation through Hertz-Sneddon
-            % method
-            % EModOption = 'Oliver' ... E-Modulus calculation through
-            % Oliver-Pharr-like method (O. Andriotis 2014)
+            % EModOption = 'Microrheology'
             
             obj.write_to_log_file('Analysis Function','force_map_analysis_general()','start')
             obj.write_to_log_file('Contact Point Option',CPOption)
-            obj.write_to_log_file('EMod Option',EModOption)
+            %obj.write_to_log_file('EMod Option',EModOption)
             
             h = waitbar(0,'setting up','Units','normalized','Position',[0.4 0.3 0.2 0.1]);
             NLoop = obj.NumForceMaps;
@@ -831,7 +828,7 @@ classdef Experiment < matlab.mixin.Copyable
                 end
             end
             
-            obj.FM{i}.sinus_fit_for_microrheology
+     
             
             % Main loop for contact point estimation and E-Modulus calculation
             for i=1:NLoop
@@ -854,21 +851,17 @@ classdef Experiment < matlab.mixin.Copyable
                 waitbar(i/NLoop,h,sprintf('Processing ForceMap %i/%i\nProcessing and calculating Reference Slope',i,NLoop));
                 obj.reference_slope_calculator(i);
                 
+                % sinus fit for modulation segments
+                obj.FM{i}.sinus_fit_for_microrheology;
+        
+                
                 waitbar(i/NLoop,h,sprintf('Processing ForceMap %i/%i\nCalculating E-Modulus',i,NLoop));
-                if isequal(lower(EModOption),'hertz')
-                    AllowXShift = true;
-                    obj.FM{i}.calculate_e_mod_hertz(CPOption,'parabolic',1,AllowXShift);
-                    if i == 1
-                        obj.write_to_log_file('Hertzian Tip-Shape','parabolic')
-                        obj.write_to_log_file('Hertzian CurvePercent','1')
-                        obj.write_to_log_file('Allow X-Shift',AllowXShift)
-                    end
-                else
-                    obj.FM{i}.calculate_e_mod_oliverpharr(obj.CantileverTips{obj.WhichTip(i)}.ProjectedTipArea,0.75);
-                    if i == 1
-                        obj.write_to_log_file('OliverPharr CurvePercent','0.75')
-                    end
+                obj.FM{i}.calculate_e_mod_microrheology(obj.CantileverTips{obj.WhichTip(i)}.ProjectedTipArea,0.75);
+                if i == 1
+                    obj.write_to_log_file('Microrheology CurvePercent','0.75')
                 end
+         
+                
                 waitbar(i/NLoop,h,sprintf('Processing ForceMap %i/%i\nWrapping Up And Saving',i,NLoop));
                 
                 obj.FMFlag.ForceMapAnalysis(i) = 1;
