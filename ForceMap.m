@@ -67,6 +67,8 @@ classdef ForceMap < matlab.mixin.Copyable
         DeltaPhi        % phase shift between indentation and force
         SineVarsF       % Variables of Force fitted Sine (Amplitude, Phaseshift)
         SineVarsH       % Variables of Height fitted Sine (..)
+        SineFunctionF   % Y-values of Force fitted sine function
+        SineFunctionH   % Y-values of Height fitted sine function
     end
     properties
         % Curve data Properties
@@ -1083,29 +1085,31 @@ classdef ForceMap < matlab.mixin.Copyable
             obj.IndDepth = zeros(obj.NCurves,1);
             obj.IndentArea = zeros(obj.NCurves,1);
             for i=Range'
-                Z = obj.HHRet{i} - obj.CP(i,1);
-                D = (obj.BasedRet{i} - obj.CP(i,2))/obj.SpringConstant;
-                Zmax(i) = max(Z);
-                Dmax(i) = max(D);
-                DCurvePercent = D(D>=(1-CurvePercent)*Dmax(i));
-                ZCurvePercent = Z(1:length(DCurvePercent));
-                LineFit = polyfit(ZCurvePercent,DCurvePercent,1);
-                obj.DZslope(i) = LineFit(1);
-                Hmax(i) = Zmax(i) - Dmax(i);
-                dD = Dmax(i) - (1-CurvePercent)*Dmax(i);
-                dh = dD*(1./obj.DZslope(i) - 1/(obj.RefSlope));
-                df = dD*obj.SpringConstant;
-                obj.Stiffness(i) = df/dh;
-                Fmax(i) = Dmax(i).*obj.SpringConstant;
-                obj.IndDepth(i) = Hmax(i) - Epsilon.*Fmax(i)/obj.Stiffness(i);
-                % IndentArea is taken as the linear interpolation between
-                % the two numeric values of TipProjArea the Hc(i) falls
-                % inbetween
                 for j=1:obj.NumSegments
+                    Z = obj.HHRet{i} - obj.CP(i,1);
+                    D = (obj.BasedRet{i} - obj.CP(i,2))/obj.SpringConstant;
+                    Zmax(i) = max(Z);
+                    Dmax(i) = max(D);
+                    DCurvePercent = D(D>=(1-CurvePercent)*Dmax(i));
+                    ZCurvePercent = Z(1:length(DCurvePercent));
+                    LineFit = polyfit(ZCurvePercent,DCurvePercent,1);
+                    obj.DZslope(i) = LineFit(1);
+                    Hmax(i) = Zmax(i) - Dmax(i);
+                    dD = Dmax(i) - (1-CurvePercent)*Dmax(i);
+                    dh = dD*(1./obj.DZslope(i) - 1/(obj.RefSlope));
+                    df = dD*obj.SpringConstant;
+                    obj.Stiffness(i) = df/dh;
+                    Fmax(i) = Dmax(i).*obj.SpringConstant;
+                    obj.IndDepth(i) = Hmax(i) - Epsilon.*Fmax(i)/obj.Stiffness(i);
+                    % IndentArea is taken as the linear interpolation between
+                    % the two numeric values of TipProjArea the Hc(i) falls
+                    % inbetween
+                    
+                   
+                
                     try
-                        obj.IndentArea(i) = ((1-(obj.IndDepth(i)*1e9-floor(obj.IndDepth(i)*1e9)))*TipProjArea(floor(obj.IndDepth(i)*1e9))...
+                         obj.IndentArea(i) = ((1-(obj.IndDepth(i)*1e9-floor(obj.IndDepth(i)*1e9)))*TipProjArea(floor(obj.IndDepth(i)*1e9))...
                             + (obj.IndDepth(i)*1e9-floor(obj.IndDepth(i)*1e9))*TipProjArea(ceil(obj.IndDepth(i)*1e9)));
-
 
                         EModMicrorheology(i,j) = sqrt(pi/obj.IndentArea(i))*1/2*...
                             (1-obj.PoissonR^2)*sin(obj.DeltaPhi{i,j})*...
@@ -1725,15 +1729,6 @@ classdef ForceMap < matlab.mixin.Copyable
                          FZLoc{i,j} = ZeroCrossF{i,j}+maxF-(DiffF/2);
                          HZLoc{i,j} = ZeroCrossH{i,j}+maxH-(DiffH/2);
 
-%                          figure(1)
-%                          plot(obj.SegTime{j},FZShift{1,j},'b',  ZeroCrossTimeF{1,j},  ZeroCrossF{1,j}, 'bp')
-%                          %hold on
-%                          %plot(ZeroCrossTimeF, FZLoc, 'bp')
-%                          legend('Data','Approximate Zero-Crossings')
-%                          %hold off
-%                          grid
-%                          title('Force Data and Fitted Curve')
-
                          % Amplitude
                          AmplitudeF=(DiffF/2);
                          AmplitudeH=(DiffH/2);
@@ -1769,39 +1764,12 @@ classdef ForceMap < matlab.mixin.Copyable
                          xpH = linspace(min(obj.InterpTimeH{j}),max(obj.InterpTimeH{j}),100000);
 
 
-                         % PLOT figure of fitted indentation data
-
-%                          figure(2)
-%                          plot(obj.SegTime{j},obj.Force{1,j},'b',  xpF,fit(obj.SineVarsF{i,j},xpF), 'r')
-%                          hold on
-%                          plot(ZeroCrossTimeF{1,j}, FZLoc{1,j}, 'bp')
-%                          legend('Data','Fitted sine','Approximate Zero-Crossings')
-%                          hold off
-%                          grid
-%                          title('Force Data and Fitted Curve')
-
-                         % PLOT figure of fitted indentation data
-
-%                          figure(5)
-%                          plot(obj.SegTime{j},obj.Height{1,j},'b',  xpH,fit(obj.SineVarsH{i,j},xpH), 'r')
-%                          hold on
-%                          plot(ZeroCrossTimeH{1,j}, HZLoc{1,j}, 'bp')
-%                          legend('Data','Fitted sine','Approximate Zero-Crossings')
-%                          hold off
-%                          grid
-%                          title('Height Data and Fitted Curve')
-
 
                         %PLOT figure of fitted sine of indentation and force
                         %sine with the fitted parameters for force:
-                        Y_Fo = obj.SineVarsF{i,j}(1).*(sin(2*pi*x./obj.SineVarsF{i,j}(2) + 2*pi/obj.SineVarsF{i,j}(3)));
-                        Y_H = obj.SineVarsH{i,j}(1).*(sin(2*pi*x./obj.SineVarsH{i,j}(2) + 2*pi/obj.SineVarsH{i,j}(3)));
+                        obj.SineFunctionF = obj.SineVarsF{i,j}(1).*(sin(2*pi*x./obj.SineVarsF{i,j}(2) + 2*pi/obj.SineVarsF{i,j}(3)));
+                        obj.SineFunctionH = obj.SineVarsH{i,j}(1).*(sin(2*pi*x./obj.SineVarsH{i,j}(2) + 2*pi/obj.SineVarsH{i,j}(3)));
 
-%                         figure(4)
-%                         plot (x,Y_H,'b', x,Y_Fo,'r')
-%                         grid
-%                         legend('fitted indentation','fitted force')
-%                         title('Fitted Sine Indentation and Force')
 
                         % phase shift between indentation and force:
                         obj.DeltaPhi{i,j} = abs(2*pi/obj.SineVarsH{i,j}(3)-2*pi/obj.SineVarsF{i,j}(3));
@@ -3520,6 +3488,38 @@ classdef ForceMap < matlab.mixin.Copyable
             subplot(2,2,4)
             surf(obj.EModMapOliverPharr,'LineStyle','none','FaceLighting','gouraud','FaceColor','interp')
             light('Style','local')
+        end
+        
+        function show_sine_fit(obj)
+            
+            % PLOT figure of fitted indentation data
+
+                     figure(2)
+                     plot(obj.SegTime{j},obj.Force{1,j},'b',  obj.InterpTimeF{j},fit(obj.SineVarsF{i,j},obj.InterpTimeF{j}), 'r')
+                     hold on
+                     plot(ZeroCrossTimeF{1,j}, FZLoc{1,j}, 'bp')
+                     legend('Data','Fitted sine','Approximate Zero-Crossings')
+                     hold off
+                     grid
+                     title('Force Data and Fitted Curve')
+
+                     PLOT figure of fitted indentation data
+
+                     figure(5)
+                     plot(obj.SegTime{j},obj.Height{1,j},'b',  xpH,fit(obj.SineVarsH{i,j},xpH), 'r')
+                     hold on
+                     plot(ZeroCrossTimeH{1,j}, HZLoc{1,j}, 'bp')
+                     legend('Data','Fitted sine','Approximate Zero-Crossings')
+                     hold off
+                     grid
+                     title('Height Data and Fitted Curve')
+
+                    figure(4)
+                    plot (x,Y_H,'b', x,Y_Fo,'r')
+                    grid
+                    legend('fitted indentation','fitted force')
+                    title('Fitted Sine Indentation and Force')
+
         end
         
         function quality_control_oliver_pharr_fibril(obj,PauseTime)
