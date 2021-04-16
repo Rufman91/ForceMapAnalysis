@@ -1826,18 +1826,13 @@ classdef Experiment < matlab.mixin.Copyable
             
             for i=1:NLoop
                 
-%                 if isequal(KeepFlagged,'Yes') && obj.FMFlag.ForceMapAnalysis(i) == 1
-%                     continue
-%                 end
                 
                 % sinus fit for modulation segments
                 obj.FM{i}.sinus_fit_for_microrheology;
                 
                 obj.FM{i}.show_sine_fit;
                 
-%                 waitbar(i/NLoop,h,sprintf('Processing ForceMap %i/%i\nWrapping Up And Saving',i,NLoop));
-%                 
-%                 obj.FMFlag.ForceMapAnalysis(i) = 1;
+
             end
             
             obj.save_experiment;
