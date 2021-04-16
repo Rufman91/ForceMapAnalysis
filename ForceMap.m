@@ -122,7 +122,8 @@ classdef ForceMap < matlab.mixin.Copyable
         HeightMap       % height profile map taken from the maximum head-height from approach max(hhapp)
         EModMapHertz    % E modulus profile map. same ordering as HeightMap
         EModMapOliverPharr % """"
-        EModMapMicrorheology % """"
+        EModMapMicro1 % """"
+        EModMapMicro2 % """"
         List2Map        % An R->RxR ((k)->(i,j)) mapping of indices to switch between the two representations
         Map2List        % An RxR->R ((i,j)->(k))mapping of indices to switch between the two representations
         FibDiam = []    % Estimated fibril diameter
@@ -141,7 +142,8 @@ classdef ForceMap < matlab.mixin.Copyable
         Basefit = {}    % fit model used for the baseline fit in the base_and_tilt method
         EModHertz       % List of reduced smaple E-Modulus based on a the Hertz-Sneddon model
         EModOliverPharr % List of reduced sample E-Modulus based on the Oliver-Pharr method
-        EModMicrorheology % List of reduced sample E-Modulus based on the Oliver-Pharr method
+        EModMicro1      % List of sample E-Modulus based on the for microrheology adapted Oliver-Pharr method
+        EModMicro2      % List of sample E-Modulus based on the for microrheology adapted Oliver-Pharr method
         HertzFit        % HertzFit model generated in the calculate_e_mod_hertz method
         IndDepthHertz
         DZslope
@@ -1068,7 +1070,7 @@ classdef ForceMap < matlab.mixin.Copyable
             end
         end
         
-        function EModMicrorheology = calculate_e_mod_microrheology(obj,TipProjArea,CurvePercent)
+        function [EModMicro1, EModMicro2] = calculate_e_mod_microrheology(obj,TipProjArea,CurvePercent)
             
             if nargin < 3
                 CurvePercent = 0.75;
@@ -1077,8 +1079,10 @@ classdef ForceMap < matlab.mixin.Copyable
             Range = find(obj.SelectedCurves);
             Epsilon = 0.73; % Correction constant from Oliver Pharr Method (1992)
             Beta = 1.0226; %Correction constant from Oliver Pharr Method (1992)
-            obj.EModMicrorheology = zeros(obj.NCurves,3);
-            EModMicrorheology = zeros(obj.NCurves,3);
+            obj.EModMicro1 = zeros(obj.NCurves,1);
+            obj.EModMicro2 = zeros(obj.NCurves,1);
+            EModMicro1 = zeros(obj.NCurves,1);
+            EModMicro2 = zeros(obj.NCurves,1);
             obj.ProjTipArea = TipProjArea;
             obj.DZslope = zeros(obj.NCurves,1);
             obj.Stiffness = zeros(obj.NCurves,1);
@@ -1111,26 +1115,37 @@ classdef ForceMap < matlab.mixin.Copyable
                          obj.IndentArea(i) = ((1-(obj.IndDepth(i)*1e9-floor(obj.IndDepth(i)*1e9)))*TipProjArea(floor(obj.IndDepth(i)*1e9))...
                             + (obj.IndDepth(i)*1e9-floor(obj.IndDepth(i)*1e9))*TipProjArea(ceil(obj.IndDepth(i)*1e9)));
 
-                        EModMicrorheology(i,j) = sqrt(pi/obj.IndentArea(i))*1/2*...
+                        EModMicro1(i,j) = sqrt(pi/obj.IndentArea(i))*1/2*...
+                            (1-obj.PoissonR^2)*cos(obj.DeltaPhi{i,j})*...
+                            (obj.SineVarsF{i,j}(1)/obj.SineVarsH{i,j}(1));
+                        
+                        EModMicro2(i,j) = sqrt(pi/obj.IndentArea(i))*1/2*...
                             (1-obj.PoissonR^2)*sin(obj.DeltaPhi{i,j})*...
                             (obj.SineVarsF{i,j}(1)/obj.SineVarsH{i,j}(1));
                         
-                        if EModMicrorheology(i,j) <= 0
-                            EModMicrorheology(i,j) = NaN;
+                        if EModMicro1(i,j) <= 0
+                            EModMicro1(i,j) = NaN;
+                        end
+                        
+                        if EModMicro2(i,j) <= 0
+                            EModMicro2(i,j) = NaN;
                         end
 
                     catch
-                        EModMicrorheology(i,j) = NaN;
+                        EModMicro1(i,j) = NaN;
+                        EModMicro2(i,j) = NaN;
                     end
                 end
             end
             
-            obj.EModMicrorheology = EModMicrorheology;
+            obj.EModMicro1 = EModMicro1;
+            obj.EModMicro2 = EModMicro2;
             % Write values into EModMapMicrorheology
             
             for i=1:obj.NumProfiles
                 for j=1:obj.NumPoints
-                    obj.EModMapMicrorheology(i,j,1) = obj.EModMicrorheology(obj.Map2List(i,j));
+                    obj.EModMapMicro1(i,j,1) = obj.EModMicro1(obj.Map2List(i,j));
+                    obj.EModMapMicro2(i,j,1) = obj.EModMicro2(obj.Map2List(i,j));
                 end
             end
         end
@@ -1763,17 +1778,16 @@ classdef ForceMap < matlab.mixin.Copyable
                          % Spacing of time vector:
                          xpH = linspace(min(obj.InterpTimeH{j}),max(obj.InterpTimeH{j}),100000);
 
-
-
-                        %PLOT figure of fitted sine of indentation and force
-                        %sine with the fitted parameters for force:
-                        obj.SineFunctionF = obj.SineVarsF{i,j}(1).*(sin(2*pi*x./obj.SineVarsF{i,j}(2) + 2*pi/obj.SineVarsF{i,j}(3)));
-                        obj.SineFunctionH = obj.SineVarsH{i,j}(1).*(sin(2*pi*x./obj.SineVarsH{i,j}(2) + 2*pi/obj.SineVarsH{i,j}(3)));
-
-
-                        % phase shift between indentation and force:
+                         
+                         % phase shift between indentation and force:
                         obj.DeltaPhi{i,j} = abs(2*pi/obj.SineVarsH{i,j}(3)-2*pi/obj.SineVarsF{i,j}(3));
 
+                        %Y-values fitted sine of indentation and force:
+                        obj.SineFunctionF = obj.SineVarsF{i,j}(1)*(sin((2*pi*x)/obj.SineVarsF{i,j}(2) + 2*pi/obj.SineVarsF{i,j}(3)));
+                        obj.SineFunctionH = obj.SineVarsH{i,j}(1)*(sin((2*pi*x)/obj.SineVarsH{i,j}(2) + 2*pi/obj.SineVarsH{i,j}(3)));
+
+
+                       
                     end
                 end
           end
@@ -3492,33 +3506,32 @@ classdef ForceMap < matlab.mixin.Copyable
         
         function show_sine_fit(obj)
             
-            % PLOT figure of fitted indentation data
+                    % PLOT figure of fitted force data
 
-                     figure(2)
-                     plot(obj.SegTime{j},obj.Force{1,j},'b',  obj.InterpTimeF{j},fit(obj.SineVarsF{i,j},obj.InterpTimeF{j}), 'r')
+                     figure(1)
                      hold on
-                     plot(ZeroCrossTimeF{1,j}, FZLoc{1,j}, 'bp')
-                     legend('Data','Fitted sine','Approximate Zero-Crossings')
+                     plot(obj.SegTime{j},obj.Force{1,j},'b',  obj.SegTime{j},obj.SineFunctionF, 'r')
+
+                     legend('Data','Fitted sine')
                      hold off
                      grid
                      title('Force Data and Fitted Curve')
 
-                     PLOT figure of fitted indentation data
+                     %PLOT figure of fitted indentation data
 
-                     figure(5)
-                     plot(obj.SegTime{j},obj.Height{1,j},'b',  xpH,fit(obj.SineVarsH{i,j},xpH), 'r')
+                     figure(2)
                      hold on
-                     plot(ZeroCrossTimeH{1,j}, HZLoc{1,j}, 'bp')
-                     legend('Data','Fitted sine','Approximate Zero-Crossings')
+                     plot(obj.SegTime{j},obj.Height{1,j},'b',  obj.SegTime{j},obj.SineFunctionH, 'r')
+                     legend('Data','Fitted sine')
                      hold off
                      grid
                      title('Height Data and Fitted Curve')
 
-                    figure(4)
-                    plot (x,Y_H,'b', x,Y_Fo,'r')
-                    grid
-                    legend('fitted indentation','fitted force')
-                    title('Fitted Sine Indentation and Force')
+%                     figure(3)
+%                     plot (x,Y_H,'b', x,Y_Fo,'r')
+%                     grid
+%                     legend('fitted indentation','fitted force')
+%                     title('Fitted Sine Indentation and Force')
 
         end
         
