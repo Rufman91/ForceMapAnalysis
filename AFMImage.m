@@ -136,7 +136,9 @@ classdef AFMImage < matlab.mixin.Copyable
             end
         end
         
-        function overlay_wrapper(obj,OverlayedImageClassInstance,BackgroundPercent,MinOverlap,AngleRange,UseParallel,MaxFunEval,PreMaxFunEval,NumPreSearches,NClusters)
+        function overlay_wrapper(obj,OverlayedImageClassInstance,...
+                BackgroundPercent,MinOverlap,AngleRange,UseParallel,...
+                MaxFunEval,PreMaxFunEval,NumPreSearches,NClusters)
             % overlay_wrapper(obj,OverlayedImageClassInstance,BackgroundPercent,MinOverlap,AngleRange,UseParallel,MaxFunEval,PreMaxFunEval,NumPreSearches,NClusters)
             
             if nargin < 3
@@ -146,14 +148,15 @@ classdef AFMImage < matlab.mixin.Copyable
                 UseParallel = true;
                 MaxFunEval = 200;
                 PreMaxFunEval = 30;
-                NumPreSearches = 120;
-                NClusters = 6;
+                NumPreSearches = 84;
+                NClusters = 4;
             end
             
             Channel1 = obj.get_channel('Processed');
             Channel2 = OverlayedImageClassInstance.get_channel('Processed');
             
-            OutChannel = AFMImage.overlay_parameters_by_bayesopt(Channel1,Channel2,BackgroundPercent,MinOverlap,AngleRange,UseParallel,MaxFunEval,PreMaxFunEval,NumPreSearches,NClusters);
+            [OutChannel,ScaleMultiplier,WhoScaled] = AFMImage.overlay_parameters_by_bayesopt(Channel1,Channel2,...
+                BackgroundPercent,MinOverlap,AngleRange,UseParallel,MaxFunEval,PreMaxFunEval,NumPreSearches,NClusters);
             
             [Overlay1,Overlay2] = AFMImage.overlay_two_images(Channel1,OutChannel);
             
@@ -245,7 +248,9 @@ classdef AFMImage < matlab.mixin.Copyable
     methods(Static)
         % Static Main Methods
         
-        function ChannelOut = overlay_parameters_by_bayesopt(Channel1,Channel2,BackgroundPercent,MinOverlap,AngleRange,UseParallel,MaxFunEval,PreMaxFunEval,NumPreSearches,NClusters)
+        function [ChannelOut,ScaleMultiplier,WhoScaled] = overlay_parameters_by_bayesopt(Channel1,Channel2,...
+                BackgroundPercent,MinOverlap,AngleRange,UseParallel,MaxFunEval,...
+                PreMaxFunEval,NumPreSearches,NClusters)
             % ChannelOut = overlay_parameters_by_bayesopt(Channel1,Channel2,BackgroundPercent,MinOverlap,AngleRange,UseParallel,MaxFunEval,PreMaxFunEval,NumPreSearches,NClusters)
             
             % Assume Channel2 has same angle and origin as Channel1
@@ -258,16 +263,20 @@ classdef AFMImage < matlab.mixin.Copyable
             % exactly the same
             SizePerPixel1 = Channel1.ScanSizeX/Channel1.NumPixelsX;
             SizePerPixel2 = Channel2.ScanSizeX/Channel2.NumPixelsX;
+            ScaleMultiplier = 1;
+            WhoScaled = 'No one';
             if SizePerPixel1 > SizePerPixel2
                 ScaleMultiplier = SizePerPixel1/SizePerPixel2;
                 Channel1.Image = imresize(Channel1.Image,ScaleMultiplier);
                 Channel1.NumPixelsX = size(Channel1.Image,1);
                 Channel1.NumPixelsY = size(Channel1.Image,2);
+                WhoScaled = 'Channel1';
             elseif SizePerPixel1 > SizePerPixel2
                 ScaleMultiplier = SizePerPixel2/SizePerPixel1;
                 Channel2.Image = imresize(Channel2.Image,ScaleMultiplier);
                 Channel2.NumPixelsX = size(Channel2.Image,1);
                 Channel2.NumPixelsY = size(Channel2.Image,2);
+                WhoScaled = 'Channel2';
             end
             % Create Background masks
             Mask1 = AFMImage.mask_background_by_threshold(Channel1.Image,BackgroundPercent,'on');
@@ -718,6 +727,9 @@ classdef AFMImage < matlab.mixin.Copyable
     
     methods
         % Methods for image visualisation and output
+        % This method has been replaced with the more general show_image
+        % method in the Experiment class
+        
         function show_image(obj)
             % TODO: implement ui elements for customization
             
@@ -1156,7 +1168,7 @@ classdef AFMImage < matlab.mixin.Copyable
             end
             
             uiwait(h.Fig)
-        end
+        end  
         
     end
     
