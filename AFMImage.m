@@ -164,6 +164,17 @@ classdef AFMImage < matlab.mixin.Copyable
             OverlayMask1 = AFMImage.mask_background_by_threshold(Overlay1,BackgroundPercent,'on');
             OverlayMask2 = AFMImage.mask_background_by_threshold(Overlay2,BackgroundPercent,'on');
             
+            if isequal(WhoScaled,'Channel1')
+                Scale1 = ScaleMultiplier;
+                Scale2 = 1;
+            elseif isequal(WhoScaled,'Channel2')
+                Scale1 = 1;
+                Scale2 = ScaleMultiplier;
+            elseif isequal(WhoScaled,'No one')
+                Scale1 = 1;
+                Scale2 = 1;
+            end
+            
             % write the overlays into the corresponding Class instances
             SecondOut = OutChannel;
             SecondMaskOut = OutChannel;
@@ -171,6 +182,14 @@ classdef AFMImage < matlab.mixin.Copyable
             SecondMaskOut.Image = OverlayMask2;
             SecondMaskOut.Unit = 'Logical';
             SecondMaskOut.Name = 'Overlay Mask';
+            SecondOut.NumPixelsX = size(SecondOut.Image,1);
+            SecondOut.NumPixelsY = size(SecondOut.Image,2);
+            SecondOut.ScanSizeX = Channel2.ScanSizeX*(SecondOut.NumPixelsX/(Channel2.NumPixelsX*Scale2));
+            SecondOut.ScanSizeY = Channel2.ScanSizeY*(SecondOut.NumPixelsY/(Channel2.NumPixelsY*Scale2));
+            SecondMaskOut.NumPixelsX = SecondOut.NumPixelsX;
+            SecondMaskOut.NumPixelsY = SecondOut.NumPixelsY;
+            SecondMaskOut.ScanSizeX = SecondOut.ScanSizeX;
+            SecondMaskOut.ScanSizeY = SecondOut.ScanSizeY;
             
             FirstOut = Channel1;
             FirstMaskOut = Channel1;
@@ -179,6 +198,14 @@ classdef AFMImage < matlab.mixin.Copyable
             FirstMaskOut.Image = OverlayMask1;
             FirstMaskOut.Unit = 'Logical';
             FirstMaskOut.Name = 'Overlay Mask';
+            FirstOut.NumPixelsX = size(FirstOut.Image,1);
+            FirstOut.NumPixelsY = size(FirstOut.Image,2);
+            FirstOut.ScanSizeX = Channel2.ScanSizeX*(FirstOut.NumPixelsX/(Channel1.NumPixelsX*Scale1));
+            FirstOut.ScanSizeY = Channel2.ScanSizeY*(FirstOut.NumPixelsY/(Channel1.NumPixelsY*Scale1));
+            FirstMaskOut.NumPixelsX = FirstOut.NumPixelsX;
+            FirstMaskOut.NumPixelsY = FirstOut.NumPixelsY;
+            FirstMaskOut.ScanSizeX = FirstOut.ScanSizeX;
+            FirstMaskOut.ScanSizeY = FirstOut.ScanSizeY;
             
             obj.Channel(end+1) = FirstOut;
             obj.Channel(end+1) = FirstMaskOut;

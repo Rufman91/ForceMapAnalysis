@@ -1666,6 +1666,8 @@ classdef Experiment < matlab.mixin.Copyable
                     [Channel,ChannelIndex] = Class{Index}.get_channel(h.Channel{Index});
                     h.Image{Index} = Channel.Image;
                     h.BaseUnit{Index} = Channel.Unit;
+                    h.ScanSizeX(Index) = Channel.ScanSizeX;
+                    h.ScanSizeY(Index) = Channel.ScanSizeY;
                     ColorPattern = Class{Index}.CMap;
                 end
                 
@@ -1697,8 +1699,8 @@ classdef Experiment < matlab.mixin.Copyable
                 c.Label.Color = 'w';
                 
                 try
-                    if (size(h.Image{1},1) == size(h.Image{2},1)) &&...
-                            (size(h.Image{1},2) == size(h.Image{2},2))
+                    if (h.ScanSizeX(1) == h.ScanSizeX(2)) &&...
+                            (h.ScanSizeY(1) == h.ScanSizeY(2))
                         h.B(18).BackgroundColor = 'g';
                     else
                         h.B(18).BackgroundColor = 'r';
