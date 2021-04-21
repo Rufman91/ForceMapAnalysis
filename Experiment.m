@@ -747,7 +747,7 @@ classdef Experiment < matlab.mixin.Copyable
             obj.write_to_log_file('','','end')
         end
         
-        function image_analysis_base_on_even_background(obj,UpperLim,NIter)
+        function image_analysis_flatten_on_even_background(obj,UpperLim,NIter)
             
             if nargin < 2
                 UpperLim = 1;
@@ -768,6 +768,34 @@ classdef Experiment < matlab.mixin.Copyable
                 Processed.Image = obj.I{i}.subtract_line_fit_hist(Height.Image, UpperLim);
                 for j=1:NIter
                     Processed.Image = obj.I{i}.subtract_line_fit_hist(Processed.Image, UpperLim);
+                end
+                obj.I{i}.Channel(Index) = Processed;
+                obj.I{i}.hasProcessed = 1;
+            end
+            close(h)
+        end
+        
+        function image_analysis_flatten_on_even_background_automatic(obj,WindowSize,NIter)
+            
+            if nargin < 2
+                WindowSize = .2;
+                NIter = 3;
+            end
+            %main loop
+            h = waitbar(0,'setting up...');
+            for i=1:obj.NumAFMImages
+                waitbar(i/obj.NumAFMImages,h,{sprintf('Processing %i/%i:',i,obj.NumAFMImages),sprintf('%s',obj.I{i}.Name)});
+                [Processed,Index] = obj.I{i}.get_channel('Processed');
+                Height = obj.I{i}.get_channel('Height (Trace)');
+                if isempty(Processed)
+                    Processed = Height;
+                    Processed.Name = 'Processed';
+                    Index = length(obj.I{i}.Channel)+1;
+                    obj.I{i}.NumChannels = Index;
+                end
+                Processed.Image = AFMImage.subtract_line_fit_hist(Height.Image, .5);
+                for j=1:NIter
+                    Processed.Image = AFMImage.subtract_line_fit_vertical_rov(Processed.Image, WindowSize,false);
                 end
                 obj.I{i}.Channel(Index) = Processed;
                 obj.I{i}.hasProcessed = 1;
@@ -1642,11 +1670,16 @@ classdef Experiment < matlab.mixin.Copyable
                 end
                 
                 Class{Index} = obj.get_class_instance(ClassIndex(h.B(15+Index).Value,:));
+                CurrentChannelName = h.B(1+Index).String{h.B(1+Index).Value};
                 PopUp = Class{Index}.string_of_existing();
                 set(h.B(1+Index),'String',PopUp)
                 
-                if h.B(1+Index).Value > (length(Class{Index}.Channel) + 1)
-                    set(h.B(1+Index),'Value',1)
+                IdxOfSameChannel = find(strcmp(PopUp,CurrentChannelName));
+                
+                if isempty(IdxOfSameChannel)
+                    set(h.B(1+Index),'Value',2);
+                else
+                    set(h.B(1+Index),'Value',IdxOfSameChannel(1));
                 end
                 
                 h.Channel{Index} = h.B(1+Index).String{h.B(1+Index).Value};

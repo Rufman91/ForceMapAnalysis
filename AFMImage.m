@@ -220,7 +220,7 @@ classdef AFMImage < matlab.mixin.Copyable
         function deconvolute_cantilever_tip(obj)
             
             Channel = obj.get_channel('Height (measured) (Trace)');
-            Based = imgaussfilt(obj.subtract_line_fit_hist(Channel.Image,0.4));
+            Based = imgaussfilt(AFMImage.subtract_line_fit_vertical_rov(Channel.Image,0.2,false));
             obj.Channel(end+1) = Channel;
             obj.Channel(end).Name = 'Background Mask';
             obj.Channel(end).Unit = 'Logical';
@@ -552,6 +552,137 @@ classdef AFMImage < matlab.mixin.Copyable
                 Line = reshape(Line,[],1);
                 [Sorted,Indizes] = sort(Line,'descend');
                 InvSampleRate = ceil(NumPoints/32^2);
+                k = 1;
+                for i=1:InvSampleRate:NumPoints
+                    STDLine(k) =  std(Sorted(1:i));
+                    k = k + 1;
+                end
+                [~,PeakIdx] = findpeaks(STDLine);
+                if isempty(PeakIdx)
+                    ThreshIndex = 1;
+                else
+                    ThreshIndex = PeakIdx(end);
+                end
+                LineFit = polyfit(Indizes(ThreshIndex:end),Line(Indizes(ThreshIndex:end)),1);
+                LineEval = [1:NumPoints]'*LineFit(1) + LineFit(2);
+                Line = Line - LineEval;
+                InImage(i,:) = Line;
+                Line = [];
+            end
+            OutImage = InImage;
+        end
+        
+        function OutImage = subtract_line_fit_rov(InImage,WindowSize)
+            
+            NumProfiles = size(InImage,1);
+            NumPoints = size(InImage,2);
+            ForwardRoV = zeros(NumProfiles,NumPoints);
+            BackwardRoV = zeros(NumProfiles,NumPoints);
+            for i=1:10
+                InImage = smoothdata(InImage,2,'movmedian',5);
+                imshow(InImage,[])
+                drawnow
+            end
+            for i=1:NumProfiles
+                for j=(1+WindowSize):(NumPoints-WindowSize)
+                    ForwardRoV(i,j) = std(InImage(i,(j+1):(j+WindowSize)))/std(InImage(i,(j-WindowSize):(j-1)));
+                    BackwardRoV(i,j) = 1/ForwardRoV(i,j);
+                end
+                ForwardRoV(i,:) = normalize(smoothdata(ForwardRoV(i,:),'movmean',5),'range');
+                BackwardRoV(i,:) = normalize(smoothdata(BackwardRoV(i,:),'movmean',5),'range');
+                yyaxis left
+                plot(InImage(i,:))
+                yyaxis right
+                plot(1:NumPoints,ForwardRoV(i,:),1:NumPoints,BackwardRoV(i,:))
+                drawnow
+                
+            end
+            % Dont really know where to go with this atm
+            OutImage = 1;
+        end
+        
+        function OutImage = subtract_line_fit_vertical_rov(InImage,WindowSize,DebugBool)
+            
+            NumProfiles = size(InImage,1);
+            NumPoints = size(InImage,2);
+            if nargin < 3
+                DebugBool = false;
+            elseif nargin < 2
+                DebugBool = false;
+                WindowSize = round(.2*NumPoints);
+            end
+            
+            WindowSize = round(WindowSize*NumPoints);
+            
+            RoV = zeros(NumProfiles,NumPoints);
+            MaxIdx = zeros(NumProfiles,1);
+            Smoothed = smoothdata(InImage,2,'gaussian',5);
+            Smoothed = smoothdata(Smoothed,2,'gaussian',5);
+            [Sorted, SortedIndex] = sort(Smoothed,2,'descend');
+            
+            % Pre debug block    
+            if DebugBool
+                f = figure('Units','normalized','Position',[0 0 .9 .9]);
+            end
+            
+            for i=1:NumProfiles
+                for j=(1+WindowSize):(NumPoints-WindowSize)
+                    RoV(i,j) = std(Sorted(i,(j-WindowSize):(j-1)))/std(Sorted(i,(j+1):(j+WindowSize)));
+                end
+                [~,MaxIdx(i)] = max(RoV(i,:));
+                
+                % Debug Block
+                if DebugBool
+                    yyaxis left
+                    plot(SortedIndex(i,1:MaxIdx(i)), Sorted(i,1:MaxIdx(i)),'ro',...
+                        SortedIndex(i,MaxIdx(i)+1:end),Sorted(i,MaxIdx(i)+1:end),'go');
+                    yyaxis right
+                    plot(1:NumPoints,RoV(i,:))
+                    drawnow
+                end
+            end
+            % Smooth out the hist cutoff by fitting a gp and using its mean
+            KernelLambda = 5000;
+            KernelSigma = 1;
+            GPNoise = 0;
+            RectMaxIdx = round(predictGP_mean(1:NumProfiles,1:NumProfiles,KernelSigma,KernelLambda,MaxIdx,GPNoise));
+            for i=1:NumProfiles
+                LineFit = polyfit(SortedIndex(i,RectMaxIdx(i)+round(.25*(NumPoints-RectMaxIdx(i))):end),...
+                    Sorted(i,RectMaxIdx(i)+round(.25*(NumPoints-RectMaxIdx(i))):end),1);
+                LineEval = [1:NumPoints]'*LineFit(1) + LineFit(2);
+                Line = InImage(i,:)';
+                Line = Line - LineEval;
+                InImage(i,:) = Line;
+            end
+            
+            OutImage = InImage;
+            
+            % Second debug block
+            if DebugBool
+                close(f)
+                f = figure('Units','normalized','Position',[0 0 .9 .9]);
+                subplot(2,1,1)
+                plot(1:NumProfiles,MaxIdx,'rx',1:NumProfiles,RectMaxIdx,'g-')
+                subplot(2,1,2)
+                imshowpair(Smoothed,OutImage,'montage')
+                drawnow
+                pause(5)
+                close(f)
+            end
+        end
+        
+        function OutImage = subtract_line_fit_mwstd_method(InImage, WindowSize,StepSize)
+            % WindowSize and StepSize in fraction of full range
+            if nargin < 2
+                Windowsize = .05;
+                StepSize = .001;
+            end
+            NumProfiles = size(InImage,1);
+            NumPoints = size(InImage,2);
+            for i=1:NumProfiles
+                Line = InImage(i,:);
+                Line = reshape(Line,[],1);
+                [Sorted,Indizes] = sort(Line,'descend');
                 k = 1;
                 for i=1:InvSampleRate:NumPoints
                     STDLine(k) =  std(Sorted(1:i));
