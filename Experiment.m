@@ -1678,6 +1678,8 @@ classdef Experiment < matlab.mixin.Copyable
                 
                 if isempty(IdxOfSameChannel)
                     set(h.B(1+Index),'Value',2);
+                elseif sum(IdxOfSameChannel == h.B(1+Index).Value)
+                    set(h.B(1+Index),'Value',IdxOfSameChannel(find(IdxOfSameChannel == h.B(1+Index).Value)));
                 else
                     set(h.B(1+Index),'Value',IdxOfSameChannel(1));
                 end

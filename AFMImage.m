@@ -245,10 +245,6 @@ classdef AFMImage < matlab.mixin.Copyable
             obj.hasDeconvolutedCantileverTip = true;
         end
         
-        function base_image()
-            
-        end
-        
         function subtract_overlayed_image(obj,OverlayedImageClassInstance)
             
             if ~obj.hasOverlay
@@ -527,23 +523,6 @@ classdef AFMImage < matlab.mixin.Copyable
             OutImage = InImage;
         end
         
-        function OutImage = subtract_line_fit_diffhist_method(InImage)
-            
-            NumProfiles = size(InImage,1);
-            NumPoints = size(InImage,2);
-            
-            for i=1:NumProfiles
-                Line = InImage(i,:)';
-                CutOff = AFMImage.automatic_cutoff(Line);
-                Indizes = find(Line<=CutOff);
-                LineFit = polyfit(Indizes,Line(Indizes),1);
-                LineEval = [1:NumPoints]'*LineFit(1) + LineFit(2);
-                Line = Line - LineEval;
-                InImage(i,:) = Line;
-            end
-            OutImage = InImage;
-        end
-        
         function OutImage = subtract_line_fit_std_method(InImage)
             NumProfiles = size(InImage,1);
             NumPoints = size(InImage,2);
@@ -671,38 +650,6 @@ classdef AFMImage < matlab.mixin.Copyable
             end
         end
         
-        function OutImage = subtract_line_fit_mwstd_method(InImage, WindowSize,StepSize)
-            % WindowSize and StepSize in fraction of full range
-            if nargin < 2
-                Windowsize = .05;
-                StepSize = .001;
-            end
-            NumProfiles = size(InImage,1);
-            NumPoints = size(InImage,2);
-            for i=1:NumProfiles
-                Line = InImage(i,:);
-                Line = reshape(Line,[],1);
-                [Sorted,Indizes] = sort(Line,'descend');
-                k = 1;
-                for i=1:InvSampleRate:NumPoints
-                    STDLine(k) =  std(Sorted(1:i));
-                    k = k + 1;
-                end
-                [~,PeakIdx] = findpeaks(STDLine);
-                if isempty(PeakIdx)
-                    ThreshIndex = 1;
-                else
-                    ThreshIndex = PeakIdx(end);
-                end
-                LineFit = polyfit(Indizes(ThreshIndex:end),Line(Indizes(ThreshIndex:end)),1);
-                LineEval = [1:NumPoints]'*LineFit(1) + LineFit(2);
-                Line = Line - LineEval;
-                InImage(i,:) = Line;
-                Line = [];
-            end
-            OutImage = InImage;
-        end
-        
         function OutMask = mask_background_by_threshold(Image,PercentOfRange,AutoMode)
             
             if nargin < 2
@@ -733,6 +680,45 @@ classdef AFMImage < matlab.mixin.Copyable
             OutMask = zeros(size(Image));
             for i=1:length(Row)
                 OutMask(Row(i),Col(i)) = 1;
+            end
+            
+        end
+        
+        function OutMask = mask_apex_points_by_rotation(InImage,NumRotations,BackgroundMask)
+            
+            RotAngles = 0:180/NumRotations:180;
+            RotAngles(end) = [];
+            OutMask = zeros(size(InImage));
+            h = waitbar(0,'Lets start rotating');
+            for i=1:NumRotations
+                waitbar(i/NumRotations,h,sprintf('%i/%i Rotation-scans done',i,NumRotations))
+                TempImage = imrotate(InImage,RotAngles(i));
+                TempMask = zeros(size(TempImage));
+                NumProfiles = size(TempImage,1);
+                for j=1:NumProfiles
+                    [Peaks,PeakIndices] = findpeaks(TempImage(j,:));
+                    TempMask(j,PeakIndices) = 1;
+                end
+                TempMask = imrotate(TempMask,(-RotAngles(i)),'crop');
+                TempImage = imrotate(TempImage,(-RotAngles(i)),'crop');
+                while ~sum(find(TempImage(1,:)))
+                    TempImage(1,:) = [];
+                    TempMask(1,:) = [];
+                end
+                while ~sum(find(TempImage(end,:)))
+                    TempImage(end,:) = [];
+                    TempMask(end,:) = [];
+                end
+                while ~sum(find(TempImage(:,1)))
+                    TempImage(:,1) = [];
+                    TempMask(:,1) = [];
+                end
+                while ~sum(find(TempImage(:,end)))
+                    TempImage(:,end) = [];
+                    TempMask(:,end) = [];
+                end
+                TempMask = imresize(TempMask,size(InImage));
+                OutMask = OutMask + TempMask;
             end
             
         end
