@@ -1828,16 +1828,16 @@ classdef Experiment < matlab.mixin.Copyable
                 
                 
                 % sinus fit for modulation segments
-                obj.FM{i}.sinus_fit_for_microrheology;
+                %obj.FM{i}.sinus_fit_for_microrheology;
                 
                 obj.FM{i}.show_sine_fit;
                 
 
             end
             
-            obj.save_experiment;
+           % obj.save_experiment;
             
-            obj.write_to_log_file('','','end')
+           % obj.write_to_log_file('','','end')
         end
         
         

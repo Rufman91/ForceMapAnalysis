@@ -3091,15 +3091,6 @@ classdef ForceMap < matlab.mixin.Copyable
                     
 
                 end
-                
-                ForceTrend = detrend(obj.Force{i,3});
-                
-                 % time indentation
-                figure(1)
-                plot(obj.SegTime{3},ForceTrend)
-                title('Indentation Time Curve')
-                xlabel('time in s')
-                ylabel('Indentation in microm')
                     
                  obj.HHApp{i} = obj.Height{i,1};
                  obj.App{i} = obj.Force{i,1}.*obj.SpringConstant;
@@ -3515,42 +3506,86 @@ classdef ForceMap < matlab.mixin.Copyable
         end
         
         function show_sine_fit(obj)
-                     
+            close all
+            k=1;
+            for i=1:obj.NCurves
+                lastseg = obj.NumSegments-1;
+                for j=2:lastseg
                     
-                    % PLOT figure of fitted force data
-
-                     figure(1)
-                     hold on
-                     
-                     for j = 1:obj.NumSegments
-                         %Y-values fitted sine of indentation and force:
-                        obj.SineFunctionF = obj.SineVarsF{1,j}(1)*(sin((2*pi*x)/obj.SineVarsF{1,j}(2) + 2*pi/obj.SineVarsF{1,j}(3)))+obj.SineVarsF{1,j}(4);
-                        obj.SineFunctionH = obj.SineVarsH{1,j}(1)*(sin((2*pi*x)/obj.SineVarsH{1,j}(2) + 2*pi/obj.SineVarsH{1,j}(3)))+obj.SineVarsF{1,j}(4);
-                     end
+                    if obj.SegFrequency{j} > 0
                     
-                        plot(obj.SegTime{j},obj.Force{1,j},'b',  obj.SegTime{j},obj.SineFunctionF, 'r')
+                        % Max values of Force and Height
+                         maxF = max(obj.Force{i,j});
+                         maxH = max(obj.Height{i,j});
 
-                     legend('Data','Fitted sine')
-                     hold off
-                     grid
-                     title('Force Data and Fitted Curve')
+                         % Min values of Force and Height
+                         minF = min(obj.Force{i,j});
+                         minH = min(obj.Height{i,j});
 
-                     %PLOT figure of fitted indentation data
+                         % Difference max min
+                         DiffF = maxF - minF;
+                         DiffH = maxH - minH;
 
-                     figure(2)
-                     hold on
-                     plot(obj.SegTime{j},obj.Height{1,j},'b',  obj.SegTime{j},obj.SineFunctionH, 'r')
-                     legend('Data','Fitted sine')
-                     hold off
-                     grid
-                     title('Height Data and Fitted Curve')
 
-%                     figure(3)
-%                     plot (x,Y_H,'b', x,Y_Fo,'r')
-%                     grid
-%                     legend('fitted indentation','fitted force')
-%                     title('Fitted Sine Indentation and Force')
+                         % Shift to Zero Line
+                         FZShift{i,j} = obj.Force{i,j}-maxF+(DiffF/2);
+                         HZShift{i,j} = obj.Height{i,j}-maxH+(DiffH/2);
 
+                        if obj.SegFrequency{j} > 0.5
+                            ForceTrend{i,j} = detrend(FZShift{i,j},12);
+                        else
+                            ForceTrend{i,j} = detrend(FZShift{i,j},5);
+                        end
+                        
+                        %INTERPOLATION with the purpose to add more points to indentation data
+                         %at every timestep z1_H
+                         FInterp{i,j} = interp1(obj.SegTime{j},ForceTrend{i,j},obj.InterpTimeF{j});
+                         %HInterp{i,j} = interp1(obj.SegTime{j},HZShift{i,j},obj.InterpTimeH{j}); 
+
+                         %Finding the rows where NaNs are located due to interpolation:
+                         row_F = find(isnan(FInterp{i,j}));
+                         %row_H = find(isnan(HInterp{i,j}));
+
+                         %also deleting those rows from the timestep vector z1_H:
+                         obj.InterpTimeF{j}(row_F,:)=[];
+                         %obj.InterpTimeH{j}(row_H,:)=[];
+
+                         %deleting NaN from interpolated indentation data:
+                         FInterp{i,j} = rmmissing(FInterp{i,j});
+                         %HInterp{i,j} = rmmissing(HInterp{i,j});
+                         
+                         p{i,j} = polyfit(obj.InterpTimeF{j},FInterp{i,j},7);
+                         x1{j} = linspace(min(obj.InterpTimeF{j}),max(obj.InterpTimeF{j}),100000);
+                         y1{i,j} = polyval(p{i,j},x1{j});
+                        
+                        %Finding changes in signs from positive to negative, inbetween the zero
+                         %crossing must occur
+                         signchangeF{i,j} = find( diff( sign(FInterp{i,j}) ) ~= 0 );
+                         %signchangeH{i,j} = find( diff( sign(HInterp{i,j}) ) ~= 0 );
+
+                         %interpolation and time data where the sign changes
+                         ZeroCrossF{i,j} = FInterp{i,j}(signchangeF{i,j});
+                         %ZeroCrossH{i,j} = HInterp{i,j}(signchangeH{i,j});
+                         ZeroCrossTimeF{i,j} = obj.InterpTimeF{j}(signchangeF{i,j});
+                         %ZeroCrossTimeH{i,j} = obj.InterpTimeH{j}(signchangeH{i,j});
+
+
+                        k = k + 1;
+                         % time indentation
+                        figure(k)
+                        plot(x1{j},y1{i,j},'b', obj.SegTime{j},FZShift{i,j},'r')
+                        hold on
+                        plot(ZeroCrossTimeF{i,j}, ZeroCrossF{i,j}, 'bp')
+                        hold off
+                        title('ForceTrend Time Curve')
+                        xlabel('time in s')
+                        ylabel('ForceTrend in microm')
+
+                       
+                    end
+                end
+            end
+                     
         end
         
         function quality_control_oliver_pharr_fibril(obj,PauseTime)
