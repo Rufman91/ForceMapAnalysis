@@ -1549,7 +1549,7 @@ classdef ForceMap < matlab.mixin.Copyable
                     hold on
                     grid on
                     plot(obj.THApp{kk}-obj.CP_HardSurface(kk,1),obj.BasedApp{kk});
-                    plot(obj.THRet{kk}-obj.CP_HardSurface(kk,1),obj.BasedRetCorr{kk});
+                    %plot(obj.THRet{kk}-obj.CP_HardSurface(kk,1),obj.BasedRetCorr{kk});
                     plot(obj.THRet{kk}-obj.CP_HardSurface(kk,1),obj.BasedRet{kk});
                     xline(x50,'Color','r'); % Draws a vertical line
                     xline(x150,'Color','r'); % Draws a vertical line   
@@ -1864,20 +1864,33 @@ classdef ForceMap < matlab.mixin.Copyable
         end
         
         
-           function fc_print_adhenergy_pulllength(obj,XMin,XMax,YMin,YMax,NumFigures,m,n,Remainder) % fc ... force curve
+           function fc_print_adhenergy_pulllength(obj,XMin,XMax,YMin,YMax,NumFcMax,NumFcUncorrupt) % fc ... force curve
             % fc_print: A function to simply plot all force curves of a
             % force map without any selection taking place
             if nargin < 2
                 XMin= -inf;
                 XMax= inf;
                 YMin= -inf;
-                YMax= inf;
+                YMax= inf;             
             end
             % Define variables for the figure name
             VelocityConvert=num2str(obj.Velocity*1e+9); % Convert into nm
             % Classification criteria
             figname=strcat(obj.DateAdapt,{'_'},obj.TimeAdapt,{'_'},obj.ID,{'_'},obj.Substrate,{'_'},obj.EnvCond,{'_'},VelocityConvert,{'_'},obj.Chipbox,{'_'},obj.ChipCant);
             figname=char(figname);
+            
+            % Define variables for the plot loop
+            mm=sqrt(NumFcMax);
+            nn=mm;
+            NumFigures=NumFcUncorrupt/NumFcMax;
+            RemainderMax=mod(NumFcUncorrupt,NumFcMax); % Check for remainder
+            if RemainderMax ~= 0
+                    oo=round(sqrt(RemainderMax)); % Determine the number of rows in the figure
+                    pp=ceil(sqrt(RemainderMax)); % Determine the number of columns in the figure
+                    NumFigures=NumFigures+1; % Determine the number of figures
+                    RemainderReal=mod(NumFcUncorrupt(ii),oo*pp); % Correct the remainder based on the determined rows times columns
+            end
+            
             %% figure loop
             for ii=1:NumFigures
                 % Allocate data
@@ -1891,29 +1904,27 @@ classdef ForceMap < matlab.mixin.Copyable
                 h_fig.Units='normalized'; % Defines the units
                 h_fig.OuterPosition=[0 0 1 1];% changes the size of the to the whole screen
                 h_fig.PaperOrientation='landscape';
-                h_fig.Name=figname;      
+               % h_fig.Name=figname;      
                 %% Plotting the tiles
-                t = tiledlayout(m,n);
-                %t.TileSpacing = 'compact';
-                %t.Padding = 'compact';
+                if RemainderMax == 0 
+                     
+                t = tiledlayout(mm,nn);
+                %t = tiledlayout('flow');
                 t.TileSpacing = 'none'; % To reduce the spacing between the tiles
                 t.Padding = 'none'; % To reduce the padding of perimeter of a tile
-                % Defining variables
-         %       -------- Modify 01/04/21
-                % maybe use while condition!
-                if ii==NumFigures && Remainder~=0
-                    NLoop=Remainder;
-                else
-                    NLoop=25;
-                end
+                       
+                NumFcPlot=mm*nn;          
                 %% Plot loop
-                for jj=1:NLoop
+                ww=1;
+                for jj=1:NumFcPlot
                     % Tile jj
-                    kk=jj+25*(ii-1);
-                    if ~obj.SMFSFlag.Uncorrupt(kk)     % Selects all flagged 1 
-                    continue
-                    end
-          %          ---------- end modify 01/04/21
+                     kk=jj+mm*nn*(ii-1);                    
+%                     while ~obj.SMFSFlag.Uncorrupt(ww)     % Stay in the while loop as long as the entry is zero                      
+%                     ww=ww+1;                    
+%                     end
+%                     kk=ww;
+                    if obj.SMFSFlag.Uncorrupt(kk)
+                    
                     ax=nexttile;
                     ax.XLim = [XMin XMax];
                     ax.YLim = [YMin YMax];
@@ -1926,8 +1937,34 @@ classdef ForceMap < matlab.mixin.Copyable
                     area(obj.THRet{kk}-obj.CP_HardSurface(kk),obj.yRetLim2{kk},'FaceColor','y')
                     % Title for each Subplot
                     ti=title(sprintf('%i',kk),'Color','k');
+                    %ti=title(sprintf('%i',(kk+ww)/2),'Color','k');
                     ti.Units='normalized'; % Set units to 'normalized'
                     ti.Position=[0.5,1]; % Position the subplot title within the subplot
+                    
+                    else
+                        
+                    end
+                    
+                end
+                else
+                if ii~=NumFigures
+                        
+                t = tiledlayout(mm,nn);
+                %t = tiledlayout('flow');
+                t.TileSpacing = 'none'; % To reduce the spacing between the tiles
+                t.Padding = 'none'; % To reduce the padding of perimeter of a tile
+                       
+                NumFcPlot=mm*nn; 
+                
+                else
+                t = tiledlayout(oo,pp);
+                %t = tiledlayout('flow');
+                t.TileSpacing = 'none'; % To reduce the spacing between the tiles
+                t.Padding = 'none'; % To reduce the padding of perimeter of a tile
+                
+                NumFcPlot=oo*pp;
+                
+                end
                 end
             %% Save figures
             %%% Define the name for the figure title    
@@ -1937,7 +1974,7 @@ classdef ForceMap < matlab.mixin.Copyable
             %%% Save the current figure in the current folder
             print(gcf,fullname,'-dpng');
             end
-            close Figure 1 Figure 2 Figure 3 Figure 4
+  %         close all
         end
       
        

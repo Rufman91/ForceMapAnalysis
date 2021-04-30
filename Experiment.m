@@ -1108,7 +1108,7 @@ classdef Experiment < matlab.mixin.Copyable
             
             % Loop over the imported force maps
             for ii=1:obj.NumForceMaps
-            %for ii=88:obj.NumForceMaps % Debugging
+            %for ii=19:obj.NumForceMaps % Debugging
             % Presort condition 
               %  if ~obj.SMFSFlag(ii)   % Selects all flagged 1 force maps
                 %if obj.SMFSFlag(ii)     % Selects all flagged 0 force maps
@@ -1321,28 +1321,22 @@ classdef Experiment < matlab.mixin.Copyable
             currpath=fullfile(obj.ExperimentFolder,foldername);
             cd(currpath);
             %% loop
-            for ii=1:obj.NumForceMaps
-                %for ii=261 % Debugging
+            %for ii=1:obj.NumForceMaps
+            for ii=1 % Debugging
                 sprintf('Force map No. %d',ii);
                 % Print force curves containing label for the pulling length
                 % and colored area for the adhesion energy
-                %%
-                NumFcUncorrupt(ii)=nnz(obj.FM{ii}.SMFSFlag.Uncorrupt); % Determine the number of uncorrupted force curves
-                NumFigures=ceil(NumFcUncorrupt(ii)./NumFcMax); % Determine the number of figures
-                Remainder=mod(NumFcUncorrupt(ii),NumFcMax); % Check for remainder
-                if Remainder ~= 0
-                    m=round(sqrt(Remainder)); % Determine the number of rows in the figure
-                    n=ceil(sqrt(Remainder)); % Determine the number of columns in the figure
-                else
-                    m=sqrt(NumFcMax);
-                    n=m;
-                end
+                %% Define the rows and columns of the plotted figures                
+               
+                NumFcUncorrupt=nnz(obj.FM{ii}.SMFSFlag.Uncorrupt); % Determine the number of uncorrupted force curves                
+                
+                
                 % Pulling length
             obj.FM{ii}.fc_pulling_length
             % Adhesion energy
             %if obj.FM{ii}.EnvCond==Condition %&& obj.FM{ii}.Substrate==Substrate
             obj.FM{ii}.fc_adhesion_energy
-                obj.FM{ii}.fc_print_adhenergy_pulllength(XMin,XMax,YMin,YMax,NumFigures,m,n,Remainder)
+            obj.FM{ii}.fc_print_adhenergy_pulllength(XMin,XMax,YMin,YMax,NumFcMax,NumFcUncorrupt)
                 
             end
         end
