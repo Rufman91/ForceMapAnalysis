@@ -1786,7 +1786,7 @@ classdef ForceMap < matlab.mixin.Copyable
                         obj.SineFunctionF = obj.SineVarsF{i,j}(1)*(sin((2*pi*x)/obj.SineVarsF{i,j}(2) + 2*pi/obj.SineVarsF{i,j}(3)));
                         obj.SineFunctionH = obj.SineVarsH{i,j}(1)*(sin((2*pi*x)/obj.SineVarsH{i,j}(2) + 2*pi/obj.SineVarsH{i,j}(3)));
 
-
+                        
                        
                     end
                 end
@@ -3088,9 +3088,19 @@ classdef ForceMap < matlab.mixin.Copyable
                     obj.Height{i,j} = -TempHHApp;
                     obj.Force{i,j} = obj.Force{i,j}.*obj.SpringConstant;
                     clear TempHHApp
-                      
+                    
+
                 end
                 
+                ForceTrend = detrend(obj.Force{i,3});
+                
+                 % time indentation
+                figure(1)
+                plot(obj.SegTime{3},ForceTrend)
+                title('Indentation Time Curve')
+                xlabel('time in s')
+                ylabel('Indentation in microm')
+                    
                  obj.HHApp{i} = obj.Height{i,1};
                  obj.App{i} = obj.Force{i,1}.*obj.SpringConstant;
                     
@@ -3505,12 +3515,20 @@ classdef ForceMap < matlab.mixin.Copyable
         end
         
         function show_sine_fit(obj)
-            
+                     
+                    
                     % PLOT figure of fitted force data
 
                      figure(1)
                      hold on
-                     plot(obj.SegTime{j},obj.Force{1,j},'b',  obj.SegTime{j},obj.SineFunctionF, 'r')
+                     
+                     for j = 1:obj.NumSegments
+                         %Y-values fitted sine of indentation and force:
+                        obj.SineFunctionF = obj.SineVarsF{1,j}(1)*(sin((2*pi*x)/obj.SineVarsF{1,j}(2) + 2*pi/obj.SineVarsF{1,j}(3)))+obj.SineVarsF{1,j}(4);
+                        obj.SineFunctionH = obj.SineVarsH{1,j}(1)*(sin((2*pi*x)/obj.SineVarsH{1,j}(2) + 2*pi/obj.SineVarsH{1,j}(3)))+obj.SineVarsF{1,j}(4);
+                     end
+                    
+                        plot(obj.SegTime{j},obj.Force{1,j},'b',  obj.SegTime{j},obj.SineFunctionF, 'r')
 
                      legend('Data','Fitted sine')
                      hold off

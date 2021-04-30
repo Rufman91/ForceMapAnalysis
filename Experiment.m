@@ -770,7 +770,7 @@ classdef Experiment < matlab.mixin.Copyable
             %
             % EModOption = 'Microrheology'
             
-            obj.write_to_log_file('Analysis Function','force_map_analysis_general()','start')
+            obj.write_to_log_file('Analysis Function','force_map_analysis_microrheology()','start')
             obj.write_to_log_file('Contact Point Option',CPOption)
             %obj.write_to_log_file('EMod Option',EModOption)
             
