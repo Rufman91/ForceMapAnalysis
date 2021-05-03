@@ -2341,6 +2341,7 @@ classdef ForceMap < matlab.mixin.Copyable
     methods
         % non-static auxiliary methods
         
+        
         function save(obj)
             current = what();
             cd(obj.Folder)
@@ -3532,50 +3533,105 @@ classdef ForceMap < matlab.mixin.Copyable
                          HZShift{i,j} = obj.Height{i,j}-maxH+(DiffH/2);
 
                         if obj.SegFrequency{j} > 0.5
-                            ForceTrend{i,j} = detrend(FZShift{i,j},12);
+                            ForceTrend{i,j} = detrend(FZShift{i,j},14);
+                            iN = 500;
+                            FilterF{i,j} = filter(ones(1,iN)/iN,1,ForceTrend{i,j});
                         else
                             ForceTrend{i,j} = detrend(FZShift{i,j},5);
+                            iN = 1000;
+                            FilterF{i,j} = filter(ones(1,iN)/iN,1,ForceTrend{i,j});
                         end
                         
                         %INTERPOLATION with the purpose to add more points to indentation data
                          %at every timestep z1_H
-                         FInterp{i,j} = interp1(obj.SegTime{j},ForceTrend{i,j},obj.InterpTimeF{j});
+                         %FInterp{i,j} = interp1(obj.SegTime{j},ForceTrend{i,j},obj.InterpTimeF{j});
                          %HInterp{i,j} = interp1(obj.SegTime{j},HZShift{i,j},obj.InterpTimeH{j}); 
 
                          %Finding the rows where NaNs are located due to interpolation:
-                         row_F = find(isnan(FInterp{i,j}));
+                         %row_F = find(isnan(FInterp{i,j}));
                          %row_H = find(isnan(HInterp{i,j}));
 
                          %also deleting those rows from the timestep vector z1_H:
-                         obj.InterpTimeF{j}(row_F,:)=[];
+                         %obj.InterpTimeF{j}(row_F,:)=[];
                          %obj.InterpTimeH{j}(row_H,:)=[];
 
                          %deleting NaN from interpolated indentation data:
-                         FInterp{i,j} = rmmissing(FInterp{i,j});
+                         %FInterp{i,j} = rmmissing(FInterp{i,j});
                          %HInterp{i,j} = rmmissing(HInterp{i,j});
                          
-                         p{i,j} = polyfit(obj.InterpTimeF{j},FInterp{i,j},7);
-                         x1{j} = linspace(min(obj.InterpTimeF{j}),max(obj.InterpTimeF{j}),100000);
-                         y1{i,j} = polyval(p{i,j},x1{j});
+                         %p{i,j} = polyfit(obj.InterpTimeF{j},FInterp{i,j},7);
+                         %x1{j} = linspace(min(obj.InterpTimeF{j}),max(obj.InterpTimeF{j}),100000);
+                         %y1{i,j} = polyval(p{i,j},x1{j});
+                         
                         
                         %Finding changes in signs from positive to negative, inbetween the zero
                          %crossing must occur
-                         signchangeF{i,j} = find( diff( sign(FInterp{i,j}) ) ~= 0 );
+                         signchangeF{i,j} = find( diff( sign(FilterF{i,j}) ) ~= 0 );
                          %signchangeH{i,j} = find( diff( sign(HInterp{i,j}) ) ~= 0 );
 
                          %interpolation and time data where the sign changes
-                         ZeroCrossF{i,j} = FInterp{i,j}(signchangeF{i,j});
+                         ZeroCrossF{i,j} = FilterF{i,j}(signchangeF{i,j});
                          %ZeroCrossH{i,j} = HInterp{i,j}(signchangeH{i,j});
-                         ZeroCrossTimeF{i,j} = obj.InterpTimeF{j}(signchangeF{i,j});
+                         ZeroCrossTimeF{i,j} = obj.SegTime{j}(signchangeF{i,j});
                          %ZeroCrossTimeH{i,j} = obj.InterpTimeH{j}(signchangeH{i,j});
+                         
+                         
+                         %locate the first change of sign:
+                         help_F=signchangeF{i,j}(1);
+                         %help_H=signchangeH{i,j}(1);
+
+                         %define the time span between first time step and first change of sign
+                         %which will be a parameter for the sine fit later:
+                         firstsignchangeF = obj.SegTime{j}(help_F) - obj.SegTime{j}(1);
+                         %firstsignchangeH = obj.InterpTimeH{j}(help_H)- obj.InterpTimeH{j}(1);
+
+                         % shift the zero crossings to the original height again:
+                         FZLoc{i,j} = ZeroCrossF{i,j}+maxF-(DiffF/2);
+                         %HZLoc{i,j} = ZeroCrossH{i,j}+maxH-(DiffH/2);
+
+                         % Amplitude
+                         AmplitudeF=(DiffF/2);
+                         %AmplitudeH=(DiffH/2);
+
+                         % Estimate period
+                         PeriodF = 2*mean(diff(ZeroCrossTimeF{i,j}));
+                         %PeriodH = 2*mean(diff(ZeroCrossTimeH{i,j}));
+
+                         % Estimate offset
+                         meanF = mean(FilterF{i,j});
+                         %meanH = mean(obj.Height{i,j});
+
+                         x = obj.SegTime{j};
+
+                         % Function to fit force data 
+                         %b(1) (max-min)/2 b(2) FFT b(3) first sign change b(4) mean
+                         fit = @(b,x)  b(1).*(sin(2*pi*x./b(2) + 2*pi/b(3)));    
+                         % Least-Squares cost function:
+                         fcn = @(b) sum((fit(b,x) - FilterF{i,j}).^2);       
+                         % Minimise Least-Squares with estimated start values:
+                         obj.SineVarsF{i,j} = fminsearch(fcn, [AmplitudeF;  PeriodF;  firstsignchangeF]); 
+                         % Spacing of time vector:
+                         xpF = linspace(min(obj.SegTime{j}),max(obj.SegTime{j}),100000);
+
+                         % Function to fit height data 
+                         %b(1) (max-min)/2 b(2) FFT b(3) first sign change b(4) mean
+                         %fit = @(a,x)  a(1).*(sin(2*pi*x./a(2) + 2*pi/a(3))) + a(4);    
+                         % Least-Squares cost function:
+                         %fcn = @(a) sum((fit(a,x) - obj.Height{i,j}).^2);       
+                         % Minimise Least-Squares with estimated start values:
+                         %obj.SineVarsH{i,j} = fminsearch(fcn, [AmplitudeH;  PeriodH;  firstsignchangeH;  meanH]); 
+                         % Spacing of time vector:
+                         %xpH = linspace(min(obj.InterpTimeH{j}),max(obj.InterpTimeH{j}),100000);
 
 
                         k = k + 1;
                          % time indentation
                         figure(k)
-                        plot(x1{j},y1{i,j},'b', obj.SegTime{j},FZShift{i,j},'r')
+                        plot(obj.SegTime{j},FilterF{i,j},'b', obj.SegTime{j},FZShift{i,j},'r')
                         hold on
                         plot(ZeroCrossTimeF{i,j}, ZeroCrossF{i,j}, 'bp')
+                        hold on
+                        plot(xpF,fit(obj.SineVarsF{i,j},xpF), 'r')
                         hold off
                         title('ForceTrend Time Curve')
                         xlabel('time in s')
