@@ -1118,31 +1118,42 @@ classdef ForceMap < matlab.mixin.Copyable
                     % the two numeric values of TipProjArea the Hc(i) falls
                     % inbetween
                     
-                   
-                
-                    try
-                         obj.IndentArea(i) = ((1-(obj.IndDepth(i)*1e9-floor(obj.IndDepth(i)*1e9)))*TipProjArea(floor(obj.IndDepth(i)*1e9))...
-                            + (obj.IndDepth(i)*1e9-floor(obj.IndDepth(i)*1e9))*TipProjArea(ceil(obj.IndDepth(i)*1e9)));
+                    if obj.SegFrequency{j} > 0
+                        
+                        x = obj.SegTime{j};
+                        
+                        % phase shift between indentation and force:
+                        obj.DeltaPhi{i,j} = abs(2*pi/obj.SineVarsH{i,j}(3)-2*pi/obj.SineVarsF{i,j}(3));
 
-                        EModMicro1(i,j) = sqrt(pi/obj.IndentArea(i))*1/2*...
-                            (1-obj.PoissonR^2)*cos(obj.DeltaPhi{i,j})*...
-                            (obj.SineVarsF{i,j}(1)/obj.SineVarsH{i,j}(1));
-                        
-                        EModMicro2(i,j) = sqrt(pi/obj.IndentArea(i))*1/2*...
-                            (1-obj.PoissonR^2)*sin(obj.DeltaPhi{i,j})*...
-                            (obj.SineVarsF{i,j}(1)/obj.SineVarsH{i,j}(1));
-                        
-                        if EModMicro1(i,j) <= 0
+                        %Y-values fitted sine of indentation and force:
+                        obj.SineFunctionF = obj.SineVarsF{i,j}(1)*(sin((2*pi*x)/obj.SineVarsF{i,j}(2) + 2*pi/obj.SineVarsF{i,j}(3)));
+                        obj.SineFunctionH = obj.SineVarsH{i,j}(1)*(sin((2*pi*x)/obj.SineVarsH{i,j}(2) + 2*pi/obj.SineVarsH{i,j}(3)));
+
+
+                        try
+                             obj.IndentArea(i) = ((1-(obj.IndDepth(i)*1e9-floor(obj.IndDepth(i)*1e9)))*TipProjArea(floor(obj.IndDepth(i)*1e9))...
+                                + (obj.IndDepth(i)*1e9-floor(obj.IndDepth(i)*1e9))*TipProjArea(ceil(obj.IndDepth(i)*1e9)));
+
+                            EModMicro1(i,j) = sqrt(pi/obj.IndentArea(i))*1/2*...
+                                (1-obj.PoissonR^2)*cos(obj.DeltaPhi{i,j})*...
+                                (obj.SineVarsF{i,j}(1)/obj.SineVarsH{i,j}(1));
+
+                            EModMicro2(i,j) = sqrt(pi/obj.IndentArea(i))*1/2*...
+                                (1-obj.PoissonR^2)*sin(obj.DeltaPhi{i,j})*...
+                                (obj.SineVarsF{i,j}(1)/obj.SineVarsH{i,j}(1));
+
+                            if EModMicro1(i,j) <= 0
+                                EModMicro1(i,j) = NaN;
+                            end
+
+                            if EModMicro2(i,j) <= 0
+                                EModMicro2(i,j) = NaN;
+                            end
+
+                        catch
                             EModMicro1(i,j) = NaN;
-                        end
-                        
-                        if EModMicro2(i,j) <= 0
                             EModMicro2(i,j) = NaN;
                         end
-
-                    catch
-                        EModMicro1(i,j) = NaN;
-                        EModMicro2(i,j) = NaN;
                     end
                 end
             end
@@ -3652,11 +3663,12 @@ classdef ForceMap < matlab.mixin.Copyable
                         plot(xpF,fit(obj.SineVarsF{i,j},xpF), '--m')
                         hold on
                         plot(obj.fitresult{i,j}, '--c')
+                        legend('filtered data','shifted data to zero line','Zero Crossings','fitted data 1','fitted data 2')
                         hold off
-                        title('ForceTrend Time Curve')
+                        title('Force Time Curve')
                         xlabel('time in s')
-                        ylabel('ForceTrend in microm')
-
+                        ylabel('Force in microN')
+                        %saveas(gcf,['filename' num2str(k) '.jpg']);
                        
                     end
                 end
@@ -3685,15 +3697,16 @@ classdef ForceMap < matlab.mixin.Copyable
 
                          % Shift to Zero Line
                          HZShift{i,j} = obj.Height{i,j}-maxH+(DiffH/2);
-                         
-                         %HeightTrend{i,j} = detrend(HZShift{i,j},4);
+                     
                             
                         if obj.SegFrequency{j} > 0.5
-                            iN = 10;
-                            obj.FilterH{i,j} = filter(ones(1,iN)/iN,1,HZShift{i,j});
+                            HeightTrend{i,j} = detrend(HZShift{i,j},6);
+                            iN = 500;
+                            obj.FilterH{i,j} = filter(ones(1,iN)/iN,1,HeightTrend{i,j});
                         else
-                            iN = 10;
-                            obj.FilterH{i,j} = filter(ones(1,iN)/iN,1,HZShift{i,j});
+                            HeightTrend{i,j} = detrend(HZShift{i,j},3);
+                            iN = 500;
+                            obj.FilterH{i,j} = filter(ones(1,iN)/iN,1,HeightTrend{i,j});
                         end
                         
                         
@@ -3759,10 +3772,12 @@ classdef ForceMap < matlab.mixin.Copyable
                         plot(xpH,fit(obj.SineVarsH{i,j},xpH), '--m')
                         hold on
                         plot(obj.fitresult{i,j}, '--c')
+                        legend('filtered data', 'shifted data to zero line', 'Zero Crossings', 'fitted data 1', 'fitted data 2')
                         hold off
-                        title('ForceTrend Time Curve')
+                        title('Height Time Curve')
                         xlabel('time in s')
-                        ylabel('ForceTrend in microm')
+                        ylabel('Height in microm')
+                        export_fig (sprintf('figure%d',k),'-jpg');
 
                        
                     end
