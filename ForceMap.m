@@ -3156,10 +3156,23 @@ classdef ForceMap < matlab.mixin.Copyable
                     
                  obj.HHApp{i} = obj.Height{i,1};
                  obj.App{i} = obj.Force{i,1}.*obj.SpringConstant;
+                 
+                 lengthApp = length(obj.App{i});
+                 obj.SecPerPoint{1} = obj.SegDuration{1}/lengthApp;
+                 obj.TStart{1} = obj.SecPerPoint{1}/2;
+                 obj.TEnd{1} = obj.SeriesTime{1};
+                 obj.SegTime{1} = obj.TStart{1}:obj.SecPerPoint{1}:obj.TEnd{1};
+
                     
                  lastseg = obj.NumSegments - 1;
                  obj.HHRet{i} = obj.Height{i,lastseg};
                  obj.Ret{i} = obj.Force{i,lastseg}.*obj.SpringConstant;
+                 
+                 lengthRet = length(obj.Ret{i});
+                 obj.SecPerPoint{obj.NumSegments} = obj.SegDuration{obj.NumSegments}/lengthRet;
+                 obj.TStart{obj.NumSegments} = obj.SeriesTime{lastseg}+(obj.SecPerPoint{obj.NumSegments}/2);
+                 obj.TEnd{obj.NumSegments} = obj.SeriesTime{obj.NumSegments};
+                 obj.SegTime{obj.NumSegments} = obj.TStart{obj.NumSegments}:obj.SecPerPoint{obj.NumSegments}:obj.TEnd{obj.NumSegments};
 
             end
          
@@ -3567,6 +3580,25 @@ classdef ForceMap < matlab.mixin.Copyable
             light('Style','local')
         end
         
+        function show_microrheology(obj)
+            
+            close all
+            
+            figure(1)
+            hold on
+            for i=1:obj.NCurves
+                for j=1:obj.NumSegments
+
+                        plot(obj.SegTime{j},obj.Force{i,j},'b')
+                        title('Force Time Curve')
+                        xlabel('time in s')
+                        ylabel('Force in N')
+                end
+            end
+            
+            
+        end
+        
         function show_sine_fit_Force(obj)
             close all
             k=1;
@@ -3667,7 +3699,7 @@ classdef ForceMap < matlab.mixin.Copyable
                         hold off
                         title('Force Time Curve')
                         xlabel('time in s')
-                        ylabel('Force in microN')
+                        ylabel('Force in N')
                         %saveas(gcf,['filename' num2str(k) '.jpg']);
                        
                     end
