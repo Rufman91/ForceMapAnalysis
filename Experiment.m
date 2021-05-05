@@ -1302,7 +1302,10 @@ classdef Experiment < matlab.mixin.Copyable
         end
         
         function SMFS_analysis(obj,XMin,XMax,YMin,YMax,NumFcMax)
-            
+            % This function allows to analyse different force curve
+            % criteria, i.e. pulling length, adhesion energy. Furthermore,
+            % all analysed force curves are plotted and the determined
+            % criteria are plotted for visual inspection
             % Input variable adaptation
             if nargin<2
                 XMin= -inf;     % Limit of the X-axis in meters (m)
@@ -1310,6 +1313,11 @@ classdef Experiment < matlab.mixin.Copyable
                 YMin= -inf;     % Limit of the Y-axis in Newtons (N)
                 YMax= inf;      % Limit of the Y-axis in Newtons (N)
                 NumFcMax = 25;   % Maximum number of force curves per figure
+            elseif nargin<3
+                XMin= -inf;     % Limit of the X-axis in meters (m)
+                XMax= inf;      % Limit of the X-axis in meters (m)
+                YMin= -inf;     % Limit of the Y-axis in Newtons (N)
+                YMax= inf;      % Limit of the Y-axis in Newtons (N)
             end
             %% Folder
             % Change into the Folder of Interest
@@ -1322,21 +1330,17 @@ classdef Experiment < matlab.mixin.Copyable
             cd(currpath);
             %% loop
             for ii=1:obj.NumForceMaps
-            %for ii=1 % Debugging
-                sprintf('Force map No. %d',ii);
-                % Print force curves containing label for the pulling length
-                % and colored area for the adhesion energy
-                %% Define the rows and columns of the plotted figures                
-               
-                NumFcUncorrupt=nnz(obj.FM{ii}.SMFSFlag.Uncorrupt); % Determine the number of uncorrupted force curves                
-                
-                
-                % Pulling length
-            obj.FM{ii}.fc_pulling_length
-            % Adhesion energy
-            %if obj.FM{ii}.EnvCond==Condition %&& obj.FM{ii}.Substrate==Substrate
-            obj.FM{ii}.fc_adhesion_energy
-            obj.FM{ii}.fc_print_adhenergy_pulllength(XMin,XMax,YMin,YMax,NumFcMax,NumFcUncorrupt)
+               %for ii=1 % Debugging
+               sprintf('Force map No. %d',ii);
+               % Print force curves containing label for the pulling length
+               % and colored area for the adhesion energy               
+               % Pulling length
+                obj.FM{ii}.fc_pulling_length
+                % Adhesion energy
+                obj.FM{ii}.fc_adhesion_energy
+                % Determine needed input variable
+                NumFcUncorrupt=nnz(obj.FM{ii}.SMFSFlag.Uncorrupt); % Determine the number of uncorrupted force curves     
+                obj.FM{ii}.fc_print_adhenergy_pulllength(XMin,XMax,YMin,YMax,NumFcMax,NumFcUncorrupt)
                 
             end
         end
