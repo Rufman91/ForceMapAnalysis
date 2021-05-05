@@ -3571,10 +3571,14 @@ classdef ForceMap < matlab.mixin.Copyable
         function show_microrheology(obj)
             
             close all
-            
-            figure(1)
-            hold on
+           %for k=1:obj.NCurves 
+            k=1;
+            g=obj.NCurves + 1;
             for i=1:obj.NCurves
+                
+                %force time
+                figure(k)
+                hold on
                 for j=1:obj.NumSegments
                     
                        lengthApp = length(obj.App{i});
@@ -3597,8 +3601,51 @@ classdef ForceMap < matlab.mixin.Copyable
                        xlabel('time in s')
                        ylabel('Force in N')
                 end
+                       
+                %height time
+                figure(g)
+                hold on
+                for j=1:obj.NumSegments
+                    
+                       lengthHHApp = length(obj.HHApp{i});
+                       obj.SecPerPoint{1} = obj.SegDuration{1}/lengthHHApp;
+                       obj.TStart{1} = obj.SecPerPoint{1}/2;
+                       obj.TEnd{1} = obj.SeriesTime{1};
+                       obj.SegTime{1} = obj.TStart{1}:obj.SecPerPoint{1}:obj.TEnd{1};
+                       obj.SegTime{1} = obj.SegTime{1}.';
+                       
+                       lengthHHRet = length(obj.HHRet{i});
+                       obj.SecPerPoint{obj.NumSegments} = obj.SegDuration{obj.NumSegments}/lengthHHRet;
+                       obj.TStart{obj.NumSegments} = obj.SeriesTime{obj.NumSegments - 1}+(obj.SecPerPoint{obj.NumSegments}/2);
+                       obj.TEnd{obj.NumSegments} = obj.SeriesTime{obj.NumSegments};
+                       obj.SegTime{obj.NumSegments} = obj.TStart{obj.NumSegments}:obj.SecPerPoint{obj.NumSegments}:obj.TEnd{obj.NumSegments};
+                       obj.SegTime{obj.NumSegments} = obj.SegTime{obj.NumSegments}.';
+
+                       plot(obj.SegTime{j},obj.Height{i,j},'b')
+                       title('Height Time Curve')
+                       xlabel('time in s')
+                       ylabel('Height in m')
+                end
+                
+                %force indentation
+                h=2*obj.NCurves + 1;
+                for j=1:obj.NumSegments
+                    
+                    if obj.SegFrequency{j} > 0
+                        figure(h)
+                        plot(obj.Force{i,j},obj.Height{i,j},'--b')
+                        title('Force Indentation Curve')
+                        xlabel('Indentation in m')
+                        ylabel('Force in N')
+
+                        h=h+1;
+                    end
+                       
+                end
+                
+                k= k+1;
+                g=g+1;
             end
-            
             
         end
         
