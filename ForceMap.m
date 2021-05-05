@@ -3779,26 +3779,40 @@ classdef ForceMap < matlab.mixin.Copyable
 
                          % Shift to Zero Line
                          HZShift{i,j} = obj.Height{i,j}-maxH+(DiffH/2);
-                     
+                         
+                         
                             
                         if obj.SegFrequency{j} > 0.5
-                            HeightTrend{i,j} = detrend(HZShift{i,j},6);
-                            iN = 500;
-                            obj.FilterH{i,j} = filter(ones(1,iN)/iN,1,HeightTrend{i,j});
+                            iN = 50;
+                            d = ones(1,iN)/iN;
+                            obj.FilterH{i,j} = filtfilt(d,1,HZShift{i,j});
                         else
-                            HeightTrend{i,j} = detrend(HZShift{i,j},3);
                             iN = 500;
-                            obj.FilterH{i,j} = filter(ones(1,iN)/iN,1,HeightTrend{i,j});
+                            d = ones(1,iN)/iN;
+                            obj.FilterH{i,j} = filtfilt(d,1,HZShift{i,j});
                         end
+                        
+                        %INTERPOLATION with the purpose to add more points to indentation data
+                         %at every timestep z1_H
+                         HInterp{i,j} = interp1(obj.SegTime{j},obj.FilterH{i,j},obj.InterpTimeH{j}); 
+
+                         %Finding the rows where NaNs are located due to interpolation:
+                         row_H = find(isnan(HInterp{i,j}));
+
+                         %also deleting those rows from the timestep vector z1_H:
+                         obj.InterpTimeH{j}(row_H,:)=[];
+
+                         %deleting NaN from interpolated indentation data:
+                         HInterp{i,j} = rmmissing(HInterp{i,j});
                         
                         
                         %Finding changes in signs from positive to negative, inbetween the zero
                          %crossing must occur
-                        signchangeH{i,j} = find( diff( sign(obj.FilterH{i,j}) ) ~= 0 );
+                         signchangeH{i,j} = find( diff( sign(HInterp{i,j}) ) ~= 0 );
 
                          %interpolation and time data where the sign changes
-                         ZeroCrossH{i,j} = obj.FilterH{i,j}(signchangeH{i,j});
-                         ZeroCrossTimeH{i,j} = obj.SegTime{j}(signchangeH{i,j});
+                         ZeroCrossH{i,j} = HInterp{i,j}(signchangeH{i,j});
+                         ZeroCrossTimeH{i,j} = obj.InterpTimeH{j}(signchangeH{i,j});
                          
                          
                          %locate the first change of sign:
@@ -3806,28 +3820,28 @@ classdef ForceMap < matlab.mixin.Copyable
 
                          %define the time span between first time step and first change of sign
                          %which will be a parameter for the sine fit later:
-                         obj.firstsignchangeH = obj.SegTime{j}(help_H)- obj.SegTime{j}(1);
+                         obj.firstsignchangeH = obj.InterpTimeH{j}(help_H)- obj.InterpTimeH{j}(1);
                          
                          % Max values of Force and Height
-                         maxH = max(obj.FilterH{i,j});
+                         %maxH = max(obj.FilterH{i,j});
 
                          % Min values of Force and Height
-                         minH = min(obj.FilterH{i,j});
+                         %minH = min(obj.FilterH{i,j});
 
                          % Difference max min
-                         DiffH = maxH - minH;
+                         %DiffH = maxH - minH;
                          
                          % shift the zero crossings to the original height again:
                          HZLoc{i,j} = ZeroCrossH{i,j}+maxH-(DiffH/2);
 
                          % Amplitude
-                         obj.AmplitudeH=(DiffH/2);
+                         %obj.AmplitudeH=(DiffH/2);
 
                          % Estimate period
-                         obj.PeriodH = 2*mean(diff(ZeroCrossTimeH{i,j}));
+                         %obj.PeriodH = 2*mean(diff(ZeroCrossTimeH{i,j}));
 
                          % Estimate offset
-                         meanH = mean(obj.FilterH{i,j});
+                         meanH = mean(HInterp{i,j});
 
                          x = obj.SegTime{j};
 
@@ -3840,14 +3854,14 @@ classdef ForceMap < matlab.mixin.Copyable
                          % Minimise Least-Squares with estimated start values:
                          obj.SineVarsH{i,j} = fminsearch(fcn, [obj.AmplitudeH;  obj.PeriodH;  obj.firstsignchangeH;  meanH]); 
                          % Spacing of time vector:
-                         xpH = linspace(min(obj.SegTime{j}),max(obj.SegTime{j}),100000);
+                         xpH = linspace(min(obj.InterpTimeH{j}),max(obj.InterpTimeH{j}),100000);
                         
-                         [obj.fitresult{i,j}, gof] = obj.createFit1(obj.SegTime{j},obj.FilterH{i,j});
+                         %[obj.fitresult{i,j}, gof] = obj.createFit1(obj.InterpTimeH{j},HInterp{i,j});
 
                         k = k + 1;
                          % time indentation
                         figure(k)
-                        plot(obj.SegTime{j},obj.FilterH{i,j},'b', obj.SegTime{j},HZShift{i,j},'r')
+                        plot(obj.SegTime{j},HZShift{i,j},'r', obj.InterpTimeH{j},HInterp{i,j},'b')
                         hold on
                         plot(ZeroCrossTimeH{i,j}, ZeroCrossH{i,j}, 'bp')
                         hold on
@@ -3859,7 +3873,7 @@ classdef ForceMap < matlab.mixin.Copyable
                         title('Height Time Curve')
                         xlabel('time in s')
                         ylabel('Height in microm')
-                        export_fig (sprintf('figure%d',k),'-jpg');
+                        %export_fig (sprintf('figure%d',k),'-jpg');
 
                        
                     end
