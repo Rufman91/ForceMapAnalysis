@@ -1878,15 +1878,15 @@ classdef ForceMap < matlab.mixin.Copyable
             figname=strcat(obj.DateAdapt,{'_'},obj.TimeAdapt,{'_'},obj.ID,{'_'},obj.Substrate,{'_'},obj.EnvCond,{'_'},VelocityConvert,{'_'},obj.Chipbox,{'_'},obj.ChipCant);
             figname=char(figname);
             % Define variables for the plot loop
-            mm=sqrt(NumFcMax);
+            mm=ceil(sqrt(NumFcMax));
             nn=mm;
-            ww=1; % "flag while loop" variable 
+            ww=1; % "flag while loop" variable
+            DiffFc=0;
             NumFigures=ceil(NumFcUncorrupt/NumFcMax);
             RemainderMax=mod(NumFcUncorrupt,NumFcMax); % Check for remainder
             if RemainderMax ~= 0
                 oo=round(sqrt(RemainderMax)); % Determine the number of rows in the figure
                 pp=ceil(sqrt(RemainderMax)); % Determine the number of columns in the figure
-                % NumFigures=NumFigures+1; % Determine the number of figures
                 RemainderReal=mod(NumFcUncorrupt,oo*pp); % Correct the remainder based on the determined rows times columns
             end
             %% figure loop
@@ -1897,8 +1897,8 @@ classdef ForceMap < matlab.mixin.Copyable
                 yApp=obj.BasedApp{ii};
                 yRet=obj.BasedRetCorr2{ii};
                 % Define variables
-                jj=0; % "force curve plotted per figure" variable
-                fcDiff=0;
+                jj=1; % "force curve plotted per figure" variable
+         
                 % Figure
                 h_fig=figure(ii);
                 h_fig.Color='white'; % changes the background color of the figure
@@ -1920,19 +1920,19 @@ classdef ForceMap < matlab.mixin.Copyable
                     end
                     
                     if ii==1
-                        kk=jj+1;
+                        kk=jj;
                     else
-                        kk=jj+1+mm*nn*(ii-1);
+                        kk=jj+mm*nn*(ii-1);
                     end
                     %% Plot loop
                     for qq=kk:obj.NCurves % Loop over all force curves in the force map
-                        if ww<qq+fcDiff
-                            ww=qq+fcDiff;
+                        if ww<qq+DiffFc
+                            ww=qq+DiffFc;
                         end
                         while ~obj.SMFSFlag.Uncorrupt(ww)     % Stay in the while loop as long as the entry is zero
                             ww=ww+1;
                             if ww>qq
-                                fcDiff=ww-qq;
+                                DiffFc=ww-qq;
                             end
                         end
                         if ww>qq
@@ -1941,13 +1941,13 @@ classdef ForceMap < matlab.mixin.Copyable
                             ax.YLim = [YMin YMax];
                             hold on
                             grid on
-                            plot(obj.THApp{qq+fcDiff}-obj.CP_HardSurface(qq+fcDiff),obj.BasedApp{qq+fcDiff},'b');
-                            plot(obj.THRet{qq+fcDiff}-obj.CP_HardSurface(qq+fcDiff),obj.BasedRetCorr2{qq+fcDiff},'r');
+                            plot(obj.THApp{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc),obj.BasedApp{qq+DiffFc},'b');
+                            plot(obj.THRet{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc),obj.BasedRetCorr2{qq+DiffFc},'r');
                             %plot(xRet(obj.PullingLengthIdx(kk)),yRet(obj.PullingLengthIdx(kk)),'*','MarkerSize',10,'MarkerEdgeColor','g')
-                            plot(obj.THRet{qq+fcDiff}(obj.PullingLengthIdx(qq+fcDiff))-obj.CP_HardSurface(qq+fcDiff),obj.BasedRetCorr2{qq+fcDiff}(obj.PullingLengthIdx(qq+fcDiff)),'*','MarkerSize',10,'MarkerEdgeColor','g')
-                            area(obj.THRet{qq+fcDiff}-obj.CP_HardSurface(qq+fcDiff),obj.yRetLim2{qq+fcDiff},'FaceColor','y')
+                            plot(obj.THRet{qq+DiffFc}(obj.PullingLengthIdx(qq+DiffFc))-obj.CP_HardSurface(qq+DiffFc),obj.BasedRetCorr2{qq+DiffFc}(obj.PullingLengthIdx(qq+DiffFc)),'*','MarkerSize',10,'MarkerEdgeColor','g')
+                            area(obj.THRet{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc),obj.yRetLim2{qq+DiffFc},'FaceColor','y')
                             % Title for each Subplot
-                            ti=title(sprintf('%i',qq+fcDiff),'Color','k');
+                            ti=title(sprintf('%i',qq+DiffFc),'Color','k');
                             ti.Units='normalized'; % Set units to 'normalized'
                             ti.Position=[0.5,1]; % Position the subplot title within the subplot
                         else
@@ -1966,10 +1966,10 @@ classdef ForceMap < matlab.mixin.Copyable
                             ti.Units='normalized'; % Set units to 'normalized'
                             ti.Position=[0.5,1]; % Position the subplot title within the subplot
                         end
-                        jj=jj+1;
                         if jj == NumFcMax
                             break
                         end
+                        jj=jj+1;
                     end
                     
                 else
@@ -1986,19 +1986,19 @@ classdef ForceMap < matlab.mixin.Copyable
                         end
                         
                         if ii==1
-                            kk=jj+1;
+                            kk=jj;
                         else
-                            kk=jj+1+mm*nn*(ii-1);
+                            kk=jj+mm*nn*(ii-1);
                         end
                         %% Plot loop
                         for qq=kk:obj.NCurves % Loop over all force curves in the force map
-                            if ww<qq+fcDiff
-                                ww=qq+fcDiff;
+                            if ww<qq+DiffFc
+                                ww=qq+DiffFc;
                             end
                             while ~obj.SMFSFlag.Uncorrupt(ww)     % Stay in the while loop as long as the entry is zero
                                 ww=ww+1;
                                 if ww>qq
-                                    fcDiff=ww-qq;
+                                    DiffFc=ww-qq;
                                 end
                             end
                             if ww>qq
@@ -2007,13 +2007,13 @@ classdef ForceMap < matlab.mixin.Copyable
                                 ax.YLim = [YMin YMax];
                                 hold on
                                 grid on
-                                plot(obj.THApp{qq+fcDiff}-obj.CP_HardSurface(qq+fcDiff),obj.BasedApp{qq+fcDiff},'b');
-                                plot(obj.THRet{qq+fcDiff}-obj.CP_HardSurface(qq+fcDiff),obj.BasedRetCorr2{qq+fcDiff},'r');
+                                plot(obj.THApp{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc),obj.BasedApp{qq+DiffFc},'b');
+                                plot(obj.THRet{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc),obj.BasedRetCorr2{qq+DiffFc},'r');
                                 %plot(xRet(obj.PullingLengthIdx(kk)),yRet(obj.PullingLengthIdx(kk)),'*','MarkerSize',10,'MarkerEdgeColor','g')
-                                plot(obj.THRet{qq+fcDiff}(obj.PullingLengthIdx(qq+fcDiff))-obj.CP_HardSurface(qq+fcDiff),obj.BasedRetCorr2{qq+fcDiff}(obj.PullingLengthIdx(qq+fcDiff)),'*','MarkerSize',10,'MarkerEdgeColor','g')
-                                area(obj.THRet{qq+fcDiff}-obj.CP_HardSurface(qq+fcDiff),obj.yRetLim2{qq+fcDiff},'FaceColor','y')
+                                plot(obj.THRet{qq+DiffFc}(obj.PullingLengthIdx(qq+DiffFc))-obj.CP_HardSurface(qq+DiffFc),obj.BasedRetCorr2{qq+DiffFc}(obj.PullingLengthIdx(qq+DiffFc)),'*','MarkerSize',10,'MarkerEdgeColor','g')
+                                area(obj.THRet{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc),obj.yRetLim2{qq+DiffFc},'FaceColor','y')
                                 % Title for each Subplot
-                                ti=title(sprintf('%i',qq+fcDiff),'Color','k');
+                                ti=title(sprintf('%i',qq+DiffFc),'Color','k');
                                 ti.Units='normalized'; % Set units to 'normalized'
                                 ti.Position=[0.5,1]; % Position the subplot title within the subplot
                             else
@@ -2032,10 +2032,10 @@ classdef ForceMap < matlab.mixin.Copyable
                                 ti.Units='normalized'; % Set units to 'normalized'
                                 ti.Position=[0.5,1]; % Position the subplot title within the subplot
                             end
-                            jj=jj+1;
                             if jj == NumFcMax
                                 break
                             end
+                            jj=jj+1;
                         end
                     else % corresponds to the last figure plotted
                         t = tiledlayout(oo,pp);
@@ -2051,19 +2051,19 @@ classdef ForceMap < matlab.mixin.Copyable
                         end
                         
                         if ii==1
-                            kk=jj+1;
+                            kk=jj;
                         else
-                            kk=jj+1+mm*nn*(ii-1);
+                            kk=jj+mm*nn*(ii-1);
                         end
                         %% Plot loop
                         for qq=kk:obj.NCurves % Loop over all force curves in the force map
-                            if ww<qq+fcDiff
-                                ww=qq+fcDiff;
+                            if ww<qq+DiffFc
+                                ww=qq+DiffFc;
                             end
                             while ~obj.SMFSFlag.Uncorrupt(ww)     % Stay in the while loop as long as the entry is zero
                                 ww=ww+1;
                                 if ww>qq
-                                    fcDiff=ww-qq;
+                                    DiffFc=ww-qq;
                                 end
                             end
                             if ww>qq
@@ -2072,13 +2072,13 @@ classdef ForceMap < matlab.mixin.Copyable
                                 ax.YLim = [YMin YMax];
                                 hold on
                                 grid on
-                                plot(obj.THApp{qq+fcDiff}-obj.CP_HardSurface(qq+fcDiff),obj.BasedApp{qq+fcDiff},'b');
-                                plot(obj.THRet{qq+fcDiff}-obj.CP_HardSurface(qq+fcDiff),obj.BasedRetCorr2{qq+fcDiff},'r');
+                                plot(obj.THApp{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc),obj.BasedApp{qq+DiffFc},'b');
+                                plot(obj.THRet{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc),obj.BasedRetCorr2{qq+DiffFc},'r');
                                 %plot(xRet(obj.PullingLengthIdx(kk)),yRet(obj.PullingLengthIdx(kk)),'*','MarkerSize',10,'MarkerEdgeColor','g')
-                                plot(obj.THRet{qq+fcDiff}(obj.PullingLengthIdx(qq+fcDiff))-obj.CP_HardSurface(qq+fcDiff),obj.BasedRetCorr2{qq+fcDiff}(obj.PullingLengthIdx(qq+fcDiff)),'*','MarkerSize',10,'MarkerEdgeColor','g')
-                                area(obj.THRet{qq+fcDiff}-obj.CP_HardSurface(qq+fcDiff),obj.yRetLim2{qq+fcDiff},'FaceColor','y')
+                                plot(obj.THRet{qq+DiffFc}(obj.PullingLengthIdx(qq+DiffFc))-obj.CP_HardSurface(qq+DiffFc),obj.BasedRetCorr2{qq+DiffFc}(obj.PullingLengthIdx(qq+DiffFc)),'*','MarkerSize',10,'MarkerEdgeColor','g')
+                                area(obj.THRet{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc),obj.yRetLim2{qq+DiffFc},'FaceColor','y')
                                 % Title for each Subplot
-                                ti=title(sprintf('%i',qq+fcDiff),'Color','k');
+                                ti=title(sprintf('%i',qq+DiffFc),'Color','k');
                                 %ti=title(sprintf('%i',(kk+ww)/2),'Color','k');
                                 ti.Units='normalized'; % Set units to 'normalized'
                                 ti.Position=[0.5,1]; % Position the subplot title within the subplot
@@ -2099,10 +2099,10 @@ classdef ForceMap < matlab.mixin.Copyable
                                 ti.Units='normalized'; % Set units to 'normalized'
                                 ti.Position=[0.5,1]; % Position the subplot title within the subplot
                             end
-                            jj=jj+1;
                             if jj == RemainderReal
                                 break
                             end
+                            jj=jj+1;
                         end
                     end
                 end

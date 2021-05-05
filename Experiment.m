@@ -1284,10 +1284,7 @@ classdef Experiment < matlab.mixin.Copyable
                %obj.save_experiment;        % Save immediately after each force curve
             end    
         end
-                
-
-        
-        
+      
         function SMFS_figure(obj,XMin,XMax,YMin,YMax)
             
             if nargin < 2
@@ -1307,6 +1304,8 @@ classdef Experiment < matlab.mixin.Copyable
             % all analysed force curves are plotted and the determined
             % criteria are plotted for visual inspection
             % Input variable adaptation
+            % IMPRTANT: Input variable NumFcMax - Only natural numbers are allowed
+            % that result in natural numbers after square root extraction.
             if nargin<2
                 XMin= -inf;     % Limit of the X-axis in meters (m)
                 XMax= inf;      % Limit of the X-axis in meters (m)
