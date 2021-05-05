@@ -1321,8 +1321,8 @@ classdef Experiment < matlab.mixin.Copyable
             currpath=fullfile(obj.ExperimentFolder,foldername);
             cd(currpath);
             %% loop
-            %for ii=1:obj.NumForceMaps
-            for ii=1 % Debugging
+            for ii=1:obj.NumForceMaps
+            %for ii=1 % Debugging
                 sprintf('Force map No. %d',ii);
                 % Print force curves containing label for the pulling length
                 % and colored area for the adhesion energy
