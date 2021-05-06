@@ -3652,7 +3652,7 @@ classdef ForceMap < matlab.mixin.Copyable
         function show_sine_fit_Force(obj)
             close all
             k=1;
-            for i=5
+            for i=1:obj.NCurves
                 lastseg = obj.NumSegments-1;
                 for j=2:lastseg
                     
@@ -3737,24 +3737,24 @@ classdef ForceMap < matlab.mixin.Copyable
                          xpF = linspace(min(obj.SegTime{j}),max(obj.SegTime{j}),100000);
 
 
-                         [obj.fitresult{i,j}, gof] = obj.createFit1(obj.SegTime{j},obj.FilterF{i,j});
+                         %[obj.fitresult{i,j}, gof] = obj.createFit1(obj.SegTime{j},obj.FilterF{i,j});
 
-                        k = k + 1;
-                         % time indentation
-                        figure(k)
-                        plot(obj.SegTime{j},obj.FilterF{i,j},'b', obj.SegTime{j},FZShift{i,j},'r')
-                        hold on
-                        plot(ZeroCrossTimeF{i,j}, ZeroCrossF{i,j}, 'bp')
-                        hold on
-                        plot(xpF,fit(obj.SineVarsF{i,j},xpF), '--m')
-                        hold on
-                        plot(obj.fitresult{i,j}, '--c')
-                        legend('filtered data','shifted data to zero line','Zero Crossings','fitted data 1','fitted data 2')
-                        hold off
-                        title('Force Time Curve')
-                        xlabel('time in s')
-                        ylabel('Force in N')
-                        %saveas(gcf,['filename' num2str(k) '.jpg']);
+%                         k = k + 1;
+%                          % time indentation
+%                         figure(k)
+%                         plot(obj.SegTime{j},obj.FilterF{i,j},'b', obj.SegTime{j},FZShift{i,j},'r')
+%                         hold on
+%                         plot(ZeroCrossTimeF{i,j}, ZeroCrossF{i,j}, 'bp')
+%                         hold on
+%                         plot(xpF,fit(obj.SineVarsF{i,j},xpF), '--m')
+%                         hold on
+%                         plot(obj.fitresult{i,j}, '--c')
+%                         legend('filtered data','shifted data to zero line','Zero Crossings','fitted data 1','fitted data 2')
+%                         hold off
+%                         title('Force Time Curve')
+%                         xlabel('time in s')
+%                         ylabel('Force in N')
+
                        
                     end
                 end
@@ -3765,7 +3765,7 @@ classdef ForceMap < matlab.mixin.Copyable
         function show_sine_fit_Height(obj)
             close all
             k=1;
-            for i=5
+            for i=1:obj.NCurves
                 lastseg = obj.NumSegments-1;
                 for j=2:lastseg
                     
@@ -3863,24 +3863,24 @@ classdef ForceMap < matlab.mixin.Copyable
                          % Spacing of time vector:
                          xpH = linspace(min(obj.InterpTimeH{j}),max(obj.InterpTimeH{j}),100000);
                         
-                        [obj.fitresult{i,j}, gof] = obj.createFit1(obj.InterpTimeH{j},HInterp{i,j});
-
-                        k = k + 1;
-                         % time indentation
-                        figure(k)
-                        plot(obj.SegTime{j},HZShift{i,j},'r', obj.InterpTimeH{j},HInterp{i,j},'b')
-                        hold on
-                        plot(ZeroCrossTimeH{i,j}, ZeroCrossH{i,j}, 'bp')
-                        hold on
-                        plot(xpH,fit(obj.SineVarsH{i,j},xpH), '--m')
-                        hold on
-                        plot(obj.fitresult{i,j}, '--c')
-                        legend('original data', 'filtered data', 'Zero Crossings', 'fitted data 1', 'fitted data 2')
-                        hold off
-                        title('Height Time Curve')
-                        xlabel('time in s')
-                        ylabel('Height in microm')
-                        %export_fig (sprintf('figure%d',k),'-jpg');
+%                         [obj.fitresult{i,j}, gof] = obj.createFit1(obj.InterpTimeH{j},HInterp{i,j});
+% 
+%                         k = k + 1;
+%                          % time indentation
+%                         figure(k)
+%                         plot(obj.SegTime{j},HZShift{i,j},'r', obj.InterpTimeH{j},HInterp{i,j},'b')
+%                         hold on
+%                         plot(ZeroCrossTimeH{i,j}, ZeroCrossH{i,j}, 'bp')
+%                         hold on
+%                         plot(xpH,fit(obj.SineVarsH{i,j},xpH), '--m')
+%                         hold on
+%                         plot(obj.fitresult{i,j}, '--c')
+%                         legend('original data', 'filtered data', 'Zero Crossings', 'fitted data 1', 'fitted data 2')
+%                         hold off
+%                         title('Height Time Curve')
+%                         xlabel('time in s')
+%                         ylabel('Height in microm')
+%                         %export_fig (sprintf('figure%d',k),'-jpg');
 
                        
                     end

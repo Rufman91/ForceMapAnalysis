@@ -867,10 +867,10 @@ classdef Experiment < matlab.mixin.Copyable
                 obj.FMFlag.ForceMapAnalysis(i) = 1;
             end
             
-            obj.save_experiment;
+            %obj.save_experiment;
             
-            close(h);
-            obj.write_to_log_file('','','end')
+            %close(h);
+            %obj.write_to_log_file('','','end')
         end
         
         function image_analysis_base_on_even_background(obj,UpperLim,NIter)
