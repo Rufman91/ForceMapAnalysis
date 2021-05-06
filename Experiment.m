@@ -1050,12 +1050,34 @@ classdef Experiment < matlab.mixin.Copyable
             % typically required functions for further analysis
             % obj.preprocessing
                        
+            h = waitbar(0,'setting up','Units','normalized','Position',[0.4 0.3 0.2 0.1]);
+            NLoop = length(obj.ForceMapNames);
+            if sum(obj.SMFSFlag.Preprocessed) >= 1
+                KeepFlagged = questdlg(sprintf('Some maps have been processed already.\nDo you want to skip them and keep old results?'),...
+                    'Processing Options',...
+                    'Yes',...
+                    'No',...
+                    'No');
+            else
+                KeepFlagged = 'No';
+            end
+            
             % force map loop
             for ii=1:obj.NumForceMaps
-            % for ii=270 % debugging  
+            % for ii=270 % debugging
+                if isequal(KeepFlagged,'Yes') && obj.SMFSFlag.Preprocessed(ii) == 1
+                    continue
+                end
                 obj.FM{ii}.fc_chipprop
-                obj.FM{ii}.fc_based_ret_correction
+                waitbar(ii/NLoop,h,sprintf('Preprocessing ForceMap %i/%i\nFitting Base Lines',i,NLoop));
+                obj.FM{ii}.fc_based_ret_correction;
+                waitbar(ii/NLoop,h,sprintf('Preprocessing ForceMap %i/%i\nWrapping Up And Saving',i,NLoop));
+                
+                
+                obj.FM{ii}.save();
+                obj.SMFSFlag.Preprocessed(ii) = 1;
             end
+            close(h);
         end
                 
         function SMFS_presorting(obj)
@@ -2686,6 +2708,8 @@ classdef Experiment < matlab.mixin.Copyable
             NSPM = obj.NumSurfacePotentialMaps;
             obj.SPMFlag.FibrilAnalysis = zeros(NSPM,1);
             obj.SPMFlag.Grouping = 0;
+            
+            obj.SMFSFlag.Preprocessed = zeros(NFM,1);
             
             obj.CantileverTipFlag = false;
             if obj.NumCantileverTips > 0
