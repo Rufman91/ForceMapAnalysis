@@ -852,7 +852,7 @@ classdef Experiment < matlab.mixin.Copyable
                 obj.reference_slope_calculator(i);
                 
                 % sinus fit for modulation segments
-                %obj.FM{i}.sinus_fit_for_microrheology;
+                obj.FM{i}.sinus_fit_for_microrheology;
         
                 
                 waitbar(i/NLoop,h,sprintf('Processing ForceMap %i/%i\nCalculating E-Modulus',i,NLoop));
@@ -1830,8 +1830,9 @@ classdef Experiment < matlab.mixin.Copyable
                 % sinus fit for modulation segments
                 %obj.FM{i}.sinus_fit_for_microrheology;
                 %obj.FM{i}.show_microrheology;
-                obj.FM{i}.show_sine_fit_Force;
+                %obj.FM{i}.show_sine_fit_Force;
                 %obj.FM{i}.show_sine_fit_Height;
+                obj.FM{i}.show_sine;
                 
 
             end
