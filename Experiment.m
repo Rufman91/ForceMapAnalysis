@@ -573,6 +573,7 @@ classdef Experiment < matlab.mixin.Copyable
                     end
                 else
                     obj.FM{i}.calculate_e_mod_oliverpharr(obj.CantileverTips{obj.WhichTip(i)}.ProjectedTipArea,0.75);
+                    obj.FM{i}.ProjTipArea = obj.CantileverTips{obj.WhichTip(i)}.ProjectedTipArea;
                     if i == 1
                         obj.write_to_log_file('OliverPharr CurvePercent','0.75')
                     end
@@ -732,6 +733,7 @@ classdef Experiment < matlab.mixin.Copyable
                     end
                 else
                     obj.FM{i}.calculate_e_mod_oliverpharr(obj.CantileverTips{obj.WhichTip(i)}.ProjectedTipArea,0.75);
+                    obj.FM{i}.ProjTipArea = obj.CantileverTips{obj.WhichTip(i)}.ProjectedTipArea;
                     if i == 1
                         obj.write_to_log_file('OliverPharr CurvePercent','0.75')
                     end

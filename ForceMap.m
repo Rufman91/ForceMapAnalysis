@@ -3435,6 +3435,8 @@ classdef ForceMap < matlab.mixin.Copyable
                 plot(obj.IndDepth(m)*1e9,...
                     obj.IndentArea(m),'rO','MarkerSize',10,'MarkerFaceColor','r')
                 Xmax = round(max(obj.IndDepth)*1e9+5);
+                XmaxAlt = length(obj.ProjTipArea);
+                Xmax = min([Xmax XmaxAlt]);
                 xlim([0 Xmax])
                 plot(1:Xmax,obj.ProjTipArea(1:Xmax),'Color','black')
                 xlabel('Indentation Depth [nm]')
