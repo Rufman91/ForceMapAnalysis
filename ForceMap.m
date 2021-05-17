@@ -129,6 +129,7 @@ classdef ForceMap < matlab.mixin.Copyable
         IndDepth
         IndentArea
         ProjTipArea
+        RefSlopeMask
         HasRefSlope
     end
     properties

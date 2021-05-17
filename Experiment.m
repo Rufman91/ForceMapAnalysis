@@ -2473,8 +2473,7 @@ classdef Experiment < matlab.mixin.Copyable
                 end
             elseif obj.ReferenceSlopeFlag.FromArea
                 for i=1:obj.NumForceMaps
-                    Mask = obj.FM{i}.create_mask_general;
-                    obj.FM{i}.calculate_reference_slope_from_area(Mask)
+                    obj.FM{i}.RefSlopeMask = obj.FM{i}.create_mask_general;
                 end
             end
             
@@ -2524,6 +2523,8 @@ classdef Experiment < matlab.mixin.Copyable
                 obj.FM{i}.create_automatic_background_mask(.8)
                 Mask = obj.FM{i}.BackgroundMask;
                 obj.FM{i}.calculate_reference_slope_from_area(Mask)
+            elseif obj.ReferenceSlopeFlag.FromArea
+                obj.FM{i}.calculate_reference_slope_from_area(obj.FM{i}.RefSlopeMask)
             end
         end
         
