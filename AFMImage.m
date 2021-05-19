@@ -260,6 +260,68 @@ classdef AFMImage < matlab.mixin.Copyable
             obj.hasDeconvolutedCantileverTip = true;
         end
         
+        function deconvolute_image(obj,CTClassInstance)
+            
+            ErodedTip = CTClassInstance.get_channel('Eroded Tip');
+            if isempty(ErodedTip)
+                CTClassInstance.deconvolute_cantilever_tip;
+                ErodedTip = CTClassInstance.get_channel('Eroded Tip');
+            end
+            Processed = obj.get_channel('Processed');
+            if isempty('Processed')
+                warning('Image needs to flattened first')
+                return
+            end
+            
+            % Resize and pad images to same resolution at correct spacial
+            % ratio
+            TempMultiplier = (ErodedTip.NumPixelsX/ErodedTip.ScanSizeX)/(Processed.NumPixelsX/Processed.ScanSizeX);
+            if TempMultiplier*Processed.NumPixelsX > 1024
+                ReductionFactor = 1024/(TempMultiplier*Processed.NumPixelsX);
+                Multiplier = TempMultiplier*ReductionFactor;
+                ReducedRes = round(ErodedTip.NumPixelsX*ReductionFactor);
+                ErodedTip.Image = imresize(ErodedTip.Image,[ReducedRes nan]);
+            end
+            if TempMultiplier >= 1
+                Smaller = ErodedTip.Image;
+                Bigger = Processed.Image;
+            else
+                Smaller = Processed.Image;
+                Bigger = ErodedTip.Image;
+            end
+            Bigger = imresize(Bigger,[round(Multiplier*size(Bigger,1)) nan]);
+            Smaller = padarray(Smaller,size(Bigger)-size(Smaller),...
+                min(Smaller,[],'all'),'post');
+            
+            if TempMultiplier >= 1
+                In1 = Bigger;
+                In2 = Smaller;
+            else
+                In1 = Smaller;
+                In2 = Bigger;
+            end
+            
+            OutImage = obj.deconvolute_by_mathematical_morphology(In1,In2);
+            OutImage = imresize(OutImage,[Processed.NumPixelsX Processed.NumPixelsY]);
+            
+            Deconvoluted = Processed;
+            Deconvoluted.Name = 'Deconvoluted';
+            
+            MinIn = min(Processed.Image,[],'all');
+            MinOut = min(OutImage,[],'all');
+            
+            OutImage = OutImage + (MinIn - MinOut);
+            
+            Deconvoluted.Image = OutImage;
+            
+            [~,Index] = obj.get_channel('Deconvoluted');
+            if isempty(Index)
+                obj.Channel(end+1) = Deconvoluted;
+            else
+                obj.Channel(Index) = Deconvoluted;
+            end
+        end
+        
         function subtract_overlayed_image(obj,OverlayedImageClassInstance)
             
             if ~obj.hasOverlay
