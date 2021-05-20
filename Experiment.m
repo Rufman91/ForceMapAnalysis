@@ -1095,9 +1095,9 @@ classdef Experiment < matlab.mixin.Copyable
                 obj.FM{ii}.estimate_cp_hardsurface
                 obj.FM{ii}.fc_selection_procedure
                     if nnz(obj.FM{ii}.SMFSFlag.Min)<20 % Only if more than 20 force curves fulfil the citeria the whole force map is considered successfully functionalized
-                        obj.SMFSFlag(ii)=0;
+                        obj.SMFSFlag.SelectFM(ii)=0;
                     else
-                        obj.SMFSFlag(ii)=1;
+                        obj.SMFSFlag.SelectFM(ii)=1;
                     end
             end
         end
@@ -1130,7 +1130,7 @@ classdef Experiment < matlab.mixin.Copyable
             
             % Loop over the imported force maps
             for ii=1:obj.NumForceMaps
-            %for ii=19:obj.NumForceMaps % Debugging
+            %for ii=2 % Debugging
             % Presort condition 
               %  if ~obj.SMFSFlag(ii)   % Selects all flagged 1 force maps
                 %if obj.SMFSFlag(ii)     % Selects all flagged 0 force maps
@@ -1287,7 +1287,8 @@ classdef Experiment < matlab.mixin.Copyable
         end
         
         function SMFS_selection(obj)
-         
+            % 
+            
             % Change into the Folder of Interest
             cd(obj.ExperimentFolder) % Move into the folder 
             % Create folders for saving the produced figures
@@ -1365,6 +1366,61 @@ classdef Experiment < matlab.mixin.Copyable
                 
             end
         end
+        
+        
+            function SMFS_boxplot_pulllength(obj,XMin,XMax,YMin,YMax) % fc ... force curve
+            % fc_print: A function to simply plot all force curves of a
+            % force map without any selection taking place
+            if nargin < 2
+                XMin= -inf;
+                XMax= inf;
+                YMin= -inf;
+                YMax= inf;
+            end
+            % Define variables for the figure name
+%             VelocityConvert=num2str(obj.Velocity*1e+9); % Convert into nm
+%             % Classification criteria
+%             figname=strcat(obj.DateAdapt,{'_'},obj.TimeAdapt,{'_'},obj.ID,{'_'},obj.Substrate,{'_'},obj.EnvCond,{'_'},VelocityConvert,{'_'},obj.Chipbox,{'_'},obj.ChipCant);
+%             figname=char(figname);
+%             % Define variables for the plot loop
+            
+            %% figure loop                   
+                % Figure
+                h_fig=figure;
+                h_fig.Color='white'; % changes the background color of the figure
+                h_fig.Units='normalized'; % Defines the units
+                h_fig.OuterPosition=[0 0 1 1];% changes the size of the to the whole screen
+                h_fig.PaperOrientation='landscape';
+          %      h_fig.Name=figname;
+                    %% Plot loop
+                     for ii=1:obj.NumForceMaps
+                    obj.FM{ii}.min_max_Values
+                     end
+                    for jj=1:obj.NumForceMaps
+                            ax=nexttile;
+                            ax.XLim = [XMin XMax];
+                            %ax.YLim = [YMin YMax];                             
+                            ax.YLim = [obj.MinPullingLength obj.MaxPullingLength];
+                            hold on
+                            grid on                           
+                            boxplot(nonzeros(obj.FM{jj}.PullingLength))                                                     
+                            % Title for each Subplot
+                            ti=title(sprintf('%i',jj),'Color','k');
+                            ti.Units='normalized'; % Set units to 'normalized'
+                            ti.Position=[0.5,1]; % Position the subplot title within the subplot                     
+                    end                  
+              
+%                 %% Save figures
+%                 %%% Define the name for the figure title
+%                 partname=sprintf('-p%d',ii);
+%                 % fullname=sprintf('%s%s',figname,partname);
+%                 fullname=sprintf('%s%s',figname,partname);
+%                 %%% Save the current figure in the current folder
+%                 print(gcf,fullname,'-dpng');
+           
+        %    close all
+            end
+       
         
     end
     methods
@@ -2709,6 +2765,7 @@ classdef Experiment < matlab.mixin.Copyable
             obj.SPMFlag.FibrilAnalysis = zeros(NSPM,1);
             obj.SPMFlag.Grouping = 0;
             
+            obj.SMFSFlag.SelectFM = zeros(NFM,1);
             obj.SMFSFlag.Preprocessed = zeros(NFM,1);
             
             obj.CantileverTipFlag = false;

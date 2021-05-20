@@ -145,7 +145,7 @@ classdef ForceMap < matlab.mixin.Copyable
     end
     properties
         % SMFS related 
-        MinRet          % Minimum retention data which represents the maximum adhesion force
+        
         Linker          % Used NHS-PEG-MI Linker (short or long) 
         Substrate       % Used substrate for the measurement 
         EnvCond         % Environmental condition during the experiment
@@ -158,7 +158,10 @@ classdef ForceMap < matlab.mixin.Copyable
         CorrStdApp      % Corresponding standard deviation of the selection of the approach data for baseline correction
         CorrMeanRet     % Mean of a selection of the retraction data for baseline correction
         CorrStdRet      % Corresponding standard deviation of the selection of the retraction data for baseline correction
+        MinRet          % Minimum retention data which represents the maximum adhesion force
         MinRetSel       % Minimum retention data within a selected range on the x-axis which represents the maximum adhesion force within a selected distance range
+        MinPullingLength % Minimum pulling length within a force curve
+        MaxPullingLength % Maximum pulling length within a force curve
         EndIdx          % Index correspoding to a predefined value
         yRetLim2        % Modified retraction data to allow a valid integration
         RetAdhEnergy    % Adhesion Energy of the retraction curve
@@ -1199,16 +1202,19 @@ classdef ForceMap < matlab.mixin.Copyable
             
         end
         
-        function [MinApp] = min_force(obj)           
-            % Determine maximum adhesion forces - either for the whole
-            % dataset or for a selection
+        function [MinApp] = fc_min_max_values(obj)           
+            % Determines the minimum and maximum values of different
+            % values
+            
             for ii=1:obj.NCurves
-            MinApp(ii)=min(obj.BasedApp{ii});
-            MinRet(ii)=min(obj.BasedRet{ii}); 
-            MinRetSel(ii)=min(obj.BasedRet{ii}(1:obj.EndIdx(ii))); % Determines the minimum adhesion value within the selected area
+            MinApp(ii)=min(obj.BasedApp{ii}); % Determine maximum adhesion forces 
+            MinRet(ii)=min(obj.BasedRet{ii}); % Determine maximum adhesion forces 
+            MinRetSel(ii)=min(obj.BasedRet{ii}(1:obj.EndIdx(ii))); % Determines the maximum adhesion value within the selected area
             end
             obj.MinRet = MinRet;
             obj.MinRetSel = MinRetSel;
+            obj.MinPullingLength = min(obj.PullingLength);
+            obj.MaxPullingLength = max(obj.PullingLength);
         end
           
         function fc_based_ret_correction(obj,DataShareStartApp,DataShareEndApp,DataShareStartRet,DataShareEndRet)
@@ -1622,8 +1628,9 @@ classdef ForceMap < matlab.mixin.Copyable
                     % Tile jj
                     kk=jj+25*(ii-1);
                     %%% Define some variables
-                    x100=-100e-9; % Defines 100nm
-                    x500=-500e-9; % Defines 100nm
+                    x50=-50e-9; % Defines 50nm
+                    x150=-150e-9; % Defines 150nm
+                    x500=-500e-9; % Defines 500nm
                     % Plot tile
                     ax=nexttile;      
                     ax.XLim = [XMin XMax];
@@ -1632,8 +1639,9 @@ classdef ForceMap < matlab.mixin.Copyable
                     grid on
                     plot(obj.THApp{kk}-obj.CP_HardSurface(kk,1),obj.BasedApp{kk});
                     plot(obj.THRet{kk}-obj.CP_HardSurface(kk,1),obj.BasedRet{kk});
-                    line([x100 x100], ylim,'Color','k'); % Draws a vertical line                  
-                    line([x500 x500], ylim,'Color','k'); % Draws a vertical line
+                    xline(x50,'Color','r'); % Draws a vertical line
+                    xline(x150,'Color','r'); % Draws a vertical line   
+                    xline(x500,'Color','r'); % Draws a vertical line
                     % Title for each Subplot
                     if obj.SMFSFlag.Uncorrupt(kk)==0
                         ti=title(sprintf('%i',kk),'Color','r');
@@ -2116,8 +2124,8 @@ classdef ForceMap < matlab.mixin.Copyable
             end
             close all
         end
-    end
-    
+        
+    end    
     methods (Static)
         % Auxiliary methods
         
