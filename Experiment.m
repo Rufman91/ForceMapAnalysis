@@ -1,3 +1,5 @@
+(* ::Package:: *)
+
 classdef Experiment < matlab.mixin.Copyable
     
     properties
@@ -60,7 +62,7 @@ classdef Experiment < matlab.mixin.Copyable
         function obj = Experiment()
             
             % Set HostOS and HostName properties
-            obj.check_for_new_host
+            obj.check_for_new _host
             
             % set Name and choose Experiment folder
             [ExperimentName, ParentFolder] = uiputfile('*.mat','Select Experiment Name and Parent Folder');
@@ -69,7 +71,7 @@ classdef Experiment < matlab.mixin.Copyable
             obj.ExperimentFolder = fullfile(ParentFolder,obj.ExperimentName,filesep);
             
             % get Experiment filenames and paths from user input
-            [FileTypes, FullFileStruct, IsValid] = obj.constructor_user_input_parser(obj.ExperimentName,obj.HostOS);
+            [FileTypes, FullFileStruct, IsValid] = obj.constructor_user_input _parser(obj.ExperimentName,obj.HostOS);
             
             if ~IsValid
                 obj = [];
@@ -77,19 +79,19 @@ classdef Experiment < matlab.mixin.Copyable
             end
             
             % get paths of requested files and load them in
-            obj.take_paths_and_load_files(FileTypes,FullFileStruct,true)
+            obj.take_paths_and _load _files(FileTypes,FullFileStruct,true)
             
             obj.initialize_flags
             
             Temp = load('DropoutNetFinal.mat');
             obj.DropoutNet = Temp.MC14_Drop;
-            Temp2 = load('CP_CNN_Final.mat');
+            Temp2 = load('CP_CNN _Final.mat');
             obj.CP_CNN = Temp2.CNN;
             
             obj.save_experiment();
         end
         
-        function take_paths_and_load_files(obj,FileTypes,FullFileStruct,isNew)
+        function take_paths _and _load _files(obj,FileTypes,FullFileStruct,isNew)
             
             if nargin<4
                 isNew = false;
@@ -122,10 +124,10 @@ classdef Experiment < matlab.mixin.Copyable
             % Need to assign something to *FullFile. Otherwise parfor will
             % crash
             for i=1:5
-                if isempty(FullFileStruct(i).FullFile{1})
+                if isempty(FullFileStruct (i).FullFile{1})
                     NumFiles(i) = 0;
                 else
-                    NumFiles(i) = length(FullFileStruct(i).FullFile);
+                    NumFiles(i) = length(FullFileStruct (i).FullFile);
                 end
             end
             
@@ -135,11 +137,11 @@ classdef Experiment < matlab.mixin.Copyable
             SPMFullFile = cell(max(NumFiles),1);
             CantTipFullFile = cell(max(NumFiles),1);
             
-            FMFullFile(1:NumFiles(1)) = FullFileStruct(1).FullFile;
-            RefFMFullFile(1:NumFiles(2)) = FullFileStruct(2).FullFile;
-            IFullFile(1:NumFiles(3)) = FullFileStruct(3).FullFile;
-            SPMFullFile(1:NumFiles(4)) = FullFileStruct(4).FullFile;
-            CantTipFullFile(1:NumFiles(5)) = FullFileStruct(5).FullFile;
+            FMFullFile(1:NumFiles(1)) = FullFileStruct (1).FullFile;
+            RefFMFullFile(1:NumFiles(2)) = FullFileStruct (2).FullFile;
+            IFullFile(1:NumFiles(3)) = FullFileStruct (3).FullFile;
+            SPMFullFile(1:NumFiles(4)) = FullFileStruct (4).FullFile;
+            CantTipFullFile(1:NumFiles(5)) = FullFileStruct (5).FullFile;
             
             
             StartID = obj.NumAFMImages + obj.NumCantileverTips + obj.NumForceMaps + obj.NumReferenceForceMaps + obj.NumSurfacePotentialMaps + 1;
@@ -152,7 +154,7 @@ classdef Experiment < matlab.mixin.Copyable
                 for i=1:5
                     parfor j=1:L
                         if (j+sum(NumFiles(1:i))-NumFiles(i)) <= length(IDs)
-                            TempID{j,i} = sprintf('%s-%i',obj.ExperimentName,IDs(j+sum(NumFiles(1:i))-NumFiles(i)));
+                            TempID{j,i} = sprintf('% s-% i',obj.ExperimentName,IDs(j+sum(NumFiles(1:i))-NumFiles(i)));
                         end
                         if i == 1 && FileTypes(i) && (j<=NumFiles(i))
                             TempCell{j,i} = ForceMap(FMFullFile{j},obj.ExperimentFolder,TempID{j,i});
@@ -174,7 +176,7 @@ classdef Experiment < matlab.mixin.Copyable
             else
                 for i=1:5
                     for j=1:NumFiles(i)
-                        TempID{j,i} = sprintf('%s-%i',obj.ExperimentName,IDs(j+sum(NumFiles(1:i))-NumFiles(i)));
+                        TempID{j,i} = sprintf('% s-% i',obj.ExperimentName,IDs(j+sum(NumFiles(1:i))-NumFiles(i)));
                         if i == 1 && FileTypes(i)
                             TempCell{j,i} = ForceMap(FMFullFile{j},obj.ExperimentFolder,TempID{j,i});
                         end
@@ -248,11 +250,11 @@ classdef Experiment < matlab.mixin.Copyable
             try
                 
                 % Set HostOS and HostName properties
-                SaveCopy.check_for_new_host
+                SaveCopy.check_for_new _host
                 
                 % get Experiment name and layout from user
                 isNew = false;
-                [FileTypes, FullFileStruct, isValid] = SaveCopy.constructor_user_input_parser(obj.ExperimentName,obj.HostOS);
+                [FileTypes, FullFileStruct, isValid] = SaveCopy.constructor_user_input _parser(obj.ExperimentName,obj.HostOS);
                 
                 if ~isValid
                     SaveCopy = [];
@@ -260,9 +262,9 @@ classdef Experiment < matlab.mixin.Copyable
                 end
                 
                 % get paths of requested files and load them in
-                SaveCopy.take_paths_and_load_files(FileTypes,FullFileStruct,isNew)
+                SaveCopy.take_paths_and _load _files(FileTypes,FullFileStruct,isNew)
                 
-                % SaveCopy.initialize_flags % What to do with this?
+                SaveCopy.initialize_flags
                 
                 Out = SaveCopy;
                 Out.save_experiment
@@ -277,8 +279,8 @@ classdef Experiment < matlab.mixin.Copyable
                 CheckDir = dir('Temp*');
                 if 0<length(CheckDir)
                     for i=1:length(CheckDir)
-                        if CheckDir(i).isdir
-                            rmdir(CheckDir(i).name)
+                        if CheckDir (i).isdir
+                            rmdir(CheckDir (i).name)
                         end
                     end
                 end
@@ -291,11 +293,11 @@ classdef Experiment < matlab.mixin.Copyable
         function save_experiment(obj)
             current = what();
             cd(obj.ExperimentFolder)
-            savename = sprintf('%s.mat',obj.ExperimentName);
+            savename = sprintf('% s.mat',obj.ExperimentName);
             disp('saving...');
-            save(savename,'obj','-v7.3')
+            save(savename,'obj','-v7 .3')
             cd(current.path)
-            savemsg = sprintf('Changes to Experiment %s saved to %s',obj.ExperimentName,obj.ExperimentFolder);
+            savemsg = sprintf('Changes to Experiment % s saved to % s',obj.ExperimentName,obj.ExperimentFolder);
             disp(savemsg);
         end
         
@@ -363,28 +365,28 @@ classdef Experiment < matlab.mixin.Copyable
             E = obj;
             clear obj
             
-            E.check_for_new_host();
+            E.check_for_new _host();
             FMFolder = fullfile(Path,filesep,'ForceData');
             for i=1:E.NumForceMaps
                 if ~isempty(E.FM{i})
-                    E.FM{i}.check_for_new_host();
+                    E.FM{i}.check_for_new _host();
                     E.FM{i}.Folder = FMFolder;
                     E.ForceMapFolders{i} = FMFolder;
                 end
             end
             for i=1:E.NumAFMImages
                 if ~isempty(E.I{i})
-                    E.I{i}.check_for_new_host();
+                    E.I{i}.check_for_new _host();
                 end
             end
             for i=1:E.NumReferenceForceMaps
                 if ~isempty(E.RefFM{i})
-                    E.RefFM{i}.check_for_new_host();
+                    E.RefFM{i}.check_for_new _host();
                 end
             end
             for i=1:E.NumCantileverTips
                 if ~isempty(E.CantileverTips{i})
-                    E.CantileverTips{i}.check_for_new_host();
+                    E.CantileverTips{i}.check_for_new _host();
                 end
             end
             
@@ -418,7 +420,7 @@ classdef Experiment < matlab.mixin.Copyable
                 if isequal(KeepFlagged,'Yes') && obj.FMFlag.Preprocessed(i) == 1
                     continue
                 end
-                obj.FM{i}.create_and_level_height_map();
+                obj.FM{i}.create_and_level _height _map();
             end
             
             
@@ -427,9 +429,9 @@ classdef Experiment < matlab.mixin.Copyable
                 if isequal(KeepFlagged,'Yes') && obj.FMFlag.Preprocessed(i) == 1
                     continue
                 end
-                waitbar(i/NLoop,h,sprintf('Preprocessing ForceMap %i/%i\nFitting Base Lines',i,NLoop));
+                waitbar(i/NLoop,h,sprintf('Preprocessing ForceMap % i/%i \n Fitting Base Lines',i,NLoop));
                 obj.FM{i}.base_and_tilt('linear');
-                waitbar(i/NLoop,h,sprintf('Preprocessing ForceMap %i/%i\nWrapping Up And Saving',i,NLoop));
+                waitbar(i/NLoop,h,sprintf('Preprocessing ForceMap % i/%i \n Wrapping Up And Saving',i,NLoop));
                 
                 obj.FM{i}.save();
                 obj.FMFlag.Preprocessed(i) = 1;
@@ -440,8 +442,8 @@ classdef Experiment < matlab.mixin.Copyable
             close(h);
         end
         
-        function force_map_analysis_fibril(obj,CPOption,EModOption)
-            % force_map_analysis_fibril(obj,CPOption,EModOption)
+        function force_map _analysis _fibril(obj,CPOption,EModOption)
+            % force_map _analysis _fibril(obj,CPOption,EModOption)
             %
             % CPOption = 'Snap-In' ... Preferred Option for data with
             % snap-in effect
@@ -466,9 +468,9 @@ classdef Experiment < matlab.mixin.Copyable
             % EModOption = 'Oliver' ... E-Modulus calculation through
             % Oliver-Pharr-like method (O. Andriotis 2014)
             
-            obj.write_to_log_file('Analysis Function','force_map_analysis_fibril()','start')
-            obj.write_to_log_file('Contact Point Option',CPOption)
-            obj.write_to_log_file('EMod Option',EModOption)
+            obj.write_to_log _file('Analysis Function','force_map _analysis _fibril ()','start')
+            obj.write_to_log _file('Contact Point Option',CPOption)
+            obj.write_to_log _file('EMod Option',EModOption)
             
             h = waitbar(0,'setting up','Units','normalized','Position',[0.4 0.3 0.2 0.1]);
             NLoop = length(obj.ForceMapNames);
@@ -491,7 +493,7 @@ classdef Experiment < matlab.mixin.Copyable
                 if isequal(KeepFlagged,'Yes') && obj.FMFlag.FibrilAnalysis(i) == 1
                     continue
                 end
-                obj.FM{i}.create_and_level_height_map();
+                obj.FM{i}.create_and_level _height _map();
                 obj.FM{i}.create_fibril_mask();
                 if isequal(answer,'Yes')
                     continue
@@ -515,7 +517,7 @@ classdef Experiment < matlab.mixin.Copyable
             elseif obj.ReferenceSlopeFlag.Automatic
                 RefSlopeOption = 'Automatic';
             end
-            obj.write_to_log_file('Reference Slope Option',RefSlopeOption)
+            obj.write_to_log _file('Reference Slope Option',RefSlopeOption)
             
             % Deconvoluting cantilever tip(s)
             if isequal(lower(EModOption),'oliver')
@@ -528,7 +530,7 @@ classdef Experiment < matlab.mixin.Copyable
                         NumTips = str2num(UsrInput{1});
                         IsValid = isnumeric(NumTips)&&~isempty(NumTips);
                     end
-                    obj.get_paths_and_load_files([0 0 0 0 1],[0 0 0 0 ceil(NumTips)],false);
+                    obj.get_paths_and _load _files([0 0 0 0 1],[0 0 0 0 ceil(NumTips)],false);
                 end
                 if ~obj.AssignedCantileverTips
                     obj.assign_cantilever_tips
@@ -547,38 +549,39 @@ classdef Experiment < matlab.mixin.Copyable
                 if isequal(KeepFlagged,'Yes') && obj.FMFlag.FibrilAnalysis(i) == 1
                     continue
                 end
-                waitbar(i/NLoop,h,sprintf('Processing Fibril %i/%i\nFitting Base Line',i,NLoop));
+                waitbar(i/NLoop,h,sprintf('Processing Fibril % i/%i \n Fitting Base Line',i,NLoop));
                 if ~obj.FM{i}.BaseAndTiltFlag
                     obj.FM{i}.base_and_tilt('linear');
                 end
                 if i == 1
-                    obj.write_to_log_file('Baseline and Tilt option','linear')
+                    obj.write_to_log _file('Baseline and Tilt option','linear')
                 end
                 
                 obj.FM{i}.calculate_fib_diam();
                 
                 % contact point estimation happens here
-                waitbar(i/NLoop,h,sprintf('Processing Fibril %i/%i\nFinding Contact Point',i,NLoop));
+                waitbar(i/NLoop,h,sprintf('Processing Fibril % i/%i \n Finding Contact Point',i,NLoop));
                 obj.cp_option_converter(CPOption,i);
                 
                 % reference slope calculation happens here
-                waitbar(i/NLoop,h,sprintf('Processing Fibril %i/%i\nProcessing and calculating Reference Slope',i,NLoop));
+                waitbar(i/NLoop,h,sprintf('Processing Fibril % i/%i \n Processing and calculating Reference Slope',i,NLoop));
                 obj.reference_slope_calculator(i);
                 
-                waitbar(i/NLoop,h,sprintf('Processing Fibril %i/%i\nCalculating E-Modulus',i,NLoop));
+                waitbar(i/NLoop,h,sprintf('Processing Fibril % i/%i \n Calculating E-Modulus',i,NLoop));
                 if isequal(lower(EModOption),'hertz')
-                    obj.FM{i}.calculate_e_mod_hertz(CPOption,'parabolic',1);
+                    obj.FM{i}.calculate_e_mod _hertz(CPOption,'parabolic',1);
                     if i == 1
-                        obj.write_to_log_file('Hertzian Tip-Shape','parabolic')
-                        obj.write_to_log_file('Hertzian CurvePercent','1')
+                        obj.write_to_log _file('Hertzian Tip-Shape','parabolic')
+                        obj.write_to_log _file('Hertzian CurvePercent','1')
                     end
                 else
-                    obj.FM{i}.calculate_e_mod_oliverpharr(obj.CantileverTips{obj.WhichTip(i)}.ProjectedTipArea,0.75);
+                    obj.FM{i}.calculate_e_mod _oliverpharr(obj.CantileverTips{obj.WhichTip(i)}.ProjectedTipArea,0.75);
+                    obj.FM{i}.ProjTipArea = obj.CantileverTips{obj.WhichTip(i)}.ProjectedTipArea;
                     if i == 1
-                        obj.write_to_log_file('OliverPharr CurvePercent','0.75')
+                        obj.write_to_log _file('OliverPharr CurvePercent','0.75')
                     end
                 end
-                waitbar(i/NLoop,h,sprintf('Processing Fibril %i/%i\nWrapping Up And Saving',i,NLoop));
+                waitbar(i/NLoop,h,sprintf('Processing Fibril % i/%i \n Wrapping Up And Saving',i,NLoop));
                 
                 if i > 1
                     close(Fig{i-1})
@@ -614,11 +617,11 @@ classdef Experiment < matlab.mixin.Copyable
             obj.save_experiment;
             
             close(h);
-            obj.write_to_log_file('','','end')
+            obj.write_to_log _file('','','end')
         end
         
-        function force_map_analysis_general(obj,CPOption,EModOption)
-            % force_map_analysis_general(obj,CPOption,EModOption)
+        function force_map _analysis _general(obj,CPOption,EModOption)
+            % force_map _analysis _general(obj,CPOption,EModOption)
             %
             % CPOption = 'Snap-In' ... Preferred Option for data with
             % snap-in effect
@@ -643,9 +646,9 @@ classdef Experiment < matlab.mixin.Copyable
             % EModOption = 'Oliver' ... E-Modulus calculation through
             % Oliver-Pharr-like method (O. Andriotis 2014)
             
-            obj.write_to_log_file('Analysis Function','force_map_analysis_general()','start')
-            obj.write_to_log_file('Contact Point Option',CPOption)
-            obj.write_to_log_file('EMod Option',EModOption)
+            obj.write_to_log _file('Analysis Function','force_map _analysis _general ()','start')
+            obj.write_to_log _file('Contact Point Option',CPOption)
+            obj.write_to_log _file('EMod Option',EModOption)
             
             h = waitbar(0,'setting up','Units','normalized','Position',[0.4 0.3 0.2 0.1]);
             NLoop = obj.NumForceMaps;
@@ -675,7 +678,7 @@ classdef Experiment < matlab.mixin.Copyable
             elseif obj.ReferenceSlopeFlag.Automatic
                 RefSlopeOption = 'Automatic';
             end
-            obj.write_to_log_file('Reference Slope Option',RefSlopeOption)
+            obj.write_to_log _file('Reference Slope Option',RefSlopeOption)
             
             % Deconvoluting cantilever tip(s)
             if isequal(lower(EModOption),'oliver')
@@ -688,7 +691,7 @@ classdef Experiment < matlab.mixin.Copyable
                         NumTips = str2num(UsrInput{1});
                         IsValid = isnumeric(NumTips)&&~isempty(NumTips);
                     end
-                    obj.get_paths_and_load_files([0 0 0 0 1],[0 0 0 0 ceil(NumTips)],false);
+                    obj.get_paths_and _load _files([0 0 0 0 1],[0 0 0 0 ceil(NumTips)],false);
                 end
                 if ~obj.AssignedCantileverTips
                     obj.assign_cantilever_tips
@@ -706,38 +709,39 @@ classdef Experiment < matlab.mixin.Copyable
                 if isequal(KeepFlagged,'Yes') && obj.FMFlag.ForceMapAnalysis(i) == 1
                     continue
                 end
-                waitbar(i/NLoop,h,sprintf('Processing ForceMap %i/%i\nFitting Base Line',i,NLoop));
+                waitbar(i/NLoop,h,sprintf('Processing ForceMap % i/%i \n Fitting Base Line',i,NLoop));
                 if ~obj.FM{i}.BaseAndTiltFlag
                     obj.FM{i}.base_and_tilt('linear');
                 if i == 1
-                    obj.write_to_log_file('Baseline and Tilt option','linear')
+                    obj.write_to_log _file('Baseline and Tilt option','linear')
                 end
                 end
                 
                 % contact point estimation happens here
-                waitbar(i/NLoop,h,sprintf('Processing ForceMap %i/%i\nFinding Contact Point',i,NLoop));
+                waitbar(i/NLoop,h,sprintf('Processing ForceMap % i/%i \n Finding Contact Point',i,NLoop));
                 obj.cp_option_converter(CPOption,i);
                 
                 % reference slope calculation happens here
-                waitbar(i/NLoop,h,sprintf('Processing ForceMap %i/%i\nProcessing and calculating Reference Slope',i,NLoop));
+                waitbar(i/NLoop,h,sprintf('Processing ForceMap % i/%i \n Processing and calculating Reference Slope',i,NLoop));
                 obj.reference_slope_calculator(i);
                 
-                waitbar(i/NLoop,h,sprintf('Processing ForceMap %i/%i\nCalculating E-Modulus',i,NLoop));
+                waitbar(i/NLoop,h,sprintf('Processing ForceMap % i/%i \n Calculating E-Modulus',i,NLoop));
                 if isequal(lower(EModOption),'hertz')
                     AllowXShift = true;
-                    obj.FM{i}.calculate_e_mod_hertz(CPOption,'parabolic',1,AllowXShift);
+                    obj.FM{i}.calculate_e_mod _hertz(CPOption,'parabolic',1,AllowXShift);
                     if i == 1
-                        obj.write_to_log_file('Hertzian Tip-Shape','parabolic')
-                        obj.write_to_log_file('Hertzian CurvePercent','1')
-                        obj.write_to_log_file('Allow X-Shift',AllowXShift)
+                        obj.write_to_log _file('Hertzian Tip-Shape','parabolic')
+                        obj.write_to_log _file('Hertzian CurvePercent','1')
+                        obj.write_to_log _file('Allow X-Shift',AllowXShift)
                     end
                 else
-                    obj.FM{i}.calculate_e_mod_oliverpharr(obj.CantileverTips{obj.WhichTip(i)}.ProjectedTipArea,0.75);
+                    obj.FM{i}.calculate_e_mod _oliverpharr(obj.CantileverTips{obj.WhichTip(i)}.ProjectedTipArea,0.75);
+                    obj.FM{i}.ProjTipArea = obj.CantileverTips{obj.WhichTip(i)}.ProjectedTipArea;
                     if i == 1
-                        obj.write_to_log_file('OliverPharr CurvePercent','0.75')
+                        obj.write_to_log _file('OliverPharr CurvePercent','0.75')
                     end
                 end
-                waitbar(i/NLoop,h,sprintf('Processing ForceMap %i/%i\nWrapping Up And Saving',i,NLoop));
+                waitbar(i/NLoop,h,sprintf('Processing ForceMap % i/%i \n Wrapping Up And Saving',i,NLoop));
                 
                 obj.FMFlag.ForceMapAnalysis(i) = 1;
             end
@@ -745,19 +749,19 @@ classdef Experiment < matlab.mixin.Copyable
             obj.save_experiment;
             
             close(h);
-            obj.write_to_log_file('','','end')
+            obj.write_to_log _file('','','end')
         end
         
-        function image_analysis_base_on_even_background(obj,UpperLim,NIter)
+        function image_analysis _flatten _on _even _background(obj,UpperLim,NIter)
             
             if nargin < 2
                 UpperLim = 1;
                 NIter = 1;
             end
-            %main loop
+            % main loop
             h = waitbar(0,'setting up...');
             for i=1:obj.NumAFMImages
-                waitbar(i/obj.NumAFMImages,h,{sprintf('Processing %i/%i:',i,obj.NumAFMImages),sprintf('%s',obj.I{i}.Name)});
+                waitbar(i/obj.NumAFMImages,h,{sprintf('Processing % i/%i:',i,obj.NumAFMImages),sprintf('% s',obj.I{i}.Name)});
                 [Processed,Index] = obj.I{i}.get_channel('Processed');
                 Height = obj.I{i}.get_channel('Height (Trace)');
                 if isempty(Processed)
@@ -766,9 +770,9 @@ classdef Experiment < matlab.mixin.Copyable
                     Index = length(obj.I{i}.Channel)+1;
                     obj.I{i}.NumChannels = Index;
                 end
-                Processed.Image = obj.I{i}.subtract_line_fit_hist(Height.Image, UpperLim);
+                Processed.Image = obj.I{i}.subtract_line_fit _hist(Height.Image, UpperLim);
                 for j=1:NIter
-                    Processed.Image = obj.I{i}.subtract_line_fit_hist(Processed.Image, UpperLim);
+                    Processed.Image = obj.I{i}.subtract_line_fit _hist(Processed.Image, UpperLim);
                 end
                 obj.I{i}.Channel(Index) = Processed;
                 obj.I{i}.hasProcessed = 1;
@@ -776,7 +780,35 @@ classdef Experiment < matlab.mixin.Copyable
             close(h)
         end
         
-        function image_analysis_mask_background(obj,Thresh)
+        function image_analysis _flatten _on _even _background _automatic(obj,WindowSize,NIter)
+            
+            if nargin < 2
+                WindowSize = .2;
+                NIter = 3;
+            end
+            % main loop
+            h = waitbar(0,'setting up...');
+            for i=1:obj.NumAFMImages
+                waitbar(i/obj.NumAFMImages,h,{sprintf('Processing % i/%i:',i,obj.NumAFMImages),sprintf('% s',obj.I{i}.Name)});
+                [Processed,Index] = obj.I{i}.get_channel('Processed');
+                Height = obj.I{i}.get_channel('Height (Trace)');
+                if isempty(Processed)
+                    Processed = Height;
+                    Processed.Name = 'Processed';
+                    Index = length(obj.I{i}.Channel)+1;
+                    obj.I{i}.NumChannels = Index;
+                end
+                Processed.Image = AFMImage.subtract_line_fit _hist(Height.Image, .5);
+                for j=1:NIter
+                    Processed.Image = AFMImage.subtract_line_fit _vertical _rov(Processed.Image, WindowSize,false);
+                end
+                obj.I{i}.Channel(Index) = Processed;
+                obj.I{i}.hasProcessed = 1;
+            end
+            close(h)
+        end
+        
+        function image_analysis _mask _background(obj,Thresh)
             
             if nargin < 2
                 Thresh = 0;
@@ -787,14 +819,14 @@ classdef Experiment < matlab.mixin.Copyable
             
             h = waitbar(0,'setting up...');
             for i=1:obj.NumAFMImages
-                waitbar(i/obj.NumAFMImages,h,{sprintf('Processing %i/%i:',i,obj.NumAFMImages),sprintf('%s',obj.I{i}.Name)});
+                waitbar(i/obj.NumAFMImages,h,{sprintf('Processing % i/%i:',i,obj.NumAFMImages),sprintf('% s',obj.I{i}.Name)});
                 InChannel = obj.I{i}.get_channel('Processed');
                 OutChannel = InChannel;
                 try
-                    OutChannel.Image = AFMImage.mask_background_by_threshold(InChannel.Image,Thresh,Automatic);
+                    OutChannel.Image = AFMImage.mask_background_by _threshold(InChannel.Image,Thresh,Automatic);
                 catch
                     warning("Couldn't determine threshold automatically. Taking default of 10%, instead.")
-                    OutChannel.Image = AFMImage.mask_background_by_threshold(InChannel.Image,10,'off');
+                    OutChannel.Image = AFMImage.mask_background_by _threshold(InChannel.Image,10,'off');
                 end
                 OutChannel.Name = 'Background Mask';
                 OutChannel.Unit = 'Categorical';
@@ -804,16 +836,16 @@ classdef Experiment < matlab.mixin.Copyable
             close(h)
         end
         
-        function surface_potential_analysis_fibril(obj)
+        function surface_potential _analysis _fibril(obj)
             
         end
         
-        function surface_potential_analysis_general(obj)
+        function surface_potential _analysis _general(obj)
             % WORK IN PROGRESS
         end
         
-        function cp_option_converter(obj,CPOption,i,RefFM)
-            % cp_option_converter(CPOption,i,RefFM)
+        function cp_option _converter(obj,CPOption,i,RefFM)
+            % cp_option _converter(CPOption,i,RefFM)
             %
             % aux-function for CPOption choice
             
@@ -824,7 +856,7 @@ classdef Experiment < matlab.mixin.Copyable
             end
             if RefFM == false
                 if isequal(lower(CPOption),'snap-in')
-                    obj.FM{i}.estimate_cp_snap_in();
+                    obj.FM{i}.estimate_cp_snap _in();
                 end
                 if isequal(lower(CPOption),'rov')
                     obj.FM{i}.estimate_cp_rov();
@@ -864,7 +896,7 @@ classdef Experiment < matlab.mixin.Copyable
                 end
             elseif RefFM == true
                 if isequal(lower(CPOption),'snap-in')
-                    obj.FM{i}.estimate_cp_snap_in();
+                    obj.FM{i}.estimate_cp_snap _in();
                 end
                 if isequal(lower(CPOption),'rov')
                     obj.RefFM{i}.estimate_cp_rov();
@@ -926,8 +958,8 @@ classdef Experiment < matlab.mixin.Copyable
             
         end
         
-        function create_moving_dot_gif_emod_vs_surfpot(obj,NFrames,NStartFrames,NEndFrames)
-            % create_moving_dot_gif_emod_vs_surfpot(obj,NFrames,FreezeFrames)
+        function create_moving _dot _gif _emod _vs _surfpot(obj,NFrames,NStartFrames,NEndFrames)
+            % create_moving _dot _gif _emod _vs _surfpot(obj,NFrames,FreezeFrames)
             %
             % This gif-creator has been written for a specific use case and
             % has to be manually recoded to fit other Experiments. Videos
@@ -935,8 +967,8 @@ classdef Experiment < matlab.mixin.Copyable
             % and NStartFrames=30 creates a 4 second video
             
             % Get Fibril Data
-            X = obj.statistical_analysis_force_maps*1e-6;
-            Y = obj.statistical_analysis_surface_potential*1e3;
+            X = obj.statistical_analysis_force _maps*1e-6;
+            Y = obj.statistical_analysis_surface _potential*1e3;
             Y = Y';
             close all
             
@@ -965,13 +997,13 @@ classdef Experiment < matlab.mixin.Copyable
                 YTemp1 = Y(1:10) + Steps(i)*DY1;
                 YTemp2 = Y(21:30) + Steps(i)*DY2;
                 MeanX1 = mean(XTemp1);
-                ErrX1 = std(XTemp1)/sqrt(10);
+                ErrX1 = std (XTemp1)/sqrt(10);
                 MeanX2 = mean(XTemp2);
-                ErrX2 = std(XTemp2)/sqrt(10);
+                ErrX2 = std (XTemp2)/sqrt(10);
                 MeanY1 = mean(YTemp1);
-                ErrY1 = std(YTemp1)/sqrt(10);
+                ErrY1 = std (YTemp1)/sqrt(10);
                 MeanY2 = mean(YTemp2);
-                ErrY2 = std(YTemp2)/sqrt(10);
+                ErrY2 = std (YTemp2)/sqrt(10);
                 plot(XTemp1,YTemp1,'square','MarkerEdgeColor','k','MarkerFaceColor','b','MarkerSize',10)
                 ax = Fig.CurrentAxes;
                 xlim([min(X)-0.1*range(X) max(X)+0.1*range(X)])
@@ -1011,29 +1043,29 @@ classdef Experiment < matlab.mixin.Copyable
             close(Fig)
         end
         
-        function SMFS_min_max(obj)
+        function SMFS_min _max(obj)
             
 
             for ii=1:obj.NumForceMaps
            %    obj.FM{ii}.base_and_tilt('linear');
-               obj.FM{ii}.fc_min_max_values; 
+               obj.FM{ii}.fc_min_max _values; 
             end
           %  obj.save_experiment
         end
         
-        function [m,n,NumFigures] = adjust_tiled_layout(obj,NumFcMax)
+        function [m,n,NumFigures] = adjust_tiled _layout(obj,NumFcMax)
             
             if nargin < 2
                 NumFcMax=25; % The maximum of allowed plots per figure
             end
             
             for ii=1:obj.NumForceMaps
-                %for ii=1:8 %for debugging
+                % for ii=1:8 % for debugging
                 NumFcUncorrupt(ii)=nnz(obj.FM{ii}.SMFSFlag.Uncorrupt); % Determine the number of uncorrupted force curves
                 if ~any(NumFcUncorrupt(ii))    
                     continue
                 end
-                NumFigures=ceil(NumFcUncorrupt(ii)./NumFcMax); % Determine the number of figures
+                NumFigures=ceil(NumFcUncorrupt (ii)./NumFcMax); % Determine the number of figures
                 Remainder=mod(NumFcUncorrupt(ii),NumFcMax); % Check for remainder
                 if Remainder ~= 0
                     m(ii)=floor(sqrt(Remainder)); % Determine the number of rows in the figure
@@ -1069,9 +1101,9 @@ classdef Experiment < matlab.mixin.Copyable
                     continue
                 end
                 obj.FM{ii}.fc_chipprop
-                waitbar(ii/NLoop,h,sprintf('Preprocessing ForceMap %i/%i\nFitting Base Lines',i,NLoop));
-                obj.FM{ii}.fc_based_ret_correction
-                waitbar(ii/NLoop,h,sprintf('Preprocessing ForceMap %i/%i\nWrapping Up And Saving',i,NLoop));
+                waitbar(ii/NLoop,h,sprintf('Preprocessing ForceMap % i/%i \n Fitting Base Lines',i,NLoop));
+                obj.FM{ii}.fc_based_ret _correction
+                waitbar(ii/NLoop,h,sprintf('Preprocessing ForceMap % i/%i \n Wrapping Up And Saving',i,NLoop));
                 
                 
                 obj.FM{ii}.save();
@@ -1088,9 +1120,9 @@ classdef Experiment < matlab.mixin.Copyable
             
             % Loop over the imported force maps
             for ii=1:obj.NumForceMaps
-            %for ii=46:obj.NumForceMaps % Debugging
+            % for ii=46:obj.NumForceMaps % Debugging
             % Command window output
-                sprintf('Force Map No. %d of %d',ii,obj.NumForceMaps) % Gives current Force Map Position
+                sprintf('Force Map No. %d of % d',ii,obj.NumForceMaps) % Gives current Force Map Position
                 obj.FM{ii}.base_and_tilt
                 obj.FM{ii}.estimate_cp_hardsurface
                 obj.FM{ii}.fc_selection_procedure
@@ -1122,7 +1154,7 @@ classdef Experiment < matlab.mixin.Copyable
             % Change into the Folder of Interest
             cd(obj.ExperimentFolder) % Move into the folder 
             % Create folders for saving the produced figures
-            %foldername='FM_test';    % for debugging
+            % foldername='FM_test';    % for debugging
             foldername='FM_unsorted';    % Defines the folder name
             mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
             currpath=fullfile(obj.ExperimentFolder,foldername);
@@ -1130,22 +1162,22 @@ classdef Experiment < matlab.mixin.Copyable
             
             % Loop over the imported force maps
             for ii=1:obj.NumForceMaps
-            %for ii=2 % Debugging
+            % for ii=2 % Debugging
             % Presort condition 
               %  if ~obj.SMFSFlag(ii)   % Selects all flagged 1 force maps
-                %if obj.SMFSFlag(ii)     % Selects all flagged 0 force maps
+                % if obj.SMFSFlag(ii)     % Selects all flagged 0 force maps
                %     continue
-               %end
+               % end
                % Command window output
-               sprintf('Force Map No. %d of %d',ii,obj.NumForceMaps) % Gives current Force Map Position
+               sprintf('Force Map No. %d of % d',ii,obj.NumForceMaps) % Gives current Force Map Position
                % Run the chosen functions
                obj.FM{ii}.fc_print(XMin,XMax,YMin,YMax);     
              %  obj.save_experiment;        % Save immediately after each force curve
             end    
         end
         
-        function SMFS_print_sort(obj,StartDate,EndDate,XMin,XMax,YMin,YMax)
-            % SMFS_print_sort: A function to plot all force curves of all
+        function SMFS_print _sort(obj,StartDate,EndDate,XMin,XMax,YMin,YMax)
+            % SMFS_print _sort: A function to plot all force curves of all
             % force maps sorted by different properties 
             % Comment: Date format is: 'YYYY.MM.DD'
             % Required function: obj.FM{ii}.fc_chipprop, obj.FM{ii}.estimate_cp_hardsurface
@@ -1171,10 +1203,10 @@ classdef Experiment < matlab.mixin.Copyable
              for ii=1:obj.NumForceMaps
                 % Needed function
                 obj.FM{ii}.fc_chipprop
-                %if ~obj.SMFSFlag(ii)     % Selects all flagged 1 force maps
-                %if obj.SMFSFlag(ii)     % Selects all flagged 0 force maps
+                % if ~obj.SMFSFlag(ii)     % Selects all flagged 1 force maps
+                % if obj.SMFSFlag(ii)     % Selects all flagged 0 force maps
                 %    continue
-                %end
+                % end
                 % Remove the dots in the dates               
                 FMDate=split(obj.FM{ii}.Date,'.');
                 StartDateSplit=split(StartDate,'.');
@@ -1200,7 +1232,7 @@ classdef Experiment < matlab.mixin.Copyable
                 VelocityConvert=num2str(obj.FM{ii}.Velocity*1e+9); % Convert into nm
                 StartDateMod=strrep(StartDate,'.','');
                 EndDateMod=strrep(EndDate,'.','');
-                %foldername=append('FM_Flag',SMFSFlagConvert,'_',VelocityConvert,'_',obj.FM{ii}.Substrate,'_',obj.FM{ii}.EnvCond,'_',StartDateMod,'-',EndDateMod); % Defines the folder name
+                % foldername=append('FM_Flag',SMFSFlagConvert,'_',VelocityConvert,'_',obj.FM{ii}.Substrate,'_',obj.FM{ii}.EnvCond,'_',StartDateMod,'-',EndDateMod); % Defines the folder name
                 foldername=append(obj.FM{ii}.Substrate,'_',obj.FM{ii}.EnvCond,'_',StartDateMod,'-',EndDateMod); % Defines the folder name 
                 warning('off','all'); % To not showing the warning that the same folder is created each loop
                 mkdir(foldername);
@@ -1211,11 +1243,11 @@ classdef Experiment < matlab.mixin.Copyable
                cd(obj.ExperimentFolder) % Move into the folder 
                obj.SMFSFlagPrint(ii)=1;               
             end 
-            %obj.save_experiment        % Save immediately after each force curve
+            % obj.save_experiment        % Save immediately after each force curve
         end
         
-        function SMFS_print_sort_specific(obj,StartDate,EndDate,XMin,XMax,YMin,YMax)
-            % SMFS_print_sort: A function to plot all force curves of all
+        function SMFS_print _sort _specific(obj,StartDate,EndDate,XMin,XMax,YMin,YMax)
+            % SMFS_print _sort: A function to plot all force curves of all
             % force maps sorted by different properties 
             % Comment: Date format is: 'YYYY.MM.DD'
             % Required function: obj.FM{ii}.fc_chipprop, obj.FM{ii}.estimate_cp_hardsurface
@@ -1268,7 +1300,7 @@ classdef Experiment < matlab.mixin.Copyable
                 % Define variables for the folder name
                 StartDateMod=strrep(StartDate,'.','');
                 EndDateMod=strrep(EndDate,'.','');                
-                %foldername=append('FM_',obj.FM{ii}.ChipCant,'_',StartDateMod,'-',EndDateMod);
+                % foldername=append('FM_',obj.FM{ii}.ChipCant,'_',StartDateMod,'-',EndDateMod);
                 foldername=append('FM_',obj.FM{ii}.Substrate,'_',obj.FM{ii}.EnvCond,'_',StartDateMod,'-',EndDateMod);                
                 warning('off','all'); % To not showing the warning that the same folder is created each loop
                 mkdir(foldername);
@@ -1278,7 +1310,7 @@ classdef Experiment < matlab.mixin.Copyable
                obj.FM{ii}.fc_print(XMin,XMax,YMin,YMax);
                cd(obj.ExperimentFolder) % Move into the folder                           
             end 
-            %obj.save_experiment        % Save immediately after each force curve
+            % obj.save_experiment        % Save immediately after each force curve
         end
         
         function SMFS_selection(obj)
@@ -1294,12 +1326,12 @@ classdef Experiment < matlab.mixin.Copyable
             
             % Loop over the imported force maps
             for ii=1:obj.NumForceMaps
-            %for ii=3:5 % Debugging
+            % for ii=3:5 % Debugging
                % Command window output
-               sprintf('Force Map No. %d of %d',ii,obj.NumForceMaps) % Gives current Force Map Position
+               sprintf('Force Map No. %d of % d',ii,obj.NumForceMaps) % Gives current Force Map Position
                % Run the chosen functions
                obj.FM{ii}.fc_selection;     
-               %obj.save_experiment;        % Save immediately after each force curve
+               % obj.save_experiment;        % Save immediately after each force curve
             end    
         end
       
@@ -1341,13 +1373,13 @@ classdef Experiment < matlab.mixin.Copyable
             cd(obj.ExperimentFolder) % Move into the folder
             % Create folders for saving the produced figures
             foldername='FM_test';    % for debugging
-            %foldername='FM_analysis';    % Defines the folder name
+            % foldername='FM_analysis';    % Defines the folder name
             mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
             currpath=fullfile(obj.ExperimentFolder,foldername);
             cd(currpath);
             %% loop
             for ii=1:obj.NumForceMaps
-               %for ii=1 % Debugging
+               % for ii=1 % Debugging
                sprintf('Force map No. %d',ii);
                % Print force curves containing label for the pulling length
                % and colored area for the adhesion energy               
@@ -1357,13 +1389,13 @@ classdef Experiment < matlab.mixin.Copyable
                 obj.FM{ii}.fc_adhesion_energy
                 % Determine needed input variable
                 NumFcUncorrupt=nnz(obj.FM{ii}.SMFSFlag.Uncorrupt); % Determine the number of uncorrupted force curves     
-                obj.FM{ii}.fc_print_adhenergy_pulllength(XMin,XMax,YMin,YMax,NumFcMax,NumFcUncorrupt)
+                obj.FM{ii}.fc_print_adhenergy _pulllength(XMin,XMax,YMin,YMax,NumFcMax,NumFcUncorrupt)
                 
             end
         end
         
         
-            function SMFS_boxplot_pulllength(obj,XMin,XMax,YMin,YMax) % fc ... force curve
+            function SMFS_boxplot _pulllength(obj,XMin,XMax,YMin,YMax) % fc ... force curve
             % fc_print: A function to simply plot all force curves of a
             % force map without any selection taking place
             if nargin < 2
@@ -1396,13 +1428,13 @@ classdef Experiment < matlab.mixin.Copyable
                             ax=nexttile;
                             ax.XLim = [XMin XMax];
                             ax.YLim = [YMin YMax];                             
-                            %ax.YLim = [obj.MinPullingLength obj.MaxPullingLength];
+                            % ax.YLim = [obj.MinPullingLength obj.MaxPullingLength];
                             hold on
                             grid on                           
                             boxplot(nonzeros(obj.FM{jj}.PullingLength));
                            
                             % Title for each Subplot
-                            %ti=title(sprintf('%i',jj),'Color','k');
+                            % ti=title(sprintf('% i',jj),'Color','k');
                             ti=title(num2str(PlotTitle));
                             ti.Units='normalized'; % Set units to 'normalized'
                             ti.Position=[0.5,1]; % Position the subplot title within the subplot                     
@@ -1410,9 +1442,9 @@ classdef Experiment < matlab.mixin.Copyable
               
 %                 %% Save figures
 %                 %%% Define the name for the figure title
-%                 partname=sprintf('-p%d',ii);
-%                 % fullname=sprintf('%s%s',figname,partname);
-%                 fullname=sprintf('%s%s',figname,partname);
+%                 partname=sprintf('-p % d',ii);
+%                 % fullname=sprintf('% s % s',figname,partname);
+%                 fullname=sprintf('% s % s',figname,partname);
 %                 %%% Save the current figure in the current folder
 %                 print(gcf,fullname,'-dpng');
            
@@ -1436,7 +1468,7 @@ classdef Experiment < matlab.mixin.Copyable
         function show_image(obj)
             % TODO: implement ui elements for customization
             
-            h.Fig = figure('Name',sprintf('%s',obj.ExperimentName),...
+            h.Fig = figure('Name',sprintf('% s',obj.ExperimentName),...
                 'Units','pixels',...
                 'Position',[200 200 1024 512],...
                 'Color','k');
@@ -1447,10 +1479,10 @@ classdef Experiment < matlab.mixin.Copyable
                 'position',[.85 .5 .1 .05],...
                 'Callback',@cross_section_toggle);
             
-            [ClassPopUp,ClassIndex] = obj.string_of_existing_class_instances();
+            [ClassPopUp,ClassIndex] = obj.string_of_existing _class _instances();
             Class{1} = obj.get_class_instance(ClassIndex(1,:));
             Class{2} = obj.get_class_instance(ClassIndex(1,:));
-            PopUp = Class{1}.string_of_existing();
+            PopUp = Class {1}.string_of_existing();
             
             h.B(4) = uicontrol('style','text',...
                 'String','Channel 1',...
@@ -1462,13 +1494,13 @@ classdef Experiment < matlab.mixin.Copyable
                 'String',ClassPopUp,...
                 'units','normalized',...
                 'position',[.85 .85 .15 .05],...
-                'Callback',@draw_channel_1);
+                'Callback',@draw_channel_ 1);
             
             h.B(2) = uicontrol('style','popupmenu',...
                 'String',PopUp,...
                 'units','normalized',...
                 'position',[.85 .8 .1 .05],...
-                'Callback',@draw_channel_1);
+                'Callback',@draw_channel_ 1);
             
             h.B(5) = uicontrol('style','text',...
                 'String','Channel 2',...
@@ -1479,19 +1511,19 @@ classdef Experiment < matlab.mixin.Copyable
                 'String',ClassPopUp,...
                 'units','normalized',...
                 'position',[.85 .65 .15 .05],...
-                'Callback',@draw_channel_2);
+                'Callback',@draw_channel_ 2);
             
             h.B(3) = uicontrol('style','popupmenu',...
                 'String',PopUp,...
                 'units','normalized',...
                 'position',[.85 .6 .1 .05],...
-                'Callback',@draw_channel_2);
+                'Callback',@draw_channel_ 2);
             
             h.B(6) = uicontrol('style','pushbutton',...
                 'String','Save Figure',...
                 'units','normalized',...
                 'position',[.85 .1 .1 .05],...
-                'Callback',@save_figure_to_file);
+                'Callback',@save_figure_to _file);
             
             h.B(7) = uicontrol('style','checkbox',...
                 'String','...with white background',...
@@ -1542,34 +1574,45 @@ classdef Experiment < matlab.mixin.Copyable
                 'Units','normalized',...
                 'Position',[.95 .56 .03 .02]);
             
+            h.B(18) = uicontrol('Style','checkbox',...
+                'String','Both Channels',...
+                'Value',0,...
+                'Tooltip','Green, if both Channels have the same size scaling',...
+                'Units','normalized',...
+                'Position',[.85 .47 .1 .03],...
+                'Callback',@checked_both_cross _sections);
+            
             h.Channel1Max = 1;
             h.Channel1Min = 0;
             h.Channel2Max = 1;
             h.Channel2Min = 0;
             
-            h.Line = [];
+            h.MainLine = [];
+            h.ChildLine = [];
+            h.ChildColor = [.75 .75 1];
             h.hasCrossSection = 0;
+            h.hasBothCrossSections = 0;
             h.hasChannel2 = 0;
-            [~,DefIndex] = Class{1}.get_channel('Processed');
+            [~,DefIndex] = Class {1}.get_channel('Processed');
             if isempty(DefIndex)
                 DefIndex = 2;
             else
                 DefIndex = DefIndex + 1;
             end
             h.B(2).Value = DefIndex;
-            draw_channel_1
+            draw_channel _ 1
             
-            function cross_section_toggle(varargin)
+            function cross_section _toggle(varargin)
                 h.hasCrossSection = ~h.hasCrossSection;
                 try
                     delete(h.ImAx(3));
                 catch
                 end
-                draw_channel_1
-                draw_channel_2
+                draw_channel _ 1
+                draw_channel _ 2
             end
             
-            function draw_channel_1(varargin)
+            function draw_channel _ 1(varargin)
                 LeftRight = 'Left';
                 if h.hasChannel2 && h.hasCrossSection
                     FullPart = 'PartTwo';
@@ -1587,12 +1630,12 @@ classdef Experiment < matlab.mixin.Copyable
                 end
                 if h.hasChannel2 && ~h.OnePass
                     h.OnePass = true;
-                    draw_channel_2
+                    draw_channel _ 2
                 end
                 h.OnePass = false;
             end
             
-            function draw_channel_2(varargin)
+            function draw_channel _ 2(varargin)
                 LeftRight = 'Right';
                 if h.hasChannel1 && h.hasCrossSection
                     FullPart = 'PartTwo';
@@ -1610,153 +1653,197 @@ classdef Experiment < matlab.mixin.Copyable
                 end
                 if h.hasChannel1 && ~h.OnePass
                     h.OnePass = true;
-                    draw_channel_1
+                    draw_channel _ 1
                 end
                 h.OnePass = false;
             end
             
-            function moving_cross_section_channel_1(src,evt)
-                evname = evt.EventName;
+            function moving_cross _section(src,evt)
                 if ~get(h.B(1),'Value')
                     return
                 end
-                Pos1 = [h.Line.Position(1,1) h.Line.Position(1,2)];
-                Pos2 = [h.Line.Position(2,1) h.Line.Position(2,2)];
-                Profile = improfile(h.Image{1},[Pos1(1) Pos2(1)],[Pos1(2) Pos2(2)]);
-                Len = norm(Pos1-Pos2)/Class{1}.NumPixelsX*Class{1}.ScanSizeX;
-                Points = [0:1/(length(Profile)-1):1].*Len;
-                [MultiplierY,UnitY,~] = AFMImage.parse_unit_scale(range(Profile),h.BaseUnit{1},1);
+                delete(h.ImAx(3))
+                h.ImAx(3) = [];
+                Pos1 = [h.MainLine.Position(1,1) h.MainLine.Position(1,2)];
+                Pos2 = [h.MainLine.Position(2,1) h.MainLine.Position(2,2)];
+                MainProfile = improfile(h.Image{h.MainIndex},[Pos1(1) Pos2(1)],[Pos1(2) Pos2(2)]);
+                Len = norm (Pos1-Pos2)/Class{h.MainIndex}.NumPixelsX*Class {h.MainIndex}.ScanSizeX;
+                Points = [0:1/(length(MainProfile)-1):1].*Len;
+                [MainMultiplierY,UnitY,~] = AFMImage.parse_unit_scale(range(MainProfile),h.BaseUnit{h.MainIndex},1);
                 [MultiplierX,UnitX,~] = AFMImage.parse_unit_scale(range(Points),'m',1);
                 h.ImAx(3) = subplot(10,10,[71:78 81:88 91:98]);
-                P = plot(Points.*MultiplierX,Profile.*MultiplierY);
+                h.P = plot(Points.*MultiplierX,MainProfile.*MainMultiplierY);
+                if h.hasBothCrossSections && (h.hasChannel2 && h.hasChannel1)
+                    yyaxis left
+                end
+                hold on
                 grid on
-                CurrentAxHeight = round(h.Fig.Position(4)*h.ImAx(1).Position(4));
+                CurrentAxHeight = round(h.Fig.Position(4)*h.ImAx(h.MainIndex).Position(4));
                 h.ImAx(3).Color = 'k';
                 h.ImAx(3).LineWidth = 1;
                 h.ImAx(3).FontSize = round(22*(CurrentAxHeight/756));
                 h.ImAx(3).XColor = 'w';
-                h.ImAx(3).YColor = 'w';
+                h.ImAx(3).YColor = 'b';
                 h.ImAx(3).GridColor = 'w';
-                xlabel(sprintf('[%s]',UnitX))
-                ylabel(sprintf('%s [%s]',h.Channel{1},UnitY))
-                xlim([0 Points(end).*MultiplierX])
-                P.LineWidth = 2;
-                P.Color = 'b';
-            end
-            
-            function moving_cross_section_channel_2(src,evt)
-                evname = evt.EventName;
-                if ~get(h.B(1),'Value')
-                    return
-                end
-                Pos1 = [h.Line.Position(1,1) h.Line.Position(1,2)];
-                Pos2 = [h.Line.Position(2,1) h.Line.Position(2,2)];
-                if norm(Pos1-Pos2)==0
-                    get_and_draw_profile;
-                    return
-                end
-                Profile = improfile(h.Image{2},[Pos1(1) Pos2(1)],[Pos1(2) Pos2(2)]);
-                Len = norm(Pos1-Pos2)/Class{2}.NumPixelsX*Class{2}.ScanSizeX;
-                Points = [0:1/(length(Profile)-1):1].*Len;
-                [MultiplierY,UnitY,~] = AFMImage.parse_unit_scale(range(Profile),h.BaseUnit{2},1);
-                [MultiplierX,UnitX,~] = AFMImage.parse_unit_scale(range(Points),'m',1);
-                h.ImAx(3) = subplot(10,10,[71:78 81:88 91:98]);
-                P = plot(Points.*MultiplierX,Profile.*MultiplierY);
-                grid on
-                CurrentAxHeight = round(h.Fig.Position(4)*h.ImAx(2).Position(4));
-                h.ImAx(3).Color = 'k';
-                h.ImAx(3).LineWidth = 1;
-                h.ImAx(3).FontSize = round(22*(CurrentAxHeight/756));
-                h.ImAx(3).XColor = 'w';
-                h.ImAx(3).YColor = 'w';
-                h.ImAx(3).GridColor = 'w';
-                xlabel(sprintf('[%s]',UnitX))
-                ylabel(sprintf('%s [%s]',h.Channel{2},UnitY))
-                xlim([0 Points(end).*MultiplierX])
-                P.LineWidth = 2;
-                P.Color = 'b';
-            end
-            
-            function get_and_draw_profile_channel_1(varargin)
-                if ~get(h.B(1),'Value')
-                    return
-                end
-                if ~isempty(h.Line)
-                    if ~isvalid(h.Line)
-                        h.Line = [];
+                xlabel(sprintf('[% s]',UnitX))
+                ylabel(sprintf('% s [% s]',h.Channel{h.MainIndex},UnitY))
+                xlim([0 Points (end).*MultiplierX])
+                h.P.LineWidth = 2;
+                h.P.Color = 'b';
+                if h.hasBothCrossSections && (h.hasChannel2 && h.hasChannel1)
+                    if ~isempty(h.ChildLine)
+                        if ~isvalid(h.ChildLine)
+                            h.ChildLine = [];
+                        end
+                    end
+                    h.ChildLine.Visible = 'off';
+                    h.ChildLine = drawline('Position',h.MainLine.Position,...
+                        'Parent',h.ImAx(h.ChildIndex),'Color',h.ChildColor);
+                    addlistener(h.ChildLine,'MovingROI',@moving_cross_section);
+                    addlistener(h.ChildLine,'ROIMoved',@moving_cross_section);
+                    CPos1 = [h.ChildLine.Position(1,1) h.ChildLine.Position(1,2)];
+                    CPos2 = [h.ChildLine.Position(2,1) h.ChildLine.Position(2,2)];
+                    ChildProfile = improfile(h.Image{h.ChildIndex},[CPos1(1) CPos2(1)],[CPos1(2) CPos2(2)]);
+                    ChildPoints = [0:1/(length(ChildProfile)-1):1].*Len;
+                    [ChildMultiplierY,UnitY,~] = AFMImage.parse_unit_scale(range(ChildProfile),h.BaseUnit{h.ChildIndex},1);
+                    yyaxis right
+                    h.CP = plot(ChildPoints.*MultiplierX,ChildProfile.*ChildMultiplierY);
+                    grid on
+                    CurrentAxHeight = round(h.Fig.Position(4)*h.ImAx(h.ChildIndex).Position(4));
+                    h.ImAx(3).Color = 'k';
+                    h.ImAx(3).LineWidth = 1;
+                    h.ImAx(3).FontSize = round(22*(CurrentAxHeight/756));
+                    h.ImAx(3).XColor = 'w';
+                    h.ImAx(3).YColor = h.ChildColor;
+                    h.ImAx(3).GridColor = 'w';
+                    xlabel(sprintf('[% s]',UnitX))
+                    ylabel(sprintf('% s [% s]',h.Channel{h.ChildIndex},UnitY))
+                    xlim([0 ChildPoints (end).*MultiplierX])
+                    h.CP.LineWidth = 2;
+                    h.CP.Color = h.ChildColor;
+                    if isequal(h.BaseUnit{1},h.BaseUnit{2})
+                        yyaxis left
+                        ylim([min([min(ChildProfile)*ChildMultiplierY min(MainProfile)*MainMultiplierY])...
+                            max([max(ChildProfile)*ChildMultiplierY max(MainProfile)*MainMultiplierY])]);
+                        yyaxis right
+                        ylim([min([min(ChildProfile)*ChildMultiplierY min(MainProfile)*MainMultiplierY])...
+                            max([max(ChildProfile)*ChildMultiplierY max(MainProfile)*MainMultiplierY])]);
+                    else
+                        ylim([min(ChildProfile)*ChildMultiplierY max(ChildProfile)*ChildMultiplierY]);
                     end
                 end
-                h.Line.Visible = 'off';
-                h.Line = drawline('Color','b','Parent',h.ImAx(1));
-                addlistener(h.Line,'MovingROI',@moving_cross_section_channel_1);
-                addlistener(h.Line,'ROIMoved',@moving_cross_section_channel_1);
-                Pos1 = [h.Line.Position(1,1) h.Line.Position(1,2)];
-                Pos2 = [h.Line.Position(2,1) h.Line.Position(2,2)];
-                if norm(Pos1-Pos2)==0
-                    get_and_draw_profile_channel_1;
-                    return
-                end
-                Profile = improfile(h.Image{1},[Pos1(1) Pos2(1)],[Pos1(2) Pos2(2)]);
-                Len = norm(Pos1-Pos2)/Class{1}.NumPixelsX*Class{1}.ScanSizeX;
-                Points = [0:1/(length(Profile)-1):1].*Len;
-                [MultiplierY,UnitY,~] = AFMImage.parse_unit_scale(range(Profile),h.BaseUnit{1},1);
-                [MultiplierX,UnitX,~] = AFMImage.parse_unit_scale(range(Points),'m',1);
-                h.ImAx(3) = subplot(10,10,[71:78 81:88 91:98]);
-                P = plot(Points.*MultiplierX,Profile.*MultiplierY);
-                grid on
-                CurrentAxHeight = round(h.Fig.Position(4)*h.ImAx(1).Position(4));
-                h.ImAx(3).Color = 'k';
-                h.ImAx(3).LineWidth = 1;
-                h.ImAx(3).FontSize = round(22*(CurrentAxHeight/756));
-                h.ImAx(3).XColor = 'w';
-                h.ImAx(3).YColor = 'w';
-                h.ImAx(3).GridColor = 'w';
-                xlabel(sprintf('[%s]',UnitX))
-                ylabel(sprintf('%s [%s]',h.Channel{1},UnitY))
-                xlim([0 Points(end).*MultiplierX])
-                P.LineWidth = 2;
-                P.Color = 'b';
+                hold off
             end
             
-            function get_and_draw_profile_channel_2(varargin)
+            function checked_both _cross _sections(varargin)
+                h.hasBothCrossSections = ~h.hasBothCrossSections;
+                try
+                    delete(h.ImAx(3));
+                catch
+                end
+                draw_channel _ 1
+                draw_channel _ 2
+            end
+            
+            function get_and _draw _profile(varargin)
                 if ~get(h.B(1),'Value')
                     return
                 end
-                if ~isempty(h.Line)
-                    if ~isvalid(h.Line)
-                        h.Line = [];
+                if ~isempty(h.MainLine)
+                    if ~isvalid(h.MainLine)
+                        h.MainLine = [];
                     end
                 end
-                h.Line.Visible = 'off';
-                h.Line = drawline('Color','b','Parent',h.ImAx(2));
-                addlistener(h.Line,'MovingROI',@moving_cross_section_channel_2);
-                addlistener(h.Line,'ROIMoved',@moving_cross_section_channel_2);
-                Pos1 = [h.Line.Position(1,1) h.Line.Position(1,2)];
-                Pos2 = [h.Line.Position(2,1) h.Line.Position(2,2)];
+                h.MainLine.Visible = 'off';
+                if h.hasBothCrossSections && (h.hasChannel2 && h.hasChannel1)
+                    if ~isempty(h.ChildLine)
+                        if ~isvalid(h.ChildLine)
+                            h.ChildLine = [];
+                        end
+                    end
+                    h.ChildLine.Visible = 'off';
+                end
+                if isequal(varargin {1}.Parent,h.ImAx(1))
+                    h.MainIndex = 1;
+                    h.ChildIndex = 2;
+                elseif isequal(varargin {1}.Parent,h.ImAx(2))
+                    h.MainIndex = 2;
+                    h.ChildIndex = 1;
+                end
+                try
+                    delete(h.ImAx(3))
+                catch
+                end
+                h.MainLine = drawline('Color','b','Parent',varargin {1}.Parent);
+                addlistener(h.MainLine,'MovingROI',@moving_cross_section);
+                addlistener(h.MainLine,'ROIMoved',@moving_cross_section);
+                Pos1 = [h.MainLine.Position(1,1) h.MainLine.Position(1,2)];
+                Pos2 = [h.MainLine.Position(2,1) h.MainLine.Position(2,2)];
                 if norm(Pos1-Pos2)==0
-                    get_and_draw_profile_channel_2;
+                    get_and _draw _profile;
                     return
                 end
-                Profile = improfile(h.Image{2},[Pos1(1) Pos2(1)],[Pos1(2) Pos2(2)]);
-                Len = norm(Pos1-Pos2)/Class{2}.NumPixelsX*Class{2}.ScanSizeX;
-                Points = [0:1/(length(Profile)-1):1].*Len;
-                [MultiplierY,UnitY,~] = AFMImage.parse_unit_scale(range(Profile),h.BaseUnit{2},1);
+                MainProfile = improfile(h.Image{h.MainIndex},[Pos1(1) Pos2(1)],[Pos1(2) Pos2(2)]);
+                Len = norm (Pos1-Pos2)/Class{h.MainIndex}.NumPixelsX*Class {h.MainIndex}.ScanSizeX;
+                Points = [0:1/(length(MainProfile)-1):1].*Len;
+                [MainMultiplierY,UnitY,~] = AFMImage.parse_unit_scale(range(MainProfile),h.BaseUnit{h.MainIndex},1);
                 [MultiplierX,UnitX,~] = AFMImage.parse_unit_scale(range(Points),'m',1);
                 h.ImAx(3) = subplot(10,10,[71:78 81:88 91:98]);
-                P = plot(Points.*MultiplierX,Profile.*MultiplierY);
+                h.P = plot(Points.*MultiplierX,MainProfile.*MainMultiplierY);
+                if h.hasBothCrossSections && (h.hasChannel2 && h.hasChannel1)
+                    yyaxis left
+                end
+                hold on
                 grid on
-                CurrentAxHeight = round(h.Fig.Position(4)*h.ImAx(2).Position(4));
+                CurrentAxHeight = round(h.Fig.Position(4)*h.ImAx(h.MainIndex).Position(4));
                 h.ImAx(3).Color = 'k';
                 h.ImAx(3).LineWidth = 1;
                 h.ImAx(3).FontSize = round(22*(CurrentAxHeight/756));
                 h.ImAx(3).XColor = 'w';
-                h.ImAx(3).YColor = 'w';
+                h.ImAx(3).YColor = 'b';
                 h.ImAx(3).GridColor = 'w';
-                xlabel(sprintf('[%s]',UnitX))
-                ylabel(sprintf('%s [%s]',h.Channel{2},UnitY))
-                xlim([0 Points(end).*MultiplierX])
-                P.LineWidth = 2;
-                P.Color = 'b';
+                xlabel(sprintf('[% s]',UnitX))
+                ylabel(sprintf('% s [% s]',h.Channel{h.MainIndex},UnitY))
+                xlim([0 Points (end).*MultiplierX])
+                h.P.LineWidth = 2;
+                h.P.Color = 'b';
+                if h.hasBothCrossSections && (h.hasChannel2 && h.hasChannel1)
+                    h.ChildLine = drawline('Position',h.MainLine.Position,...
+                        'Parent',h.ImAx(h.ChildIndex),'Color',h.ChildColor);
+                    addlistener(h.ChildLine,'MovingROI',@moving_cross_section);
+                    addlistener(h.ChildLine,'ROIMoved',@moving_cross_section);
+                    CPos1 = [h.ChildLine.Position(1,1) h.ChildLine.Position(1,2)];
+                    CPos2 = [h.ChildLine.Position(2,1) h.ChildLine.Position(2,2)];
+                    ChildProfile = improfile(h.Image{h.ChildIndex},[CPos1(1) CPos2(1)],[CPos1(2) CPos2(2)]);
+                    ChildPoints = [0:1/(length(ChildProfile)-1):1].*Len;
+                    [ChildMultiplierY,UnitY,~] = AFMImage.parse_unit_scale(range(ChildProfile),h.BaseUnit{h.ChildIndex},1);
+                    h.CP = plot(ChildPoints.*MultiplierX,ChildProfile.*ChildMultiplierY);
+                    yyaxis right
+                    grid on
+                    CurrentAxHeight = round(h.Fig.Position(4)*h.ImAx(h.MainIndex).Position(4));
+                    h.ImAx(3).Color = 'k';
+                    h.ImAx(3).LineWidth = 1;
+                    h.ImAx(3).FontSize = round(22*(CurrentAxHeight/756));
+                    h.ImAx(3).XColor = 'w';
+                    h.ImAx(3).YColor = h.ChildColor;
+                    h.ImAx(3).GridColor = 'w';
+                    xlabel(sprintf('[% s]',UnitX))
+                    ylabel(sprintf('% s [% s]',h.Channel{h.MainIndex},UnitY))
+                    xlim([0 ChildPoints (end).*MultiplierX])
+                    if isequal(h.BaseUnit{1},h.BaseUnit{2})
+                        yyaxis left
+                        ylim([min([min(ChildProfile)*ChildMultiplierY min(MainProfile)*MainMultiplierY])...
+                            max([max(ChildProfile)*ChildMultiplierY max(MainProfile)*MainMultiplierY])]);
+                        yyaxis right
+                        ylim([min([min(ChildProfile)*ChildMultiplierY min(MainProfile)*MainMultiplierY])...
+                            max([max(ChildProfile)*ChildMultiplierY max(MainProfile)*MainMultiplierY])]);
+                    else
+                        ylim([min(ChildProfile)*ChildMultiplierY max(ChildProfile)*ChildMultiplierY]);
+                    end
+                    h.CP.LineWidth = 2;
+                    h.CP.Color = h.ChildColor;
+                end
+                hold off
             end
             
             function draw_image(LeftRight,FullPart)
@@ -1790,11 +1877,18 @@ classdef Experiment < matlab.mixin.Copyable
                 end
                 
                 Class{Index} = obj.get_class_instance(ClassIndex(h.B(15+Index).Value,:));
-                PopUp = Class{Index}.string_of_existing();
+                CurrentChannelName = h.B(1+Index).String{h.B(1+Index).Value};
+                PopUp = Class {Index}.string_of_existing();
                 set(h.B(1+Index),'String',PopUp)
                 
-                if h.B(1+Index).Value > (length(Class{Index}.Channel) + 1)
-                    set(h.B(1+Index),'Value',1)
+                IdxOfSameChannel = find(strcmp(PopUp,CurrentChannelName));
+                
+                if isempty(IdxOfSameChannel)
+                    set(h.B(1+Index),'Value',2);
+                elseif sum(IdxOfSameChannel == h.B(1+Index).Value)
+                    set(h.B(1+Index),'Value',IdxOfSameChannel(find(IdxOfSameChannel == h.B(1+Index).Value)));
+                else
+                    set(h.B(1+Index),'Value',IdxOfSameChannel(1));
                 end
                 
                 h.Channel{Index} = h.B(1+Index).String{h.B(1+Index).Value};
@@ -1811,10 +1905,12 @@ classdef Experiment < matlab.mixin.Copyable
                     end
                     return
                 else
-                    [Channel,ChannelIndex] = Class{Index}.get_channel(h.Channel{Index});
+                    [Channel,ChannelIndex] = Class {Index}.get_channel(h.Channel{Index});
                     h.Image{Index} = Channel.Image;
                     h.BaseUnit{Index} = Channel.Unit;
-                    ColorPattern = Class{Index}.CMap;
+                    h.ScanSizeX(Index) = Channel.ScanSizeX;
+                    h.ScanSizeY(Index) = Channel.ScanSizeY;
+                    ColorPattern = Class {Index}.CMap;
                 end
                 
                 CurImage = h.Image{Index};
@@ -1832,21 +1928,27 @@ classdef Experiment < matlab.mixin.Copyable
                 
                 [Multiplier,Unit,~] = AFMImage.parse_unit_scale(range(CurImage,'all'),h.BaseUnit{Index},1);
                 h.I(Index) = imshow(CurImage*Multiplier,[],'Colormap',ColorPattern);
-                if Index == 1
-                    h.I(Index).ButtonDownFcn = @get_and_draw_profile_channel_1;
-                else
-                    h.I(Index).ButtonDownFcn = @get_and_draw_profile_channel_2;
-                end
+                h.I(Index).ButtonDownFcn = @get_and_draw _profile;
                 hold on
                 CurrentAxHeight = round(h.Fig.Position(4)*h.ImAx(Index).Position(4));
                 CurrentAxWidth = round(h.Fig.Position(3)*h.ImAx(Index).Position(3));
-                AFMImage.draw_scalebar_into_current_image(Channel.NumPixelsX,Channel.NumPixelsY,Channel.ScanSizeX,BarToImageRatio,CurrentAxHeight,CurrentAxWidth);
+                AFMImage.draw_scalebar_into _current _image(Channel.NumPixelsX,Channel.NumPixelsY,Channel.ScanSizeX,BarToImageRatio,CurrentAxHeight,CurrentAxWidth);
                 c = colorbar;
                 c.FontSize = round(18*(CurrentAxHeight/756));
                 c.Color = 'w';
-                c.Label.String = sprintf('%s [%s]',h.Channel{Index},Unit);
+                c.Label.String = sprintf('% s [% s]',h.Channel{Index},Unit);
                 c.Label.FontSize = round(22*(CurrentAxHeight/756));
                 c.Label.Color = 'w';
+                
+                try
+                    if (h.ScanSizeX(1) == h.ScanSizeX(2)) &&...
+                            (h.ScanSizeY(1) == h.ScanSizeY(2))
+                        h.B(18).BackgroundColor = 'g';
+                    else
+                        h.B(18).BackgroundColor = 'r';
+                    end
+                catch
+                end
             end
             
             function changed_slider(varargin)
@@ -1871,11 +1973,11 @@ classdef Experiment < matlab.mixin.Copyable
                 h.Channel2Max = C2Max;
                 h.Channel2Min = C2Min;
                 
-                draw_channel_1
-                draw_channel_2
+                draw_channel _ 1
+                draw_channel _ 2
             end
             
-            function save_figure_to_file(varargin)
+            function save_figure _to _file(varargin)
                 if h.B(7).Value
                 Frame = print('-RGBImage','-r200');
                 
@@ -1906,7 +2008,7 @@ classdef Experiment < matlab.mixin.Copyable
         % the processed raw data from your Experiment and do your own
         % statistics
         
-        function [DataMeansOP,DataMeansHS,DataOP,DataHS] = statistical_analysis_force_maps(obj)
+        function [DataMeansOP,DataMeansHS,DataOP,DataHS] = statistical_analysis _force _maps(obj)
             % Basic statistical analysis of the force map experiment. First get the grouping
             % of data from the user and then perform several tests, plots
             % etc.
@@ -1958,7 +2060,7 @@ classdef Experiment < matlab.mixin.Copyable
             
             figure('Name','OliverPharr vs HertzSneddon','Color','w');
             plot(DataMeansHS,DataMeansOP,'bO')
-            legend(sprintf('E-Mod Hertz vs. Oliver-Pharr (R=%.3f)',corr(DataMeansHS,DataMeansOP)))
+            legend(sprintf('E-Mod Hertz vs. Oliver-Pharr (R=% .3f)',corr(DataMeansHS,DataMeansOP)))
 %             xlim([0,N+1])
             xlabel('E-Mod Hertz [Pa]')
             ylabel('E-Mod Oliver-Pharr [Pa]')
@@ -1979,16 +2081,16 @@ classdef Experiment < matlab.mixin.Copyable
                 DeltaMean = mean(DataMeansOP(obj.GroupFM(TestMat(i,2)).Indices)) - mean(DataMeansOP(obj.GroupFM(TestMat(i,1)).Indices));
                 Sigma = std(DataMeansOP(obj.GroupFM(TestMat(i,2)).Indices) - DataMeansOP(obj.GroupFM(TestMat(i,1)).Indices));
                 Beta = sampsizepwr('t',[0 Sigma],DeltaMean,[],length(obj.GroupFM(TestMat(i,2)).Indices));
-                Stats = {sprintf('\\DeltaMean = %.2fMPa',DeltaMean*1e-6),...
-                    sprintf('P-Value = %.4f%',pOP(i)),...
-                    sprintf('Power \\beta = %.2f%%',Beta*100),...
-                    sprintf('Number of Specimen = %i',length(obj.GroupFM(TestMat(i,2)).Indices))};
+                Stats = {sprintf('\\ DeltaMean = % .2fMPa',DeltaMean*1e-6),...
+                    sprintf('P-Value = % .4f %',pOP(i)),...
+                    sprintf('Power \\ beta = % .2f %%',Beta*100),...
+                    sprintf('Number of Specimen = % i',length(obj.GroupFM(TestMat(i,2)).Indices))};
                 text(0.5,0.8,Stats,...
                     'Units','normalized',...
                     'FontSize',12,...
                     'HorizontalAlignment','center')
                 
-%                 %Statistics for Hertz-Sneddon Method
+%                 % Statistics for Hertz-Sneddon Method
 %                 [hHS(i),pHS(i)] = ...
 %                     ttest(DataMeansHS(obj.GroupFM(TestMat(i,2)).Indices),...
 %                     DataMeansHS(obj.GroupFM(TestMat(i,1)).Indices),'Tail','right');
@@ -2002,10 +2104,10 @@ classdef Experiment < matlab.mixin.Copyable
 %                 DeltaMean = mean(DataMeansHS(obj.GroupFM(TestMat(i,2)).Indices)) - mean(DataMeansHS(obj.GroupFM(TestMat(i,1)).Indices));
 %                 Sigma = std(DataMeansHS(obj.GroupFM(TestMat(i,2)).Indices) - DataMeansHS(obj.GroupFM(TestMat(i,1)).Indices));
 %                 Beta = sampsizepwr('t',[0 Sigma],DeltaMean,[],length(obj.GroupFM(TestMat(i,2)).Indices));
-%                 Stats = {sprintf('\\DeltaMean = %.2f MPa',DeltaMean*1e-6),...
-%                     sprintf('P-Value = %.4f%',pHS(i)),...
-%                     sprintf('Power \\beta = %.2f%%',Beta*100),...
-%                     sprintf('Number of Specimen = %i',length(obj.GroupFM(TestMat(i,2)).Indices))};
+%                 Stats = {sprintf('\\ DeltaMean = % .2f MPa',DeltaMean*1e-6),...
+%                     sprintf('P-Value = % .4f %',pHS(i)),...
+%                     sprintf('Power \\ beta = % .2f %%',Beta*100),...
+%                     sprintf('Number of Specimen = % i',length(obj.GroupFM(TestMat(i,2)).Indices))};
 %                 text(0.5,0.8,Stats,...
 %                     'Units','normalized',...
 %                     'FontSize',12,...
@@ -2036,15 +2138,15 @@ classdef Experiment < matlab.mixin.Copyable
             title('Two Sample T-Test for E-Mod Oliver-Pharr Method')
             ax = gca;
             ax.TickLabelInterpreter = 'tex';
-            xticklabels({sprintf('%s - %s',obj.GroupFM(2).Name,obj.GroupFM(1).Name),...
+            xticklabels({sprintf('% s - % s',obj.GroupFM(2).Name,obj.GroupFM(1).Name),...
                 '\DeltaMean with CI',...
-                sprintf('%s - %s',obj.GroupFM(4).Name,obj.GroupFM(3).Name)})
+                sprintf('% s - % s',obj.GroupFM(4).Name,obj.GroupFM(3).Name)})
             ylabel('Difference of Differences [Pa]')
-            Beta = sampsizepwr('t2',[mean(DiffControlOP) PooledSTD],mean(DiffMGOOP),[],length(DiffControlOP),'Ratio',length(DiffMGOOP)/length(DiffControlOP));
-            Stats = {sprintf('\\DeltaMean = %.2f MPa',DeltaMean*1e-6),...
-                sprintf('P-Value = %.4f%',pOP),...
-                sprintf('Power \\beta = %.2f%%',Beta*100),...
-                sprintf('Degrees of freedom df = %i',statsOP.df)};
+            Beta = sampsizepwr('t2',[mean(DiffControlOP) PooledSTD],mean(DiffMGOOP),[],length(DiffControlOP),'Ratio',length (DiffMGOOP)/length(DiffControlOP));
+            Stats = {sprintf('\\ DeltaMean = % .2f MPa',DeltaMean*1e-6),...
+                sprintf('P-Value = % .4f %',pOP),...
+                sprintf('Power \\ beta = % .2f %%',Beta*100),...
+                sprintf('Degrees of freedom df = % i',statsOP.df)};
             text(0.5,0.8,Stats,...
                 'Units','normalized',...
                 'FontSize',12,...
@@ -2067,15 +2169,15 @@ classdef Experiment < matlab.mixin.Copyable
 %             title('Two Sample T-Test for E-Mod Hertz-Sneddon Method')
 %             ax = gca;
 %             ax.TickLabelInterpreter = 'tex';
-%             xticklabels({sprintf('%s - %s',obj.GroupFM(2).Name,obj.GroupFM(1).Name),...
+%             xticklabels({sprintf('% s - % s',obj.GroupFM(2).Name,obj.GroupFM(1).Name),...
 %                 '\DeltaMean with CI',...
-%                 sprintf('%s - %s',obj.GroupFM(4).Name,obj.GroupFM(3).Name)})
+%                 sprintf('% s - % s',obj.GroupFM(4).Name,obj.GroupFM(3).Name)})
 %             ylabel('Difference of Differences [Pa]')
-%             Beta = sampsizepwr('t2',[mean(DiffControlHS) PooledSTD],mean(DiffMGOHS),[],length(DiffControlHS),'Ratio',length(DiffMGOHS)/length(DiffControlHS));
-%             Stats = {sprintf('\\DeltaMean = %.2f MPa',DeltaMean*1e-6),...
-%                 sprintf('P-Value = %.4f%',pHS),...
-%                 sprintf('Power \\beta = %.2f%%',Beta*100),...
-%                 sprintf('Degrees of freedom df = %i',statsHS.df)};
+%             Beta = sampsizepwr('t2',[mean(DiffControlHS) PooledSTD],mean(DiffMGOHS),[],length(DiffControlHS),'Ratio',length (DiffMGOHS)/length(DiffControlHS));
+%             Stats = {sprintf('\\ DeltaMean = % .2f MPa',DeltaMean*1e-6),...
+%                 sprintf('P-Value = % .4f %',pHS),...
+%                 sprintf('Power \\ beta = % .2f %%',Beta*100),...
+%                 sprintf('Degrees of freedom df = % i',statsHS.df)};
 %             text(0.5,0.8,Stats,...
 %                 'Units','normalized',...
 %                 'FontSize',12,...
@@ -2083,14 +2185,14 @@ classdef Experiment < matlab.mixin.Copyable
             
         end
         
-        function FibPot = statistical_analysis_surface_potential(obj)
+        function FibPot = statistical_analysis _surface _potential(obj)
             % Statistical analysis of the surface potential map experiment.
             % First get the grouping of data from the user and then perform
             % several tests, plots etc.
             
             warning('The following methods were programmed for specific use cases and are yet to be generalized! However, you can of course adjust them for your own use, though its probably easier to just take the processed raw data from your Experiment and do your own statistics')
             
-            obj.grouping_surface_potential_map();
+            obj.grouping_surface_potential _map();
             
             %%%%%%% DISCLAIMER: just works for specific cases at the moment %%%%%%%
             
@@ -2114,7 +2216,7 @@ classdef Experiment < matlab.mixin.Copyable
                     FibPot(obj.GroupFM(TestMat(i,1)).Indices));
                 
                 figure('Name','Paired T-Test for Surface Potential Changes','Units','normalized','Position',[0.2 0.2 0.5 0.5],'Color','w')
-                boxplot([FibPot(obj.GroupFM(TestMat(i,1)).Indices)' FibPot(obj.GroupFM(TestMat(i,2)).Indices)']*1e3)
+                boxplot([FibPot (obj.GroupFM(TestMat(i,1)).Indices)' FibPot (obj.GroupFM(TestMat(i,2)).Indices)']*1e3)
                 title('Paired T-Test for Surface Potential Changes')
                 xticklabels({obj.GroupFM(TestMat(i,1)).Name,obj.GroupFM(TestMat(i,2)).Name})
                 xlabel('Test Group')
@@ -2122,10 +2224,10 @@ classdef Experiment < matlab.mixin.Copyable
                 DeltaMean = mean(FibPot(obj.GroupFM(TestMat(i,2)).Indices)) - mean(FibPot(obj.GroupFM(TestMat(i,1)).Indices));
                 Sigma = std(FibPot(obj.GroupFM(TestMat(i,2)).Indices) - FibPot(obj.GroupFM(TestMat(i,1)).Indices));
                 Beta = sampsizepwr('t',[0 Sigma],DeltaMean,[],length(obj.GroupFM(TestMat(i,2)).Indices));
-                Stats = {sprintf('\\DeltaMean = %.2fmV',DeltaMean*1e3),...
-                    sprintf('P-Value = %.2e%',p(i)),...
-                    sprintf('Power \\beta = %.2f%%',Beta*100),...
-                    sprintf('Number of Specimen = %i',length(obj.GroupFM(TestMat(i,2)).Indices))};
+                Stats = {sprintf('\\ DeltaMean = % .2fmV',DeltaMean*1e3),...
+                    sprintf('P-Value = % .2e %',p(i)),...
+                    sprintf('Power \\ beta = % .2f %%',Beta*100),...
+                    sprintf('Number of Specimen = % i',length(obj.GroupFM(TestMat(i,2)).Indices))};
                 text(0.5,0.8,Stats,...
                     'Units','normalized',...
                     'FontSize',12,...
@@ -2154,22 +2256,22 @@ classdef Experiment < matlab.mixin.Copyable
             title('Two Sample T-Test for Surface Potential Changes')
             ax = gca;
             ax.TickLabelInterpreter = 'tex';
-            xticklabels({sprintf('%s - %s',obj.GroupSPM(2).Name,obj.GroupSPM(1).Name),...
+            xticklabels({sprintf('% s - % s',obj.GroupSPM(2).Name,obj.GroupSPM(1).Name),...
                 '\DeltaMean with CI',...
-                sprintf('%s - %s',obj.GroupSPM(4).Name,obj.GroupSPM(3).Name)})
+                sprintf('% s - % s',obj.GroupSPM(4).Name,obj.GroupSPM(3).Name)})
             ylabel('Difference of Differences [V]')
-            Beta = sampsizepwr('t2',[mean(DiffControl) PooledSTD],mean(DiffMGO),[],length(DiffControl),'Ratio',length(DiffMGO)/length(DiffControl));
-            Stats = {sprintf('\\DeltaMean = %.2fmV',DeltaMean*1e3),...
-                sprintf('P-Value = %.2e%',p),...
-                sprintf('Power \\beta = %.2f%%',Beta*100),...
-                sprintf('Degrees of freedom df = %i',stats.df)};
+            Beta = sampsizepwr('t2',[mean(DiffControl) PooledSTD],mean(DiffMGO),[],length(DiffControl),'Ratio',length (DiffMGO)/length(DiffControl));
+            Stats = {sprintf('\\ DeltaMean = % .2fmV',DeltaMean*1e3),...
+                sprintf('P-Value = % .2e %',p),...
+                sprintf('Power \\ beta = % .2f %%',Beta*100),...
+                sprintf('Degrees of freedom df = % i',stats.df)};
             text(0.5,0.8,Stats,...
                 'Units','normalized',...
                 'FontSize',12,...
                 'HorizontalAlignment','center')
         end
         
-        function statistical_analysis_swelling(obj)
+        function statistical_analysis _swelling(obj)
             %%%%%%% DISCLAIMER: just works for specific cases at the moment %%%%%%%
             
             warning('The following methods were programmed for specific use cases and are yet to be generalized! However, you can of course adjust them for your own use, though its probably easier to just take the processed raw data from your Experiment and do your own statistics')
@@ -2187,7 +2289,7 @@ classdef Experiment < matlab.mixin.Copyable
             for i=1:N
                 Dry(i) = obj.SPM{i}.FibDiam;
                 Wet(i) = obj.FM{i}.FibDiam;
-                RelChange(i) = Wet(i)/Dry(i);
+                RelChange(i) = Wet (i)/Dry(i);
             end
             % Do Paired T-Test of relative swelling between paired groups
             for i=1:size(TestMat,1)
@@ -2196,7 +2298,7 @@ classdef Experiment < matlab.mixin.Copyable
                     RelChange(obj.GroupFM(TestMat(i,1)).Indices));
                 
                 figure('Name','Paired T-Test for relative Swelling Changes','Units','normalized','Position',[0.2 0.2 0.5 0.5],'Color','w')
-                boxplot([RelChange(obj.GroupFM(TestMat(i,1)).Indices)' RelChange(obj.GroupFM(TestMat(i,2)).Indices)'])
+                boxplot([RelChange (obj.GroupFM(TestMat(i,1)).Indices)' RelChange (obj.GroupFM(TestMat(i,2)).Indices)'])
                 title('Paired T-Test for relative Swelling Changes')
                 xticklabels({obj.GroupFM(TestMat(i,1)).Name,obj.GroupFM(TestMat(i,2)).Name})
                 xlabel('Test Group')
@@ -2204,10 +2306,10 @@ classdef Experiment < matlab.mixin.Copyable
                 DeltaMean = mean(RelChange(obj.GroupFM(TestMat(i,2)).Indices)) - mean(RelChange(obj.GroupFM(TestMat(i,1)).Indices));
                 Sigma = std(RelChange(obj.GroupFM(TestMat(i,2)).Indices) - RelChange(obj.GroupFM(TestMat(i,1)).Indices));
                 Beta = sampsizepwr('t',[0 Sigma],DeltaMean,[],length(obj.GroupFM(TestMat(i,2)).Indices));
-                Stats = {sprintf('\\DeltaMean = %.2f',DeltaMean),...
-                    sprintf('P-Value = %.3f%',p(i)),...
-                    sprintf('Power \\beta = %.2f%%',Beta*100),...
-                    sprintf('Number of Specimen = %i',length(obj.GroupFM(TestMat(i,2)).Indices))};
+                Stats = {sprintf('\\ DeltaMean = % .2f',DeltaMean),...
+                    sprintf('P-Value = % .3f %',p(i)),...
+                    sprintf('Power \\ beta = % .2f %%',Beta*100),...
+                    sprintf('Number of Specimen = % i',length(obj.GroupFM(TestMat(i,2)).Indices))};
                 text(0.5,0.8,Stats,...
                     'Units','normalized',...
                     'FontSize',12,...
@@ -2236,22 +2338,22 @@ classdef Experiment < matlab.mixin.Copyable
             title('Two Sample T-Test for relative Swelling')
             ax = gca;
             ax.TickLabelInterpreter = 'tex';
-            xticklabels({sprintf('%s - %s',obj.GroupSPM(2).Name,obj.GroupSPM(1).Name),...
+            xticklabels({sprintf('% s - % s',obj.GroupSPM(2).Name,obj.GroupSPM(1).Name),...
                 '\DeltaMean with CI',...
-                sprintf('%s - %s',obj.GroupSPM(4).Name,obj.GroupSPM(3).Name)})
+                sprintf('% s - % s',obj.GroupSPM(4).Name,obj.GroupSPM(3).Name)})
             ylabel('Difference of Differences')
-            Beta = sampsizepwr('t2',[mean(DiffControl) PooledSTD],mean(DiffMGO),[],length(DiffControl),'Ratio',length(DiffMGO)/length(DiffControl));
-            Stats = {sprintf('\\DeltaMean = %.2f',DeltaMean),...
-                sprintf('P-Value = %.2e%',p),...
-                sprintf('Power \\beta = %.2f%%',Beta*100),...
-                sprintf('Degrees of freedom df = %i',stats.df)};
+            Beta = sampsizepwr('t2',[mean(DiffControl) PooledSTD],mean(DiffMGO),[],length(DiffControl),'Ratio',length (DiffMGO)/length(DiffControl));
+            Stats = {sprintf('\\ DeltaMean = % .2f',DeltaMean),...
+                sprintf('P-Value = % .2e %',p),...
+                sprintf('Power \\ beta = % .2f %%',Beta*100),...
+                sprintf('Degrees of freedom df = % i',stats.df)};
             text(0.5,0.8,Stats,...
                 'Units','normalized',...
                 'FontSize',12,...
                 'HorizontalAlignment','center')
         end
         
-        function statistical_analysis_d_banding(obj)
+        function statistical_analysis _d _banding(obj)
             %%%%%%% DISCLAIMER: just works for specific cases at the moment %%%%%%%
             
             warning('The following methods were programmed for specific use cases and are yet to be generalized! However, you can of course adjust them for your own use, though its probably easier to just take the processed raw data from your Experiment and do your own statistics')
@@ -2276,7 +2378,7 @@ classdef Experiment < matlab.mixin.Copyable
                     DBanding(obj.GroupFM(TestMat(i,1)).Indices));
                 
                 figure('Name','Paired T-Test for D-Banding Changes','Units','normalized','Position',[0.2 0.2 0.5 0.5],'Color','w')
-                boxplot([DBanding(obj.GroupFM(TestMat(i,1)).Indices)' DBanding(obj.GroupFM(TestMat(i,2)).Indices)'])
+                boxplot([DBanding (obj.GroupFM(TestMat(i,1)).Indices)' DBanding (obj.GroupFM(TestMat(i,2)).Indices)'])
                 title('Paired T-Test for D-Banding Changes')
                 xticklabels({obj.GroupFM(TestMat(i,1)).Name,obj.GroupFM(TestMat(i,2)).Name})
                 xlabel('Test Group')
@@ -2284,10 +2386,10 @@ classdef Experiment < matlab.mixin.Copyable
                 DeltaMean = mean(DBanding(obj.GroupFM(TestMat(i,2)).Indices)) - mean(DBanding(obj.GroupFM(TestMat(i,1)).Indices));
                 Sigma = std(DBanding(obj.GroupFM(TestMat(i,2)).Indices) - DBanding(obj.GroupFM(TestMat(i,1)).Indices));
                 Beta = sampsizepwr('t',[0 Sigma],DeltaMean,[],length(obj.GroupFM(TestMat(i,2)).Indices));
-                Stats = {sprintf('\\DeltaMean = %.2fnm',DeltaMean*1e9),...
-                    sprintf('P-Value = %.3f%',p(i)),...
-                    sprintf('Power \\beta = %.2f%%',Beta*100),...
-                    sprintf('Number of Specimen = %i',length(obj.GroupFM(TestMat(i,2)).Indices))};
+                Stats = {sprintf('\\ DeltaMean = % .2fnm',DeltaMean*1e9),...
+                    sprintf('P-Value = % .3f %',p(i)),...
+                    sprintf('Power \\ beta = % .2f %%',Beta*100),...
+                    sprintf('Number of Specimen = % i',length(obj.GroupFM(TestMat(i,2)).Indices))};
                 text(0.5,0.8,Stats,...
                     'Units','normalized',...
                     'FontSize',12,...
@@ -2316,22 +2418,22 @@ classdef Experiment < matlab.mixin.Copyable
             title('Two Sample T-Test for D-Banding Changes')
             ax = gca;
             ax.TickLabelInterpreter = 'tex';
-            xticklabels({sprintf('%s - %s',obj.GroupSPM(2).Name,obj.GroupSPM(1).Name),...
+            xticklabels({sprintf('% s - % s',obj.GroupSPM(2).Name,obj.GroupSPM(1).Name),...
                 '\DeltaMean with CI',...
-                sprintf('%s - %s',obj.GroupSPM(4).Name,obj.GroupSPM(3).Name)})
+                sprintf('% s - % s',obj.GroupSPM(4).Name,obj.GroupSPM(3).Name)})
             ylabel('Difference of Differences [m]')
-            Beta = sampsizepwr('t2',[mean(DiffControl) PooledSTD],mean(DiffMGO),[],length(DiffControl),'Ratio',length(DiffMGO)/length(DiffControl));
-            Stats = {sprintf('\\DeltaMean = %.2fnm',DeltaMean*1e9),...
-                sprintf('P-Value = %.2e%',p),...
-                sprintf('Power \\beta = %.2f%%',Beta*100),...
-                sprintf('Degrees of freedom df = %i',stats.df)};
+            Beta = sampsizepwr('t2',[mean(DiffControl) PooledSTD],mean(DiffMGO),[],length(DiffControl),'Ratio',length (DiffMGO)/length(DiffControl));
+            Stats = {sprintf('\\ DeltaMean = % .2fnm',DeltaMean*1e9),...
+                sprintf('P-Value = % .2e %',p),...
+                sprintf('Power \\ beta = % .2f %%',Beta*100),...
+                sprintf('Degrees of freedom df = % i',stats.df)};
             text(0.5,0.8,Stats,...
                 'Units','normalized',...
                 'FontSize',12,...
                 'HorizontalAlignment','center')
         end
         
-        function grouping_force_map(obj)
+        function grouping_force _map(obj)
             % A series of input dialogues that determine the structure and
             % relations of the force map files in the experiment
             
@@ -2362,9 +2464,9 @@ classdef Experiment < matlab.mixin.Copyable
             uitable('Data',T{:,:},'Units', 'Normalized', 'Position',[0, 0, 1, 1]);
             
             for i=1:2:2*NGroups
-                prompts{i} = sprintf('Whats the Name of Group %i?',(i+1)/2);
-                prompts{i+1} = sprintf('Which Indices belong to Group %i?',(i+1)/2);
-                definput{i} = sprintf('Group %i Name',(i+1)/2);
+                prompts{i} = sprintf('Whats the Name of Group % i?',(i+1)/2);
+                prompts{i+1} = sprintf('Which Indices belong to Group % i?',(i+1)/2);
+                definput{i} = sprintf('Group % i Name',(i+1)/2);
                 definput{i+1} = 'e.g. 1 2 3 4 8 9 10 or 1:4 8:10';
             end
             
@@ -2382,7 +2484,7 @@ classdef Experiment < matlab.mixin.Copyable
             
         end
         
-        function grouping_surface_potential_map(obj)
+        function grouping_surface _potential _map(obj)
             % A series of input dialogues that determine the structure and
             % relations of the force map files in the experiment
             
@@ -2413,9 +2515,9 @@ classdef Experiment < matlab.mixin.Copyable
             uitable('Data',T{:,:},'Units', 'Normalized', 'Position',[0, 0, 1, 1]);
             
             for i=1:2:2*NGroups
-                prompts{i} = sprintf('Whats the Name of Group %i?',(i+1)/2);
-                prompts{i+1} = sprintf('Which Indices belong to Group %i?',(i+1)/2);
-                definput{i} = sprintf('Group %i Name',(i+1)/2);
+                prompts{i} = sprintf('Whats the Name of Group % i?',(i+1)/2);
+                prompts{i+1} = sprintf('Which Indices belong to Group % i?',(i+1)/2);
+                definput{i} = sprintf('Group % i Name',(i+1)/2);
                 definput{i+1} = 'e.g. 1 2 3 4 8 9 10 or 1:4 8:10';
             end
             
@@ -2438,7 +2540,7 @@ classdef Experiment < matlab.mixin.Copyable
     methods
         % auxiliary methods
         
-        function RadiusNM = calculate_tip_radius(obj,TipDepthNM)
+        function RadiusNM = calculate_tip _radius(obj,TipDepthNM)
             if nargin < 2
                 TipDepthNM = 20;
             end
@@ -2476,10 +2578,10 @@ classdef Experiment < matlab.mixin.Copyable
                 %         % z=f(x,y) is given as half the negative divergence of the surface
                 %         % unit normal at any given point, which expands to the formula
                 %         % given here:
-                %             MeanCurvature(x,y) = 1/2*abs(((1+diff(f,x)^2)*diff(f,y,y)...
+                %             MeanCurvature(x,y) = 1/2*abs(((1+diff (f,x)^2)*diff(f,y,y)...
                 %                 -2*diff(f,x)*diff(f,y)*diff(f,x,y)...
-                %                 +(1+diff(f,y)^2)*diff(f,x,x))...
-                %                 /(1+diff(f,x)^2+diff(f,y)^2)^(3/2));
+                %                 +(1+diff (f,y)^2)*diff(f,x,x))...
+                %                 /(1+diff (f,x)^2+diff (f,y)^2)^(3/2));
                 %             RadiusNM = double(1/MeanCurvature(8.966*1e-7,1.124.*1e-6)*1e9)
                 PC(:,1) = X*1e6;
                 PC(:,2) = Y*1e6;
@@ -2510,7 +2612,7 @@ classdef Experiment < matlab.mixin.Copyable
             end
         end
         
-        function show_tip_data(obj)
+        function show_tip _data(obj)
             figure('Name','Cantilever Tip',...
                 'Units','normalized','Position',[0.7 0.1 0.3 0.8],'Color','w');
             subplot(3,1,1)
@@ -2526,8 +2628,8 @@ classdef Experiment < matlab.mixin.Copyable
             ylabel('Projected Area [m^2]')
         end
         
-        function check_for_new_host(obj)
-            % check_for_new_host(obj)
+        function check_for _new _host(obj)
+            % check_for _new _host(obj)
             %
             % Checks, if the system environment has changed and, if so,
             % adjusts object properties
@@ -2546,7 +2648,7 @@ classdef Experiment < matlab.mixin.Copyable
             obj.HostName = Host;
         end
         
-        function reference_slope_parser(obj,DefaultOption)
+        function reference_slope _parser(obj,DefaultOption)
             
             if nargin < 2
                 DefaultOption = 1;
@@ -2554,7 +2656,7 @@ classdef Experiment < matlab.mixin.Copyable
             
             Methods = false(6,1);
             Methods(DefaultOption) = true;
-            ChosenMethod = obj.reference_slope_parser_gui(Methods);
+            ChosenMethod = obj.reference_slope_parser _gui(Methods);
             Methods = false(6,1);
             Methods(ChosenMethod) = true;
             
@@ -2570,34 +2672,33 @@ classdef Experiment < matlab.mixin.Copyable
                 GetValue = inputdlg('To which value should the reference slopes be set?','Choose a value',1);
                 Value = str2double(GetValue{1});
                 for i=1:obj.NumForceMaps
-                    obj.FM{i}.set_reference_slope_to_value(Value)
+                    obj.FM{i}.set_reference_slope _to _value(Value)
                 end
             elseif obj.ReferenceSlopeFlag.UserInput
                 for i=1:obj.NumForceMaps
-                    obj.FM{i}.set_reference_slope_to_user_input
+                    obj.FM{i}.set_reference_slope _to _user _input
                 end
             elseif obj.ReferenceSlopeFlag.FromArea
                 for i=1:obj.NumForceMaps
-                    Mask = obj.FM{i}.create_mask_general;
-                    obj.FM{i}.calculate_reference_slope_from_area(Mask)
+                    obj.FM{i}.RefSlopeMask = obj.FM{i}.create_mask_general;
                 end
             end
             
         end
         
-        function reference_slope_calculator(obj,Index)
+        function reference_slope _calculator(obj,Index)
             
             i = Index;
             if obj.ReferenceSlopeFlag.FromRefFM
                 if isempty(obj.RefFM)
                     Warn = warndlg({'There are no reference Force Maps in your Experiment','Please load in one or more reference files'});
                     uiwait(Warn)
-                    obj.load_in_reference_maps
+                    obj.load_in_reference _maps
                 end
                 
                 if length(obj.RefFM) > 1
                     if ~obj.AssignedReferenceMaps
-                        obj.assign_reference_force_map
+                        obj.assign_reference_force _map
                     end
                     RefIdx = obj.WhichRefMap(i);
                     if ~obj.RefFM{RefIdx}.HasRefSlope
@@ -2606,7 +2707,7 @@ classdef Experiment < matlab.mixin.Copyable
                         end
                         obj.RefFM{1}.estimate_cp_old
                         Mask = ones(obj.RefFM{RefIdx}.NumProfiles,obj.RefFM{RefIdx}.NumPoints);
-                        obj.RefFM{RefIdx}.calculate_reference_slope_from_area(Mask);
+                        obj.RefFM{RefIdx}.calculate_reference_slope _from _area(Mask);
                     end
                     obj.FM{i}.RefSlope = obj.RefFM{RefIdx}.RefSlope;
                     obj.FM{i}.HasRefSlope = true;
@@ -2617,22 +2718,24 @@ classdef Experiment < matlab.mixin.Copyable
                         end
                         obj.RefFM{1}.estimate_cp_old
                         Mask = ones(obj.RefFM{1}.NumProfiles,obj.RefFM{1}.NumPoints);
-                        obj.RefFM{1}.calculate_reference_slope_from_area(Mask);
+                        obj.RefFM{1}.calculate_reference_slope _from _area(Mask);
                     end
                     obj.FM{i}.RefSlope = obj.RefFM{1}.RefSlope;
                     obj.FM{i}.HasRefSlope = true;
                 end
             elseif obj.ReferenceSlopeFlag.AutomaticFibril
                 Mask = ~obj.FM{i}.FibMask;
-                obj.FM{i}.calculate_reference_slope_from_area(Mask)
+                obj.FM{i}.calculate_reference_slope _from _area(Mask)
             elseif obj.ReferenceSlopeFlag.Automatic
-                obj.FM{i}.create_automatic_background_mask(.8)
+                obj.FM{i}.create_automatic_background _mask(.8)
                 Mask = obj.FM{i}.BackgroundMask;
-                obj.FM{i}.calculate_reference_slope_from_area(Mask)
+                obj.FM{i}.calculate_reference_slope _from _area(Mask)
+            elseif obj.ReferenceSlopeFlag.FromArea
+                obj.FM{i}.calculate_reference_slope _from _area(obj.FM{i}.RefSlopeMask)
             end
         end
         
-        function assign_reference_force_map(obj,DefaultValues)
+        function assign_reference _force _map(obj,DefaultValues)
             
             
             obj.WhichRefMap = zeros(obj.NumForceMaps,1);
@@ -2653,7 +2756,7 @@ classdef Experiment < matlab.mixin.Copyable
             uitable('Data',T{:,:},'Units', 'Normalized', 'Position',[0, 0, 1, 1]);
             
             for i=1:NGroups
-                prompts{i} = sprintf('Which Force Maps belong to Reference Force Map %i?',i);
+                prompts{i} = sprintf('Which Force Maps belong to Reference Force Map % i?',i);
                 definput{i} = DefaultValues{i};
             end
             
@@ -2670,7 +2773,7 @@ classdef Experiment < matlab.mixin.Copyable
                 Warn = warndlg('You need to assign exactly one Reference Map to every Force Map','Parsing Error');
                 close(Fig);
                 uiwait(Warn);
-                obj.assign_reference_force_map(answer)
+                obj.assign_reference_force _map(answer)
                 return
             end
             
@@ -2679,7 +2782,7 @@ classdef Experiment < matlab.mixin.Copyable
             
         end
         
-        function assign_cantilever_tips(obj,DefaultValues)
+        function assign_cantilever _tips(obj,DefaultValues)
             
             obj.WhichTip = zeros(obj.NumForceMaps,1);
             
@@ -2699,7 +2802,7 @@ classdef Experiment < matlab.mixin.Copyable
             uitable('Data',T{:,:},'Units', 'Normalized', 'Position',[0, 0, 1, 1]);
             
             for i=1:NGroups
-                prompts{i} = sprintf('Which Force Maps belong to Cantilever Tip %i, %s?',i,obj.CantileverTipNames{i});
+                prompts{i} = sprintf('Which Force Maps belong to Cantilever Tip % i, % s?',i,obj.CantileverTipNames{i});
                 definput{i} = DefaultValues{i};
             end
             
@@ -2725,7 +2828,7 @@ classdef Experiment < matlab.mixin.Copyable
             
         end
         
-        function load_in_reference_maps(obj)
+        function load_in _reference _maps(obj)
             
             prompt = 'Enter Number of reference force maps';
             dlgtitle = 'Experiment Layout';
@@ -2763,37 +2866,71 @@ classdef Experiment < matlab.mixin.Copyable
         end
         
         function initialize_flags(obj)
-            NFM = obj.NumForceMaps;
-            obj.FMFlag.FibrilAnalysis = zeros(NFM,1);
-            obj.FMFlag.ForceMapAnalysis = zeros(NFM,1);
-            obj.FMFlag.Preprocessed = zeros(NFM,1);
-            obj.FMFlag.Grouping = 0;
-            NSPM = obj.NumSurfacePotentialMaps;
-            obj.SPMFlag.FibrilAnalysis = zeros(NSPM,1);
-            obj.SPMFlag.Grouping = 0;
             
-            obj.SMFSFlag.SelectFM = zeros(NFM,1);
-            obj.SMFSFlag.Preprocessed = zeros(NFM,1);
-            
-            obj.CantileverTipFlag = false;
-            if obj.NumCantileverTips > 0
-                obj.CantileverTipFlag = true;
-            end
-            obj.AssignedCantileverTips = false;
-            if obj.NumCantileverTips == 1
-                obj.WhichTip = ones(obj.NumForceMaps,1);
-                obj.AssignedCantileverTips = true;
-            end
-            
-            obj.AssignedReferenceMaps = false;
-            obj.ReferenceSlopeFlag.SetAllToValue = false;
-            obj.ReferenceSlopeFlag.UserInput = false;
-            obj.ReferenceSlopeFlag.FromRefFM = false;
-            obj.ReferenceSlopeFlag.FromArea = false;
-            obj.ReferenceSlopeFlag.AutomaticFibril = false;
-            obj.ReferenceSlopeFlag.Automatic = false;
-            if obj.NumReferenceForceMaps > 0
-                obj.ReferenceSlopeFlag.FromRefFM = true;
+            if isempty(obj.FMFlag)
+                NFM = obj.NumForceMaps;
+                obj.FMFlag.FibrilAnalysis = false(NFM,1);
+                obj.FMFlag.ForceMapAnalysis = false(NFM,1);
+                obj.FMFlag.Preprocessed = false(NFM,1);
+                obj.FMFlag.Grouping = false;
+                NSPM = obj.NumSurfacePotentialMaps;
+                obj.SPMFlag.FibrilAnalysis = false(NSPM,1);
+                obj.SPMFlag.Grouping = false;
+                
+                obj.CantileverTipFlag = false;
+                if obj.NumCantileverTips > 0
+                    obj.CantileverTipFlag = true;
+                end
+                obj.AssignedCantileverTips = false;
+                if obj.NumCantileverTips == 1
+                    obj.WhichTip = true(obj.NumForceMaps,1);
+                    obj.AssignedCantileverTips = true;
+                end
+                
+                obj.AssignedReferenceMaps = false;
+                obj.ReferenceSlopeFlag.SetAllToValue = false;
+                obj.ReferenceSlopeFlag.UserInput = false;
+                obj.ReferenceSlopeFlag.FromRefFM = false;
+                obj.ReferenceSlopeFlag.FromArea = false;
+                obj.ReferenceSlopeFlag.AutomaticFibril = false;
+                obj.ReferenceSlopeFlag.Automatic = false;
+                if obj.NumReferenceForceMaps > 0
+                    obj.ReferenceSlopeFlag.FromRefFM = true;
+                end
+            else
+                PrevNFM = length(obj.FMFlag.FibrilAnalysis);
+                NFM = obj.NumForceMaps;
+                DiffFM = NFM - PrevNFM;
+                obj.FMFlag.FibrilAnalysis(end+1:NFM) = false(DiffFM,1);
+                obj.FMFlag.ForceMapAnalysis(end+1:NFM) = false(DiffFM,1);
+                obj.FMFlag.Preprocessed(end+1:NFM) = false(DiffFM,1);
+                obj.FMFlag.Grouping = false;
+                PrevNSPM = length(obj.SPMFlag.FibrilAnalysis);
+                NSPM = obj.NumSurfacePotentialMaps;
+                DiffSPM = PrevNSPM - NSPM;
+                obj.SPMFlag.FibrilAnalysis(end+1:NSPM) = false(DiffSPM,1);
+                obj.SPMFlag.Grouping = false;
+                
+                obj.CantileverTipFlag = false;
+                if obj.NumCantileverTips > 0
+                    obj.CantileverTipFlag = true;
+                end
+                obj.AssignedCantileverTips = false;
+                if obj.NumCantileverTips == 1
+                    obj.WhichTip(end+1:NFM) = true(DiffFM,1);
+                    obj.AssignedCantileverTips = true;
+                end
+                
+                obj.AssignedReferenceMaps = false;
+                obj.ReferenceSlopeFlag.SetAllToValue = false;
+                obj.ReferenceSlopeFlag.UserInput = false;
+                obj.ReferenceSlopeFlag.FromRefFM = false;
+                obj.ReferenceSlopeFlag.FromArea = false;
+                obj.ReferenceSlopeFlag.AutomaticFibril = false;
+                obj.ReferenceSlopeFlag.Automatic = false;
+                if obj.NumReferenceForceMaps > 0
+                    obj.ReferenceSlopeFlag.FromRefFM = true;
+                end
             end
         end
         
@@ -3083,7 +3220,7 @@ classdef Experiment < matlab.mixin.Copyable
             
 %             if isequal(upper(OS),'PCW')
                 % Get back the java component associated to the axis
-                % NB1: See §3.7.2 of Undocumented Secrets of Matlab Java Programming
+                % NB1: See \[Section]3.7.2 of Undocumented Secrets of Matlab Java Programming
                 % NB2: or use findjobj, or javaObjectEDT for drop support onto other component types
                 warning('off')
                 jFrame = get(handle(h.f), 'JavaFrame');
@@ -3297,7 +3434,6 @@ classdef Experiment < matlab.mixin.Copyable
                 
                 
                 set(h.ListBox(Index),'String',NewFiles)
-                OutStruct(Index).FullFile
             end
             
             function delete_selected(varargin)
