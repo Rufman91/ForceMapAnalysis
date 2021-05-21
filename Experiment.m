@@ -2771,10 +2771,8 @@ classdef Experiment < matlab.mixin.Copyable
             NSPM = obj.NumSurfacePotentialMaps;
             obj.SPMFlag.FibrilAnalysis = zeros(NSPM,1);
             obj.SPMFlag.Grouping = 0;
-            
             obj.SMFSFlag.SelectFM = zeros(NFM,1);
             obj.SMFSFlag.Preprocessed = zeros(NFM,1);
-            
             obj.CantileverTipFlag = false;
             if obj.NumCantileverTips > 0
                 obj.CantileverTipFlag = true;
