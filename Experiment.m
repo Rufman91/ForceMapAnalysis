@@ -261,7 +261,7 @@ classdef Experiment < matlab.mixin.Copyable
                 % get paths of requested files and load them in
                 SaveCopy.take_paths_and_load_files(FileTypes,FullFileStruct,isNew)
                 
-                % SaveCopy.initialize_flags % What to do with this?
+                SaveCopy.initialize_flags
                 
                 Out = SaveCopy;
                 Out.save_experiment
@@ -573,6 +573,7 @@ classdef Experiment < matlab.mixin.Copyable
                     end
                 else
                     obj.FM{i}.calculate_e_mod_oliverpharr(obj.CantileverTips{obj.WhichTip(i)}.ProjectedTipArea,0.75);
+                    obj.FM{i}.ProjTipArea = obj.CantileverTips{obj.WhichTip(i)}.ProjectedTipArea;
                     if i == 1
                         obj.write_to_log_file('OliverPharr CurvePercent','0.75')
                     end
@@ -732,6 +733,7 @@ classdef Experiment < matlab.mixin.Copyable
                     end
                 else
                     obj.FM{i}.calculate_e_mod_oliverpharr(obj.CantileverTips{obj.WhichTip(i)}.ProjectedTipArea,0.75);
+                    obj.FM{i}.ProjTipArea = obj.CantileverTips{obj.WhichTip(i)}.ProjectedTipArea;
                     if i == 1
                         obj.write_to_log_file('OliverPharr CurvePercent','0.75')
                     end
@@ -2473,8 +2475,7 @@ classdef Experiment < matlab.mixin.Copyable
                 end
             elseif obj.ReferenceSlopeFlag.FromArea
                 for i=1:obj.NumForceMaps
-                    Mask = obj.FM{i}.create_mask_general;
-                    obj.FM{i}.calculate_reference_slope_from_area(Mask)
+                    obj.FM{i}.RefSlopeMask = obj.FM{i}.create_mask_general;
                 end
             end
             
@@ -2524,6 +2525,8 @@ classdef Experiment < matlab.mixin.Copyable
                 obj.FM{i}.create_automatic_background_mask(.8)
                 Mask = obj.FM{i}.BackgroundMask;
                 obj.FM{i}.calculate_reference_slope_from_area(Mask)
+            elseif obj.ReferenceSlopeFlag.FromArea
+                obj.FM{i}.calculate_reference_slope_from_area(obj.FM{i}.RefSlopeMask)
             end
         end
         
@@ -2658,34 +2661,71 @@ classdef Experiment < matlab.mixin.Copyable
         end
         
         function initialize_flags(obj)
-            NFM = obj.NumForceMaps;
-            obj.FMFlag.FibrilAnalysis = zeros(NFM,1);
-            obj.FMFlag.ForceMapAnalysis = zeros(NFM,1);
-            obj.FMFlag.Preprocessed = zeros(NFM,1);
-            obj.FMFlag.Grouping = 0;
-            NSPM = obj.NumSurfacePotentialMaps;
-            obj.SPMFlag.FibrilAnalysis = zeros(NSPM,1);
-            obj.SPMFlag.Grouping = 0;
             
-            obj.CantileverTipFlag = false;
-            if obj.NumCantileverTips > 0
-                obj.CantileverTipFlag = true;
-            end
-            obj.AssignedCantileverTips = false;
-            if obj.NumCantileverTips == 1
-                obj.WhichTip = ones(obj.NumForceMaps,1);
-                obj.AssignedCantileverTips = true;
-            end
-            
-            obj.AssignedReferenceMaps = false;
-            obj.ReferenceSlopeFlag.SetAllToValue = false;
-            obj.ReferenceSlopeFlag.UserInput = false;
-            obj.ReferenceSlopeFlag.FromRefFM = false;
-            obj.ReferenceSlopeFlag.FromArea = false;
-            obj.ReferenceSlopeFlag.AutomaticFibril = false;
-            obj.ReferenceSlopeFlag.Automatic = false;
-            if obj.NumReferenceForceMaps > 0
-                obj.ReferenceSlopeFlag.FromRefFM = true;
+            if isempty(obj.FMFlag)
+                NFM = obj.NumForceMaps;
+                obj.FMFlag.FibrilAnalysis = false(NFM,1);
+                obj.FMFlag.ForceMapAnalysis = false(NFM,1);
+                obj.FMFlag.Preprocessed = false(NFM,1);
+                obj.FMFlag.Grouping = false;
+                NSPM = obj.NumSurfacePotentialMaps;
+                obj.SPMFlag.FibrilAnalysis = false(NSPM,1);
+                obj.SPMFlag.Grouping = false;
+                
+                obj.CantileverTipFlag = false;
+                if obj.NumCantileverTips > 0
+                    obj.CantileverTipFlag = true;
+                end
+                obj.AssignedCantileverTips = false;
+                if obj.NumCantileverTips == 1
+                    obj.WhichTip = true(obj.NumForceMaps,1);
+                    obj.AssignedCantileverTips = true;
+                end
+                
+                obj.AssignedReferenceMaps = false;
+                obj.ReferenceSlopeFlag.SetAllToValue = false;
+                obj.ReferenceSlopeFlag.UserInput = false;
+                obj.ReferenceSlopeFlag.FromRefFM = false;
+                obj.ReferenceSlopeFlag.FromArea = false;
+                obj.ReferenceSlopeFlag.AutomaticFibril = false;
+                obj.ReferenceSlopeFlag.Automatic = false;
+                if obj.NumReferenceForceMaps > 0
+                    obj.ReferenceSlopeFlag.FromRefFM = true;
+                end
+            else
+                PrevNFM = length(obj.FMFlag.FibrilAnalysis);
+                NFM = obj.NumForceMaps;
+                DiffFM = NFM - PrevNFM;
+                obj.FMFlag.FibrilAnalysis(end+1:NFM) = false(DiffFM,1);
+                obj.FMFlag.ForceMapAnalysis(end+1:NFM) = false(DiffFM,1);
+                obj.FMFlag.Preprocessed(end+1:NFM) = false(DiffFM,1);
+                obj.FMFlag.Grouping = false;
+                PrevNSPM = length(obj.SPMFlag.FibrilAnalysis);
+                NSPM = obj.NumSurfacePotentialMaps;
+                DiffSPM = PrevNSPM - NSPM;
+                obj.SPMFlag.FibrilAnalysis(end+1:NSPM) = false(DiffSPM,1);
+                obj.SPMFlag.Grouping = false;
+                
+                obj.CantileverTipFlag = false;
+                if obj.NumCantileverTips > 0
+                    obj.CantileverTipFlag = true;
+                end
+                obj.AssignedCantileverTips = false;
+                if obj.NumCantileverTips == 1
+                    obj.WhichTip(end+1:NFM) = true(DiffFM,1);
+                    obj.AssignedCantileverTips = true;
+                end
+                
+                obj.AssignedReferenceMaps = false;
+                obj.ReferenceSlopeFlag.SetAllToValue = false;
+                obj.ReferenceSlopeFlag.UserInput = false;
+                obj.ReferenceSlopeFlag.FromRefFM = false;
+                obj.ReferenceSlopeFlag.FromArea = false;
+                obj.ReferenceSlopeFlag.AutomaticFibril = false;
+                obj.ReferenceSlopeFlag.Automatic = false;
+                if obj.NumReferenceForceMaps > 0
+                    obj.ReferenceSlopeFlag.FromRefFM = true;
+                end
             end
         end
         
