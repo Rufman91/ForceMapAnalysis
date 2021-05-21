@@ -2671,6 +2671,8 @@ classdef Experiment < matlab.mixin.Copyable
                 NSPM = obj.NumSurfacePotentialMaps;
                 obj.SPMFlag.FibrilAnalysis = false(NSPM,1);
                 obj.SPMFlag.Grouping = false;
+                obj.SMFSFlag.SelectFM = false(NFM,1);
+                obj.SMFSFlag.Preprocessed = false(NFM,1);
                 
                 obj.CantileverTipFlag = false;
                 if obj.NumCantileverTips > 0
@@ -2705,6 +2707,8 @@ classdef Experiment < matlab.mixin.Copyable
                 DiffSPM = PrevNSPM - NSPM;
                 obj.SPMFlag.FibrilAnalysis(end+1:NSPM) = false(DiffSPM,1);
                 obj.SPMFlag.Grouping = false;
+                obj.SMFSFlag.SelectFM(end+1:NFM) = false(DiffFM,1);
+                obj.SMFSFlag.Preprocessed(end+1:NFM) = false(DiffFM,1);
                 
                 obj.CantileverTipFlag = false;
                 if obj.NumCantileverTips > 0
