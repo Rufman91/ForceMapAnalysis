@@ -1209,12 +1209,12 @@ classdef ForceMap < matlab.mixin.Copyable
             for ii=1:obj.NCurves
             MinApp(ii)=min(obj.BasedApp{ii}); % Determine maximum adhesion forces 
             MinRet(ii)=min(obj.BasedRet{ii}); % Determine maximum adhesion forces 
-            MinRetSel(ii)=min(obj.BasedRet{ii}(1:obj.EndIdx(ii))); % Determines the maximum adhesion value within the selected area
+%            MinRetSel(ii)=min(obj.BasedRet{ii}(1:obj.EndIdx(ii))); % Determines the maximum adhesion value within the selected area
             end
             obj.MinRet = MinRet;
-            obj.MinRetSel = MinRetSel;
-            obj.MinPullingLength = min(obj.PullingLength);
-            obj.MaxPullingLength = max(obj.PullingLength);
+%            obj.MinRetSel = MinRetSel;
+            obj.MinPullingLength = min(nonzeros(obj.PullingLength));
+            obj.MaxPullingLength = max(nonzeros(obj.PullingLength));
         end
           
         function fc_based_ret_correction(obj,DataShareStartApp,DataShareEndApp,DataShareStartRet,DataShareEndRet)
@@ -1277,7 +1277,7 @@ classdef ForceMap < matlab.mixin.Copyable
         end
              
         function fc_chipprop(obj)
-                 
+               % fc_chipprop: A fct to read out properties about the SMFS measurements from the name of the jpk data file (i.e. "JPK-FORCE-MAP").  
                 % Chip number and Cantilever
                 exp15='(\d+\D{1}\>)'; % Finds the chip number and the cantilever   
                 obj.ChipCant = regexp(obj.Name, exp15, 'match','once');                 
@@ -1582,6 +1582,9 @@ classdef ForceMap < matlab.mixin.Copyable
         end
                    
         function fc_selection(obj,XMin,XMax,YMin,YMax) % fc ... force curve
+            % fc_selection: function plots all force curves of a force map
+            % and via a dialog box force curves for further analysis can be
+            % choosen
             
             if nargin < 2
                 XMin= -inf;
@@ -1595,6 +1598,11 @@ classdef ForceMap < matlab.mixin.Copyable
             if Remainder ~= 0
                 NFigures=NFigures+1;
             end    
+            %% Define some variables
+            % Define variables for the plotted tiles 
+                    x50=-50e-9; % Defines 50nm
+                    x150=-150e-9; % Defines 150nm
+                    x500=-500e-9; % Defines 500nm
             % Define variables for the figure name
             VelocityConvert=num2str(obj.Velocity*1e+9); % Convert into nm
             % Classification criteria
@@ -1611,7 +1619,7 @@ classdef ForceMap < matlab.mixin.Copyable
             h_fig.OuterPosition=[0 0 1 1];% changes the size of the to the whole screen
             h_fig.PaperOrientation='landscape';
             h_fig.Name=figname;         
-            %% Plotting the tiles
+            % Plotting the tiles
             t = tiledlayout(5,5);
             %t.TileSpacing = 'compact';
             %t.Padding = 'compact';
@@ -1626,11 +1634,7 @@ classdef ForceMap < matlab.mixin.Copyable
                 %% Plot loop    
                 for jj=1:NLoop
                     % Tile jj
-                    kk=jj+25*(ii-1);
-                    %%% Define some variables
-                    x50=-50e-9; % Defines 50nm
-                    x150=-150e-9; % Defines 150nm
-                    x500=-500e-9; % Defines 500nm
+                    kk=jj+25*(ii-1);                    
                     % Plot tile
                     ax=nexttile;      
                     ax.XLim = [XMin XMax];
@@ -1731,7 +1735,10 @@ classdef ForceMap < matlab.mixin.Copyable
                     hold on
                     grid on
                     plot(obj.THApp{kk}-obj.CP_HardSurface(kk,1),obj.BasedApp{kk});
-                    plot(obj.THRet{kk}-obj.CP_HardSurface(kk,1),obj.BasedRet{kk});                    
+                    plot(obj.THRet{kk}-obj.CP_HardSurface(kk,1),obj.BasedRet{kk});
+                    xline(x50,'Color','r'); % Draws a vertical line
+                    xline(x150,'Color','r'); % Draws a vertical line   
+                    xline(x500,'Color','r'); % Draws a vertical line
                     % Title for each Subplot
                     if obj.SMFSFlag.Uncorrupt(kk)==0
                         ti=title(sprintf('%i',kk),'Color','r');
@@ -1872,8 +1879,9 @@ classdef ForceMap < matlab.mixin.Copyable
         end
                 
         function fc_print_adhenergy_pulllength(obj,XMin,XMax,YMin,YMax,NumFcMax,NumFcUncorrupt) % fc ... force curve
-            % fc_print: A function to simply plot all force curves of a
-            % force map without any selection taking place
+            % fc_print_adhenergy_pulllength: A function to plot all selected force curves of a
+            % force map by visual showing adhesion energy and pulling
+            % length
             if nargin < 2
                 XMin= -inf;
                 XMax= inf;
@@ -2125,6 +2133,7 @@ classdef ForceMap < matlab.mixin.Copyable
             close all
         end
         
+       
     end    
     methods (Static)
         % Auxiliary methods

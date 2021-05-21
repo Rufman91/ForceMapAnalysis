@@ -1011,12 +1011,12 @@ classdef Experiment < matlab.mixin.Copyable
             close(Fig)
         end
         
-        function min_batch(obj)
+        function SMFS_min_max(obj)
             
 
             for ii=1:obj.NumForceMaps
-               obj.FM{ii}.base_and_tilt('linear');
-               obj.FM{ii}.min_force; 
+           %    obj.FM{ii}.base_and_tilt('linear');
+               obj.FM{ii}.fc_min_max_values; 
             end
           %  obj.save_experiment
         end
@@ -1070,7 +1070,7 @@ classdef Experiment < matlab.mixin.Copyable
                 end
                 obj.FM{ii}.fc_chipprop
                 waitbar(ii/NLoop,h,sprintf('Preprocessing ForceMap %i/%i\nFitting Base Lines',i,NLoop));
-                obj.FM{ii}.fc_based_ret_correction;
+                obj.FM{ii}.fc_based_ret_correction
                 waitbar(ii/NLoop,h,sprintf('Preprocessing ForceMap %i/%i\nWrapping Up And Saving',i,NLoop));
                 
                 
@@ -1148,7 +1148,7 @@ classdef Experiment < matlab.mixin.Copyable
             % SMFS_print_sort: A function to plot all force curves of all
             % force maps sorted by different properties 
             % Comment: Date format is: 'YYYY.MM.DD'
-            % Needed function: obj.FM{ii}.fc_chipprop, obj.FM{ii}.estimate_cp_hardsurface
+            % Required function: obj.FM{ii}.fc_chipprop, obj.FM{ii}.estimate_cp_hardsurface
          
             % Change into the Folder of Interest
             cd(obj.ExperimentFolder) % Move into the folder 
@@ -1218,6 +1218,7 @@ classdef Experiment < matlab.mixin.Copyable
             % SMFS_print_sort: A function to plot all force curves of all
             % force maps sorted by different properties 
             % Comment: Date format is: 'YYYY.MM.DD'
+            % Required function: obj.FM{ii}.fc_chipprop, obj.FM{ii}.estimate_cp_hardsurface
             
             % Change into the Folder of Interest
             cd(obj.ExperimentFolder) % Move into the folder 
@@ -1243,10 +1244,7 @@ classdef Experiment < matlab.mixin.Copyable
                 YMax= inf;      % Limit of the Y-axis in Newtons (N)
             end
             % Loop over the imported force maps
-             for ii=1:obj.NumForceMaps
-                % Needed function
-                obj.FM{ii}.fc_chipprop
-                        
+             for ii=1:obj.NumForceMaps              
                 % Remove the dots in the dates               
                 FMDate=split(obj.FM{ii}.Date,'.');
                 StartDateSplit=split(StartDate,'.');
@@ -1268,18 +1266,15 @@ classdef Experiment < matlab.mixin.Copyable
                     continue
                 end  
                 % Define variables for the folder name
-                %SMFSFlagConvert=num2str(obj.SMFSFlag(ii));
                 StartDateMod=strrep(StartDate,'.','');
                 EndDateMod=strrep(EndDate,'.','');                
-                %foldername=append('FM_Flag',SMFSFlagConvert,'_',obj.FM{ii}.ChipCant,'_',StartDateMod,'-',EndDateMod); % Defines the folder name
                 %foldername=append('FM_',obj.FM{ii}.ChipCant,'_',StartDateMod,'-',EndDateMod);
                 foldername=append('FM_',obj.FM{ii}.Substrate,'_',obj.FM{ii}.EnvCond,'_',StartDateMod,'-',EndDateMod);                
                 warning('off','all'); % To not showing the warning that the same folder is created each loop
                 mkdir(foldername);
                 warning('on','all');
                 cd(foldername)         
-               % Run the chosen functions
-               obj.FM{ii}.estimate_cp_hardsurface      
+               % Run the chosen functions   
                obj.FM{ii}.fc_print(XMin,XMax,YMin,YMax);
                cd(obj.ExperimentFolder) % Move into the folder                           
             end 
@@ -1383,8 +1378,9 @@ classdef Experiment < matlab.mixin.Copyable
 %             figname=strcat(obj.DateAdapt,{'_'},obj.TimeAdapt,{'_'},obj.ID,{'_'},obj.Substrate,{'_'},obj.EnvCond,{'_'},VelocityConvert,{'_'},obj.Chipbox,{'_'},obj.ChipCant);
 %             figname=char(figname);
 %             % Define variables for the plot loop
-            
-            %% figure loop                   
+             
+            %  figname=strcat(obj.DateAdapt,{'_'},obj.TimeAdapt,{'_'})
+             %  figname=char(figname);
                 % Figure
                 h_fig=figure;
                 h_fig.Color='white'; % changes the background color of the figure
@@ -1393,19 +1389,21 @@ classdef Experiment < matlab.mixin.Copyable
                 h_fig.PaperOrientation='landscape';
           %      h_fig.Name=figname;
                     %% Plot loop
-                     for ii=1:obj.NumForceMaps
-                    obj.FM{ii}.min_max_Values
-                     end
+                   
                     for jj=1:obj.NumForceMaps
+                        % Define variables
+                        PlotTitle=obj.FM{jj}.ID;                   
                             ax=nexttile;
                             ax.XLim = [XMin XMax];
-                            %ax.YLim = [YMin YMax];                             
-                            ax.YLim = [obj.MinPullingLength obj.MaxPullingLength];
+                            ax.YLim = [YMin YMax];                             
+                            %ax.YLim = [obj.MinPullingLength obj.MaxPullingLength];
                             hold on
                             grid on                           
-                            boxplot(nonzeros(obj.FM{jj}.PullingLength))                                                     
+                            boxplot(nonzeros(obj.FM{jj}.PullingLength));
+                           
                             % Title for each Subplot
-                            ti=title(sprintf('%i',jj),'Color','k');
+                            %ti=title(sprintf('%i',jj),'Color','k');
+                            ti=title(num2str(PlotTitle));
                             ti.Units='normalized'; % Set units to 'normalized'
                             ti.Position=[0.5,1]; % Position the subplot title within the subplot                     
                     end                  
@@ -1419,9 +1417,18 @@ classdef Experiment < matlab.mixin.Copyable
 %                 print(gcf,fullname,'-dpng');
            
         %    close all
+        
+        
+           
             end
        
         
+            function SMFS(obj)
+                if obj.FM{1}.Substrate=='mica'
+                    yes=1+1
+                end
+            end
+            
     end
     methods
         % Methods for data visualization spanning all the data
