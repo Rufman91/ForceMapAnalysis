@@ -1,5 +1,3 @@
-(* ::Package:: *)
-
 classdef Experiment < matlab.mixin.Copyable
     
     properties
@@ -62,7 +60,7 @@ classdef Experiment < matlab.mixin.Copyable
         function obj = Experiment()
             
             % Set HostOS and HostName properties
-            obj.check_for_new _host
+            obj.check_for_new_host
             
             % set Name and choose Experiment folder
             [ExperimentName, ParentFolder] = uiputfile('*.mat','Select Experiment Name and Parent Folder');
@@ -71,7 +69,7 @@ classdef Experiment < matlab.mixin.Copyable
             obj.ExperimentFolder = fullfile(ParentFolder,obj.ExperimentName,filesep);
             
             % get Experiment filenames and paths from user input
-            [FileTypes, FullFileStruct, IsValid] = obj.constructor_user_input _parser(obj.ExperimentName,obj.HostOS);
+            [FileTypes, FullFileStruct, IsValid] = obj.constructor_user_input_parser(obj.ExperimentName,obj.HostOS);
             
             if ~IsValid
                 obj = [];
@@ -79,19 +77,19 @@ classdef Experiment < matlab.mixin.Copyable
             end
             
             % get paths of requested files and load them in
-            obj.take_paths_and _load _files(FileTypes,FullFileStruct,true)
+            obj.take_paths_and_load_files(FileTypes,FullFileStruct,true)
             
             obj.initialize_flags
             
             Temp = load('DropoutNetFinal.mat');
             obj.DropoutNet = Temp.MC14_Drop;
-            Temp2 = load('CP_CNN _Final.mat');
+            Temp2 = load('CP_CNN_Final.mat');
             obj.CP_CNN = Temp2.CNN;
             
             obj.save_experiment();
         end
         
-        function take_paths _and _load _files(obj,FileTypes,FullFileStruct,isNew)
+        function take_paths_and_load_files(obj,FileTypes,FullFileStruct,isNew)
             
             if nargin<4
                 isNew = false;
@@ -250,11 +248,11 @@ classdef Experiment < matlab.mixin.Copyable
             try
                 
                 % Set HostOS and HostName properties
-                SaveCopy.check_for_new _host
+                SaveCopy.check_for_new_host
                 
                 % get Experiment name and layout from user
                 isNew = false;
-                [FileTypes, FullFileStruct, isValid] = SaveCopy.constructor_user_input _parser(obj.ExperimentName,obj.HostOS);
+                [FileTypes, FullFileStruct, isValid] = SaveCopy.constructor_user_input_parser(obj.ExperimentName,obj.HostOS);
                 
                 if ~isValid
                     SaveCopy = [];
@@ -262,7 +260,7 @@ classdef Experiment < matlab.mixin.Copyable
                 end
                 
                 % get paths of requested files and load them in
-                SaveCopy.take_paths_and _load _files(FileTypes,FullFileStruct,isNew)
+                SaveCopy.take_paths_and_load_files(FileTypes,FullFileStruct,isNew)
                 
                 SaveCopy.initialize_flags
                 
@@ -365,28 +363,28 @@ classdef Experiment < matlab.mixin.Copyable
             E = obj;
             clear obj
             
-            E.check_for_new _host();
+            E.check_for_new_host();
             FMFolder = fullfile(Path,filesep,'ForceData');
             for i=1:E.NumForceMaps
                 if ~isempty(E.FM{i})
-                    E.FM{i}.check_for_new _host();
+                    E.FM{i}.check_for_new_host();
                     E.FM{i}.Folder = FMFolder;
                     E.ForceMapFolders{i} = FMFolder;
                 end
             end
             for i=1:E.NumAFMImages
                 if ~isempty(E.I{i})
-                    E.I{i}.check_for_new _host();
+                    E.I{i}.check_for_new_host();
                 end
             end
             for i=1:E.NumReferenceForceMaps
                 if ~isempty(E.RefFM{i})
-                    E.RefFM{i}.check_for_new _host();
+                    E.RefFM{i}.check_for_new_host();
                 end
             end
             for i=1:E.NumCantileverTips
                 if ~isempty(E.CantileverTips{i})
-                    E.CantileverTips{i}.check_for_new _host();
+                    E.CantileverTips{i}.check_for_new_host();
                 end
             end
             
@@ -420,7 +418,7 @@ classdef Experiment < matlab.mixin.Copyable
                 if isequal(KeepFlagged,'Yes') && obj.FMFlag.Preprocessed(i) == 1
                     continue
                 end
-                obj.FM{i}.create_and_level _height _map();
+                obj.FM{i}.create_and_level_height_map();
             end
             
             
@@ -442,8 +440,8 @@ classdef Experiment < matlab.mixin.Copyable
             close(h);
         end
         
-        function force_map _analysis _fibril(obj,CPOption,EModOption)
-            % force_map _analysis _fibril(obj,CPOption,EModOption)
+        function force_map_analysis_fibril(obj,CPOption,EModOption)
+            % force_map_analysis_fibril(obj,CPOption,EModOption)
             %
             % CPOption = 'Snap-In' ... Preferred Option for data with
             % snap-in effect
@@ -468,9 +466,9 @@ classdef Experiment < matlab.mixin.Copyable
             % EModOption = 'Oliver' ... E-Modulus calculation through
             % Oliver-Pharr-like method (O. Andriotis 2014)
             
-            obj.write_to_log _file('Analysis Function','force_map _analysis _fibril ()','start')
-            obj.write_to_log _file('Contact Point Option',CPOption)
-            obj.write_to_log _file('EMod Option',EModOption)
+            obj.write_to_log_file('Analysis Function','force_map_analysis_fibril ()','start')
+            obj.write_to_log_file('Contact Point Option',CPOption)
+            obj.write_to_log_file('EMod Option',EModOption)
             
             h = waitbar(0,'setting up','Units','normalized','Position',[0.4 0.3 0.2 0.1]);
             NLoop = length(obj.ForceMapNames);
@@ -493,7 +491,7 @@ classdef Experiment < matlab.mixin.Copyable
                 if isequal(KeepFlagged,'Yes') && obj.FMFlag.FibrilAnalysis(i) == 1
                     continue
                 end
-                obj.FM{i}.create_and_level _height _map();
+                obj.FM{i}.create_and_level_height_map();
                 obj.FM{i}.create_fibril_mask();
                 if isequal(answer,'Yes')
                     continue
@@ -517,7 +515,7 @@ classdef Experiment < matlab.mixin.Copyable
             elseif obj.ReferenceSlopeFlag.Automatic
                 RefSlopeOption = 'Automatic';
             end
-            obj.write_to_log _file('Reference Slope Option',RefSlopeOption)
+            obj.write_to_log_file('Reference Slope Option',RefSlopeOption)
             
             % Deconvoluting cantilever tip(s)
             if isequal(lower(EModOption),'oliver')
@@ -530,7 +528,7 @@ classdef Experiment < matlab.mixin.Copyable
                         NumTips = str2num(UsrInput{1});
                         IsValid = isnumeric(NumTips)&&~isempty(NumTips);
                     end
-                    obj.get_paths_and _load _files([0 0 0 0 1],[0 0 0 0 ceil(NumTips)],false);
+                    obj.get_paths_and_load_files([0 0 0 0 1],[0 0 0 0 ceil(NumTips)],false);
                 end
                 if ~obj.AssignedCantileverTips
                     obj.assign_cantilever_tips
@@ -554,7 +552,7 @@ classdef Experiment < matlab.mixin.Copyable
                     obj.FM{i}.base_and_tilt('linear');
                 end
                 if i == 1
-                    obj.write_to_log _file('Baseline and Tilt option','linear')
+                    obj.write_to_log_file('Baseline and Tilt option','linear')
                 end
                 
                 obj.FM{i}.calculate_fib_diam();
@@ -569,16 +567,16 @@ classdef Experiment < matlab.mixin.Copyable
                 
                 waitbar(i/NLoop,h,sprintf('Processing Fibril % i/%i \n Calculating E-Modulus',i,NLoop));
                 if isequal(lower(EModOption),'hertz')
-                    obj.FM{i}.calculate_e_mod _hertz(CPOption,'parabolic',1);
+                    obj.FM{i}.calculate_e_mod_hertz(CPOption,'parabolic',1);
                     if i == 1
-                        obj.write_to_log _file('Hertzian Tip-Shape','parabolic')
-                        obj.write_to_log _file('Hertzian CurvePercent','1')
+                        obj.write_to_log_file('Hertzian Tip-Shape','parabolic')
+                        obj.write_to_log_file('Hertzian CurvePercent','1')
                     end
                 else
-                    obj.FM{i}.calculate_e_mod _oliverpharr(obj.CantileverTips{obj.WhichTip(i)}.ProjectedTipArea,0.75);
+                    obj.FM{i}.calculate_e_mod_oliverpharr(obj.CantileverTips{obj.WhichTip(i)}.ProjectedTipArea,0.75);
                     obj.FM{i}.ProjTipArea = obj.CantileverTips{obj.WhichTip(i)}.ProjectedTipArea;
                     if i == 1
-                        obj.write_to_log _file('OliverPharr CurvePercent','0.75')
+                        obj.write_to_log_file('OliverPharr CurvePercent','0.75')
                     end
                 end
                 waitbar(i/NLoop,h,sprintf('Processing Fibril % i/%i \n Wrapping Up And Saving',i,NLoop));
@@ -617,11 +615,11 @@ classdef Experiment < matlab.mixin.Copyable
             obj.save_experiment;
             
             close(h);
-            obj.write_to_log _file('','','end')
+            obj.write_to_log_file('','','end')
         end
         
-        function force_map _analysis _general(obj,CPOption,EModOption)
-            % force_map _analysis _general(obj,CPOption,EModOption)
+        function force_map_analysis_general(obj,CPOption,EModOption)
+            % force_map_analysis_general(obj,CPOption,EModOption)
             %
             % CPOption = 'Snap-In' ... Preferred Option for data with
             % snap-in effect
@@ -646,9 +644,9 @@ classdef Experiment < matlab.mixin.Copyable
             % EModOption = 'Oliver' ... E-Modulus calculation through
             % Oliver-Pharr-like method (O. Andriotis 2014)
             
-            obj.write_to_log _file('Analysis Function','force_map _analysis _general ()','start')
-            obj.write_to_log _file('Contact Point Option',CPOption)
-            obj.write_to_log _file('EMod Option',EModOption)
+            obj.write_to_log_file('Analysis Function','force_map_analysis_general ()','start')
+            obj.write_to_log_file('Contact Point Option',CPOption)
+            obj.write_to_log_file('EMod Option',EModOption)
             
             h = waitbar(0,'setting up','Units','normalized','Position',[0.4 0.3 0.2 0.1]);
             NLoop = obj.NumForceMaps;
@@ -678,7 +676,7 @@ classdef Experiment < matlab.mixin.Copyable
             elseif obj.ReferenceSlopeFlag.Automatic
                 RefSlopeOption = 'Automatic';
             end
-            obj.write_to_log _file('Reference Slope Option',RefSlopeOption)
+            obj.write_to_log_file('Reference Slope Option',RefSlopeOption)
             
             % Deconvoluting cantilever tip(s)
             if isequal(lower(EModOption),'oliver')
@@ -691,7 +689,7 @@ classdef Experiment < matlab.mixin.Copyable
                         NumTips = str2num(UsrInput{1});
                         IsValid = isnumeric(NumTips)&&~isempty(NumTips);
                     end
-                    obj.get_paths_and _load _files([0 0 0 0 1],[0 0 0 0 ceil(NumTips)],false);
+                    obj.get_paths_and_load_files([0 0 0 0 1],[0 0 0 0 ceil(NumTips)],false);
                 end
                 if ~obj.AssignedCantileverTips
                     obj.assign_cantilever_tips
@@ -713,7 +711,7 @@ classdef Experiment < matlab.mixin.Copyable
                 if ~obj.FM{i}.BaseAndTiltFlag
                     obj.FM{i}.base_and_tilt('linear');
                 if i == 1
-                    obj.write_to_log _file('Baseline and Tilt option','linear')
+                    obj.write_to_log_file('Baseline and Tilt option','linear')
                 end
                 end
                 
@@ -728,17 +726,17 @@ classdef Experiment < matlab.mixin.Copyable
                 waitbar(i/NLoop,h,sprintf('Processing ForceMap % i/%i \n Calculating E-Modulus',i,NLoop));
                 if isequal(lower(EModOption),'hertz')
                     AllowXShift = true;
-                    obj.FM{i}.calculate_e_mod _hertz(CPOption,'parabolic',1,AllowXShift);
+                    obj.FM{i}.calculate_e_mod_hertz(CPOption,'parabolic',1,AllowXShift);
                     if i == 1
-                        obj.write_to_log _file('Hertzian Tip-Shape','parabolic')
-                        obj.write_to_log _file('Hertzian CurvePercent','1')
-                        obj.write_to_log _file('Allow X-Shift',AllowXShift)
+                        obj.write_to_log_file('Hertzian Tip-Shape','parabolic')
+                        obj.write_to_log_file('Hertzian CurvePercent','1')
+                        obj.write_to_log_file('Allow X-Shift',AllowXShift)
                     end
                 else
-                    obj.FM{i}.calculate_e_mod _oliverpharr(obj.CantileverTips{obj.WhichTip(i)}.ProjectedTipArea,0.75);
+                    obj.FM{i}.calculate_e_mod_oliverpharr(obj.CantileverTips{obj.WhichTip(i)}.ProjectedTipArea,0.75);
                     obj.FM{i}.ProjTipArea = obj.CantileverTips{obj.WhichTip(i)}.ProjectedTipArea;
                     if i == 1
-                        obj.write_to_log _file('OliverPharr CurvePercent','0.75')
+                        obj.write_to_log_file('OliverPharr CurvePercent','0.75')
                     end
                 end
                 waitbar(i/NLoop,h,sprintf('Processing ForceMap % i/%i \n Wrapping Up And Saving',i,NLoop));
@@ -749,10 +747,10 @@ classdef Experiment < matlab.mixin.Copyable
             obj.save_experiment;
             
             close(h);
-            obj.write_to_log _file('','','end')
+            obj.write_to_log_file('','','end')
         end
         
-        function image_analysis _flatten _on _even _background(obj,UpperLim,NIter)
+        function image_analysis_flatten_on_even_background(obj,UpperLim,NIter)
             
             if nargin < 2
                 UpperLim = 1;
@@ -770,9 +768,9 @@ classdef Experiment < matlab.mixin.Copyable
                     Index = length(obj.I{i}.Channel)+1;
                     obj.I{i}.NumChannels = Index;
                 end
-                Processed.Image = obj.I{i}.subtract_line_fit _hist(Height.Image, UpperLim);
+                Processed.Image = obj.I{i}.subtract_line_fit_hist(Height.Image, UpperLim);
                 for j=1:NIter
-                    Processed.Image = obj.I{i}.subtract_line_fit _hist(Processed.Image, UpperLim);
+                    Processed.Image = obj.I{i}.subtract_line_fit_hist(Processed.Image, UpperLim);
                 end
                 obj.I{i}.Channel(Index) = Processed;
                 obj.I{i}.hasProcessed = 1;
@@ -780,7 +778,7 @@ classdef Experiment < matlab.mixin.Copyable
             close(h)
         end
         
-        function image_analysis _flatten _on _even _background _automatic(obj,WindowSize,NIter)
+        function image_analysis_flatten_on_even_background_automatic(obj,WindowSize,NIter)
             
             if nargin < 2
                 WindowSize = .2;
@@ -798,9 +796,9 @@ classdef Experiment < matlab.mixin.Copyable
                     Index = length(obj.I{i}.Channel)+1;
                     obj.I{i}.NumChannels = Index;
                 end
-                Processed.Image = AFMImage.subtract_line_fit _hist(Height.Image, .5);
+                Processed.Image = AFMImage.subtract_line_fit_hist(Height.Image, .5);
                 for j=1:NIter
-                    Processed.Image = AFMImage.subtract_line_fit _vertical _rov(Processed.Image, WindowSize,false);
+                    Processed.Image = AFMImage.subtract_line_fit_vertical_rov(Processed.Image, WindowSize,false);
                 end
                 obj.I{i}.Channel(Index) = Processed;
                 obj.I{i}.hasProcessed = 1;
@@ -808,7 +806,7 @@ classdef Experiment < matlab.mixin.Copyable
             close(h)
         end
         
-        function image_analysis _mask _background(obj,Thresh)
+        function image_analysis_mask_background(obj,Thresh)
             
             if nargin < 2
                 Thresh = 0;
@@ -823,10 +821,10 @@ classdef Experiment < matlab.mixin.Copyable
                 InChannel = obj.I{i}.get_channel('Processed');
                 OutChannel = InChannel;
                 try
-                    OutChannel.Image = AFMImage.mask_background_by _threshold(InChannel.Image,Thresh,Automatic);
+                    OutChannel.Image = AFMImage.mask_background_by_threshold(InChannel.Image,Thresh,Automatic);
                 catch
                     warning("Couldn't determine threshold automatically. Taking default of 10%, instead.")
-                    OutChannel.Image = AFMImage.mask_background_by _threshold(InChannel.Image,10,'off');
+                    OutChannel.Image = AFMImage.mask_background_by_threshold(InChannel.Image,10,'off');
                 end
                 OutChannel.Name = 'Background Mask';
                 OutChannel.Unit = 'Categorical';
@@ -836,16 +834,16 @@ classdef Experiment < matlab.mixin.Copyable
             close(h)
         end
         
-        function surface_potential _analysis _fibril(obj)
+        function surface_potential_analysis_fibril(obj)
             
         end
         
-        function surface_potential _analysis _general(obj)
+        function surface_potential_analysis_general(obj)
             % WORK IN PROGRESS
         end
         
-        function cp_option _converter(obj,CPOption,i,RefFM)
-            % cp_option _converter(CPOption,i,RefFM)
+        function cp_option_converter(obj,CPOption,i,RefFM)
+            % cp_option_converter(CPOption,i,RefFM)
             %
             % aux-function for CPOption choice
             
@@ -856,7 +854,7 @@ classdef Experiment < matlab.mixin.Copyable
             end
             if RefFM == false
                 if isequal(lower(CPOption),'snap-in')
-                    obj.FM{i}.estimate_cp_snap _in();
+                    obj.FM{i}.estimate_cp_snap_in();
                 end
                 if isequal(lower(CPOption),'rov')
                     obj.FM{i}.estimate_cp_rov();
@@ -896,7 +894,7 @@ classdef Experiment < matlab.mixin.Copyable
                 end
             elseif RefFM == true
                 if isequal(lower(CPOption),'snap-in')
-                    obj.FM{i}.estimate_cp_snap _in();
+                    obj.FM{i}.estimate_cp_snap_in();
                 end
                 if isequal(lower(CPOption),'rov')
                     obj.RefFM{i}.estimate_cp_rov();
@@ -958,8 +956,8 @@ classdef Experiment < matlab.mixin.Copyable
             
         end
         
-        function create_moving _dot _gif _emod _vs _surfpot(obj,NFrames,NStartFrames,NEndFrames)
-            % create_moving _dot _gif _emod _vs _surfpot(obj,NFrames,FreezeFrames)
+        function create_moving_dot_gif_emod_vs_surfpot(obj,NFrames,NStartFrames,NEndFrames)
+            % create_moving_dot_gif_emod_vs_surfpot(obj,NFrames,FreezeFrames)
             %
             % This gif-creator has been written for a specific use case and
             % has to be manually recoded to fit other Experiments. Videos
@@ -967,8 +965,8 @@ classdef Experiment < matlab.mixin.Copyable
             % and NStartFrames=30 creates a 4 second video
             
             % Get Fibril Data
-            X = obj.statistical_analysis_force _maps*1e-6;
-            Y = obj.statistical_analysis_surface _potential*1e3;
+            X = obj.statistical_analysis_force_maps*1e-6;
+            Y = obj.statistical_analysis_surface_potential*1e3;
             Y = Y';
             close all
             
@@ -1043,17 +1041,17 @@ classdef Experiment < matlab.mixin.Copyable
             close(Fig)
         end
         
-        function SMFS_min _max(obj)
+        function SMFS_min_max(obj)
             
 
             for ii=1:obj.NumForceMaps
            %    obj.FM{ii}.base_and_tilt('linear');
-               obj.FM{ii}.fc_min_max _values; 
+               obj.FM{ii}.fc_min_max_values; 
             end
           %  obj.save_experiment
         end
         
-        function [m,n,NumFigures] = adjust_tiled _layout(obj,NumFcMax)
+        function [m,n,NumFigures] = adjust_tiled_layout(obj,NumFcMax)
             
             if nargin < 2
                 NumFcMax=25; % The maximum of allowed plots per figure
@@ -1102,7 +1100,7 @@ classdef Experiment < matlab.mixin.Copyable
                 end
                 obj.FM{ii}.fc_chipprop
                 waitbar(ii/NLoop,h,sprintf('Preprocessing ForceMap % i/%i \n Fitting Base Lines',i,NLoop));
-                obj.FM{ii}.fc_based_ret _correction
+                obj.FM{ii}.fc_based_ret_correction
                 waitbar(ii/NLoop,h,sprintf('Preprocessing ForceMap % i/%i \n Wrapping Up And Saving',i,NLoop));
                 
                 
@@ -1176,8 +1174,8 @@ classdef Experiment < matlab.mixin.Copyable
             end    
         end
         
-        function SMFS_print _sort(obj,StartDate,EndDate,XMin,XMax,YMin,YMax)
-            % SMFS_print _sort: A function to plot all force curves of all
+        function SMFS_print_sort(obj,StartDate,EndDate,XMin,XMax,YMin,YMax)
+            % SMFS_print_sort: A function to plot all force curves of all
             % force maps sorted by different properties 
             % Comment: Date format is: 'YYYY.MM.DD'
             % Required function: obj.FM{ii}.fc_chipprop, obj.FM{ii}.estimate_cp_hardsurface
@@ -1246,8 +1244,8 @@ classdef Experiment < matlab.mixin.Copyable
             % obj.save_experiment        % Save immediately after each force curve
         end
         
-        function SMFS_print _sort _specific(obj,StartDate,EndDate,XMin,XMax,YMin,YMax)
-            % SMFS_print _sort: A function to plot all force curves of all
+        function SMFS_print_sort_specific(obj,StartDate,EndDate,XMin,XMax,YMin,YMax)
+            % SMFS_print_sort: A function to plot all force curves of all
             % force maps sorted by different properties 
             % Comment: Date format is: 'YYYY.MM.DD'
             % Required function: obj.FM{ii}.fc_chipprop, obj.FM{ii}.estimate_cp_hardsurface
@@ -1389,13 +1387,13 @@ classdef Experiment < matlab.mixin.Copyable
                 obj.FM{ii}.fc_adhesion_energy
                 % Determine needed input variable
                 NumFcUncorrupt=nnz(obj.FM{ii}.SMFSFlag.Uncorrupt); % Determine the number of uncorrupted force curves     
-                obj.FM{ii}.fc_print_adhenergy _pulllength(XMin,XMax,YMin,YMax,NumFcMax,NumFcUncorrupt)
+                obj.FM{ii}.fc_print_adhenergy_pulllength(XMin,XMax,YMin,YMax,NumFcMax,NumFcUncorrupt)
                 
             end
         end
         
         
-            function SMFS_boxplot _pulllength(obj,XMin,XMax,YMin,YMax) % fc ... force curve
+            function SMFS_boxplot_pulllength(obj,XMin,XMax,YMin,YMax) % fc ... force curve
             % fc_print: A function to simply plot all force curves of a
             % force map without any selection taking place
             if nargin < 2
@@ -1479,7 +1477,7 @@ classdef Experiment < matlab.mixin.Copyable
                 'position',[.85 .5 .1 .05],...
                 'Callback',@cross_section_toggle);
             
-            [ClassPopUp,ClassIndex] = obj.string_of_existing _class _instances();
+            [ClassPopUp,ClassIndex] = obj.string_of_existing_class_instances();
             Class{1} = obj.get_class_instance(ClassIndex(1,:));
             Class{2} = obj.get_class_instance(ClassIndex(1,:));
             PopUp = Class {1}.string_of_existing();
@@ -1494,13 +1492,13 @@ classdef Experiment < matlab.mixin.Copyable
                 'String',ClassPopUp,...
                 'units','normalized',...
                 'position',[.85 .85 .15 .05],...
-                'Callback',@draw_channel_ 1);
+                'Callback',@draw_channel_1);
             
             h.B(2) = uicontrol('style','popupmenu',...
                 'String',PopUp,...
                 'units','normalized',...
                 'position',[.85 .8 .1 .05],...
-                'Callback',@draw_channel_ 1);
+                'Callback',@draw_channel_1);
             
             h.B(5) = uicontrol('style','text',...
                 'String','Channel 2',...
@@ -1511,19 +1509,19 @@ classdef Experiment < matlab.mixin.Copyable
                 'String',ClassPopUp,...
                 'units','normalized',...
                 'position',[.85 .65 .15 .05],...
-                'Callback',@draw_channel_ 2);
+                'Callback',@draw_channel_2);
             
             h.B(3) = uicontrol('style','popupmenu',...
                 'String',PopUp,...
                 'units','normalized',...
                 'position',[.85 .6 .1 .05],...
-                'Callback',@draw_channel_ 2);
+                'Callback',@draw_channel_2);
             
             h.B(6) = uicontrol('style','pushbutton',...
                 'String','Save Figure',...
                 'units','normalized',...
                 'position',[.85 .1 .1 .05],...
-                'Callback',@save_figure_to _file);
+                'Callback',@save_figure_to_file);
             
             h.B(7) = uicontrol('style','checkbox',...
                 'String','...with white background',...
@@ -1580,7 +1578,7 @@ classdef Experiment < matlab.mixin.Copyable
                 'Tooltip','Green, if both Channels have the same size scaling',...
                 'Units','normalized',...
                 'Position',[.85 .47 .1 .03],...
-                'Callback',@checked_both_cross _sections);
+                'Callback',@checked_both_cross_sections);
             
             h.Channel1Max = 1;
             h.Channel1Min = 0;
@@ -1600,19 +1598,19 @@ classdef Experiment < matlab.mixin.Copyable
                 DefIndex = DefIndex + 1;
             end
             h.B(2).Value = DefIndex;
-            draw_channel _ 1
+            draw_channel_ 1
             
-            function cross_section _toggle(varargin)
+            function cross_section_toggle(varargin)
                 h.hasCrossSection = ~h.hasCrossSection;
                 try
                     delete(h.ImAx(3));
                 catch
                 end
-                draw_channel _ 1
-                draw_channel _ 2
+                draw_channel_ 1
+                draw_channel_ 2
             end
             
-            function draw_channel _ 1(varargin)
+            function draw_channel_1(varargin)
                 LeftRight = 'Left';
                 if h.hasChannel2 && h.hasCrossSection
                     FullPart = 'PartTwo';
@@ -1630,12 +1628,12 @@ classdef Experiment < matlab.mixin.Copyable
                 end
                 if h.hasChannel2 && ~h.OnePass
                     h.OnePass = true;
-                    draw_channel _ 2
+                    draw_channel_ 2
                 end
                 h.OnePass = false;
             end
             
-            function draw_channel _ 2(varargin)
+            function draw_channel_2(varargin)
                 LeftRight = 'Right';
                 if h.hasChannel1 && h.hasCrossSection
                     FullPart = 'PartTwo';
@@ -1653,12 +1651,12 @@ classdef Experiment < matlab.mixin.Copyable
                 end
                 if h.hasChannel1 && ~h.OnePass
                     h.OnePass = true;
-                    draw_channel _ 1
+                    draw_channel_ 1
                 end
                 h.OnePass = false;
             end
             
-            function moving_cross _section(src,evt)
+            function moving_cross_section(src,evt)
                 if ~get(h.B(1),'Value')
                     return
                 end
@@ -1735,17 +1733,17 @@ classdef Experiment < matlab.mixin.Copyable
                 hold off
             end
             
-            function checked_both _cross _sections(varargin)
+            function checked_both_cross_sections(varargin)
                 h.hasBothCrossSections = ~h.hasBothCrossSections;
                 try
                     delete(h.ImAx(3));
                 catch
                 end
-                draw_channel _ 1
-                draw_channel _ 2
+                draw_channel_ 1
+                draw_channel_ 2
             end
             
-            function get_and _draw _profile(varargin)
+            function get_and_draw_profile(varargin)
                 if ~get(h.B(1),'Value')
                     return
                 end
@@ -1780,7 +1778,7 @@ classdef Experiment < matlab.mixin.Copyable
                 Pos1 = [h.MainLine.Position(1,1) h.MainLine.Position(1,2)];
                 Pos2 = [h.MainLine.Position(2,1) h.MainLine.Position(2,2)];
                 if norm(Pos1-Pos2)==0
-                    get_and _draw _profile;
+                    get_and_draw_profile;
                     return
                 end
                 MainProfile = improfile(h.Image{h.MainIndex},[Pos1(1) Pos2(1)],[Pos1(2) Pos2(2)]);
@@ -1928,11 +1926,11 @@ classdef Experiment < matlab.mixin.Copyable
                 
                 [Multiplier,Unit,~] = AFMImage.parse_unit_scale(range(CurImage,'all'),h.BaseUnit{Index},1);
                 h.I(Index) = imshow(CurImage*Multiplier,[],'Colormap',ColorPattern);
-                h.I(Index).ButtonDownFcn = @get_and_draw _profile;
+                h.I(Index).ButtonDownFcn = @get_and_draw_profile;
                 hold on
                 CurrentAxHeight = round(h.Fig.Position(4)*h.ImAx(Index).Position(4));
                 CurrentAxWidth = round(h.Fig.Position(3)*h.ImAx(Index).Position(3));
-                AFMImage.draw_scalebar_into _current _image(Channel.NumPixelsX,Channel.NumPixelsY,Channel.ScanSizeX,BarToImageRatio,CurrentAxHeight,CurrentAxWidth);
+                AFMImage.draw_scalebar_into_current_image(Channel.NumPixelsX,Channel.NumPixelsY,Channel.ScanSizeX,BarToImageRatio,CurrentAxHeight,CurrentAxWidth);
                 c = colorbar;
                 c.FontSize = round(18*(CurrentAxHeight/756));
                 c.Color = 'w';
@@ -1973,11 +1971,11 @@ classdef Experiment < matlab.mixin.Copyable
                 h.Channel2Max = C2Max;
                 h.Channel2Min = C2Min;
                 
-                draw_channel _ 1
-                draw_channel _ 2
+                draw_channel_ 1
+                draw_channel_ 2
             end
             
-            function save_figure _to _file(varargin)
+            function save_figure_to_file(varargin)
                 if h.B(7).Value
                 Frame = print('-RGBImage','-r200');
                 
@@ -2008,7 +2006,7 @@ classdef Experiment < matlab.mixin.Copyable
         % the processed raw data from your Experiment and do your own
         % statistics
         
-        function [DataMeansOP,DataMeansHS,DataOP,DataHS] = statistical_analysis _force _maps(obj)
+        function [DataMeansOP,DataMeansHS,DataOP,DataHS] = statistical_analysis_force_maps(obj)
             % Basic statistical analysis of the force map experiment. First get the grouping
             % of data from the user and then perform several tests, plots
             % etc.
@@ -2185,14 +2183,14 @@ classdef Experiment < matlab.mixin.Copyable
             
         end
         
-        function FibPot = statistical_analysis _surface _potential(obj)
+        function FibPot = statistical_analysis_surface_potential(obj)
             % Statistical analysis of the surface potential map experiment.
             % First get the grouping of data from the user and then perform
             % several tests, plots etc.
             
             warning('The following methods were programmed for specific use cases and are yet to be generalized! However, you can of course adjust them for your own use, though its probably easier to just take the processed raw data from your Experiment and do your own statistics')
             
-            obj.grouping_surface_potential _map();
+            obj.grouping_surface_potential_map();
             
             %%%%%%% DISCLAIMER: just works for specific cases at the moment %%%%%%%
             
@@ -2271,7 +2269,7 @@ classdef Experiment < matlab.mixin.Copyable
                 'HorizontalAlignment','center')
         end
         
-        function statistical_analysis _swelling(obj)
+        function statistical_analysis_swelling(obj)
             %%%%%%% DISCLAIMER: just works for specific cases at the moment %%%%%%%
             
             warning('The following methods were programmed for specific use cases and are yet to be generalized! However, you can of course adjust them for your own use, though its probably easier to just take the processed raw data from your Experiment and do your own statistics')
@@ -2353,7 +2351,7 @@ classdef Experiment < matlab.mixin.Copyable
                 'HorizontalAlignment','center')
         end
         
-        function statistical_analysis _d _banding(obj)
+        function statistical_analysis_d_banding(obj)
             %%%%%%% DISCLAIMER: just works for specific cases at the moment %%%%%%%
             
             warning('The following methods were programmed for specific use cases and are yet to be generalized! However, you can of course adjust them for your own use, though its probably easier to just take the processed raw data from your Experiment and do your own statistics')
@@ -2433,7 +2431,7 @@ classdef Experiment < matlab.mixin.Copyable
                 'HorizontalAlignment','center')
         end
         
-        function grouping_force _map(obj)
+        function grouping_force_map(obj)
             % A series of input dialogues that determine the structure and
             % relations of the force map files in the experiment
             
@@ -2484,7 +2482,7 @@ classdef Experiment < matlab.mixin.Copyable
             
         end
         
-        function grouping_surface _potential _map(obj)
+        function grouping_surface_potential_map(obj)
             % A series of input dialogues that determine the structure and
             % relations of the force map files in the experiment
             
@@ -2540,7 +2538,7 @@ classdef Experiment < matlab.mixin.Copyable
     methods
         % auxiliary methods
         
-        function RadiusNM = calculate_tip _radius(obj,TipDepthNM)
+        function RadiusNM = calculate_tip_radius(obj,TipDepthNM)
             if nargin < 2
                 TipDepthNM = 20;
             end
@@ -2612,7 +2610,7 @@ classdef Experiment < matlab.mixin.Copyable
             end
         end
         
-        function show_tip _data(obj)
+        function show_tip_data(obj)
             figure('Name','Cantilever Tip',...
                 'Units','normalized','Position',[0.7 0.1 0.3 0.8],'Color','w');
             subplot(3,1,1)
@@ -2628,8 +2626,8 @@ classdef Experiment < matlab.mixin.Copyable
             ylabel('Projected Area [m^2]')
         end
         
-        function check_for _new _host(obj)
-            % check_for _new _host(obj)
+        function check_for_new_host(obj)
+            % check_for_new_host(obj)
             %
             % Checks, if the system environment has changed and, if so,
             % adjusts object properties
@@ -2648,7 +2646,7 @@ classdef Experiment < matlab.mixin.Copyable
             obj.HostName = Host;
         end
         
-        function reference_slope _parser(obj,DefaultOption)
+        function reference_slope_parser(obj,DefaultOption)
             
             if nargin < 2
                 DefaultOption = 1;
@@ -2656,7 +2654,7 @@ classdef Experiment < matlab.mixin.Copyable
             
             Methods = false(6,1);
             Methods(DefaultOption) = true;
-            ChosenMethod = obj.reference_slope_parser _gui(Methods);
+            ChosenMethod = obj.reference_slope_parser_gui(Methods);
             Methods = false(6,1);
             Methods(ChosenMethod) = true;
             
@@ -2672,11 +2670,11 @@ classdef Experiment < matlab.mixin.Copyable
                 GetValue = inputdlg('To which value should the reference slopes be set?','Choose a value',1);
                 Value = str2double(GetValue{1});
                 for i=1:obj.NumForceMaps
-                    obj.FM{i}.set_reference_slope _to _value(Value)
+                    obj.FM{i}.set_reference_slope_to_value(Value)
                 end
             elseif obj.ReferenceSlopeFlag.UserInput
                 for i=1:obj.NumForceMaps
-                    obj.FM{i}.set_reference_slope _to _user _input
+                    obj.FM{i}.set_reference_slope_to_user_input
                 end
             elseif obj.ReferenceSlopeFlag.FromArea
                 for i=1:obj.NumForceMaps
@@ -2686,19 +2684,19 @@ classdef Experiment < matlab.mixin.Copyable
             
         end
         
-        function reference_slope _calculator(obj,Index)
+        function reference_slope_calculator(obj,Index)
             
             i = Index;
             if obj.ReferenceSlopeFlag.FromRefFM
                 if isempty(obj.RefFM)
                     Warn = warndlg({'There are no reference Force Maps in your Experiment','Please load in one or more reference files'});
                     uiwait(Warn)
-                    obj.load_in_reference _maps
+                    obj.load_in_reference_maps
                 end
                 
                 if length(obj.RefFM) > 1
                     if ~obj.AssignedReferenceMaps
-                        obj.assign_reference_force _map
+                        obj.assign_reference_force_map
                     end
                     RefIdx = obj.WhichRefMap(i);
                     if ~obj.RefFM{RefIdx}.HasRefSlope
@@ -2707,7 +2705,7 @@ classdef Experiment < matlab.mixin.Copyable
                         end
                         obj.RefFM{1}.estimate_cp_old
                         Mask = ones(obj.RefFM{RefIdx}.NumProfiles,obj.RefFM{RefIdx}.NumPoints);
-                        obj.RefFM{RefIdx}.calculate_reference_slope _from _area(Mask);
+                        obj.RefFM{RefIdx}.calculate_reference_slope_from_area(Mask);
                     end
                     obj.FM{i}.RefSlope = obj.RefFM{RefIdx}.RefSlope;
                     obj.FM{i}.HasRefSlope = true;
@@ -2718,24 +2716,24 @@ classdef Experiment < matlab.mixin.Copyable
                         end
                         obj.RefFM{1}.estimate_cp_old
                         Mask = ones(obj.RefFM{1}.NumProfiles,obj.RefFM{1}.NumPoints);
-                        obj.RefFM{1}.calculate_reference_slope _from _area(Mask);
+                        obj.RefFM{1}.calculate_reference_slope_from_area(Mask);
                     end
                     obj.FM{i}.RefSlope = obj.RefFM{1}.RefSlope;
                     obj.FM{i}.HasRefSlope = true;
                 end
             elseif obj.ReferenceSlopeFlag.AutomaticFibril
                 Mask = ~obj.FM{i}.FibMask;
-                obj.FM{i}.calculate_reference_slope _from _area(Mask)
+                obj.FM{i}.calculate_reference_slope_from_area(Mask)
             elseif obj.ReferenceSlopeFlag.Automatic
-                obj.FM{i}.create_automatic_background _mask(.8)
+                obj.FM{i}.create_automatic_background_mask(.8)
                 Mask = obj.FM{i}.BackgroundMask;
-                obj.FM{i}.calculate_reference_slope _from _area(Mask)
+                obj.FM{i}.calculate_reference_slope_from_area(Mask)
             elseif obj.ReferenceSlopeFlag.FromArea
-                obj.FM{i}.calculate_reference_slope _from _area(obj.FM{i}.RefSlopeMask)
+                obj.FM{i}.calculate_reference_slope_from_area(obj.FM{i}.RefSlopeMask)
             end
         end
         
-        function assign_reference _force _map(obj,DefaultValues)
+        function assign_reference_force_map(obj,DefaultValues)
             
             
             obj.WhichRefMap = zeros(obj.NumForceMaps,1);
@@ -2773,7 +2771,7 @@ classdef Experiment < matlab.mixin.Copyable
                 Warn = warndlg('You need to assign exactly one Reference Map to every Force Map','Parsing Error');
                 close(Fig);
                 uiwait(Warn);
-                obj.assign_reference_force _map(answer)
+                obj.assign_reference_force_map(answer)
                 return
             end
             
@@ -2782,7 +2780,7 @@ classdef Experiment < matlab.mixin.Copyable
             
         end
         
-        function assign_cantilever _tips(obj,DefaultValues)
+        function assign_cantilever_tips(obj,DefaultValues)
             
             obj.WhichTip = zeros(obj.NumForceMaps,1);
             
@@ -2828,7 +2826,7 @@ classdef Experiment < matlab.mixin.Copyable
             
         end
         
-        function load_in _reference _maps(obj)
+        function load_in_reference_maps(obj)
             
             prompt = 'Enter Number of reference force maps';
             dlgtitle = 'Experiment Layout';
