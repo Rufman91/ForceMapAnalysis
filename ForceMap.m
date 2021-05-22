@@ -101,6 +101,11 @@ classdef ForceMap < matlab.mixin.Copyable
     properties
         % Properties related to topological calculations, such as mapping and masking and visualisation
         
+        Channel         % Image Channels that work with most of the AFMImage static Channel methods. Merge
+                        % or at least write everything image-related into
+                        % this struct! Channels have the Stuct-properties:
+                        % Image (This is where the actual image data goes), Name, Unit, NumPixelsX, NumPixelsY,
+                        % ScanSizeX, ScanSizeY and ScanAngle
         HeightMap       % height profile map taken from the maximum head-height from approach max(hhapp)
         EModMapHertz    % E modulus profile map. same ordering as HeightMap
         EModMapOliverPharr % """"

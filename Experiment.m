@@ -759,11 +759,11 @@ classdef Experiment < matlab.mixin.Copyable
             h = waitbar(0,'setting up...');
             for i=1:obj.NumAFMImages
                 waitbar(i/obj.NumAFMImages,h,{sprintf('Processing %i/%i:',i,obj.NumAFMImages),sprintf('%s',obj.I{i}.Name)});
-                [Processed,Index] = obj.I{i}.get_channel('Processed');
+                [Processed,Index] = obj.I{i}.get_channel('ProcessedSimple');
                 Height = obj.I{i}.get_channel('Height (Trace)');
                 if isempty(Processed)
                     Processed = Height;
-                    Processed.Name = 'Processed';
+                    Processed.Name = 'ProcessedSimple';
                     Index = length(obj.I{i}.Channel)+1;
                     obj.I{i}.NumChannels = Index;
                 end
