@@ -41,6 +41,7 @@ classdef Experiment < matlab.mixin.Copyable
         idxSubstrate
         idxEnvCond
         MinFM
+        NumFcUncorrupt % SMFS property
     end
     properties
         % All the Flags
@@ -1015,10 +1016,18 @@ classdef Experiment < matlab.mixin.Copyable
             
 
             for ii=1:obj.NumForceMaps
-           %    obj.FM{ii}.base_and_tilt('linear');
-               obj.FM{ii}.fc_min_max_values; 
+                %    obj.FM{ii}.base_and_tilt('linear');
+                %obj.FM{ii}.fc_min_max_values;
+                
+                if ii==1
+                    ConcatArrayMax=obj.FM{ii}.FMPullingLengthMax;
+                 %   ConcatArrayAdhEnergy=obj.FM{ii}.FMPullingLengthM;
+                else               
+                    ConcatArrayMax=horzcat(ConcatArrayMax,obj.FM{ii}.FMPullingLengthMax);
+                  %  ConcatArrayAdhEnergy=horzcat(ConcatArrayMax,obj.FM{ii}.FMPullingLengthMax);
+                end                
             end
-          %  obj.save_experiment
+             ExpPullingLengthMax=max(ConcatArrayMax)
         end
         
         function [m,n,NumFigures] = adjust_tiled_layout(obj,NumFcMax)
@@ -1293,8 +1302,8 @@ classdef Experiment < matlab.mixin.Copyable
             cd(currpath); 
             
             % Loop over the imported force maps
-            for ii=1:obj.NumForceMaps
-            %for ii=3:5 % Debugging
+            %for ii=1:obj.NumForceMaps
+            for ii=60 % Debugging
                % Command window output
                sprintf('Force Map No. %d of %d',ii,obj.NumForceMaps) % Gives current Force Map Position
                % Run the chosen functions
@@ -1316,7 +1325,7 @@ classdef Experiment < matlab.mixin.Copyable
             obj.FM{ii}.fc_figure(XMin,XMax,YMin,YMax)
         end
         
-        function SMFS_analysis(obj,XMin,XMax,YMin,YMax,NumFcMax)
+        function SMFS_analysis(obj,XMin,XMax,YMin,YMax,NumFcMax,NumFcUncorrupt,hh)
             % This function allows to analyse different force curve
             % criteria, i.e. pulling length, adhesion energy. Furthermore,
             % all analysed force curves are plotted and the determined
@@ -1340,30 +1349,31 @@ classdef Experiment < matlab.mixin.Copyable
             % Change into the Folder of Interest
             cd(obj.ExperimentFolder) % Move into the folder
             % Create folders for saving the produced figures
-            foldername='FM_test';    % for debugging
+            foldername='FM_fcAnalysis';    % for debugging
             %foldername='FM_analysis';    % Defines the folder name
             mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
             currpath=fullfile(obj.ExperimentFolder,foldername);
             cd(currpath);
             %% loop
-            for ii=1:obj.NumForceMaps
-               %for ii=1 % Debugging
-               sprintf('Force map No. %d',ii);
+            for hh=1:obj.NumForceMaps
+            %for hh=36:38 % Debugging
+               sprintf('Force map No. %d',hh);
                % Print force curves containing label for the pulling length
                % and colored area for the adhesion energy               
                % Pulling length
-                obj.FM{ii}.fc_pulling_length
+                obj.FM{hh}.fc_pulling_length
                 % Adhesion energy
-                obj.FM{ii}.fc_adhesion_energy
+                obj.FM{hh}.fc_adhesion_energy
                 % Determine needed input variable
-                NumFcUncorrupt=nnz(obj.FM{ii}.SMFSFlag.Uncorrupt); % Determine the number of uncorrupted force curves     
-                obj.FM{ii}.fc_print_adhenergy_pulllength(XMin,XMax,YMin,YMax,NumFcMax,NumFcUncorrupt)
+                NumFcUncorrupt(hh)=nnz(obj.FM{hh}.SMFSFlag.Uncorrupt); % Determine the number of uncorrupted force curves     
+                obj.FM{hh}.fc_print_adhenergy_pulllength(XMin,XMax,YMin,YMax,NumFcMax,NumFcUncorrupt,hh)
                 
             end
+            obj.NumFcUncorrupt=NumFcUncorrupt;
         end
         
         
-            function SMFS_boxplot_pulllength(obj,XMin,XMax,YMin,YMax) % fc ... force curve
+        function SMFS_boxplot_pulllength(obj,XMin,XMax,YMin,YMax) % fc ... force curve
             % fc_print: A function to simply plot all force curves of a
             % force map without any selection taking place
             if nargin < 2
@@ -1423,10 +1433,104 @@ classdef Experiment < matlab.mixin.Copyable
             end
        
         
-            function SMFS(obj)
-                if obj.FM{1}.Substrate=='mica'
-                    yes=1+1
+        function SMFS_analysis_selection(obj,VelocityValue,SubstrateValue,EnvCondValue,ChipCantValue,ChipboxValue,LinkerValue)
+                
+                
+                for ii=1:obj.NumForceMaps
+                    if (strcmpi(obj.FM{ii}.Velocity,VelocityValue) || strcmpi(VelocityValue,'All')) ...
+                            && (strcmpi(obj.FM{ii}.Substrate,SubstrateValue) || strcmpi(SubstrateValue,'All')) ...
+                            && (strcmpi(obj.FM{ii}.EnvCond,EnvCondValue) || strcmpi(EnvCondValue,'All')) ...
+                            && (strcmpi(obj.FM{ii}.ChipCant,ChipCantValue) || strcmpi(ChipCantValue,'All')) ...
+                            && (strcmpi(obj.FM{ii}.Chipbox,ChipboxValue) || strcmpi(ChipboxValue,'All')) ...
+                            && (strcmpi(obj.FM{ii}.Linker,LinkerValue) || strcmpi(LinkerValue,'All'))
+                        
+                        if ii==1
+                            obj.FM{ii}.PullingLength(obj.FM{ii}.PullingLength==0)=nan;
+                            ConcatArrayPullingLength=obj.FM{ii}.PullingLength(:);
+                            obj.FM{ii}.RetAdhEnergy(obj.FM{ii}.RetAdhEnergy==0)=nan;
+                            ConcatArrayRetAdhEnergy=obj.FM{ii}.RetAdhEnergy(:);
+                        else
+                            obj.FM{ii}.PullingLength(obj.FM{ii}.PullingLength==0)=nan;
+                            ConcatArrayPullingLength=horzcat(ConcatArrayPullingLength,obj.FM{ii}.PullingLength(:));
+                            obj.FM{ii}.RetAdhEnergy(obj.FM{ii}.RetAdhEnergy==0)=nan;
+                            ConcatArrayRetAdhEnergy=horzcat(ConcatArrayRetAdhEnergy,obj.FM{ii}.PullingLength(:));
+                        end
+                    end
                 end
+                
+                % Change into the Folder of Interest
+                cd(obj.ExperimentFolder) % Move into the folder
+                % Create folders for saving the produced figures
+                %foldername='FM_test';    % for debugging
+                foldername='FM_analysis';    % Defines the folder name
+                mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
+                currpath=fullfile(obj.ExperimentFolder,foldername);
+                cd(currpath);
+                
+                % Define names
+                figname=strcat(obj.ExperimentName,{'_'},VelocityValue,{'_'},SubstrateValue,{'_'},EnvCondValue,{'_'},ChipCantValue,{'_'},ChipboxValue,{'_'},LinkerValue,{'_'});
+                figname=char(figname);
+                parttitle1='PullingLength';
+                parttitle2='AdhesionEnergy';
+                fulltitle1=strcat(parttitle1,{'_'},figname);
+                fulltitle2=strcat(parttitle2,{'_'},figname);
+                
+                %% Figure
+                % Figure 1
+                h_fig1=figure(1);
+                h_fig1.Color='white'; % changes the background color of the figure
+                h_fig1.Units='normalized'; % Defines the units
+                h_fig1.OuterPosition=[0 0 1 1];% changes the size of the to the whole screen
+                h_fig1.PaperOrientation='landscape';
+                h_fig1.Name=figname;
+                % boxplot
+                bo1=boxplot((ConcatArrayPullingLength));
+                % title
+                t1=title(fulltitle1);
+                % Axes
+                ax1 = gca; % current axes
+                ax1.FontSize = 16;
+                ax1.XLabel.String = 'Force map number (1)';
+                ax1.XLabel.FontSize = 20;
+                ax1.YLabel.String = 'PullingLength (m)';
+                ax1.YLabel.FontSize = 20;
+                % Save figure
+                %%% Define the name for the figure title
+                partname='boxplot';
+                % fullname=sprintf('%s%s',figname,partname);
+                fullname1=strcat(figname,{'_'},parttitle1,{'_'},partname);
+                fullname1=char(fullname1);
+                %%% Save the current figure in the current folder
+                print(h_fig1,fullname1,'-dpng');
+            
+                % Figure 2
+                h_fig2=figure(2);
+                h_fig2.Color='white'; % changes the background color of the figure
+                h_fig2.Units='normalized'; % Defines the units
+                h_fig2.OuterPosition=[0 0 1 1];% changes the size of the to the whole screen
+                h_fig2.PaperOrientation='landscape';
+                h_fig2.Name=figname;
+                % boxplot
+                bo2= boxplot((ConcatArrayRetAdhEnergy));
+                % title
+                t2=title(fulltitle2);
+                % Axes
+                ax2 = gca; % current axes
+                ax2.FontSize = 16;
+                ax2.XLabel.String = 'Force map number (1)';
+                ax2.XLabel.FontSize = 20;
+                ax2.YLabel.String = 'Adhesion Energy (J)';
+                ax2.YLabel.FontSize = 20;
+                % Save figure
+                %%% Define the name for the figure title
+                partname='boxplot';
+                % fullname=sprintf('%s%s',figname,partname);
+                fullname2=strcat(figname,{'_'},parttitle2,{'_'},partname);
+                fullname2=char(fullname2);
+                %%% Save the current figure in the current folder
+                print(gcf,fullname2,'-dpng');
+                % House keeping
+                close all
             end
             
     end

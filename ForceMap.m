@@ -151,6 +151,7 @@ classdef ForceMap < matlab.mixin.Copyable
         EnvCond         % Environmental condition during the experiment
         ChipCant        % AFM-Chip number and Cantilever label
         Chipbox         % AFM-Chipbox number (in Roman numerals)
+        VelocityConvert % Velocity converted (nm/s)
         SMFSFlag        %
         BasedRetCorr    % BasedRet data corrected based on a selection of the approach data
         BasedRetCorr2   % BasedRet data corrected based on a selection of the retraction data
@@ -1358,7 +1359,9 @@ classdef ForceMap < matlab.mixin.Copyable
                 if isempty(ext41)==0
                     obj.Linker='long'; % long linker
                 elseif isempty(ext42)==0
-                    obj.Linker='short'; % short linker                
+                    obj.Linker='short'; % short linker
+                else
+                    obj.Linker='long';
                 end
         end
                    
@@ -1583,9 +1586,7 @@ classdef ForceMap < matlab.mixin.Copyable
                    
         function fc_selection(obj,XMin,XMax,YMin,YMax) % fc ... force curve
             % fc_selection: function plots all force curves of a force map
-            % and via a dialog box force curves for further analysis can be
-            % choosen
-            
+                        
             if nargin < 2
                 XMin= -inf;
                 XMax= inf;
@@ -1777,11 +1778,11 @@ classdef ForceMap < matlab.mixin.Copyable
             ThreshDist=abs(obj.THRet{kk}-obj.CP_HardSurface(kk,1)+ThresholdDist);
             [~, ThreshIdx]=min(ThreshDist);
             % Check if the force curve is selected 
-             %   if (obj.BasedApp{kk}(ThreshIdx)-obj.BasedRetCorr{kk}(ThreshIdx))>ThreshValue
-             %       obj.SMFSFlag.Min(kk)=1;
-             %   else
-             %       obj.SMFSFlag.Min(kk)=0;
-             %   end
+               if (obj.BasedApp{kk}(ThreshIdx)-obj.BasedRetCorr{kk}(ThreshIdx))>ThreshValue
+                   obj.SMFSFlag.Min(kk)=1;
+               else
+                   obj.SMFSFlag.Min(kk)=0;
+               end
             end           
 %             %% Appendix
 %             close all
@@ -1878,7 +1879,7 @@ classdef ForceMap < matlab.mixin.Copyable
             print(gcf,fullname,'-dpng');
         end
                 
-        function fc_print_adhenergy_pulllength(obj,XMin,XMax,YMin,YMax,NumFcMax,NumFcUncorrupt) % fc ... force curve
+        function fc_print_adhenergy_pulllength(obj,XMin,XMax,YMin,YMax,NumFcMax,NumFcUncorrupt,hh) % fc ... force curve
             % fc_print_adhenergy_pulllength: A function to plot all selected force curves of a
             % force map by visual showing adhesion energy and pulling
             % length
@@ -1889,21 +1890,21 @@ classdef ForceMap < matlab.mixin.Copyable
                 YMax= inf;
             end
             % Define variables for the figure name
-            VelocityConvert=num2str(obj.Velocity*1e+9); % Convert into nm
+            obj.VelocityConvert=num2str(obj.Velocity*1e+9); % Convert into nm/s
             % Classification criteria
-            figname=strcat(obj.DateAdapt,{'_'},obj.TimeAdapt,{'_'},obj.ID,{'_'},obj.Substrate,{'_'},obj.EnvCond,{'_'},VelocityConvert,{'_'},obj.Chipbox,{'_'},obj.ChipCant);
+            figname=strcat(obj.DateAdapt,{'_'},obj.TimeAdapt,{'_'},obj.ID,{'_'},obj.Substrate,{'_'},obj.EnvCond,{'_'},obj.VelocityConvert,{'_'},obj.Chipbox,{'_'},obj.ChipCant);
             figname=char(figname);
             % Define variables for the plot loop
             mm=ceil(sqrt(NumFcMax));
             nn=mm;
             ww=1; % "flag while loop" variable
             DiffFc=0;
-            NumFigures=ceil(NumFcUncorrupt/NumFcMax);
-            RemainderMax=mod(NumFcUncorrupt,NumFcMax); % Check for remainder
+            NumFigures=ceil(NumFcUncorrupt(hh)/NumFcMax);
+            RemainderMax=mod(NumFcUncorrupt(hh),NumFcMax); % Check for remainder
             if RemainderMax ~= 0
                 oo=round(sqrt(RemainderMax)); % Determine the number of rows in the figure
                 pp=ceil(sqrt(RemainderMax)); % Determine the number of columns in the figure
-                RemainderReal=mod(NumFcUncorrupt,oo*pp); % Correct the remainder based on the determined rows times columns
+                RemainderReal=mod(NumFcUncorrupt(hh),oo*pp); % Correct the remainder based on the determined rows times columns
             end
             %% figure loop
             for ii=1:NumFigures
