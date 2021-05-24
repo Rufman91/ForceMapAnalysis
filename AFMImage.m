@@ -235,7 +235,7 @@ classdef AFMImage < matlab.mixin.Copyable
         function deconvolute_cantilever_tip(obj)
             
             Channel = obj.get_channel('Height (measured) (Trace)');
-            Based = imgaussfilt(AFMImage.subtract_line_fit_vertical_rov(Channel.Image,0.2,false));
+            Based = imgaussfilt(AFMImage.subtract_line_fit_hist(Channel.Image,0.4));
             obj.Channel(end+1) = Channel;
             obj.Channel(end).Name = 'Background Mask';
             obj.Channel(end).Unit = 'Logical';

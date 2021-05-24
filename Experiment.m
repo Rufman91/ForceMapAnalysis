@@ -578,6 +578,14 @@ classdef Experiment < matlab.mixin.Copyable
                         obj.write_to_log_file('OliverPharr CurvePercent','0.75')
                     end
                 end
+                
+                obj.FM{i}.calculate_adhesion_energy_and_length(2);
+                obj.write_to_log_file('Adhesion Energy STD-Threshold Multiplier','2')
+                obj.FM{i}.calculate_adhesion_force;
+                obj.FM{i}.calculate_dissipated_and_elastic_energy;
+                obj.FM{i}.calculate_peak_indentation_angle(.5);
+                obj.write_to_log_file('Upper Percent of Curve considered for Peak Indentation','50%')
+                
                 waitbar(i/NLoop,h,sprintf('Processing Fibril %i/%i\nWrapping Up And Saving',i,NLoop));
                 
                 if i > 1
@@ -738,10 +746,19 @@ classdef Experiment < matlab.mixin.Copyable
                         obj.write_to_log_file('OliverPharr CurvePercent','0.75')
                     end
                 end
+                
+                obj.FM{i}.calculate_adhesion_energy_and_length(2);
+                obj.write_to_log_file('Adhesion Energy STD-Threshold Multiplier','2')
+                obj.FM{i}.calculate_adhesion_force;
+                obj.FM{i}.calculate_dissipated_and_elastic_energy;
+                obj.FM{i}.calculate_peak_indentation_angle(.5);
+                obj.write_to_log_file('Upper Percent of Curve considered for Peak Indentation','50%')
+                
                 waitbar(i/NLoop,h,sprintf('Processing ForceMap %i/%i\nWrapping Up And Saving',i,NLoop));
                 
                 obj.FMFlag.ForceMapAnalysis(i) = 1;
             end
+            
             
             obj.save_experiment;
             
@@ -1462,7 +1479,7 @@ classdef Experiment < matlab.mixin.Copyable
                 Pos1 = [h.MainLine.Position(1,1) h.MainLine.Position(1,2)];
                 Pos2 = [h.MainLine.Position(2,1) h.MainLine.Position(2,2)];
                 MainProfile = improfile(h.Image{h.MainIndex},[Pos1(1) Pos2(1)],[Pos1(2) Pos2(2)]);
-                Len = norm(Pos1-Pos2)/Class{h.MainIndex}.NumPixelsX*Class{h.MainIndex}.ScanSizeX;
+                Len = norm(Pos1-Pos2)/h.NumPixelsX(h.MainIndex)*h.ScanSizeX(h.MainIndex);
                 Points = [0:1/(length(MainProfile)-1):1].*Len;
                 [MainMultiplierY,UnitY,~] = AFMImage.parse_unit_scale(range(MainProfile),h.BaseUnit{h.MainIndex},1);
                 [MultiplierX,UnitX,~] = AFMImage.parse_unit_scale(range(Points),'m',1);
@@ -1579,7 +1596,7 @@ classdef Experiment < matlab.mixin.Copyable
                     return
                 end
                 MainProfile = improfile(h.Image{h.MainIndex},[Pos1(1) Pos2(1)],[Pos1(2) Pos2(2)]);
-                Len = norm(Pos1-Pos2)/Class{h.MainIndex}.NumPixelsX*Class{h.MainIndex}.ScanSizeX;
+                Len = norm(Pos1-Pos2)/h.NumPixelsX(h.MainIndex)*h.ScanSizeX(h.MainIndex);
                 Points = [0:1/(length(MainProfile)-1):1].*Len;
                 [MainMultiplierY,UnitY,~] = AFMImage.parse_unit_scale(range(MainProfile),h.BaseUnit{h.MainIndex},1);
                 [MultiplierX,UnitX,~] = AFMImage.parse_unit_scale(range(Points),'m',1);
@@ -1701,10 +1718,12 @@ classdef Experiment < matlab.mixin.Copyable
                     return
                 else
                     [Channel,ChannelIndex] = Class{Index}.get_channel(h.Channel{Index});
-                    h.Image{Index} = Channel.Image;
+                    h.Image{Index} = fillmissing(Channel.Image,'linear','EndValues','nearest');
                     h.BaseUnit{Index} = Channel.Unit;
                     h.ScanSizeX(Index) = Channel.ScanSizeX;
                     h.ScanSizeY(Index) = Channel.ScanSizeY;
+                    h.NumPixelsX(Index) = Channel.NumPixelsX;
+                    h.NumPixelsY(Index) = Channel.NumPixelsY;
                     ColorPattern = Class{Index}.CMap;
                 end
                 
