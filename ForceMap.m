@@ -129,6 +129,7 @@ classdef ForceMap < matlab.mixin.Copyable
         EModHertz       % List of reduced smaple E-Modulus based on a the Hertz-Sneddon model
         EModOliverPharr % List of reduced sample E-Modulus based on the Oliver-Pharr method
         HertzFit        % HertzFit model generated in the calculate_e_mod_hertz method
+        SnapIn
         MaxAdhesionForce
         AdhesionEnergy
         AdhesionLength
@@ -334,6 +335,7 @@ classdef ForceMap < matlab.mixin.Copyable
             
             h = waitbar(0,'Setting up...','Name',obj.Name);
             Range = find(obj.SelectedCurves);
+            SnapIn = zeros(obj.NCurves,1);
             for i=Range'
                 waitbar(i/obj.NCurves,h,'Finding contact point for Snap-In curve...');
                 AboveZeroBool = zeros(length(obj.BasedApp{i}),1);
@@ -356,7 +358,33 @@ classdef ForceMap < matlab.mixin.Copyable
                 obj.CP(i,2) = 0;
                 obj.CP_SnapIn(i,:) = obj.CP(i,:);
                 clear AboveZeroBool
+                
+                try
+                    Force = obj.BasedApp{i} - obj.CP(i,2);
+                    SnapIn(i) = -min(Force);
+                    
+                catch
+                    SnapIn(i) = nan;
+                end
             end
+            
+            obj.SnapIn = SnapIn;
+            
+            for i=1:obj.NumProfiles
+                for j=1:obj.NumPoints
+                    SnapInMap(i,j) = obj.SnapIn(obj.Map2List(i,j));
+                end
+            end
+            
+            % Write to Channel
+            Channel = obj.create_standard_channel(SnapInMap,'Snap-In','Pa');
+            [~,Index] = obj.get_channel('Snap-In');
+            if isempty(Index)
+                obj.Channel(end+1) = Channel;
+            else
+                obj.Channel(Index) = Channel;
+            end
+            
             close(h)
             obj.CPFlag.SnapIn = true;
             
@@ -983,6 +1011,7 @@ classdef ForceMap < matlab.mixin.Copyable
             for i=1:obj.NumProfiles
                 for j=1:obj.NumPoints
                     obj.EModMapHertz(i,j,1) = obj.EModHertz(obj.Map2List(i,j));
+                    IndDepMap(i,j) = obj.IndDepthHertz(obj.Map2List(i,j));
                 end
             end
             
@@ -1001,6 +1030,15 @@ classdef ForceMap < matlab.mixin.Copyable
                 obj.Channel(end+1) = EModLog;
             else
                 obj.Channel(Index) = EModLog;
+            end
+            
+            % Write to Channel
+            Channel = obj.create_standard_channel(IndDepMap,'Indentation Depth','m');
+            [~,Index] = obj.get_channel('Indentation Depth');
+            if isempty(Index)
+                obj.Channel(end+1) = Channel;
+            else
+                obj.Channel(Index) = Channel;
             end
             
             if AllowXShift
@@ -1347,7 +1385,7 @@ classdef ForceMap < matlab.mixin.Copyable
                 obj.Channel(Index) = Channel;
             end
             
-            DEMap = obj.DissipatedEnergy./CoulombConstant;
+            DEMap = DEMap./CoulombConstant;
             
             % Write to Channel
             Channel = obj.create_standard_channel(DEMap,'Dissipated eV-Energy','eV');
@@ -1376,7 +1414,7 @@ classdef ForceMap < matlab.mixin.Copyable
             end
             
             
-            EEMap = obj.ElasticEnergy./CoulombConstant;
+            EEMap = EEMap./CoulombConstant;
             
             % Write to Channel
             Channel = obj.create_standard_channel(EEMap,'Elastic eV-Energy','eV');
@@ -3658,6 +3696,8 @@ classdef ForceMap < matlab.mixin.Copyable
                 title('Height Map with Apex Points');
                 
                 subplot(2,3,2)
+                [MultiplierX,UnitX,~] = AFMImage.parse_unit_scale(range(obj.HHRet{k}),'m',10);
+                [MultiplierY,UnitY,~] = AFMImage.parse_unit_scale(range(obj.BasedRet{k}),'N',5);
                 plot(obj.HHApp{k},obj.BasedApp{k}/obj.SpringConstant,...
                     obj.HHRet{k},obj.BasedRet{k}/obj.SpringConstant)
                 xlim([min(obj.HHApp{k})+range(obj.HHApp{k})/2 ...

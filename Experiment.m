@@ -430,7 +430,6 @@ classdef Experiment < matlab.mixin.Copyable
                 obj.FM{i}.base_and_tilt('linear');
                 waitbar(i/NLoop,h,sprintf('Preprocessing ForceMap %i/%i\nWrapping Up And Saving',i,NLoop));
                 
-                obj.FM{i}.save();
                 obj.FMFlag.Preprocessed(i) = 1;
             end
             
