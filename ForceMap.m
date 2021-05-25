@@ -1363,6 +1363,7 @@ classdef ForceMap < matlab.mixin.Copyable
                 else
                     obj.Linker='long';
                 end
+                
         end
                    
         function fc_adhesion_energy(obj)
@@ -3317,6 +3318,7 @@ classdef ForceMap < matlab.mixin.Copyable
             end
             
             obj.Velocity = ZLength/ExtendTime;
+            obj.VelocityConvert=obj.Velocity*1e+9; % Convert into nm/s
             
             %   GridAngle
             clear tline where;

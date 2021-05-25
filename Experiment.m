@@ -1302,8 +1302,8 @@ classdef Experiment < matlab.mixin.Copyable
             cd(currpath); 
             
             % Loop over the imported force maps
-            %for ii=1:obj.NumForceMaps
-            for ii=60 % Debugging
+            for ii=1:obj.NumForceMaps
+            %for ii=1:10 % Debugging
                % Command window output
                sprintf('Force Map No. %d of %d',ii,obj.NumForceMaps) % Gives current Force Map Position
                % Run the chosen functions
@@ -1430,30 +1430,43 @@ classdef Experiment < matlab.mixin.Copyable
         
         
            
-            end
+        end
        
-        
+        function SMFS_handyFunction(obj)
+            % Function to quickly loop over all force maps
+            for ii=1:obj.NumForceMaps
+                   obj.FM{ii}.fc_chipprop;
+            end
+        end
+            
         function SMFS_analysis_selection(obj,VelocityValue,SubstrateValue,EnvCondValue,ChipCantValue,ChipboxValue,LinkerValue)
                 
                 
                 for ii=1:obj.NumForceMaps
-                    if (strcmpi(obj.FM{ii}.Velocity,VelocityValue) || strcmpi(VelocityValue,'All')) ...
+                    if (strcmpi(obj.FM{ii}.VelocityConvert,VelocityValue) || strcmpi(VelocityValue,'All')) ...
                             && (strcmpi(obj.FM{ii}.Substrate,SubstrateValue) || strcmpi(SubstrateValue,'All')) ...
                             && (strcmpi(obj.FM{ii}.EnvCond,EnvCondValue) || strcmpi(EnvCondValue,'All')) ...
                             && (strcmpi(obj.FM{ii}.ChipCant,ChipCantValue) || strcmpi(ChipCantValue,'All')) ...
                             && (strcmpi(obj.FM{ii}.Chipbox,ChipboxValue) || strcmpi(ChipboxValue,'All')) ...
                             && (strcmpi(obj.FM{ii}.Linker,LinkerValue) || strcmpi(LinkerValue,'All'))
+                        % Define variables for the if condition 
+                        IdxArray(ii,1)=ii;
+                        IdxNonzero=find(IdxArray,1,'first');
                         
-                        if ii==1
+                        if ~isempty(IdxArray) && IdxNonzero==ii
                             obj.FM{ii}.PullingLength(obj.FM{ii}.PullingLength==0)=nan;
-                            ConcatArrayPullingLength=obj.FM{ii}.PullingLength(:);
+                            ConcatArrayPullingLength1=obj.FM{ii}.PullingLength(:);
+                            ConcatArrayPullingLength2=obj.FM{ii}.PullingLength(:);
                             obj.FM{ii}.RetAdhEnergy(obj.FM{ii}.RetAdhEnergy==0)=nan;
-                            ConcatArrayRetAdhEnergy=obj.FM{ii}.RetAdhEnergy(:);
+                            ConcatArrayRetAdhEnergy1=obj.FM{ii}.RetAdhEnergy(:);
+                            ConcatArrayRetAdhEnergy2=obj.FM{ii}.RetAdhEnergy(:);
                         else
                             obj.FM{ii}.PullingLength(obj.FM{ii}.PullingLength==0)=nan;
-                            ConcatArrayPullingLength=horzcat(ConcatArrayPullingLength,obj.FM{ii}.PullingLength(:));
+                            ConcatArrayPullingLength1=horzcat(ConcatArrayPullingLength1,obj.FM{ii}.PullingLength(:));
+                            ConcatArrayPullingLength2=vertcat(ConcatArrayPullingLength2,obj.FM{ii}.PullingLength(:));
                             obj.FM{ii}.RetAdhEnergy(obj.FM{ii}.RetAdhEnergy==0)=nan;
-                            ConcatArrayRetAdhEnergy=horzcat(ConcatArrayRetAdhEnergy,obj.FM{ii}.PullingLength(:));
+                            ConcatArrayRetAdhEnergy1=horzcat(ConcatArrayRetAdhEnergy1,obj.FM{ii}.RetAdhEnergy(:));
+                            ConcatArrayRetAdhEnergy2=vertcat(ConcatArrayRetAdhEnergy2,obj.FM{ii}.RetAdhEnergy(:));
                         end
                     end
                 end
@@ -1484,7 +1497,7 @@ classdef Experiment < matlab.mixin.Copyable
                 h_fig1.PaperOrientation='landscape';
                 h_fig1.Name=figname;
                 % boxplot
-                bo1=boxplot((ConcatArrayPullingLength));
+                bo1=boxplot(ConcatArrayPullingLength1);
                 % title
                 t1=title(fulltitle1);
                 % Axes
@@ -1511,7 +1524,7 @@ classdef Experiment < matlab.mixin.Copyable
                 h_fig2.PaperOrientation='landscape';
                 h_fig2.Name=figname;
                 % boxplot
-                bo2= boxplot((ConcatArrayRetAdhEnergy));
+                bo2= boxplot(ConcatArrayRetAdhEnergy1);
                 % title
                 t2=title(fulltitle2);
                 % Axes
@@ -1529,9 +1542,82 @@ classdef Experiment < matlab.mixin.Copyable
                 fullname2=char(fullname2);
                 %%% Save the current figure in the current folder
                 print(gcf,fullname2,'-dpng');
-                % House keeping
+                
+                % Figure 3
+                h_fig3=figure(3);
+                h_fig3.Color='white'; % changes the background color of the figure
+                h_fig3.Units='normalized'; % Defines the units
+                h_fig3.OuterPosition=[0 0 1 1];% changes the size of the to the whole screen
+                h_fig3.PaperOrientation='landscape';
+                h_fig3.Name=figname;
+                % Histogram
+                h3=histogram(ConcatArrayPullingLength2);
+                h3.BinWidth=1e-9;
+                h3.FaceAlpha=1;
+                h3.FaceColor='b';
+                h3.EdgeColor='k';
+                % title
+                t1=title(fulltitle1);
+                % axes
+                ax3=gca;
+                ax3.FontSize = 16;
+                ax3.XLabel.String = 'Force map number (1)';
+                ax3.XLabel.FontSize = 20;
+                ax3.YLabel.String = 'PullingLength (m)';
+                ax3.YLabel.FontSize = 20;               
+                hold on;
+                % Save figure
+                %%% Define the name for the figure title
+                partname='histo';
+                % fullname=sprintf('%s%s',figname,partname);
+                fullname3=strcat(figname,{'_'},parttitle1,{'_'},partname);
+                fullname3=char(fullname3);
+                %%% Save the current figure in the current folder
+                print(gcf,fullname3,'-dpng');
+                
+                % Figure 4
+                h_fig4=figure(4);
+                h_fig4.Color='white'; % changes the background color of the figure
+                h_fig4.Units='normalized'; % Defines the units
+                h_fig4.OuterPosition=[0 0 1 1];% changes the size of the to the whole screen
+                h_fig4.PaperOrientation='landscape';
+                h_fig4.Name=figname;
+                % Histogram
+                h4=histogram(ConcatArrayRetAdhEnergy2);
+                h4.BinWidth=1e-19;
+                h4.FaceAlpha=1;
+                h4.FaceColor='g';
+                h4.EdgeColor='k';
+                % title
+                t2=title(fulltitle2);
+                % axes
+                ax4=gca;
+                ax4.FontSize = 16;
+                ax4.XLabel.String = 'Force map number (1)';
+                ax4.XLabel.FontSize = 20;
+                ax4.YLabel.String = 'Adhesion Energy (J)';
+                ax4.YLabel.FontSize = 20;               
+                hold on;
+                % Save figure
+                %%% Define the name for the figure title
+                partname='histo';
+                % fullname=sprintf('%s%s',figname,partname);
+                fullname4=strcat(figname,{'_'},parttitle2,{'_'},partname);
+                fullname4=char(fullname4);
+                %%% Save the current figure in the current folder
+                print(gcf,fullname3,'-dpng');
+                %% House keeping
                 close all
-            end
+        end
+            
+        function SMFS_statistics(obj)
+           
+            % Uncorrupt force curves
+            SumFcUncorrupt=sum(obj.NumFcUncorrupt);
+            SumFcCorrupt=obj.NumForceMaps*obj.FM{1}.NCurves;
+            PercentUncorrupt=SumFcUncorrupt/SumFcCorrupt*100;
+            PercentCorrupt=100-PercentUncorrupt;
+        end
             
     end
     methods
