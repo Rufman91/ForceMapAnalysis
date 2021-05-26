@@ -78,6 +78,8 @@ classdef ForceMap < matlab.mixin.Copyable
         FilterF
         FilterH
         fitresult
+        ZeroCrossF
+        ZeroCrossTimeF
     end
     properties
         % Curve data Properties
@@ -1719,14 +1721,18 @@ classdef ForceMap < matlab.mixin.Copyable
 
             %% Fit: 'untitled fit 1'.
             [xData, yData] = prepareCurveData(SegTime,Filter);
-
+            
+            amplitude = obj.AmplitudeF;
+            period = (2*pi)/obj.PeriodF;
+            fsc = (2*pi)/obj.firstsignchangeF;
+            
             % Set up fittype and options.
             ft = fittype( 'sin1' );
             opts = fitoptions( 'Method', 'NonlinearLeastSquares' );
             opts.Display = 'Off';
             opts.Lower = [-Inf 0 -Inf];
-            opts.StartPoint = [obj.AmplitudeF obj.PeriodF obj.firstsignchangeF];
-
+            opts.StartPoint = [amplitude period fsc];
+    
             % Fit model to data.
             [fitresult, gof] = fit( xData, yData, ft, opts );
 
@@ -1768,12 +1774,12 @@ classdef ForceMap < matlab.mixin.Copyable
 
 
                         if obj.SegFrequency{j} > 0.25
-                            %ForceTrend{i,j} = detrend(FZShift{i,j},14);
+                            ForceTrend{i,j} = detrend(FZShift{i,j});
                             %iN = 500;
                             %obj.FilterF{i,j} = filter(ones(1,iN)/iN,1,ForceTrend{i,j});
                             iN = 50;
                             d = ones(1,iN)/iN;
-                            obj.FilterF{i,j} = filtfilt(d,1,FZShift{i,j});
+                            obj.FilterF{i,j} = filtfilt(d,1,ForceTrend{i,j});
                         else
                             %ForceTrend{i,j} = detrend(FZShift{i,j});
                             iN = 250;
@@ -1816,8 +1822,8 @@ classdef ForceMap < matlab.mixin.Copyable
                          signchangeH{i,j} = find( diff( sign(HInterp{i,j}) ) ~= 0 );
                         
                          %interpolation and time data where the sign changes
-                         ZeroCrossF{i,j} = obj.FilterF{i,j}(signchangeF{i,j});
-                         ZeroCrossTimeF{i,j} = obj.SegTime{j}(signchangeF{i,j});
+                         obj.ZeroCrossF{i,j} = obj.FilterF{i,j}(signchangeF{i,j});
+                         obj.ZeroCrossTimeF{i,j} = obj.SegTime{j}(signchangeF{i,j});
                          ZeroCrossH{i,j} = HInterp{i,j}(signchangeH{i,j});
                          ZeroCrossTimeH{i,j} = obj.InterpTimeH{j}(signchangeH{i,j});
                          
@@ -1844,7 +1850,7 @@ classdef ForceMap < matlab.mixin.Copyable
                          DiffH = maxH - minH;
 
                          % shift the zero crossings to the original height again:
-                         FZLoc{i,j} = ZeroCrossF{i,j}+maxF-(DiffF/2);
+                         FZLoc{i,j} = obj.ZeroCrossF{i,j}+maxF-(DiffF/2);
                          HZLoc{i,j} = ZeroCrossH{i,j}+maxH-(DiffH/2);
 
                          % Amplitude
@@ -1852,7 +1858,7 @@ classdef ForceMap < matlab.mixin.Copyable
                          obj.AmplitudeH=(DiffH/2);
  
                          % Estimate period
-                         obj.PeriodF = 2*mean(diff(ZeroCrossTimeF{i,j}));
+                         obj.PeriodF = 2*mean(diff(obj.ZeroCrossTimeF{i,j}));
                          obj.PeriodH = 2*mean(diff(ZeroCrossTimeH{i,j}));
 
                          % Estimate offset
@@ -3700,28 +3706,32 @@ classdef ForceMap < matlab.mixin.Copyable
                 for j=2:lastseg
                     
                     if obj.SegFrequency{j} > 0
-                    
+                        
                         % Max values of Force and Height
                          maxF = max(obj.Force{i,j});
+                         maxH = max(obj.Height{i,j});
 
                          % Min values of Force and Height
                          minF = min(obj.Force{i,j});
+                         minH = min(obj.Height{i,j});
 
                          % Difference max min
                          DiffF = maxF - minF;
+                         DiffH = maxH - minH;
 
 
                          % Shift to Zero Line
                          FZShift{i,j} = obj.Force{i,j}-maxF+(DiffF/2);
+                         HZShift{i,j} = obj.Height{i,j}-maxH+(DiffH/2);
 
 
                         if obj.SegFrequency{j} > 0.25
-                            %ForceTrend{i,j} = detrend(FZShift{i,j},14);
+                            ForceTrend{i,j} = detrend(FZShift{i,j},4);
                             %iN = 500;
                             %obj.FilterF{i,j} = filter(ones(1,iN)/iN,1,ForceTrend{i,j});
                             iN = 50;
                             d = ones(1,iN)/iN;
-                            obj.FilterF{i,j} = filtfilt(d,1,FZShift{i,j});
+                            obj.FilterF{i,j} = filtfilt(d,1,ForceTrend{i,j});
                         else
                             %ForceTrend{i,j} = detrend(FZShift{i,j});
                             iN = 250;
@@ -3730,42 +3740,82 @@ classdef ForceMap < matlab.mixin.Copyable
                         end
                         
                         
+                        if obj.SegFrequency{j} > 0.5
+                            iN = 50;
+                            d = ones(1,iN)/iN;
+                            obj.FilterH{i,j} = filtfilt(d,1,HZShift{i,j});
+                        else
+                            iN = 500;
+                            d = ones(1,iN)/iN;
+                            obj.FilterH{i,j} = filtfilt(d,1,HZShift{i,j});
+                        end
+                        
+                        
+                         obj.InterpTimeH{i} = obj.TStart{i}:0.0001:obj.TEnd{i};
+                         obj.InterpTimeH{i} = obj.InterpTimeH{i}.';
+                        
+                         %INTERPOLATION with the purpose to add more points to indentation data
+                         %at every timestep z1_H
+                         HInterp{i,j} = interp1(obj.SegTime{j},obj.FilterH{i,j},obj.InterpTimeH{j}); 
+
+                         %Finding the rows where NaNs are located due to interpolation:
+                         row_H = find(isnan(HInterp{i,j}));
+
+                         %also deleting those rows from the timestep vector z1_H:
+                         obj.InterpTimeH{j}(row_H,:)=[];
+
+                         %deleting NaN from interpolated indentation data:
+                         HInterp{i,j} = rmmissing(HInterp{i,j});
+                        
+                        
                         %Finding changes in signs from positive to negative, inbetween the zero
                          %crossing must occur
                          signchangeF{i,j} = find( diff( sign(obj.FilterF{i,j}) ) ~= 0 );
+                         signchangeH{i,j} = find( diff( sign(HInterp{i,j}) ) ~= 0 );
                         
                          %interpolation and time data where the sign changes
-                         ZeroCrossF{i,j} = obj.FilterF{i,j}(signchangeF{i,j});
-                         ZeroCrossTimeF{i,j} = obj.SegTime{j}(signchangeF{i,j});
+                         obj.ZeroCrossF{i,j} = obj.FilterF{i,j}(signchangeF{i,j});
+                         obj.ZeroCrossTimeF{i,j} = obj.SegTime{j}(signchangeF{i,j});
+                         ZeroCrossH{i,j} = HInterp{i,j}(signchangeH{i,j});
+                         ZeroCrossTimeH{i,j} = obj.InterpTimeH{j}(signchangeH{i,j});
                          
                          
                          %locate the first change of sign:
                          help_F=signchangeF{i,j}(1);
+                         help_H=signchangeH{i,j}(1);
 
                          %define the time span between first time step and first change of sign
                          %which will be a parameter for the sine fit later:
                          obj.firstsignchangeF = obj.SegTime{j}(help_F) - obj.SegTime{j}(1);
+                         obj.firstsignchangeH = obj.InterpTimeH{j}(help_H)- obj.InterpTimeH{j}(1);
 
                          % Max values of Force and Height
                          maxF = max(obj.FilterF{i,j});
+                         maxH = max(obj.FilterH{i,j});
 
                          % Min values of Force and Height
                          minF = min(obj.FilterF{i,j});
+                         minH = min(obj.FilterH{i,j});
 
                          % Difference max min
                          DiffF = maxF - minF;
+                         DiffH = maxH - minH;
 
                          % shift the zero crossings to the original height again:
-                         FZLoc{i,j} = ZeroCrossF{i,j}+maxF-(DiffF/2);
+                         FZLoc{i,j} = obj.ZeroCrossF{i,j}+maxF-(DiffF/2);
+                         HZLoc{i,j} = ZeroCrossH{i,j}+maxH-(DiffH/2);
 
                          % Amplitude
                          obj.AmplitudeF=(DiffF/2);
+                         obj.AmplitudeH=(DiffH/2);
  
                          % Estimate period
-                         obj.PeriodF = 2*mean(diff(ZeroCrossTimeF{i,j}));
+                         obj.PeriodF = 2*mean(diff(obj.ZeroCrossTimeF{i,j}));
+                         obj.PeriodH = 2*mean(diff(ZeroCrossTimeH{i,j}));
 
                          % Estimate offset
                          meanF = mean(obj.FilterF{i,j});
+                         meanH = mean(HInterp{i,j});
 
                          x = obj.SegTime{j};
 
@@ -3778,16 +3828,16 @@ classdef ForceMap < matlab.mixin.Copyable
                          obj.SineVarsF{i,j} = fminsearch(fcn, [obj.AmplitudeF;  obj.PeriodF;  obj.firstsignchangeF]); 
                          % Spacing of time vector:
                          xpF = linspace(min(obj.SegTime{j}),max(obj.SegTime{j}),100000);
-
-
-                         [obj.fitresult{i,j}, gof] = obj.createFit1(obj.SegTime{j},obj.FilterF{i,j});
+                         
+                        
+                        [obj.fitresult{i,j}, gof] = obj.createFit1(obj.SegTime{j},obj.FilterF{i,j});
 
                         k = k + 1;
                          % time indentation
                         figure(k)
                         plot(obj.SegTime{j},obj.FilterF{i,j},'b', obj.SegTime{j},FZShift{i,j},'r')
                         hold on
-                        plot(ZeroCrossTimeF{i,j}, ZeroCrossF{i,j}, 'bp')
+                        plot(obj.ZeroCrossTimeF{i,j}, obj.ZeroCrossF{i,j}, 'bp')
                         hold on
                         plot(xpF,fit(obj.SineVarsF{i,j},xpF), '--m')
                         hold on
@@ -3941,7 +3991,7 @@ classdef ForceMap < matlab.mixin.Copyable
                     
                     if obj.SegFrequency{j} > 0
                         
-                        x=obj.SegTime{j};
+                        x=linspace(-pi, 2*pi, 1001);
                         
                         %Y-values fitted sine of indentation and force:
                         obj.SineFunctionF = obj.SineVarsF{i,j}(1)*(sin((2*pi*x)/obj.SineVarsF{i,j}(2) + 2*pi/obj.SineVarsF{i,j}(3)));
@@ -3950,7 +4000,7 @@ classdef ForceMap < matlab.mixin.Copyable
                         k = k + 1;
                          % time indentation
                         figure(k)
-                        plot(obj.SegTime{j},obj.SineFunctionF,'r', obj.SegTime{j},obj.SineFunctionH,'b')
+                        plot(x,obj.SineFunctionF,'r', x,obj.SineFunctionH,'b')
                         legend('force sine function', 'height sine function')
                         title('Sine Functions')
                         xlabel('time in s')
