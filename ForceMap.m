@@ -136,10 +136,10 @@ classdef ForceMap < matlab.mixin.Copyable
         DissipatedEnergy
         ElasticEnergy
         PeakIndentationAngle
-        IndDepthHertz
+        IndentationDepth
         DZslope
         Stiffness
-        IndDepth
+        IndentationDepthOliverPharr
         IndentArea
         ProjTipArea
         RefSlopeMask
@@ -909,7 +909,7 @@ classdef ForceMap < matlab.mixin.Copyable
             end
             iRange = find(obj.SelectedCurves);
             obj.EModHertz = zeros(obj.NCurves,1);
-            obj.IndDepthHertz = zeros(obj.NCurves,1);
+            obj.IndentationDepth = zeros(obj.NCurves,1);
             for i=iRange'
                 if isequal(lower(CPType),'cnn')
                     CP = obj.CP(i,:);
@@ -935,7 +935,7 @@ classdef ForceMap < matlab.mixin.Copyable
                     continue
                 end
                 Max = max(tip_h);
-                obj.IndDepthHertz(i) = Max(1);
+                obj.IndentationDepth(i) = Max(1);
                 % delete everything below curve_percent of the maximum
                 % force
                 force(1:(length(force)-length(tip_h))) = [];
@@ -993,7 +993,7 @@ classdef ForceMap < matlab.mixin.Copyable
                 obj.CP_HertzFitted(i,2) = CP(2);
                 obj.CP(i,:) = obj.CP_HertzFitted(i,:);
                 % Not sure about this one
-                % obj.IndDepthHertz(i) = obj.IndDepthHertz(i) + Hertzfit.b;
+                % obj.IndentationDepth(i) = obj.IndentationDepth(i) + Hertzfit.b;
                 end
                 warning('on','all');
                 obj.HertzFit{i} = Hertzfit;
@@ -1011,7 +1011,7 @@ classdef ForceMap < matlab.mixin.Copyable
             for i=1:obj.NumProfiles
                 for j=1:obj.NumPoints
                     obj.EModMapHertz(i,j,1) = obj.EModHertz(obj.Map2List(i,j));
-                    IndDepMap(i,j) = obj.IndDepthHertz(obj.Map2List(i,j));
+                    IndDepMap(i,j) = obj.IndentationDepth(obj.Map2List(i,j));
                 end
             end
             
@@ -1061,7 +1061,8 @@ classdef ForceMap < matlab.mixin.Copyable
             obj.ProjTipArea = TipProjArea;
             obj.DZslope = zeros(obj.NCurves,1);
             obj.Stiffness = zeros(obj.NCurves,1);
-            obj.IndDepth = zeros(obj.NCurves,1);
+            obj.IndentationDepth = zeros(obj.NCurves,1);
+            obj.IndentationDepthOliverPharr = zeros(obj.NCurves,1);
             obj.IndentArea = zeros(obj.NCurves,1);
             for i=Range'
                 Z = obj.HHRet{i} - obj.CP(i,1);
@@ -1078,13 +1079,14 @@ classdef ForceMap < matlab.mixin.Copyable
                 df = dD*obj.SpringConstant;
                 obj.Stiffness(i) = df/dh;
                 Fmax(i) = Dmax(i).*obj.SpringConstant;
-                obj.IndDepth(i) = Hmax(i) - Epsilon.*Fmax(i)/obj.Stiffness(i);
+                obj.IndentationDepth(i) = Hmax(i);
+                obj.IndentationDepthOliverPharr(i) = Hmax(i) - Epsilon.*Fmax(i)/obj.Stiffness(i);
                 % IndentArea is taken as the linear interpolation between
                 % the two numeric values of TipProjArea the Hc(i) falls
                 % inbetween
                 try
-                    obj.IndentArea(i) = ((1-(obj.IndDepth(i)*1e9-floor(obj.IndDepth(i)*1e9)))*TipProjArea(floor(obj.IndDepth(i)*1e9))...
-                        + (obj.IndDepth(i)*1e9-floor(obj.IndDepth(i)*1e9))*TipProjArea(ceil(obj.IndDepth(i)*1e9)));
+                    obj.IndentArea(i) = ((1-(obj.IndentationDepthOliverPharr(i)*1e9-floor(obj.IndentationDepthOliverPharr(i)*1e9)))*TipProjArea(floor(obj.IndentationDepthOliverPharr(i)*1e9))...
+                        + (obj.IndentationDepthOliverPharr(i)*1e9-floor(obj.IndentationDepthOliverPharr(i)*1e9))*TipProjArea(ceil(obj.IndentationDepthOliverPharr(i)*1e9)));
                     EMod(i) = sqrt(pi/obj.IndentArea(i))*1/Beta*...
                         obj.Stiffness(i)/2*(1-obj.PoissonR^2);
                     if EMod(i) <= 0
@@ -1101,8 +1103,9 @@ classdef ForceMap < matlab.mixin.Copyable
             for i=1:obj.NumProfiles
                 for j=1:obj.NumPoints
                     obj.EModMapOliverPharr(i,j,1) = obj.EModOliverPharr(obj.Map2List(i,j));
-                    IndDepthMap(i,j) = obj.IndDepth(obj.Map2List(i,j));
+                    IndDepthMapOP(i,j) = obj.IndentationDepthOliverPharr(obj.Map2List(i,j));
                     DZMap(i,j) = obj.DZslope(obj.Map2List(i,j));
+                    IndDepthMap(i,j) = obj.IndentationDepth(obj.Map2List(i,j));
                 end
             end
             
@@ -1121,6 +1124,15 @@ classdef ForceMap < matlab.mixin.Copyable
                 obj.Channel(end+1) = EModLog;
             else
                 obj.Channel(Index) = EModLog;
+            end
+            
+            % Write to Channel
+            Channel = obj.create_standard_channel(IndDepthMapOP,'Indentation Depth Oliver-Pharr','m');
+            [~,Index] = obj.get_channel('Indentation Depth Oliver-Pharr');
+            if isempty(Index)
+                obj.Channel(end+1) = Channel;
+            else
+                obj.Channel(Index) = Channel;
             end
             
             % Write to Channel
@@ -3739,22 +3751,22 @@ classdef ForceMap < matlab.mixin.Copyable
                 hold off
                 
                 subplot(2,3,5)
-                plot(obj.IndDepth(obj.RectApexIndex)*1e9,...
+                plot(obj.IndentationDepthOliverPharr(obj.RectApexIndex)*1e9,...
                     obj.EModOliverPharr(obj.RectApexIndex)*1e-6,'bO')
                 hold on
-                plot(obj.IndDepth(obj.RectApexIndex(m))*1e9,...
+                plot(obj.IndentationDepthOliverPharr(obj.RectApexIndex(m))*1e9,...
                     obj.EModOliverPharr(obj.RectApexIndex(m))*1e-6,'rO','MarkerFaceColor','r')
                 xlabel('Indentation Depth [nm]')
                 ylabel('Elastic Modulus [MPa]')
                 hold off
                 
                 subplot(2,3,6)
-                plot(obj.IndDepth(obj.RectApexIndex)*1e9,...
+                plot(obj.IndentationDepthOliverPharr(obj.RectApexIndex)*1e9,...
                     obj.IndentArea(obj.RectApexIndex),'bO','MarkerSize',10,'MarkerFaceColor','b')
                 hold on
-                plot(obj.IndDepth(obj.RectApexIndex(m))*1e9,...
+                plot(obj.IndentationDepthOliverPharr(obj.RectApexIndex(m))*1e9,...
                     obj.IndentArea(obj.RectApexIndex(m)),'rO','MarkerSize',10,'MarkerFaceColor','r')
-                Xmax = round(max(obj.IndDepth(obj.RectApexIndex))*1e9+5);
+                Xmax = round(max(obj.IndentationDepthOliverPharr(obj.RectApexIndex))*1e9+5);
                 xlim([0 Xmax])
                 plot(1:Xmax,obj.ProjTipArea(1:Xmax),'Color','black')
                 xlabel('Indentation Depth [nm]')
@@ -3837,10 +3849,10 @@ classdef ForceMap < matlab.mixin.Copyable
                 
                 
                 subplot(2,2,4)
-                plot((obj.IndDepthHertz(obj.RectApexIndex))*1e9,...
+                plot((obj.IndentationDepth(obj.RectApexIndex))*1e9,...
                     obj.EModHertz(obj.RectApexIndex)*1e-6,'bO')
                 hold on
-                plot((obj.IndDepthHertz(obj.RectApexIndex(m)))*1e9,...
+                plot((obj.IndentationDepth(obj.RectApexIndex(m)))*1e9,...
                     obj.EModHertz(obj.RectApexIndex(m))*1e-6,'rO','MarkerFaceColor','r')
                 xlabel('Indentation Depth [nm]')
                 ylabel('Elastic Modulus [MPa]')
@@ -3916,22 +3928,22 @@ classdef ForceMap < matlab.mixin.Copyable
                 hold off
                 
                 subplot(2,3,5)
-                plot(obj.IndDepth*1e9,...
+                plot(obj.IndentationDepthOliverPharr*1e9,...
                     obj.EModOliverPharr*1e-6,'bO')
                 hold on
-                plot(obj.IndDepth(m)*1e9,...
+                plot(obj.IndentationDepthOliverPharr(m)*1e9,...
                     obj.EModOliverPharr(m)*1e-6,'rO','MarkerFaceColor','r')
                 xlabel('Indentation Depth [nm]')
                 ylabel('Elastic Modulus [MPa]')
                 hold off
                 
                 subplot(2,3,6)
-                plot(obj.IndDepth*1e9,...
+                plot(obj.IndentationDepthOliverPharr*1e9,...
                     obj.IndentArea,'bO','MarkerSize',10,'MarkerFaceColor','b')
                 hold on
-                plot(obj.IndDepth(m)*1e9,...
+                plot(obj.IndentationDepthOliverPharr(m)*1e9,...
                     obj.IndentArea(m),'rO','MarkerSize',10,'MarkerFaceColor','r')
-                Xmax = round(max(obj.IndDepth)*1e9+5);
+                Xmax = round(max(obj.IndentationDepthOliverPharr)*1e9+5);
                 XmaxAlt = length(obj.ProjTipArea);
                 Xmax = min([Xmax XmaxAlt]);
                 xlim([0 Xmax])
@@ -4011,15 +4023,15 @@ classdef ForceMap < matlab.mixin.Copyable
                 
                 subplot(2,2,4)
                 if obj.NCurves <= 512
-                    plot((obj.IndDepthHertz)*1e9,...
+                    plot((obj.IndentationDepth)*1e9,...
                         obj.EModHertz*1e-6,'bO')
                     hold on
-                    plot((obj.IndDepthHertz(m))*1e9,...
+                    plot((obj.IndentationDepth(m))*1e9,...
                         obj.EModHertz(m)*1e-6,'rO','MarkerFaceColor','r')
                     xlabel('Indentation Depth [nm]')
                     ylabel('Elastic Modulus [MPa]')
                 else
-                    histogram((obj.IndDepthHertz)*1e9)
+                    histogram((obj.IndentationDepth)*1e9)
                     xlabel('Indentation Depth [nm]')
                 end    
                 hold off
