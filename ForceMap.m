@@ -377,7 +377,7 @@ classdef ForceMap < matlab.mixin.Copyable
             end
             
             % Write to Channel
-            Channel = obj.create_standard_channel(SnapInMap,'Snap-In','Pa');
+            Channel = obj.create_standard_channel(SnapInMap,'Snap-In','N');
             [~,Index] = obj.get_channel('Snap-In');
             if isempty(Index)
                 obj.Channel(end+1) = Channel;
@@ -1173,7 +1173,7 @@ classdef ForceMap < matlab.mixin.Copyable
             end
             
             % Write to Channel
-            Channel = obj.create_standard_channel(MaxAdhesionForceMap,'Maximum Adhesion Force','Pa');
+            Channel = obj.create_standard_channel(MaxAdhesionForceMap,'Maximum Adhesion Force','N');
             [~,Index] = obj.get_channel('Maximum Adhesion Force');
             if isempty(Index)
                 obj.Channel(end+1) = Channel;

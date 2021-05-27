@@ -1407,6 +1407,12 @@ classdef Experiment < matlab.mixin.Copyable
                 'Position',[.85 .47 .1 .03],...
                 'Callback',@checked_both_cross_sections);
             
+            h.B(19) = uicontrol('style','checkbox',...
+                'String','Upscale Images',...
+                'units','normalized',...
+                'position',[.85 .15 .1 .04],...
+                'Callback',@upscale_images);
+            
             h.Channel1Max = 1;
             h.Channel1Min = 0;
             h.Channel2Max = 1;
@@ -1417,6 +1423,7 @@ classdef Experiment < matlab.mixin.Copyable
             h.hasCrossSection = 0;
             h.hasBothCrossSections = 0;
             h.hasChannel2 = 0;
+            h.isUpscaled = false;
             [~,DefIndex] = Class{1}.get_channel('Processed');
             if isempty(DefIndex)
                 DefIndex = 2;
@@ -1730,6 +1737,10 @@ classdef Experiment < matlab.mixin.Copyable
                     return
                 else
                     [Channel,ChannelIndex] = Class{Index}.get_channel(h.Channel{Index});
+                    if h.isUpscaled
+                        Channel.Image = fillmissing(Channel.Image,'linear','EndValues','nearest');
+                        Channel = AFMImage.resize_channel(Channel,1,1920);
+                    end
                     h.Image{Index} = fillmissing(Channel.Image,'linear','EndValues','nearest');
                     h.BaseUnit{Index} = Channel.Unit;
                     h.ScanSizeX(Index) = Channel.ScanSizeX;
@@ -1824,7 +1835,16 @@ classdef Experiment < matlab.mixin.Copyable
                 draw_channel_1
                 draw_channel_2
                 
-                end
+            end
+            
+            function upscale_images(varargin)
+                
+                h.isUpscaled = h.B(19).Value;
+                
+                draw_channel_1
+                draw_channel_2
+                
+            end
             
             uiwait(h.Fig)
         end
@@ -2892,6 +2912,21 @@ classdef Experiment < matlab.mixin.Copyable
                 Class = obj.CantileverTips{ClassIndex(2)};
             end
             
+        end
+        
+        function cast_volume_data_to_single_precision(obj)
+            for i=1:obj.NumForceMaps
+                obj.FM{i}.THApp = [];
+                obj.FM{i}.THRet = [];
+                for j=1:obj.FM{i}.NCurves
+                    obj.FM{i}.App{j} = single(obj.FM{i}.App{j});
+                    obj.FM{i}.Ret{j} = single(obj.FM{i}.Ret{j});
+                    obj.FM{i}.HHApp{j} = single(obj.FM{i}.HHApp{j});
+                    obj.FM{i}.HHRet{j} = single(obj.FM{i}.HHRet{j});
+                    obj.FM{i}.BasedApp{j} = single(obj.FM{i}.BasedApp{j});
+                    obj.FM{i}.BasedRet{j} = single(obj.FM{i}.BasedRet{j});
+                end
+            end
         end
         
     end

@@ -2355,5 +2355,17 @@ classdef AFMImage < matlab.mixin.Copyable
             
         end
         
+        function OutChannel = resize_channel(InChannel,Multiplicator,TargetRes)
+            
+            if nargin == 3
+                Multiplicator = TargetRes/InChannel.NumPixelsX;
+            end
+            OutChannel = InChannel;
+            
+            OutChannel.Image = imresize(InChannel.Image,Multiplicator);
+            OutChannel.NumPixelsX = size(OutChannel.Image,1);
+            OutChannel.NumPixelsY = size(OutChannel.Image,2);
+        end
+        
     end
 end
