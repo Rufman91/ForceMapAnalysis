@@ -288,7 +288,7 @@ classdef ForceMap < matlab.mixin.Copyable
                 Force = [AppForce' RetForce'];
                 
                 % If found, remove sinusoidal approach
-%                 Force = ForceMap.remove_sinusoidal_approach(Force,0);
+                Force = ForceMap.remove_sinusoidal_approach(Force,0);
                 
                 AppForce = Force(1:length(AppForce))';
                 RetForce = Force(length(AppForce)+1:end)';
@@ -1991,25 +1991,29 @@ classdef ForceMap < matlab.mixin.Copyable
                 PowerCutoff = .2;
             end
             
-            FFT = fftshift(fft(InForce));
-            MidIndex = floor(length(FFT)/2+1);
-%             FFT(MidIndex) = 0; % Removes constant component of signal
-            PowerSpectrum = abs(FFT).^2/length(InForce)/range(InForce)^2;
+            LossBefore = ForceMap.low_frequency_loss(InForce);
             
-            % find peaks in the spectrum
-            [Peaks,PeakPos,PeakWidths] = findpeaks(PowerSpectrum(MidIndex:end),...
-                'MinPeakDistance',10,'MinPeakHeight',PowerCutoff,'SortStr','descend');
-            if isempty(Peaks) || PeakPos(1) < 3
-                OutForce = InForce;
-                DidProcess = false;
-                return
-            end
-            BandWidth = 4;
+            FFT = fft(InForce);
+            MidIndex = floor(length(FFT)/2+1);
+            FFT([1 end]) = 0; % Removes constant component of signal
+            PowerSpectrum = abs(FFT).^2/length(FFT)/range(InForce)^2;
+            
+%             % find peaks in the spectrum
+%             [Peaks,PeakPos,PeakWidths] = findpeaks(PowerSpectrum(1:MidIndex),...
+%                 'MinPeakDistance',10,'MinPeakHeight',PowerCutoff,'SortStr','descend');
+%             if isempty(Peaks) || PeakPos(1) < 3
+%                 OutForce = InForce;
+%                 DidProcess = false;
+%                 return
+%             end
+            BandWidth = 400;
             
             FiltFFT = FFT;
-            FiltFFT(MidIndex-BandWidth:MidIndex+BandWidth) = 0;
-            OutForce = real(ifft(ifftshift(FiltFFT)));
+            FiltFFT([1:BandWidth (end-(BandWidth)-1:end)]) = 0;
+            OutForce = real(ifft((FiltFFT)));
             DidProcess = true;
+            
+            LossAfter = ForceMap.low_frequency_loss(OutForce);
             
             % Debug Section
             subplot(4,1,1)
@@ -2017,11 +2021,15 @@ classdef ForceMap < matlab.mixin.Copyable
             subplot(4,1,2)
             plot(PowerSpectrum)
             subplot(4,1,3)
-            plot(abs(FiltFFT))
+            plot(1:10000,sin([1:10000]./8))
             subplot(4,1,4)
             plot(real(OutForce))
             drawnow
             
+        end
+        
+        function [Loss] = low_frequency_loss(InSignal)
+            Loss = sum(abs(InSignal));
         end
         
         function [n,V,p] = affine_fit(X)

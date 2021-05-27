@@ -1279,10 +1279,23 @@ classdef Experiment < matlab.mixin.Copyable
         function show_image(obj)
             % TODO: implement ui elements for customization
             
+            h.ColorMode(1).Background = 'k';
+            h.ColorMode(1).Profile1 = 'b';
+            h.ColorMode(1).Profile2 = 'c';
+            h.ColorMode(1).Text = 'w';
+            
+            
+            h.ColorMode(2).Background = 'w';
+            h.ColorMode(2).Profile1 = 'b';
+            h.ColorMode(2).Profile2 = [0.6940 0.3840 0.7560];
+            h.ColorMode(2).Text = 'k';
+            
+            h.ColorIndex = 1;
+            
             h.Fig = figure('Name',sprintf('%s',obj.ExperimentName),...
                 'Units','pixels',...
                 'Position',[200 200 1024 512],...
-                'Color','k');
+                'Color',h.ColorMode(h.ColorIndex).Background);
             
             h.B(1) = uicontrol('style','togglebutton',...
                 'String','Cross Section',...
@@ -1339,7 +1352,8 @@ classdef Experiment < matlab.mixin.Copyable
             h.B(7) = uicontrol('style','checkbox',...
                 'String','...with white background',...
                 'units','normalized',...
-                'position',[.85 .05 .1 .04]);
+                'position',[.85 .05 .1 .04],...
+                'Callback',@changed_color);
             
             h.B(8) = uicontrol('style','slider',...
                 'Value',1,...
@@ -1400,7 +1414,6 @@ classdef Experiment < matlab.mixin.Copyable
             
             h.MainLine = [];
             h.ChildLine = [];
-            h.ChildColor = [.75 .75 1];
             h.hasCrossSection = 0;
             h.hasBothCrossSections = 0;
             h.hasChannel2 = 0;
@@ -1490,17 +1503,17 @@ classdef Experiment < matlab.mixin.Copyable
                 hold on
                 grid on
                 CurrentAxHeight = round(h.Fig.Position(4)*h.ImAx(h.MainIndex).Position(4));
-                h.ImAx(3).Color = 'k';
+                h.ImAx(3).Color = h.ColorMode(h.ColorIndex).Background;
                 h.ImAx(3).LineWidth = 1;
                 h.ImAx(3).FontSize = round(22*(CurrentAxHeight/756));
-                h.ImAx(3).XColor = 'w';
-                h.ImAx(3).YColor = 'b';
-                h.ImAx(3).GridColor = 'w';
+                h.ImAx(3).XColor = h.ColorMode(h.ColorIndex).Text;
+                h.ImAx(3).YColor = h.ColorMode(h.ColorIndex).Profile1;
+                h.ImAx(3).GridColor = h.ColorMode(h.ColorIndex).Text;
                 xlabel(sprintf('[%s]',UnitX))
                 ylabel(sprintf('%s [%s]',h.Channel{h.MainIndex},UnitY))
                 xlim([0 Points(end).*MultiplierX])
                 h.P.LineWidth = 2;
-                h.P.Color = 'b';
+                h.P.Color = h.ColorMode(h.ColorIndex).Profile1;
                 if h.hasBothCrossSections && (h.hasChannel2 && h.hasChannel1)
                     if ~isempty(h.ChildLine)
                         if ~isvalid(h.ChildLine)
@@ -1509,7 +1522,7 @@ classdef Experiment < matlab.mixin.Copyable
                     end
                     h.ChildLine.Visible = 'off';
                     h.ChildLine = drawline('Position',h.MainLine.Position,...
-                        'Parent',h.ImAx(h.ChildIndex),'Color',h.ChildColor);
+                        'Parent',h.ImAx(h.ChildIndex),'Color',h.ColorMode(h.ColorIndex).Profile2);
                     addlistener(h.ChildLine,'MovingROI',@moving_cross_section);
                     addlistener(h.ChildLine,'ROIMoved',@moving_cross_section);
                     CPos1 = [h.ChildLine.Position(1,1) h.ChildLine.Position(1,2)];
@@ -1521,17 +1534,17 @@ classdef Experiment < matlab.mixin.Copyable
                     h.CP = plot(ChildPoints.*MultiplierX,ChildProfile.*ChildMultiplierY);
                     grid on
                     CurrentAxHeight = round(h.Fig.Position(4)*h.ImAx(h.ChildIndex).Position(4));
-                    h.ImAx(3).Color = 'k';
+                    h.ImAx(3).Color = h.ColorMode(h.ColorIndex).Background;
                     h.ImAx(3).LineWidth = 1;
                     h.ImAx(3).FontSize = round(22*(CurrentAxHeight/756));
-                    h.ImAx(3).XColor = 'w';
-                    h.ImAx(3).YColor = h.ChildColor;
-                    h.ImAx(3).GridColor = 'w';
+                    h.ImAx(3).XColor = h.ColorMode(h.ColorIndex).Text;
+                    h.ImAx(3).YColor = h.ColorMode(h.ColorIndex).Profile2;
+                    h.ImAx(3).GridColor = h.ColorMode(h.ColorIndex).Text;
                     xlabel(sprintf('[%s]',UnitX))
                     ylabel(sprintf('%s [%s]',h.Channel{h.ChildIndex},UnitY))
                     xlim([0 ChildPoints(end).*MultiplierX])
                     h.CP.LineWidth = 2;
-                    h.CP.Color = h.ChildColor;
+                    h.CP.Color = h.ColorMode(h.ColorIndex).Profile2;
                     if isequal(h.BaseUnit{1},h.BaseUnit{2})
                         yyaxis left
                         ylim([min([min(ChildProfile)*ChildMultiplierY min(MainProfile)*MainMultiplierY])...
@@ -1585,7 +1598,7 @@ classdef Experiment < matlab.mixin.Copyable
                     delete(h.ImAx(3))
                 catch
                 end
-                h.MainLine = drawline('Color','b','Parent',varargin{1}.Parent);
+                h.MainLine = drawline('Color',h.ColorMode(h.ColorIndex).Profile1,'Parent',varargin{1}.Parent);
                 addlistener(h.MainLine,'MovingROI',@moving_cross_section);
                 addlistener(h.MainLine,'ROIMoved',@moving_cross_section);
                 Pos1 = [h.MainLine.Position(1,1) h.MainLine.Position(1,2)];
@@ -1607,20 +1620,20 @@ classdef Experiment < matlab.mixin.Copyable
                 hold on
                 grid on
                 CurrentAxHeight = round(h.Fig.Position(4)*h.ImAx(h.MainIndex).Position(4));
-                h.ImAx(3).Color = 'k';
+                h.ImAx(3).Color = h.ColorMode(h.ColorIndex).Background;
                 h.ImAx(3).LineWidth = 1;
                 h.ImAx(3).FontSize = round(22*(CurrentAxHeight/756));
-                h.ImAx(3).XColor = 'w';
-                h.ImAx(3).YColor = 'b';
-                h.ImAx(3).GridColor = 'w';
+                h.ImAx(3).XColor = h.ColorMode(h.ColorIndex).Text;
+                h.ImAx(3).YColor = h.ColorMode(h.ColorIndex).Profile1;
+                h.ImAx(3).GridColor = h.ColorMode(h.ColorIndex).Text;
                 xlabel(sprintf('[%s]',UnitX))
                 ylabel(sprintf('%s [%s]',h.Channel{h.MainIndex},UnitY))
                 xlim([0 Points(end).*MultiplierX])
                 h.P.LineWidth = 2;
-                h.P.Color = 'b';
+                h.P.Color = h.ColorMode(h.ColorIndex).Profile1;
                 if h.hasBothCrossSections && (h.hasChannel2 && h.hasChannel1)
                     h.ChildLine = drawline('Position',h.MainLine.Position,...
-                        'Parent',h.ImAx(h.ChildIndex),'Color',h.ChildColor);
+                        'Parent',h.ImAx(h.ChildIndex),'Color',h.ColorMode(h.ColorIndex).Profile2);
                     addlistener(h.ChildLine,'MovingROI',@moving_cross_section);
                     addlistener(h.ChildLine,'ROIMoved',@moving_cross_section);
                     CPos1 = [h.ChildLine.Position(1,1) h.ChildLine.Position(1,2)];
@@ -1632,12 +1645,12 @@ classdef Experiment < matlab.mixin.Copyable
                     yyaxis right
                     grid on
                     CurrentAxHeight = round(h.Fig.Position(4)*h.ImAx(h.MainIndex).Position(4));
-                    h.ImAx(3).Color = 'k';
+                    h.ImAx(3).Color = h.ColorMode(h.ColorIndex).Background;
                     h.ImAx(3).LineWidth = 1;
                     h.ImAx(3).FontSize = round(22*(CurrentAxHeight/756));
-                    h.ImAx(3).XColor = 'w';
-                    h.ImAx(3).YColor = h.ChildColor;
-                    h.ImAx(3).GridColor = 'w';
+                    h.ImAx(3).XColor = h.ColorMode(h.ColorIndex).Text;
+                    h.ImAx(3).YColor = h.ColorMode(h.ColorIndex).Profile2;
+                    h.ImAx(3).GridColor = h.ColorMode(h.ColorIndex).Text;
                     xlabel(sprintf('[%s]',UnitX))
                     ylabel(sprintf('%s [%s]',h.Channel{h.MainIndex},UnitY))
                     xlim([0 ChildPoints(end).*MultiplierX])
@@ -1652,7 +1665,7 @@ classdef Experiment < matlab.mixin.Copyable
                         ylim([min(ChildProfile)*ChildMultiplierY max(ChildProfile)*ChildMultiplierY]);
                     end
                     h.CP.LineWidth = 2;
-                    h.CP.Color = h.ChildColor;
+                    h.CP.Color = h.ColorMode(h.ColorIndex).Profile2;
                 end
                 hold off
             end
@@ -1748,10 +1761,10 @@ classdef Experiment < matlab.mixin.Copyable
                 AFMImage.draw_scalebar_into_current_image(Channel.NumPixelsX,Channel.NumPixelsY,Channel.ScanSizeX,BarToImageRatio,CurrentAxHeight,CurrentAxWidth);
                 c = colorbar;
                 c.FontSize = round(18*(CurrentAxHeight/756));
-                c.Color = 'w';
+                c.Color = h.ColorMode(h.ColorIndex).Text;
                 c.Label.String = sprintf('%s [%s]',h.Channel{Index},Unit);
                 c.Label.FontSize = round(22*(CurrentAxHeight/756));
-                c.Label.Color = 'w';
+                c.Label.Color = h.ColorMode(h.ColorIndex).Text;
                 
                 try
                     if (h.ScanSizeX(1) == h.ScanSizeX(2)) &&...
@@ -1791,23 +1804,27 @@ classdef Experiment < matlab.mixin.Copyable
             end
             
             function save_figure_to_file(varargin)
-                if h.B(7).Value
-                Frame = print('-RGBImage','-r200');
                 
-                CroppedFrame = Frame(:,1:round(.82*end),:);
-                
-                filter = {'*.png';'*.tif';'*.jpg'};
+                filter = {'*.png';'*.tif'};
                 [file, path] = uiputfile(filter);
-                
                 FullFile = fullfile(path,file);
-                imwrite(CroppedFrame,FullFile);
-                else
-                    filter = {'*.png';'*.tif'};
-                    [file, path] = uiputfile(filter);
-                    FullFile = fullfile(path,file);
-                    exportgraphics(h.Fig,FullFile,'Resolution',200,'BackgroundColor','current')
-                end
+                exportgraphics(h.Fig,FullFile,'Resolution',200,'BackgroundColor','current')
             end
+            
+            function changed_color(varargin)
+                
+                if ~h.B(7).Value
+                    h.ColorIndex = 1;
+                else
+                    h.ColorIndex = 2;
+                end
+                
+                h.Fig.Color = h.ColorMode(h.ColorIndex).Background;
+                
+                draw_channel_1
+                draw_channel_2
+                
+                end
             
             uiwait(h.Fig)
         end

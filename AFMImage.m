@@ -2123,14 +2123,22 @@ classdef AFMImage < matlab.mixin.Copyable
             end
             
             ScalebarThickness = 1/40;
-            DistFromBorder = 0.12;
+            DistFromBorder = 0.08;
             
             [Multiplier,Unit,SnapTo] = AFMImage.parse_unit_scale(ScanSizeX,'m',BarToImageRatio);
             
             Width = (SnapTo)/(ScanSizeX*Multiplier);
             Height = ScalebarThickness;
-            Left = 1-Width*(1+DistFromBorder*1.5);
+            Left = 1-Width*(1+DistFromBorder*1.8);
             Bottom = 1-(DistFromBorder-Height);
+            
+            BoxDeltaX = Width/4;
+            BoxDeltaY = Height*3;
+            
+            BackR = rectangle('Position',[Left-BoxDeltaX/2 Bottom-5*BoxDeltaY/6 Width+BoxDeltaX Height+BoxDeltaY].*NumPixelsX);
+            BackR.FaceColor = 'k';
+            BackR.EdgeColor = 'w';
+            BackR.LineWidth = 1;
             
             R = rectangle('Position',[Left Bottom Width Height].*NumPixelsX);
             R.FaceColor = 'w';
@@ -2138,7 +2146,7 @@ classdef AFMImage < matlab.mixin.Copyable
             R.LineWidth = 2;
             
             FontSize = round(42*FontSizeMult);
-            A = text((Left+Width/2)*NumPixelsX,(Bottom-Height)*NumPixelsX-FontSize/2,sprintf('%i %s',SnapTo,Unit),'HorizontalAlignment','center');
+            A = text((Left*1.13)*NumPixelsX,(1.005*Bottom-3*BoxDeltaY/6)*NumPixelsY,sprintf('%i %s',SnapTo,Unit),'HorizontalAlignment','center');
             A.Color = 'w';
             A.FontSize = FontSize;
             A.FontWeight = 'bold';
