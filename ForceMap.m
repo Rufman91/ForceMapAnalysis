@@ -1366,7 +1366,9 @@ classdef ForceMap < matlab.mixin.Copyable
                 
         end
                    
-        function fc_adhesion_energy(obj)
+        function fc_adhesion_energy_threshold(obj)
+            % Determine the adhesion energy using a predefined force
+            % threshold to distinguish interactions from background noise
             
             % Loop over all force curves
             for ii=1:100
@@ -1378,6 +1380,90 @@ classdef ForceMap < matlab.mixin.Copyable
                 xRet=obj.THRet{ii}-obj.CP_HardSurface(ii);
                 yAppLim=obj.BasedApp{ii};
                 yRetLim=obj.BasedRetCorr2{ii};
+                % Define variables
+                limit1=0;   % Define the limit
+                limit2=-20e-12;  % Define the limit
+                % Set all values = limit1 and < limit2 = 0
+                yAppLim(yAppLim>limit1)=0;  % Set all values above the zero line of the x-axis 0
+                yRetLim(yRetLim>limit1)=0;  % Set all values above the zero line of the x-axis 0
+                yAppLim1=yAppLim;
+                yRetLim1=yRetLim;                           
+                yAppLim(yAppLim>limit2)=0;
+                yRetLim(yRetLim>limit2)=0;
+                yAppLim2=yAppLim;
+                obj.yRetLim2{ii}=yRetLim;
+                
+                % Determine the adhesion energy
+                IntAppLim2(ii)=trapz(xApp,yAppLim); % Integrate the modified approach data
+                IntRetLim2(ii)=trapz(xRet,yRetLim); % Integrate the modified retraction data
+                
+                obj.RetAdhEnergy(ii)=IntRetLim2(ii);
+            end
+                obj.FMRetAdhEnergyMean=mean(obj.RetAdhEnergy);
+                obj.FMRetAdhEnergyStd=std(obj.RetAdhEnergy);
+            
+%             % %% Appendix
+%             close all
+%             % Graphical preview
+%             h_fig=figure(1);
+%             h_fig.Color='white'; % changes the background color of the figure
+%             h_fig.Units='normalized'; % Defines the units
+%             h_fig.OuterPosition=[0 0 1 1];% changes the size of the to the whole screen
+%             h_fig.PaperOrientation='landscape';
+%             %% Plotting the tiles
+%             t = tiledlayout(3,3);
+%             %t.TileSpacing = 'compact';
+%             %t.Padding = 'compact';
+%             t.TileSpacing = 'none'; % To reduce the spacing between the tiles
+%             t.Padding = 'none'; % To reduce the padding of perimeter of a tile
+%             nexttile
+%             hold on
+%             grid on
+%             plot(xApp,yApp,'g');
+%             plot(xRet,obj.BasedRet{fc},'r');
+%             plot(xRet,yRet,'b');
+%             nexttile
+%             hold on
+%             grid on
+%             plot(xRet,obj.BasedRet{fc},'r');
+%             plot(xRet,obj.BasedRet{fc},'r');
+%             plot(xRet(DataPts(1)-LimitIdx2:DataPts(1)-LimitIdx1,1),obj.BasedRet{fc}(DataPts(1)-LimitIdx2:DataPts(1)-LimitIdx1,1),'b');
+%             plot(xRet,BasedRetCorr2{fc},'g');
+%             nexttile;
+%             area(xApp,yApp,'FaceColor','y')
+%             nexttile;
+%             area(xRet,yRet,'FaceColor','y')
+%             nexttile;
+%             area(xApp,yAppLim1,'FaceColor','y')
+%             nexttile;
+%             area(xRet,yRetLim1,'FaceColor','y')
+%             nexttile;
+%             area(xApp,yAppLim2,'FaceColor','y')
+%             nexttile;
+%             area(xRet,yRetLim2,'FaceColor','y')
+%             nexttile
+%             hold on
+%             grid on
+%             plot(xApp,yApp,'g');
+%             plot(xRet,yRet,'b');
+%             area(xRet,yRetLim2,'FaceColor','y')        
+        end
+        
+         function fc_adhesion_energy_idxpulllength(obj)
+            % Determine the adhesion energy using the previous defined pulling length index
+            
+            % Loop over all force curves
+            for ii=1:100
+                if ~obj.SMFSFlag.Uncorrupt(ii)     % Selects all flagged 1 
+                continue
+                end
+                % Allocate data
+                xApp=obj.THApp{ii}-obj.CP_HardSurface(ii);
+                xRet=obj.THRet{ii}-obj.CP_HardSurface(ii);
+                yAppLim=obj.BasedApp{ii};
+                yRetLim=obj.BasedRetCorr2{ii};
+        %%%5% 25/5/21 %%%%%%%%%   
+                obj.PullingLengthIdx
                 % Define variables
                 limit1=0;   % Define the limit
                 limit2=-20e-12;  % Define the limit

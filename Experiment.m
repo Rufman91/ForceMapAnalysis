@@ -1077,12 +1077,11 @@ classdef Experiment < matlab.mixin.Copyable
                 if isequal(KeepFlagged,'Yes') && obj.SMFSFlag.Preprocessed(ii) == 1
                     continue
                 end
-                obj.FM{ii}.fc_chipprop
-                waitbar(ii/NLoop,h,sprintf('Preprocessing ForceMap %i/%i\nFitting Base Lines',i,NLoop));
+                waitbar(ii/NLoop,h,sprintf('Preprocessing ForceMap %i/%i\nProcessing force curves',ii,NLoop));
+                obj.FM{ii}.fc_chipprop              
                 obj.FM{ii}.fc_based_ret_correction
-                waitbar(ii/NLoop,h,sprintf('Preprocessing ForceMap %i/%i\nWrapping Up And Saving',i,NLoop));
-                
-                
+                waitbar(ii/NLoop,h,sprintf('Preprocessing ForceMap %i/%i\nWrapping Up And Saving',ii,NLoop));
+                                
                 obj.FM{ii}.save();
                 obj.SMFSFlag.Preprocessed(ii) = 1;
             end
@@ -1095,12 +1094,31 @@ classdef Experiment < matlab.mixin.Copyable
             % non-functionalize
             % Needed function: obj.preprocessing
             
+             h = waitbar(0,'setting up','Units','normalized','Position',[0.4 0.3 0.2 0.1]);
+            NLoop = length(obj.ForceMapNames);
+            if sum(obj.SMFSFlag.Presorted) >= 1
+                KeepFlagged = questdlg(sprintf('Some maps have been processed already.\nDo you want to skip them and keep old results?'),...
+                    'Processing Options',...
+                    'Yes',...
+                    'No',...
+                    'No');
+            else
+                KeepFlagged = 'No';
+            end
+            
+            
             % Loop over the imported force maps
             for ii=1:obj.NumForceMaps
             %for ii=46:obj.NumForceMaps % Debugging
-            % Command window output
+                if isequal(KeepFlagged,'Yes') && obj.SMFSFlag.Preprocessed(ii) == 1
+                    continue
+                end
+                obj.FM{ii}.fc_chipprop      
+                waitbar(ii/NLoop,h,sprintf('Preprocessing ForceMap %i/%i\nProcessing force curves',ii,NLoop));
+                obj.FM{ii}.base_and_tilt('linear');
+                waitbar(ii/NLoop,h,sprintf('Preprocessing ForceMap %i/%i\nWrapping Up And Saving',ii,NLoop));
                 sprintf('Force Map No. %d of %d',ii,obj.NumForceMaps) % Gives current Force Map Position
-                obj.FM{ii}.base_and_tilt
+                
                 obj.FM{ii}.estimate_cp_hardsurface
                 obj.FM{ii}.fc_selection_procedure
                     if nnz(obj.FM{ii}.SMFSFlag.Min)<20 % Only if more than 20 force curves fulfil the citeria the whole force map is considered successfully functionalized
@@ -1108,7 +1126,9 @@ classdef Experiment < matlab.mixin.Copyable
                     else
                         obj.SMFSFlag.SelectFM(ii)=1;
                     end
+                    obj.SMFSFlag.Presorted(ii) = 1;
             end
+            close(h);
         end
                
         function SMFS_print(obj,XMin,XMax,YMin,YMax)
@@ -1561,9 +1581,9 @@ classdef Experiment < matlab.mixin.Copyable
                 % axes
                 ax3=gca;
                 ax3.FontSize = 16;
-                ax3.XLabel.String = 'Force map number (1)';
+                ax3.XLabel.String = 'PullingLength (m)';
                 ax3.XLabel.FontSize = 20;
-                ax3.YLabel.String = 'PullingLength (m)';
+                ax3.YLabel.String = 'Frequency count (1)';
                 ax3.YLabel.FontSize = 20;               
                 hold on;
                 % Save figure
@@ -1593,9 +1613,10 @@ classdef Experiment < matlab.mixin.Copyable
                 % axes
                 ax4=gca;
                 ax4.FontSize = 16;
-                ax4.XLabel.String = 'Force map number (1)';
+                ax4.YScale='log';
+                ax4.XLabel.String = 'Adhesion Energy (J)';
                 ax4.XLabel.FontSize = 20;
-                ax4.YLabel.String = 'Adhesion Energy (J)';
+                ax4.YLabel.String = 'Frequency count (1)';
                 ax4.YLabel.FontSize = 20;               
                 hold on;
                 % Save figure
@@ -1609,7 +1630,198 @@ classdef Experiment < matlab.mixin.Copyable
                 %% House keeping
                 close all
         end
-            
+        
+           function SMFS_analysis_selction_fit(obj,VelocityValue,SubstrateValue,EnvCondValue,ChipCantValue,ChipboxValue,LinkerValue)
+                
+                
+                for ii=1:obj.NumForceMaps
+                    if (strcmpi(obj.FM{ii}.VelocityConvert,VelocityValue) || strcmpi(VelocityValue,'All')) ...
+                            && (strcmpi(obj.FM{ii}.Substrate,SubstrateValue) || strcmpi(SubstrateValue,'All')) ...
+                            && (strcmpi(obj.FM{ii}.EnvCond,EnvCondValue) || strcmpi(EnvCondValue,'All')) ...
+                            && (strcmpi(obj.FM{ii}.ChipCant,ChipCantValue) || strcmpi(ChipCantValue,'All')) ...
+                            && (strcmpi(obj.FM{ii}.Chipbox,ChipboxValue) || strcmpi(ChipboxValue,'All')) ...
+                            && (strcmpi(obj.FM{ii}.Linker,LinkerValue) || strcmpi(LinkerValue,'All'))
+                        % Define variables for the if condition 
+                        IdxArray(ii,1)=ii;
+                        IdxNonzero=find(IdxArray,1,'first');
+                        
+                        if ~isempty(IdxArray) && IdxNonzero==ii
+                            obj.FM{ii}.PullingLength(obj.FM{ii}.PullingLength==0)=nan;
+                            ConcatArrayPullingLength1=obj.FM{ii}.PullingLength(:);
+                            ConcatArrayPullingLength2=obj.FM{ii}.PullingLength(:);
+                            obj.FM{ii}.RetAdhEnergy(obj.FM{ii}.RetAdhEnergy==0)=nan;
+                            ConcatArrayRetAdhEnergy1=obj.FM{ii}.RetAdhEnergy(:);
+                            ConcatArrayRetAdhEnergy2=obj.FM{ii}.RetAdhEnergy(:);
+                        else
+                            obj.FM{ii}.PullingLength(obj.FM{ii}.PullingLength==0)=nan;
+                            ConcatArrayPullingLength1=horzcat(ConcatArrayPullingLength1,obj.FM{ii}.PullingLength(:));
+                            ConcatArrayPullingLength2=vertcat(ConcatArrayPullingLength2,obj.FM{ii}.PullingLength(:));
+                            obj.FM{ii}.RetAdhEnergy(obj.FM{ii}.RetAdhEnergy==0)=nan;
+                            ConcatArrayRetAdhEnergy1=horzcat(ConcatArrayRetAdhEnergy1,obj.FM{ii}.RetAdhEnergy(:));
+                            ConcatArrayRetAdhEnergy2=vertcat(ConcatArrayRetAdhEnergy2,obj.FM{ii}.RetAdhEnergy(:));
+                        end
+                    end
+                end
+                
+                % Change into the Folder of Interest
+                cd(obj.ExperimentFolder) % Move into the folder
+                % Create folders for saving the produced figures
+                %foldername='FM_test';    % for debugging
+                foldername='FM_analysis_fit';    % Defines the folder name
+                mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
+                currpath=fullfile(obj.ExperimentFolder,foldername);
+                cd(currpath);
+                
+                % Define names
+                figname=strcat(obj.ExperimentName,{'_'},VelocityValue,{'_'},SubstrateValue,{'_'},EnvCondValue,{'_'},ChipCantValue,{'_'},ChipboxValue,{'_'},LinkerValue,{'_'});
+                figname=char(figname);
+                parttitle1='PullingLength';
+                parttitle2='AdhesionEnergy';
+                fulltitle1=strcat(parttitle1,{'_'},figname);
+                fulltitle2=strcat(parttitle2,{'_'},figname);
+                
+                % Define variables
+                pdname='Lognormal'; % Chooses the probability distribution 
+                
+                
+                MaxPullingLength=max(ConcatArrayPullingLength2);
+                MinPullingLength=min(ConcatArrayPullingLength2);
+                
+                NumFC=sum(~isnan(ConcatArrayRetAdhEnergy2))
+                             
+                % Fitting the data
+                distLognormalRetAdh=fitdist(ConcatArrayRetAdhEnergy2,pdname); % Fits probability distribution object to data
+                distLognormalPullLen=fitdist(ConcatArrayPullingLength2,pdname); % Fits probability distribution object to data
+                % Calculate the mode (peak) of the log-normal distribution 
+                LogNormalModeRetAdh=exp(distLognormalRetAdh.mu-distLognormalRetAdh.sigma^2);
+                LogNormalModePullLen=exp(distLognormalPullLen.mu-distLognormalPullLen.sigma^2);
+                % Calculate the mode (peak) of the log-normal distribution                
+                LogNormalMedianPullLen=exp(distLognormalPullLen.mu);
+                % Calculate the variance of the log-normal distribution 
+                LogNormalVarRetAdh=exp((distLognormalRetAdh.sigma^2)-1)*exp(2*distLognormalRetAdh.mu+distLognormalRetAdh.sigma^2);
+                LogNormalVarPullLen=exp((distLognormalPullLen.sigma^2)-1)*exp(2*distLognormalPullLen.mu+distLognormalPullLen.sigma^2);
+                % Determine the probability density function for the plot
+                pdfLognormalRetAdh=pdf(distLognormalRetAdh,linspace(0,max(ConcatArrayRetAdhEnergy2),1000));    
+                pdfLognormalPullLen=pdf(distLognormalPullLen,linspace(0,max(ConcatArrayPullingLength2),1000));    
+                % pdfLognormal=distLognormal.pdf(linspace(0,max(ConcatArrayRetAdhEnergy2),1000))
+         
+                % Figure 3
+                h_fig3=figure(3);
+                h_fig3.Color='white'; % changes the background color of the figure
+                h_fig3.Units='normalized'; % Defines the units
+                h_fig3.OuterPosition=[0 0 1 1];% changes the size of the to the whole screen
+                h_fig3.PaperOrientation='landscape';
+                h_fig3.Name=figname;
+                % Histogram
+                 % Histogram
+                hold on
+                yyaxis left               
+                h3=histogram(ConcatArrayPullingLength2(~isnan(ConcatArrayPullingLength2)));
+                yyaxis right
+                plot(linspace(0,max(ConcatArrayPullingLength2),1000),pdfLognormalPullLen)
+                xlim([0 max(ConcatArrayPullingLength2)])
+              %  h3.BinWidth=20e-9;
+                h3.FaceAlpha=1;
+                h3.FaceColor='b';
+                h3.EdgeColor='k';
+                % title 
+                t1=title(fulltitle1);
+                % axes
+                ax3=gca;
+                ax3.FontSize = 16;
+                ax3.XLabel.String = 'PullingLength (m)';
+                ax3.XLabel.FontSize = 20;
+                ax3.YLabel.String = 'Frequency count (1)';
+                ax3.YLabel.FontSize = 20;               
+                hold on;
+                % text 
+                NE = [max(xlim) max(ylim)]-[diff(xlim) diff(ylim)]*0.2;   % Define the position in the plot    
+                SE = [max(xlim) min(ylim)]+[-diff(xlim) diff(ylim)]*0.1;
+                partstrA1='median=';
+                partstrA2=num2str( LogNormalMedianPullLen);
+                partstrB1='min=';
+                partstrB2=num2str(MinPullingLength);
+                partstrC1='max=';
+                partstrC2=num2str(MaxPullingLength);
+                fullstrA=strcat(partstrA1,partstrA2); % Define the string that shall be shown in the plot
+                fullstrB=strcat(partstrB1,partstrB2); % Define the string that shall be shown in the plot
+                fullstrC=strcat(partstrC1,partstrC2); % Define the string that shall be shown in the plot
+                fullstrBC=strcat(fullstrB,{'  '},fullstrC);
+                te1=text(NE(1), NE(2),fullstrA, 'VerticalAlignment','top', 'HorizontalAlignment','right');
+                te1.FontSize = 22;
+                te2=text(SE(1), SE(2),fullstrBC, 'VerticalAlignment','top', 'HorizontalAlignment','right');
+                te2.FontSize = 22;
+                % Save figure
+                %%% Define the name for the figure title
+                partname='histo';
+                % fullname=sprintf('%s%s',figname,partname);
+                fullname3=strcat(figname,{'_'},parttitle1,{'_'},partname);
+                fullname3=char(fullname3);
+                %%% Save the current figure in the current folder
+                print(gcf,fullname3,'-dpng');
+                
+                % Figure 4
+                h_fig4=figure(4);
+                h_fig4.Color='white'; % changes the background color of the figure
+                h_fig4.Units='normalized'; % Defines the units
+                h_fig4.OuterPosition=[0 0 1 1];% changes the size of the to the whole screen
+                h_fig4.PaperOrientation='landscape';
+                h_fig4.Name=figname;
+                % Histogram
+                hold on
+                yyaxis left               
+                h4=histogram(ConcatArrayRetAdhEnergy2(~isnan(ConcatArrayRetAdhEnergy2)));
+                yyaxis right
+                plot(linspace(0,max(ConcatArrayRetAdhEnergy2),1000),pdfLognormalRetAdh)
+                xlim([0 max(ConcatArrayRetAdhEnergy2)])
+                h4.BinWidth=10e-19;
+                h4.FaceAlpha=1;
+                h4.FaceColor='g';
+                h4.EdgeColor='k';
+                % title
+                t2=title(fulltitle2);
+                % axes
+                ax4=gca;
+                ax4.FontSize = 16;
+                %ax4.YScale='log';
+                ax4.XLabel.String = 'Adhesion Energy (J)';
+                ax4.XLabel.FontSize = 20;
+                ax4.YLabel.String = 'Frequency count (1)';
+                ax4.YLabel.FontSize = 20;               
+                hold on;
+                % text 
+                NE = [max(xlim) max(ylim)]-[diff(xlim) diff(ylim)]*0.2;   % Define the position in the plot
+                SE = [max(xlim) min(ylim)]+[-diff(xlim) diff(ylim)]*0.1;   % Define the position in the plot       
+                partstrA1='Mode=';
+                partstrA2=num2str(LogNormalModeRetAdh);                                 
+                partstrB1='Variance=';
+                partstrB2=num2str(LogNormalVarRetAdh);
+                partstrC1='Num fc analysed=';
+                partstrC2=num2str(NumFC);           
+                fullstrA=strcat(partstrA1,partstrA2); % Define the string that shall be shown in the plot
+                fullstrB=strcat(partstrB1,partstrB2); % Define the string that shall be shown in the plot               
+                fullstrAB=strcat(fullstrA,{'  '},fullstrB);
+                fullstrC=strcat(partstrC1,partstrC2); % Define the string that shall be shown in the plot               
+                te1=text(NE(1), NE(2),fullstrAB, 'VerticalAlignment','top', 'HorizontalAlignment','right');
+                te1.FontSize = 22;
+                te2=text(SE(1), SE(2),fullstrC, 'VerticalAlignment','top', 'HorizontalAlignment','right');
+                te2.FontSize = 22;
+                
+                % Save figure
+                %%% Define the name for the figure title
+                partname='histo';
+                % fullname=sprintf('%s%s',figname,partname);
+                fullname4=strcat(figname,{'_'},parttitle2,{'_'},partname);
+                fullname4=char(fullname4);
+                %%% Save the current figure in the current folder
+                print(gcf,fullname4,'-dpng');
+                %% House keeping
+                close all
+        end
+    
+
+
+        
         function SMFS_statistics(obj)
            
             % Uncorrupt force curves
@@ -2965,6 +3177,7 @@ classdef Experiment < matlab.mixin.Copyable
                 obj.SPMFlag.Grouping = false;
                 obj.SMFSFlag.SelectFM = false(NFM,1);
                 obj.SMFSFlag.Preprocessed = false(NFM,1);
+                obj.SMFSFlag.Presorted = false(NFM,1);
                 
                 obj.CantileverTipFlag = false;
                 if obj.NumCantileverTips > 0
@@ -3001,6 +3214,7 @@ classdef Experiment < matlab.mixin.Copyable
                 obj.SPMFlag.Grouping = false;
                 obj.SMFSFlag.SelectFM(end+1:NFM) = false(DiffFM,1);
                 obj.SMFSFlag.Preprocessed(end+1:NFM) = false(DiffFM,1);
+                obj.SMFSFlag.Presorted(end+1:NFM) = false(DiffFM,1);
                 
                 obj.CantileverTipFlag = false;
                 if obj.NumCantileverTips > 0
