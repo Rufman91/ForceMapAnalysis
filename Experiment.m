@@ -1287,7 +1287,7 @@ classdef Experiment < matlab.mixin.Copyable
             
             h.ColorMode(2).Background = 'w';
             h.ColorMode(2).Profile1 = 'b';
-            h.ColorMode(2).Profile2 = [0.6940 0.3840 0.7560];
+            h.ColorMode(2).Profile2 = [0 181 26]./255; % alternatives %[80 200 204]./255;%[0,0.870588235294118,0.407843137254902];
             h.ColorMode(2).Text = 'k';
             
             h.ColorIndex = 1;

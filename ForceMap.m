@@ -437,6 +437,8 @@ classdef ForceMap < matlab.mixin.Copyable
             obj.CP_GoF = zeros(obj.NCurves,2);
             Range = find(obj.SelectedCurves);
             h = waitbar(0,'Setting up...','Name',obj.Name);
+            TipRadius = obj.TipRadius;
+            PoissonR = obj.PoissonR;
             for i=Range'
                 Based = obj.BasedApp{i};
                 THApp = obj.HHApp{i} - obj.BasedApp{i}/obj.SpringConstant;
@@ -447,13 +449,13 @@ classdef ForceMap < matlab.mixin.Copyable
                 obj.DeltaE = ones(length(Based),1);
                 testrange = floor(0.5*length(Based)):(length(Based)-5);
                 msg = sprintf('applying goodness of fit method on curve Nr.%i/%i',i,obj.NCurves);
-                for j=testrange
-                    prog = (j-testrange(1))/length(testrange);
-                    waitbar(prog,h,msg);
-                    [emod,gof] = obj.hertz_fit_gof(smoothx,smoothy,j,1,'parabolic');
+                parfor j=testrange
+%                     prog = (j-testrange(1))/length(testrange);
+%                     
+                    [~,gof] = ForceMap.hertz_fit_gof(smoothx,smoothy,j,1,'parabolic',TipRadius,PoissonR);
                     Rsquare(j) = gof.rsquare;
-                    E(j) = emod;
                 end
+                waitbar(i/obj.NCurves,h,msg);
                 Rsquare(Rsquare==2) = min(Rsquare);
                 obj.GoF{i} = normalize(Rsquare,'range');
                 [~,CPidx] = max(obj.GoF{i});
@@ -2558,29 +2560,14 @@ classdef ForceMap < matlab.mixin.Copyable
             end
         end
         
-    end
-    
-    methods
-        % non-static auxiliary methods
-        
-        function save(obj)
-            current = what();
-            cd(obj.Folder)
-            savename = sprintf('%s.mat',obj.Name);
-            save(savename,'obj','-v7.3')
-            cd(current.path)
-            savemsg = sprintf('Changes to ForceMap %s saved to %s',obj.Name,obj.Folder);
-            disp(savemsg);
-        end
-        
-        function [E_mod,GoF,Hertzfit] = hertz_fit_gof(obj,tip_h,force,CP,curve_percent,shape)
+        function [E_mod,GoF,Hertzfit] = hertz_fit_gof(tip_h,force,CP,curve_percent,shape,TipRadius,PoissonR)
             
-            if obj.TipRadius == -1
+            if TipRadius == -1
                 prompt = {'What is the nominal tip radius of the used cantilever in nm?'};
                 dlgtitle = 'Cantilever tip';
                 dims = [1 35];
                 definput = {'10'};
-                obj.TipRadius = str2double(inputdlg(prompt,dlgtitle,dims,definput));
+                TipRadius = str2double(inputdlg(prompt,dlgtitle,dims,definput));
             end
             
             if nargin < 6
@@ -2606,11 +2593,26 @@ classdef ForceMap < matlab.mixin.Copyable
                     CPforce,f);
                 % calculate E module based on the Hertz model. Be careful
                 % to convert to unnormalized data again
-                E_mod = 3*(Hertzfit.a*ranf/rant^(3/2))/(4*sqrt(obj.TipRadius*10^(-9)))*(1-obj.PoissonR^2);
+                E_mod = 3*(Hertzfit.a*ranf/rant^(3/2))/(4*sqrt(TipRadius*10^(-9)))*(1-PoissonR^2);
             elseif isequal(shape,'spherical')
             elseif isequal(shape,'conical')
             elseif isequal(shape,'pyramid')
             end
+        end
+        
+    end
+    
+    methods
+        % non-static auxiliary methods
+        
+        function save(obj)
+            current = what();
+            cd(obj.Folder)
+            savename = sprintf('%s.mat',obj.Name);
+            save(savename,'obj','-v7.3')
+            cd(current.path)
+            savemsg = sprintf('Changes to ForceMap %s saved to %s',obj.Name,obj.Folder);
+            disp(savemsg);
         end
         
         function calculate_reference_slope_from_area(obj,Mask)
@@ -2895,7 +2897,7 @@ classdef ForceMap < matlab.mixin.Copyable
             len = size(X,4);
             if obj.CPFlag.CNNopt == 0
                 CantHandle = true;
-                obj.MiniBatchSize = len;
+                obj.MiniBatchSize = 1024;
                 DynMBSdone = false;
                 HasFailed = false;
                 while CantHandle == true
