@@ -869,7 +869,7 @@ classdef AFMImage < matlab.mixin.Copyable
         
         function OutMask = mask_apex_points_by_rotation(InImage,NumRotations,BackgroundMask)
             
-            RotAngles = 0:180/NumRotations:180;
+            RotAngles = 0:90/NumRotations:90;
             RotAngles(end) = [];
             OutMask = zeros(size(InImage));
             if (nargin > 2) && ~isequal(size(InImage),size(BackgroundMask))
@@ -914,6 +914,76 @@ classdef AFMImage < matlab.mixin.Copyable
             
             OutMask = OutMask./NumRotations;
             
+        end
+        
+        function [OutMask,AngleMask] = mask_apex_points_by_convolution(InChannel,RadiusMeters,NumRotations,MinKernelSize,BackgroundMask)
+            
+            OutMask = zeros(size(InChannel.Image));
+            RotAngles = 0:180/NumRotations:180;
+            RotAngles(end) = [];
+            RotAngles = deg2rad(RotAngles);
+            MinKernelSize = MinKernelSize + (1-mod(MinKernelSize,2));
+            
+            MaxSizePerPixel = RadiusMeters/MinKernelSize;
+            SizePerPixel = InChannel.ScanSizeX/InChannel.NumPixelsX;
+            KernelSize = round(RadiusMeters/SizePerPixel);
+            KernelSize = KernelSize + (1-mod(KernelSize,2));
+            if SizePerPixel > MaxSizePerPixel
+                Image = imresize(InChannel.Image,SizePerPixel/MaxSizePerPixel,'bicubic');
+                KernelSize = MinKernelSize;
+                SizePerPixel = MaxSizePerPixel;
+            else
+                Image = InChannel.Image;
+            end
+            
+            Kernel = zeros(KernelSize,KernelSize,NumRotations);
+            FlattenKernel = zeros(KernelSize,KernelSize);
+            KernelCenter = (KernelSize+1)/2;
+            Radius = KernelCenter;
+            % Create Kernel
+            for k=1:NumRotations
+                for i=1:KernelSize
+                    for j=1:KernelSize
+                        if (i-KernelCenter)^2 + (j-KernelCenter)^2 <= Radius^2
+                        a = [(i-KernelCenter) (j-KernelCenter)];
+                        b = [cos(RotAngles(k)) sin(RotAngles(k))];
+                        Dist = dot(a,b)/norm(b);
+                        Kernel(i,j,k) = Radius^3/8 - abs(Dist^3);
+                        if k == 1
+                            FlattenKernel(i,j) = 1;
+                        end
+                        end
+                    end
+                end
+            end
+            FlattenKernel = imresize(FlattenKernel,[10*KernelSize+1 10*KernelSize+1],'nearest');
+            FlattenKernel = FlattenKernel/(sum(FlattenKernel,'all'));
+            
+            FlattenedImage = Image - conv2(Image,FlattenKernel,'same');
+            
+%             % Debug section
+%             tiledlayout(5,5)
+%             for i = 1:NumRotations
+%                 nexttile
+%                 imshow(Kernel(:,:,i),[])
+%             end
+            
+            TempMask = zeros([size(Image) NumRotations]);
+            TempMask = gpuArray(TempMask);
+            FlattenedImage = gpuArray(FlattenedImage);
+            Kernel = gpuArray(Kernel);
+            TempMask = convn(FlattenedImage,Kernel);
+            AngleMask = gpuArray(zeros(size(TempMask,1),size(TempMask,2)));
+            
+            [OutMask,AngleIndex] = max(TempMask,[],3);
+            
+            for i=1:NumRotations
+                AngleMask(AngleIndex == i) = RotAngles(i);
+            end
+            
+            if nargin > 4
+                OutMask(imresize(BackgroundMask,size(TempMask(:,:,1)),'nearest')==1) = 0;
+            end
         end
         
         function OutImage = masked_plane_fit(Image,Mask)
