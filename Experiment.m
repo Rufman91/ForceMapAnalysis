@@ -832,12 +832,12 @@ classdef Experiment < matlab.mixin.Copyable
             h = waitbar(0,'setting up...');
             for i=1:obj.NumAFMImages
                 waitbar(i/obj.NumAFMImages,h,{sprintf('Processing %i/%i:',i,obj.NumAFMImages),sprintf('%s',obj.I{i}.Name)});
-                [Processed,Index] = obj.I{i}.get_channel('R-T Combined');
+                [Processed,Index] = obj.I{i}.get_channel('T-RT Combined');
                 T = obj.I{i}.get_channel('Height (Trace)');
                 RT = obj.I{i}.get_channel('Height (Retrace)');
                 if isempty(Processed)
                     Processed = T;
-                    Processed.Name = 'R-T Combined';
+                    Processed.Name = 'T-RT Combined';
                     Index = length(obj.I{i}.Channel)+1;
                     obj.I{i}.NumChannels = Index;
                 end
@@ -847,7 +847,10 @@ classdef Experiment < matlab.mixin.Copyable
                     T.Image = AFMImage.subtract_line_fit_vertical_rov(T.Image,WindowSize,false);
                     RT.Image = AFMImage.subtract_line_fit_vertical_rov(RT.Image,WindowSize,false);
                 end
+                
                 Processed.Image = min(T.Image,RT.Image);
+                TempImage = min(abs(T.Image),abs(RT.Image));
+                Processed.Image(Processed.Image < 0) = TempImage(Processed.Image < 0);
                 for j=1:NIter
                     Processed.Image = AFMImage.subtract_line_fit_vertical_rov(Processed.Image,WindowSize,false);
                 end

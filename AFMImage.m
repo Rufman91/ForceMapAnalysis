@@ -138,12 +138,16 @@ classdef AFMImage < matlab.mixin.Copyable
         
         function delete_channel(obj,ChannelName)
             k = 0;
+            Index = [];
             for i=1:length(obj.Channel)
                 if isequal(obj.Channel(i).Name,ChannelName)
                     ChannelStruct = obj.Channel(i);
                     Index(k+1) = i;
                     k = k+1;
                 end
+            end
+            if isempty(Index)
+                return
             end
             obj.Channel(Index) = [];
             if k > 1
@@ -343,11 +347,29 @@ classdef AFMImage < matlab.mixin.Copyable
             end
         end
         
-        function find_and_classify_fibrils(obj,RadiusMeters,NumRotations,MinKernelSize)
+        function find_and_classify_fibrils(obj,ChannelName,RadiusMeters,NumRotations,MinKernelSize)
             
-            Channel = obj.get_channel('Processed');
+            Channel = obj.get_channel(ChannelName);
+            obj.delete_channel('Zylindricity');
+            obj.delete_channel('Orientation');
             
             [ActivationImage,AngleImage] = AFMImage.mask_apex_points_by_convolution(Channel,RadiusMeters,NumRotations,MinKernelSize);
+            
+            % Write into Channels
+            OutChannel1 = Channel;
+            OutChannel1.Name = 'Zylindricity';
+            OutChannel1.Unit = 'none';
+            OutChannel1.Image = gather(ActivationImage);
+            obj.Channel(end+1) = OutChannel1;
+            
+            
+            OutChannel2 = Channel;
+            OutChannel2.Name = 'Orientation';
+            OutChannel2.Unit = 'rad';
+            OutChannel2.Image = gather(AngleImage);
+            obj.Channel(end+1) = OutChannel2;
+            
+            obj.NumChannels = length(obj.Channel);
             
             
             
