@@ -821,6 +821,41 @@ classdef Experiment < matlab.mixin.Copyable
             close(h)
         end
         
+        function image_analysis_flatten_and_combine_trace_retrace_automatic(obj,WindowSize,NIter)
+            
+            if nargin < 2
+                WindowSize = .2;
+                NIter = 3;
+            end
+            
+            %main loop
+            h = waitbar(0,'setting up...');
+            for i=1:obj.NumAFMImages
+                waitbar(i/obj.NumAFMImages,h,{sprintf('Processing %i/%i:',i,obj.NumAFMImages),sprintf('%s',obj.I{i}.Name)});
+                [Processed,Index] = obj.I{i}.get_channel('R-T Combined');
+                T = obj.I{i}.get_channel('Height (Trace)');
+                RT = obj.I{i}.get_channel('Height (Retrace)');
+                if isempty(Processed)
+                    Processed = T;
+                    Processed.Name = 'R-T Combined';
+                    Index = length(obj.I{i}.Channel)+1;
+                    obj.I{i}.NumChannels = Index;
+                end
+                T.Image = AFMImage.subtract_line_fit_hist(T.Image,.5);
+                RT.Image = AFMImage.subtract_line_fit_hist(RT.Image,.5);
+                for j=1:NIter
+                    T.Image = AFMImage.subtract_line_fit_vertical_rov(T.Image,WindowSize,false);
+                    RT.Image = AFMImage.subtract_line_fit_vertical_rov(RT.Image,WindowSize,false);
+                end
+                Processed.Image = min(T.Image,RT.Image);
+                for j=1:NIter
+                    Processed.Image = AFMImage.subtract_line_fit_vertical_rov(Processed.Image,WindowSize,false);
+                end
+                obj.I{i}.Channel(Index) = Processed;
+            end
+            close(h)
+        end
+        
         function image_analysis_mask_background(obj,Thresh)
             
             if nargin < 2
@@ -1304,6 +1339,7 @@ classdef Experiment < matlab.mixin.Copyable
                 'Callback',@cross_section_toggle);
             
             [ClassPopUp,ClassIndex] = obj.string_of_existing_class_instances();
+            h.NumClasses = length(ClassPopUp);
             Class{1} = obj.get_class_instance(ClassIndex(1,:));
             Class{2} = obj.get_class_instance(ClassIndex(1,:));
             PopUp = Class{1}.string_of_existing();
@@ -1413,10 +1449,20 @@ classdef Experiment < matlab.mixin.Copyable
                 'position',[.85 .15 .1 .04],...
                 'Callback',@upscale_images);
             
+            h.B(20) = uicontrol('style','checkbox',...
+                'String','Lock Channels',...
+                'units','normalized',...
+                'position',[.85 .20 .1 .04],...
+                'Callback',@lock_channels);
+            
             h.Channel1Max = 1;
             h.Channel1Min = 0;
             h.Channel2Max = 1;
             h.Channel2Min = 0;
+            
+            h.CurChannel1Idx = h.B(2).Value;
+            h.CurChannel2Idx = h.B(3).Value;
+            h.RelativeChannelIndex = 0;
             
             h.MainLine = [];
             h.ChildLine = [];
@@ -1424,6 +1470,7 @@ classdef Experiment < matlab.mixin.Copyable
             h.hasBothCrossSections = 0;
             h.hasChannel2 = 0;
             h.isUpscaled = false;
+            h.lockedChannels = h.B(20).Value;
             [~,DefIndex] = Class{1}.get_channel('Processed');
             if isempty(DefIndex)
                 DefIndex = 2;
@@ -1707,7 +1754,26 @@ classdef Experiment < matlab.mixin.Copyable
                     end
                 end
                 
-                Class{Index} = obj.get_class_instance(ClassIndex(h.B(15+Index).Value,:));
+                
+                if h.lockedChannels && Index==1
+                    h.CurChannel1Idx = h.B(16).Value;
+                    h.B(17).Value = mod(h.CurChannel1Idx + h.RelativeChannelIndex,h.NumClasses+1);
+                    h.CurChannel2Idx = h.B(17).Value;
+                    CurIndex = h.CurChannel1Idx;
+                elseif h.lockedChannels && Index==2
+                    h.CurChannel2Idx = h.B(17).Value;
+                    h.B(16).Value = mod(h.CurChannel2Idx - h.RelativeChannelIndex,h.NumClasses+1);
+                    h.CurChannel1Idx = h.B(16).Value;
+                    CurIndex = h.CurChannel2Idx;
+                else
+                    CurIndex = h.B(15+Index).Value;
+                    h.CurChannel2Idx = h.B(17).Value;
+                    h.CurChannel1Idx = h.B(16).Value;
+                end
+                
+                h.RelativeChannelIndex = h.CurChannel2Idx - h.CurChannel1Idx;
+                
+                Class{Index} = obj.get_class_instance(ClassIndex(CurIndex,:));
                 CurrentChannelName = h.B(1+Index).String{h.B(1+Index).Value};
                 PopUp = Class{Index}.string_of_existing();
                 set(h.B(1+Index),'String',PopUp)
@@ -1841,6 +1907,16 @@ classdef Experiment < matlab.mixin.Copyable
                 
                 h.isUpscaled = h.B(19).Value;
                 
+                draw_channel_1
+                draw_channel_2
+                
+            end
+            
+            function lock_channels(varargin)
+                
+                h.lockedChannels = h.B(20).Value;
+                
+                h.RelativeChannelIndex = h.CurChannel2Idx - h.CurChannel1Idx;
                 draw_channel_1
                 draw_channel_2
                 

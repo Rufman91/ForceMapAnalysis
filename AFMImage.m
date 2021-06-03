@@ -343,7 +343,17 @@ classdef AFMImage < matlab.mixin.Copyable
             end
         end
         
-        function find_and_classify_fibrils(obj, KernelWindowX,...
+        function find_and_classify_fibrils(obj,RadiusMeters,NumRotations,MinKernelSize)
+            
+            Channel = obj.get_channel('Processed');
+            
+            [ActivationImage,AngleImage] = AFMImage.mask_apex_points_by_convolution(Channel,RadiusMeters,NumRotations,MinKernelSize);
+            
+            
+            
+        end
+        
+        function find_and_classify_fibrils_old(obj, KernelWindowX,...
                 KernelWindowY, KernelStepSizeX, KernelStepSizeY,ComboSumThresh,DebugBool)
            
             Processed = obj.get_channel('Processed');
@@ -769,7 +779,7 @@ classdef AFMImage < matlab.mixin.Copyable
             NumPoints = size(InImage,2);
             if nargin < 2
                 DebugBool = false;
-                WindowSize = round(.2*NumPoints);
+                WindowSize = .2;
             elseif nargin < 3
                 DebugBool = false;
             end
@@ -956,8 +966,8 @@ classdef AFMImage < matlab.mixin.Copyable
                     end
                 end
             end
-            FlattenKernel = imresize(FlattenKernel,[10*KernelSize+1 10*KernelSize+1],'nearest');
-            FlattenKernel = FlattenKernel/(sum(FlattenKernel,'all'));
+%             FlattenKernel = imresize(FlattenKernel,[10*KernelSize+1 10*KernelSize+1],'nearest');
+%             FlattenKernel = FlattenKernel/(sum(FlattenKernel,'all'));
             
             FlattenedImage = Image - conv2(Image,FlattenKernel,'same');
             
@@ -981,9 +991,19 @@ classdef AFMImage < matlab.mixin.Copyable
                 AngleMask(AngleIndex == i) = RotAngles(i);
             end
             
-            if nargin > 4
+            if nargin == 5
                 OutMask(imresize(BackgroundMask,size(TempMask(:,:,1)),'nearest')==1) = 0;
             end
+            
+            OutMask(:,end-(KernelCenter-2):end) = [];
+            OutMask(end-(KernelCenter-2):end,:) = [];
+            OutMask(1:(KernelCenter-1),:) = [];
+            OutMask(:,1:(KernelCenter-1)) = [];
+            
+            AngleMask(:,end-(KernelCenter-2):end) = [];
+            AngleMask(end-(KernelCenter-2):end,:) = [];
+            AngleMask(1:(KernelCenter-1),:) = [];
+            AngleMask(:,1:(KernelCenter-1)) = [];
         end
         
         function OutImage = masked_plane_fit(Image,Mask)
