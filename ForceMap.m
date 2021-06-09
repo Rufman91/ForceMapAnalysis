@@ -1759,29 +1759,47 @@ classdef ForceMap < matlab.mixin.Copyable
                     
                     if obj.SegFrequency{j} > 0
                         
+                        DefaultSSR = 1024;
+                        DefaultLambda = 10000*(DefaultSSR/2048)^2;
+                        DefaultDetrendLambda = 250000*(DefaultSSR/2048)^2;
+                        DetrendNoise = 10;
                         Y = obj.Force{i,j};
-                        Y = Y - mean(Y);
-                        SSR = length(Y)/2048;
+                        SSR = length(Y)/DefaultSSR;
                         YSS = Y(1:SSR:end);
-                        YSS = YSS/range(YSS);
+                        HH = obj.Height{i,j}(1:SSR:end);
+                        HH = HH - YSS/obj.SpringConstant;
+                        MHH = mean(HH);
+                        RHH = range(HH);
+                        HH = (HH-MHH)/RHH;
+                        RYSS = range(YSS);
+                        MYSS = mean(YSS);
+                        YSS = (YSS-MYSS)/RYSS;
                         X = 1:length(YSS);
                         FrequencyMultiplier = 1/obj.SegFrequency{j};
-                        Lambda = exp(FrequencyMultiplier-1)*10000;
-                        YGP = predictGP_mean(X',X',1,Lambda,YSS,0);
-                        HH = obj.Height{i,j}(1:SSR:end);
+                        Lambda = FrequencyMultiplier^2*DefaultLambda;
+                        DetrendLambda = FrequencyMultiplier^2*DefaultDetrendLambda;
+                        YDetrend = predictGP_mean(X',X',1,DetrendLambda,YSS,DetrendNoise);
+                        YGP = predictGP_mean(X',X',1,Lambda,YSS-YDetrend,0);
                         HH = HH - mean(HH);
                         HH = HH/range(HH);
                         XHH = 1:length(HH);
-                        HHGP = predictGP_mean(XHH',XHH',1,10000,HH,0);
-                        figure('Name',sprintf('Force Curve %i Segment %j',i,j))
-                        subplot(2,1,1)
-                        plot(X,YSS,X,YGP,XHH,HH,XHH,HHGP)
-                        subplot(2,1,2)
+                        DetrendHH = predictGP_mean(XHH',XHH',1,DetrendLambda,HH,DetrendNoise);
+                        HHGP = predictGP_mean(XHH',XHH',1,Lambda,HH-DetrendHH,0);
+                        figure('Name',sprintf('Force Curve %i Segment %i',i,j))
+                        subplot(3,1,1)
+                        plot(X,YSS-YDetrend,X,YGP,XHH,HH-DetrendHH,XHH,HHGP)
+                        subplot(3,1,2)
                         findpeaks(YGP)
                         hold on
                         findpeaks(-YGP)
                         findpeaks(HHGP)
                         findpeaks(-HHGP)
+                        subplot(3,1,3)
+                        HH = HH*RHH + MHH;
+                        YSS = YSS*RYSS + MYSS;
+                        HHGP = HHGP*RHH + MHH;
+                        YGP = YGP*RYSS + MYSS;
+                        plot(HHGP,YGP)
                         drawnow
                         % Max values of Force and Height
                         maxF = max(obj.Force{i,j});
