@@ -80,6 +80,10 @@ classdef ForceMap < matlab.mixin.Copyable
         fitresult
         ZeroCrossF
         ZeroCrossTimeF
+        phaseFrad
+        phaseHrad
+        phaseF
+        phaseH
     end
     properties
         % Curve data Properties
@@ -1887,9 +1891,16 @@ classdef ForceMap < matlab.mixin.Copyable
                          % Spacing of time vector:
                          xpH = linspace(min(obj.InterpTimeH{j}),max(obj.InterpTimeH{j}),100000);
                         
-                    
+                        % phase shift in radians of force and height sine
+                        obj.phaseFrad = obj.SineVarsF{i,j}(2)/obj.SineVarsF{i,j}(3);
+                        obj.phaseHrad = obj.SineVarsH{i,j}(2)/obj.SineVarsH{i,j}(3);
+                        
+                        % phase shift in degree of force and height sine
+                        obj.phaseF = obj.phaseFrad*180/pi;
+                        obj.phaseH = obj.phaseHrad*180/pi;
+                        
                         % phase shift between indentation and force:
-                        obj.DeltaPhi{i,j} = abs(2*pi/obj.SineVarsH{i,j}(3)-2*pi/obj.SineVarsF{i,j}(3));
+                        obj.DeltaPhi{i,j} = obj.phaseF-obj.phaseH;
 
                         %Y-values fitted sine of indentation and force:
                         obj.SineFunctionF = obj.SineVarsF{i,j}(1)*(sin((2*pi*x)/obj.SineVarsF{i,j}(2) + 2*pi/obj.SineVarsF{i,j}(3)));
@@ -3991,7 +4002,7 @@ classdef ForceMap < matlab.mixin.Copyable
                     
                     if obj.SegFrequency{j} > 0
                         
-                        x=linspace(-pi, 2*pi, 1001);
+                        x=linspace(-pi/4, 2*pi, 1001);
                         
                         %Y-values fitted sine of indentation and force:
                         obj.SineFunctionF = obj.SineVarsF{i,j}(1)*(sin((2*pi*x)/obj.SineVarsF{i,j}(2) + 2*pi/obj.SineVarsF{i,j}(3)));
@@ -4001,6 +4012,8 @@ classdef ForceMap < matlab.mixin.Copyable
                          % time indentation
                         figure(k)
                         plot(x,obj.SineFunctionF,'r', x,obj.SineFunctionH,'b')
+                        grid on
+                        grid minor
                         legend('force sine function', 'height sine function')
                         title('Sine Functions')
                         xlabel('time in s')
