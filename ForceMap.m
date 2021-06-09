@@ -1753,14 +1753,38 @@ classdef ForceMap < matlab.mixin.Copyable
         end
         
         function sinus_fit_for_microrheology(obj)
-          for i=1:obj.NCurves
+            for i=1:obj.NCurves
                 lastseg = obj.NumSegments-1;
                 for j=2:lastseg
                     
                     if obj.SegFrequency{j} > 0
-
+                        
+                        Y = obj.Force{i,j};
+                        Y = Y - mean(Y);
+                        SSR = length(Y)/2048;
+                        YSS = Y(1:SSR:end);
+                        YSS = YSS/range(YSS);
+                        X = 1:length(YSS);
+                        FrequencyMultiplier = 1/obj.SegFrequency{j};
+                        Lambda = exp(FrequencyMultiplier-1)*10000;
+                        YGP = predictGP_mean(X',X',1,Lambda,YSS,0);
+                        HH = obj.Height{i,j}(1:SSR:end);
+                        HH = HH - mean(HH);
+                        HH = HH/range(HH);
+                        XHH = 1:length(HH);
+                        HHGP = predictGP_mean(XHH',XHH',1,10000,HH,0);
+                        figure('Name',sprintf('Force Curve %i Segment %j',i,j))
+                        subplot(2,1,1)
+                        plot(X,YSS,X,YGP,XHH,HH,XHH,HHGP)
+                        subplot(2,1,2)
+                        findpeaks(YGP)
+                        hold on
+                        findpeaks(-YGP)
+                        findpeaks(HHGP)
+                        findpeaks(-HHGP)
+                        drawnow
                         % Max values of Force and Height
-                         maxF = max(obj.Force{i,j});
+                        maxF = max(obj.Force{i,j});
                          maxH = max(obj.Height{i,j});
 
                          % Min values of Force and Height
