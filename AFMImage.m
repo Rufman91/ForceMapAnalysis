@@ -359,14 +359,14 @@ classdef AFMImage < matlab.mixin.Copyable
             OutChannel1 = Channel;
             OutChannel1.Name = 'Zylindricity';
             OutChannel1.Unit = 'none';
-            OutChannel1.Image = gather(ActivationImage);
+            OutChannel1.Image = imresize(gather(ActivationImage),size(Channel.Image));
             obj.Channel(end+1) = OutChannel1;
             
             
             OutChannel2 = Channel;
             OutChannel2.Name = 'Orientation';
             OutChannel2.Unit = 'rad';
-            OutChannel2.Image = gather(AngleImage);
+            OutChannel2.Image = imresize(gather(AngleImage),size(Channel.Image));
             obj.Channel(end+1) = OutChannel2;
             
             obj.NumChannels = length(obj.Channel);
@@ -1001,11 +1001,11 @@ classdef AFMImage < matlab.mixin.Copyable
 %             end
             
             TempMask = zeros([size(Image) NumRotations]);
-            TempMask = gpuArray(TempMask);
-            FlattenedImage = gpuArray(FlattenedImage);
-            Kernel = gpuArray(Kernel);
+            TempMask = (TempMask);
+            FlattenedImage = (FlattenedImage);
+            Kernel = (Kernel);
             TempMask = convn(FlattenedImage,Kernel);
-            AngleMask = gpuArray(zeros(size(TempMask,1),size(TempMask,2)));
+            AngleMask = (zeros(size(TempMask,1),size(TempMask,2)));
             
             [OutMask,AngleIndex] = max(TempMask,[],3);
             
