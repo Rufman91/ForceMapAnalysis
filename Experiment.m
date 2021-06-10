@@ -518,15 +518,22 @@ classdef Experiment < matlab.mixin.Copyable
             % Deconvoluting cantilever tip(s)
             if isequal(lower(EModOption),'oliver')
                 if obj.NumCantileverTips == 0
-                    Warn = warndlg('You need to load in TGT-1 images of your cantilever for this kind of analysis');
-                    uiwait(Warn);
-                    IsValid = false;
-                    while ~IsValid
-                        UsrInput = inputdlg('How many tips were used in this Experiment?');
-                        NumTips = str2num(UsrInput{1});
-                        IsValid = isnumeric(NumTips)&&~isempty(NumTips);
+                    if isequal(class(obj.CantileverTips{1}),'AFMImage')
+                        obj.NumCantileverTips = length(obj.CantileverTips);
+                        obj.CantileverTipFlag = 1;
+                        obj.AssignedCantileverTips = 1;
+                        obj.WhichTip = ones(obj.NumForceMaps,1);
+                    else
+                        Warn = warndlg('You need to load in TGT-1 images of your cantilever for this kind of analysis');
+                        uiwait(Warn);
+                        IsValid = false;
+                        while ~IsValid
+                            UsrInput = inputdlg('How many tips were used in this Experiment?');
+                            NumTips = str2num(UsrInput{1});
+                            IsValid = isnumeric(NumTips)&&~isempty(NumTips);
+                        end
+                        obj.get_paths_and_load_files([0 0 0 0 1],[0 0 0 0 ceil(NumTips)],false);
                     end
-                    obj.get_paths_and_load_files([0 0 0 0 1],[0 0 0 0 ceil(NumTips)],false);
                 end
                 if ~obj.AssignedCantileverTips
                     obj.assign_cantilever_tips
@@ -687,15 +694,22 @@ classdef Experiment < matlab.mixin.Copyable
             % Deconvoluting cantilever tip(s)
             if isequal(lower(EModOption),'oliver')
                 if obj.NumCantileverTips == 0
-                    Warn = warndlg('You need to load in TGT-1 images of your cantilever for this kind of analysis');
-                    uiwait(Warn);
-                    IsValid = false;
-                    while ~IsValid
-                        UsrInput = inputdlg('How many tips were used in this Experiment?');
-                        NumTips = str2num(UsrInput{1});
-                        IsValid = isnumeric(NumTips)&&~isempty(NumTips);
+                    if isequal(class(obj.CantileverTips{1}),'AFMImage')
+                        obj.NumCantileverTips = length(obj.CantileverTips);
+                        obj.CantileverTipFlag = 1;
+                        obj.AssignedCantileverTips = 1;
+                        obj.WhichTip = ones(obj.NumForceMaps,1);
+                    else
+                        Warn = warndlg('You need to load in TGT-1 images of your cantilever for this kind of analysis');
+                        uiwait(Warn);
+                        IsValid = false;
+                        while ~IsValid
+                            UsrInput = inputdlg('How many tips were used in this Experiment?');
+                            NumTips = str2num(UsrInput{1});
+                            IsValid = isnumeric(NumTips)&&~isempty(NumTips);
+                        end
+                        obj.get_paths_and_load_files([0 0 0 0 1],[0 0 0 0 ceil(NumTips)],false);
                     end
-                    obj.get_paths_and_load_files([0 0 0 0 1],[0 0 0 0 ceil(NumTips)],false);
                 end
                 if ~obj.AssignedCantileverTips
                     obj.assign_cantilever_tips

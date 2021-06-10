@@ -284,14 +284,14 @@ classdef ForceMap < matlab.mixin.Copyable
             for i=Range'
                 AppForce = obj.App{i};
                 RetForce = obj.Ret{i};
-                
-                Force = [AppForce' RetForce'];
-                
-                % If found, remove sinusoidal approach
-                Force = ForceMap.remove_sinusoidal_approach(Force,0);
-                
-                AppForce = Force(1:length(AppForce))';
-                RetForce = Force(length(AppForce)+1:end)';
+%                 
+%                 Force = [AppForce' RetForce'];
+%                 
+%                 % If found, remove sinusoidal approach
+%                 Force = ForceMap.remove_sinusoidal_approach(Force,0);
+%                 
+%                 AppForce = Force(1:length(AppForce))';
+%                 RetForce = Force(length(AppForce)+1:end)';
                 
                 prog = i/obj.NCurves;
                 waitbar(prog,h,'processing baseline fits...');
