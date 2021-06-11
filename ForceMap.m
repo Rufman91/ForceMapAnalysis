@@ -1759,10 +1759,10 @@ classdef ForceMap < matlab.mixin.Copyable
                     
                     if obj.SegFrequency{j} > 0
                         
-                        DefaultSSR = 1024;
+                        DefaultSSR = 1048;
                         DefaultLambda = 10000*(DefaultSSR/2048)^2;
                         DefaultDetrendLambda = 250000*(DefaultSSR/2048)^2;
-                        DetrendNoise = 10;
+                        DetrendNoise = 20;
                         Y = obj.Force{i,j};
                         SSR = length(Y)/DefaultSSR;
                         YSS = Y(1:SSR:end);
@@ -1775,7 +1775,7 @@ classdef ForceMap < matlab.mixin.Copyable
                         MYSS = mean(YSS);
                         YSS = (YSS-MYSS)/RYSS;
                         X = 1:length(YSS);
-                        FrequencyMultiplier = 1/obj.SegFrequency{j};
+                        FrequencyMultiplier = 20480/(length(Y)*obj.SegFrequency{j});
                         Lambda = FrequencyMultiplier^2*DefaultLambda;
                         DetrendLambda = FrequencyMultiplier^2*DefaultDetrendLambda;
                         YDetrend = predictGP_mean(X',X',1,DetrendLambda,YSS,DetrendNoise);
@@ -1785,6 +1785,19 @@ classdef ForceMap < matlab.mixin.Copyable
                         XHH = 1:length(HH);
                         DetrendHH = predictGP_mean(XHH',XHH',1,DetrendLambda,HH,DetrendNoise);
                         HHGP = predictGP_mean(XHH',XHH',1,Lambda,HH-DetrendHH,0);
+                        
+                        % Amplitude Correction
+                        AHH = trapz(X,abs(HH-DetrendHH));
+                        AHHGP = trapz(X,abs(HHGP));
+                        AYSS = trapz(X,abs(YSS-YDetrend));
+                        AYGP = trapz(X,abs(YGP));
+                        
+                        CorrectionHH = AHH/AHHGP
+                        CorrectionY = AYSS/AYGP
+                        
+                        HHGP = CorrectionHH*HHGP;
+                        YGP = CorrectionY*YGP;
+                        
                         figure('Name',sprintf('Force Curve %i Segment %i',i,j))
                         subplot(3,1,1)
                         plot(X,YSS-YDetrend,X,YGP,XHH,HH-DetrendHH,XHH,HHGP)
@@ -1794,7 +1807,20 @@ classdef ForceMap < matlab.mixin.Copyable
                         findpeaks(-YGP)
                         findpeaks(HHGP)
                         findpeaks(-HHGP)
+                        [PeaksYGPP,PeakPosYGPP] = findpeaks(YGP);
+                        [PeaksYGPM,PeakPosYGPM] = findpeaks(-YGP);
+                        [PeaksHHGPP,PeakPosHHGPP] = findpeaks(HHGP);
+                        [PeaksHHGPM,PeakPosHHGPM] = findpeaks(-HHGP);
                         subplot(3,1,3)
+                        
+                        % Determine Amplitude in Fourier Space
+                        Padding = 20*DefaultSSR;
+                        FFTY = 2*abs(fft(YGP,Padding))/DefaultSSR;
+                        FFTHH = 2*abs(fft(HHGP,Padding))/DefaultSSR;
+%                         plot(1:Padding,FFTY,1:Padding,FFTHH)
+                        AmpY = max(FFTY)*RYSS;
+                        AMPHH = max(FFTHH)*RHH;
+                        
                         HH = HH*RHH + MHH;
                         YSS = YSS*RYSS + MYSS;
                         HHGP = HHGP*RHH + MHH;
