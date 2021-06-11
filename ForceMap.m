@@ -134,6 +134,12 @@ classdef ForceMap < matlab.mixin.Copyable
     properties
         % Properties related to topological calculations, such as mapping and masking and visualisation
         
+        Channel         % Image Channels that work with most of the AFMImage static Channel methods. Merge
+                        % or at least write everything image-related into
+                        % this struct! Channels have the Stuct-properties:
+                        % Image (This is where the actual image data goes), Name, Unit, NumPixelsX, NumPixelsY,
+                        % ScanSizeX, ScanSizeY and ScanAngle
+        CMap = AFMImage.define_afm_color_map
         HeightMap       % height profile map taken from the maximum head-height from approach max(hhapp)
         EModMapHertz    % E modulus profile map. same ordering as HeightMap
         EModMapOliverPharr % """"
@@ -160,12 +166,20 @@ classdef ForceMap < matlab.mixin.Copyable
         EModMicro1      % List of sample E-Modulus based on the for microrheology adapted Oliver-Pharr method
         EModMicro2      % List of sample E-Modulus based on the for microrheology adapted Oliver-Pharr method
         HertzFit        % HertzFit model generated in the calculate_e_mod_hertz method
-        IndDepthHertz
+        SnapIn
+        MaxAdhesionForce
+        AdhesionEnergy
+        AdhesionLength
+        DissipatedEnergy
+        ElasticEnergy
+        PeakIndentationAngle
+        IndentationDepth
         DZslope
         Stiffness
-        IndDepth
+        IndentationDepthOliverPharr
         IndentArea
         ProjTipArea
+        RefSlopeMask
         HasRefSlope
     end
     properties
@@ -305,9 +319,20 @@ classdef ForceMap < matlab.mixin.Copyable
             Range = find(obj.SelectedCurves);
             h = waitbar(0,'Setting up...');
             for i=Range'
+                AppForce = obj.App{i};
+                RetForce = obj.Ret{i};
+%                 
+%                 Force = [AppForce' RetForce'];
+%                 
+%                 % If found, remove sinusoidal approach
+%                 Force = ForceMap.remove_sinusoidal_approach(Force,0);
+%                 
+%                 AppForce = Force(1:length(AppForce))';
+%                 RetForce = Force(length(AppForce)+1:end)';
+                
                 prog = i/obj.NCurves;
                 waitbar(prog,h,'processing baseline fits...');
-                [ncd , ncidx] = ForceMap.no_contact_domain(obj.App{i});
+                [ncd , ncidx] = ForceMap.no_contact_domain(AppForce);
                 gof.rsquare = 0;
                 for j=1:1
                     [testfit,goftest] = fit(obj.HHApp{i}(1:ncidx),smooth(ncd),'poly1','Normalize','on');
@@ -326,26 +351,8 @@ classdef ForceMap < matlab.mixin.Copyable
                     ncd(ncidx+1:length(ext_range)) = feval(obj.Basefit{i},ext_range(ncidx+1:length(ext_range)));
                     [obj.Basefit{i},gof] =  fit(ext_range,smooth(ncd),'poly9','Normalize','on');
                 end
-                %                 if gof.rsquare < 0.5
-                %                     f = figure('Name','Base and tilt','Position',[10000 10000 800 600]);
-                %                     movegui(f);
-                %                     plot(obj.HHApp{i},feval(obj.Basefit{i},obj.HHApp{i}),obj.HHApp{i},obj.App{i});
-                %                     legend('Fit','Data');
-                %                     plottitle = sprintf('Curve Nr. %i',i);
-                %                     title(plottitle);
-                %                     answ = questdlg('Quality of base line fit is very low. consider excluding this force curve',...
-                %                         'Base line and tilt','Exclude it',...
-                %                         'Keep current fit','Keep current fit');
-                %                     if isequal(answ,'Exclude it')
-                %                         obj.SelectedCurves(i) = 0;
-                %                         continue
-                %                     else
-                %                         return
-                %                     end
-                %                     close(gcf)
-                %                 end
-                obj.BasedApp{i} = (obj.App{i}-feval(obj.Basefit{i},obj.HHApp{i}));
-                obj.BasedRet{i} = (obj.Ret{i}-feval(obj.Basefit{i},obj.HHRet{i}));
+                obj.BasedApp{i} = (AppForce-feval(obj.Basefit{i},obj.HHApp{i}));
+                obj.BasedRet{i} = (RetForce-feval(obj.Basefit{i},obj.HHRet{i}));
             end
             % calculate vertical tip position by subtracting vertical tip deflection from head height
             iRange = find(obj.SelectedCurves);
@@ -355,11 +362,6 @@ classdef ForceMap < matlab.mixin.Copyable
             end
             close(h);
             obj.BaseAndTiltFlag = true;
-            %             current = what();
-            %             cd(obj.Folder)
-            %             savename = sprintf('%s.mat',obj.Name);
-            %             save(savename,'obj')
-            %             cd(current.path)
         end
         
         function estimate_cp_snap_in(obj)
@@ -370,6 +372,7 @@ classdef ForceMap < matlab.mixin.Copyable
             
             h = waitbar(0,'Setting up...','Name',obj.Name);
             Range = find(obj.SelectedCurves);
+            SnapIn = zeros(obj.NCurves,1);
             for i=Range'
                 waitbar(i/obj.NCurves,h,'Finding contact point for Snap-In curve...');
                 AboveZeroBool = zeros(length(obj.BasedApp{i}),1);
@@ -378,7 +381,7 @@ classdef ForceMap < matlab.mixin.Copyable
                 while AboveZeroBool(end-k)
                     k = k + 1;
                 end
-                if k<5
+                if k==0
                     obj.CP(i,1) = obj.HHApp{i}(floor(.5*end));
                     obj.CP(i,2) = obj.BasedApp{i}(floor(.5*end));
                     obj.CP_SnapIn(i,:) = obj.CP(i,:);
@@ -392,7 +395,33 @@ classdef ForceMap < matlab.mixin.Copyable
                 obj.CP(i,2) = 0;
                 obj.CP_SnapIn(i,:) = obj.CP(i,:);
                 clear AboveZeroBool
+                
+                try
+                    Force = obj.BasedApp{i} - obj.CP(i,2);
+                    SnapIn(i) = -min(Force);
+                    
+                catch
+                    SnapIn(i) = nan;
+                end
             end
+            
+            obj.SnapIn = SnapIn;
+            
+            for i=1:obj.NumProfiles
+                for j=1:obj.NumPoints
+                    SnapInMap(i,j) = obj.SnapIn(obj.Map2List(i,j));
+                end
+            end
+            
+            % Write to Channel
+            Channel = obj.create_standard_channel(SnapInMap,'Snap-In','N');
+            [~,Index] = obj.get_channel('Snap-In');
+            if isempty(Index)
+                obj.Channel(end+1) = Channel;
+            else
+                obj.Channel(Index) = Channel;
+            end
+            
             close(h)
             obj.CPFlag.SnapIn = true;
             
@@ -445,6 +474,8 @@ classdef ForceMap < matlab.mixin.Copyable
             obj.CP_GoF = zeros(obj.NCurves,2);
             Range = find(obj.SelectedCurves);
             h = waitbar(0,'Setting up...','Name',obj.Name);
+            TipRadius = obj.TipRadius;
+            PoissonR = obj.PoissonR;
             for i=Range'
                 Based = obj.BasedApp{i};
                 THApp = obj.HHApp{i} - obj.BasedApp{i}/obj.SpringConstant;
@@ -455,13 +486,13 @@ classdef ForceMap < matlab.mixin.Copyable
                 obj.DeltaE = ones(length(Based),1);
                 testrange = floor(0.5*length(Based)):(length(Based)-5);
                 msg = sprintf('applying goodness of fit method on curve Nr.%i/%i',i,obj.NCurves);
-                for j=testrange
-                    prog = (j-testrange(1))/length(testrange);
-                    waitbar(prog,h,msg);
-                    [emod,gof] = obj.hertz_fit_gof(smoothx,smoothy,j,1,'parabolic');
+                parfor j=testrange
+%                     prog = (j-testrange(1))/length(testrange);
+%                     
+                    [~,gof] = ForceMap.hertz_fit_gof(smoothx,smoothy,j,1,'parabolic',TipRadius,PoissonR);
                     Rsquare(j) = gof.rsquare;
-                    E(j) = emod;
                 end
+                waitbar(i/obj.NCurves,h,msg);
                 Rsquare(Rsquare==2) = min(Rsquare);
                 obj.GoF{i} = normalize(Rsquare,'range');
                 [~,CPidx] = max(obj.GoF{i});
@@ -917,7 +948,7 @@ classdef ForceMap < matlab.mixin.Copyable
             end
             iRange = find(obj.SelectedCurves);
             obj.EModHertz = zeros(obj.NCurves,1);
-            obj.IndDepthHertz = zeros(obj.NCurves,1);
+            obj.IndentationDepth = zeros(obj.NCurves,1);
             for i=iRange'
                 if isequal(lower(CPType),'cnn')
                     CP = obj.CP(i,:);
@@ -939,8 +970,11 @@ classdef ForceMap < matlab.mixin.Copyable
                 force = obj.BasedApp{i} - CP(2);
                 tip_h = (obj.HHApp{i} - CP(1)) - force/obj.SpringConstant;
                 tip_h(tip_h < 0) = [];
+                if length(tip_h) < 2
+                    continue
+                end
                 Max = max(tip_h);
-                obj.IndDepthHertz(i) = Max(1);
+                obj.IndentationDepth(i) = Max(1);
                 % delete everything below curve_percent of the maximum
                 % force
                 force(1:(length(force)-length(tip_h))) = [];
@@ -998,7 +1032,7 @@ classdef ForceMap < matlab.mixin.Copyable
                 obj.CP_HertzFitted(i,2) = CP(2);
                 obj.CP(i,:) = obj.CP_HertzFitted(i,:);
                 % Not sure about this one
-                % obj.IndDepthHertz(i) = obj.IndDepthHertz(i) + Hertzfit.b;
+                % obj.IndentationDepth(i) = obj.IndentationDepth(i) + Hertzfit.b;
                 end
                 warning('on','all');
                 obj.HertzFit{i} = Hertzfit;
@@ -1016,7 +1050,34 @@ classdef ForceMap < matlab.mixin.Copyable
             for i=1:obj.NumProfiles
                 for j=1:obj.NumPoints
                     obj.EModMapHertz(i,j,1) = obj.EModHertz(obj.Map2List(i,j));
+                    IndDepMap(i,j) = obj.IndentationDepth(obj.Map2List(i,j));
                 end
+            end
+            
+            % Write to Channel
+            EModMap = obj.create_standard_channel(obj.EModMapHertz(:,:,1),'E-Mod Hertz','Pa');
+            [~,Index] = obj.get_channel('E-Mod Hertz');
+            if isempty(Index)
+                obj.Channel(end+1) = EModMap;
+            else
+                obj.Channel(Index) = EModMap;
+            end
+            
+            EModLog = obj.create_standard_channel(log(obj.EModMapHertz(:,:,1)),'E-Mod Hertz (log)','Pa');
+            [~,Index] = obj.get_channel('E-Mod Hertz (log)');
+            if isempty(Index)
+                obj.Channel(end+1) = EModLog;
+            else
+                obj.Channel(Index) = EModLog;
+            end
+            
+            % Write to Channel
+            Channel = obj.create_standard_channel(IndDepMap,'Indentation Depth','m');
+            [~,Index] = obj.get_channel('Indentation Depth');
+            if isempty(Index)
+                obj.Channel(end+1) = Channel;
+            else
+                obj.Channel(Index) = Channel;
             end
             
             if AllowXShift
@@ -1039,7 +1100,8 @@ classdef ForceMap < matlab.mixin.Copyable
             obj.ProjTipArea = TipProjArea;
             obj.DZslope = zeros(obj.NCurves,1);
             obj.Stiffness = zeros(obj.NCurves,1);
-            obj.IndDepth = zeros(obj.NCurves,1);
+            obj.IndentationDepth = zeros(obj.NCurves,1);
+            obj.IndentationDepthOliverPharr = zeros(obj.NCurves,1);
             obj.IndentArea = zeros(obj.NCurves,1);
             for i=Range'
                 Z = obj.HHRet{i} - obj.CP(i,1);
@@ -1056,14 +1118,14 @@ classdef ForceMap < matlab.mixin.Copyable
                 df = dD*obj.SpringConstant;
                 obj.Stiffness(i) = df/dh;
                 Fmax(i) = Dmax(i).*obj.SpringConstant;
-                obj.IndDepth(i) = Hmax(i) - Epsilon.*Fmax(i)/obj.Stiffness(i);
+                obj.IndentationDepth(i) = Hmax(i);
+                obj.IndentationDepthOliverPharr(i) = Hmax(i) - Epsilon.*Fmax(i)/obj.Stiffness(i);
                 % IndentArea is taken as the linear interpolation between
                 % the two numeric values of TipProjArea the Hc(i) falls
                 % inbetween
                 try
-                    obj.IndentArea(i) = ((1-(obj.IndDepth(i)*1e9-floor(obj.IndDepth(i)*1e9)))*TipProjArea(floor(obj.IndDepth(i)*1e9))...
-                        + (obj.IndDepth(i)*1e9-floor(obj.IndDepth(i)*1e9))*TipProjArea(ceil(obj.IndDepth(i)*1e9)));
-                      
+                    obj.IndentArea(i) = ((1-(obj.IndentationDepthOliverPharr(i)*1e9-floor(obj.IndentationDepthOliverPharr(i)*1e9)))*TipProjArea(floor(obj.IndentationDepthOliverPharr(i)*1e9))...
+                        + (obj.IndentationDepthOliverPharr(i)*1e9-floor(obj.IndentationDepthOliverPharr(i)*1e9))*TipProjArea(ceil(obj.IndentationDepthOliverPharr(i)*1e9)));
                     EMod(i) = sqrt(pi/obj.IndentArea(i))*1/Beta*...
                         obj.Stiffness(i)/2*(1-obj.PoissonR^2);
                     if EMod(i) <= 0
@@ -1081,7 +1143,338 @@ classdef ForceMap < matlab.mixin.Copyable
             for i=1:obj.NumProfiles
                 for j=1:obj.NumPoints
                     obj.EModMapOliverPharr(i,j,1) = obj.EModOliverPharr(obj.Map2List(i,j));
+                    IndDepthMapOP(i,j) = obj.IndentationDepthOliverPharr(obj.Map2List(i,j));
+                    DZMap(i,j) = obj.DZslope(obj.Map2List(i,j));
+                    IndDepthMap(i,j) = obj.IndentationDepth(obj.Map2List(i,j));
                 end
+            end
+            
+            % Write to Channel
+            EModMap = obj.create_standard_channel(obj.EModMapOliverPharr(:,:,1),'E-Mod OliverPharr','Pa');
+            [~,Index] = obj.get_channel('E-Mod OliverPharr');
+            if isempty(Index)
+                obj.Channel(end+1) = EModMap;
+            else
+                obj.Channel(Index) = EModMap;
+            end
+            
+            EModLog = obj.create_standard_channel(log(obj.EModMapOliverPharr(:,:,1)),'E-Mod OliverPharr (log)','Pa');
+            [~,Index] = obj.get_channel('E-Mod OliverPharr (log)');
+            if isempty(Index)
+                obj.Channel(end+1) = EModLog;
+            else
+                obj.Channel(Index) = EModLog;
+            end
+            
+            % Write to Channel
+            Channel = obj.create_standard_channel(IndDepthMapOP,'Indentation Depth Oliver-Pharr','m');
+            [~,Index] = obj.get_channel('Indentation Depth Oliver-Pharr');
+            if isempty(Index)
+                obj.Channel(end+1) = Channel;
+            else
+                obj.Channel(Index) = Channel;
+            end
+            
+            % Write to Channel
+            Channel = obj.create_standard_channel(IndDepthMap,'Indentation Depth','m');
+            [~,Index] = obj.get_channel('Indentation Depth');
+            if isempty(Index)
+                obj.Channel(end+1) = Channel;
+            else
+                obj.Channel(Index) = Channel;
+            end
+            
+            % Write to Channel
+            Channel = obj.create_standard_channel(DZMap,'DZ-Slope','m/m');
+            [~,Index] = obj.get_channel('DZ-Slope');
+            if isempty(Index)
+                obj.Channel(end+1) = Channel;
+            else
+                obj.Channel(Index) = Channel;
+            end
+        end
+        
+        function MaxAdhesionForce = calculate_adhesion_force(obj)
+            
+            Range = find(obj.SelectedCurves);
+            MaxAdhesionForce = zeros(obj.NCurves,1);
+            for i=Range'
+                Force = obj.BasedRet{i} - obj.CP(i,2);
+                TipHeight = (obj.HHRet{i} - obj.CP(i,1)) - Force/obj.SpringConstant;
+                MaxAdhesionForce(i) = -min(Force);
+            end
+            
+            obj.MaxAdhesionForce = MaxAdhesionForce;
+            
+            for i=1:obj.NumProfiles
+                for j=1:obj.NumPoints
+                    MaxAdhesionForceMap(i,j) = obj.MaxAdhesionForce(obj.Map2List(i,j));
+                end
+            end
+            
+            % Write to Channel
+            Channel = obj.create_standard_channel(MaxAdhesionForceMap,'Maximum Adhesion Force','N');
+            [~,Index] = obj.get_channel('Maximum Adhesion Force');
+            if isempty(Index)
+                obj.Channel(end+1) = Channel;
+            else
+                obj.Channel(Index) = Channel;
+            end
+        end
+        
+        function [AdhesionEnergy,AdhesionLength] = calculate_adhesion_energy_and_length(obj,ThresholdMult)
+            
+            if nargin < 2
+                ThresholdMult = 2;
+            end
+            
+            Range = find(obj.SelectedCurves);
+            AdhesionEnergy = zeros(obj.NCurves,1);
+            AdhesionLength = zeros(obj.NCurves,1);
+            for i=Range'
+                AppForce = obj.BasedApp{i} - obj.CP(i,2);
+                AppTipHeight = (obj.HHApp{i} - obj.CP(i,1)) - AppForce/obj.SpringConstant;
+                RetForce = flipud(obj.BasedRet{i}) - obj.CP(i,2);
+                RetTipHeight = (flipud(obj.HHRet{i}) - obj.CP(i,1)) - RetForce/obj.SpringConstant;
+                
+                try
+                    % Baseline the retraction curve
+                    NoContact = ForceMap.no_contact_domain(RetForce);
+                    RetFit = polyfit(1:length(NoContact),NoContact,1);
+                    RetForce = RetForce - polyval(RetFit,1:length(RetForce))';
+                    
+                    NoContactSTD = std(NoContact);
+                    AdhesionX = RetTipHeight(RetForce<-ThresholdMult*NoContactSTD);
+                    AdhesionY = RetTipHeight(RetForce<-ThresholdMult*NoContactSTD);
+                    
+                    AdhesionLength(i) = -min(AdhesionX);
+                    
+                    SummedEnergy = 0;
+                    AdhesionBool = RetForce<-ThresholdMult*NoContactSTD;
+                    k = 1;
+                    while k <= length(AdhesionBool)
+                        if AdhesionBool(k)
+                            StartIndex = k;
+                            while AdhesionBool(k)
+                                k = k + 1;
+                            end
+                            EndIndex = k - 1;
+                            if EndIndex-StartIndex < 2
+                                continue
+                            end
+                            SummedEnergy = SummedEnergy + abs(trapz(RetTipHeight(StartIndex:EndIndex),RetForce(StartIndex:EndIndex)));
+                        else
+                            k = k + 1;
+                        end
+                    end
+                    AdhesionEnergy(i) = SummedEnergy;
+                catch
+                    AdhesionEnergy(i) = nan;
+                    AdhesionLength(i) = nan;
+                end
+                
+            end
+            
+            obj.AdhesionEnergy = AdhesionEnergy;
+            obj.AdhesionLength = AdhesionLength;
+            
+            for i=1:obj.NumProfiles
+                for j=1:obj.NumPoints
+                    AEMap(i,j) = obj.AdhesionEnergy(obj.Map2List(i,j));
+                    ALMap(i,j) = obj.AdhesionLength(obj.Map2List(i,j));
+                end
+            end
+            
+            % Write to Channel
+            Channel1 = obj.create_standard_channel(AEMap,'Adhesion Energy','J');
+            [~,Index] = obj.get_channel('Adhesion Energy');
+            if isempty(Index)
+                obj.Channel(end+1) = Channel1;
+            else
+                obj.Channel(Index) = Channel1;
+            end
+            
+            
+            CoulombConstant = 1.602176634e-19;
+            % Write to Channel
+            Channel1 = obj.create_standard_channel(AEMap./CoulombConstant,'Adhesion eV-Energy','eV');
+            [~,Index] = obj.get_channel('Adhesion eV-Energy');
+            if isempty(Index)
+                obj.Channel(end+1) = Channel1;
+            else
+                obj.Channel(Index) = Channel1;
+            end
+            
+            Channel2 = obj.create_standard_channel(ALMap,'Adhesion Length','m');
+            [~,Index] = obj.get_channel('Adhesion Length');
+            if isempty(Index)
+                obj.Channel(end+1) = Channel2;
+            else
+                obj.Channel(Index) = Channel2;
+            end
+        end
+        
+        function PeakIndentationAngle = calculate_peak_indentation_angle(obj,FitPortion)
+            
+            if nargin < 2
+                FitPortion = .5;
+            end
+            
+            Range = find(obj.SelectedCurves);
+            PeakIndentationAngle = zeros(obj.NCurves,1);
+            for i=Range'
+                AppForce = obj.BasedApp{i} - obj.CP(i,2);
+                AppHeadHeight = (obj.HHApp{i} - obj.CP(i,1));% - AppForce/obj.SpringConstant;
+                RetForce = obj.BasedRet{i} - obj.CP(i,2);
+                RetHeadHeight = (obj.HHRet{i} - obj.CP(i,1));% - RetForce/obj.SpringConstant;
+                
+                % Convert from force to vDef
+                AppForce = AppForce/obj.SpringConstant;
+                RetForce = RetForce/obj.SpringConstant;
+                try
+                    CutOffForceApp = (1-FitPortion)*AppForce(end);
+                    CutOffForceRet = (1-FitPortion)*RetForce(1);
+                    k = 0;
+                    while AppForce(end-k) > CutOffForceApp
+                        k = k + 1;
+                    end
+                    AppY = AppForce(end-(k+1):end);
+                    AppX = AppHeadHeight(end-(k+1):end);
+                    k = 1;
+                    while RetForce(k) > CutOffForceRet
+                        k = k + 1;
+                    end
+                    RetY = RetForce(1:k-1);
+                    RetX = RetHeadHeight(1:k-1);
+                    
+                    if length(AppY) < 2
+                        AppY = AppForce(end-1:end);
+                        AppX = AppHeadHeight(end-1:end);
+                    end
+                    if length(RetY) < 2
+                        RetY = RetForce(1:2);
+                        RetX = RetHeadHeight(1:2);
+                    end
+                    Fit1 = polyfit(AppX,AppY,1);
+                    Fit2 = polyfit(RetX,RetY,1);
+                    Slope1 = 1/(1/Fit1(1)-1/obj.RefSlope);
+                    Slope2 = 1/(1/Fit2(1)-1/obj.RefSlope);
+                    
+                    PeakIndentationAngle(i) = rad2deg(atan(abs((Slope1 - Slope2)/(1+Slope1*Slope2))));
+                catch
+                    PeakIndentationAngle = nan;
+                end
+                %                 % DebugSection
+                %                 plot(AppTipHeight,AppForce,RetTipHeight,RetForce,...
+                %                     AppX,AppY,RetX,RetY,...
+                %                     AppTipHeight,polyval(Fit1,AppTipHeight),RetTipHeight,polyval(Fit2,RetTipHeight))
+                %                 title(sprintf('%.4f OnFib: %i',PeakIndentationAngle(i),obj.FibMask(obj.List2Map(i,1),obj.List2Map(i,2))))
+                %                 legend({'App','Ret','FitApp','FitRet','Fit1','Fit2'})
+                %                 drawnow
+            end
+            
+            obj.PeakIndentationAngle = PeakIndentationAngle;
+            
+            for i=1:obj.NumProfiles
+                for j=1:obj.NumPoints
+                    PIAMap(i,j) = obj.PeakIndentationAngle(obj.Map2List(i,j));
+                end
+            end
+            
+            % Write to Channel
+            Channel = obj.create_standard_channel(PIAMap,'Peak Indentation Angle','Degrees');
+            [~,Index] = obj.get_channel('Peak Indentation Angle');
+            if isempty(Index)
+                obj.Channel(end+1) = Channel;
+            else
+                obj.Channel(Index) = Channel;
+            end
+        end
+        
+        function [DissipatedEnergy,ElasticEnergy] = calculate_dissipated_and_elastic_energy(obj)
+            
+            Range = find(obj.SelectedCurves);
+            DissipatedEnergy = zeros(obj.NCurves,1);
+            ElasticEnergy = zeros(obj.NCurves,1);
+            for i=Range'
+                AppForce = obj.BasedApp{i} - obj.CP(i,2);
+                AppTipHeight = (obj.HHApp{i} - obj.CP(i,1)) - AppForce/obj.SpringConstant;
+                RetForce = obj.BasedRet{i} - obj.CP(i,2);
+                RetTipHeight = (obj.HHRet{i} - obj.CP(i,1)) - RetForce/obj.SpringConstant;
+                try
+                    AppX = AppTipHeight(AppTipHeight > 0);
+                    AppY = AppForce(AppTipHeight > 0);
+                    RetX = RetTipHeight(RetTipHeight > 0);
+                    RetY = RetForce(RetTipHeight > 0);
+                    
+                    AppEnergy = trapz(AppX,AppY);
+                    RetEnergy = trapz(RetX,RetY);
+                    
+                    DissipatedEnergy(i) = abs(AppEnergy - RetEnergy);
+                    ElasticEnergy(i) = abs(RetEnergy);
+                catch
+                    DissipatedEnergy(i) = nan;
+                    ElasticEnergy(i) = nan;
+                end
+            end
+            
+            CoulombConstant = 1.602176634e-19;
+            
+            obj.DissipatedEnergy = DissipatedEnergy;
+            
+            for i=1:obj.NumProfiles
+                for j=1:obj.NumPoints
+                    DEMap(i,j) = obj.DissipatedEnergy(obj.Map2List(i,j));
+                end
+            end
+            
+            % Write to Channel
+            Channel = obj.create_standard_channel(DEMap,'Dissipated Energy','J');
+            [~,Index] = obj.get_channel('Dissipated Energy');
+            if isempty(Index)
+                obj.Channel(end+1) = Channel;
+            else
+                obj.Channel(Index) = Channel;
+            end
+            
+            DEMap = DEMap./CoulombConstant;
+            
+            % Write to Channel
+            Channel = obj.create_standard_channel(DEMap,'Dissipated eV-Energy','eV');
+            [~,Index] = obj.get_channel('Dissipated eV-Energy');
+            if isempty(Index)
+                obj.Channel(end+1) = Channel;
+            else
+                obj.Channel(Index) = Channel;
+            end
+            
+            obj.ElasticEnergy = ElasticEnergy;
+            
+            for i=1:obj.NumProfiles
+                for j=1:obj.NumPoints
+                    EEMap(i,j) = obj.ElasticEnergy(obj.Map2List(i,j));
+                end
+            end
+            
+            % Write to Channel
+            Channel = obj.create_standard_channel(EEMap,'Elastic Energy','J');
+            [~,Index] = obj.get_channel('Elastic Energy');
+            if isempty(Index)
+                obj.Channel(end+1) = Channel;
+            else
+                obj.Channel(Index) = Channel;
+            end
+            
+            
+            EEMap = EEMap./CoulombConstant;
+            
+            % Write to Channel
+            Channel = obj.create_standard_channel(EEMap,'Elastic eV-Energy','eV');
+            [~,Index] = obj.get_channel('Elastic eV-Energy');
+            if isempty(Index)
+                obj.Channel(end+1) = Channel;
+            else
+                obj.Channel(Index) = Channel;
             end
         end
         
@@ -2009,6 +2402,53 @@ classdef ForceMap < matlab.mixin.Copyable
             nocontvDef = vDef(1:domainidx);
         end
         
+        function [OutForce,DidProcess] = remove_sinusoidal_approach(InForce,PowerCutoff)
+            
+            if nargin < 2
+                PowerCutoff = .2;
+            end
+            
+            LossBefore = ForceMap.low_frequency_loss(InForce);
+            
+            FFT = fft(InForce);
+            MidIndex = floor(length(FFT)/2+1);
+            FFT([1 end]) = 0; % Removes constant component of signal
+            PowerSpectrum = abs(FFT).^2/length(FFT)/range(InForce)^2;
+            
+%             % find peaks in the spectrum
+%             [Peaks,PeakPos,PeakWidths] = findpeaks(PowerSpectrum(1:MidIndex),...
+%                 'MinPeakDistance',10,'MinPeakHeight',PowerCutoff,'SortStr','descend');
+%             if isempty(Peaks) || PeakPos(1) < 3
+%                 OutForce = InForce;
+%                 DidProcess = false;
+%                 return
+%             end
+            BandWidth = 400;
+            
+            FiltFFT = FFT;
+            FiltFFT([1:BandWidth (end-(BandWidth)-1:end)]) = 0;
+            OutForce = real(ifft((FiltFFT)));
+            DidProcess = true;
+            
+            LossAfter = ForceMap.low_frequency_loss(OutForce);
+            
+            % Debug Section
+            subplot(4,1,1)
+            plot(InForce)
+            subplot(4,1,2)
+            plot(PowerSpectrum)
+            subplot(4,1,3)
+            plot(1:10000,sin([1:10000]./8))
+            subplot(4,1,4)
+            plot(real(OutForce))
+            drawnow
+            
+        end
+        
+        function [Loss] = low_frequency_loss(InSignal)
+            Loss = sum(abs(InSignal));
+        end
+        
         function [n,V,p] = affine_fit(X)
             %Computes the plane that fits best (lest square of the normal distance
             %to the plane) a set of sample points.
@@ -2033,7 +2473,7 @@ classdef ForceMap < matlab.mixin.Copyable
             %The samples are reduced:
             R = bsxfun(@minus,X,p);
             %Computation of the principal directions if the samples cloud
-            [V,D] = eig(R'*R);
+            [V,~] = eig(R'*R);
             %Extract the output from the eigenvectors
             n = V(:,1);
             V = V(:,2:end);
@@ -2541,12 +2981,12 @@ classdef ForceMap < matlab.mixin.Copyable
         
         function [E_mod,GoF,Hertzfit] = hertz_fit_gof(obj,tip_h,force,CP,curve_percent,shape)
             
-            if obj.TipRadius == -1
+            if TipRadius == -1
                 prompt = {'What is the nominal tip radius of the used cantilever in nm?'};
                 dlgtitle = 'Cantilever tip';
                 dims = [1 35];
                 definput = {'10'};
-                obj.TipRadius = str2double(inputdlg(prompt,dlgtitle,dims,definput));
+                TipRadius = str2double(inputdlg(prompt,dlgtitle,dims,definput));
             end
             
             if nargin < 6
@@ -2572,11 +3012,26 @@ classdef ForceMap < matlab.mixin.Copyable
                     CPforce,f);
                 % calculate E module based on the Hertz model. Be careful
                 % to convert to unnormalized data again
-                E_mod = 3*(Hertzfit.a*ranf/rant^(3/2))/(4*sqrt(obj.TipRadius*10^(-9)))*(1-obj.PoissonR^2);
+                E_mod = 3*(Hertzfit.a*ranf/rant^(3/2))/(4*sqrt(TipRadius*10^(-9)))*(1-PoissonR^2);
             elseif isequal(shape,'spherical')
             elseif isequal(shape,'conical')
             elseif isequal(shape,'pyramid')
             end
+        end
+        
+    end
+    
+    methods
+        % non-static auxiliary methods
+        
+        function save(obj)
+            current = what();
+            cd(obj.Folder)
+            savename = sprintf('%s.mat',obj.Name);
+            save(savename,'obj','-v7.3')
+            cd(current.path)
+            savemsg = sprintf('Changes to ForceMap %s saved to %s',obj.Name,obj.Folder);
+            disp(savemsg);
         end
         
         function calculate_reference_slope_from_area(obj,Mask)
@@ -2727,6 +3182,21 @@ classdef ForceMap < matlab.mixin.Copyable
                 end
             end
             obj.HeightMap = obj.HeightMap - Plane;
+            
+            % write to Channel
+            Height = obj.create_standard_channel(obj.HeightMap,'Height','m');
+            
+            [Channel,Index] = obj.get_channel('Height');
+            if isempty(Channel)
+                Len = length(obj.Channel);
+                if ~Len
+                    obj.Channel = Height;
+                else
+                    obj.Channel(Len+1) = Height;
+                end
+            else
+                obj.Channel(Index) = Height;
+            end
         end
         
         function create_fibril_mask(obj,MaskParam)
@@ -2846,7 +3316,7 @@ classdef ForceMap < matlab.mixin.Copyable
             len = size(X,4);
             if obj.CPFlag.CNNopt == 0
                 CantHandle = true;
-                obj.MiniBatchSize = len;
+                obj.MiniBatchSize = 1024;
                 DynMBSdone = false;
                 HasFailed = false;
                 while CantHandle == true
@@ -3403,6 +3873,60 @@ classdef ForceMap < matlab.mixin.Copyable
             return
         end
         
+        function [ChannelStruct,Index] = get_channel(obj,ChannelName)
+            k = 0;
+            for i=1:length(obj.Channel)
+                if isequal(obj.Channel(i).Name,ChannelName)
+                    ChannelStruct = obj.Channel(i);
+                    Index = i;
+                    k = k+1;
+                end
+            end
+            if k > 1
+                warning(sprintf('Caution! There are more than one channels named %s (%i)',ChannelName,k))
+            end
+            if k == 0
+                ChannelStruct = [];
+                Index = [];
+            end
+        end
+        
+        function delete_channel(obj,ChannelName)
+            k = 0;
+            for i=1:length(obj.Channel)
+                if isequal(obj.Channel(i).Name,ChannelName)
+                    ChannelStruct = obj.Channel(i);
+                    Index(k+1) = i;
+                    k = k+1;
+                end
+            end
+            obj.Channel(Index) = [];
+            if k > 1
+                warning(sprintf('Caution! There are more than one channels named %s (%i). Deleted all of them',ChannelName,k))
+            end
+        end
+        
+        function OutChannel = create_standard_channel(obj,Image,Name,Unit)
+            
+            OutChannel.Image = Image;
+            OutChannel.Name = Name;
+            OutChannel.Unit = Unit;
+            OutChannel.ScanSizeX = obj.XSize;
+            OutChannel.ScanSizeY = obj.YSize;
+            OutChannel.ScanAngle = obj.GridAngle;
+            OutChannel.NumPixelsX = obj.NumProfiles;
+            OutChannel.NumPixelsY = obj.NumPoints;
+            OutChannel.OriginX = 0;
+            OutChannel.OriginY = 0;
+            
+        end
+        
+        function PopUp = string_of_existing(obj)
+            PopUp{1} = 'none';
+            for i=1:length(obj.Channel)
+                PopUp{i+1} = obj.Channel(i).Name;
+            end
+        end
     end
     
     methods
@@ -3429,105 +3953,105 @@ classdef ForceMap < matlab.mixin.Copyable
             title(sprintf('Curve Nr.%i of %s',k,obj.Name))
             hold on
             [MultiplierX,UnitX,~] = AFMImage.parse_unit_scale(range(obj.HHRet{k}),'m',10);
-            [MultiplierY,UnitY,~] = AFMImage.parse_unit_scale(range(obj.BasedRet{k}),'N',10);
+            [MultiplierY,UnitY,~] = AFMImage.parse_unit_scale(range(obj.BasedRet{k}),'N',5);
             plot(obj.HHApp{k}*MultiplierX,obj.BasedApp{k}*MultiplierY,obj.HHRet{k}*MultiplierX,obj.BasedRet{k}*MultiplierY,'LineWidth',1.5);
             Legends = {'Approach','Retract'};
             
             if obj.CPFlag.HertzFitted == 1
-                plot(obj.CP_HertzFitted(k,1)*1e9, obj.CP_HertzFitted(k,2)*1e9,'O',...
+                plot(obj.CP_HertzFitted(k,1)*MultiplierX, obj.CP_HertzFitted(k,2)*MultiplierY,'O',...
                     'LineWidth',1.5,...
                     'MarkerSize',7,...
                     'MarkerEdgeColor','k',...
                     'MarkerFaceColor',[0.4940 0.1840 0.5560]);
                 Legends{end+1} = 'Origin of Hertz-Sneddon fit';
-                xlim([(obj.HHApp{k}(1)+ZoomMult*(obj.CP_SnapIn(k,1) - obj.HHApp{k}(1)))*1e9 inf]);
+                xlim([(obj.HHApp{k}(1)+ZoomMult*(obj.CP_SnapIn(k,1) - obj.HHApp{k}(1)))*MultiplierX inf]);
             end
             if obj.CPFlag.SnapIn == 1
-                plot(obj.CP_SnapIn(k,1)*1e9, obj.CP_SnapIn(k,2)*1e9,'O',...
+                plot(obj.CP_SnapIn(k,1)*MultiplierX, obj.CP_SnapIn(k,2)*MultiplierY,'O',...
                     'LineWidth',1.5,...
                     'MarkerSize',7,...
                     'MarkerEdgeColor','k',...
                     'MarkerFaceColor','r');
                 Legends{end+1} = 'SnapIn';
-                xlim([(obj.HHApp{k}(1)+ZoomMult*(obj.CP_SnapIn(k,1) - obj.HHApp{k}(1)))*1e9 inf]);
+                xlim([(obj.HHApp{k}(1)+ZoomMult*(obj.CP_SnapIn(k,1) - obj.HHApp{k}(1)))*MultiplierX inf]);
             end
             if obj.CPFlag.Manual == 1
-                plot(obj.Man_CP(k,1)*1e9, obj.Man_CP(k,2)*1e9,'O',...
+                plot(obj.Man_CP(k,1)*MultiplierX, obj.Man_CP(k,2)*MultiplierY,'O',...
                     'LineWidth',1.5,...
                     'MarkerSize',7,...
                     'MarkerEdgeColor','k',...
                     'MarkerFaceColor','r');
                 Legends{end+1} = 'Manual CP';
-                xlim([(obj.HHApp{k}(1)+ZoomMult*(obj.Man_CP(k,1) - obj.HHApp{k}(1)))*1e9 inf]);
+                xlim([(obj.HHApp{k}(1)+ZoomMult*(obj.Man_CP(k,1) - obj.HHApp{k}(1)))*MultiplierX inf]);
             end
             if obj.CPFlag.RoV == 1
-                plot(obj.CP_RoV(k,1)*1e9, obj.CP_RoV(k,2)*1e9,'O',...
+                plot(obj.CP_RoV(k,1)*MultiplierX, obj.CP_RoV(k,2)*MultiplierY,'O',...
                     'LineWidth',1.5,...
                     'MarkerSize',7,...
                     'MarkerEdgeColor','k',...
                     'MarkerFaceColor','b');
                 Legends{end+1} = 'CP RoV';
-                xlim([(obj.HHApp{k}(1)+ZoomMult*(obj.CP_RoV(k,1) - obj.HHApp{k}(1)))*1e9 inf]);
+                xlim([(obj.HHApp{k}(1)+ZoomMult*(obj.CP_RoV(k,1) - obj.HHApp{k}(1)))*MultiplierX inf]);
             end
             if obj.CPFlag.GoF == 1
-                plot(obj.CP_GoF(k,1)*1e9, obj.CP_GoF(k,2)*1e9,'O',...
+                plot(obj.CP_GoF(k,1)*MultiplierX, obj.CP_GoF(k,2)*MultiplierY,'O',...
                     'LineWidth',1.5,...
                     'MarkerSize',7,...
                     'MarkerEdgeColor','k',...
                     'MarkerFaceColor','c');
                 Legends{end+1} = 'CP GoF';
-                xlim([(obj.HHApp{k}(1)+ZoomMult*(obj.CP_GoF(k,1) - obj.HHApp{k}(1)))*1e9 inf]);
+                xlim([(obj.HHApp{k}(1)+ZoomMult*(obj.CP_GoF(k,1) - obj.HHApp{k}(1)))*MultiplierX inf]);
             end
             if obj.CPFlag.Combo == 1
-                plot(obj.CP_Combo(k,1)*1e9, obj.CP_Combo(k,2)*1e9,'O',...
+                plot(obj.CP_Combo(k,1)*MultiplierX, obj.CP_Combo(k,2)*MultiplierY,'O',...
                     'LineWidth',1.5,...
                     'MarkerSize',7,...
                     'MarkerEdgeColor','k',...
                     'MarkerFaceColor','m');
                 Legends{end+1} = 'CP Combo';
-                xlim([(obj.HHApp{k}(1)+ZoomMult*(obj.CP_Combo(k,1) - obj.HHApp{k}(1)))*1e9 inf]);
+                xlim([(obj.HHApp{k}(1)+ZoomMult*(obj.CP_Combo(k,1) - obj.HHApp{k}(1)))*MultiplierX inf]);
             end
             if obj.CPFlag.CNN == 1
-                plot(obj.CP_CNN(k,1)*1e9, obj.CP_CNN(k,2)*1e9,'O',...
+                plot(obj.CP_CNN(k,1)*MultiplierX, obj.CP_CNN(k,2)*MultiplierY,'O',...
                     'LineWidth',1.5,...
                     'MarkerSize',7,...
                     'MarkerEdgeColor','k',...
                     'MarkerFaceColor','y');
                 Legends{end+1} = 'CP CNN';
-                xlim([(obj.HHApp{k}(1)+ZoomMult*(obj.CP_CNN(k,1) - obj.HHApp{k}(1)))*1e9 inf]);
+                xlim([(obj.HHApp{k}(1)+ZoomMult*(obj.CP_CNN(k,1) - obj.HHApp{k}(1)))*MultiplierX inf]);
             end
             if obj.CPFlag.CNNZoom == 1
-                plot(obj.CP_CNNZoom(k,1)*1e9, obj.CP_CNNZoom(k,2)*1e9,'O',...
+                plot(obj.CP_CNNZoom(k,1)*MultiplierX, obj.CP_CNNZoom(k,2)*MultiplierY,'O',...
                     'LineWidth',1.5,...
                     'MarkerSize',7,...
                     'MarkerEdgeColor','k',...
                     'MarkerFaceColor',[0.8500 0.3250 0.0980]);
                 Legends{end+1} = 'CP CNNZoom';
-                xlim([(obj.HHApp{k}(1)+ZoomMult*(obj.CP_CNNZoom(k,1) - obj.HHApp{k}(1)))*1e9 inf]);
+                xlim([(obj.HHApp{k}(1)+ZoomMult*(obj.CP_CNNZoom(k,1) - obj.HHApp{k}(1)))*MultiplierX inf]);
             end
             if obj.CPFlag.CNNZoomSweep == 1
-                plot(obj.CP_CNNZoomSweep(k,1)*1e9, obj.CP_CNNZoomSweep(k,2)*1e9,'gs',...
+                plot(obj.CP_CNNZoomSweep(k,1)*MultiplierX, obj.CP_CNNZoomSweep(k,2)*MultiplierY,'gs',...
                     'LineWidth',1.5,...
                     'MarkerSize',7,...
                     'MarkerEdgeColor','k',...
                     'MarkerFaceColor',[0.8500 0.3250 0.0980]);
                 Legends{end+1} = 'CP CNNZoomSweep';
-                xlim([(obj.HHApp{k}(1)+ZoomMult*(obj.CP_CNNZoomSweep(k,1) - obj.HHApp{k}(1)))*1e9 inf]);
+                xlim([(obj.HHApp{k}(1)+ZoomMult*(obj.CP_CNNZoomSweep(k,1) - obj.HHApp{k}(1)))*MultiplierX inf]);
             end
             if obj.CPFlag.Old == 1
-                plot(obj.CP_Old(k,1)*1e9, obj.CP_Old(k,2)*1e9,'O',...
+                plot(obj.CP_Old(k,1)*MultiplierX, obj.CP_Old(k,2)*MultiplierY,'O',...
                     'LineWidth',1.5,...
                     'MarkerSize',7,...
                     'MarkerEdgeColor','k',...
                     'MarkerFaceColor',[0.9290 0.6940 0.1250]);
                 Legends{end+1} = 'CP SD6';
-                xlim([(obj.HHApp{k}(1)+ZoomMult*(obj.CP_Old(k,1) - obj.HHApp{k}(1)))*1e9 inf]);
+                xlim([(obj.HHApp{k}(1)+ZoomMult*(obj.CP_Old(k,1) - obj.HHApp{k}(1)))*MultiplierX inf]);
             end
             if obj.CPFlag.Dropout == 1
-                X = obj.CP_Dropout(k,1)*1e9;
-                Y = obj.CP_Dropout(k,2)*1e9;
-                XSTD = std(obj.CP_MonteCarlo(:,1,k))*1e9;
-                YSTD = std(obj.CP_MonteCarlo(:,2,k))*1e9;
+                X = obj.CP_Dropout(k,1)*MultiplierX;
+                Y = obj.CP_Dropout(k,2)*MultiplierY;
+                XSTD = std(obj.CP_MonteCarlo(:,1,k))*MultiplierX;
+                YSTD = std(obj.CP_MonteCarlo(:,2,k))*MultiplierY;
                 plot(X, Y,'O',...
                     'LineWidth',1.5,...
                     'MarkerSize',7,...
@@ -3537,8 +4061,8 @@ classdef ForceMap < matlab.mixin.Copyable
                     'LineWidth',1.5,...
                     'Color',[0.4940 0.1840 0.5560]);
                 Legends{end+1} = 'CP Dropout';
-                Legends{end+1} = sprintf('Dropout Uncertainty %.2f nm',obj.CP_MonteCarlo_STD(k)*1e9);
-                xlim([(obj.HHApp{k}(1)+ZoomMult*(obj.CP_Dropout(k,1) - obj.HHApp{k}(1)))*1e9 inf]);
+                Legends{end+1} = sprintf('Dropout Uncertainty %.2f nm',obj.CP_MonteCarlo_STD(k)*MultiplierX);
+                xlim([(obj.HHApp{k}(1)+ZoomMult*(obj.CP_Dropout(k,1) - obj.HHApp{k}(1)))*MultiplierX inf]);
             end
             
             legend(Legends,...
@@ -4129,6 +4653,8 @@ classdef ForceMap < matlab.mixin.Copyable
                 title('Height Map with Apex Points');
                 
                 subplot(2,3,2)
+                [MultiplierX,UnitX,~] = AFMImage.parse_unit_scale(range(obj.HHRet{k}),'m',10);
+                [MultiplierY,UnitY,~] = AFMImage.parse_unit_scale(range(obj.BasedRet{k}),'N',5);
                 plot(obj.HHApp{k},obj.BasedApp{k}/obj.SpringConstant,...
                     obj.HHRet{k},obj.BasedRet{k}/obj.SpringConstant)
                 xlim([min(obj.HHApp{k})+range(obj.HHApp{k})/2 ...
@@ -4162,22 +4688,22 @@ classdef ForceMap < matlab.mixin.Copyable
                 hold off
                 
                 subplot(2,3,5)
-                plot(obj.IndDepth(obj.RectApexIndex)*1e9,...
+                plot(obj.IndentationDepthOliverPharr(obj.RectApexIndex)*1e9,...
                     obj.EModOliverPharr(obj.RectApexIndex)*1e-6,'bO')
                 hold on
-                plot(obj.IndDepth(obj.RectApexIndex(m))*1e9,...
+                plot(obj.IndentationDepthOliverPharr(obj.RectApexIndex(m))*1e9,...
                     obj.EModOliverPharr(obj.RectApexIndex(m))*1e-6,'rO','MarkerFaceColor','r')
                 xlabel('Indentation Depth [nm]')
                 ylabel('Elastic Modulus [MPa]')
                 hold off
                 
                 subplot(2,3,6)
-                plot(obj.IndDepth(obj.RectApexIndex)*1e9,...
+                plot(obj.IndentationDepthOliverPharr(obj.RectApexIndex)*1e9,...
                     obj.IndentArea(obj.RectApexIndex),'bO','MarkerSize',10,'MarkerFaceColor','b')
                 hold on
-                plot(obj.IndDepth(obj.RectApexIndex(m))*1e9,...
+                plot(obj.IndentationDepthOliverPharr(obj.RectApexIndex(m))*1e9,...
                     obj.IndentArea(obj.RectApexIndex(m)),'rO','MarkerSize',10,'MarkerFaceColor','r')
-                Xmax = round(max(obj.IndDepth(obj.RectApexIndex))*1e9+5);
+                Xmax = round(max(obj.IndentationDepthOliverPharr(obj.RectApexIndex))*1e9+5);
                 xlim([0 Xmax])
                 plot(1:Xmax,obj.ProjTipArea(1:Xmax),'Color','black')
                 xlabel('Indentation Depth [nm]')
@@ -4260,10 +4786,10 @@ classdef ForceMap < matlab.mixin.Copyable
                 
                 
                 subplot(2,2,4)
-                plot((obj.IndDepthHertz(obj.RectApexIndex))*1e9,...
+                plot((obj.IndentationDepth(obj.RectApexIndex))*1e9,...
                     obj.EModHertz(obj.RectApexIndex)*1e-6,'bO')
                 hold on
-                plot((obj.IndDepthHertz(obj.RectApexIndex(m)))*1e9,...
+                plot((obj.IndentationDepth(obj.RectApexIndex(m)))*1e9,...
                     obj.EModHertz(obj.RectApexIndex(m))*1e-6,'rO','MarkerFaceColor','r')
                 xlabel('Indentation Depth [nm]')
                 ylabel('Elastic Modulus [MPa]')
@@ -4339,22 +4865,24 @@ classdef ForceMap < matlab.mixin.Copyable
                 hold off
                 
                 subplot(2,3,5)
-                plot(obj.IndDepth*1e9,...
+                plot(obj.IndentationDepthOliverPharr*1e9,...
                     obj.EModOliverPharr*1e-6,'bO')
                 hold on
-                plot(obj.IndDepth(m)*1e9,...
+                plot(obj.IndentationDepthOliverPharr(m)*1e9,...
                     obj.EModOliverPharr(m)*1e-6,'rO','MarkerFaceColor','r')
                 xlabel('Indentation Depth [nm]')
                 ylabel('Elastic Modulus [MPa]')
                 hold off
                 
                 subplot(2,3,6)
-                plot(obj.IndDepth*1e9,...
+                plot(obj.IndentationDepthOliverPharr*1e9,...
                     obj.IndentArea,'bO','MarkerSize',10,'MarkerFaceColor','b')
                 hold on
-                plot(obj.IndDepth(m)*1e9,...
+                plot(obj.IndentationDepthOliverPharr(m)*1e9,...
                     obj.IndentArea(m),'rO','MarkerSize',10,'MarkerFaceColor','r')
-                Xmax = round(max(obj.IndDepth)*1e9+5);
+                Xmax = round(max(obj.IndentationDepthOliverPharr)*1e9+5);
+                XmaxAlt = length(obj.ProjTipArea);
+                Xmax = min([Xmax XmaxAlt]);
                 xlim([0 Xmax])
                 plot(1:Xmax,obj.ProjTipArea(1:Xmax),'Color','black')
                 xlabel('Indentation Depth [nm]')
@@ -4432,15 +4960,15 @@ classdef ForceMap < matlab.mixin.Copyable
                 
                 subplot(2,2,4)
                 if obj.NCurves <= 512
-                    plot((obj.IndDepthHertz)*1e9,...
+                    plot((obj.IndentationDepth)*1e9,...
                         obj.EModHertz*1e-6,'bO')
                     hold on
-                    plot((obj.IndDepthHertz(m))*1e9,...
+                    plot((obj.IndentationDepth(m))*1e9,...
                         obj.EModHertz(m)*1e-6,'rO','MarkerFaceColor','r')
                     xlabel('Indentation Depth [nm]')
                     ylabel('Elastic Modulus [MPa]')
                 else
-                    histogram((obj.IndDepthHertz)*1e9)
+                    histogram((obj.IndentationDepth)*1e9)
                     xlabel('Indentation Depth [nm]')
                 end    
                 hold off
