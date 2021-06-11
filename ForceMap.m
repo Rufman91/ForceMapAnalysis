@@ -164,8 +164,10 @@ classdef ForceMap < matlab.mixin.Copyable
         MinPullingLength % Minimum pulling length within a force curve
         MaxPullingLength % Maximum pulling length within a force curve
         EndIdx          % Index correspoding to a predefined value
-        yRetLim2        % Modified retraction data to allow a valid integration
-        RetAdhEnergy    % Adhesion Energy of the retraction curve
+        yRetLim        % Modified retraction data to allow a valid integration
+        yRetLim2        % Modified retraction data to allow a valid integration            
+        RetAdhEnergy_ThresholdMethod % Adhesion Energy of the retraction curve based on the threshold method
+        RetAdhEnergy_IdxMethod % Adhesion Energy of the retraction curve based on the pulling length index method
         FMRetAdhEnergyMean  % Mean of the adhesion energy of a force map
         FMRetAdhEnergyStd   % Standard deviation of the adhesion energy of a force map
         PullingLengthIdx % Index of the data point identified as pulling length value
@@ -1376,10 +1378,11 @@ classdef ForceMap < matlab.mixin.Copyable
                 continue
                 end
                 % Allocate data
-                xApp=obj.THApp{ii}-obj.CP_HardSurface(ii);
-                xRet=obj.THRet{ii}-obj.CP_HardSurface(ii);
-                yAppLim=obj.BasedApp{ii};
-                yRetLim=obj.BasedRetCorr2{ii};
+                xApp=obj.THApp{ii}-obj.CP_HardSurface(ii); % Approach x-data (m): Vertical tip height data corrected by the determined contact point using the hard surface method 
+                xRet=obj.THRet{ii}-obj.CP_HardSurface(ii); % Retraction x-data (m): Vertical tip height data corrected by the determined contact point using the hard surface method 
+                yAppLim=obj.BasedApp{ii}; % Approach y-data (N): Baseline and tilt corrected
+                yRetLim=obj.BasedRetCorr2{ii}; % Retraction y-data (N): Baseline and tilt corrected and additonally baseline deviation between the approach and retraction data corrected
+            % data
                 % Define variables
                 limit1=0;   % Define the limit
                 limit2=-20e-12;  % Define the limit
@@ -1397,63 +1400,64 @@ classdef ForceMap < matlab.mixin.Copyable
                 IntAppLim2(ii)=trapz(xApp,yAppLim); % Integrate the modified approach data
                 IntRetLim2(ii)=trapz(xRet,yRetLim); % Integrate the modified retraction data
                 
-                obj.RetAdhEnergy(ii)=IntRetLim2(ii);
+                obj.RetAdhEnergy_ThresholdMethod(ii)=IntRetLim2(ii);
             end
                 obj.FMRetAdhEnergyMean=mean(obj.RetAdhEnergy);
                 obj.FMRetAdhEnergyStd=std(obj.RetAdhEnergy);
             
-%             % %% Appendix
-%             close all
-%             % Graphical preview
-%             h_fig=figure(1);
-%             h_fig.Color='white'; % changes the background color of the figure
-%             h_fig.Units='normalized'; % Defines the units
-%             h_fig.OuterPosition=[0 0 1 1];% changes the size of the to the whole screen
-%             h_fig.PaperOrientation='landscape';
-%             %% Plotting the tiles
-%             t = tiledlayout(3,3);
-%             %t.TileSpacing = 'compact';
-%             %t.Padding = 'compact';
-%             t.TileSpacing = 'none'; % To reduce the spacing between the tiles
-%             t.Padding = 'none'; % To reduce the padding of perimeter of a tile
-%             nexttile
-%             hold on
-%             grid on
-%             plot(xApp,yApp,'g');
-%             plot(xRet,obj.BasedRet{fc},'r');
-%             plot(xRet,yRet,'b');
-%             nexttile
-%             hold on
-%             grid on
-%             plot(xRet,obj.BasedRet{fc},'r');
-%             plot(xRet,obj.BasedRet{fc},'r');
-%             plot(xRet(DataPts(1)-LimitIdx2:DataPts(1)-LimitIdx1,1),obj.BasedRet{fc}(DataPts(1)-LimitIdx2:DataPts(1)-LimitIdx1,1),'b');
-%             plot(xRet,BasedRetCorr2{fc},'g');
-%             nexttile;
-%             area(xApp,yApp,'FaceColor','y')
-%             nexttile;
-%             area(xRet,yRet,'FaceColor','y')
-%             nexttile;
-%             area(xApp,yAppLim1,'FaceColor','y')
-%             nexttile;
-%             area(xRet,yRetLim1,'FaceColor','y')
-%             nexttile;
-%             area(xApp,yAppLim2,'FaceColor','y')
-%             nexttile;
-%             area(xRet,yRetLim2,'FaceColor','y')
-%             nexttile
-%             hold on
-%             grid on
-%             plot(xApp,yApp,'g');
-%             plot(xRet,yRet,'b');
-%             area(xRet,yRetLim2,'FaceColor','y')        
+            % %% Appendix
+            close all
+            % Graphical preview
+            h_fig=figure(1);
+            h_fig.Color='white'; % changes the background color of the figure
+            h_fig.Units='normalized'; % Defines the units
+            h_fig.OuterPosition=[0 0 1 1];% changes the size of the to the whole screen
+            h_fig.PaperOrientation='landscape';
+            %% Plotting the tiles
+            t = tiledlayout(3,3);
+            %t.TileSpacing = 'compact';
+            %t.Padding = 'compact';
+            t.TileSpacing = 'none'; % To reduce the spacing between the tiles
+            t.Padding = 'none'; % To reduce the padding of perimeter of a tile
+            nexttile
+            hold on
+            grid on
+            plot(xApp,yApp,'g');
+            plot(xRet,obj.BasedRet{fc},'r');
+            plot(xRet,yRet,'b');
+            nexttile
+            hold on
+            grid on
+            plot(xRet,obj.BasedRet{fc},'r');
+            plot(xRet,obj.BasedRet{fc},'r');
+            plot(xRet(DataPts(1)-LimitIdx2:DataPts(1)-LimitIdx1,1),obj.BasedRet{fc}(DataPts(1)-LimitIdx2:DataPts(1)-LimitIdx1,1),'b');
+            plot(xRet,BasedRetCorr2{fc},'g');
+            nexttile;
+            area(xApp,yApp,'FaceColor','y')
+            nexttile;
+            area(xRet,yRet,'FaceColor','y')
+            nexttile;
+            area(xApp,yAppLim1,'FaceColor','y')
+            nexttile;
+            area(xRet,yRetLim1,'FaceColor','y')
+            nexttile;
+            area(xApp,yAppLim2,'FaceColor','y')
+            nexttile;
+            area(xRet,yRetLim2,'FaceColor','y')
+            nexttile
+            hold on
+            grid on
+            plot(xApp,yApp,'g');
+            plot(xRet,yRet,'b');
+            area(xRet,yRetLim2,'FaceColor','y')        
         end
         
-         function fc_adhesion_energy_idxpulllength(obj)
+        function fc_adhesion_energy_idxpulllength(obj)
             % Determine the adhesion energy using the previous defined pulling length index
             
             % Loop over all force curves
-            for ii=1:100
+            % for ii=1:100
+            for ii=97 % For debugging
                 if ~obj.SMFSFlag.Uncorrupt(ii)     % Selects all flagged 1 
                 continue
                 end
@@ -1462,32 +1466,33 @@ classdef ForceMap < matlab.mixin.Copyable
                 xRet=obj.THRet{ii}-obj.CP_HardSurface(ii);
                 yAppLim=obj.BasedApp{ii};
                 yRetLim=obj.BasedRetCorr2{ii};
-        %%%5% 25/5/21 %%%%%%%%%   
-                obj.PullingLengthIdx
+
                 % Define variables
                 limit1=0;   % Define the limit
-                limit2=-20e-12;  % Define the limit
-                % Set all values = limit1 and < limit2 = 0
+                % Apply the limit
                 yAppLim(yAppLim>limit1)=0;  % Set all values above the zero line of the x-axis 0
                 yRetLim(yRetLim>limit1)=0;  % Set all values above the zero line of the x-axis 0
-                yAppLim1=yAppLim;
-                yRetLim1=yRetLim;                           
-                yAppLim(yAppLim>limit2)=0;
-                yRetLim(yRetLim>limit2)=0;
-                yAppLim2=yAppLim;
-                obj.yRetLim2{ii}=yRetLim;
+                yRetLim(obj.PullingLengthIdx(ii):end)=0; % Set all data points with a higher index (surface distance is higher) than the pulling length index to 0
+                obj.yRetLim{ii}=yRetLim;
                 
                 % Determine the adhesion energy
-                IntAppLim2(ii)=trapz(xApp,yAppLim); % Integrate the modified approach data
-                IntRetLim2(ii)=trapz(xRet,yRetLim); % Integrate the modified retraction data
-                
-                obj.RetAdhEnergy(ii)=IntRetLim2(ii);
+                IntRetLim(ii)=trapz(yRetLim,xRet); % Integrates over the modified y-retraction data with respect to the corresponding x-retraction data 
+                obj.RetAdhEnergy_IdxMethod(ii)=IntRetLim(ii);
             end
                 obj.FMRetAdhEnergyMean=mean(obj.RetAdhEnergy);
                 obj.FMRetAdhEnergyStd=std(obj.RetAdhEnergy);
             
 %             % %% Appendix
 %             close all
+%             % Testing
+%             % Define variables
+%             limit2=-20e-12;  % Define the limit
+%             yRetLimTest=obj.yRetLim{ii};           
+%             yRetLimTest(yRetLimTest>limit2)=0;
+%             yRetLimTest(1:obj.PullingLengthIdx(ii))=-100e-12; % Set all data points with a lower index (surface distance is lower and lies within origin and pulling length) than the pulling length index to a constant value
+%             % Determine the adhesion energy
+%             AdhEne2=trapz(yRetLimTest,xRet); % Integrate the modified retraction data
+%             AdhEneCum2=cumtrapz(yRetLimTest,xRet);
 %             % Graphical preview
 %             h_fig=figure(1);
 %             h_fig.Color='white'; % changes the background color of the figure
@@ -1495,42 +1500,42 @@ classdef ForceMap < matlab.mixin.Copyable
 %             h_fig.OuterPosition=[0 0 1 1];% changes the size of the to the whole screen
 %             h_fig.PaperOrientation='landscape';
 %             %% Plotting the tiles
-%             t = tiledlayout(3,3);
+%             t = tiledlayout(2,2);
 %             %t.TileSpacing = 'compact';
 %             %t.Padding = 'compact';
 %             t.TileSpacing = 'none'; % To reduce the spacing between the tiles
 %             t.Padding = 'none'; % To reduce the padding of perimeter of a tile
+%             % Tile 1
 %             nexttile
 %             hold on
 %             grid on
-%             plot(xApp,yApp,'g');
-%             plot(xRet,obj.BasedRet{fc},'r');
-%             plot(xRet,yRet,'b');
+%             plot(xApp,yAppLim,'g')
+%             plot(xRet,obj.BasedRet{ii},'m')
+%             plot(xRet,yRetLim,'b')
+%             plot(xRet,yRetLimTest,'k')
+%             plot(xRet(obj.PullingLengthIdx(ii)),yRetLim(obj.PullingLengthIdx(ii)),'*','MarkerSize',10,'MarkerEdgeColor','r')
+%             legend('Approach data','Retraction data, y-data corrected','Retraction data, y-data corrected, limits included','Test Retraction data, y-data corrected, limits included, levelled','Pulling length position')
+%             % Tile 2
+%             nexttile;
+%             plot(AdhEneCum2)
+%             title('Cumulative adhesion energy of "yRetLimTest"','Pulling length position')
+%             % Tile 3
+%             nexttile;
+%             hold on
+%             plot(xApp,yAppLim,'g');
+%             plot(xRet,yRetLimTest,'k');
+%             plot(xRet(obj.PullingLengthIdx(ii)),yRetLim(obj.PullingLengthIdx(ii)),'*','MarkerSize',10,'MarkerEdgeColor','r') 
+%             legend('Approach x-data','Test Retraction x-data corrected, limits included, levelled','Pulling length position')     
+%             % Tile 4
 %             nexttile
 %             hold on
 %             grid on
-%             plot(xRet,obj.BasedRet{fc},'r');
-%             plot(xRet,obj.BasedRet{fc},'r');
-%             plot(xRet(DataPts(1)-LimitIdx2:DataPts(1)-LimitIdx1,1),obj.BasedRet{fc}(DataPts(1)-LimitIdx2:DataPts(1)-LimitIdx1,1),'b');
-%             plot(xRet,BasedRetCorr2{fc},'g');
-%             nexttile;
-%             area(xApp,yApp,'FaceColor','y')
-%             nexttile;
-%             area(xRet,yRet,'FaceColor','y')
-%             nexttile;
-%             area(xApp,yAppLim1,'FaceColor','y')
-%             nexttile;
-%             area(xRet,yRetLim1,'FaceColor','y')
-%             nexttile;
-%             area(xApp,yAppLim2,'FaceColor','y')
-%             nexttile;
-%             area(xRet,yRetLim2,'FaceColor','y')
-%             nexttile
-%             hold on
-%             grid on
-%             plot(xApp,yApp,'g');
-%             plot(xRet,yRet,'b');
-%             area(xRet,yRetLim2,'FaceColor','y')        
+%             plot(xApp,yAppLim,'g');
+%             plot(xRet,yRetLim,'b');
+%             area(xRet,obj.BasedRetCorr2{ii},'FaceColor','y')
+%             plot(xRet(obj.PullingLengthIdx(ii)),yRetLim(obj.PullingLengthIdx(ii)),'*','MarkerSize',10,'MarkerEdgeColor','r')
+%             area(xRet(1:obj.PullingLengthIdx(ii)),yRetLim(1:obj.PullingLengthIdx(ii)),'FaceColor','c') % Highlights the area with starting and end points: Pulling length and origin
+%             legend('Approach data','Retraction data, y-data corrected, limits included','Adhesion force based on Retraction data, y-data corrected','Pulling length position','Adhesion force based on Retraction data, y-data corrected, limits included')    
         end
 
         function fc_pulling_length(obj)

@@ -1455,7 +1455,9 @@ classdef Experiment < matlab.mixin.Copyable
         function SMFS_handyFunction(obj)
             % Function to quickly loop over all force maps
             for ii=1:obj.NumForceMaps
-                   obj.FM{ii}.fc_chipprop;
+                  % obj.FM{ii}.fc_chipprop;
+                   obj.FM{ii}.fc_adhesion_energy_idxpulllength
+                   obj.FM{ii}.fc_adhesion_energy_threshold
             end
         end
             
