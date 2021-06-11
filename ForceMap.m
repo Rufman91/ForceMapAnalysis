@@ -3024,16 +3024,6 @@ classdef ForceMap < matlab.mixin.Copyable
     methods
         % non-static auxiliary methods
         
-        function save(obj)
-            current = what();
-            cd(obj.Folder)
-            savename = sprintf('%s.mat',obj.Name);
-            save(savename,'obj','-v7.3')
-            cd(current.path)
-            savemsg = sprintf('Changes to ForceMap %s saved to %s',obj.Name,obj.Folder);
-            disp(savemsg);
-        end
-        
         function calculate_reference_slope_from_area(obj,Mask)
             % Calculates the distribution of DZslopes on the curves
             % that that are neihter on the fibril nor the excluded zones.
