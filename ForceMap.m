@@ -1438,6 +1438,25 @@ classdef ForceMap < matlab.mixin.Copyable
             else
                 obj.Channel(Index) = Channel;
             end
+            
+            % Write to Channel
+            Channel = obj.create_standard_channel(100.*EEMap./(DEMap+EEMap),'Elastic Fraction','%');
+            [~,Index] = obj.get_channel('Elastic Fraction');
+            if isempty(Index)
+                obj.Channel(end+1) = Channel;
+            else
+                obj.Channel(Index) = Channel;
+            end
+            
+            
+            % Write to Channel
+            Channel = obj.create_standard_channel(100.*DEMap./(DEMap+EEMap),'Inelastic Fraction','%');
+            [~,Index] = obj.get_channel('Inelastic Fraction');
+            if isempty(Index)
+                obj.Channel(end+1) = Channel;
+            else
+                obj.Channel(Index) = Channel;
+            end
         end
         
         function manual_exclusion(obj)
