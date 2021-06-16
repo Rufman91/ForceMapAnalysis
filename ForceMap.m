@@ -1913,7 +1913,7 @@ classdef ForceMap < matlab.mixin.Copyable
 %             line([x500 x500], ylim,'Color','k'); % Draws a vertical line      
         end
        
-        function fc_fine_figure(obj,XMin,XMax,YMin,YMax)
+        function fc_fine_figure(obj,XMin,XMax,YMin,YMax,ii)
              
             if nargin < 2
                 XMin= -inf;
@@ -1925,29 +1925,31 @@ classdef ForceMap < matlab.mixin.Copyable
             % Define RGB colours
             RGB1=[0 26 255]./255;  % Blue 
             RGB2=[255 119 0]./255; % Orange
+            RGB3=[80 220 100]./255; % Emerald
             RGB10=[205 207 208]./255; % Grey
               
             [Xmultiplier,Xunit,~] = AFMImage.parse_unit_scale(1e+9,'nm',1);
             [Ymultiplier,Yunit,~] = AFMImage.parse_unit_scale(1e+9,'nN',1);
             
             % Define some variables
-            kk=89;
-            VelocityConvert=num2str(obj.Velocity*Xmultiplier); % Convert into nm
+            kk=21;
+            VelocityConvert=num2str(obj.Velocity/Xmultiplier); % Convert into nm
             figname=strcat(obj.DateAdapt,{'_'},obj.TimeAdapt,{'_'},obj.ID,{'_'},obj.Substrate,{'_'},obj.EnvCond,{'_'},VelocityConvert,{'_'},obj.Chipbox,{'_'},obj.ChipCant);
             figname=char(figname);
           
             % Allocate data
-           xApp1=(obj.THApp{kk}-obj.CP_HardSurface(kk))*-Xmultiplier;
+           xApp1=(obj.THApp{kk}-obj.CP_HardSurface(kk))/-Xmultiplier;
           %  xApp1b=(obj.THApp{kk})*-1e9;
-            yApp1=(obj.BasedApp{kk})*Ymultiplier;
-            xRet1=(obj.THRet{kk}-obj.CP_HardSurface(kk))*-Xmultiplier;
-            xRet1b=(obj.THRet{kk})*-Xmultiplier;
-      %      yRet1=(obj.BasedRetCorr2{kk})*1e9;
-            yRet1b=(obj.BasedRet{kk})*Ymultiplier;
-         %   yRet2=(obj.yRetLim2{kk})*1e9;
-           
+            yApp1=(obj.BasedApp{kk})/Ymultiplier;
+            xRet1=(obj.THRet{kk}-obj.CP_HardSurface(kk))/-Xmultiplier;
+            xRet1b=(obj.THRet{kk})/-Xmultiplier;
+            yRet1=(obj.BasedRetCorr2{kk})/Ymultiplier;
+            
+            yRet_2=(obj.yRetLim2{kk})*1e9;
+            yRet_1=(obj.yRetLim{kk})*1e9;
+        
             % Figure
-            h_fig=figure(7);
+            h_fig=figure(ii);
             h_fig.Color='white'; % changes the background color of the figure
             h_fig.Units='normalized'; % Defines the units
             h_fig.OuterPosition=[0 0 1 1];% changes the size of the to the whole screen
@@ -1956,26 +1958,32 @@ classdef ForceMap < matlab.mixin.Copyable
             % Plot
             hold on
             grid on
-          %  area(xRet1,yRet2,'FaceColor',RGB10);
-            plot(xApp1,yApp1,'Color',RGB1,'LineWidth',4);
-            plot(xRet1,yRet1b,'Color',RGB2,'LineWidth',4);     
+           % area(xRet1,yRet_1,'FaceColor',RGB10);
+            area(xRet1,yRet1,'FaceColor',RGB10);
+            plot(xApp1,yApp1,'Color',RGB1,'LineWidth',6);
+            plot(xRet1,yRet1,'Color',RGB2,'LineWidth',6);
+          %  plot(xApp1,yApp1,'Color',RGB1,'LineWidth',4);
+        %    plot(xRet1(obj.PullingLengthIdx:end),yRet1(obj.PullingLengthIdx:end),'Color',RGB3,'LineWidth',4);
             % Title for each Subplot
            % ti=title(sprintf('Typical force-distance curve',kk),'Color','k');
            % ti.Units='normalized'; % Set units to 'normalized'
            % ti.Position=[0.5,1]; % Position the subplot title within the subplot
             % Legend
-            % legend('Approach','Retraction','Location','best')
+            le=legend('Adhesion Energy','Approach data','Retraction data','Location','best');
+            le.FontSize = 32;
             %%% Axes
             ax = gca; % current axes
-            ax.FontSize = 20;
+            ax.FontSize = 28;
            % ax.XTick=[];
            % ax.XTickLabel=[];
            % ax.YTick=[];
            % ax.YTickLabel=[];
-            ax.XLabel.String = sprintf('Tip-Substrate separation (%s)',Xunit);
-            ax.XLabel.FontSize = 20;
-            ax.YLabel.String = sprintf('Force (%s)',Yunit);
-            ax.YLabel.FontSize = 20;
+            %ax.XLabel.String = sprintf('Tip-Substrate separation (%s)',Xunit);
+            ax.XLabel.String = 'Tip-Substrate separation (nm)';
+            ax.XLabel.FontSize = 32;
+            %ax.YLabel.String = sprintf('Force (%s)',Yunit);
+            ax.YLabel.String = 'Force (nN)';
+            ax.YLabel.FontSize = 32;
             ax.XLim = [XMin XMax];
             ax.YLim = [YMin YMax];
             %% Save figures

@@ -1322,8 +1322,8 @@ classdef Experiment < matlab.mixin.Copyable
             cd(currpath); 
             
             % Loop over the imported force maps
-            for ii=1:obj.NumForceMaps
-            %for ii=1:10 % Debugging
+            %for ii=1:obj.NumForceMaps
+            for ii=23:obj.NumForceMaps % Debugging
                % Command window output
                sprintf('Force Map No. %d of %d',ii,obj.NumForceMaps) % Gives current Force Map Position
                % Run the chosen functions
@@ -1332,8 +1332,8 @@ classdef Experiment < matlab.mixin.Copyable
             end    
         end
       
-        function SMFS_figure(obj,XMin,XMax,YMin,YMax)
-            
+        function SMFS_fine_figure(obj,XMin,XMax,YMin,YMax,ii)
+            % Function to plot individual fine figures for publication
             if nargin < 2
                 XMin= -inf;
                 XMax= inf;
@@ -1341,8 +1341,15 @@ classdef Experiment < matlab.mixin.Copyable
                 YMax= inf;
             end
             
-            ii=93;
-            obj.FM{ii}.fc_figure(XMin,XMax,YMin,YMax)
+            % Change into the Folder of Interest
+            cd(obj.ExperimentFolder) % Move into the folder
+            % Create folders for saving the produced figures
+            foldername='FineFigures';    % Defines the folder name
+            mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
+            currpath=fullfile(obj.ExperimentFolder,foldername);
+            cd(currpath);
+            % Load FM function           
+            obj.FM{ii}.fc_fine_figure(XMin,XMax,YMin,YMax,ii)
         end
         
         function SMFS_analysis(obj,XMin,XMax,YMin,YMax,NumFcMax,NumFcUncorrupt)
@@ -1452,15 +1459,21 @@ classdef Experiment < matlab.mixin.Copyable
            
         end
        
-        function SMFS_testing_function(obj)
+        function SMFS_testing_function(obj,XMin,XMax,YMin,YMax,ii)
             % Function to quickly loop over all force maps for testing and
             % debugging
-            for ii=1:obj.NumForceMaps
+            %for ii=1:obj.NumForceMaps
+            %for ii=1
                   % obj.FM{ii}.fc_fc_measurement_prop;
-                 %  obj.FM{ii}.fc_adhesion_energy_idxpulllength
-                  % obj.FM{ii}.fc_adhesion_energy_threshold
-                   obj.FM{ii}.fc_pulling_length
-            end
+                  obj.FM{ii}.fc_pulling_length
+                  obj.FM{ii}.fc_adhesion_energy_idxpulllength
+                  obj.FM{ii}.fc_adhesion_energy_threshold
+                  % 
+                   
+            %end
+            
+          
+            
         end
             
         function SMFS_analysis_selection(obj,VelocityValue,SubstrateValue,EnvCondValue,ChipCantValue,ChipboxValue,LinkerValue)
