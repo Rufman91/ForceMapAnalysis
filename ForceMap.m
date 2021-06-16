@@ -1233,7 +1233,7 @@ classdef ForceMap < matlab.mixin.Copyable
         % Loop over all force curves  
         for ii=1:100
             % Correction based on the approach data
-            DataPtsApp=size(obj.BasedApp{ii}); % Determine the quantity of data points in the force curve 
+            DataPtsApp=size(obj.BasedApp{ii}); % Determine the amount of data points in the force curve 
             LimitIdxApp1=round(DataPtsApp(1)*DataShareStartApp); % Determine the corresponidng index
             LimitIdxApp2=round(DataPtsApp(1)*DataShareEndApp);
             obj.CorrMeanApp(ii)=mean(abs(obj.BasedApp{ii}(LimitIdxApp1:LimitIdxApp2,1))-abs(obj.BasedRet{ii}(DataPtsApp(1)-LimitIdxApp2:DataPtsApp(1)-LimitIdxApp1,1))); % Calculate the mean of the difference data
@@ -1241,7 +1241,7 @@ classdef ForceMap < matlab.mixin.Copyable
             obj.BasedRetCorr{ii}=obj.BasedRet{ii}-obj.CorrMeanApp(ii); % Correct the BasedRet data with the mean of the correction data
             
             % Correction based on the retraction data
-            DataPtsRet=size(obj.BasedRet{ii}); % Determine the quantity of data points in the force curve 
+            DataPtsRet=size(obj.BasedRet{ii}); % Determine the amount of data points in the force curve 
             LimitIdxRet1=round(DataPtsRet(1)*DataShareStartRet); % Determine the corresponidng index
             LimitIdxRet2=round(DataPtsRet(1)*DataShareEndRet);
             obj.CorrMeanRet(ii)=mean(obj.BasedRet{ii}(DataPtsRet(1)-LimitIdxRet2:DataPtsRet(1)-LimitIdxRet1,1)); % Calculate the mean of the difference data
@@ -1279,7 +1279,7 @@ classdef ForceMap < matlab.mixin.Copyable
         % line([x500 x500], ylim,'Color','k'); % Draws a vertical line
         end
              
-        function fc_chipprop(obj)
+        function fc_measurement_prop(obj)
                % fc_chipprop: A fct to read out properties about the SMFS measurements from the name of the jpk data file (i.e. "JPK-FORCE-MAP").  
                 % Chip number and Cantilever
                 exp15='(\d+\D{1}\>)'; % Finds the chip number and the cantilever   
@@ -1363,7 +1363,8 @@ classdef ForceMap < matlab.mixin.Copyable
                 elseif isempty(ext42)==0
                     obj.Linker='short'; % short linker
                 else
-                    obj.Linker='long';
+                  %  obj.Linker='long';
+                    obj.Linker='short';
                 end
                 
         end
@@ -1380,19 +1381,19 @@ classdef ForceMap < matlab.mixin.Copyable
                 end
                 % Allocate data
                 xRet=obj.THRet{ii}-obj.CP_HardSurface(ii); % Retraction x-data (m): Vertical tip height data corrected by the determined contact point using the hard surface method 
-                yRetLim=obj.BasedRetCorr2{ii}; % Retraction y-data (N): Baseline and tilt corrected and additonally baseline deviation between the approach and retraction data corrected
+                yRetLim2=obj.BasedRetCorr2{ii}; % Retraction y-data (N): Baseline and tilt corrected and additonally baseline deviation between the approach and retraction data corrected
             % data
                 % Define variables
                 limit1=0;   % Define the limit
                 limit2=-20e-12;  % Define the limit
                 % Set all values = limit1 and < limit2 = 0
-                yRetLim(yRetLim>limit1)=0;  % Set all values above the zero line of the x-axis 0
-                yRetLim1=yRetLim;                           
-                yRetLim(yRetLim>limit2)=0;
-                obj.yRetLim2{ii}=yRetLim;
+                yRetLim2(yRetLim2>limit1)=0;  % Set all values above the zero line of the x-axis 0
+                yRetLim1=yRetLim2;                           
+                yRetLim2(yRetLim2>limit2)=0;
+                obj.yRetLim2{ii}=yRetLim2;
                 
                 % Determine the adhesion energy
-                IntRetLim2(ii)=trapz(yRetLim,xRet); % Integrates over the modified y-retraction data with respect to the corresponding x-retraction data 
+                IntRetLim2(ii)=trapz(yRetLim2,xRet); % Integrates over the modified y-retraction data with respect to the corresponding x-retraction data 
                 
                 obj.RetAdhEnergy_ThresholdMethod(ii)=IntRetLim2(ii);
             end
@@ -1566,8 +1567,15 @@ classdef ForceMap < matlab.mixin.Copyable
             obj.FMPullingLengthMin=min(obj.PullingLength);
             obj.FMPullingLengthMax=max(obj.PullingLength);
             
-            % %% Appendix
+%             %% Appendix
 %             close all
+%             % Define variables
+%             qq=1;
+%             % Allocate data
+%             xApp=obj.THApp{qq}-obj.CP_HardSurface(qq);
+%             xRet=obj.THRet{qq}-obj.CP_HardSurface(qq);
+%             yApp=obj.BasedApp{qq};
+%             yRet=obj.BasedRetCorr2{qq};    
 %             % Graphical preview
 %             h_fig=figure(1);
 %             h_fig.Color='white'; % changes the background color of the figure
@@ -1575,7 +1583,7 @@ classdef ForceMap < matlab.mixin.Copyable
 %             h_fig.OuterPosition=[0 0 1 1];% changes the size of the to the whole screen
 %             h_fig.PaperOrientation='landscape';
 %             %% Plotting the tiles
-%             t = tiledlayout(3,3);
+%             t = tiledlayout(2,2);
 %             %t.TileSpacing = 'compact';
 %             %t.Padding = 'compact';
 %             t.TileSpacing = 'none'; % To reduce the spacing between the tiles
@@ -1590,7 +1598,7 @@ classdef ForceMap < matlab.mixin.Copyable
 %             grid on
 %             plot(xApp,yApp,'b');
 %             plot(xRet,yRet,'r');
-%             plot(xIntercept,yIntercept,'*','MarkerSize',10,'MarkerEdgeColor','g')                      
+%             plot(obj.THRet{qq}(obj.PullingLengthIdx(qq))-obj.CP_HardSurface(qq),obj.BasedRetCorr2{qq}(obj.PullingLengthIdx(qq)),'*','MarkerSize',10,'MarkerEdgeColor','g')              
         end
                              
         function fc_print(obj,XMin,XMax,YMin,YMax) % fc ... force curve
@@ -1781,7 +1789,7 @@ classdef ForceMap < matlab.mixin.Copyable
                     prompt = {'Enter the force curve number you do not want to keep for analysis (For multiple selections just use the space key to separeat entries)'};
                     definput = {''};
                     opts.Interpreter = 'tex';
-                    IdxExc=inputdlg(prompt,'Select all except of ...',[1 150],definput,opts); % Stores the individual selected fc as a cell array of character vectors 
+                    IdxExc=inputdlg(prompt,'Select all - except of ...',[1 150],definput,opts); % Stores the individual selected fc as a cell array of character vectors 
                     IdxExc=str2num(IdxExc{1}); % Convert the cell array to numerals
                     obj.SMFSFlag.Uncorrupt(IdxExc)=0;
                 end
@@ -1796,7 +1804,7 @@ classdef ForceMap < matlab.mixin.Copyable
                     prompt = {'Enter the force curve number you want want to keep for analysis (For multiple selections just use the space key to separeat entries)'};
                     definput = {''};
                     opts.Interpreter = 'tex';
-                    IdxExc=inputdlg(prompt,'Select all except of ...',[1 150],definput,opts); % Stores the individual selected fc as a cell array of character vectors 
+                    IdxExc=inputdlg(prompt,'Select none - except of ...',[1 150],definput,opts); % Stores the individual selected fc as a cell array of character vectors 
                     IdxExc=str2num(IdxExc{1}); % Convert the cell array to numerals
                     obj.SMFSFlag.Uncorrupt(IdxExc)=1;
                 end
@@ -1905,7 +1913,7 @@ classdef ForceMap < matlab.mixin.Copyable
 %             line([x500 x500], ylim,'Color','k'); % Draws a vertical line      
         end
        
-        function fc_figure(obj,XMin,XMax,YMin,YMax)
+        function fc_fine_figure(obj,XMin,XMax,YMin,YMax)
              
             if nargin < 2
                 XMin= -inf;
@@ -1981,8 +1989,8 @@ classdef ForceMap < matlab.mixin.Copyable
                 
         function fc_print_adhenergy_pulllength(obj,XMin,XMax,YMin,YMax,NumFcMax,NumFcUncorrupt,hh) % fc ... force curve
             % fc_print_adhenergy_pulllength: A function to plot all selected force curves of a
-            % force map by visual showing adhesion energy and pulling
-            % length
+            % force map including adhesion energy and pulling length in
+            % each force curve
             if nargin < 2
                 XMin= -inf;
                 XMax= inf;
@@ -2058,10 +2066,10 @@ classdef ForceMap < matlab.mixin.Copyable
                             ax.YLim = [YMin YMax];
                             hold on
                             grid on
-                            plot(obj.THApp{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc),obj.BasedApp{qq+DiffFc},'b');
+                            plot(obj.THApp{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc),obj.BasedApp{qq+DiffFc},'g');
                             plot(obj.THRet{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc),obj.BasedRetCorr2{qq+DiffFc},'r');
                             %plot(xRet(obj.PullingLengthIdx(kk)),yRet(obj.PullingLengthIdx(kk)),'*','MarkerSize',10,'MarkerEdgeColor','g')
-                            plot(obj.THRet{qq+DiffFc}(obj.PullingLengthIdx(qq+DiffFc))-obj.CP_HardSurface(qq+DiffFc),obj.BasedRetCorr2{qq+DiffFc}(obj.PullingLengthIdx(qq+DiffFc)),'*','MarkerSize',10,'MarkerEdgeColor','g')
+                            plot(obj.THRet{qq+DiffFc}(obj.PullingLengthIdx(qq+DiffFc))-obj.CP_HardSurface(qq+DiffFc),obj.BasedRetCorr2{qq+DiffFc}(obj.PullingLengthIdx(qq+DiffFc)),'d','MarkerSize',10,'MarkerFaceColor','b','MarkerEdgeColor','b')
                             area(obj.THRet{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc),obj.yRetLim2{qq+DiffFc},'FaceColor','y')
                             % Title for each Subplot
                             ti=title(sprintf('%i',qq+DiffFc),'Color','k');
@@ -2073,10 +2081,10 @@ classdef ForceMap < matlab.mixin.Copyable
                             ax.YLim = [YMin YMax];
                             hold on
                             grid on
-                            plot(obj.THApp{qq}-obj.CP_HardSurface(qq),obj.BasedApp{qq},'b');
+                            plot(obj.THApp{qq}-obj.CP_HardSurface(qq),obj.BasedApp{qq},'g');
                             plot(obj.THRet{qq}-obj.CP_HardSurface(qq),obj.BasedRetCorr2{qq},'r');
                             %plot(xRet(obj.PullingLengthIdx(kk)),yRet(obj.PullingLengthIdx(kk)),'*','MarkerSize',10,'MarkerEdgeColor','g')
-                            plot(obj.THRet{qq}(obj.PullingLengthIdx(qq))-obj.CP_HardSurface(qq),obj.BasedRetCorr2{qq}(obj.PullingLengthIdx(qq)),'*','MarkerSize',10,'MarkerEdgeColor','g')
+                            plot(obj.THRet{qq}(obj.PullingLengthIdx(qq))-obj.CP_HardSurface(qq),obj.BasedRetCorr2{qq}(obj.PullingLengthIdx(qq)),'d','MarkerSize',10,'MarkerFaceColor','b','MarkerEdgeColor','b')
                             area(obj.THRet{qq}-obj.CP_HardSurface(qq),obj.yRetLim2{qq},'FaceColor','y')
                             % Title for each Subplot
                             ti=title(sprintf('%i',qq),'Color','k');
@@ -2124,11 +2132,11 @@ classdef ForceMap < matlab.mixin.Copyable
                                 ax.YLim = [YMin YMax];
                                 hold on
                                 grid on
-                                plot(obj.THApp{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc),obj.BasedApp{qq+DiffFc},'b');
+                                plot(obj.THApp{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc),obj.BasedApp{qq+DiffFc},'g');
                                 plot(obj.THRet{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc),obj.BasedRetCorr2{qq+DiffFc},'r');
                                 %plot(xRet(obj.PullingLengthIdx(kk)),yRet(obj.PullingLengthIdx(kk)),'*','MarkerSize',10,'MarkerEdgeColor','g')
-                                plot(obj.THRet{qq+DiffFc}(obj.PullingLengthIdx(qq+DiffFc))-obj.CP_HardSurface(qq+DiffFc),obj.BasedRetCorr2{qq+DiffFc}(obj.PullingLengthIdx(qq+DiffFc)),'*','MarkerSize',10,'MarkerEdgeColor','g')
-                                area(obj.THRet{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc),obj.yRetLim2{qq+DiffFc},'FaceColor','y')
+                                plot(obj.THRet{qq+DiffFc}(obj.PullingLengthIdx(qq+DiffFc))-obj.CP_HardSurface(qq+DiffFc),obj.BasedRetCorr2{qq+DiffFc}(obj.PullingLengthIdx(qq+DiffFc)),'d','MarkerSize',10,'MarkerFaceColor','b','MarkerEdgeColor','b')
+                                area(obj.THRet{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc),obj.yRetLim{qq+DiffFc},'FaceColor','y')
                                 % Title for each Subplot
                                 ti=title(sprintf('%i',qq+DiffFc),'Color','k');
                                 ti.Units='normalized'; % Set units to 'normalized'
@@ -2139,11 +2147,11 @@ classdef ForceMap < matlab.mixin.Copyable
                                 ax.YLim = [YMin YMax];
                                 hold on
                                 grid on
-                                plot(obj.THApp{qq}-obj.CP_HardSurface(qq),obj.BasedApp{qq},'b');
+                                plot(obj.THApp{qq}-obj.CP_HardSurface(qq),obj.BasedApp{qq},'g');
                                 plot(obj.THRet{qq}-obj.CP_HardSurface(qq),obj.BasedRetCorr2{qq},'r');
                                 %plot(xRet(obj.PullingLengthIdx(kk)),yRet(obj.PullingLengthIdx(kk)),'*','MarkerSize',10,'MarkerEdgeColor','g')
-                                plot(obj.THRet{qq}(obj.PullingLengthIdx(qq))-obj.CP_HardSurface(qq),obj.BasedRetCorr2{qq}(obj.PullingLengthIdx(qq)),'*','MarkerSize',10,'MarkerEdgeColor','g')
-                                area(obj.THRet{qq}-obj.CP_HardSurface(qq),obj.yRetLim2{qq},'FaceColor','y')
+                                plot(obj.THRet{qq}(obj.PullingLengthIdx(qq))-obj.CP_HardSurface(qq),obj.BasedRetCorr2{qq}(obj.PullingLengthIdx(qq)),'d','MarkerSize',10,'MarkerFaceColor','b','MarkerEdgeColor','b')
+                                area(obj.THRet{qq}-obj.CP_HardSurface(qq),obj.yRetLim{qq},'FaceColor','y')
                                 % Title for each Subplot
                                 ti=title(sprintf('%i',qq),'Color','k');
                                 ti.Units='normalized'; % Set units to 'normalized'
@@ -2189,11 +2197,11 @@ classdef ForceMap < matlab.mixin.Copyable
                                 ax.YLim = [YMin YMax];
                                 hold on
                                 grid on
-                                plot(obj.THApp{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc),obj.BasedApp{qq+DiffFc},'b');
+                                plot(obj.THApp{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc),obj.BasedApp{qq+DiffFc},'g');
                                 plot(obj.THRet{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc),obj.BasedRetCorr2{qq+DiffFc},'r');
                                 %plot(xRet(obj.PullingLengthIdx(kk)),yRet(obj.PullingLengthIdx(kk)),'*','MarkerSize',10,'MarkerEdgeColor','g')
-                                plot(obj.THRet{qq+DiffFc}(obj.PullingLengthIdx(qq+DiffFc))-obj.CP_HardSurface(qq+DiffFc),obj.BasedRetCorr2{qq+DiffFc}(obj.PullingLengthIdx(qq+DiffFc)),'*','MarkerSize',10,'MarkerEdgeColor','g')
-                                area(obj.THRet{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc),obj.yRetLim2{qq+DiffFc},'FaceColor','y')
+                                plot(obj.THRet{qq+DiffFc}(obj.PullingLengthIdx(qq+DiffFc))-obj.CP_HardSurface(qq+DiffFc),obj.BasedRetCorr2{qq+DiffFc}(obj.PullingLengthIdx(qq+DiffFc)),'d','MarkerSize',10,'MarkerFaceColor','b','MarkerEdgeColor','b')
+                                area(obj.THRet{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc),obj.yRetLim{qq+DiffFc},'FaceColor','y')
                                 % Title for each Subplot
                                 ti=title(sprintf('%i',qq+DiffFc),'Color','k');
                                 %ti=title(sprintf('%i',(kk+ww)/2),'Color','k');
@@ -2205,11 +2213,11 @@ classdef ForceMap < matlab.mixin.Copyable
                                 ax.YLim = [YMin YMax];
                                 hold on
                                 grid on
-                                plot(obj.THApp{qq}-obj.CP_HardSurface(qq),obj.BasedApp{qq},'b');
+                                plot(obj.THApp{qq}-obj.CP_HardSurface(qq),obj.BasedApp{qq},'g');
                                 plot(obj.THRet{qq}-obj.CP_HardSurface(qq),obj.BasedRetCorr2{qq},'r');
                                 %plot(xRet(obj.PullingLengthIdx(kk)),yRet(obj.PullingLengthIdx(kk)),'*','MarkerSize',10,'MarkerEdgeColor','g')
-                                plot(obj.THRet{qq}(obj.PullingLengthIdx(qq))-obj.CP_HardSurface(qq),obj.BasedRetCorr2{qq}(obj.PullingLengthIdx(qq)),'*','MarkerSize',10,'MarkerEdgeColor','g')
-                                area(obj.THRet{qq}-obj.CP_HardSurface(qq),obj.yRetLim2{qq},'FaceColor','y')
+                                plot(obj.THRet{qq}(obj.PullingLengthIdx(qq))-obj.CP_HardSurface(qq),obj.BasedRetCorr2{qq}(obj.PullingLengthIdx(qq)),'d','MarkerSize',10,'MarkerFaceColor','b','MarkerEdgeColor','b')
+                                area(obj.THRet{qq}-obj.CP_HardSurface(qq),obj.yRetLim{qq},'FaceColor','y')
                                 % Title for each Subplot
                                 ti=title(sprintf('%i',qq),'Color','k');
                                 %ti=title(sprintf('%i',(kk+ww)/2),'Color','k');

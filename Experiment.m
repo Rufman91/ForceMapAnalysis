@@ -1078,7 +1078,7 @@ classdef Experiment < matlab.mixin.Copyable
                     continue
                 end
                 waitbar(ii/NLoop,h,sprintf('Preprocessing ForceMap %i/%i\nProcessing force curves',ii,NLoop));
-                obj.FM{ii}.fc_chipprop              
+                obj.FM{ii}.fc_measurement_prop             
                 obj.FM{ii}.fc_based_ret_correction
                 waitbar(ii/NLoop,h,sprintf('Preprocessing ForceMap %i/%i\nWrapping Up And Saving',ii,NLoop));
                                 
@@ -1113,7 +1113,7 @@ classdef Experiment < matlab.mixin.Copyable
                 if isequal(KeepFlagged,'Yes') && obj.SMFSFlag.Preprocessed(ii) == 1
                     continue
                 end
-                obj.FM{ii}.fc_chipprop      
+                obj.FM{ii}.fc_measurement_prop   
                 waitbar(ii/NLoop,h,sprintf('Preprocessing ForceMap %i/%i\nProcessing force curves',ii,NLoop));
                 obj.FM{ii}.base_and_tilt('linear');
                 waitbar(ii/NLoop,h,sprintf('Preprocessing ForceMap %i/%i\nWrapping Up And Saving',ii,NLoop));
@@ -1177,7 +1177,7 @@ classdef Experiment < matlab.mixin.Copyable
             % SMFS_print_sort: A function to plot all force curves of all
             % force maps sorted by different properties 
             % Comment: Date format is: 'YYYY.MM.DD'
-            % Required function: obj.FM{ii}.fc_chipprop, obj.FM{ii}.estimate_cp_hardsurface
+            % Required function: obj.FM{ii}.fc_measurement_prop, obj.FM{ii}.estimate_cp_hardsurface
          
             % Change into the Folder of Interest
             cd(obj.ExperimentFolder) % Move into the folder 
@@ -1199,7 +1199,7 @@ classdef Experiment < matlab.mixin.Copyable
             % Loop over the imported force maps
              for ii=1:obj.NumForceMaps
                 % Needed function
-                obj.FM{ii}.fc_chipprop
+                obj.FM{ii}.fc_measurement_prop
                 %if ~obj.SMFSFlag(ii)     % Selects all flagged 1 force maps
                 %if obj.SMFSFlag(ii)     % Selects all flagged 0 force maps
                 %    continue
@@ -1247,7 +1247,7 @@ classdef Experiment < matlab.mixin.Copyable
             % SMFS_print_sort: A function to plot all force curves of all
             % force maps sorted by different properties 
             % Comment: Date format is: 'YYYY.MM.DD'
-            % Required function: obj.FM{ii}.fc_chipprop, obj.FM{ii}.estimate_cp_hardsurface
+            % Required function: obj.FM{ii}.fc_measurement_prop, obj.FM{ii}.estimate_cp_hardsurface
             
             % Change into the Folder of Interest
             cd(obj.ExperimentFolder) % Move into the folder 
@@ -1345,7 +1345,7 @@ classdef Experiment < matlab.mixin.Copyable
             obj.FM{ii}.fc_figure(XMin,XMax,YMin,YMax)
         end
         
-        function SMFS_analysis(obj,XMin,XMax,YMin,YMax,NumFcMax,NumFcUncorrupt,hh)
+        function SMFS_analysis(obj,XMin,XMax,YMin,YMax,NumFcMax,NumFcUncorrupt)
             % This function allows to analyse different force curve
             % criteria, i.e. pulling length, adhesion energy. Furthermore,
             % all analysed force curves are plotted and the determined
@@ -1369,8 +1369,8 @@ classdef Experiment < matlab.mixin.Copyable
             % Change into the Folder of Interest
             cd(obj.ExperimentFolder) % Move into the folder
             % Create folders for saving the produced figures
-            foldername='FM_fcAnalysis';    % for debugging
-            %foldername='FM_analysis';    % Defines the folder name
+            %foldername='FM_fcAnalysis';    % for debugging
+            foldername='FM_analysed';    % Defines the folder name
             mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
             currpath=fullfile(obj.ExperimentFolder,foldername);
             cd(currpath);
@@ -1383,7 +1383,7 @@ classdef Experiment < matlab.mixin.Copyable
                % Pulling length
                 obj.FM{hh}.fc_pulling_length
                 % Adhesion energy
-                obj.FM{hh}.fc_adhesion_energy
+                obj.FM{hh}.fc_adhesion_energy_idxpulllength
                 % Determine needed input variable
                 NumFcUncorrupt(hh)=nnz(obj.FM{hh}.SMFSFlag.Uncorrupt); % Determine the number of uncorrupted force curves     
                 obj.FM{hh}.fc_print_adhenergy_pulllength(XMin,XMax,YMin,YMax,NumFcMax,NumFcUncorrupt,hh)
@@ -1456,9 +1456,10 @@ classdef Experiment < matlab.mixin.Copyable
             % Function to quickly loop over all force maps for testing and
             % debugging
             for ii=1:obj.NumForceMaps
-                  % obj.FM{ii}.fc_chipprop;
+                  % obj.FM{ii}.fc_fc_measurement_prop;
                  %  obj.FM{ii}.fc_adhesion_energy_idxpulllength
-                   obj.FM{ii}.fc_adhesion_energy_threshold
+                  % obj.FM{ii}.fc_adhesion_energy_threshold
+                   obj.FM{ii}.fc_pulling_length
             end
         end
             
