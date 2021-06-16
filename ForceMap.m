@@ -1753,36 +1753,45 @@ classdef ForceMap < matlab.mixin.Copyable
         end
         
         function sinus_fit_for_microrheology(obj)
+            close all
             for i=1:obj.NCurves
                 lastseg = obj.NumSegments-1;
                 for j=2:lastseg
                     
                     if obj.SegFrequency{j} > 0
                         
-                        Y = obj.Force{i,j};
-                        Y = Y - mean(Y);
-                        SSR = length(Y)/2048;
-                        YSS = Y(1:SSR:end);
-                        YSS = YSS/range(YSS);
-                        X = 1:length(YSS);
-                        FrequencyMultiplier = 1/obj.SegFrequency{j};
-                        Lambda = exp(FrequencyMultiplier-1)*10000;
-                        YGP = predictGP_mean(X',X',1,Lambda,YSS,0);
-                        HH = obj.Height{i,j}(1:SSR:end);
-                        HH = HH - mean(HH);
-                        HH = HH/range(HH);
-                        XHH = 1:length(HH);
-                        HHGP = predictGP_mean(XHH',XHH',1,10000,HH,0);
-                        figure('Name',sprintf('Force Curve %i Segment %j',i,j))
-                        subplot(2,1,1)
-                        plot(X,YSS,X,YGP,XHH,HH,XHH,HHGP)
-                        subplot(2,1,2)
-                        findpeaks(YGP)
-                        hold on
-                        findpeaks(-YGP)
-                        findpeaks(HHGP)
-                        findpeaks(-HHGP)
-                        drawnow
+                        
+%                         Y = obj.Force{i,j};
+%                         Y = Y - mean(Y);
+%                         SSR = length(Y)/2048;
+%                         YSS = Y(1:SSR:end);
+%                         YSS = YSS/range(YSS);
+%                         X = 1:length(YSS);
+%                         FrequencyMultiplier = 1/obj.SegFrequency{j};
+%                         Lambda = exp(FrequencyMultiplier-1)*10000;
+%                         YGP = predictGP_mean(X',X',1,Lambda,YSS,0);
+%                         HH = obj.Height{i,j}(1:SSR:end);
+%                         HH = HH - mean(HH);
+%                         HH = HH/range(HH);
+%                         XHH = 1:length(HH);
+%                         HHGP = predictGP_mean(XHH',XHH',1,10000,HH,0);
+%                         figure('Name',sprintf('Force Curve %i Segment %j',i,j))
+%                         subplot(2,1,1)
+%                         plot(X,YSS,X,YGP,XHH,HH,XHH,HHGP)
+%                         subplot(2,1,2)
+%                         findpeaks(YGP)
+%                         hold on
+%                         findpeaks(-YGP)
+%                         findpeaks(HHGP)
+%                         findpeaks(-HHGP)
+%                         drawnow
+                        
+                        rangeF = range(obj.Force{i,j});
+                        rangeH = range(obj.Height{i,j});
+                        
+                        obj.Force{i,j} = obj.Force{i,j}/rangeF;
+                        obj.Height{i,j} = obj.Height{i,j}/rangeH;
+                        
                         % Max values of Force and Height
                         maxF = max(obj.Force{i,j});
                          maxH = max(obj.Height{i,j});
@@ -1801,19 +1810,21 @@ classdef ForceMap < matlab.mixin.Copyable
                          HZShift{i,j} = obj.Height{i,j}-maxH+(DiffH/2);
 
 
-                        if obj.SegFrequency{j} > 0.25
+                        if obj.SegFrequency{j} > 1
                             ForceTrend{i,j} = detrend(FZShift{i,j});
                             %iN = 500;
                             %obj.FilterF{i,j} = filter(ones(1,iN)/iN,1,ForceTrend{i,j});
-                            iN = 50;
+                            iN = 100;
                             d = ones(1,iN)/iN;
                             obj.FilterF{i,j} = filtfilt(d,1,ForceTrend{i,j});
+                            %obj.FilterF{i,j} = obj.Force{i,j}-maxF+(DiffF/2);
                         else
                             %ForceTrend{i,j} = detrend(FZShift{i,j});
                             iN = 250;
                             d = ones(1,iN)/iN;
                             obj.FilterF{i,j} = filtfilt(d,1,FZShift{i,j});
                         end
+                        
                         
                         
                         if obj.SegFrequency{j} > 0.5
@@ -1907,29 +1918,44 @@ classdef ForceMap < matlab.mixin.Copyable
                          
                          % Function to fit height data 
                          %b(1) (max-min)/2 b(2) FFT b(3) first sign change b(4) mean
-                         fit = @(a,x)  a(1).*(sin(2*pi*x./a(2) + 2*pi/a(3))) + a(4);    
+                         fit = @(a,x)  a(1).*(sin(2*pi*x./a(2) + 2*pi/a(3)));    
                          % Least-Squares cost function:
                          fcn = @(a) sum((fit(a,x) - obj.FilterH{i,j}).^2);       
                          % Minimise Least-Squares with estimated start values:
-                         obj.SineVarsH{i,j} = fminsearch(fcn, [obj.AmplitudeH;  obj.PeriodH;  obj.firstsignchangeH;  meanH]); 
+                         obj.SineVarsH{i,j} = fminsearch(fcn, [obj.AmplitudeH;  obj.PeriodH;  obj.firstsignchangeH]); 
                          % Spacing of time vector:
                          xpH = linspace(min(obj.InterpTimeH{j}),max(obj.InterpTimeH{j}),100000);
                         
                         % phase shift in radians of force and height sine
-                        obj.phaseFrad = obj.SineVarsF{i,j}(2)/obj.SineVarsF{i,j}(3);
-                        obj.phaseHrad = obj.SineVarsH{i,j}(2)/obj.SineVarsH{i,j}(3);
+                        %obj.phaseFrad = obj.SineVarsF{i,j}(2)/obj.SineVarsF{i,j}(3);
+                        %obj.phaseHrad = obj.SineVarsH{i,j}(2)/obj.SineVarsH{i,j}(3);
                         
                         % phase shift in degree of force and height sine
-                        obj.phaseF = obj.phaseFrad*180/pi;
-                        obj.phaseH = obj.phaseHrad*180/pi;
+                        %obj.phaseF = obj.phaseFrad*180/pi;
+                        %obj.phaseH = obj.phaseHrad*180/pi;
                         
                         % phase shift between indentation and force:
-                        obj.DeltaPhi{i,j} = obj.phaseF-obj.phaseH;
+                        obj.DeltaPhi{i,j} = obj.SineVarsF{i,j}(3)-obj.SineVarsH{i,j}(3);
 
                         %Y-values fitted sine of indentation and force:
                         obj.SineFunctionF = obj.SineVarsF{i,j}(1)*(sin((2*pi*x)/obj.SineVarsF{i,j}(2) + 2*pi/obj.SineVarsF{i,j}(3)));
                         obj.SineFunctionH = obj.SineVarsH{i,j}(1)*(sin((2*pi*x)/obj.SineVarsH{i,j}(2) + 2*pi/obj.SineVarsH{i,j}(3)));
- 
+                        
+                        ypF = fit(obj.SineVarsF{i,j},xpF);
+                        ypH = fit(obj.SineVarsH{i,j},xpH);
+                        
+                        figure('Name',sprintf('Force Curve %i Segment %j',i,j))
+                        subplot(2,1,1)
+                        plot(x,FZShift{i,j},x,obj.FilterF{i,j},xpF,ypF,x,HZShift{i,j},x,obj.FilterH{i,j},xpH,ypH)
+                        legend('shifted force data to zero line','filtered force data','fitted force data 1','shifted height data to zero line','filtered height data','fitted height data 1')
+                        subplot(2,1,2)
+                        findpeaks(obj.SineFunctionF)
+                        hold on
+                        findpeaks(-obj.SineFunctionF)
+                        findpeaks(obj.SineFunctionH)
+                        findpeaks(-obj.SineFunctionH)
+                        drawnow
+                        
                     end
                 end
             end
