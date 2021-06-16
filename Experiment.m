@@ -2030,28 +2030,28 @@ classdef Experiment < matlab.mixin.Copyable
                     'FontSize',12,...
                     'HorizontalAlignment','center')
                 
-%                 %Statistics for Hertz-Sneddon Method
-%                 [hHS(i),pHS(i)] = ...
-%                     ttest(DataMeansHS(obj.GroupFM(TestMat(i,2)).Indices),...
-%                     DataMeansHS(obj.GroupFM(TestMat(i,1)).Indices),'Tail','right');
-%                 
-%                 figure('Name','Paired Right Tailed T-Test','Units','normalized','Position',[0.2 0.2 0.5 0.5],'Color','w')
-%                 boxplot([DataMeansHS(obj.GroupFM(TestMat(i,1)).Indices) DataMeansHS(obj.GroupFM(TestMat(i,2)).Indices)])
-%                 title('Paired Right Tailed T-Test for Hertz-Sneddon Method')
-%                 xticklabels({obj.GroupFM(TestMat(i,1)).Name,obj.GroupFM(TestMat(i,2)).Name})
-%                 xlabel('Test Group')
-%                 ylabel('E-Mod Hertz-Sneddon[Pa]')
-%                 DeltaMean = mean(DataMeansHS(obj.GroupFM(TestMat(i,2)).Indices)) - mean(DataMeansHS(obj.GroupFM(TestMat(i,1)).Indices));
-%                 Sigma = std(DataMeansHS(obj.GroupFM(TestMat(i,2)).Indices) - DataMeansHS(obj.GroupFM(TestMat(i,1)).Indices));
-%                 Beta = sampsizepwr('t',[0 Sigma],DeltaMean,[],length(obj.GroupFM(TestMat(i,2)).Indices));
-%                 Stats = {sprintf('\\DeltaMean = %.2f MPa',DeltaMean*1e-6),...
-%                     sprintf('P-Value = %.4f%',pHS(i)),...
-%                     sprintf('Power \\beta = %.2f%%',Beta*100),...
-%                     sprintf('Number of Specimen = %i',length(obj.GroupFM(TestMat(i,2)).Indices))};
-%                 text(0.5,0.8,Stats,...
-%                     'Units','normalized',...
-%                     'FontSize',12,...
-%                     'HorizontalAlignment','center')
+                %Statistics for Hertz-Sneddon Method
+                [hHS(i),pHS(i)] = ...
+                    ttest(DataMeansHS(obj.GroupFM(TestMat(i,2)).Indices),...
+                    DataMeansHS(obj.GroupFM(TestMat(i,1)).Indices),'Tail','right');
+                
+                figure('Name','Paired Right Tailed T-Test','Units','normalized','Position',[0.2 0.2 0.5 0.5],'Color','w')
+                boxplot([DataMeansHS(obj.GroupFM(TestMat(i,1)).Indices) DataMeansHS(obj.GroupFM(TestMat(i,2)).Indices)])
+                title('Paired Right Tailed T-Test for Hertz-Sneddon Method')
+                xticklabels({obj.GroupFM(TestMat(i,1)).Name,obj.GroupFM(TestMat(i,2)).Name})
+                xlabel('Test Group')
+                ylabel('E-Mod Hertz-Sneddon[Pa]')
+                DeltaMean = mean(DataMeansHS(obj.GroupFM(TestMat(i,2)).Indices)) - mean(DataMeansHS(obj.GroupFM(TestMat(i,1)).Indices));
+                Sigma = std(DataMeansHS(obj.GroupFM(TestMat(i,2)).Indices) - DataMeansHS(obj.GroupFM(TestMat(i,1)).Indices));
+                Beta = sampsizepwr('t',[0 Sigma],DeltaMean,[],length(obj.GroupFM(TestMat(i,2)).Indices));
+                Stats = {sprintf('\\DeltaMean = %.2f MPa',DeltaMean*1e-6),...
+                    sprintf('P-Value = %.4f%',pHS(i)),...
+                    sprintf('Power \\beta = %.2f%%',Beta*100),...
+                    sprintf('Number of Specimen = %i',length(obj.GroupFM(TestMat(i,2)).Indices))};
+                text(0.5,0.8,Stats,...
+                    'Units','normalized',...
+                    'FontSize',12,...
+                    'HorizontalAlignment','center')
             end
             
             % Now test, if the difference in one pair of groups is
@@ -2092,36 +2092,36 @@ classdef Experiment < matlab.mixin.Copyable
                 'FontSize',12,...
                 'HorizontalAlignment','center')
             
-%             % For Hertz-Sneddon
-%             [hHS,pHS,ciHS,statsHS] = ttest2(DiffMGOHS,DiffControlHS);
-%             figure('Name','Two Sample T-Test','Units','normalized','Position',[0.2 0.2 0.5 0.5],'Color','w')
-%             yyaxis left
-%             boxplot([DiffControlHS DiffMGOHS])
-%             ax = gca;
-%             YLim = ax.YLim;
-%             ylabel('Difference Before-After E-Mod [Pa]')
-%             DeltaMean = mean(DiffMGOHS) - mean(DiffControlHS);
-%             PooledSTD = statsHS.sd;
-%             yyaxis right
-%             errorbar(1.5,DeltaMean,ciHS(2)-DeltaMean,'O');
-%             ylim(YLim)
-%             xticks([1 1.5 2])
-%             title('Two Sample T-Test for E-Mod Hertz-Sneddon Method')
-%             ax = gca;
-%             ax.TickLabelInterpreter = 'tex';
-%             xticklabels({sprintf('%s - %s',obj.GroupFM(2).Name,obj.GroupFM(1).Name),...
-%                 '\DeltaMean with CI',...
-%                 sprintf('%s - %s',obj.GroupFM(4).Name,obj.GroupFM(3).Name)})
-%             ylabel('Difference of Differences [Pa]')
-%             Beta = sampsizepwr('t2',[mean(DiffControlHS) PooledSTD],mean(DiffMGOHS),[],length(DiffControlHS),'Ratio',length(DiffMGOHS)/length(DiffControlHS));
-%             Stats = {sprintf('\\DeltaMean = %.2f MPa',DeltaMean*1e-6),...
-%                 sprintf('P-Value = %.4f%',pHS),...
-%                 sprintf('Power \\beta = %.2f%%',Beta*100),...
-%                 sprintf('Degrees of freedom df = %i',statsHS.df)};
-%             text(0.5,0.8,Stats,...
-%                 'Units','normalized',...
-%                 'FontSize',12,...
-%                 'HorizontalAlignment','center')
+            % For Hertz-Sneddon
+            [hHS,pHS,ciHS,statsHS] = ttest2(DiffMGOHS,DiffControlHS);
+            figure('Name','Two Sample T-Test','Units','normalized','Position',[0.2 0.2 0.5 0.5],'Color','w')
+            yyaxis left
+            boxplot([DiffControlHS DiffMGOHS])
+            ax = gca;
+            YLim = ax.YLim;
+            ylabel('Difference Before-After E-Mod [Pa]')
+            DeltaMean = mean(DiffMGOHS) - mean(DiffControlHS);
+            PooledSTD = statsHS.sd;
+            yyaxis right
+            errorbar(1.5,DeltaMean,ciHS(2)-DeltaMean,'O');
+            ylim(YLim)
+            xticks([1 1.5 2])
+            title('Two Sample T-Test for E-Mod Hertz-Sneddon Method')
+            ax = gca;
+            ax.TickLabelInterpreter = 'tex';
+            xticklabels({sprintf('%s - %s',obj.GroupFM(2).Name,obj.GroupFM(1).Name),...
+                '\DeltaMean with CI',...
+                sprintf('%s - %s',obj.GroupFM(4).Name,obj.GroupFM(3).Name)})
+            ylabel('Difference of Differences [Pa]')
+            Beta = sampsizepwr('t2',[mean(DiffControlHS) PooledSTD],mean(DiffMGOHS),[],length(DiffControlHS),'Ratio',length(DiffMGOHS)/length(DiffControlHS));
+            Stats = {sprintf('\\DeltaMean = %.2f MPa',DeltaMean*1e-6),...
+                sprintf('P-Value = %.4f%',pHS),...
+                sprintf('Power \\beta = %.2f%%',Beta*100),...
+                sprintf('Degrees of freedom df = %i',statsHS.df)};
+            text(0.5,0.8,Stats,...
+                'Units','normalized',...
+                'FontSize',12,...
+                'HorizontalAlignment','center')
             
         end
         
