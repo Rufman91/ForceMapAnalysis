@@ -1934,8 +1934,9 @@ classdef ForceMap < matlab.mixin.Copyable
                         %obj.phaseF = obj.phaseFrad*180/pi;
                         %obj.phaseH = obj.phaseHrad*180/pi;
                         
-                        % phase shift between indentation and force:
-                        obj.DeltaPhi{i,j} = obj.SineVarsF{i,j}(3)-obj.SineVarsH{i,j}(3);
+                        % phase shift between indentation and force in degrees:
+                        obj.DeltaPhi{i,j} = (obj.SineVarsF{i,j}(3)-obj.SineVarsH{i,j}(3))*180/pi;
+                        
 
                         %Y-values fitted sine of indentation and force:
                         obj.SineFunctionF = obj.SineVarsF{i,j}(1)*(sin((2*pi*x)/obj.SineVarsF{i,j}(2) + 2*pi/obj.SineVarsF{i,j}(3)));
@@ -1945,15 +1946,19 @@ classdef ForceMap < matlab.mixin.Copyable
                         ypH = fit(obj.SineVarsH{i,j},xpH);
                         
                         figure('Name',sprintf('Force Curve %i Segment %j',i,j))
-                        subplot(2,1,1)
-                        plot(x,FZShift{i,j},x,obj.FilterF{i,j},xpF,ypF,x,HZShift{i,j},x,obj.FilterH{i,j},xpH,ypH)
-                        legend('shifted force data to zero line','filtered force data','fitted force data 1','shifted height data to zero line','filtered height data','fitted height data 1')
-                        subplot(2,1,2)
+                        subplot(3,1,1)
+                        plot(x,FZShift{i,j},x,obj.FilterF{i,j},xpF,ypF)
+                        legend({'shifted force data to zero line','filtered force data','fitted force data 1'},'Location','southoutside')
+                        subplot(3,1,2)
+                        plot(x,HZShift{i,j},x,obj.FilterH{i,j},xpH,ypH)
+                        legend({'shifted height data to zero line','filtered height data','fitted height data 1'},'Location','southoutside')
+                        subplot(3,1,3)
                         findpeaks(obj.SineFunctionF)
                         hold on
-                        findpeaks(-obj.SineFunctionF)
+                        %findpeaks(-obj.SineFunctionF)
                         findpeaks(obj.SineFunctionH)
-                        findpeaks(-obj.SineFunctionH)
+                        %findpeaks(-obj.SineFunctionH)
+                        legend({'force','height'},'Location','southoutside')
                         drawnow
                         
                     end
