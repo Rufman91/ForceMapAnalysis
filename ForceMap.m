@@ -3736,18 +3736,23 @@ classdef ForceMap < matlab.mixin.Copyable
                 end
                 title('Height Map with Apex Points');
                 
-                subplot(2,3,2)
                 [MultiplierX,UnitX,~] = AFMImage.parse_unit_scale(range(obj.HHRet{k}),'m',10);
-                [MultiplierY,UnitY,~] = AFMImage.parse_unit_scale(range(obj.BasedRet{k}),'N',5);
-                plot(obj.HHApp{k},obj.BasedApp{k}/obj.SpringConstant,...
-                    obj.HHRet{k},obj.BasedRet{k}/obj.SpringConstant)
-                xlim([min(obj.HHApp{k})+range(obj.HHApp{k})/2 ...
-                    max(obj.HHApp{k})+range(obj.HHApp{k})*0.1])
-                title(sprintf('Elastic Modulus = %.2f MPa',obj.EModOliverPharr(k)*1e-6))
+                [MultiplierY,UnitY,~] = AFMImage.parse_unit_scale(range(obj.BasedRet{k}./obj.SpringConstant),'m',5);
+                [MultiplierPaY,UnitPaY,~] = AFMImage.parse_unit_scale(obj.EModOliverPharr(k),'Pa',5);
+                HHApp = obj.HHApp{k}.*MultiplierX;
+                App = obj.BasedApp{k}/obj.SpringConstant.*MultiplierY;
+                HHRet = obj.HHRet{k}.*MultiplierX;
+                Ret = obj.BasedRet{k}/obj.SpringConstant.*MultiplierY;
+                subplot(2,3,2)
+                plot(HHApp,App,...
+                    HHRet,Ret)
+                xlim([min(HHApp)+range(HHApp)/2 ...
+                    max(HHApp)+range(HHApp)*0.1])
+                title(sprintf('Apparent Indentation Modulus = %.2f %s',obj.EModOliverPharr(k).*MultiplierPaY,UnitPaY))
                 legend('Approach','Retract','Location','northwest')
-                xlabel('Head Height [m]')
-                ylabel('vDeflection [m]')
-                drawpoint('Position',[obj.CP(k,1) obj.CP(k,2)]);
+                xlabel(sprintf('Head Height [%s]',UnitX))
+                ylabel(sprintf('vDeflection [%s]',UnitY))
+                drawpoint('Position',[obj.CP(k,1).*MultiplierX obj.CP(k,2).*MultiplierY]);
                 
                 if m == 1
                     subplot(2,3,3)
@@ -3778,7 +3783,7 @@ classdef ForceMap < matlab.mixin.Copyable
                 plot(obj.IndentationDepthOliverPharr(obj.RectApexIndex(m))*1e9,...
                     obj.EModOliverPharr(obj.RectApexIndex(m))*1e-6,'rO','MarkerFaceColor','r')
                 xlabel('Indentation Depth [nm]')
-                ylabel('Elastic Modulus [MPa]')
+                ylabel('Apparent Indentation Modulus [MPa]')
                 hold off
                 
                 subplot(2,3,6)
@@ -3847,12 +3852,13 @@ classdef ForceMap < matlab.mixin.Copyable
                 HertzModelX = 0:range(X)/100:2*max(X);
                 HertzModelY = feval(obj.HertzFit{m},HertzModelX);
                 
+                
                 plot(HertzModelX(HertzModelY<=max(obj.BasedApp{m} - obj.CP(m,2))),HertzModelY(HertzModelY<=max(obj.BasedApp{m} - obj.CP(m,2))),...
                     obj.THApp{m} - obj.CP(m,1),obj.BasedApp{m} - obj.CP(m,2),...
                     obj.THRet{m} - obj.CP(m,1),obj.BasedRet{m} - obj.CP(m,2))
                 xlim([min(obj.THApp{k} - obj.CP(k,1))+range(obj.THApp{k} - obj.CP(k,1))/2 ...
                     max(obj.THApp{k} - obj.CP(k,1))+range(obj.THApp{k} - obj.CP(k,1))*0.1])
-                title(sprintf('Elastic Modulus = %.2f MPa',obj.EModHertz(k)*1e-6))
+                title(sprintf('Apparent Indentation Modulus = %.2f MPa',obj.EModHertz(k)*1e-6))
                 legend('Hertz Fit','Approach','Retract','Location','northwest')
                 xlabel('Cantilever Tip Height [m]')
                 ylabel('Force [N]')
@@ -3876,7 +3882,7 @@ classdef ForceMap < matlab.mixin.Copyable
                 plot((obj.IndentationDepth(obj.RectApexIndex(m)))*1e9,...
                     obj.EModHertz(obj.RectApexIndex(m))*1e-6,'rO','MarkerFaceColor','r')
                 xlabel('Indentation Depth [nm]')
-                ylabel('Elastic Modulus [MPa]')
+                ylabel('Apparent Indentation Modulus [MPa]')
                 hold off
                 
                 pause(PauseTime)
@@ -3916,15 +3922,24 @@ classdef ForceMap < matlab.mixin.Copyable
                 title('Height Map');
                 
                 subplot(2,3,2)
-                plot(obj.HHApp{m},obj.BasedApp{m}/obj.SpringConstant,...
-                    obj.HHRet{m},obj.BasedRet{m}/obj.SpringConstant)
-                xlim([min(obj.HHApp{m})+range(obj.HHApp{m})/2 ...
-                    max(obj.HHApp{m})+range(obj.HHApp{m})*0.1])
-                title(sprintf('Elastic Modulus = %.2f MPa',obj.EModOliverPharr(m)*1e-6))
+                
+                [MultiplierX,UnitX,~] = AFMImage.parse_unit_scale(range(obj.HHRet{m}),'m',10);
+                [MultiplierY,UnitY,~] = AFMImage.parse_unit_scale(range(obj.BasedRet{m}./obj.SpringConstant),'m',5);
+                [MultiplierPaY,UnitPaY,~] = AFMImage.parse_unit_scale(obj.EModOliverPharr(m),'Pa',5);
+                HHApp = obj.HHApp{m}.*MultiplierX;
+                App = obj.BasedApp{m}/obj.SpringConstant.*MultiplierY;
+                HHRet = obj.HHRet{m}.*MultiplierX;
+                Ret = obj.BasedRet{m}/obj.SpringConstant.*MultiplierY;
+                subplot(2,3,2)
+                plot(HHApp,App,...
+                    HHRet,Ret)
+                xlim([min(HHApp)+range(HHApp)/2 ...
+                    max(HHApp)+range(HHApp)*0.1])
+                title(sprintf('Apparent Indentation Modulus = %.2f %s',obj.EModOliverPharr(m).*MultiplierPaY,UnitPaY))
                 legend('Approach','Retract','Location','northwest')
-                xlabel('Head Height [m]')
-                ylabel('vDeflection [m]')
-                drawpoint('Position',[obj.CP(m,1) obj.CP(m,2)]);
+                xlabel(sprintf('Head Height [%s]',UnitX))
+                ylabel(sprintf('vDeflection [%s]',UnitY))
+                drawpoint('Position',[obj.CP(m,1).*MultiplierX obj.CP(m,2).*MultiplierY]);
                 
                 if m == 1
                     subplot(2,3,3)
@@ -3955,7 +3970,7 @@ classdef ForceMap < matlab.mixin.Copyable
                 plot(obj.IndentationDepthOliverPharr(m)*1e9,...
                     obj.EModOliverPharr(m)*1e-6,'rO','MarkerFaceColor','r')
                 xlabel('Indentation Depth [nm]')
-                ylabel('Elastic Modulus [MPa]')
+                ylabel('Apparent Indentation Modulus [MPa]')
                 hold off
                 
                 subplot(2,3,6)
@@ -4025,7 +4040,7 @@ classdef ForceMap < matlab.mixin.Copyable
                     obj.THRet{m} - obj.CP(m,1),obj.BasedRet{m} - obj.CP(m,2))
                 xlim([min(obj.THApp{m} - obj.CP(m,1))+range(obj.THApp{m} - obj.CP(m,1))/2 ...
                     max(obj.THApp{m} - obj.CP(m,1))+range(obj.THApp{m} - obj.CP(m,1))*0.1])
-                title(sprintf('Elastic Modulus = %.2f MPa',obj.EModHertz(m)*1e-6))
+                title(sprintf('Apparent Indentation Modulus = %.2f MPa',obj.EModHertz(m)*1e-6))
                 legend('Hertz Fit','Approach','Retract','Location','northwest')
                 xlabel('Cantilever Tip Height [m]')
                 ylabel('Force [N]')
@@ -4050,7 +4065,7 @@ classdef ForceMap < matlab.mixin.Copyable
                     plot((obj.IndentationDepth(m))*1e9,...
                         obj.EModHertz(m)*1e-6,'rO','MarkerFaceColor','r')
                     xlabel('Indentation Depth [nm]')
-                    ylabel('Elastic Modulus [MPa]')
+                    ylabel('Apparent Indentation Modulus [MPa]')
                 else
                     histogram((obj.IndentationDepth)*1e9)
                     xlabel('Indentation Depth [nm]')
@@ -4094,7 +4109,7 @@ classdef ForceMap < matlab.mixin.Copyable
             hold on
             plot(1:obj.NumProfiles,obj.EModHertz(obj.RectApexIndex)*1e-6,'rO')
             xlabel('Index')
-            ylabel('Elastic Modulus [MPa]')
+            ylabel('Apparent Indentation Modulus [MPa]')
         end
         
     end
