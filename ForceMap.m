@@ -3614,7 +3614,7 @@ classdef ForceMap < matlab.mixin.Copyable
         
         function Fig = show_analyzed_fibril(obj)
             T = sprintf('Height Map of %s\nwith chosen indentation points',obj.Name);
-            Fig = figure('Name',T,'Units','normalized','Position',[0.5 0.1 0.5 0.8]);
+            Fig = figure('Name',T,'Units','normalized','Color','w','Position',[0.5 0.1 0.5 0.8]);
             
             subplot(2,2,1)
             I = imresize(obj.HeightMap(:,:,1).*1e9,[1024 1024]);
@@ -3656,7 +3656,7 @@ classdef ForceMap < matlab.mixin.Copyable
         
         function show_height_map(obj)
             T = sprintf('Height Map of %s',obj.Name);
-            Fig = figure('Name',T,'Units','normalized','Position',[0.5 0.1 0.5 0.8]);
+            Fig = figure('Name',T,'Units','normalized','Color','w','Position',[0.5 0.1 0.5 0.8]);
             
             subplot(2,1,1)
             I = obj.HeightMap(:,:,1).*1e9;
@@ -3710,7 +3710,7 @@ classdef ForceMap < matlab.mixin.Copyable
             end
             
             T = sprintf('Quality control of fibril %s',obj.Name);
-            Fig = figure('Name',T,'Units','normalized','Position',[0.1 0.1 0.8 0.8]);
+            Fig = figure('Name',T,'Units','normalized','Color','w','Position',[0.1 0.1 0.8 0.8]);
             m = 1;
             while 1==1
                 try
@@ -3817,7 +3817,7 @@ classdef ForceMap < matlab.mixin.Copyable
             end
             
             T = sprintf('Quality control of fibril %s',obj.Name);
-            Fig = figure('Name',T,'Units','normalized','Position',[0.1 0.1 0.8 0.8]);
+            Fig = figure('Name',T,'Units','normalized','Color','w','Position',[0.1 0.1 0.8 0.8]);
             m = 1;
             while 1==1
                 try
@@ -3902,7 +3902,7 @@ classdef ForceMap < matlab.mixin.Copyable
             end
             
             T = sprintf('Quality control of force map %s',obj.Name);
-            Fig = figure('Name',T,'Units','normalized','Position',[0.1 0.1 0.8 0.8]);
+            Fig = figure('Name',T,'Units','normalized','Color','w','Position',[0.1 0.1 0.8 0.8]);
             m = 1;
             while 1==1
                 try
@@ -4006,7 +4006,7 @@ classdef ForceMap < matlab.mixin.Copyable
             end
             
             T = sprintf('Quality control of force map %s',obj.Name);
-            Fig = figure('Name',T,'Units','normalized','Position',[0.1 0.1 0.8 0.8]);
+            Fig = figure('Name',T,'Units','normalized','Color','w','Position',[0.1 0.1 0.8 0.8]);
             m = 1;
             while 1==1
                 try
