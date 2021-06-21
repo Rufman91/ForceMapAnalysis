@@ -284,14 +284,14 @@ classdef ForceMap < matlab.mixin.Copyable
             for i=Range'
                 AppForce = obj.App{i};
                 RetForce = obj.Ret{i};
-                
-                Force = [AppForce' RetForce'];
-                
-                % If found, remove sinusoidal approach
-                Force = ForceMap.remove_sinusoidal_approach(Force,0);
-                
-                AppForce = Force(1:length(AppForce))';
-                RetForce = Force(length(AppForce)+1:end)';
+%                 
+%                 Force = [AppForce' RetForce'];
+%                 
+%                 % If found, remove sinusoidal approach
+%                 Force = ForceMap.remove_sinusoidal_approach(Force,0);
+%                 
+%                 AppForce = Force(1:length(AppForce))';
+%                 RetForce = Force(length(AppForce)+1:end)';
                 
                 prog = i/obj.NCurves;
                 waitbar(prog,h,'processing baseline fits...');
@@ -437,6 +437,8 @@ classdef ForceMap < matlab.mixin.Copyable
             obj.CP_GoF = zeros(obj.NCurves,2);
             Range = find(obj.SelectedCurves);
             h = waitbar(0,'Setting up...','Name',obj.Name);
+            TipRadius = obj.TipRadius;
+            PoissonR = obj.PoissonR;
             for i=Range'
                 Based = obj.BasedApp{i};
                 THApp = obj.HHApp{i} - obj.BasedApp{i}/obj.SpringConstant;
@@ -447,13 +449,13 @@ classdef ForceMap < matlab.mixin.Copyable
                 obj.DeltaE = ones(length(Based),1);
                 testrange = floor(0.5*length(Based)):(length(Based)-5);
                 msg = sprintf('applying goodness of fit method on curve Nr.%i/%i',i,obj.NCurves);
-                for j=testrange
-                    prog = (j-testrange(1))/length(testrange);
-                    waitbar(prog,h,msg);
-                    [emod,gof] = obj.hertz_fit_gof(smoothx,smoothy,j,1,'parabolic');
+                parfor j=testrange
+%                     prog = (j-testrange(1))/length(testrange);
+%                     
+                    [~,gof] = ForceMap.hertz_fit_gof(smoothx,smoothy,j,1,'parabolic',TipRadius,PoissonR);
                     Rsquare(j) = gof.rsquare;
-                    E(j) = emod;
                 end
+                waitbar(i/obj.NCurves,h,msg);
                 Rsquare(Rsquare==2) = min(Rsquare);
                 obj.GoF{i} = normalize(Rsquare,'range');
                 [~,CPidx] = max(obj.GoF{i});
@@ -1431,6 +1433,25 @@ classdef ForceMap < matlab.mixin.Copyable
             % Write to Channel
             Channel = obj.create_standard_channel(EEMap,'Elastic eV-Energy','eV');
             [~,Index] = obj.get_channel('Elastic eV-Energy');
+            if isempty(Index)
+                obj.Channel(end+1) = Channel;
+            else
+                obj.Channel(Index) = Channel;
+            end
+            
+            % Write to Channel
+            Channel = obj.create_standard_channel(100.*EEMap./(DEMap+EEMap),'Elastic Fraction','%');
+            [~,Index] = obj.get_channel('Elastic Fraction');
+            if isempty(Index)
+                obj.Channel(end+1) = Channel;
+            else
+                obj.Channel(Index) = Channel;
+            end
+            
+            
+            % Write to Channel
+            Channel = obj.create_standard_channel(100.*DEMap./(DEMap+EEMap),'Inelastic Fraction','%');
+            [~,Index] = obj.get_channel('Inelastic Fraction');
             if isempty(Index)
                 obj.Channel(end+1) = Channel;
             else
@@ -2558,29 +2579,14 @@ classdef ForceMap < matlab.mixin.Copyable
             end
         end
         
-    end
-    
-    methods
-        % non-static auxiliary methods
-        
-        function save(obj)
-            current = what();
-            cd(obj.Folder)
-            savename = sprintf('%s.mat',obj.Name);
-            save(savename,'obj','-v7.3')
-            cd(current.path)
-            savemsg = sprintf('Changes to ForceMap %s saved to %s',obj.Name,obj.Folder);
-            disp(savemsg);
-        end
-        
-        function [E_mod,GoF,Hertzfit] = hertz_fit_gof(obj,tip_h,force,CP,curve_percent,shape)
+        function [E_mod,GoF,Hertzfit] = hertz_fit_gof(tip_h,force,CP,curve_percent,shape,TipRadius,PoissonR)
             
-            if obj.TipRadius == -1
+            if TipRadius == -1
                 prompt = {'What is the nominal tip radius of the used cantilever in nm?'};
                 dlgtitle = 'Cantilever tip';
                 dims = [1 35];
                 definput = {'10'};
-                obj.TipRadius = str2double(inputdlg(prompt,dlgtitle,dims,definput));
+                TipRadius = str2double(inputdlg(prompt,dlgtitle,dims,definput));
             end
             
             if nargin < 6
@@ -2606,11 +2612,26 @@ classdef ForceMap < matlab.mixin.Copyable
                     CPforce,f);
                 % calculate E module based on the Hertz model. Be careful
                 % to convert to unnormalized data again
-                E_mod = 3*(Hertzfit.a*ranf/rant^(3/2))/(4*sqrt(obj.TipRadius*10^(-9)))*(1-obj.PoissonR^2);
+                E_mod = 3*(Hertzfit.a*ranf/rant^(3/2))/(4*sqrt(TipRadius*10^(-9)))*(1-PoissonR^2);
             elseif isequal(shape,'spherical')
             elseif isequal(shape,'conical')
             elseif isequal(shape,'pyramid')
             end
+        end
+        
+    end
+    
+    methods
+        % non-static auxiliary methods
+        
+        function save(obj)
+            current = what();
+            cd(obj.Folder)
+            savename = sprintf('%s.mat',obj.Name);
+            save(savename,'obj','-v7.3')
+            cd(current.path)
+            savemsg = sprintf('Changes to ForceMap %s saved to %s',obj.Name,obj.Folder);
+            disp(savemsg);
         end
         
         function calculate_reference_slope_from_area(obj,Mask)
@@ -2895,7 +2916,7 @@ classdef ForceMap < matlab.mixin.Copyable
             len = size(X,4);
             if obj.CPFlag.CNNopt == 0
                 CantHandle = true;
-                obj.MiniBatchSize = len;
+                obj.MiniBatchSize = 1024;
                 DynMBSdone = false;
                 HasFailed = false;
                 while CantHandle == true
@@ -3242,13 +3263,25 @@ classdef ForceMap < matlab.mixin.Copyable
                     obj.HHType = 'Height';
                 end
                 
-                [TempHHApp,obj.App{i},obj.SpringConstant,obj.Sensitivity]=...
-                    obj.writedata(HeaderFileDirectory,SegmentHeaderFileDirectory,...
-                    HeightDataDirectory,vDefDataDirectory,obj.HHType);
+                try
+                    [TempHHApp,obj.App{i},obj.SpringConstant,obj.Sensitivity]=...
+                        obj.writedata(HeaderFileDirectory,SegmentHeaderFileDirectory,...
+                        HeightDataDirectory,vDefDataDirectory,obj.HHType);
                 
-                obj.HHApp{i} = -TempHHApp;
-                obj.App{i} = obj.App{i}.*obj.SpringConstant;
-                clear TempHHApp
+                    obj.HHApp{i} = -TempHHApp;
+                    obj.App{i} = obj.App{i}.*obj.SpringConstant;
+                    clear TempHHApp
+                catch
+                    if i ~= 1
+                        disp(sprintf('Curve Nr. %i seems to be corrupted. Replacing with previous value instead',i))
+                        obj.HHApp{i} = obj.HHApp{i-1};
+                        obj.App{i} = obj.App{i-1};
+                    else
+                        disp(sprintf('Curve Nr. %i seems to be corrupted. Replacing with zeros instead',i))
+                        obj.HHApp{i} = zeros(obj.MaxPointsPerCurve,1);
+                        obj.App{i} = zeros(obj.MaxPointsPerCurve,1);
+                    end
+                end
                 
                 % Below there is a workaround for jpk-force-map files,
                 % where the capacitiveSensorHeight
@@ -3276,13 +3309,25 @@ classdef ForceMap < matlab.mixin.Copyable
                     HeightDataDirectory = fullfile(TempFolder,'index',string((i-1)),'segments','1','channels','measuredHeight.dat');
                 end
                 
-                [TempHHRet,obj.Ret{i}]=...
-                    obj.writedata(HeaderFileDirectory,SegmentHeaderFileDirectory,...
-                    HeightDataDirectory,vDefDataDirectory,obj.HHType);
+                try
+                    [TempHHRet,obj.Ret{i}]=...
+                        obj.writedata(HeaderFileDirectory,SegmentHeaderFileDirectory,...
+                        HeightDataDirectory,vDefDataDirectory,obj.HHType);
                 
-                obj.HHRet{i} = -TempHHRet;
-                obj.Ret{i} = obj.Ret{i}.*obj.SpringConstant;
-                clear TempHHRet
+                    obj.HHRet{i} = -TempHHRet;
+                    obj.Ret{i} = obj.Ret{i}.*obj.SpringConstant;
+                catch
+                    if i ~= 1
+                        disp(sprintf('Curve Nr. %i seems to be corrupted. Replacing with previous value instead',i))
+                        obj.HHRet{i} = obj.HHRet{i-1};
+                        obj.Ret{i} = obj.Ret{i-1};
+                        clear TempHHRet
+                    else
+                        disp(sprintf('Curve Nr. %i seems to be corrupted. Replacing with zeros instead',i))
+                        obj.HHRet{i} = zeros(obj.MaxPointsPerCurve,1);
+                        obj.Ret{i} = zeros(obj.MaxPointsPerCurve,1);
+                    end
+                end
             end
         end
         
@@ -3593,7 +3638,7 @@ classdef ForceMap < matlab.mixin.Copyable
         
         function Fig = show_analyzed_fibril(obj)
             T = sprintf('Height Map of %s\nwith chosen indentation points',obj.Name);
-            Fig = figure('Name',T,'Units','normalized','Position',[0.5 0.1 0.5 0.8]);
+            Fig = figure('Name',T,'Units','normalized','Color','w','Position',[0.5 0.1 0.5 0.8]);
             
             subplot(2,2,1)
             I = imresize(obj.HeightMap(:,:,1).*1e9,[1024 1024]);
@@ -3635,7 +3680,7 @@ classdef ForceMap < matlab.mixin.Copyable
         
         function show_height_map(obj)
             T = sprintf('Height Map of %s',obj.Name);
-            Fig = figure('Name',T,'Units','normalized','Position',[0.5 0.1 0.5 0.8]);
+            Fig = figure('Name',T,'Units','normalized','Color','w','Position',[0.5 0.1 0.5 0.8]);
             
             subplot(2,1,1)
             I = obj.HeightMap(:,:,1).*1e9;
@@ -3689,7 +3734,7 @@ classdef ForceMap < matlab.mixin.Copyable
             end
             
             T = sprintf('Quality control of fibril %s',obj.Name);
-            Fig = figure('Name',T,'Units','normalized','Position',[0.1 0.1 0.8 0.8]);
+            Fig = figure('Name',T,'Units','normalized','Color','w','Position',[0.1 0.1 0.8 0.8]);
             m = 1;
             while 1==1
                 try
@@ -3715,18 +3760,23 @@ classdef ForceMap < matlab.mixin.Copyable
                 end
                 title('Height Map with Apex Points');
                 
-                subplot(2,3,2)
                 [MultiplierX,UnitX,~] = AFMImage.parse_unit_scale(range(obj.HHRet{k}),'m',10);
-                [MultiplierY,UnitY,~] = AFMImage.parse_unit_scale(range(obj.BasedRet{k}),'N',5);
-                plot(obj.HHApp{k},obj.BasedApp{k}/obj.SpringConstant,...
-                    obj.HHRet{k},obj.BasedRet{k}/obj.SpringConstant)
-                xlim([min(obj.HHApp{k})+range(obj.HHApp{k})/2 ...
-                    max(obj.HHApp{k})+range(obj.HHApp{k})*0.1])
-                title(sprintf('Elastic Modulus = %.2f MPa',obj.EModOliverPharr(k)*1e-6))
+                [MultiplierY,UnitY,~] = AFMImage.parse_unit_scale(range(obj.BasedRet{k}./obj.SpringConstant),'m',5);
+                [MultiplierPaY,UnitPaY,~] = AFMImage.parse_unit_scale(obj.EModOliverPharr(k),'Pa',5);
+                HHApp = obj.HHApp{k}.*MultiplierX;
+                App = obj.BasedApp{k}/obj.SpringConstant.*MultiplierY;
+                HHRet = obj.HHRet{k}.*MultiplierX;
+                Ret = obj.BasedRet{k}/obj.SpringConstant.*MultiplierY;
+                subplot(2,3,2)
+                plot(HHApp,App,...
+                    HHRet,Ret)
+                xlim([min(HHApp)+range(HHApp)/2 ...
+                    max(HHApp)+range(HHApp)*0.1])
+                title(sprintf('Apparent Indentation Modulus = %.2f %s',obj.EModOliverPharr(k).*MultiplierPaY,UnitPaY))
                 legend('Approach','Retract','Location','northwest')
-                xlabel('Head Height [m]')
-                ylabel('vDeflection [m]')
-                drawpoint('Position',[obj.CP(k,1) obj.CP(k,2)]);
+                xlabel(sprintf('Head Height [%s]',UnitX))
+                ylabel(sprintf('vDeflection [%s]',UnitY))
+                drawpoint('Position',[obj.CP(k,1).*MultiplierX obj.CP(k,2).*MultiplierY]);
                 
                 if m == 1
                     subplot(2,3,3)
@@ -3757,7 +3807,7 @@ classdef ForceMap < matlab.mixin.Copyable
                 plot(obj.IndentationDepthOliverPharr(obj.RectApexIndex(m))*1e9,...
                     obj.EModOliverPharr(obj.RectApexIndex(m))*1e-6,'rO','MarkerFaceColor','r')
                 xlabel('Indentation Depth [nm]')
-                ylabel('Elastic Modulus [MPa]')
+                ylabel('Apparent Indentation Modulus [MPa]')
                 hold off
                 
                 subplot(2,3,6)
@@ -3791,7 +3841,7 @@ classdef ForceMap < matlab.mixin.Copyable
             end
             
             T = sprintf('Quality control of fibril %s',obj.Name);
-            Fig = figure('Name',T,'Units','normalized','Position',[0.1 0.1 0.8 0.8]);
+            Fig = figure('Name',T,'Units','normalized','Color','w','Position',[0.1 0.1 0.8 0.8]);
             m = 1;
             while 1==1
                 try
@@ -3826,12 +3876,13 @@ classdef ForceMap < matlab.mixin.Copyable
                 HertzModelX = 0:range(X)/100:2*max(X);
                 HertzModelY = feval(obj.HertzFit{m},HertzModelX);
                 
+                
                 plot(HertzModelX(HertzModelY<=max(obj.BasedApp{m} - obj.CP(m,2))),HertzModelY(HertzModelY<=max(obj.BasedApp{m} - obj.CP(m,2))),...
                     obj.THApp{m} - obj.CP(m,1),obj.BasedApp{m} - obj.CP(m,2),...
                     obj.THRet{m} - obj.CP(m,1),obj.BasedRet{m} - obj.CP(m,2))
                 xlim([min(obj.THApp{k} - obj.CP(k,1))+range(obj.THApp{k} - obj.CP(k,1))/2 ...
                     max(obj.THApp{k} - obj.CP(k,1))+range(obj.THApp{k} - obj.CP(k,1))*0.1])
-                title(sprintf('Elastic Modulus = %.2f MPa',obj.EModHertz(k)*1e-6))
+                title(sprintf('Apparent Indentation Modulus = %.2f MPa',obj.EModHertz(k)*1e-6))
                 legend('Hertz Fit','Approach','Retract','Location','northwest')
                 xlabel('Cantilever Tip Height [m]')
                 ylabel('Force [N]')
@@ -3855,7 +3906,7 @@ classdef ForceMap < matlab.mixin.Copyable
                 plot((obj.IndentationDepth(obj.RectApexIndex(m)))*1e9,...
                     obj.EModHertz(obj.RectApexIndex(m))*1e-6,'rO','MarkerFaceColor','r')
                 xlabel('Indentation Depth [nm]')
-                ylabel('Elastic Modulus [MPa]')
+                ylabel('Apparent Indentation Modulus [MPa]')
                 hold off
                 
                 pause(PauseTime)
@@ -3875,7 +3926,7 @@ classdef ForceMap < matlab.mixin.Copyable
             end
             
             T = sprintf('Quality control of force map %s',obj.Name);
-            Fig = figure('Name',T,'Units','normalized','Position',[0.1 0.1 0.8 0.8]);
+            Fig = figure('Name',T,'Units','normalized','Color','w','Position',[0.1 0.1 0.8 0.8]);
             m = 1;
             while 1==1
                 try
@@ -3895,15 +3946,24 @@ classdef ForceMap < matlab.mixin.Copyable
                 title('Height Map');
                 
                 subplot(2,3,2)
-                plot(obj.HHApp{m},obj.BasedApp{m}/obj.SpringConstant,...
-                    obj.HHRet{m},obj.BasedRet{m}/obj.SpringConstant)
-                xlim([min(obj.HHApp{m})+range(obj.HHApp{m})/2 ...
-                    max(obj.HHApp{m})+range(obj.HHApp{m})*0.1])
-                title(sprintf('Elastic Modulus = %.2f MPa',obj.EModOliverPharr(m)*1e-6))
+                
+                [MultiplierX,UnitX,~] = AFMImage.parse_unit_scale(range(obj.HHRet{m}),'m',10);
+                [MultiplierY,UnitY,~] = AFMImage.parse_unit_scale(range(obj.BasedRet{m}./obj.SpringConstant),'m',5);
+                [MultiplierPaY,UnitPaY,~] = AFMImage.parse_unit_scale(obj.EModOliverPharr(m),'Pa',5);
+                HHApp = obj.HHApp{m}.*MultiplierX;
+                App = obj.BasedApp{m}/obj.SpringConstant.*MultiplierY;
+                HHRet = obj.HHRet{m}.*MultiplierX;
+                Ret = obj.BasedRet{m}/obj.SpringConstant.*MultiplierY;
+                subplot(2,3,2)
+                plot(HHApp,App,...
+                    HHRet,Ret)
+                xlim([min(HHApp)+range(HHApp)/2 ...
+                    max(HHApp)+range(HHApp)*0.1])
+                title(sprintf('Apparent Indentation Modulus = %.2f %s',obj.EModOliverPharr(m).*MultiplierPaY,UnitPaY))
                 legend('Approach','Retract','Location','northwest')
-                xlabel('Head Height [m]')
-                ylabel('vDeflection [m]')
-                drawpoint('Position',[obj.CP(m,1) obj.CP(m,2)]);
+                xlabel(sprintf('Head Height [%s]',UnitX))
+                ylabel(sprintf('vDeflection [%s]',UnitY))
+                drawpoint('Position',[obj.CP(m,1).*MultiplierX obj.CP(m,2).*MultiplierY]);
                 
                 if m == 1
                     subplot(2,3,3)
@@ -3934,7 +3994,7 @@ classdef ForceMap < matlab.mixin.Copyable
                 plot(obj.IndentationDepthOliverPharr(m)*1e9,...
                     obj.EModOliverPharr(m)*1e-6,'rO','MarkerFaceColor','r')
                 xlabel('Indentation Depth [nm]')
-                ylabel('Elastic Modulus [MPa]')
+                ylabel('Apparent Indentation Modulus [MPa]')
                 hold off
                 
                 subplot(2,3,6)
@@ -3970,7 +4030,7 @@ classdef ForceMap < matlab.mixin.Copyable
             end
             
             T = sprintf('Quality control of force map %s',obj.Name);
-            Fig = figure('Name',T,'Units','normalized','Position',[0.1 0.1 0.8 0.8]);
+            Fig = figure('Name',T,'Units','normalized','Color','w','Position',[0.1 0.1 0.8 0.8]);
             m = 1;
             while 1==1
                 try
@@ -4004,7 +4064,7 @@ classdef ForceMap < matlab.mixin.Copyable
                     obj.THRet{m} - obj.CP(m,1),obj.BasedRet{m} - obj.CP(m,2))
                 xlim([min(obj.THApp{m} - obj.CP(m,1))+range(obj.THApp{m} - obj.CP(m,1))/2 ...
                     max(obj.THApp{m} - obj.CP(m,1))+range(obj.THApp{m} - obj.CP(m,1))*0.1])
-                title(sprintf('Elastic Modulus = %.2f MPa',obj.EModHertz(m)*1e-6))
+                title(sprintf('Apparent Indentation Modulus = %.2f MPa',obj.EModHertz(m)*1e-6))
                 legend('Hertz Fit','Approach','Retract','Location','northwest')
                 xlabel('Cantilever Tip Height [m]')
                 ylabel('Force [N]')
@@ -4029,7 +4089,7 @@ classdef ForceMap < matlab.mixin.Copyable
                     plot((obj.IndentationDepth(m))*1e9,...
                         obj.EModHertz(m)*1e-6,'rO','MarkerFaceColor','r')
                     xlabel('Indentation Depth [nm]')
-                    ylabel('Elastic Modulus [MPa]')
+                    ylabel('Apparent Indentation Modulus [MPa]')
                 else
                     histogram((obj.IndentationDepth)*1e9)
                     xlabel('Indentation Depth [nm]')
@@ -4073,7 +4133,7 @@ classdef ForceMap < matlab.mixin.Copyable
             hold on
             plot(1:obj.NumProfiles,obj.EModHertz(obj.RectApexIndex)*1e-6,'rO')
             xlabel('Index')
-            ylabel('Elastic Modulus [MPa]')
+            ylabel('Apparent Indentation Modulus [MPa]')
         end
         
     end

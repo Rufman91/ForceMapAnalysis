@@ -518,15 +518,22 @@ classdef Experiment < matlab.mixin.Copyable
             % Deconvoluting cantilever tip(s)
             if isequal(lower(EModOption),'oliver')
                 if obj.NumCantileverTips == 0
-                    Warn = warndlg('You need to load in TGT-1 images of your cantilever for this kind of analysis');
-                    uiwait(Warn);
-                    IsValid = false;
-                    while ~IsValid
-                        UsrInput = inputdlg('How many tips were used in this Experiment?');
-                        NumTips = str2num(UsrInput{1});
-                        IsValid = isnumeric(NumTips)&&~isempty(NumTips);
+                    if isequal(class(obj.CantileverTips{1}),'AFMImage')
+                        obj.NumCantileverTips = length(obj.CantileverTips);
+                        obj.CantileverTipFlag = 1;
+                        obj.AssignedCantileverTips = 1;
+                        obj.WhichTip = ones(obj.NumForceMaps,1);
+                    else
+                        Warn = warndlg('You need to load in TGT-1 images of your cantilever for this kind of analysis');
+                        uiwait(Warn);
+                        IsValid = false;
+                        while ~IsValid
+                            UsrInput = inputdlg('How many tips were used in this Experiment?');
+                            NumTips = str2num(UsrInput{1});
+                            IsValid = isnumeric(NumTips)&&~isempty(NumTips);
+                        end
+                        obj.get_paths_and_load_files([0 0 0 0 1],[0 0 0 0 ceil(NumTips)],false);
                     end
-                    obj.get_paths_and_load_files([0 0 0 0 1],[0 0 0 0 ceil(NumTips)],false);
                 end
                 if ~obj.AssignedCantileverTips
                     obj.assign_cantilever_tips
@@ -687,15 +694,22 @@ classdef Experiment < matlab.mixin.Copyable
             % Deconvoluting cantilever tip(s)
             if isequal(lower(EModOption),'oliver')
                 if obj.NumCantileverTips == 0
-                    Warn = warndlg('You need to load in TGT-1 images of your cantilever for this kind of analysis');
-                    uiwait(Warn);
-                    IsValid = false;
-                    while ~IsValid
-                        UsrInput = inputdlg('How many tips were used in this Experiment?');
-                        NumTips = str2num(UsrInput{1});
-                        IsValid = isnumeric(NumTips)&&~isempty(NumTips);
+                    if isequal(class(obj.CantileverTips{1}),'AFMImage')
+                        obj.NumCantileverTips = length(obj.CantileverTips);
+                        obj.CantileverTipFlag = 1;
+                        obj.AssignedCantileverTips = 1;
+                        obj.WhichTip = ones(obj.NumForceMaps,1);
+                    else
+                        Warn = warndlg('You need to load in TGT-1 images of your cantilever for this kind of analysis');
+                        uiwait(Warn);
+                        IsValid = false;
+                        while ~IsValid
+                            UsrInput = inputdlg('How many tips were used in this Experiment?');
+                            NumTips = str2num(UsrInput{1});
+                            IsValid = isnumeric(NumTips)&&~isempty(NumTips);
+                        end
+                        obj.get_paths_and_load_files([0 0 0 0 1],[0 0 0 0 ceil(NumTips)],false);
                     end
-                    obj.get_paths_and_load_files([0 0 0 0 1],[0 0 0 0 ceil(NumTips)],false);
                 end
                 if ~obj.AssignedCantileverTips
                     obj.assign_cantilever_tips
@@ -1318,17 +1332,19 @@ classdef Experiment < matlab.mixin.Copyable
             % TODO: implement ui elements for customization
             
             h.ColorMode(1).Background = 'k';
-            h.ColorMode(1).Profile1 = 'b';
+            h.ColorMode(1).Profile1 = [219 21 223]./255; %[189 0 96]./255; % 'b';
             h.ColorMode(1).Profile2 = 'c';
             h.ColorMode(1).Text = 'w';
             
             
             h.ColorMode(2).Background = 'w';
-            h.ColorMode(2).Profile1 = 'b';
-            h.ColorMode(2).Profile2 = [0.6940 0.3840 0.7560];
+            h.ColorMode(2).Profile1 = [219 21 223]./255; %[94 170 170]./255; % [189 0 96]./255; %'b';
+            h.ColorMode(2).Profile2 = [0 181 26]./255; % alternatives %[80 200 204]./255;%[0,0.870588235294118,0.407843137254902];
             h.ColorMode(2).Text = 'k';
             
             h.ColorIndex = 1;
+            h.ReferenceFontSize = 24;
+            h.ProfileLineWidth = 3;
             
             h.Fig = figure('Name',sprintf('%s',obj.ExperimentName),...
                 'Units','pixels',...
@@ -1455,8 +1471,14 @@ classdef Experiment < matlab.mixin.Copyable
             h.B(20) = uicontrol('style','checkbox',...
                 'String','Lock Channels',...
                 'units','normalized',...
-                'position',[.85 .20 .1 .04],...
+                'position',[.85 .25 .1 .04],...
                 'Callback',@lock_channels);
+            
+            h.B(21) = uicontrol('style','checkbox',...
+                'String','Lock Scalebars',...
+                'units','normalized',...
+                'position',[.85 .20 .1 .04],...
+                'Callback',@lock_scalebars);
             
             h.Channel1Max = 1;
             h.Channel1Min = 0;
@@ -1562,7 +1584,7 @@ classdef Experiment < matlab.mixin.Copyable
                 CurrentAxHeight = round(h.Fig.Position(4)*h.ImAx(h.MainIndex).Position(4));
                 h.ImAx(3).Color = h.ColorMode(h.ColorIndex).Background;
                 h.ImAx(3).LineWidth = 1;
-                h.ImAx(3).FontSize = round(22*(CurrentAxHeight/756));
+                h.ImAx(3).FontSize = round(h.ReferenceFontSize*(CurrentAxHeight/756));
                 h.ImAx(3).XColor = h.ColorMode(h.ColorIndex).Text;
                 h.ImAx(3).YColor = h.ColorMode(h.ColorIndex).Profile1;
                 h.ImAx(3).GridColor = h.ColorMode(h.ColorIndex).Text;
@@ -1579,7 +1601,8 @@ classdef Experiment < matlab.mixin.Copyable
                     end
                     h.ChildLine.Visible = 'off';
                     h.ChildLine = drawline('Position',h.MainLine.Position,...
-                        'Parent',h.ImAx(h.ChildIndex),'Color',h.ColorMode(h.ColorIndex).Profile2);
+                        'Parent',h.ImAx(h.ChildIndex),'Color',h.ColorMode(h.ColorIndex).Profile2,...
+                        'LineWidth',h.ProfileLineWidth);
                     addlistener(h.ChildLine,'MovingROI',@moving_cross_section);
                     addlistener(h.ChildLine,'ROIMoved',@moving_cross_section);
                     CPos1 = [h.ChildLine.Position(1,1) h.ChildLine.Position(1,2)];
@@ -1593,7 +1616,7 @@ classdef Experiment < matlab.mixin.Copyable
                     CurrentAxHeight = round(h.Fig.Position(4)*h.ImAx(h.ChildIndex).Position(4));
                     h.ImAx(3).Color = h.ColorMode(h.ColorIndex).Background;
                     h.ImAx(3).LineWidth = 1;
-                    h.ImAx(3).FontSize = round(22*(CurrentAxHeight/756));
+                    h.ImAx(3).FontSize = round(h.ReferenceFontSize*(CurrentAxHeight/756));
                     h.ImAx(3).XColor = h.ColorMode(h.ColorIndex).Text;
                     h.ImAx(3).YColor = h.ColorMode(h.ColorIndex).Profile2;
                     h.ImAx(3).GridColor = h.ColorMode(h.ColorIndex).Text;
@@ -1612,6 +1635,11 @@ classdef Experiment < matlab.mixin.Copyable
                     else
                         ylim([min(ChildProfile)*ChildMultiplierY max(ChildProfile)*ChildMultiplierY]);
                     end
+                    
+                    % Temporary
+                    legend({'Before','After'},'Location','northwest',...
+                        'FontSize',h.ReferenceFontSize);
+                    
                 end
                 hold off
             end
@@ -1655,7 +1683,8 @@ classdef Experiment < matlab.mixin.Copyable
                     delete(h.ImAx(3))
                 catch
                 end
-                h.MainLine = drawline('Color',h.ColorMode(h.ColorIndex).Profile1,'Parent',varargin{1}.Parent);
+                h.MainLine = drawline('Color',h.ColorMode(h.ColorIndex).Profile1,...
+                    'Parent',varargin{1}.Parent,'LineWidth',h.ProfileLineWidth);
                 addlistener(h.MainLine,'MovingROI',@moving_cross_section);
                 addlistener(h.MainLine,'ROIMoved',@moving_cross_section);
                 Pos1 = [h.MainLine.Position(1,1) h.MainLine.Position(1,2)];
@@ -1679,7 +1708,7 @@ classdef Experiment < matlab.mixin.Copyable
                 CurrentAxHeight = round(h.Fig.Position(4)*h.ImAx(h.MainIndex).Position(4));
                 h.ImAx(3).Color = h.ColorMode(h.ColorIndex).Background;
                 h.ImAx(3).LineWidth = 1;
-                h.ImAx(3).FontSize = round(22*(CurrentAxHeight/756));
+                h.ImAx(3).FontSize = round(h.ReferenceFontSize*(CurrentAxHeight/756));
                 h.ImAx(3).XColor = h.ColorMode(h.ColorIndex).Text;
                 h.ImAx(3).YColor = h.ColorMode(h.ColorIndex).Profile1;
                 h.ImAx(3).GridColor = h.ColorMode(h.ColorIndex).Text;
@@ -1690,7 +1719,8 @@ classdef Experiment < matlab.mixin.Copyable
                 h.P.Color = h.ColorMode(h.ColorIndex).Profile1;
                 if h.hasBothCrossSections && (h.hasChannel2 && h.hasChannel1)
                     h.ChildLine = drawline('Position',h.MainLine.Position,...
-                        'Parent',h.ImAx(h.ChildIndex),'Color',h.ColorMode(h.ColorIndex).Profile2);
+                        'Parent',h.ImAx(h.ChildIndex),'Color',h.ColorMode(h.ColorIndex).Profile2,...
+                        'LineWidth',h.ProfileLineWidth);
                     addlistener(h.ChildLine,'MovingROI',@moving_cross_section);
                     addlistener(h.ChildLine,'ROIMoved',@moving_cross_section);
                     CPos1 = [h.ChildLine.Position(1,1) h.ChildLine.Position(1,2)];
@@ -1704,7 +1734,7 @@ classdef Experiment < matlab.mixin.Copyable
                     CurrentAxHeight = round(h.Fig.Position(4)*h.ImAx(h.MainIndex).Position(4));
                     h.ImAx(3).Color = h.ColorMode(h.ColorIndex).Background;
                     h.ImAx(3).LineWidth = 1;
-                    h.ImAx(3).FontSize = round(22*(CurrentAxHeight/756));
+                    h.ImAx(3).FontSize = round(h.ReferenceFontSize*(CurrentAxHeight/756));
                     h.ImAx(3).XColor = h.ColorMode(h.ColorIndex).Text;
                     h.ImAx(3).YColor = h.ColorMode(h.ColorIndex).Profile2;
                     h.ImAx(3).GridColor = h.ColorMode(h.ColorIndex).Text;
@@ -1808,7 +1838,7 @@ classdef Experiment < matlab.mixin.Copyable
                     [Channel,ChannelIndex] = Class{Index}.get_channel(h.Channel{Index});
                     if h.isUpscaled
                         Channel.Image = fillmissing(Channel.Image,'linear','EndValues','nearest');
-                        Channel = AFMImage.resize_channel(Channel,1,1920);
+                        Channel = AFMImage.resize_channel(Channel,1,1920,true);
                     end
                     h.Image{Index} = fillmissing(Channel.Image,'linear','EndValues','nearest');
                     h.BaseUnit{Index} = Channel.Unit;
@@ -1819,20 +1849,46 @@ classdef Experiment < matlab.mixin.Copyable
                     ColorPattern = Class{Index}.CMap;
                 end
                 
-                CurImage = h.Image{Index};
-                
-                Range = range(CurImage,'all');
-                if Index==1
-                    CutMax = Range*h.Channel1Max + min(CurImage,[],'all');
-                    CutMin = Range*h.Channel1Min + min(CurImage,[],'all');
-                elseif Index==2
-                    CutMax = Range*h.Channel2Max + min(CurImage,[],'all');
-                    CutMin = Range*h.Channel2Min + min(CurImage,[],'all');
+                if h.B(21).Value && h.hasChannel2 && h.hasChannel1 && (h.BaseUnit{1}==h.BaseUnit{2})
+                    CurImage = h.Image{Index};
+                    Range = range(CurImage,'all');
+                    OtherImage = h.Image{mod(Index,2)+1};
+                    OtherRange = range(OtherImage,'all');
+                    
+                    [FinalRange,FinalIndex] = max([Range OtherRange]);
+                    
+                    if FinalIndex==1
+                        Min = min(CurImage,[],'all');
+                    else
+                        Min = min(OtherImage,[],'all');
+                    end
+                    
+                    CutMax = FinalRange*h.Channel1Max + Min;
+                    CutMin = FinalRange*h.Channel1Min + Min;
+                else
+                    CurImage = h.Image{Index};
+                    FinalRange = range(CurImage,'all');
+                    if Index==1
+                        CutMax = FinalRange*h.Channel1Max + min(CurImage,[],'all');
+                        CutMin = FinalRange*h.Channel1Min + min(CurImage,[],'all');
+                    elseif Index==2
+                        CutMax = FinalRange*h.Channel2Max + min(CurImage,[],'all');
+                        CutMin = FinalRange*h.Channel2Min + min(CurImage,[],'all');
+                    end
                 end
+                
+                
                 CurImage(CurImage>CutMax) = CutMax;
                 CurImage(CurImage<CutMin) = CutMin;
                 
-                [Multiplier,Unit,~] = AFMImage.parse_unit_scale(range(CurImage,'all'),h.BaseUnit{Index},1);
+                if isempty(CurImage(CurImage>=CutMax))
+                    CurImage(1,1) = CutMax;
+                end
+                if isempty(CurImage(CurImage<=CutMin))
+                    CurImage(end,end) = CutMin;
+                end
+                
+                [Multiplier,Unit,~] = AFMImage.parse_unit_scale(FinalRange,h.BaseUnit{Index},1);
                 h.I(Index) = imshow(CurImage*Multiplier,[],'Colormap',ColorPattern);
                 h.I(Index).ButtonDownFcn = @get_and_draw_profile;
                 hold on
@@ -1840,10 +1896,10 @@ classdef Experiment < matlab.mixin.Copyable
                 CurrentAxWidth = round(h.Fig.Position(3)*h.ImAx(Index).Position(3));
                 AFMImage.draw_scalebar_into_current_image(Channel.NumPixelsX,Channel.NumPixelsY,Channel.ScanSizeX,BarToImageRatio,CurrentAxHeight,CurrentAxWidth);
                 c = colorbar;
-                c.FontSize = round(18*(CurrentAxHeight/756));
+                c.FontSize = round(h.ReferenceFontSize*(CurrentAxHeight/756));
                 c.Color = h.ColorMode(h.ColorIndex).Text;
                 c.Label.String = sprintf('%s [%s]',h.Channel{Index},Unit);
-                c.Label.FontSize = round(22*(CurrentAxHeight/756));
+                c.Label.FontSize = round(h.ReferenceFontSize*(CurrentAxHeight/756));
                 c.Label.Color = h.ColorMode(h.ColorIndex).Text;
                 
                 try
@@ -1923,6 +1979,24 @@ classdef Experiment < matlab.mixin.Copyable
                 draw_channel_1
                 draw_channel_2
                 
+            end
+            
+            function lock_scalebars(varargin)
+                
+                if h.B(21).Value
+                    h.B(10).Visible = 'off';
+                    h.B(11).Visible = 'off';
+                    h.B(14).Visible = 'off';
+                    h.B(15).Visible = 'off';
+                else
+                    h.B(10).Visible = 'on';
+                    h.B(11).Visible = 'on';
+                    h.B(14).Visible = 'on';
+                    h.B(15).Visible = 'on';
+                end
+                
+                draw_channel_1
+                draw_channel_2
             end
             
             uiwait(h.Fig)
@@ -2019,28 +2093,28 @@ classdef Experiment < matlab.mixin.Copyable
                     'FontSize',12,...
                     'HorizontalAlignment','center')
                 
-%                 %Statistics for Hertz-Sneddon Method
-%                 [hHS(i),pHS(i)] = ...
-%                     ttest(DataMeansHS(obj.GroupFM(TestMat(i,2)).Indices),...
-%                     DataMeansHS(obj.GroupFM(TestMat(i,1)).Indices),'Tail','right');
-%                 
-%                 figure('Name','Paired Right Tailed T-Test','Units','normalized','Position',[0.2 0.2 0.5 0.5],'Color','w')
-%                 boxplot([DataMeansHS(obj.GroupFM(TestMat(i,1)).Indices) DataMeansHS(obj.GroupFM(TestMat(i,2)).Indices)])
-%                 title('Paired Right Tailed T-Test for Hertz-Sneddon Method')
-%                 xticklabels({obj.GroupFM(TestMat(i,1)).Name,obj.GroupFM(TestMat(i,2)).Name})
-%                 xlabel('Test Group')
-%                 ylabel('E-Mod Hertz-Sneddon[Pa]')
-%                 DeltaMean = mean(DataMeansHS(obj.GroupFM(TestMat(i,2)).Indices)) - mean(DataMeansHS(obj.GroupFM(TestMat(i,1)).Indices));
-%                 Sigma = std(DataMeansHS(obj.GroupFM(TestMat(i,2)).Indices) - DataMeansHS(obj.GroupFM(TestMat(i,1)).Indices));
-%                 Beta = sampsizepwr('t',[0 Sigma],DeltaMean,[],length(obj.GroupFM(TestMat(i,2)).Indices));
-%                 Stats = {sprintf('\\DeltaMean = %.2f MPa',DeltaMean*1e-6),...
-%                     sprintf('P-Value = %.4f%',pHS(i)),...
-%                     sprintf('Power \\beta = %.2f%%',Beta*100),...
-%                     sprintf('Number of Specimen = %i',length(obj.GroupFM(TestMat(i,2)).Indices))};
-%                 text(0.5,0.8,Stats,...
-%                     'Units','normalized',...
-%                     'FontSize',12,...
-%                     'HorizontalAlignment','center')
+                %Statistics for Hertz-Sneddon Method
+                [hHS(i),pHS(i)] = ...
+                    ttest(DataMeansHS(obj.GroupFM(TestMat(i,2)).Indices),...
+                    DataMeansHS(obj.GroupFM(TestMat(i,1)).Indices),'Tail','right');
+                
+                figure('Name','Paired Right Tailed T-Test','Units','normalized','Position',[0.2 0.2 0.5 0.5],'Color','w')
+                boxplot([DataMeansHS(obj.GroupFM(TestMat(i,1)).Indices) DataMeansHS(obj.GroupFM(TestMat(i,2)).Indices)])
+                title('Paired Right Tailed T-Test for Hertz-Sneddon Method')
+                xticklabels({obj.GroupFM(TestMat(i,1)).Name,obj.GroupFM(TestMat(i,2)).Name})
+                xlabel('Test Group')
+                ylabel('E-Mod Hertz-Sneddon[Pa]')
+                DeltaMean = mean(DataMeansHS(obj.GroupFM(TestMat(i,2)).Indices)) - mean(DataMeansHS(obj.GroupFM(TestMat(i,1)).Indices));
+                Sigma = std(DataMeansHS(obj.GroupFM(TestMat(i,2)).Indices) - DataMeansHS(obj.GroupFM(TestMat(i,1)).Indices));
+                Beta = sampsizepwr('t',[0 Sigma],DeltaMean,[],length(obj.GroupFM(TestMat(i,2)).Indices));
+                Stats = {sprintf('\\DeltaMean = %.2f MPa',DeltaMean*1e-6),...
+                    sprintf('P-Value = %.4f%',pHS(i)),...
+                    sprintf('Power \\beta = %.2f%%',Beta*100),...
+                    sprintf('Number of Specimen = %i',length(obj.GroupFM(TestMat(i,2)).Indices))};
+                text(0.5,0.8,Stats,...
+                    'Units','normalized',...
+                    'FontSize',12,...
+                    'HorizontalAlignment','center')
             end
             
             % Now test, if the difference in one pair of groups is
@@ -2081,36 +2155,36 @@ classdef Experiment < matlab.mixin.Copyable
                 'FontSize',12,...
                 'HorizontalAlignment','center')
             
-%             % For Hertz-Sneddon
-%             [hHS,pHS,ciHS,statsHS] = ttest2(DiffMGOHS,DiffControlHS);
-%             figure('Name','Two Sample T-Test','Units','normalized','Position',[0.2 0.2 0.5 0.5],'Color','w')
-%             yyaxis left
-%             boxplot([DiffControlHS DiffMGOHS])
-%             ax = gca;
-%             YLim = ax.YLim;
-%             ylabel('Difference Before-After E-Mod [Pa]')
-%             DeltaMean = mean(DiffMGOHS) - mean(DiffControlHS);
-%             PooledSTD = statsHS.sd;
-%             yyaxis right
-%             errorbar(1.5,DeltaMean,ciHS(2)-DeltaMean,'O');
-%             ylim(YLim)
-%             xticks([1 1.5 2])
-%             title('Two Sample T-Test for E-Mod Hertz-Sneddon Method')
-%             ax = gca;
-%             ax.TickLabelInterpreter = 'tex';
-%             xticklabels({sprintf('%s - %s',obj.GroupFM(2).Name,obj.GroupFM(1).Name),...
-%                 '\DeltaMean with CI',...
-%                 sprintf('%s - %s',obj.GroupFM(4).Name,obj.GroupFM(3).Name)})
-%             ylabel('Difference of Differences [Pa]')
-%             Beta = sampsizepwr('t2',[mean(DiffControlHS) PooledSTD],mean(DiffMGOHS),[],length(DiffControlHS),'Ratio',length(DiffMGOHS)/length(DiffControlHS));
-%             Stats = {sprintf('\\DeltaMean = %.2f MPa',DeltaMean*1e-6),...
-%                 sprintf('P-Value = %.4f%',pHS),...
-%                 sprintf('Power \\beta = %.2f%%',Beta*100),...
-%                 sprintf('Degrees of freedom df = %i',statsHS.df)};
-%             text(0.5,0.8,Stats,...
-%                 'Units','normalized',...
-%                 'FontSize',12,...
-%                 'HorizontalAlignment','center')
+            % For Hertz-Sneddon
+            [hHS,pHS,ciHS,statsHS] = ttest2(DiffMGOHS,DiffControlHS);
+            figure('Name','Two Sample T-Test','Units','normalized','Position',[0.2 0.2 0.5 0.5],'Color','w')
+            yyaxis left
+            boxplot([DiffControlHS DiffMGOHS])
+            ax = gca;
+            YLim = ax.YLim;
+            ylabel('Difference Before-After E-Mod [Pa]')
+            DeltaMean = mean(DiffMGOHS) - mean(DiffControlHS);
+            PooledSTD = statsHS.sd;
+            yyaxis right
+            errorbar(1.5,DeltaMean,ciHS(2)-DeltaMean,'O');
+            ylim(YLim)
+            xticks([1 1.5 2])
+            title('Two Sample T-Test for E-Mod Hertz-Sneddon Method')
+            ax = gca;
+            ax.TickLabelInterpreter = 'tex';
+            xticklabels({sprintf('%s - %s',obj.GroupFM(2).Name,obj.GroupFM(1).Name),...
+                '\DeltaMean with CI',...
+                sprintf('%s - %s',obj.GroupFM(4).Name,obj.GroupFM(3).Name)})
+            ylabel('Difference of Differences [Pa]')
+            Beta = sampsizepwr('t2',[mean(DiffControlHS) PooledSTD],mean(DiffMGOHS),[],length(DiffControlHS),'Ratio',length(DiffMGOHS)/length(DiffControlHS));
+            Stats = {sprintf('\\DeltaMean = %.2f MPa',DeltaMean*1e-6),...
+                sprintf('P-Value = %.4f%',pHS),...
+                sprintf('Power \\beta = %.2f%%',Beta*100),...
+                sprintf('Degrees of freedom df = %i',statsHS.df)};
+            text(0.5,0.8,Stats,...
+                'Units','normalized',...
+                'FontSize',12,...
+                'HorizontalAlignment','center')
             
         end
         
