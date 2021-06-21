@@ -3263,13 +3263,25 @@ classdef ForceMap < matlab.mixin.Copyable
                     obj.HHType = 'Height';
                 end
                 
-                [TempHHApp,obj.App{i},obj.SpringConstant,obj.Sensitivity]=...
-                    obj.writedata(HeaderFileDirectory,SegmentHeaderFileDirectory,...
-                    HeightDataDirectory,vDefDataDirectory,obj.HHType);
+                try
+                    [TempHHApp,obj.App{i},obj.SpringConstant,obj.Sensitivity]=...
+                        obj.writedata(HeaderFileDirectory,SegmentHeaderFileDirectory,...
+                        HeightDataDirectory,vDefDataDirectory,obj.HHType);
                 
-                obj.HHApp{i} = -TempHHApp;
-                obj.App{i} = obj.App{i}.*obj.SpringConstant;
-                clear TempHHApp
+                    obj.HHApp{i} = -TempHHApp;
+                    obj.App{i} = obj.App{i}.*obj.SpringConstant;
+                    clear TempHHApp
+                catch
+                    if i ~= 1
+                        disp(sprintf('Curve Nr. %i seems to be corrupted. Replacing with previous value instead',i))
+                        obj.HHApp{i} = obj.HHApp{i-1};
+                        obj.App{i} = obj.App{i-1};
+                    else
+                        disp(sprintf('Curve Nr. %i seems to be corrupted. Replacing with zeros instead',i))
+                        obj.HHApp{i} = zeros(obj.MaxPointsPerCurve,1);
+                        obj.App{i} = zeros(obj.MaxPointsPerCurve,1);
+                    end
+                end
                 
                 % Below there is a workaround for jpk-force-map files,
                 % where the capacitiveSensorHeight
@@ -3297,13 +3309,25 @@ classdef ForceMap < matlab.mixin.Copyable
                     HeightDataDirectory = fullfile(TempFolder,'index',string((i-1)),'segments','1','channels','measuredHeight.dat');
                 end
                 
-                [TempHHRet,obj.Ret{i}]=...
-                    obj.writedata(HeaderFileDirectory,SegmentHeaderFileDirectory,...
-                    HeightDataDirectory,vDefDataDirectory,obj.HHType);
+                try
+                    [TempHHRet,obj.Ret{i}]=...
+                        obj.writedata(HeaderFileDirectory,SegmentHeaderFileDirectory,...
+                        HeightDataDirectory,vDefDataDirectory,obj.HHType);
                 
-                obj.HHRet{i} = -TempHHRet;
-                obj.Ret{i} = obj.Ret{i}.*obj.SpringConstant;
-                clear TempHHRet
+                    obj.HHRet{i} = -TempHHRet;
+                    obj.Ret{i} = obj.Ret{i}.*obj.SpringConstant;
+                catch
+                    if i ~= 1
+                        disp(sprintf('Curve Nr. %i seems to be corrupted. Replacing with previous value instead',i))
+                        obj.HHRet{i} = obj.HHRet{i-1};
+                        obj.Ret{i} = obj.Ret{i-1};
+                        clear TempHHRet
+                    else
+                        disp(sprintf('Curve Nr. %i seems to be corrupted. Replacing with zeros instead',i))
+                        obj.HHRet{i} = zeros(obj.MaxPointsPerCurve,1);
+                        obj.Ret{i} = zeros(obj.MaxPointsPerCurve,1);
+                    end
+                end
             end
         end
         
