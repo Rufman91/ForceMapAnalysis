@@ -211,6 +211,7 @@ classdef ForceMap < matlab.mixin.Copyable
             
             % reading header properties into object
             obj.read_in_header_properties(TempFolder);
+            obj.SelectedCurves = ones(obj.NCurves,1);
             
             %loading curve data into cell arrays
             obj.load_force_curves(TempFolder);
@@ -224,7 +225,6 @@ classdef ForceMap < matlab.mixin.Copyable
             
             obj.create_and_level_height_map();
             
-            obj.SelectedCurves = ones(obj.NCurves,1);
             
             obj.initialize_flags();
             
@@ -410,13 +410,14 @@ classdef ForceMap < matlab.mixin.Copyable
             
         end
         
-        function estimate_cp_rov(obj,batchsize)
+        function estimate_cp_rov(obj,WindowSize)
+            % estimate_cp_rov(obj,WindowSize)
             % find contact point with the method of ratio of variances. The method
             % iterates though every point and builds the ratio of the variance of a
             % bunch of points before and after the current point. the point with the
             % biggest ratio is the returned contact point [Nuria Gavara, 2016]
             if nargin<2
-                batchsize = 20;
+                WindowSize = 20;
             end
             Range = find(obj.SelectedCurves);
             h = waitbar(0,'Setting up...','Name',obj.Name);
@@ -428,13 +429,13 @@ classdef ForceMap < matlab.mixin.Copyable
                 obj.RoV{i} = zeros(length(obj.BasedApp{i}),1);
                 SmoothedApp = smoothdata(obj.BasedApp{i});
                 % loop through points and calculate the RoV
-                for j=(batchsize+1):(length(obj.BasedApp{i})-batchsize)
-                    obj.RoV{i}(j,1) = var(smoothdata(obj.BasedApp{i}((j+1):(j+batchsize))))/...
-                        var(SmoothedApp((j-batchsize):(j-1)));
+                for j=(WindowSize+1):(length(obj.BasedApp{i})-WindowSize)
+                    obj.RoV{i}(j,1) = var(smoothdata(obj.BasedApp{i}((j+1):(j+WindowSize))))/...
+                        var(SmoothedApp((j-WindowSize):(j-1)));
                 end
                 % normalize RoV-curve
                 obj.RoV{i} = obj.RoV{i}/range(obj.RoV{i});
-                minrov = min(obj.RoV{i}(batchsize+1:length(obj.RoV{i})-batchsize));
+                minrov = min(obj.RoV{i}(WindowSize+1:length(obj.RoV{i})-WindowSize));
                 obj.RoV{i}(obj.RoV{i}==0) = minrov;
                 [~,CPidx] = max(obj.RoV{i});
                 obj.CP_RoV(i,:) = [obj.HHApp{i}(CPidx) obj.BasedApp{i}(CPidx)];
@@ -828,6 +829,7 @@ classdef ForceMap < matlab.mixin.Copyable
             % Oliver-Pharr analysis
             iRange = find(obj.SelectedCurves);
             for i=iRange'
+                try
                 load = zeros(length(obj.BasedApp{i}),2);
                 unload = zeros(length(obj.Ret{i}),2);
                 for j=1:length(obj.BasedApp{i})
@@ -843,6 +845,14 @@ classdef ForceMap < matlab.mixin.Copyable
                 obj.CP(i,1) = obj.HHApp{i}(Position);
                 obj.CP_Old(i,1) =obj.CP(i,1);
                 obj.CP_Old(i,2) =obj.CP(i,2);
+                catch
+                    disp(sprintf('Failed to find CP on Curve Nr.%i. \nReplacing with minimum values and unselecting curve',i))
+                    obj.CP(i,2) = obj.BasedApp{i}(1);
+                    obj.CP(i,1) = obj.HHApp{i}(1);
+                    obj.CP_Old(i,1) =obj.CP(i,1);
+                    obj.CP_Old(i,2) =obj.CP(i,2);
+                    obj.SelectedCurves(i) = 0;
+                end
             end
             obj.CPFlag.Old = 1;
             %             current = what();
@@ -3362,6 +3372,7 @@ classdef ForceMap < matlab.mixin.Copyable
                         disp(sprintf('Curve Nr. %i seems to be corrupted. Replacing with zeros instead',i))
                         obj.HHApp{i} = zeros(obj.MaxPointsPerCurve,1);
                         obj.App{i} = zeros(obj.MaxPointsPerCurve,1);
+                        obj.SelectedCurves(i) = 0;
                     end
                 end
                 
@@ -3567,7 +3578,7 @@ classdef ForceMap < matlab.mixin.Copyable
                     'MarkerEdgeColor','k',...
                     'MarkerFaceColor',[0.4940 0.1840 0.5560]);
                 Legends{end+1} = 'Origin of Hertz-Sneddon fit';
-                xlim([(AppX(1)+ZoomMult*(obj.CP_SnapIn(k,1) - AppX(1)))*MultiplierX inf]);
+                xlim([(AppX(1)+ZoomMult*(obj.CP_HertzFitted(k,1) - AppX(1)))*MultiplierX inf]);
             end
             if obj.CPFlag.SnapIn == 1
                 plot(obj.CP_SnapIn(k,1)*MultiplierX, obj.CP_SnapIn(k,2)*MultiplierY,'O',...
