@@ -2049,7 +2049,7 @@ classdef ForceMap < matlab.mixin.Copyable
             print(gcf,fullname,'-dpng');
         end
                 
-        function fc_print_adhenergy_pulllength(obj,XMin,XMax,YMin,YMax,NumFcMax,NumFcUncorrupt,hh) % fc ... force curve
+        function fc_print_properties(obj,XMin,XMax,YMin,YMax,NumFcMax,NumFcUncorrupt,hh) % fc ... force curve
             % fc_print_adhenergy_pulllength: A function to plot all selected force curves of a
             % force map including adhesion energy and pulling length in
             % each force curve

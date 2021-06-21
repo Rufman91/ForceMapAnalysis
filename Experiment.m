@@ -1393,7 +1393,7 @@ classdef Experiment < matlab.mixin.Copyable
                 obj.FM{hh}.fc_adhesion_energy_idxpulllength
                 % Determine needed input variable
                 NumFcUncorrupt(hh)=nnz(obj.FM{hh}.SMFSFlag.Uncorrupt); % Determine the number of uncorrupted force curves     
-                obj.FM{hh}.fc_print_adhenergy_pulllength(XMin,XMax,YMin,YMax,NumFcMax,NumFcUncorrupt,hh)
+                obj.FM{hh}.fc_print_properties(XMin,XMax,YMin,YMax,NumFcMax,NumFcUncorrupt,hh)
                 
             end
             obj.NumFcUncorrupt=NumFcUncorrupt;
@@ -1878,8 +1878,7 @@ classdef Experiment < matlab.mixin.Copyable
 %                   obj.FM{ii}.fc_adhesion_energy_idxpulllength
 %                   obj.FM{ii}.fc_adhesion_energy_threshold
                   obj.FM{ii}.fc_adh_force_max
-                 %   obj.FM{ii}.fc_print_adhenergy_pulllength
-                   
+            
             end
             
           
