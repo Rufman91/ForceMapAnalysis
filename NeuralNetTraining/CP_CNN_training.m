@@ -16,7 +16,7 @@ for i =1:length(E.FM)
 end               
 
 tic
-[X,Y] = CP_CNN_batchprep(objcell,ImgSizeFinal,ImgSize,[0 0.5 0.9],'All',DataAugMult,3);
+[X,Y] = CP_CNN_batchprep(objcell,ImgSizeFinal,ImgSize,[0 0.3 0.7],'All',DataAugMult,3);
 toc
 
 NVal = floor(size(X,4)/4);
