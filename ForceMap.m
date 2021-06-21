@@ -32,6 +32,7 @@ classdef ForceMap < matlab.mixin.Copyable
         Folder          % location of the .csv files of the force map
         HostOS          % Operating System
         HostName        % Name of hosting system
+        FractionOfMaxRAM = 1/5 % Specifies how much of MaxRAM space can be taken for certain partitioned calculations 
         NCurves         % number of curves on the force map
         NumProfiles     % number of scanned profiles along the YSize of the force map
         NumPoints       % number of scanned points per profile along the XSize of the force map
@@ -49,6 +50,8 @@ classdef ForceMap < matlab.mixin.Copyable
         PixApp          % maximum number of measured points during approach
         PixRet          % maximum number of measured points during retraction
         SelectedCurves  % logical vector of length NCurves with 0s for excluded and 1s for included curves. gets initialized with ones
+        StashedSelectedCurves % In some calculations, SelectedCurves is changed temporarily inside a method.
+                              % Actual Selction is stored and then restored from here
         TipRadius = 8  % (nominal, if not otherwise calculated) tip radius in nm for the chosen type of tip model
         PoissonR = 0.5  % standard Poisson ratio for most mechanical models
         Medium
@@ -208,6 +211,7 @@ classdef ForceMap < matlab.mixin.Copyable
             
             % reading header properties into object
             obj.read_in_header_properties(TempFolder);
+            obj.SelectedCurves = ones(obj.NCurves,1);
             
             %loading curve data into cell arrays
             obj.load_force_curves(TempFolder);
@@ -221,7 +225,6 @@ classdef ForceMap < matlab.mixin.Copyable
             
             obj.create_and_level_height_map();
             
-            obj.SelectedCurves = ones(obj.NCurves,1);
             
             obj.initialize_flags();
             
@@ -284,25 +287,34 @@ classdef ForceMap < matlab.mixin.Copyable
             for i=Range'
                 AppForce = obj.App{i};
                 RetForce = obj.Ret{i};
-%                 
-%                 Force = [AppForce' RetForce'];
-%                 
-%                 % If found, remove sinusoidal approach
-%                 Force = ForceMap.remove_sinusoidal_approach(Force,0);
-%                 
-%                 AppForce = Force(1:length(AppForce))';
-%                 RetForce = Force(length(AppForce)+1:end)';
+                %
+                %                 Force = [AppForce' RetForce'];
+                %
+                %                 % If found, remove sinusoidal approach
+                %                 Force = ForceMap.remove_sinusoidal_approach(Force,0);
+                %
+                %                 AppForce = Force(1:length(AppForce))';
+                %                 RetForce = Force(length(AppForce)+1:end)';
                 
                 prog = i/obj.NCurves;
                 waitbar(prog,h,'processing baseline fits...');
                 [ncd , ncidx] = ForceMap.no_contact_domain(AppForce);
                 gof.rsquare = 0;
-                for j=1:1
-                    [testfit,goftest] = fit(obj.HHApp{i}(1:ncidx),smooth(ncd),'poly1','Normalize','on');
-                    if goftest.rsquare>gof.rsquare
-                        gof = goftest;
-                        obj.Basefit{i} = testfit;
+                try
+                    for j=1:1
+                        [testfit,goftest] = fit(obj.HHApp{i}(1:ncidx),smooth(ncd),'poly1','Normalize','on');
+                        if goftest.rsquare>gof.rsquare
+                            gof = goftest;
+                            obj.Basefit{i} = testfit;
+                        end
                     end
+                    SkipAssignment = false;
+                catch
+                    warning('Error in base and tilt. Skipping current force curve and marked as unselected')
+                    obj.BasedApp{i} = AppForce;
+                    obj.BasedRet{i} = RetForce;
+                    obj.SelectedCurves(i) = false;
+                    SkipAssignment = true;
                 end
                 
                 if gof.rsquare < 0.9 && isequal(RunMode,'poly9')
@@ -314,14 +326,22 @@ classdef ForceMap < matlab.mixin.Copyable
                     ncd(ncidx+1:length(ext_range)) = feval(obj.Basefit{i},ext_range(ncidx+1:length(ext_range)));
                     [obj.Basefit{i},gof] =  fit(ext_range,smooth(ncd),'poly9','Normalize','on');
                 end
-                obj.BasedApp{i} = (AppForce-feval(obj.Basefit{i},obj.HHApp{i}));
-                obj.BasedRet{i} = (RetForce-feval(obj.Basefit{i},obj.HHRet{i}));
+                if ~SkipAssignment
+                    obj.BasedApp{i} = (AppForce-feval(obj.Basefit{i},obj.HHApp{i}));
+                    obj.BasedRet{i} = (RetForce-feval(obj.Basefit{i},obj.HHRet{i}));
+                end
             end
+            
+            
             % calculate vertical tip position by subtracting vertical tip deflection from head height
-            iRange = find(obj.SelectedCurves);
-            for i=iRange'
-                obj.THApp{i} = obj.HHApp{i} - obj.BasedApp{i}/obj.SpringConstant;
-                obj.THRet{i} = obj.HHRet{i} - obj.BasedRet{i}/obj.SpringConstant;
+            % Skip this step, if the total number of curves in the
+            % Force Map exceeds 16384
+            if obj.NCurves <= 16384
+                iRange = find(obj.SelectedCurves);
+                for i=iRange'
+                    obj.THApp{i} = obj.HHApp{i} - obj.BasedApp{i}/obj.SpringConstant;
+                    obj.THRet{i} = obj.HHRet{i} - obj.BasedRet{i}/obj.SpringConstant;
+                end
             end
             close(h);
             obj.BaseAndTiltFlag = true;
@@ -390,13 +410,14 @@ classdef ForceMap < matlab.mixin.Copyable
             
         end
         
-        function estimate_cp_rov(obj,batchsize)
+        function estimate_cp_rov(obj,WindowSize)
+            % estimate_cp_rov(obj,WindowSize)
             % find contact point with the method of ratio of variances. The method
             % iterates though every point and builds the ratio of the variance of a
             % bunch of points before and after the current point. the point with the
             % biggest ratio is the returned contact point [Nuria Gavara, 2016]
             if nargin<2
-                batchsize = 20;
+                WindowSize = 20;
             end
             Range = find(obj.SelectedCurves);
             h = waitbar(0,'Setting up...','Name',obj.Name);
@@ -408,13 +429,13 @@ classdef ForceMap < matlab.mixin.Copyable
                 obj.RoV{i} = zeros(length(obj.BasedApp{i}),1);
                 SmoothedApp = smoothdata(obj.BasedApp{i});
                 % loop through points and calculate the RoV
-                for j=(batchsize+1):(length(obj.BasedApp{i})-batchsize)
-                    obj.RoV{i}(j,1) = var(smoothdata(obj.BasedApp{i}((j+1):(j+batchsize))))/...
-                        var(SmoothedApp((j-batchsize):(j-1)));
+                for j=(WindowSize+1):(length(obj.BasedApp{i})-WindowSize)
+                    obj.RoV{i}(j,1) = var(smoothdata(obj.BasedApp{i}((j+1):(j+WindowSize))))/...
+                        var(SmoothedApp((j-WindowSize):(j-1)));
                 end
                 % normalize RoV-curve
                 obj.RoV{i} = obj.RoV{i}/range(obj.RoV{i});
-                minrov = min(obj.RoV{i}(batchsize+1:length(obj.RoV{i})-batchsize));
+                minrov = min(obj.RoV{i}(WindowSize+1:length(obj.RoV{i})-WindowSize));
                 obj.RoV{i}(obj.RoV{i}==0) = minrov;
                 [~,CPidx] = max(obj.RoV{i});
                 obj.CP_RoV(i,:) = [obj.HHApp{i}(CPidx) obj.BasedApp{i}(CPidx)];
@@ -518,6 +539,7 @@ classdef ForceMap < matlab.mixin.Copyable
                 if nargin < 3
                     NumPasses = 100; % if not specified in arguments, NumPasses defaults to 100
                 end
+                obj.CP_MonteCarlo = zeros(NumPasses,2,obj.NCurves);
             elseif isequal(lower(RunMode),'zoom')
                 runmode = 2;
             elseif isequal(lower(RunMode),'zoomdropout')
@@ -525,6 +547,7 @@ classdef ForceMap < matlab.mixin.Copyable
                 if nargin < 3
                     NumPasses = 100; % if not specified in arguments, NumPasses defaults to 100
                 end
+                obj.CP_MonteCarlo = zeros(NumPasses,2,obj.NCurves);
             elseif isequal(lower(RunMode),'zoomsweep')
                 runmode = 4;
                 if nargin < 3
@@ -532,228 +555,266 @@ classdef ForceMap < matlab.mixin.Copyable
                 end
             end
             ImgSize = NeuralNet.Layers(1).InputSize;
-            objcell{1,1} = obj;
-            X = obj.CP_batchprep_3_channel(objcell,ImgSize(1),ImgSize(1),[0 0.3 0.7]);
-            h = waitbar(0,'Setting up and optimizing runtime...','Name',obj.Name);
-            len = size(X,4);
             
-            obj.check_for_new_host();
-            obj.cnn_runtime_optimization(NeuralNet,X);
-            
-            CantHandle = true;
-            switch runmode
-                case 0
-                    % Fast
-                    waitbar(1/2,h,'Predicting CP');
-                    while CantHandle == true
-                        try
-                            Ypredicted = predict(NeuralNet,X,'MiniBatchSize',obj.MiniBatchSize,'Acceleration','auto');
-                            CantHandle = false;
-                        catch
-                            obj.CPFlag.CNNopt = 0;
-                            obj.cnn_runtime_optimization(NeuralNet,X);
-                        end
-                    end
-                    waitbar(1,h,'Wrapping up');
-                    iRange = find(obj.SelectedCurves);
-                    k = 1;
-                    for i=iRange'
-                        obj.CP_CNN(i,1) = Ypredicted(k,1)*range(obj.HHApp{i})+min(obj.HHApp{i});
-                        obj.CP_CNN(i,2) = Ypredicted(k,2)*range(obj.BasedApp{i})+min(obj.BasedApp{i});
-                        obj.CP(i,1) = obj.CP_CNN(i,1);
-                        obj.CP(i,2) = obj.CP_CNN(i,2);
-                        k = k + 1;
-                    end
-                    obj.CPFlag.CNN = 1;
-                case 1
-                    % Dropout
-                    obj.YDropPred = zeros(NumPasses,2,len);
-                    for j=1:NumPasses
-                        waitbar(j/NumPasses,h,sprintf('Predicting CP for %i curves. %i/%i passes done',len,j,NumPasses));
-                        while CantHandle == true
-                            try
-                                Temp = predict(NeuralNet,X,'MiniBatchSize',obj.MiniBatchSize,'Acceleration','auto');
-                                CantHandle = false;
-                            catch
-                                CantHandle = true;
-                                obj.CPFlag.CNNopt = 0;
-                                obj.cnn_runtime_optimization(NeuralNet,X);
+            % Partition data using the SelectedCurves property to not
+            % exceed memory capabilities of current system. Loop over all
+            % partitions and in the end set SelectedCurves back to initial
+            % values
+            obj.StashedSelectedCurves = obj.SelectedCurves;
+            try
+                Mem = memory;
+                MaxArraySize = Mem.MaxPossibleArrayBytes;
+                if sum(runmode==[1 3 4],'all') >= 1
+                    MaxPartitionSize = round(MaxArraySize/(ImgSize(1)*ImgSize(2)*ImgSize(3)*NumPasses));
+                else
+                    MaxPartitionSize = round(MaxArraySize/(ImgSize(1)*ImgSize(2)*ImgSize(3)));
+                end
+                PartitionSize = round(MaxPartitionSize*obj.FractionOfMaxRAM);
+                NumPartitions = ceil(obj.NCurves/PartitionSize);
+                
+                for BigLoop=1:NumPartitions
+                    TempSelectedCurves = zeros(obj.NCurves,1);
+                    TempSelectedCurves((1+(BigLoop-1)*PartitionSize):min((BigLoop*PartitionSize),end)) = 1;
+                    TempSelectedCurves = TempSelectedCurves & obj.StashedSelectedCurves;
+                    obj.SelectedCurves = TempSelectedCurves;
+                    objcell{1,1} = obj;
+                    X = obj.CP_batchprep_3_channel(objcell,ImgSize(1),ImgSize(1),[0 0.3 0.7]);
+                    h = waitbar(0,'Setting up and optimizing runtime...','Name',obj.Name);
+                    len = size(X,4);
+                    
+                    obj.check_for_new_host();
+                    obj.cnn_runtime_optimization(NeuralNet,X);
+                    
+                    CantHandle = true;
+                    switch runmode
+                        case 0
+                            % Fast
+                            waitbar(1/2,h,'Predicting CP');
+                            while CantHandle == true
+                                try
+                                    Ypredicted = predict(NeuralNet,X,'MiniBatchSize',obj.MiniBatchSize,'Acceleration','auto');
+                                    CantHandle = false;
+                                catch
+                                    obj.CPFlag.CNNopt = 0;
+                                    obj.cnn_runtime_optimization(NeuralNet,X);
+                                end
                             end
-                        end
-                        obj.YDropPred(j,:,:) = Temp';
-                        CantHandle = true;
+                            waitbar(1,h,'Wrapping up');
+                            iRange = find(obj.SelectedCurves);
+                            k = 1;
+                            for i=iRange'
+                                obj.CP_CNN(i,1) = Ypredicted(k,1)*range(obj.HHApp{i})+min(obj.HHApp{i});
+                                obj.CP_CNN(i,2) = Ypredicted(k,2)*range(obj.BasedApp{i})+min(obj.BasedApp{i});
+                                obj.CP(i,1) = obj.CP_CNN(i,1);
+                                obj.CP(i,2) = obj.CP_CNN(i,2);
+                                k = k + 1;
+                            end
+                            if BigLoop == NumPartitions
+                                obj.CPFlag.CNN = 1;
+                            end
+                        case 1
+                            % Dropout
+                            obj.YDropPred = zeros(NumPasses,2,len);
+                            for j=1:NumPasses
+                                waitbar(j/NumPasses,h,sprintf('Predicting CP for %i curves. %i/%i passes done',len,j,NumPasses));
+                                while CantHandle == true
+                                    try
+                                        Temp = predict(NeuralNet,X,'MiniBatchSize',obj.MiniBatchSize,'Acceleration','auto');
+                                        CantHandle = false;
+                                    catch
+                                        CantHandle = true;
+                                        obj.CPFlag.CNNopt = 0;
+                                        obj.cnn_runtime_optimization(NeuralNet,X);
+                                    end
+                                end
+                                obj.YDropPred(j,:,:) = Temp';
+                                CantHandle = true;
+                            end
+                            waitbar(1,h,'Wrapping up');
+                            iRange = find(obj.SelectedCurves);
+                            k = 1;
+                            for i=iRange'
+                                obj.CP_MonteCarlo(:,1,i) = obj.YDropPred(:,1,k)*range(obj.HHApp{i})+min(obj.HHApp{i});
+                                obj.CP_MonteCarlo(:,2,i) = obj.YDropPred(:,2,k)*range(obj.BasedApp{i})+min(obj.BasedApp{i});
+                                obj.CP(i,1) = mean(obj.CP_MonteCarlo(:,1,i));
+                                obj.CP(i,2) = mean(obj.CP_MonteCarlo(:,2,i));
+                                obj.CP_Dropout(i,1) = obj.CP(i,1);
+                                obj.CP_Dropout(i,2) = obj.CP(i,2);
+                                obj.CP_MonteCarlo_STD(i) = norm([std(obj.CP_MonteCarlo(:,1,i)) std(obj.CP_MonteCarlo(:,2,i))]);
+                                k = k + 1;
+                            end
+                            
+                            if BigLoop == NumPartitions
+                                obj.CPFlag.Dropout = 1;
+                            end
+                        case 2
+                            % Zoom
+                            waitbar(1/3,h,'Predicting CP, first guess...');
+                            while CantHandle == true
+                                try
+                                    Ypredicted = predict(NeuralNet,X,'MiniBatchSize',obj.MiniBatchSize,'Acceleration','auto');
+                                    CantHandle = false;
+                                catch
+                                    obj.CPFlag.CNNopt = 0;
+                                    obj.cnn_runtime_optimization(NeuralNet,X);
+                                end
+                            end
+                            iRange = find(obj.SelectedCurves);
+                            k = 1;
+                            for i=iRange'
+                                obj.CP_CNNZoom(i,1) = Ypredicted(k,1)*range(obj.HHApp{i})+min(obj.HHApp{i});
+                                obj.CP_CNNZoom(i,2) = Ypredicted(k,2)*range(obj.BasedApp{i})+min(obj.BasedApp{i});
+                                obj.CP(i,1) = obj.CP_CNNZoom(i,1);
+                                obj.CP(i,2) = obj.CP_CNNZoom(i,2);
+                                k = k + 1;
+                            end
+                            
+                            waitbar(2/3,h,'Predicting zoomed CP');
+                            ZoomObj = obj.copy;
+                            ZoomObj.cnn_zoom_in(0.5);
+                            ZoomCell{1,1} = ZoomObj;
+                            X = obj.CP_batchprep_3_channel(ZoomCell,ImgSize(1),ImgSize(1),[0 0.3 0.7]);
+                            CantHandle = true;
+                            while CantHandle == true
+                                try
+                                    Ypredicted = predict(NeuralNet,X,'MiniBatchSize',obj.MiniBatchSize,'Acceleration','auto');
+                                    CantHandle = false;
+                                catch
+                                    obj.CPFlag.CNNopt = 0;
+                                    obj.cnn_runtime_optimization(NeuralNet,X);
+                                end
+                            end
+                            waitbar(1,h,'Wrapping up');
+                            iRange = find(obj.SelectedCurves);
+                            k = 1;
+                            for i=iRange'
+                                obj.CP_CNNZoom(i,1) = Ypredicted(k,1)*range(ZoomObj.HHApp{i})+min(ZoomObj.HHApp{i});
+                                obj.CP_CNNZoom(i,2) = Ypredicted(k,2)*range(ZoomObj.BasedApp{i})+min(ZoomObj.BasedApp{i});
+                                obj.CP(i,1) = obj.CP_CNNZoom(i,1);
+                                obj.CP(i,2) = obj.CP_CNNZoom(i,2);
+                                k = k + 1;
+                            end
+                            
+                            if BigLoop == NumPartitions
+                                obj.CPFlag.CNNZoom = 1;
+                            end
+                        case 3
+                            % ZoomDropout
+                            waitbar(1/3,h,'Predicting CP, first guess...');
+                            while CantHandle == true
+                                try
+                                    Ypredicted = predict(NeuralNet,X,'MiniBatchSize',obj.MiniBatchSize,'Acceleration','auto');
+                                    CantHandle = false;
+                                catch
+                                    obj.CPFlag.CNNopt = 0;
+                                    obj.cnn_runtime_optimization(NeuralNet,X);
+                                end
+                            end
+                            iRange = find(obj.SelectedCurves);
+                            k = 1;
+                            for i=iRange'
+                                obj.CP_CNNZoom(i,1) = Ypredicted(k,1)*range(obj.HHApp{i})+min(obj.HHApp{i});
+                                obj.CP_CNNZoom(i,2) = Ypredicted(k,2)*range(obj.BasedApp{i})+min(obj.BasedApp{i});
+                                obj.CP(i,1) = obj.CP_CNNZoom(i,1);
+                                obj.CP(i,2) = obj.CP_CNNZoom(i,2);
+                                k = k + 1;
+                            end
+                            
+                            waitbar(2/3,h,'Predicting zoomed CP');
+                            ZoomObj = obj.copy;
+                            ZoomObj.cnn_zoom_in();
+                            ZoomCell{1,1} = ZoomObj;
+                            X = obj.CP_batchprep_3_channel(ZoomCell,ImgSize(1),ImgSize(1),[0 0.3 0.7]);
+                            CantHandle = true;
+                            while CantHandle == true
+                                try
+                                    Ypredicted = predict(NeuralNet,X,'MiniBatchSize',obj.MiniBatchSize,'Acceleration','auto');
+                                    CantHandle = false;
+                                catch
+                                    obj.CPFlag.CNNopt = 0;
+                                    obj.cnn_runtime_optimization(NeuralNet,X);
+                                end
+                            end
+                            waitbar(1,h,'Wrapping up');
+                            iRange = find(obj.SelectedCurves);
+                            k = 1;
+                            for i=iRange'
+                                obj.CP_CNNZoom(i,1) = Ypredicted(k,1)*range(ZoomObj.HHApp{i})+min(ZoomObj.HHApp{i});
+                                obj.CP_CNNZoom(i,2) = Ypredicted(k,2)*range(ZoomObj.BasedApp{i})+min(ZoomObj.BasedApp{i});
+                                obj.CP(i,1) = obj.CP_CNNZoom(i,1);
+                                obj.CP(i,2) = obj.CP_CNNZoom(i,2);
+                                k = k + 1;
+                            end
+                            if BigLoop == NumPartitions
+                                obj.CPFlag.CNNZoomDropout = 1;
+                            end
+                        case 4
+                            % ZoomSweep
+                            waitbar(1/3,h,sprintf('Predicting CP, first guess...(Partition %i/%i)',BigLoop,NumPartitions));
+                            while CantHandle == true
+                                try
+                                    Ypredicted = predict(NeuralNet,X,'MiniBatchSize',obj.MiniBatchSize,'Acceleration','auto');
+                                    CantHandle = false;
+                                catch
+                                    obj.CPFlag.CNNopt = 0;
+                                    obj.cnn_runtime_optimization(NeuralNet,X);
+                                end
+                            end
+                            iRange = find(obj.SelectedCurves);
+                            k = 1;
+                            for i=iRange'
+                                obj.CP_CNNZoom(i,1) = Ypredicted(k,1)*range(obj.HHApp{i})+min(obj.HHApp{i});
+                                obj.CP_CNNZoom(i,2) = Ypredicted(k,2)*range(obj.BasedApp{i})+min(obj.BasedApp{i});
+                                obj.CP(i,1) = obj.CP_CNNZoom(i,1);
+                                obj.CP(i,2) = obj.CP_CNNZoom(i,2);
+                                k = k + 1;
+                            end
+                            
+                            waitbar(2/3,h,sprintf('Predicting zoomed CP, sweeping over multiple zooms \n(Partition %i/%i)',BigLoop,NumPartitions));
+                            MaxZoom = 0.9;
+                            ZoomFactor = (1-MaxZoom):MaxZoom/(NumPasses-1):1;
+                            for i=1:NumPasses
+                                ZoomCell{i} = obj.copy;
+                                ZoomCell{i}.cnn_zoom_in(ZoomFactor(i));
+                            end
+                            X = obj.CP_batchprep_3_channel(ZoomCell,ImgSize(1),ImgSize(1),[0 0.3 0.7]);
+                            CantHandle = true;
+                            while CantHandle == true
+                                try
+                                    Ypredicted = predict(NeuralNet,X,'MiniBatchSize',obj.MiniBatchSize,'Acceleration','auto');
+                                    CantHandle = false;
+                                catch
+                                    obj.CPFlag.CNNopt = 0;
+                                    obj.cnn_runtime_optimization(NeuralNet,X);
+                                end
+                            end
+                            waitbar(1,h,'Wrapping up');
+                            iRange = find(obj.SelectedCurves);
+                            k = 1;
+                            for i=iRange'
+                                for j=1:NumPasses
+                                    TempCP(i,1,j) = Ypredicted(k+length(iRange)*(j-1),1)*range(ZoomCell{j}.HHApp{i})+min(ZoomCell{j}.HHApp{i});
+                                    TempCP(i,2,j) = Ypredicted(k+length(iRange)*(j-1),2)*range(ZoomCell{j}.BasedApp{i})+min(ZoomCell{j}.BasedApp{i});
+                                end
+                                obj.CP_CNNZoomSweep(i,1) = mean(TempCP(i,1,:),3);
+                                obj.CP_CNNZoomSweep(i,2) = mean(TempCP(i,2,:),3);
+                                obj.CP(i,1) = obj.CP_CNNZoomSweep(i,1);
+                                obj.CP(i,2) = obj.CP_CNNZoomSweep(i,2);
+                                k = k + 1;
+                            end
+                            if BigLoop == NumPartitions
+                                obj.CPFlag.CNNZoomSweep = 1;
+                            end
                     end
-                    waitbar(1,h,'Wrapping up');
-                    iRange = find(obj.SelectedCurves);
-                    k = 1;
-                    obj.CP_MonteCarlo = zeros(NumPasses,2,obj.NCurves);
-                    for i=iRange'
-                        obj.CP_MonteCarlo(:,1,i) = obj.YDropPred(:,1,k)*range(obj.HHApp{i})+min(obj.HHApp{i});
-                        obj.CP_MonteCarlo(:,2,i) = obj.YDropPred(:,2,k)*range(obj.BasedApp{i})+min(obj.BasedApp{i});
-                        obj.CP(i,1) = mean(obj.CP_MonteCarlo(:,1,i));
-                        obj.CP(i,2) = mean(obj.CP_MonteCarlo(:,2,i));
-                        obj.CP_Dropout(i,1) = obj.CP(i,1);
-                        obj.CP_Dropout(i,2) = obj.CP(i,2);
-                        obj.CP_MonteCarlo_STD(i) = norm([std(obj.CP_MonteCarlo(:,1,i)) std(obj.CP_MonteCarlo(:,2,i))]);
-                        k = k + 1;
-                    end
-                    obj.CPFlag.Dropout = 1;
-                case 2
-                    % Zoom
-                    waitbar(1/3,h,'Predicting CP, first guess...');
-                    while CantHandle == true
-                        try
-                            Ypredicted = predict(NeuralNet,X,'MiniBatchSize',obj.MiniBatchSize,'Acceleration','auto');
-                            CantHandle = false;
-                        catch
-                            obj.CPFlag.CNNopt = 0;
-                            obj.cnn_runtime_optimization(NeuralNet,X);
-                        end
-                    end
-                    iRange = find(obj.SelectedCurves);
-                    k = 1;
-                    for i=iRange'
-                        obj.CP_CNNZoom(i,1) = Ypredicted(k,1)*range(obj.HHApp{i})+min(obj.HHApp{i});
-                        obj.CP_CNNZoom(i,2) = Ypredicted(k,2)*range(obj.BasedApp{i})+min(obj.BasedApp{i});
-                        obj.CP(i,1) = obj.CP_CNNZoom(i,1);
-                        obj.CP(i,2) = obj.CP_CNNZoom(i,2);
-                        k = k + 1;
-                    end
-                    
-                    waitbar(2/3,h,'Predicting zoomed CP');
-                    ZoomObj = obj.copy;
-                    ZoomObj.cnn_zoom_in(0.5);
-                    ZoomCell{1,1} = ZoomObj;
-                    X = obj.CP_batchprep_3_channel(ZoomCell,ImgSize(1),ImgSize(1),[0 0.3 0.7]);
-                    CantHandle = true;
-                    while CantHandle == true
-                        try
-                            Ypredicted = predict(NeuralNet,X,'MiniBatchSize',obj.MiniBatchSize,'Acceleration','auto');
-                            CantHandle = false;
-                        catch
-                            obj.CPFlag.CNNopt = 0;
-                            obj.cnn_runtime_optimization(NeuralNet,X);
-                        end
-                    end
-                    waitbar(1,h,'Wrapping up');
-                    iRange = find(obj.SelectedCurves);
-                    k = 1;
-                    for i=iRange'
-                        obj.CP_CNNZoom(i,1) = Ypredicted(k,1)*range(ZoomObj.HHApp{i})+min(ZoomObj.HHApp{i});
-                        obj.CP_CNNZoom(i,2) = Ypredicted(k,2)*range(ZoomObj.BasedApp{i})+min(ZoomObj.BasedApp{i});
-                        obj.CP(i,1) = obj.CP_CNNZoom(i,1);
-                        obj.CP(i,2) = obj.CP_CNNZoom(i,2);
-                        k = k + 1;
-                    end
-                    
-                    obj.CPFlag.CNNZoom = 1;
-                case 3
-                    % ZoomDropout
-                    waitbar(1/3,h,'Predicting CP, first guess...');
-                    while CantHandle == true
-                        try
-                            Ypredicted = predict(NeuralNet,X,'MiniBatchSize',obj.MiniBatchSize,'Acceleration','auto');
-                            CantHandle = false;
-                        catch
-                            obj.CPFlag.CNNopt = 0;
-                            obj.cnn_runtime_optimization(NeuralNet,X);
-                        end
-                    end
-                    iRange = find(obj.SelectedCurves);
-                    k = 1;
-                    for i=iRange'
-                        obj.CP_CNNZoom(i,1) = Ypredicted(k,1)*range(obj.HHApp{i})+min(obj.HHApp{i});
-                        obj.CP_CNNZoom(i,2) = Ypredicted(k,2)*range(obj.BasedApp{i})+min(obj.BasedApp{i});
-                        obj.CP(i,1) = obj.CP_CNNZoom(i,1);
-                        obj.CP(i,2) = obj.CP_CNNZoom(i,2);
-                        k = k + 1;
-                    end
-                    
-                    waitbar(2/3,h,'Predicting zoomed CP');
-                    ZoomObj = obj.copy;
-                    ZoomObj.cnn_zoom_in();
-                    ZoomCell{1,1} = ZoomObj;
-                    X = obj.CP_batchprep_3_channel(ZoomCell,ImgSize(1),ImgSize(1),[0 0.3 0.7]);
-                    CantHandle = true;
-                    while CantHandle == true
-                        try
-                            Ypredicted = predict(NeuralNet,X,'MiniBatchSize',obj.MiniBatchSize,'Acceleration','auto');
-                            CantHandle = false;
-                        catch
-                            obj.CPFlag.CNNopt = 0;
-                            obj.cnn_runtime_optimization(NeuralNet,X);
-                        end
-                    end
-                    waitbar(1,h,'Wrapping up');
-                    iRange = find(obj.SelectedCurves);
-                    k = 1;
-                    for i=iRange'
-                        obj.CP_CNNZoom(i,1) = Ypredicted(k,1)*range(ZoomObj.HHApp{i})+min(ZoomObj.HHApp{i});
-                        obj.CP_CNNZoom(i,2) = Ypredicted(k,2)*range(ZoomObj.BasedApp{i})+min(ZoomObj.BasedApp{i});
-                        obj.CP(i,1) = obj.CP_CNNZoom(i,1);
-                        obj.CP(i,2) = obj.CP_CNNZoom(i,2);
-                        k = k + 1;
-                    end
-                    
-                    obj.CPFlag.CNNZoomDropout = 1;
-                case 4
-                    % ZoomSweep
-                    waitbar(1/3,h,'Predicting CP, first guess...');
-                    while CantHandle == true
-                        try
-                            Ypredicted = predict(NeuralNet,X,'MiniBatchSize',obj.MiniBatchSize,'Acceleration','auto');
-                            CantHandle = false;
-                        catch
-                            obj.CPFlag.CNNopt = 0;
-                            obj.cnn_runtime_optimization(NeuralNet,X);
-                        end
-                    end
-                    iRange = find(obj.SelectedCurves);
-                    k = 1;
-                    for i=iRange'
-                        obj.CP_CNNZoom(i,1) = Ypredicted(k,1)*range(obj.HHApp{i})+min(obj.HHApp{i});
-                        obj.CP_CNNZoom(i,2) = Ypredicted(k,2)*range(obj.BasedApp{i})+min(obj.BasedApp{i});
-                        obj.CP(i,1) = obj.CP_CNNZoom(i,1);
-                        obj.CP(i,2) = obj.CP_CNNZoom(i,2);
-                        k = k + 1;
-                    end
-                    
-                    waitbar(2/3,h,'Predicting zoomed CP, sweeping over multiple zooms');
-                    MaxZoom = 0.7;
-                    ZoomFactor = (1-MaxZoom):MaxZoom/(NumPasses-1):1;
-                    for i=1:NumPasses
-                        ZoomCell{i} = obj.copy;
-                        ZoomCell{i}.cnn_zoom_in(ZoomFactor(i));
-                    end
-                    X = obj.CP_batchprep_3_channel(ZoomCell,ImgSize(1),ImgSize(1),[0 0.3 0.7]);
-                    CantHandle = true;
-                    while CantHandle == true
-                        try
-                            Ypredicted = predict(NeuralNet,X,'MiniBatchSize',obj.MiniBatchSize,'Acceleration','auto');
-                            CantHandle = false;
-                        catch
-                            obj.CPFlag.CNNopt = 0;
-                            obj.cnn_runtime_optimization(NeuralNet,X);
-                        end
-                    end
-                    waitbar(1,h,'Wrapping up');
-                    iRange = find(obj.SelectedCurves);
-                    k = 1;
-                    for i=iRange'
-                        for j=1:NumPasses
-                            TempCP(i,1,j) = Ypredicted(k+length(iRange)*(j-1),1)*range(ZoomCell{j}.HHApp{i})+min(ZoomCell{j}.HHApp{i});
-                            TempCP(i,2,j) = Ypredicted(k+length(iRange)*(j-1),2)*range(ZoomCell{j}.BasedApp{i})+min(ZoomCell{j}.BasedApp{i});
-                        end
-                        obj.CP_CNNZoomSweep(i,1) = mean(TempCP(i,1,:),3);
-                        obj.CP_CNNZoomSweep(i,2) = mean(TempCP(i,2,:),3);
-                        obj.CP(i,1) = obj.CP_CNNZoomSweep(i,1);
-                        obj.CP(i,2) = obj.CP_CNNZoomSweep(i,2);
-                        k = k + 1;
-                    end
-                    
-                    obj.CPFlag.CNNZoomSweep = 1;
+                    close(h)
+                end
+                obj.SelectedCurves = obj.StashedSelectedCurves;
+            catch ME
+                obj.SelectedCurves = obj.StashedSelectedCurves;
+                rethrow(ME)
             end
-            close(h)
+            
+            
             %             current = what();
             %             cd(obj.Folder)
             %             savename = sprintf('%s.mat',obj.Name);
@@ -768,6 +829,7 @@ classdef ForceMap < matlab.mixin.Copyable
             % Oliver-Pharr analysis
             iRange = find(obj.SelectedCurves);
             for i=iRange'
+                try
                 load = zeros(length(obj.BasedApp{i}),2);
                 unload = zeros(length(obj.Ret{i}),2);
                 for j=1:length(obj.BasedApp{i})
@@ -783,6 +845,14 @@ classdef ForceMap < matlab.mixin.Copyable
                 obj.CP(i,1) = obj.HHApp{i}(Position);
                 obj.CP_Old(i,1) =obj.CP(i,1);
                 obj.CP_Old(i,2) =obj.CP(i,2);
+                catch
+                    disp(sprintf('Failed to find CP on Curve Nr.%i. \nReplacing with minimum values and unselecting curve',i))
+                    obj.CP(i,2) = obj.BasedApp{i}(1);
+                    obj.CP(i,1) = obj.HHApp{i}(1);
+                    obj.CP_Old(i,1) =obj.CP(i,1);
+                    obj.CP_Old(i,2) =obj.CP(i,2);
+                    obj.SelectedCurves(i) = 0;
+                end
             end
             obj.CPFlag.Old = 1;
             %             current = what();
@@ -2797,6 +2867,28 @@ classdef ForceMap < matlab.mixin.Copyable
             else
                 obj.Channel(Index) = Height;
             end
+            
+            Map = imresize(obj.HeightMap,[1024 1024],'bicubic');
+            for i=1:5
+                Map = AFMImage.subtract_line_fit_vertical_rov(Map,.2,1);
+            end
+            Map = imresize(Map,[obj.NumProfiles obj.NumPoints]);
+            
+            % write to Channel
+            Processed = obj.create_standard_channel(Map,'Processed','m');
+            
+            [Channel,Index] = obj.get_channel('Processed');
+            if isempty(Channel)
+                Len = length(obj.Channel);
+                if ~Len
+                    obj.Channel = Processed;
+                else
+                    obj.Channel(Len+1) = Processed;
+                end
+            else
+                obj.Channel(Index) = Processed;
+            end
+            
         end
         
         function create_fibril_mask(obj,MaskParam)
@@ -3280,6 +3372,7 @@ classdef ForceMap < matlab.mixin.Copyable
                         disp(sprintf('Curve Nr. %i seems to be corrupted. Replacing with zeros instead',i))
                         obj.HHApp{i} = zeros(obj.MaxPointsPerCurve,1);
                         obj.App{i} = zeros(obj.MaxPointsPerCurve,1);
+                        obj.SelectedCurves(i) = 0;
                     end
                 end
                 
@@ -3456,12 +3549,26 @@ classdef ForceMap < matlab.mixin.Copyable
                     'Color','white',...
                     'Name',obj.Name);
             end
+            
+            try
+                AppX = obj.HHApp{k};
+                AppY = obj.BasedApp{k};
+                RetX = obj.HHRet{k};
+                RetY = obj.BasedRet{k};
+            catch
+                AppX = obj.HHApp{k};
+                AppY = obj.App{k};
+                RetX = obj.HHRet{k};
+                RetY = obj.Ret{k};
+            end
+            
+            
             subplot(2,1,1)
             title(sprintf('Curve Nr.%i of %s',k,obj.Name))
             hold on
-            [MultiplierX,UnitX,~] = AFMImage.parse_unit_scale(range(obj.HHRet{k}),'m',10);
-            [MultiplierY,UnitY,~] = AFMImage.parse_unit_scale(range(obj.BasedRet{k}),'N',5);
-            plot(obj.HHApp{k}*MultiplierX,obj.BasedApp{k}*MultiplierY,obj.HHRet{k}*MultiplierX,obj.BasedRet{k}*MultiplierY,'LineWidth',1.5);
+            [MultiplierX,UnitX,~] = AFMImage.parse_unit_scale(range(RetX),'m',10);
+            [MultiplierY,UnitY,~] = AFMImage.parse_unit_scale(range(RetY),'N',5);
+            plot(AppX*MultiplierX,AppY*MultiplierY,RetX*MultiplierX,RetY*MultiplierY,'LineWidth',1.5);
             Legends = {'Approach','Retract'};
             
             if obj.CPFlag.HertzFitted == 1
@@ -3471,7 +3578,7 @@ classdef ForceMap < matlab.mixin.Copyable
                     'MarkerEdgeColor','k',...
                     'MarkerFaceColor',[0.4940 0.1840 0.5560]);
                 Legends{end+1} = 'Origin of Hertz-Sneddon fit';
-                xlim([(obj.HHApp{k}(1)+ZoomMult*(obj.CP_SnapIn(k,1) - obj.HHApp{k}(1)))*MultiplierX inf]);
+                xlim([(AppX(1)+ZoomMult*(obj.CP_HertzFitted(k,1) - AppX(1)))*MultiplierX inf]);
             end
             if obj.CPFlag.SnapIn == 1
                 plot(obj.CP_SnapIn(k,1)*MultiplierX, obj.CP_SnapIn(k,2)*MultiplierY,'O',...
@@ -3480,7 +3587,7 @@ classdef ForceMap < matlab.mixin.Copyable
                     'MarkerEdgeColor','k',...
                     'MarkerFaceColor','r');
                 Legends{end+1} = 'SnapIn';
-                xlim([(obj.HHApp{k}(1)+ZoomMult*(obj.CP_SnapIn(k,1) - obj.HHApp{k}(1)))*MultiplierX inf]);
+                xlim([(AppX(1)+ZoomMult*(obj.CP_SnapIn(k,1) - AppX(1)))*MultiplierX inf]);
             end
             if obj.CPFlag.Manual == 1
                 plot(obj.Man_CP(k,1)*MultiplierX, obj.Man_CP(k,2)*MultiplierY,'O',...
@@ -3489,7 +3596,7 @@ classdef ForceMap < matlab.mixin.Copyable
                     'MarkerEdgeColor','k',...
                     'MarkerFaceColor','r');
                 Legends{end+1} = 'Manual CP';
-                xlim([(obj.HHApp{k}(1)+ZoomMult*(obj.Man_CP(k,1) - obj.HHApp{k}(1)))*MultiplierX inf]);
+                xlim([(AppX(1)+ZoomMult*(obj.Man_CP(k,1) - AppX(1)))*MultiplierX inf]);
             end
             if obj.CPFlag.RoV == 1
                 plot(obj.CP_RoV(k,1)*MultiplierX, obj.CP_RoV(k,2)*MultiplierY,'O',...
@@ -3498,7 +3605,7 @@ classdef ForceMap < matlab.mixin.Copyable
                     'MarkerEdgeColor','k',...
                     'MarkerFaceColor','b');
                 Legends{end+1} = 'CP RoV';
-                xlim([(obj.HHApp{k}(1)+ZoomMult*(obj.CP_RoV(k,1) - obj.HHApp{k}(1)))*MultiplierX inf]);
+                xlim([(AppX(1)+ZoomMult*(obj.CP_RoV(k,1) - AppX(1)))*MultiplierX inf]);
             end
             if obj.CPFlag.GoF == 1
                 plot(obj.CP_GoF(k,1)*MultiplierX, obj.CP_GoF(k,2)*MultiplierY,'O',...
@@ -3507,7 +3614,7 @@ classdef ForceMap < matlab.mixin.Copyable
                     'MarkerEdgeColor','k',...
                     'MarkerFaceColor','c');
                 Legends{end+1} = 'CP GoF';
-                xlim([(obj.HHApp{k}(1)+ZoomMult*(obj.CP_GoF(k,1) - obj.HHApp{k}(1)))*MultiplierX inf]);
+                xlim([(AppX(1)+ZoomMult*(obj.CP_GoF(k,1) - AppX(1)))*MultiplierX inf]);
             end
             if obj.CPFlag.Combo == 1
                 plot(obj.CP_Combo(k,1)*MultiplierX, obj.CP_Combo(k,2)*MultiplierY,'O',...
@@ -3516,7 +3623,7 @@ classdef ForceMap < matlab.mixin.Copyable
                     'MarkerEdgeColor','k',...
                     'MarkerFaceColor','m');
                 Legends{end+1} = 'CP Combo';
-                xlim([(obj.HHApp{k}(1)+ZoomMult*(obj.CP_Combo(k,1) - obj.HHApp{k}(1)))*MultiplierX inf]);
+                xlim([(AppX(1)+ZoomMult*(obj.CP_Combo(k,1) - AppX(1)))*MultiplierX inf]);
             end
             if obj.CPFlag.CNN == 1
                 plot(obj.CP_CNN(k,1)*MultiplierX, obj.CP_CNN(k,2)*MultiplierY,'O',...
@@ -3525,7 +3632,7 @@ classdef ForceMap < matlab.mixin.Copyable
                     'MarkerEdgeColor','k',...
                     'MarkerFaceColor','y');
                 Legends{end+1} = 'CP CNN';
-                xlim([(obj.HHApp{k}(1)+ZoomMult*(obj.CP_CNN(k,1) - obj.HHApp{k}(1)))*MultiplierX inf]);
+                xlim([(AppX(1)+ZoomMult*(obj.CP_CNN(k,1) - AppX(1)))*MultiplierX inf]);
             end
             if obj.CPFlag.CNNZoom == 1
                 plot(obj.CP_CNNZoom(k,1)*MultiplierX, obj.CP_CNNZoom(k,2)*MultiplierY,'O',...
@@ -3534,7 +3641,7 @@ classdef ForceMap < matlab.mixin.Copyable
                     'MarkerEdgeColor','k',...
                     'MarkerFaceColor',[0.8500 0.3250 0.0980]);
                 Legends{end+1} = 'CP CNNZoom';
-                xlim([(obj.HHApp{k}(1)+ZoomMult*(obj.CP_CNNZoom(k,1) - obj.HHApp{k}(1)))*MultiplierX inf]);
+                xlim([(AppX(1)+ZoomMult*(obj.CP_CNNZoom(k,1) - AppX(1)))*MultiplierX inf]);
             end
             if obj.CPFlag.CNNZoomSweep == 1
                 plot(obj.CP_CNNZoomSweep(k,1)*MultiplierX, obj.CP_CNNZoomSweep(k,2)*MultiplierY,'gs',...
@@ -3543,7 +3650,7 @@ classdef ForceMap < matlab.mixin.Copyable
                     'MarkerEdgeColor','k',...
                     'MarkerFaceColor',[0.8500 0.3250 0.0980]);
                 Legends{end+1} = 'CP CNNZoomSweep';
-                xlim([(obj.HHApp{k}(1)+ZoomMult*(obj.CP_CNNZoomSweep(k,1) - obj.HHApp{k}(1)))*MultiplierX inf]);
+                xlim([(AppX(1)+ZoomMult*(obj.CP_CNNZoomSweep(k,1) - AppX(1)))*MultiplierX inf]);
             end
             if obj.CPFlag.Old == 1
                 plot(obj.CP_Old(k,1)*MultiplierX, obj.CP_Old(k,2)*MultiplierY,'O',...
@@ -3552,7 +3659,7 @@ classdef ForceMap < matlab.mixin.Copyable
                     'MarkerEdgeColor','k',...
                     'MarkerFaceColor',[0.9290 0.6940 0.1250]);
                 Legends{end+1} = 'CP SD6';
-                xlim([(obj.HHApp{k}(1)+ZoomMult*(obj.CP_Old(k,1) - obj.HHApp{k}(1)))*MultiplierX inf]);
+                xlim([(AppX(1)+ZoomMult*(obj.CP_Old(k,1) - AppX(1)))*MultiplierX inf]);
             end
             if obj.CPFlag.Dropout == 1
                 X = obj.CP_Dropout(k,1)*MultiplierX;
@@ -3569,7 +3676,7 @@ classdef ForceMap < matlab.mixin.Copyable
                     'Color',[0.4940 0.1840 0.5560]);
                 Legends{end+1} = 'CP Dropout';
                 Legends{end+1} = sprintf('Dropout Uncertainty %.2f nm',obj.CP_MonteCarlo_STD(k)*MultiplierX);
-                xlim([(obj.HHApp{k}(1)+ZoomMult*(obj.CP_Dropout(k,1) - obj.HHApp{k}(1)))*MultiplierX inf]);
+                xlim([(AppX(1)+ZoomMult*(obj.CP_Dropout(k,1) - AppX(1)))*MultiplierX inf]);
             end
             
             legend(Legends,...
@@ -3760,13 +3867,13 @@ classdef ForceMap < matlab.mixin.Copyable
                 end
                 title('Height Map with Apex Points');
                 
-                [MultiplierX,UnitX,~] = AFMImage.parse_unit_scale(range(obj.HHRet{k}),'m',10);
-                [MultiplierY,UnitY,~] = AFMImage.parse_unit_scale(range(obj.BasedRet{k}./obj.SpringConstant),'m',5);
+                [MultiplierX,UnitX,~] = AFMImage.parse_unit_scale(range(RetX),'m',10);
+                [MultiplierY,UnitY,~] = AFMImage.parse_unit_scale(range(RetY./obj.SpringConstant),'m',5);
                 [MultiplierPaY,UnitPaY,~] = AFMImage.parse_unit_scale(obj.EModOliverPharr(k),'Pa',5);
-                HHApp = obj.HHApp{k}.*MultiplierX;
-                App = obj.BasedApp{k}/obj.SpringConstant.*MultiplierY;
-                HHRet = obj.HHRet{k}.*MultiplierX;
-                Ret = obj.BasedRet{k}/obj.SpringConstant.*MultiplierY;
+                HHApp = AppX.*MultiplierX;
+                App = AppY/obj.SpringConstant.*MultiplierY;
+                HHRet = RetX.*MultiplierX;
+                Ret = RetY/obj.SpringConstant.*MultiplierY;
                 subplot(2,3,2)
                 plot(HHApp,App,...
                     HHRet,Ret)
