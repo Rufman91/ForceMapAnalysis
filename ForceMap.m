@@ -159,10 +159,6 @@ classdef ForceMap < matlab.mixin.Copyable
         CorrStdApp      % Corresponding standard deviation of the selection of the approach data for baseline correction
         CorrMeanRet     % Mean of a selection of the retraction data for baseline correction
         CorrStdRet      % Corresponding standard deviation of the selection of the retraction data for baseline correction
-        MinRet          % Minimum retention data which represents the maximum adhesion force
-        MinRetSel       % Minimum retention data within a selected range on the x-axis which represents the maximum adhesion force within a selected distance range
-        MinPullingLength % Minimum pulling length within a force curve
-        MaxPullingLength % Maximum pulling length within a force curve
         EndIdx          % Index correspoding to a predefined value
         yRetLim        % Modified retraction data to allow a valid integration
         yRetLim2        % Modified retraction data to allow a valid integration            
@@ -174,7 +170,11 @@ classdef ForceMap < matlab.mixin.Copyable
         PullingLength   % Pulling length in meters (m)
         FMPullingLengthMean  % Mean pulling length of a force map in meters (m)   
         FMPullingLengthMin   % Min pulling length of a force map in meters (m) 
-        FMPullingLengthMax   % Max pulling length of a force map in meters (m) 
+        FMPullingLengthMax   % Max pulling length of a force map in meters (m)
+        AdhForceMaxApp      % Maximum adhesion force of the approach data
+        AdhForceMaxRet      % Maximum adhesion force of the retraction data
+        AdhForceMaxAppIdx   % Index of the maximum adhesion force of the approach data 
+        AdhForceMaxRetIdx   % Index of the maximum adhesion force of the retraction data
     end
     
     methods
@@ -1204,22 +1204,7 @@ classdef ForceMap < matlab.mixin.Copyable
             end
             
         end
-        
-        function [MinApp] = fc_min_max_values(obj)           
-            % Determines the minimum and maximum values of different
-            % values
-            
-            for ii=1:obj.NCurves
-            MinApp(ii)=min(obj.BasedApp{ii}); % Determine maximum adhesion forces 
-            MinRet(ii)=min(obj.BasedRet{ii}); % Determine maximum adhesion forces 
-%            MinRetSel(ii)=min(obj.BasedRet{ii}(1:obj.EndIdx(ii))); % Determines the maximum adhesion value within the selected area
-            end
-            obj.MinRet = MinRet;
-%            obj.MinRetSel = MinRetSel;
-            obj.MinPullingLength = min(nonzeros(obj.PullingLength));
-            obj.MaxPullingLength = max(nonzeros(obj.PullingLength));
-        end
-          
+               
         function fc_based_ret_correction(obj,DataShareStartApp,DataShareEndApp,DataShareStartRet,DataShareEndRet)
             % fc_based_ret_correction: A function to correct for an AFM
             % based baseline deviation between the approach and retraction
@@ -1600,7 +1585,73 @@ classdef ForceMap < matlab.mixin.Copyable
 %             plot(xRet,yRet,'r');
 %             plot(obj.THRet{qq}(obj.PullingLengthIdx(qq))-obj.CP_HardSurface(qq),obj.BasedRetCorr2{qq}(obj.PullingLengthIdx(qq)),'*','MarkerSize',10,'MarkerEdgeColor','g')              
         end
+        
+        function fc_adh_force_max(obj)
+            % Function to find the maximum adhesion force value in the
+            % approach and retraction data of a force curve
+            
+            for ii=1:100
+            if ~obj.SMFSFlag.Uncorrupt(ii)     % Selects all flagged 1 
+            continue
+            end
+            % Allocate data
+            %xApp=obj.THApp{ii}-obj.CP_HardSurface(ii);
+            %xRet=obj.THRet{ii}-obj.CP_HardSurface(ii);
+            yApp=obj.BasedApp{ii};
+            yRet=obj.BasedRetCorr2{ii};
+            
+            % Determine the maximum adhesion force 
+            obj.AdhForceMaxApp(ii)=min(yApp(obj.PullingLengthIdx(ii):end)); % Determine maximum adhesion forces from the pulling length index to the last data point
+            obj.AdhForceMaxRet(ii)=min(yRet(1:obj.PullingLengthIdx(ii))); % Determine maximum adhesion forces from the first data point to the pulling length index
+            % Determine the corresponding indices
+            obj.AdhForceMaxAppIdx(ii)=find(yApp==obj.AdhForceMaxApp(ii)); % Finds the index of the value that fulfils the condition         
+            obj.AdhForceMaxRetIdx(ii)=find(yRet==obj.AdhForceMaxRet(ii)); % Finds the index of the value that fulfils the condition
+            end
+           
+%             %% Appendix
+%             close all
+%             % Define variables
+%             qq=1;
+%             % Allocate data
+%             xApp=obj.THApp{qq}-obj.CP_HardSurface(qq);
+%             xRet=obj.THRet{qq}-obj.CP_HardSurface(qq);
+%             yApp=obj.BasedApp{qq};
+%             yRet=obj.BasedRetCorr2{qq};    
+%             % Graphical preview
+%             h_fig=figure(1);
+%             h_fig.Color='white'; % changes the background color of the figure
+%             h_fig.Units='normalized'; % Defines the units
+%             h_fig.OuterPosition=[0 0 1 1];% changes the size of the to the whole screen
+%             h_fig.PaperOrientation='landscape';
+%             %% Plotting the tiles
+%             t = tiledlayout(2,2);
+%             %t.TileSpacing = 'compact';
+%             %t.Padding = 'compact';
+%             t.TileSpacing = 'none'; % To reduce the spacing between the tiles
+%             t.Padding = 'none'; % To reduce the padding of perimeter of a tile
+%             nexttile
+%             hold on
+%             grid on
+%             plot(xApp,yApp,'b');
+%             plot(xRet,yRet,'r');
+%             nexttile
+%             hold on
+%             grid on
+%             plot(xApp,yApp,'b');
+%             plot(xRet,yRet,'r');
+%             plot(obj.THRet{qq}(obj.AdhForceMaxRetIdx(qq))-obj.CP_HardSurface(qq),obj.BasedRetCorr2{qq}(obj.AdhForceMaxRetIdx(qq)),'*','MarkerSize',10,'MarkerEdgeColor','g')              
+%             plot(obj.THApp{qq}(obj.AdhForceMaxAppIdx(qq))-obj.CP_HardSurface(qq),obj.BasedApp{qq}(obj.AdhForceMaxAppIdx(qq)),'*','MarkerSize',10,'MarkerEdgeColor','m')              
+%             nexttile
+%             hold on
+%             grid on
+%             plot(xApp,yApp,'b');
+%             plot(xRet,yRet,'r');
+%             plot(xRet(obj.AdhForceMaxRetIdx(qq)),yRet(obj.AdhForceMaxRetIdx(qq)),'*','MarkerSize',10,'MarkerEdgeColor','g')              
+%             plot(xApp(obj.AdhForceMaxAppIdx(qq)),yApp(obj.AdhForceMaxAppIdx(qq)),'*','MarkerSize',10,'MarkerEdgeColor','m')              
+       
+        end
                              
+        
         function fc_print(obj,XMin,XMax,YMin,YMax) % fc ... force curve
             % fc_print: A function to simply plot all force curves of a
             % force map without any selection taking place
@@ -1969,21 +2020,24 @@ classdef ForceMap < matlab.mixin.Copyable
            % ti.Units='normalized'; % Set units to 'normalized'
            % ti.Position=[0.5,1]; % Position the subplot title within the subplot
             % Legend
-            le=legend('Adhesion Energy','Approach data','Retraction data','Location','best');
-            le.FontSize = 32;
+            le=legend(' Adhesion energy',' Approach data',' Retraction data','Location','best');
+            le.FontSize = 48;      
+            le.EdgeColor='w';
+            %le.Box = 'off';
             %%% Axes
             ax = gca; % current axes
-            ax.FontSize = 28;
-           % ax.XTick=[];
+            ax.FontSize = 48;
+            ax.LineWidth = 5;
+            ax.XTick=0:100:400;
            % ax.XTickLabel=[];
-           % ax.YTick=[];
+            ax.YTick=-0.3:0.1:0.2;
            % ax.YTickLabel=[];
             %ax.XLabel.String = sprintf('Tip-Substrate separation (%s)',Xunit);
             ax.XLabel.String = 'Tip-Substrate separation (nm)';
-            ax.XLabel.FontSize = 32;
+            ax.XLabel.FontSize = 52;
             %ax.YLabel.String = sprintf('Force (%s)',Yunit);
             ax.YLabel.String = 'Force (nN)';
-            ax.YLabel.FontSize = 32;
+            ax.YLabel.FontSize = 52;
             ax.XLim = [XMin XMax];
             ax.YLim = [YMin YMax];
             %% Save figures
@@ -2074,11 +2128,12 @@ classdef ForceMap < matlab.mixin.Copyable
                             ax.YLim = [YMin YMax];
                             hold on
                             grid on
+                            area(obj.THRet{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc),obj.yRetLim2{qq+DiffFc},'FaceColor','y')
                             plot(obj.THApp{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc),obj.BasedApp{qq+DiffFc},'g');
                             plot(obj.THRet{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc),obj.BasedRetCorr2{qq+DiffFc},'r');
-                            %plot(xRet(obj.PullingLengthIdx(kk)),yRet(obj.PullingLengthIdx(kk)),'*','MarkerSize',10,'MarkerEdgeColor','g')
-                            plot(obj.THRet{qq+DiffFc}(obj.PullingLengthIdx(qq+DiffFc))-obj.CP_HardSurface(qq+DiffFc),obj.BasedRetCorr2{qq+DiffFc}(obj.PullingLengthIdx(qq+DiffFc)),'d','MarkerSize',10,'MarkerFaceColor','b','MarkerEdgeColor','b')
-                            area(obj.THRet{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc),obj.yRetLim2{qq+DiffFc},'FaceColor','y')
+                            plot(obj.THRet{qq+DiffFc}(obj.PullingLengthIdx(qq+DiffFc))-obj.CP_HardSurface(qq+DiffFc),obj.BasedRetCorr2{qq+DiffFc}(obj.PullingLengthIdx(qq+DiffFc)),'d','MarkerSize',10,'MarkerFaceColor','b','MarkerEdgeColor','b')                          
+                            plot(obj.THRet{qq+DiffFc}(obj.AdhForceMaxRetIdx(qq+DiffFc))-obj.CP_HardSurface(qq+DiffFc),obj.BasedRetCorr2{qq+DiffFc}(obj.AdhForceMaxRetIdx(qq+DiffFc)),'p','MarkerSize',10,'MarkerFaceColor','g','MarkerEdgeColor','g')              
+                            plot(obj.THApp{qq+DiffFc}(obj.AdhForceMaxAppIdx(qq+DiffFc))-obj.CP_HardSurface(qq+DiffFc),obj.BasedApp{qq+DiffFc}(obj.AdhForceMaxAppIdx(qq+DiffFc)),'h','MarkerSize',10,'MarkerFaceColor','c','MarkerEdgeColor','c')                                       
                             % Title for each Subplot
                             ti=title(sprintf('%i',qq+DiffFc),'Color','k');
                             ti.Units='normalized'; % Set units to 'normalized'
@@ -2089,11 +2144,12 @@ classdef ForceMap < matlab.mixin.Copyable
                             ax.YLim = [YMin YMax];
                             hold on
                             grid on
+                            area(obj.THRet{qq}-obj.CP_HardSurface(qq),obj.yRetLim2{qq},'FaceColor','y')
                             plot(obj.THApp{qq}-obj.CP_HardSurface(qq),obj.BasedApp{qq},'g');
                             plot(obj.THRet{qq}-obj.CP_HardSurface(qq),obj.BasedRetCorr2{qq},'r');
-                            %plot(xRet(obj.PullingLengthIdx(kk)),yRet(obj.PullingLengthIdx(kk)),'*','MarkerSize',10,'MarkerEdgeColor','g')
-                            plot(obj.THRet{qq}(obj.PullingLengthIdx(qq))-obj.CP_HardSurface(qq),obj.BasedRetCorr2{qq}(obj.PullingLengthIdx(qq)),'d','MarkerSize',10,'MarkerFaceColor','b','MarkerEdgeColor','b')
-                            area(obj.THRet{qq}-obj.CP_HardSurface(qq),obj.yRetLim2{qq},'FaceColor','y')
+                            plot(obj.THRet{qq}(obj.PullingLengthIdx(qq))-obj.CP_HardSurface(qq),obj.BasedRetCorr2{qq}(obj.PullingLengthIdx(qq)),'d','MarkerSize',10,'MarkerFaceColor','b','MarkerEdgeColor','b')                          
+                            plot(obj.THRet{qq}(obj.AdhForceMaxRetIdx(qq))-obj.CP_HardSurface(qq),obj.BasedRetCorr2{qq}(obj.AdhForceMaxRetIdx(qq)),'p','MarkerSize',10,'MarkerFaceColor','g','MarkerEdgeColor','g')              
+                            plot(obj.THApp{qq}(obj.AdhForceMaxAppIdx(qq))-obj.CP_HardSurface(qq),obj.BasedApp{qq}(obj.AdhForceMaxAppIdx(qq)),'h','MarkerSize',10,'MarkerFaceColor','c','MarkerEdgeColor','c')                                       
                             % Title for each Subplot
                             ti=title(sprintf('%i',qq),'Color','k');
                             ti.Units='normalized'; % Set units to 'normalized'
@@ -2140,11 +2196,12 @@ classdef ForceMap < matlab.mixin.Copyable
                                 ax.YLim = [YMin YMax];
                                 hold on
                                 grid on
-                                plot(obj.THApp{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc),obj.BasedApp{qq+DiffFc},'g');
-                                plot(obj.THRet{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc),obj.BasedRetCorr2{qq+DiffFc},'r');
-                                %plot(xRet(obj.PullingLengthIdx(kk)),yRet(obj.PullingLengthIdx(kk)),'*','MarkerSize',10,'MarkerEdgeColor','g')
-                                plot(obj.THRet{qq+DiffFc}(obj.PullingLengthIdx(qq+DiffFc))-obj.CP_HardSurface(qq+DiffFc),obj.BasedRetCorr2{qq+DiffFc}(obj.PullingLengthIdx(qq+DiffFc)),'d','MarkerSize',10,'MarkerFaceColor','b','MarkerEdgeColor','b')
-                                area(obj.THRet{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc),obj.yRetLim{qq+DiffFc},'FaceColor','y')
+                              area(obj.THRet{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc),obj.yRetLim2{qq+DiffFc},'FaceColor','y')
+                              plot(obj.THApp{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc),obj.BasedApp{qq+DiffFc},'g');
+                              plot(obj.THRet{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc),obj.BasedRetCorr2{qq+DiffFc},'r');
+                              plot(obj.THRet{qq+DiffFc}(obj.PullingLengthIdx(qq+DiffFc))-obj.CP_HardSurface(qq+DiffFc),obj.BasedRetCorr2{qq+DiffFc}(obj.PullingLengthIdx(qq+DiffFc)),'d','MarkerSize',10,'MarkerFaceColor','b','MarkerEdgeColor','b')                          
+                              plot(obj.THRet{qq+DiffFc}(obj.AdhForceMaxRetIdx(qq+DiffFc))-obj.CP_HardSurface(qq+DiffFc),obj.BasedRetCorr2{qq+DiffFc}(obj.AdhForceMaxRetIdx(qq+DiffFc)),'p','MarkerSize',10,'MarkerFaceColor','g','MarkerEdgeColor','g')             
+                              plot(obj.THApp{qq+DiffFc}(obj.AdhForceMaxAppIdx(qq+DiffFc))-obj.CP_HardSurface(qq+DiffFc),obj.BasedApp{qq+DiffFc}(obj.AdhForceMaxAppIdx(qq+DiffFc)),'h','MarkerSize',10,'MarkerFaceColor','c','MarkerEdgeColor','c')                                         
                                 % Title for each Subplot
                                 ti=title(sprintf('%i',qq+DiffFc),'Color','k');
                                 ti.Units='normalized'; % Set units to 'normalized'
@@ -2155,11 +2212,13 @@ classdef ForceMap < matlab.mixin.Copyable
                                 ax.YLim = [YMin YMax];
                                 hold on
                                 grid on
-                                plot(obj.THApp{qq}-obj.CP_HardSurface(qq),obj.BasedApp{qq},'g');
-                                plot(obj.THRet{qq}-obj.CP_HardSurface(qq),obj.BasedRetCorr2{qq},'r');
-                                %plot(xRet(obj.PullingLengthIdx(kk)),yRet(obj.PullingLengthIdx(kk)),'*','MarkerSize',10,'MarkerEdgeColor','g')
-                                plot(obj.THRet{qq}(obj.PullingLengthIdx(qq))-obj.CP_HardSurface(qq),obj.BasedRetCorr2{qq}(obj.PullingLengthIdx(qq)),'d','MarkerSize',10,'MarkerFaceColor','b','MarkerEdgeColor','b')
-                                area(obj.THRet{qq}-obj.CP_HardSurface(qq),obj.yRetLim{qq},'FaceColor','y')
+                            area(obj.THRet{qq}-obj.CP_HardSurface(qq),obj.yRetLim2{qq},'FaceColor','y')
+                            plot(obj.THApp{qq}-obj.CP_HardSurface(qq),obj.BasedApp{qq},'g');
+                            plot(obj.THRet{qq}-obj.CP_HardSurface(qq),obj.BasedRetCorr2{qq},'r');
+                            plot(obj.THRet{qq}(obj.PullingLengthIdx(qq))-obj.CP_HardSurface(qq),obj.BasedRetCorr2{qq}(obj.PullingLengthIdx(qq)),'d','MarkerSize',10,'MarkerFaceColor','b','MarkerEdgeColor','b')                          
+                            plot(obj.THRet{qq}(obj.AdhForceMaxRetIdx(qq))-obj.CP_HardSurface(qq),obj.BasedRetCorr2{qq}(obj.AdhForceMaxRetIdx(qq)),'p','MarkerSize',10,'MarkerFaceColor','g','MarkerEdgeColor','g')              
+                            plot(obj.THApp{qq}(obj.AdhForceMaxAppIdx(qq))-obj.CP_HardSurface(qq),obj.BasedApp{qq}(obj.AdhForceMaxAppIdx(qq)),'h','MarkerSize',10,'MarkerFaceColor','c','MarkerEdgeColor','c')                                       
+
                                 % Title for each Subplot
                                 ti=title(sprintf('%i',qq),'Color','k');
                                 ti.Units='normalized'; % Set units to 'normalized'
@@ -2205,11 +2264,12 @@ classdef ForceMap < matlab.mixin.Copyable
                                 ax.YLim = [YMin YMax];
                                 hold on
                                 grid on
-                                plot(obj.THApp{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc),obj.BasedApp{qq+DiffFc},'g');
-                                plot(obj.THRet{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc),obj.BasedRetCorr2{qq+DiffFc},'r');
-                                %plot(xRet(obj.PullingLengthIdx(kk)),yRet(obj.PullingLengthIdx(kk)),'*','MarkerSize',10,'MarkerEdgeColor','g')
-                                plot(obj.THRet{qq+DiffFc}(obj.PullingLengthIdx(qq+DiffFc))-obj.CP_HardSurface(qq+DiffFc),obj.BasedRetCorr2{qq+DiffFc}(obj.PullingLengthIdx(qq+DiffFc)),'d','MarkerSize',10,'MarkerFaceColor','b','MarkerEdgeColor','b')
-                                area(obj.THRet{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc),obj.yRetLim{qq+DiffFc},'FaceColor','y')
+                            area(obj.THRet{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc),obj.yRetLim2{qq+DiffFc},'FaceColor','y')
+                            plot(obj.THApp{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc),obj.BasedApp{qq+DiffFc},'g');
+                            plot(obj.THRet{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc),obj.BasedRetCorr2{qq+DiffFc},'r');
+                            plot(obj.THRet{qq+DiffFc}(obj.PullingLengthIdx(qq+DiffFc))-obj.CP_HardSurface(qq+DiffFc),obj.BasedRetCorr2{qq+DiffFc}(obj.PullingLengthIdx(qq+DiffFc)),'d','MarkerSize',10,'MarkerFaceColor','b','MarkerEdgeColor','b')                          
+                            plot(obj.THRet{qq+DiffFc}(obj.AdhForceMaxRetIdx(qq+DiffFc))-obj.CP_HardSurface(qq+DiffFc),obj.BasedRetCorr2{qq+DiffFc}(obj.AdhForceMaxRetIdx(qq+DiffFc)),'p','MarkerSize',10,'MarkerFaceColor','g','MarkerEdgeColor','g')              
+                            plot(obj.THApp{qq+DiffFc}(obj.AdhForceMaxAppIdx(qq+DiffFc))-obj.CP_HardSurface(qq+DiffFc),obj.BasedApp{qq+DiffFc}(obj.AdhForceMaxAppIdx(qq+DiffFc)),'h','MarkerSize',10,'MarkerFaceColor','c','MarkerEdgeColor','c')                                       
                                 % Title for each Subplot
                                 ti=title(sprintf('%i',qq+DiffFc),'Color','k');
                                 %ti=title(sprintf('%i',(kk+ww)/2),'Color','k');
@@ -2220,12 +2280,13 @@ classdef ForceMap < matlab.mixin.Copyable
                                 ax.XLim = [XMin XMax];
                                 ax.YLim = [YMin YMax];
                                 hold on
-                                grid on
-                                plot(obj.THApp{qq}-obj.CP_HardSurface(qq),obj.BasedApp{qq},'g');
-                                plot(obj.THRet{qq}-obj.CP_HardSurface(qq),obj.BasedRetCorr2{qq},'r');
-                                %plot(xRet(obj.PullingLengthIdx(kk)),yRet(obj.PullingLengthIdx(kk)),'*','MarkerSize',10,'MarkerEdgeColor','g')
-                                plot(obj.THRet{qq}(obj.PullingLengthIdx(qq))-obj.CP_HardSurface(qq),obj.BasedRetCorr2{qq}(obj.PullingLengthIdx(qq)),'d','MarkerSize',10,'MarkerFaceColor','b','MarkerEdgeColor','b')
-                                area(obj.THRet{qq}-obj.CP_HardSurface(qq),obj.yRetLim{qq},'FaceColor','y')
+                                grid on                                
+                            area(obj.THRet{qq}-obj.CP_HardSurface(qq),obj.yRetLim2{qq},'FaceColor','y')
+                            plot(obj.THApp{qq}-obj.CP_HardSurface(qq),obj.BasedApp{qq},'g');
+                            plot(obj.THRet{qq}-obj.CP_HardSurface(qq),obj.BasedRetCorr2{qq},'r');
+                            plot(obj.THRet{qq}(obj.PullingLengthIdx(qq))-obj.CP_HardSurface(qq),obj.BasedRetCorr2{qq}(obj.PullingLengthIdx(qq)),'d','MarkerSize',10,'MarkerFaceColor','b','MarkerEdgeColor','b')                          
+                            plot(obj.THRet{qq}(obj.AdhForceMaxRetIdx(qq))-obj.CP_HardSurface(qq),obj.BasedRetCorr2{qq}(obj.AdhForceMaxRetIdx(qq)),'p','MarkerSize',10,'MarkerFaceColor','g','MarkerEdgeColor','g')              
+                            plot(obj.THApp{qq}(obj.AdhForceMaxAppIdx(qq))-obj.CP_HardSurface(qq),obj.BasedApp{qq}(obj.AdhForceMaxAppIdx(qq)),'h','MarkerSize',10,'MarkerFaceColor','c','MarkerEdgeColor','c')                                       
                                 % Title for each Subplot
                                 ti=title(sprintf('%i',qq),'Color','k');
                                 %ti=title(sprintf('%i',(kk+ww)/2),'Color','k');
