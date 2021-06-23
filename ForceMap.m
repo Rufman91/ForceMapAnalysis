@@ -175,6 +175,7 @@ classdef ForceMap < matlab.mixin.Copyable
         AdhForceMaxRet      % Maximum adhesion force of the retraction data
         AdhForceMaxAppIdx   % Index of the maximum adhesion force of the approach data 
         AdhForceMaxRetIdx   % Index of the maximum adhesion force of the retraction data
+        Idx50nm             % Index closest to 50 nm distance 
     end
     
     methods
@@ -1191,18 +1192,24 @@ classdef ForceMap < matlab.mixin.Copyable
             close(f)
         end        
 
-        function [EndIdx] = find_idx(obj)
+        function fc_find_idx(obj)
             % Finds the corresponding indices of an array of data points
             
             % Define the corresponding data points            
-            xEnd=-50e-9;  % Value on the x-axis
-            % Read out the index of interest                    
+            xLimit=-50e-9;  % Value on the x-axis
+            % Loop
             for ii=1:obj.NCurves
-            EndLogical=obj.THRet{ii}-obj.CP_HardSurface(ii,1)<xEnd; % Determine the elements that fulfil the logical argument           
-            EndIdx(ii)=find(EndLogical,1,'first'); % Read out the index of the first cell that fulfil the argument
-            obj.EndIdx = EndIdx;
+            if ~obj.SMFSFlag.Uncorrupt(ii)     % Exclude corrupted force curves from the analysis     
+            continue
             end
-            
+            % Allocate data
+            xRet=obj.THRet{ii}-obj.CP_HardSurface(ii);                            
+            % Read out the index of interest                           
+            EndLogical=xRet<xLimit; % Determine the elements that fulfil the logical argument           
+            EndIdx(ii)=find(EndLogical,1,'first'); % Read out the index of the first cell that fulfil the argument
+            % Allocate data
+            obj.Idx50nm(ii)=EndIdx(ii);
+            end            
         end
                
         function fc_based_ret_correction(obj,DataShareStartApp,DataShareEndApp,DataShareStartRet,DataShareEndRet)
@@ -1216,7 +1223,7 @@ classdef ForceMap < matlab.mixin.Copyable
             DataShareEndRet=0.06; % 5%
         end
         % Loop over all force curves  
-        for ii=1:100
+        for ii=1:obj.NCurves
             % Correction based on the approach data
             DataPtsApp=size(obj.BasedApp{ii}); % Determine the amount of data points in the force curve 
             LimitIdxApp1=round(DataPtsApp(1)*DataShareStartApp); % Determine the corresponidng index
@@ -1359,8 +1366,8 @@ classdef ForceMap < matlab.mixin.Copyable
             % threshold to distinguish interactions from background noise
             
             %% Loop over all force curves
-            %for ii=1:100
-            for ii=97 % For debugging and testing 
+            for ii=1:obj.NCurves
+            %for ii=97 % For debugging and testing 
                 if ~obj.SMFSFlag.Uncorrupt(ii)     % Selects all flagged 1 
                 continue
                 end
@@ -1450,7 +1457,7 @@ classdef ForceMap < matlab.mixin.Copyable
             % Determine the adhesion energy using the previous defined pulling length index
             
             %% Loop over all force curves
-            for ii=1:100
+            for ii=1:obj.NCurves
             %for ii=97 % % For debugging and testing
                 if ~obj.SMFSFlag.Uncorrupt(ii)     % Selects all flagged 1 
                 continue
@@ -1534,8 +1541,9 @@ classdef ForceMap < matlab.mixin.Copyable
 
         function fc_pulling_length(obj)
             sigma=4;
-            for ii=1:100
-            if ~obj.SMFSFlag.Uncorrupt(ii)     % Selects all flagged 1 
+            
+            for ii=1:obj.NCurves
+            if ~obj.SMFSFlag.Uncorrupt(ii)     % Exclude corrupted force curves from the analysis     
             continue
             end
             % Allocate data
@@ -1544,7 +1552,7 @@ classdef ForceMap < matlab.mixin.Copyable
             yApp=obj.BasedApp{ii};
             yRet=obj.BasedRetCorr2{ii};
             
-            % Determine the pulling length 
+            % Find the index and determine the pulling length 
             obj.PullingLengthIdx(ii)=find(yRet<obj.CorrMeanRet(ii)-obj.CorrStdApp(ii)*sigma,1,'last'); % Finds the index of the value that fulfils the condition         
             obj.PullingLength(ii)=abs(xRet(obj.PullingLengthIdx(ii))); % Corresponding x-value of the index
             end
@@ -1602,7 +1610,7 @@ classdef ForceMap < matlab.mixin.Copyable
             
             % Determine the maximum adhesion force 
             obj.AdhForceMaxApp(ii)=min(yApp(obj.PullingLengthIdx(ii):end)); % Determine maximum adhesion forces from the pulling length index to the last data point
-            obj.AdhForceMaxRet(ii)=min(yRet(1:obj.PullingLengthIdx(ii))); % Determine maximum adhesion forces from the first data point to the pulling length index
+            obj.AdhForceMaxRet(ii)=min(yRet(obj.Idx50nm(ii):obj.PullingLengthIdx(ii))); % Determine maximum adhesion forces from the 50nm index to the pulling length index
             % Determine the corresponding indices
             obj.AdhForceMaxAppIdx(ii)=find(yApp==obj.AdhForceMaxApp(ii)); % Finds the index of the value that fulfils the condition         
             obj.AdhForceMaxRetIdx(ii)=find(yRet==obj.AdhForceMaxRet(ii)); % Finds the index of the value that fulfils the condition
@@ -1650,8 +1658,7 @@ classdef ForceMap < matlab.mixin.Copyable
 %             plot(xApp(obj.AdhForceMaxAppIdx(qq)),yApp(obj.AdhForceMaxAppIdx(qq)),'*','MarkerSize',10,'MarkerEdgeColor','m')              
        
         end
-                             
-        
+                                   
         function fc_print(obj,XMin,XMax,YMin,YMax) % fc ... force curve
             % fc_print: A function to simply plot all force curves of a
             % force map without any selection taking place
@@ -1963,6 +1970,268 @@ classdef ForceMap < matlab.mixin.Copyable
 %             line([x100 x100], ylim,'Color','k'); % Draws a vertical line                  
 %             line([x500 x500], ylim,'Color','k'); % Draws a vertical line      
         end
+               
+        function fc_print_properties(obj,XMin,XMax,YMin,YMax,NumFcMax,NumFcUncorrupt,hh) % fc ... force curve
+            % fc_print_adhenergy_pulllength: A function to plot all selected force curves of a
+            % force map including adhesion energy and pulling length in
+            % each force curve
+            if nargin < 2
+                XMin= -inf;
+                XMax= inf;
+                YMin= -inf;
+                YMax= inf;
+            end
+            % Define variables for the figure name
+            obj.VelocityConvert=num2str(obj.Velocity*1e+9); % Convert into nm/s
+            % Classification criteria
+            figname=strcat(obj.DateAdapt,{'_'},obj.TimeAdapt,{'_'},obj.ID,{'_'},obj.Substrate,{'_'},obj.EnvCond,{'_'},obj.VelocityConvert,{'_'},obj.Chipbox,{'_'},obj.ChipCant);
+            figname=char(figname);
+            % Define variables for the plot loop
+            mm=ceil(sqrt(NumFcMax));
+            nn=mm;
+            ww=1; % "flag while loop" variable
+            DiffFc=0;
+            NumFigures=ceil(NumFcUncorrupt(hh)/NumFcMax);
+            RemainderMax=mod(NumFcUncorrupt(hh),NumFcMax); % Check for remainder
+            if RemainderMax ~= 0
+                oo=round(sqrt(RemainderMax)); % Determine the number of rows in the figure
+                pp=ceil(sqrt(RemainderMax)); % Determine the number of columns in the figure
+                RemainderReal=mod(NumFcUncorrupt(hh),oo*pp); % Correct the remainder based on the determined rows times columns
+            end
+            %% figure loop
+            for ii=1:NumFigures
+                % Allocate data
+                xApp=obj.THApp{ii}-obj.CP_HardSurface(ii);
+                xRet=obj.THRet{ii}-obj.CP_HardSurface(ii);
+                yApp=obj.BasedApp{ii};
+                yRet=obj.BasedRetCorr2{ii};
+                % Define variables
+                jj=1; % "force curve plotted per figure" variable
+         
+                % Figure
+                h_fig=figure(ii);
+                h_fig.Color='white'; % changes the background color of the figure
+                h_fig.Units='normalized'; % Defines the units
+                h_fig.OuterPosition=[0 0 1 1];% changes the size of the to the whole screen
+                h_fig.PaperOrientation='landscape';
+                h_fig.Name=figname;
+                %% Plotting the tiles
+                if RemainderMax == 0
+                    t = tiledlayout(mm,nn);
+                    t.TileSpacing = 'none'; % To reduce the spacing between the tiles
+                    t.Padding = 'none'; % To reduce the padding of perimeter of a tile
+                    if ii==1
+                        NumFcCorSelec(ii)=nnz(~obj.SMFSFlag.Uncorrupt(1:NumFcMax));
+                    elseif ii==2
+                        NumFcCorSelec(ii)=nnz(obj.SMFSFlag.Uncorrupt((NumFcMax+1):(NumFcMax*(ii))));
+                    else
+                        NumFcCorSelec(ii)=nnz(obj.SMFSFlag.Uncorrupt((NumFcMax*(ii-1)+1):(NumFcMax*(ii))));
+                    end
+                    
+                    if ii==1
+                        kk=jj;
+                    else
+                        kk=jj+mm*nn*(ii-1);
+                    end
+                    %% Plot loop
+                    for qq=kk:obj.NCurves % Loop over all force curves in the force map
+                        if ww<qq+DiffFc
+                            ww=qq+DiffFc;
+                        end
+                        while ~obj.SMFSFlag.Uncorrupt(ww)     % Stay in the while loop as long as the entry is zero
+                            ww=ww+1;
+                            if ww>qq
+                                DiffFc=ww-qq;
+                            end
+                        end
+                        if ww>qq
+                            ax=nexttile;
+                            ax.XLim = [XMin XMax];
+                            ax.YLim = [YMin YMax];
+                            hold on
+                            grid on
+                            area(obj.THRet{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc),obj.yRetLim{qq+DiffFc},'FaceColor','y')
+                            plot(obj.THApp{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc),obj.BasedApp{qq+DiffFc},'g');
+                            plot(obj.THRet{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc),obj.BasedRetCorr2{qq+DiffFc},'r');
+                            plot(obj.THRet{qq+DiffFc}(obj.PullingLengthIdx(qq+DiffFc))-obj.CP_HardSurface(qq+DiffFc),obj.BasedRetCorr2{qq+DiffFc}(obj.PullingLengthIdx(qq+DiffFc)),'d','MarkerSize',10,'MarkerFaceColor','b','MarkerEdgeColor','b')                          
+                            plot(obj.THRet{qq+DiffFc}(obj.AdhForceMaxRetIdx(qq+DiffFc))-obj.CP_HardSurface(qq+DiffFc),obj.BasedRetCorr2{qq+DiffFc}(obj.AdhForceMaxRetIdx(qq+DiffFc)),'p','MarkerSize',10,'MarkerFaceColor','g','MarkerEdgeColor','g')              
+                            plot(obj.THApp{qq+DiffFc}(obj.AdhForceMaxAppIdx(qq+DiffFc))-obj.CP_HardSurface(qq+DiffFc),obj.BasedApp{qq+DiffFc}(obj.AdhForceMaxAppIdx(qq+DiffFc)),'h','MarkerSize',10,'MarkerFaceColor','c','MarkerEdgeColor','c')                                       
+                            % Title for each Subplot
+                            ti=title(sprintf('%i',qq+DiffFc),'Color','k');
+                            ti.Units='normalized'; % Set units to 'normalized'
+                            ti.Position=[0.5,1]; % Position the subplot title within the subplot
+                        else
+                            ax=nexttile;
+                            ax.XLim = [XMin XMax];
+                            ax.YLim = [YMin YMax];
+                            hold on
+                            grid on
+                            area(obj.THRet{qq}-obj.CP_HardSurface(qq),obj.yRetLim{qq},'FaceColor','y')
+                            plot(obj.THApp{qq}-obj.CP_HardSurface(qq),obj.BasedApp{qq},'g');
+                            plot(obj.THRet{qq}-obj.CP_HardSurface(qq),obj.BasedRetCorr2{qq},'r');
+                            plot(obj.THRet{qq}(obj.PullingLengthIdx(qq))-obj.CP_HardSurface(qq),obj.BasedRetCorr2{qq}(obj.PullingLengthIdx(qq)),'d','MarkerSize',10,'MarkerFaceColor','b','MarkerEdgeColor','b')                          
+                            plot(obj.THRet{qq}(obj.AdhForceMaxRetIdx(qq))-obj.CP_HardSurface(qq),obj.BasedRetCorr2{qq}(obj.AdhForceMaxRetIdx(qq)),'p','MarkerSize',10,'MarkerFaceColor','g','MarkerEdgeColor','g')              
+                            plot(obj.THApp{qq}(obj.AdhForceMaxAppIdx(qq))-obj.CP_HardSurface(qq),obj.BasedApp{qq}(obj.AdhForceMaxAppIdx(qq)),'h','MarkerSize',10,'MarkerFaceColor','c','MarkerEdgeColor','c')                                       
+                            % Title for each Subplot
+                            ti=title(sprintf('%i',qq),'Color','k');
+                            ti.Units='normalized'; % Set units to 'normalized'
+                            ti.Position=[0.5,1]; % Position the subplot title within the subplot
+                        end
+                        if jj == NumFcMax
+                            break
+                        end
+                        jj=jj+1;
+                    end
+                    
+                else
+                    if ii~=NumFigures
+                        t = tiledlayout(mm,nn);
+                        t.TileSpacing = 'none'; % To reduce the spacing between the tiles
+                        t.Padding = 'none'; % To reduce the padding of perimeter of a tile
+                        if ii==1
+                            NumFcCorSelec(ii)=nnz(~obj.SMFSFlag.Uncorrupt(1:NumFcMax));
+                        elseif ii==2
+                            NumFcCorSelec(ii)=nnz(obj.SMFSFlag.Uncorrupt((NumFcMax+1):(NumFcMax*(ii))));
+                        else
+                            NumFcCorSelec(ii)=nnz(obj.SMFSFlag.Uncorrupt((NumFcMax*(ii-1)+1):(NumFcMax*(ii))));
+                        end
+                        
+                        if ii==1
+                            kk=jj;
+                        else
+                            kk=jj+mm*nn*(ii-1);
+                        end
+                        %% Plot loop
+                        for qq=kk:obj.NCurves % Loop over all force curves in the force map
+                            if ww<qq+DiffFc
+                                ww=qq+DiffFc;
+                            end
+                            while ~obj.SMFSFlag.Uncorrupt(ww)     % Stay in the while loop as long as the entry is zero
+                                ww=ww+1;
+                                if ww>qq
+                                    DiffFc=ww-qq;
+                                end
+                            end
+                            if ww>qq
+                                ax=nexttile;
+                                ax.XLim = [XMin XMax];
+                                ax.YLim = [YMin YMax];
+                                hold on
+                                grid on
+                              area(obj.THRet{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc),obj.yRetLim{qq+DiffFc},'FaceColor','y')
+                              plot(obj.THApp{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc),obj.BasedApp{qq+DiffFc},'g');
+                              plot(obj.THRet{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc),obj.BasedRetCorr2{qq+DiffFc},'r');
+                              plot(obj.THRet{qq+DiffFc}(obj.PullingLengthIdx(qq+DiffFc))-obj.CP_HardSurface(qq+DiffFc),obj.BasedRetCorr2{qq+DiffFc}(obj.PullingLengthIdx(qq+DiffFc)),'d','MarkerSize',10,'MarkerFaceColor','b','MarkerEdgeColor','b')                          
+                              plot(obj.THRet{qq+DiffFc}(obj.AdhForceMaxRetIdx(qq+DiffFc))-obj.CP_HardSurface(qq+DiffFc),obj.BasedRetCorr2{qq+DiffFc}(obj.AdhForceMaxRetIdx(qq+DiffFc)),'p','MarkerSize',10,'MarkerFaceColor','g','MarkerEdgeColor','g')             
+                              plot(obj.THApp{qq+DiffFc}(obj.AdhForceMaxAppIdx(qq+DiffFc))-obj.CP_HardSurface(qq+DiffFc),obj.BasedApp{qq+DiffFc}(obj.AdhForceMaxAppIdx(qq+DiffFc)),'h','MarkerSize',10,'MarkerFaceColor','c','MarkerEdgeColor','c')                                         
+                                % Title for each Subplot
+                                ti=title(sprintf('%i',qq+DiffFc),'Color','k');
+                                ti.Units='normalized'; % Set units to 'normalized'
+                                ti.Position=[0.5,1]; % Position the subplot title within the subplot
+                            else
+                                ax=nexttile;
+                                ax.XLim = [XMin XMax];
+                                ax.YLim = [YMin YMax];
+                                hold on
+                                grid on
+                            area(obj.THRet{qq}-obj.CP_HardSurface(qq),obj.yRetLim{qq},'FaceColor','y')
+                            plot(obj.THApp{qq}-obj.CP_HardSurface(qq),obj.BasedApp{qq},'g');
+                            plot(obj.THRet{qq}-obj.CP_HardSurface(qq),obj.BasedRetCorr2{qq},'r');
+                            plot(obj.THRet{qq}(obj.PullingLengthIdx(qq))-obj.CP_HardSurface(qq),obj.BasedRetCorr2{qq}(obj.PullingLengthIdx(qq)),'d','MarkerSize',10,'MarkerFaceColor','b','MarkerEdgeColor','b')                          
+                            plot(obj.THRet{qq}(obj.AdhForceMaxRetIdx(qq))-obj.CP_HardSurface(qq),obj.BasedRetCorr2{qq}(obj.AdhForceMaxRetIdx(qq)),'p','MarkerSize',10,'MarkerFaceColor','g','MarkerEdgeColor','g')              
+                            plot(obj.THApp{qq}(obj.AdhForceMaxAppIdx(qq))-obj.CP_HardSurface(qq),obj.BasedApp{qq}(obj.AdhForceMaxAppIdx(qq)),'h','MarkerSize',10,'MarkerFaceColor','c','MarkerEdgeColor','c')                                       
+
+                                % Title for each Subplot
+                                ti=title(sprintf('%i',qq),'Color','k');
+                                ti.Units='normalized'; % Set units to 'normalized'
+                                ti.Position=[0.5,1]; % Position the subplot title within the subplot
+                            end
+                            if jj == NumFcMax
+                                break
+                            end
+                            jj=jj+1;
+                        end
+                    else % corresponds to the last figure plotted
+                        t = tiledlayout(oo,pp);
+                        t.TileSpacing = 'none'; % To reduce the spacing between the tiles
+                        t.Padding = 'none'; % To reduce the padding of perimeter of a tile
+                        NumFcPlot=oo*pp;
+                        if ii==1
+                            NumFcCorSelec(ii)=nnz(~obj.SMFSFlag.Uncorrupt(1:NumFcPlot));
+                        elseif ii==2
+                            NumFcCorSelec(ii)=nnz(obj.SMFSFlag.Uncorrupt((NumFcPlot+1):(NumFcPlot*(ii))));
+                        else
+                            NumFcCorSelec(ii)=nnz(obj.SMFSFlag.Uncorrupt((NumFcPlot*(ii-1)+1):(NumFcPlot*(ii))));
+                        end
+                        
+                        if ii==1
+                            kk=jj;
+                        else
+                            kk=jj+mm*nn*(ii-1);
+                        end
+                        %% Plot loop
+                        for qq=kk:obj.NCurves % Loop over all force curves in the force map
+                            if ww<qq+DiffFc
+                                ww=qq+DiffFc;
+                            end
+                            while ~obj.SMFSFlag.Uncorrupt(ww)     % Stay in the while loop as long as the entry is zero
+                                ww=ww+1;
+                                if ww>qq
+                                    DiffFc=ww-qq;
+                                end
+                            end
+                            if ww>qq
+                                ax=nexttile;
+                                ax.XLim = [XMin XMax];
+                                ax.YLim = [YMin YMax];
+                                hold on
+                                grid on
+                            area(obj.THRet{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc),obj.yRetLim{qq+DiffFc},'FaceColor','y')
+                            plot(obj.THApp{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc),obj.BasedApp{qq+DiffFc},'g');
+                            plot(obj.THRet{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc),obj.BasedRetCorr2{qq+DiffFc},'r');
+                            plot(obj.THRet{qq+DiffFc}(obj.PullingLengthIdx(qq+DiffFc))-obj.CP_HardSurface(qq+DiffFc),obj.BasedRetCorr2{qq+DiffFc}(obj.PullingLengthIdx(qq+DiffFc)),'d','MarkerSize',10,'MarkerFaceColor','b','MarkerEdgeColor','b')                          
+                            plot(obj.THRet{qq+DiffFc}(obj.AdhForceMaxRetIdx(qq+DiffFc))-obj.CP_HardSurface(qq+DiffFc),obj.BasedRetCorr2{qq+DiffFc}(obj.AdhForceMaxRetIdx(qq+DiffFc)),'p','MarkerSize',10,'MarkerFaceColor','g','MarkerEdgeColor','g')              
+                            plot(obj.THApp{qq+DiffFc}(obj.AdhForceMaxAppIdx(qq+DiffFc))-obj.CP_HardSurface(qq+DiffFc),obj.BasedApp{qq+DiffFc}(obj.AdhForceMaxAppIdx(qq+DiffFc)),'h','MarkerSize',10,'MarkerFaceColor','c','MarkerEdgeColor','c')                                       
+                                % Title for each Subplot
+                                ti=title(sprintf('%i',qq+DiffFc),'Color','k');
+                                %ti=title(sprintf('%i',(kk+ww)/2),'Color','k');
+                                ti.Units='normalized'; % Set units to 'normalized'
+                                ti.Position=[0.5,1]; % Position the subplot title within the subplot
+                            else
+                                ax=nexttile;
+                                ax.XLim = [XMin XMax];
+                                ax.YLim = [YMin YMax];
+                                hold on
+                                grid on                                
+                            area(obj.THRet{qq}-obj.CP_HardSurface(qq),obj.yRetLim{qq},'FaceColor','y')
+                            plot(obj.THApp{qq}-obj.CP_HardSurface(qq),obj.BasedApp{qq},'g');
+                            plot(obj.THRet{qq}-obj.CP_HardSurface(qq),obj.BasedRetCorr2{qq},'r');
+                            plot(obj.THRet{qq}(obj.PullingLengthIdx(qq))-obj.CP_HardSurface(qq),obj.BasedRetCorr2{qq}(obj.PullingLengthIdx(qq)),'d','MarkerSize',10,'MarkerFaceColor','b','MarkerEdgeColor','b')                          
+                            plot(obj.THRet{qq}(obj.AdhForceMaxRetIdx(qq))-obj.CP_HardSurface(qq),obj.BasedRetCorr2{qq}(obj.AdhForceMaxRetIdx(qq)),'p','MarkerSize',10,'MarkerFaceColor','g','MarkerEdgeColor','g')              
+                            plot(obj.THApp{qq}(obj.AdhForceMaxAppIdx(qq))-obj.CP_HardSurface(qq),obj.BasedApp{qq}(obj.AdhForceMaxAppIdx(qq)),'h','MarkerSize',10,'MarkerFaceColor','c','MarkerEdgeColor','c')                                       
+                                % Title for each Subplot
+                                ti=title(sprintf('%i',qq),'Color','k');
+                                %ti=title(sprintf('%i',(kk+ww)/2),'Color','k');
+                                ti.Units='normalized'; % Set units to 'normalized'
+                                ti.Position=[0.5,1]; % Position the subplot title within the subplot
+                            end
+                            if jj == RemainderReal
+                                break
+                            end
+                            jj=jj+1;
+                        end
+                    end
+                end
+                %% Save figures
+                %%% Define the name for the figure title
+                partname=sprintf('-p%d',ii);
+                % fullname=sprintf('%s%s',figname,partname);
+                fullname=sprintf('%s%s',figname,partname);
+                %%% Save the current figure in the current folder
+                print(gcf,fullname,'-dpng');
+            end
+            close all
+        end
        
         function fc_fine_figure(obj,XMin,XMax,YMin,YMax,ii)
              
@@ -2047,268 +2316,6 @@ classdef ForceMap < matlab.mixin.Copyable
             fullname=sprintf('%s%s',figname,partname);
             %%% Save the current figure in the current folder
             print(gcf,fullname,'-dpng');
-        end
-                
-        function fc_print_properties(obj,XMin,XMax,YMin,YMax,NumFcMax,NumFcUncorrupt,hh) % fc ... force curve
-            % fc_print_adhenergy_pulllength: A function to plot all selected force curves of a
-            % force map including adhesion energy and pulling length in
-            % each force curve
-            if nargin < 2
-                XMin= -inf;
-                XMax= inf;
-                YMin= -inf;
-                YMax= inf;
-            end
-            % Define variables for the figure name
-            obj.VelocityConvert=num2str(obj.Velocity*1e+9); % Convert into nm/s
-            % Classification criteria
-            figname=strcat(obj.DateAdapt,{'_'},obj.TimeAdapt,{'_'},obj.ID,{'_'},obj.Substrate,{'_'},obj.EnvCond,{'_'},obj.VelocityConvert,{'_'},obj.Chipbox,{'_'},obj.ChipCant);
-            figname=char(figname);
-            % Define variables for the plot loop
-            mm=ceil(sqrt(NumFcMax));
-            nn=mm;
-            ww=1; % "flag while loop" variable
-            DiffFc=0;
-            NumFigures=ceil(NumFcUncorrupt(hh)/NumFcMax);
-            RemainderMax=mod(NumFcUncorrupt(hh),NumFcMax); % Check for remainder
-            if RemainderMax ~= 0
-                oo=round(sqrt(RemainderMax)); % Determine the number of rows in the figure
-                pp=ceil(sqrt(RemainderMax)); % Determine the number of columns in the figure
-                RemainderReal=mod(NumFcUncorrupt(hh),oo*pp); % Correct the remainder based on the determined rows times columns
-            end
-            %% figure loop
-            for ii=1:NumFigures
-                % Allocate data
-                xApp=obj.THApp{ii}-obj.CP_HardSurface(ii);
-                xRet=obj.THRet{ii}-obj.CP_HardSurface(ii);
-                yApp=obj.BasedApp{ii};
-                yRet=obj.BasedRetCorr2{ii};
-                % Define variables
-                jj=1; % "force curve plotted per figure" variable
-         
-                % Figure
-                h_fig=figure(ii);
-                h_fig.Color='white'; % changes the background color of the figure
-                h_fig.Units='normalized'; % Defines the units
-                h_fig.OuterPosition=[0 0 1 1];% changes the size of the to the whole screen
-                h_fig.PaperOrientation='landscape';
-                h_fig.Name=figname;
-                %% Plotting the tiles
-                if RemainderMax == 0
-                    t = tiledlayout(mm,nn);
-                    t.TileSpacing = 'none'; % To reduce the spacing between the tiles
-                    t.Padding = 'none'; % To reduce the padding of perimeter of a tile
-                    if ii==1
-                        NumFcCorSelec(ii)=nnz(~obj.SMFSFlag.Uncorrupt(1:NumFcMax));
-                    elseif ii==2
-                        NumFcCorSelec(ii)=nnz(obj.SMFSFlag.Uncorrupt((NumFcMax+1):(NumFcMax*(ii))));
-                    else
-                        NumFcCorSelec(ii)=nnz(obj.SMFSFlag.Uncorrupt((NumFcMax*(ii-1)+1):(NumFcMax*(ii))));
-                    end
-                    
-                    if ii==1
-                        kk=jj;
-                    else
-                        kk=jj+mm*nn*(ii-1);
-                    end
-                    %% Plot loop
-                    for qq=kk:obj.NCurves % Loop over all force curves in the force map
-                        if ww<qq+DiffFc
-                            ww=qq+DiffFc;
-                        end
-                        while ~obj.SMFSFlag.Uncorrupt(ww)     % Stay in the while loop as long as the entry is zero
-                            ww=ww+1;
-                            if ww>qq
-                                DiffFc=ww-qq;
-                            end
-                        end
-                        if ww>qq
-                            ax=nexttile;
-                            ax.XLim = [XMin XMax];
-                            ax.YLim = [YMin YMax];
-                            hold on
-                            grid on
-                            area(obj.THRet{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc),obj.yRetLim2{qq+DiffFc},'FaceColor','y')
-                            plot(obj.THApp{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc),obj.BasedApp{qq+DiffFc},'g');
-                            plot(obj.THRet{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc),obj.BasedRetCorr2{qq+DiffFc},'r');
-                            plot(obj.THRet{qq+DiffFc}(obj.PullingLengthIdx(qq+DiffFc))-obj.CP_HardSurface(qq+DiffFc),obj.BasedRetCorr2{qq+DiffFc}(obj.PullingLengthIdx(qq+DiffFc)),'d','MarkerSize',10,'MarkerFaceColor','b','MarkerEdgeColor','b')                          
-                            plot(obj.THRet{qq+DiffFc}(obj.AdhForceMaxRetIdx(qq+DiffFc))-obj.CP_HardSurface(qq+DiffFc),obj.BasedRetCorr2{qq+DiffFc}(obj.AdhForceMaxRetIdx(qq+DiffFc)),'p','MarkerSize',10,'MarkerFaceColor','g','MarkerEdgeColor','g')              
-                            plot(obj.THApp{qq+DiffFc}(obj.AdhForceMaxAppIdx(qq+DiffFc))-obj.CP_HardSurface(qq+DiffFc),obj.BasedApp{qq+DiffFc}(obj.AdhForceMaxAppIdx(qq+DiffFc)),'h','MarkerSize',10,'MarkerFaceColor','c','MarkerEdgeColor','c')                                       
-                            % Title for each Subplot
-                            ti=title(sprintf('%i',qq+DiffFc),'Color','k');
-                            ti.Units='normalized'; % Set units to 'normalized'
-                            ti.Position=[0.5,1]; % Position the subplot title within the subplot
-                        else
-                            ax=nexttile;
-                            ax.XLim = [XMin XMax];
-                            ax.YLim = [YMin YMax];
-                            hold on
-                            grid on
-                            area(obj.THRet{qq}-obj.CP_HardSurface(qq),obj.yRetLim2{qq},'FaceColor','y')
-                            plot(obj.THApp{qq}-obj.CP_HardSurface(qq),obj.BasedApp{qq},'g');
-                            plot(obj.THRet{qq}-obj.CP_HardSurface(qq),obj.BasedRetCorr2{qq},'r');
-                            plot(obj.THRet{qq}(obj.PullingLengthIdx(qq))-obj.CP_HardSurface(qq),obj.BasedRetCorr2{qq}(obj.PullingLengthIdx(qq)),'d','MarkerSize',10,'MarkerFaceColor','b','MarkerEdgeColor','b')                          
-                            plot(obj.THRet{qq}(obj.AdhForceMaxRetIdx(qq))-obj.CP_HardSurface(qq),obj.BasedRetCorr2{qq}(obj.AdhForceMaxRetIdx(qq)),'p','MarkerSize',10,'MarkerFaceColor','g','MarkerEdgeColor','g')              
-                            plot(obj.THApp{qq}(obj.AdhForceMaxAppIdx(qq))-obj.CP_HardSurface(qq),obj.BasedApp{qq}(obj.AdhForceMaxAppIdx(qq)),'h','MarkerSize',10,'MarkerFaceColor','c','MarkerEdgeColor','c')                                       
-                            % Title for each Subplot
-                            ti=title(sprintf('%i',qq),'Color','k');
-                            ti.Units='normalized'; % Set units to 'normalized'
-                            ti.Position=[0.5,1]; % Position the subplot title within the subplot
-                        end
-                        if jj == NumFcMax
-                            break
-                        end
-                        jj=jj+1;
-                    end
-                    
-                else
-                    if ii~=NumFigures
-                        t = tiledlayout(mm,nn);
-                        t.TileSpacing = 'none'; % To reduce the spacing between the tiles
-                        t.Padding = 'none'; % To reduce the padding of perimeter of a tile
-                        if ii==1
-                            NumFcCorSelec(ii)=nnz(~obj.SMFSFlag.Uncorrupt(1:NumFcMax));
-                        elseif ii==2
-                            NumFcCorSelec(ii)=nnz(obj.SMFSFlag.Uncorrupt((NumFcMax+1):(NumFcMax*(ii))));
-                        else
-                            NumFcCorSelec(ii)=nnz(obj.SMFSFlag.Uncorrupt((NumFcMax*(ii-1)+1):(NumFcMax*(ii))));
-                        end
-                        
-                        if ii==1
-                            kk=jj;
-                        else
-                            kk=jj+mm*nn*(ii-1);
-                        end
-                        %% Plot loop
-                        for qq=kk:obj.NCurves % Loop over all force curves in the force map
-                            if ww<qq+DiffFc
-                                ww=qq+DiffFc;
-                            end
-                            while ~obj.SMFSFlag.Uncorrupt(ww)     % Stay in the while loop as long as the entry is zero
-                                ww=ww+1;
-                                if ww>qq
-                                    DiffFc=ww-qq;
-                                end
-                            end
-                            if ww>qq
-                                ax=nexttile;
-                                ax.XLim = [XMin XMax];
-                                ax.YLim = [YMin YMax];
-                                hold on
-                                grid on
-                              area(obj.THRet{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc),obj.yRetLim2{qq+DiffFc},'FaceColor','y')
-                              plot(obj.THApp{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc),obj.BasedApp{qq+DiffFc},'g');
-                              plot(obj.THRet{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc),obj.BasedRetCorr2{qq+DiffFc},'r');
-                              plot(obj.THRet{qq+DiffFc}(obj.PullingLengthIdx(qq+DiffFc))-obj.CP_HardSurface(qq+DiffFc),obj.BasedRetCorr2{qq+DiffFc}(obj.PullingLengthIdx(qq+DiffFc)),'d','MarkerSize',10,'MarkerFaceColor','b','MarkerEdgeColor','b')                          
-                              plot(obj.THRet{qq+DiffFc}(obj.AdhForceMaxRetIdx(qq+DiffFc))-obj.CP_HardSurface(qq+DiffFc),obj.BasedRetCorr2{qq+DiffFc}(obj.AdhForceMaxRetIdx(qq+DiffFc)),'p','MarkerSize',10,'MarkerFaceColor','g','MarkerEdgeColor','g')             
-                              plot(obj.THApp{qq+DiffFc}(obj.AdhForceMaxAppIdx(qq+DiffFc))-obj.CP_HardSurface(qq+DiffFc),obj.BasedApp{qq+DiffFc}(obj.AdhForceMaxAppIdx(qq+DiffFc)),'h','MarkerSize',10,'MarkerFaceColor','c','MarkerEdgeColor','c')                                         
-                                % Title for each Subplot
-                                ti=title(sprintf('%i',qq+DiffFc),'Color','k');
-                                ti.Units='normalized'; % Set units to 'normalized'
-                                ti.Position=[0.5,1]; % Position the subplot title within the subplot
-                            else
-                                ax=nexttile;
-                                ax.XLim = [XMin XMax];
-                                ax.YLim = [YMin YMax];
-                                hold on
-                                grid on
-                            area(obj.THRet{qq}-obj.CP_HardSurface(qq),obj.yRetLim2{qq},'FaceColor','y')
-                            plot(obj.THApp{qq}-obj.CP_HardSurface(qq),obj.BasedApp{qq},'g');
-                            plot(obj.THRet{qq}-obj.CP_HardSurface(qq),obj.BasedRetCorr2{qq},'r');
-                            plot(obj.THRet{qq}(obj.PullingLengthIdx(qq))-obj.CP_HardSurface(qq),obj.BasedRetCorr2{qq}(obj.PullingLengthIdx(qq)),'d','MarkerSize',10,'MarkerFaceColor','b','MarkerEdgeColor','b')                          
-                            plot(obj.THRet{qq}(obj.AdhForceMaxRetIdx(qq))-obj.CP_HardSurface(qq),obj.BasedRetCorr2{qq}(obj.AdhForceMaxRetIdx(qq)),'p','MarkerSize',10,'MarkerFaceColor','g','MarkerEdgeColor','g')              
-                            plot(obj.THApp{qq}(obj.AdhForceMaxAppIdx(qq))-obj.CP_HardSurface(qq),obj.BasedApp{qq}(obj.AdhForceMaxAppIdx(qq)),'h','MarkerSize',10,'MarkerFaceColor','c','MarkerEdgeColor','c')                                       
-
-                                % Title for each Subplot
-                                ti=title(sprintf('%i',qq),'Color','k');
-                                ti.Units='normalized'; % Set units to 'normalized'
-                                ti.Position=[0.5,1]; % Position the subplot title within the subplot
-                            end
-                            if jj == NumFcMax
-                                break
-                            end
-                            jj=jj+1;
-                        end
-                    else % corresponds to the last figure plotted
-                        t = tiledlayout(oo,pp);
-                        t.TileSpacing = 'none'; % To reduce the spacing between the tiles
-                        t.Padding = 'none'; % To reduce the padding of perimeter of a tile
-                        NumFcPlot=oo*pp;
-                        if ii==1
-                            NumFcCorSelec(ii)=nnz(~obj.SMFSFlag.Uncorrupt(1:NumFcPlot));
-                        elseif ii==2
-                            NumFcCorSelec(ii)=nnz(obj.SMFSFlag.Uncorrupt((NumFcPlot+1):(NumFcPlot*(ii))));
-                        else
-                            NumFcCorSelec(ii)=nnz(obj.SMFSFlag.Uncorrupt((NumFcPlot*(ii-1)+1):(NumFcPlot*(ii))));
-                        end
-                        
-                        if ii==1
-                            kk=jj;
-                        else
-                            kk=jj+mm*nn*(ii-1);
-                        end
-                        %% Plot loop
-                        for qq=kk:obj.NCurves % Loop over all force curves in the force map
-                            if ww<qq+DiffFc
-                                ww=qq+DiffFc;
-                            end
-                            while ~obj.SMFSFlag.Uncorrupt(ww)     % Stay in the while loop as long as the entry is zero
-                                ww=ww+1;
-                                if ww>qq
-                                    DiffFc=ww-qq;
-                                end
-                            end
-                            if ww>qq
-                                ax=nexttile;
-                                ax.XLim = [XMin XMax];
-                                ax.YLim = [YMin YMax];
-                                hold on
-                                grid on
-                            area(obj.THRet{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc),obj.yRetLim2{qq+DiffFc},'FaceColor','y')
-                            plot(obj.THApp{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc),obj.BasedApp{qq+DiffFc},'g');
-                            plot(obj.THRet{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc),obj.BasedRetCorr2{qq+DiffFc},'r');
-                            plot(obj.THRet{qq+DiffFc}(obj.PullingLengthIdx(qq+DiffFc))-obj.CP_HardSurface(qq+DiffFc),obj.BasedRetCorr2{qq+DiffFc}(obj.PullingLengthIdx(qq+DiffFc)),'d','MarkerSize',10,'MarkerFaceColor','b','MarkerEdgeColor','b')                          
-                            plot(obj.THRet{qq+DiffFc}(obj.AdhForceMaxRetIdx(qq+DiffFc))-obj.CP_HardSurface(qq+DiffFc),obj.BasedRetCorr2{qq+DiffFc}(obj.AdhForceMaxRetIdx(qq+DiffFc)),'p','MarkerSize',10,'MarkerFaceColor','g','MarkerEdgeColor','g')              
-                            plot(obj.THApp{qq+DiffFc}(obj.AdhForceMaxAppIdx(qq+DiffFc))-obj.CP_HardSurface(qq+DiffFc),obj.BasedApp{qq+DiffFc}(obj.AdhForceMaxAppIdx(qq+DiffFc)),'h','MarkerSize',10,'MarkerFaceColor','c','MarkerEdgeColor','c')                                       
-                                % Title for each Subplot
-                                ti=title(sprintf('%i',qq+DiffFc),'Color','k');
-                                %ti=title(sprintf('%i',(kk+ww)/2),'Color','k');
-                                ti.Units='normalized'; % Set units to 'normalized'
-                                ti.Position=[0.5,1]; % Position the subplot title within the subplot
-                            else
-                                ax=nexttile;
-                                ax.XLim = [XMin XMax];
-                                ax.YLim = [YMin YMax];
-                                hold on
-                                grid on                                
-                            area(obj.THRet{qq}-obj.CP_HardSurface(qq),obj.yRetLim2{qq},'FaceColor','y')
-                            plot(obj.THApp{qq}-obj.CP_HardSurface(qq),obj.BasedApp{qq},'g');
-                            plot(obj.THRet{qq}-obj.CP_HardSurface(qq),obj.BasedRetCorr2{qq},'r');
-                            plot(obj.THRet{qq}(obj.PullingLengthIdx(qq))-obj.CP_HardSurface(qq),obj.BasedRetCorr2{qq}(obj.PullingLengthIdx(qq)),'d','MarkerSize',10,'MarkerFaceColor','b','MarkerEdgeColor','b')                          
-                            plot(obj.THRet{qq}(obj.AdhForceMaxRetIdx(qq))-obj.CP_HardSurface(qq),obj.BasedRetCorr2{qq}(obj.AdhForceMaxRetIdx(qq)),'p','MarkerSize',10,'MarkerFaceColor','g','MarkerEdgeColor','g')              
-                            plot(obj.THApp{qq}(obj.AdhForceMaxAppIdx(qq))-obj.CP_HardSurface(qq),obj.BasedApp{qq}(obj.AdhForceMaxAppIdx(qq)),'h','MarkerSize',10,'MarkerFaceColor','c','MarkerEdgeColor','c')                                       
-                                % Title for each Subplot
-                                ti=title(sprintf('%i',qq),'Color','k');
-                                %ti=title(sprintf('%i',(kk+ww)/2),'Color','k');
-                                ti.Units='normalized'; % Set units to 'normalized'
-                                ti.Position=[0.5,1]; % Position the subplot title within the subplot
-                            end
-                            if jj == RemainderReal
-                                break
-                            end
-                            jj=jj+1;
-                        end
-                    end
-                end
-                %% Save figures
-                %%% Define the name for the figure title
-                partname=sprintf('-p%d',ii);
-                % fullname=sprintf('%s%s',figname,partname);
-                fullname=sprintf('%s%s',figname,partname);
-                %%% Save the current figure in the current folder
-                print(gcf,fullname,'-dpng');
-            end
-            close all
         end
         
        
