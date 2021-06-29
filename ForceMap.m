@@ -347,6 +347,99 @@ classdef ForceMap < matlab.mixin.Copyable
             obj.BaseAndTiltFlag = true;
         end
         
+        function base_and_tilt_using_cp(obj,FractionBeforeCP)
+            
+            if ~sum(struct2array(obj.CPFlag))
+                warning('No contact point data found. Run contact point estimation first!')
+                return
+            end
+            
+            if nargin < 2
+                FractionBeforeCP = 1;
+            end
+            
+            Range = find(obj.SelectedCurves);
+            h = waitbar(0,'Refined Base and Tilt...');
+            
+            for i=Range'
+                waitbar(i/obj.NCurves,h,'Refined Base and Tilt...');
+                App = obj.BasedApp{i};
+                Ret = obj.BasedRet{i};
+                HHApp = obj.HHApp{i};
+                HHRet = obj.HHRet{i};
+                CP = obj.CP(i,:);
+                
+                Cutoff = CP(1) - (1-FractionBeforeCP)*(CP(1) - min(HHApp));
+                
+                HHAppFit = HHApp(HHApp<Cutoff);
+                AppFit = App(1:length(HHAppFit));
+                
+                warning('off')
+                Params = polyfit(HHAppFit,AppFit,1);
+                warning('on')
+                FittedApp = polyval(Params,HHApp);
+                FittedRet = polyval(Params,HHRet);
+                BasedApp = App - FittedApp;
+                BasedRet = Ret - FittedRet;
+                
+                FittedCP = polyval(Params,CP(1));
+                obj.CP(i,2) = CP(2) - FittedCP;
+                
+                if obj.CPFlag.CNN
+                    FittedCP = polyval(Params,obj.CP_CNN(i,1));
+                    obj.CP_CNN(i,2) = obj.CP_CNN(i,2) - FittedCP;
+                end
+                if obj.CPFlag.CNNZoom
+                    FittedCP = polyval(Params,obj.CP_CNNZoom(i,1));
+                    obj.CP_CNNZoom(i,2) = obj.CP_CNNZoom(i,2) - FittedCP;
+                end
+                if obj.CPFlag.CNNZoomSweep
+                    FittedCP = polyval(Params,obj.CP_CNNZoomSweep(i,1));
+                    obj.CP_CNNZoomSweep(i,2) = obj.CP_CNNZoomSweep(i,2) - FittedCP;
+                end
+                if obj.CPFlag.Combo
+                    FittedCP = polyval(Params,obj.CP_Combo(i,1));
+                    obj.CP_Combo(i,2) = obj.CP_Combo(i,2) - FittedCP;
+                end
+                if obj.CPFlag.Dropout
+                    FittedCP = polyval(Params,obj.CP_Dropout(i,1));
+                    obj.CP_Dropout(i,2) = obj.CP_Dropout(i,2) - FittedCP;
+                end
+                if obj.CPFlag.GoF
+                    FittedCP = polyval(Params,obj.CP_GoF(i,1));
+                    obj.CP_GoF(i,2) = obj.CP_GoF(i,2) - FittedCP;
+                end
+                if obj.CPFlag.HardSurface
+                    FittedCP = polyval(Params,obj.CP_HardSurface(i,1));
+                    obj.CP_HardSurface(i,2) = obj.CP_HardSurface(i,2) - FittedCP;
+                end
+                if obj.CPFlag.HertzFitted
+                    FittedCP = polyval(Params,obj.CP_HertzFitted(i,1));
+                    obj.CP_HertzFitted(i,2) = obj.CP_HertzFitted(i,2) - FittedCP;
+                end
+                if obj.CPFlag.Old
+                    FittedCP = polyval(Params,obj.CP_Old(i,1));
+                    obj.CP_Old(i,2) = obj.CP_Old(i,2) - FittedCP;
+                end
+                if obj.CPFlag.SnapIn
+                    FittedCP = polyval(Params,obj.CP_SnapIn(i,1));
+                    obj.CP_SnapIn(i,2) = obj.CP_SnapIn(i,2) - FittedCP;
+                end
+                if obj.CPFlag.RoV
+                    FittedCP = polyval(Params,obj.CP_RoV(i,1));
+                    obj.CP_RoV(i,2) = obj.CP_RoV(i,2) - FittedCP;
+                end
+                if obj.CPFlag.Manual
+                    FittedCP = polyval(Params,obj.Man_CP(i,1));
+                    obj.Man_CP(i,2) = obj.Man_CP(i,2) - FittedCP;
+                end
+                
+                obj.BasedApp{i} = BasedApp;
+                obj.BasedRet{i} = BasedRet;
+            end
+            close(h)
+        end
+        
         function estimate_cp_snap_in(obj)
             % Takes the first point that crosses the approach baseline
             % starting from the max indent and sets the CP as the
@@ -1394,7 +1487,7 @@ classdef ForceMap < matlab.mixin.Copyable
                     
                     PeakIndentationAngle(i) = rad2deg(atan(abs((Slope1 - Slope2)/(1+Slope1*Slope2))));
                 catch
-                    PeakIndentationAngle = nan;
+                    PeakIndentationAngle(i) = nan;
                 end
                 %                 % DebugSection
                 %                 plot(AppTipHeight,AppForce,RetTipHeight,RetForce,...

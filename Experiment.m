@@ -438,7 +438,7 @@ classdef Experiment < matlab.mixin.Copyable
             close(h);
         end
         
-        function force_map_analysis_fibril(obj,CPOption,EModOption)
+        function force_map_analysis_fibril(obj,CPOption,EModOption,BaseLineCorrectBool)
             % force_map_analysis_fibril(obj,CPOption,EModOption)
             %
             % CPOption = 'Snap-In' ... Preferred Option for data with
@@ -463,10 +463,16 @@ classdef Experiment < matlab.mixin.Copyable
             % method
             % EModOption = 'Oliver' ... E-Modulus calculation through
             % Oliver-Pharr-like method (O. Andriotis 2014)
+            % EModOption = 'Both'   ... 'Oliver' and 'Hertz'
+            
+            if nargin < 4
+                BaseLineCorrectBool = false;
+            end
             
             obj.write_to_log_file('Analysis Function','force_map_analysis_fibril()','start')
             obj.write_to_log_file('Contact Point Option',CPOption)
             obj.write_to_log_file('EMod Option',EModOption)
+            obj.write_to_log_file('BaseLineCorrectBool',BaseLineCorrectBool)
             
             h = waitbar(0,'setting up','Units','normalized','Position',[0.4 0.3 0.2 0.1]);
             NLoop = length(obj.ForceMapNames);
@@ -516,7 +522,7 @@ classdef Experiment < matlab.mixin.Copyable
             obj.write_to_log_file('Reference Slope Option',RefSlopeOption)
             
             % Deconvoluting cantilever tip(s)
-            if isequal(lower(EModOption),'oliver')
+            if isequal(lower(EModOption),'oliver') || isequal(lower(EModOption),'both')
                 if obj.NumCantileverTips == 0
                     if isequal(class(obj.CantileverTips{1}),'AFMImage')
                         obj.NumCantileverTips = length(obj.CantileverTips);
@@ -564,6 +570,12 @@ classdef Experiment < matlab.mixin.Copyable
                 
                 % contact point estimation happens here
                 waitbar(i/NLoop,h,sprintf('Processing Fibril %i/%i\nFinding Contact Point',i,NLoop));
+                if BaseLineCorrectBool
+                    obj.cp_option_converter('Fast',i);
+                    FractionBeforeCP = .7;
+                    obj.FM{1}.base_and_tilt_using_cp(FractionBeforeCP)
+                    obj.write_to_log_file('FractionBeforeCP',FractionBeforeCP);
+                end
                 obj.cp_option_converter(CPOption,i);
                 
                 % reference slope calculation happens here
@@ -571,13 +583,16 @@ classdef Experiment < matlab.mixin.Copyable
                 obj.reference_slope_calculator(i);
                 
                 waitbar(i/NLoop,h,sprintf('Processing Fibril %i/%i\nCalculating E-Modulus',i,NLoop));
-                if isequal(lower(EModOption),'hertz')
-                    obj.FM{i}.calculate_e_mod_hertz(CPOption,'parabolic',1);
+                if isequal(lower(EModOption),'hertz') || isequal(lower(EModOption),'both')
+                    AllowXShift = true;
+                    obj.FM{i}.calculate_e_mod_hertz(CPOption,'parabolic',1,AllowXShift);
                     if i == 1
                         obj.write_to_log_file('Hertzian Tip-Shape','parabolic')
                         obj.write_to_log_file('Hertzian CurvePercent','1')
+                        obj.write_to_log_file('Allow X-Shift',AllowXShift)
                     end
-                else
+                end
+                if isequal(lower(EModOption),'oliver') || isequal(lower(EModOption),'both')
                     obj.FM{i}.calculate_e_mod_oliverpharr(obj.CantileverTips{obj.WhichTip(i)}.ProjectedTipArea,0.75);
                     obj.FM{i}.ProjTipArea = obj.CantileverTips{obj.WhichTip(i)}.ProjectedTipArea;
                     if i == 1
@@ -631,7 +646,7 @@ classdef Experiment < matlab.mixin.Copyable
             obj.write_to_log_file('','','end')
         end
         
-        function force_map_analysis_general(obj,CPOption,EModOption)
+        function force_map_analysis_general(obj,CPOption,EModOption,BaseLineCorrectBool)
             % force_map_analysis_general(obj,CPOption,EModOption)
             %
             % CPOption = 'Snap-In' ... Preferred Option for data with
@@ -657,9 +672,14 @@ classdef Experiment < matlab.mixin.Copyable
             % EModOption = 'Oliver' ... E-Modulus calculation through
             % Oliver-Pharr-like method (O. Andriotis 2014)
             
+            if nargin < 4
+                BasLineCorrectBool = false;
+            end
+            
             obj.write_to_log_file('Analysis Function','force_map_analysis_general()','start')
             obj.write_to_log_file('Contact Point Option',CPOption)
             obj.write_to_log_file('EMod Option',EModOption)
+            obj.write_to_log_file('BaseLineCorrectBool',BaseLineCorrectBool)
             
             h = waitbar(0,'setting up','Units','normalized','Position',[0.4 0.3 0.2 0.1]);
             NLoop = obj.NumForceMaps;
@@ -737,14 +757,20 @@ classdef Experiment < matlab.mixin.Copyable
                 
                 % contact point estimation happens here
                 waitbar(i/NLoop,h,sprintf('Processing ForceMap %i/%i\nFinding Contact Point',i,NLoop));
+                if BaseLineCorrectBool
+                    obj.cp_option_converter('Fast',i);
+                    FractionBeforeCP = .7;
+                    obj.FM{1}.base_and_tilt_using_cp(FractionBeforeCP)
+                    obj.write_to_log_file('FractionBeforeCP',FractionBeforeCP);
+                end
                 obj.cp_option_converter(CPOption,i);
                 
                 % reference slope calculation happens here
                 waitbar(i/NLoop,h,sprintf('Processing ForceMap %i/%i\nProcessing and calculating Reference Slope',i,NLoop));
                 obj.reference_slope_calculator(i);
                 
-                waitbar(i/NLoop,h,sprintf('Processing ForceMap %i/%i\nCalculating E-Modulus',i,NLoop));
-                if isequal(lower(EModOption),'hertz')
+                waitbar(i/NLoop,h,sprintf('Processing Fibril %i/%i\nCalculating E-Modulus',i,NLoop));
+                if isequal(lower(EModOption),'hertz') || isequal(lower(EModOption),'both')
                     AllowXShift = true;
                     obj.FM{i}.calculate_e_mod_hertz(CPOption,'parabolic',1,AllowXShift);
                     if i == 1
@@ -752,7 +778,8 @@ classdef Experiment < matlab.mixin.Copyable
                         obj.write_to_log_file('Hertzian CurvePercent','1')
                         obj.write_to_log_file('Allow X-Shift',AllowXShift)
                     end
-                else
+                end
+                if isequal(lower(EModOption),'oliver') || isequal(lower(EModOption),'both')
                     obj.FM{i}.calculate_e_mod_oliverpharr(obj.CantileverTips{obj.WhichTip(i)}.ProjectedTipArea,0.75);
                     obj.FM{i}.ProjTipArea = obj.CantileverTips{obj.WhichTip(i)}.ProjectedTipArea;
                     if i == 1
@@ -1477,6 +1504,12 @@ classdef Experiment < matlab.mixin.Copyable
                 'position',[.85 .20 .1 .04],...
                 'Callback',@lock_scalebars);
             
+            h.B(22) = uicontrol('style','checkbox',...
+                'String','Statistical CMapping',...
+                'units','normalized',...
+                'position',[.85 .25 .1 .04],...
+                'Callback',@statistical_cmapping);
+            
             h.Channel1Max = 1;
             h.Channel1Min = 0;
             h.Channel2Max = 1;
@@ -1633,9 +1666,9 @@ classdef Experiment < matlab.mixin.Copyable
                         ylim([min(ChildProfile)*ChildMultiplierY max(ChildProfile)*ChildMultiplierY]);
                     end
                     
-                    % Temporary
-                    legend({'Before','After'},'Location','northwest',...
-                        'FontSize',h.ReferenceFontSize);
+%                     % Temporary
+%                     legend({'Before','After'},'Location','northwest',...
+%                         'FontSize',h.ReferenceFontSize);
                     
                 end
                 hold off
@@ -1725,8 +1758,8 @@ classdef Experiment < matlab.mixin.Copyable
                     ChildProfile = improfile(h.Image{h.ChildIndex},[CPos1(1) CPos2(1)],[CPos1(2) CPos2(2)]);
                     ChildPoints = [0:1/(length(ChildProfile)-1):1].*Len;
                     [ChildMultiplierY,UnitY,~] = AFMImage.parse_unit_scale(range(ChildProfile),h.BaseUnit{h.ChildIndex},1);
-                    h.CP = plot(ChildPoints.*MultiplierX,ChildProfile.*ChildMultiplierY);
                     yyaxis right
+                    h.CP = plot(ChildPoints.*MultiplierX,ChildProfile.*ChildMultiplierY);
                     grid on
                     CurrentAxHeight = round(h.Fig.Position(4)*h.ImAx(h.MainIndex).Position(4));
                     h.ImAx(3).Color = h.ColorMode(h.ColorIndex).Background;
@@ -1736,7 +1769,7 @@ classdef Experiment < matlab.mixin.Copyable
                     h.ImAx(3).YColor = h.ColorMode(h.ColorIndex).Profile2;
                     h.ImAx(3).GridColor = h.ColorMode(h.ColorIndex).Text;
                     xlabel(sprintf('[%s]',UnitX))
-                    ylabel(sprintf('%s [%s]',h.Channel{h.MainIndex},UnitY))
+                    ylabel(sprintf('%s [%s]',h.Channel{h.ChildIndex},UnitY))
                     xlim([0 ChildPoints(end).*MultiplierX])
                     if isequal(h.BaseUnit{1},h.BaseUnit{2})
                         yyaxis left
@@ -1846,7 +1879,7 @@ classdef Experiment < matlab.mixin.Copyable
                     ColorPattern = Class{Index}.CMap;
                 end
                 
-                if h.B(21).Value && h.hasChannel2 && h.hasChannel1 && (h.BaseUnit{1}==h.BaseUnit{2})
+                if h.B(21).Value && h.hasChannel2 && h.hasChannel1 && isequal(h.BaseUnit{1},h.BaseUnit{2})
                     CurImage = h.Image{Index};
                     Range = range(CurImage,'all');
                     OtherImage = h.Image{mod(Index,2)+1};
@@ -1860,17 +1893,32 @@ classdef Experiment < matlab.mixin.Copyable
                         Min = min(OtherImage,[],'all');
                     end
                     
-                    CutMax = FinalRange*h.Channel1Max + Min;
-                    CutMin = FinalRange*h.Channel1Min + Min;
+                    if ~h.B(22).Value
+                        CutMax = FinalRange*h.Channel1Max + Min;
+                        CutMin = FinalRange*h.Channel1Min + Min;
+                    else
+                        CutMax = quantile(h.Image{FinalIndex},h.Channel1Max,'all') + Min;
+                        CutMin = quantile(h.Image{FinalIndex},h.Channel1Min,'all') + Min;
+                    end
                 else
                     CurImage = h.Image{Index};
                     FinalRange = range(CurImage,'all');
                     if Index==1
-                        CutMax = FinalRange*h.Channel1Max + min(CurImage,[],'all');
-                        CutMin = FinalRange*h.Channel1Min + min(CurImage,[],'all');
+                        if ~h.B(22).Value
+                            CutMax = FinalRange*h.Channel1Max + min(CurImage,[],'all');
+                            CutMin = FinalRange*h.Channel1Min + min(CurImage,[],'all');
+                        else
+                            CutMax = quantile(CurImage,h.Channel1Max,'all') + min(CurImage,[],'all');
+                            CutMin = quantile(CurImage,h.Channel1Min,'all') + min(CurImage,[],'all');
+                        end
                     elseif Index==2
-                        CutMax = FinalRange*h.Channel2Max + min(CurImage,[],'all');
-                        CutMin = FinalRange*h.Channel2Min + min(CurImage,[],'all');
+                        if ~h.B(22).Value
+                            CutMax = FinalRange*h.Channel2Max + min(CurImage,[],'all');
+                            CutMin = FinalRange*h.Channel2Min + min(CurImage,[],'all');
+                        else
+                            CutMax = quantile(CurImage,h.Channel2Max,'all') + min(CurImage,[],'all');
+                            CutMin = quantile(CurImage,h.Channel2Min,'all') + min(CurImage,[],'all');
+                        end
                     end
                 end
                 
@@ -1992,6 +2040,11 @@ classdef Experiment < matlab.mixin.Copyable
                     h.B(15).Visible = 'on';
                 end
                 
+                draw_channel_1
+                draw_channel_2
+            end
+            
+            function statistical_cmapping(varargin)
                 draw_channel_1
                 draw_channel_2
             end
