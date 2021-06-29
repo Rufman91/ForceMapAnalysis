@@ -228,14 +228,14 @@ classdef ForceMap < matlab.mixin.Copyable
             
             obj.initialize_flags();
             
-            % Save ForceMap and then change back into original folder
-            cd(current.path);
-            current = what();
-            cd(obj.Folder)
-            savename = sprintf('%s.mat',obj.Name);
-            save(savename,'obj')
-            cd(current.path)
-            disp('loading successfull. object saved in objects folder')
+%             % Save ForceMap and then change back into original folder
+%             cd(current.path);
+%             current = what();
+%             cd(obj.Folder)
+%             savename = sprintf('%s.mat',obj.Name);
+%             save(savename,'obj')
+%             cd(current.path)
+%             disp('loading successfull. object saved in objects folder')
         end
         
         function choose_curves(obj)
@@ -2870,7 +2870,7 @@ classdef ForceMap < matlab.mixin.Copyable
             
             Map = imresize(obj.HeightMap,[1024 1024],'bicubic');
             for i=1:5
-                Map = AFMImage.subtract_line_fit_vertical_rov(Map,.2,1);
+                Map = AFMImage.subtract_line_fit_vertical_rov(Map,.2,0);
             end
             Map = imresize(Map,[obj.NumProfiles obj.NumPoints]);
             
@@ -3690,9 +3690,11 @@ classdef ForceMap < matlab.mixin.Copyable
             %             annotation('textbox',dim,'String',str,'FitBoxToText','on');
             
             subplot(2,1,2)
-            I = obj.HeightMap;
-            I = mat2gray(I);
-            imshow(I)
+            I = obj.get_channel('Processed');
+            if isempty(I)
+                I = obj.HeightMap;
+            end
+            imshow(I.Image,[],'Colormap',AFMImage.define_afm_color_map)
             axis on
             hold on;
             try
@@ -3851,8 +3853,11 @@ classdef ForceMap < matlab.mixin.Copyable
                 end
                 k = obj.RectApexIndex(m);
                 subplot(2,3,1)
-                I = imresize(mat2gray(obj.HeightMap(:,:,1)),[1024 1024]);
-                imshow(I);
+                I = obj.get_channel('Processed');
+                if isempty(I)
+                    I = obj.HeightMap;
+                end
+                imshow(I.Image,[],'Colormap',AFMImage.define_afm_color_map)
                 hold on;
                 for i=1:obj.NumProfiles
                     if obj.RectApexIndex(i)==k
@@ -3959,8 +3964,11 @@ classdef ForceMap < matlab.mixin.Copyable
                 k = obj.RectApexIndex(m);
                 
                 subplot(2,2,1)
-                I = imresize(mat2gray(obj.HeightMap(:,:,1)),[1024 1024]);
-                imshow(I);
+                I = obj.get_channel('Processed');
+                if isempty(I)
+                    I = obj.HeightMap;
+                end
+                imshow(I.Image,[],'Colormap',AFMImage.define_afm_color_map)
                 hold on;
                 for i=1:obj.NumProfiles
                     if obj.RectApexIndex(i)==k
@@ -4042,8 +4050,11 @@ classdef ForceMap < matlab.mixin.Copyable
                     return
                 end
                 subplot(2,3,1)
-                I = imresize(mat2gray(obj.HeightMap(:,:,1)),[1024 1024]);
-                imshow(I);
+                I = obj.get_channel('Processed');
+                if isempty(I)
+                    I = obj.HeightMap;
+                end
+                imshow(I.Image,[],'Colormap',AFMImage.define_afm_color_map)
                 hold on;
                 
                 plot((obj.List2Map(m,2)-1/2)*1024/obj.NumPoints,...
@@ -4146,8 +4157,11 @@ classdef ForceMap < matlab.mixin.Copyable
                     return
                 end
                 subplot(2,3,1)
-                I = imresize(mat2gray(obj.HeightMap(:,:,1)),[1024 1024]);
-                imshow(I);
+                I = obj.get_channel('Processed');
+                if isempty(I)
+                    I = obj.HeightMap;
+                end
+                imshow(I.Image,[],'Colormap',AFMImage.define_afm_color_map)
                 hold on;
                 
                 plot((obj.List2Map(m,2)-1/2)*1024/obj.NumPoints,...
