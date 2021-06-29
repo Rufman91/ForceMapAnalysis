@@ -228,14 +228,14 @@ classdef ForceMap < matlab.mixin.Copyable
             
             obj.initialize_flags();
             
-            % Save ForceMap and then change back into original folder
-            cd(current.path);
-            current = what();
-            cd(obj.Folder)
-            savename = sprintf('%s.mat',obj.Name);
-            save(savename,'obj')
-            cd(current.path)
-            disp('loading successfull. object saved in objects folder')
+%             % Save ForceMap and then change back into original folder
+%             cd(current.path);
+%             current = what();
+%             cd(obj.Folder)
+%             savename = sprintf('%s.mat',obj.Name);
+%             save(savename,'obj')
+%             cd(current.path)
+%             disp('loading successfull. object saved in objects folder')
         end
         
         function choose_curves(obj)
@@ -345,6 +345,99 @@ classdef ForceMap < matlab.mixin.Copyable
             end
             close(h);
             obj.BaseAndTiltFlag = true;
+        end
+        
+        function base_and_tilt_using_cp(obj,FractionBeforeCP)
+            
+            if ~sum(struct2array(obj.CPFlag))
+                warning('No contact point data found. Run contact point estimation first!')
+                return
+            end
+            
+            if nargin < 2
+                FractionBeforeCP = 1;
+            end
+            
+            Range = find(obj.SelectedCurves);
+            h = waitbar(0,'Refined Base and Tilt...');
+            
+            for i=Range'
+                waitbar(i/obj.NCurves,h,'Refined Base and Tilt...');
+                App = obj.BasedApp{i};
+                Ret = obj.BasedRet{i};
+                HHApp = obj.HHApp{i};
+                HHRet = obj.HHRet{i};
+                CP = obj.CP(i,:);
+                
+                Cutoff = CP(1) - (1-FractionBeforeCP)*(CP(1) - min(HHApp));
+                
+                HHAppFit = HHApp(HHApp<Cutoff);
+                AppFit = App(1:length(HHAppFit));
+                
+                warning('off')
+                Params = polyfit(HHAppFit,AppFit,1);
+                warning('on')
+                FittedApp = polyval(Params,HHApp);
+                FittedRet = polyval(Params,HHRet);
+                BasedApp = App - FittedApp;
+                BasedRet = Ret - FittedRet;
+                
+                FittedCP = polyval(Params,CP(1));
+                obj.CP(i,2) = CP(2) - FittedCP;
+                
+                if obj.CPFlag.CNN
+                    FittedCP = polyval(Params,obj.CP_CNN(i,1));
+                    obj.CP_CNN(i,2) = obj.CP_CNN(i,2) - FittedCP;
+                end
+                if obj.CPFlag.CNNZoom
+                    FittedCP = polyval(Params,obj.CP_CNNZoom(i,1));
+                    obj.CP_CNNZoom(i,2) = obj.CP_CNNZoom(i,2) - FittedCP;
+                end
+                if obj.CPFlag.CNNZoomSweep
+                    FittedCP = polyval(Params,obj.CP_CNNZoomSweep(i,1));
+                    obj.CP_CNNZoomSweep(i,2) = obj.CP_CNNZoomSweep(i,2) - FittedCP;
+                end
+                if obj.CPFlag.Combo
+                    FittedCP = polyval(Params,obj.CP_Combo(i,1));
+                    obj.CP_Combo(i,2) = obj.CP_Combo(i,2) - FittedCP;
+                end
+                if obj.CPFlag.Dropout
+                    FittedCP = polyval(Params,obj.CP_Dropout(i,1));
+                    obj.CP_Dropout(i,2) = obj.CP_Dropout(i,2) - FittedCP;
+                end
+                if obj.CPFlag.GoF
+                    FittedCP = polyval(Params,obj.CP_GoF(i,1));
+                    obj.CP_GoF(i,2) = obj.CP_GoF(i,2) - FittedCP;
+                end
+                if obj.CPFlag.HardSurface
+                    FittedCP = polyval(Params,obj.CP_HardSurface(i,1));
+                    obj.CP_HardSurface(i,2) = obj.CP_HardSurface(i,2) - FittedCP;
+                end
+                if obj.CPFlag.HertzFitted
+                    FittedCP = polyval(Params,obj.CP_HertzFitted(i,1));
+                    obj.CP_HertzFitted(i,2) = obj.CP_HertzFitted(i,2) - FittedCP;
+                end
+                if obj.CPFlag.Old
+                    FittedCP = polyval(Params,obj.CP_Old(i,1));
+                    obj.CP_Old(i,2) = obj.CP_Old(i,2) - FittedCP;
+                end
+                if obj.CPFlag.SnapIn
+                    FittedCP = polyval(Params,obj.CP_SnapIn(i,1));
+                    obj.CP_SnapIn(i,2) = obj.CP_SnapIn(i,2) - FittedCP;
+                end
+                if obj.CPFlag.RoV
+                    FittedCP = polyval(Params,obj.CP_RoV(i,1));
+                    obj.CP_RoV(i,2) = obj.CP_RoV(i,2) - FittedCP;
+                end
+                if obj.CPFlag.Manual
+                    FittedCP = polyval(Params,obj.Man_CP(i,1));
+                    obj.Man_CP(i,2) = obj.Man_CP(i,2) - FittedCP;
+                end
+                
+                obj.BasedApp{i} = BasedApp;
+                obj.BasedRet{i} = BasedRet;
+            end
+            close(h)
         end
         
         function estimate_cp_snap_in(obj)
@@ -1394,7 +1487,7 @@ classdef ForceMap < matlab.mixin.Copyable
                     
                     PeakIndentationAngle(i) = rad2deg(atan(abs((Slope1 - Slope2)/(1+Slope1*Slope2))));
                 catch
-                    PeakIndentationAngle = nan;
+                    PeakIndentationAngle(i) = nan;
                 end
                 %                 % DebugSection
                 %                 plot(AppTipHeight,AppForce,RetTipHeight,RetForce,...
@@ -2870,7 +2963,7 @@ classdef ForceMap < matlab.mixin.Copyable
             
             Map = imresize(obj.HeightMap,[1024 1024],'bicubic');
             for i=1:5
-                Map = AFMImage.subtract_line_fit_vertical_rov(Map,.2,1);
+                Map = AFMImage.subtract_line_fit_vertical_rov(Map,.2,0);
             end
             Map = imresize(Map,[obj.NumProfiles obj.NumPoints]);
             
@@ -3690,9 +3783,11 @@ classdef ForceMap < matlab.mixin.Copyable
             %             annotation('textbox',dim,'String',str,'FitBoxToText','on');
             
             subplot(2,1,2)
-            I = obj.HeightMap;
-            I = mat2gray(I);
-            imshow(I)
+            I = obj.get_channel('Processed');
+            if isempty(I)
+                I = obj.HeightMap;
+            end
+            imshow(I.Image,[],'Colormap',AFMImage.define_afm_color_map)
             axis on
             hold on;
             try
@@ -3851,8 +3946,11 @@ classdef ForceMap < matlab.mixin.Copyable
                 end
                 k = obj.RectApexIndex(m);
                 subplot(2,3,1)
-                I = imresize(mat2gray(obj.HeightMap(:,:,1)),[1024 1024]);
-                imshow(I);
+                I = obj.get_channel('Processed');
+                if isempty(I)
+                    I = obj.HeightMap;
+                end
+                imshow(I.Image,[],'Colormap',AFMImage.define_afm_color_map)
                 hold on;
                 for i=1:obj.NumProfiles
                     if obj.RectApexIndex(i)==k
@@ -3959,8 +4057,11 @@ classdef ForceMap < matlab.mixin.Copyable
                 k = obj.RectApexIndex(m);
                 
                 subplot(2,2,1)
-                I = imresize(mat2gray(obj.HeightMap(:,:,1)),[1024 1024]);
-                imshow(I);
+                I = obj.get_channel('Processed');
+                if isempty(I)
+                    I = obj.HeightMap;
+                end
+                imshow(I.Image,[],'Colormap',AFMImage.define_afm_color_map)
                 hold on;
                 for i=1:obj.NumProfiles
                     if obj.RectApexIndex(i)==k
@@ -4042,8 +4143,11 @@ classdef ForceMap < matlab.mixin.Copyable
                     return
                 end
                 subplot(2,3,1)
-                I = imresize(mat2gray(obj.HeightMap(:,:,1)),[1024 1024]);
-                imshow(I);
+                I = obj.get_channel('Processed');
+                if isempty(I)
+                    I = obj.HeightMap;
+                end
+                imshow(I.Image,[],'Colormap',AFMImage.define_afm_color_map)
                 hold on;
                 
                 plot((obj.List2Map(m,2)-1/2)*1024/obj.NumPoints,...
@@ -4146,8 +4250,11 @@ classdef ForceMap < matlab.mixin.Copyable
                     return
                 end
                 subplot(2,3,1)
-                I = imresize(mat2gray(obj.HeightMap(:,:,1)),[1024 1024]);
-                imshow(I);
+                I = obj.get_channel('Processed');
+                if isempty(I)
+                    I = obj.HeightMap;
+                end
+                imshow(I.Image,[],'Colormap',AFMImage.define_afm_color_map)
                 hold on;
                 
                 plot((obj.List2Map(m,2)-1/2)*1024/obj.NumPoints,...
