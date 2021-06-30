@@ -495,7 +495,6 @@ classdef Experiment < matlab.mixin.Copyable
                 if isequal(KeepFlagged,'Yes') && obj.FMFlag.FibrilAnalysis(i) == 1
                     continue
                 end
-                obj.FM{i}.create_and_level_height_map();
                 obj.FM{i}.create_fibril_mask();
                 if isequal(answer,'Yes')
                     continue
@@ -609,8 +608,12 @@ classdef Experiment < matlab.mixin.Copyable
                 
                 waitbar(i/NLoop,h,sprintf('Processing Fibril %i/%i\nWrapping Up And Saving',i,NLoop));
                 
-                if i > 1
-                    close(Fig{i-1})
+                if exist('Fig')
+                    for j=1:(i-1)
+                        if ishandle(Fig{j})
+                            close(Fig{j})
+                        end
+                    end
                 end
                 Fig{i} = obj.FM{i}.show_analyzed_fibril();
                 obj.FMFlag.FibrilAnalysis(i) = 1;
@@ -2974,7 +2977,7 @@ classdef Experiment < matlab.mixin.Copyable
                 end
                 obj.AssignedCantileverTips = false;
                 if obj.NumCantileverTips == 1
-                    obj.WhichTip(end+1:NFM) = true(DiffFM,1);
+                    obj.WhichTip = true(NFM,1);
                     obj.AssignedCantileverTips = true;
                 end
                 

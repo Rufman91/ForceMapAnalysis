@@ -655,8 +655,16 @@ classdef ForceMap < matlab.mixin.Copyable
             % values
             obj.StashedSelectedCurves = obj.SelectedCurves;
             try
-                Mem = memory;
-                MaxArraySize = Mem.MaxPossibleArrayBytes;
+                if isequal(obj.HostOS,'PCW')
+                    Mem = memory;
+                    MaxArraySize = Mem.MaxPossibleArrayBytes;
+                else
+                    [r,w] = unix('free | grep Mem');
+                    stats = str2double(regexp(w, '[0-9]*', 'match'));
+                    memsize = stats(1)/1e6;
+                    freemem = (stats(3)+stats(end))/1e6;
+                    MaxArraySize = freemem*10^9;
+                end
                 if sum(runmode==[1 3 4],'all') >= 1
                     MaxPartitionSize = round(MaxArraySize/(ImgSize(1)*ImgSize(2)*ImgSize(3)*NumPasses));
                 else
@@ -862,10 +870,11 @@ classdef ForceMap < matlab.mixin.Copyable
                                 obj.CP(i,2) = obj.CP_CNNZoom(i,2);
                                 k = k + 1;
                             end
+                            obj.CPFlag.CNNZoom = true;
                             
                             waitbar(2/3,h,sprintf('Predicting zoomed CP, sweeping over multiple zooms \n(Partition %i/%i)',BigLoop,NumPartitions));
-                            MaxZoom = 0.9;
-                            ZoomFactor = (1-MaxZoom):MaxZoom/(NumPasses-1):1;
+                            MaxZoom = 0.8;
+                            ZoomFactor = 0:MaxZoom/(NumPasses-1):MaxZoom;
                             for i=1:NumPasses
                                 ZoomCell{i} = obj.copy;
                                 ZoomCell{i}.cnn_zoom_in(ZoomFactor(i));
@@ -1650,7 +1659,20 @@ classdef ForceMap < matlab.mixin.Copyable
         end
         
         function calculate_fib_diam(obj)
-            [obj.Apex,obj.ApexIndex] = max(obj.HeightMap(:,:,1).*obj.FibMask,[],2);
+            
+            Chan = obj.get_channel('Processed');
+            if isempty(Chan)
+                Chan = obj.get_channel('Height');
+                if isempty(Chan)
+                    HeightMap = obj.HeightMap(:,:,1);
+                else
+                    HeightMap = Chan.Image;
+                end
+            else
+                HeightMap = Chan.Image;
+            end
+            
+            [obj.Apex,obj.ApexIndex] = max(HeightMap.*obj.FibMask,[],2);
             
             if obj.FibrilFlag.Straight == 1
                 obj.RectApex = zeros(obj.NumProfiles,1);
@@ -2663,12 +2685,12 @@ classdef ForceMap < matlab.mixin.Copyable
             if nargin<2
                 ImgSize = 478;
                 ImgSizeFinal = 128;
-                CutPercent = [0 0.5 0.75];
+                CutPercent = [0 0.3 0.7];
             elseif nargin < 3
                 ImgSize = 478;
-                CutPercent = [0 0.5 0.75];
+                CutPercent = [0 0.3 0.7];
             elseif nargin<4
-                CutPercent = [0 0.5 0.75];
+                CutPercent = [0 0.3 0.7];
             end
             Nmaps = length(objcell);
             
@@ -3148,14 +3170,7 @@ classdef ForceMap < matlab.mixin.Copyable
             
             iRange = find(obj.SelectedCurves)';
             for i=iRange
-                Lb = abs(min(obj.HHApp{i})-obj.CP_CNNZoom(i,1));
-                La = abs(max(obj.HHApp{i})-obj.CP_CNNZoom(i,1));
-                L = Lb + La;
-                if Lb/L <= ZoomFactor
-                    continue
-                end
-                Lsub = (Lb - ZoomFactor*L)/(1-ZoomFactor);
-                CutOff = min(obj.HHApp{i}) + Lsub;
+                CutOff = min(obj.HHApp{i}) + range(obj.HHApp{i}(obj.HHApp{i}<=obj.CP_CNNZoom(i,1)))*ZoomFactor;
                 obj.HHApp{i}(obj.HHApp{i}<CutOff) = [];
                 obj.BasedApp{i}(1:(end-length(obj.HHApp{i}))) = [];
             end
@@ -3875,7 +3890,15 @@ classdef ForceMap < matlab.mixin.Copyable
             title(sprintf('Fibril Diameter = %.2fnm',obj.FibDiam*1e9))
             
             subplot(2,2,4)
-            EM = imresize(mat2gray(log(obj.EModMapOliverPharr(:,:,1))),[1024 1024]);
+            try
+                EM = imresize(mat2gray(log(obj.EModMapOliverPharr(:,:,1))),[1024 1024]);
+            catch
+                try
+                    EM = imresize(mat2gray(log(obj.EModMapHertz(:,:,1))),[1024 1024]);
+                catch
+                    EM = zeros(1024,1024);
+                end
+            end
             imshow(EM)
             title('E-Modulus Map')
         end
