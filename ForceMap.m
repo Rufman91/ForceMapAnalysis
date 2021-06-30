@@ -1160,7 +1160,7 @@ classdef ForceMap < matlab.mixin.Copyable
                 % Convert the model to the right scale so it can be plotted
                 % correctly later
                 warning('off','all');
-                Hertzfit.a = Hertzfit.a*RangeF/RangeTH^(3/2);
+                Hertzfit.a = Hertzfit.a*RangeF/RangeTH.^(3/2);
                 if AllowXShift
                 Hertzfit.b = Hertzfit.b*RangeTH;
                 obj.CP_HertzFitted(i,1) = CP(1)-Hertzfit.b;
