@@ -622,9 +622,9 @@ classdef Experiment < matlab.mixin.Copyable
             % Assign the Apex curves EMod and exclude +-2.5*IQR and curves
             % from ExclMask
             for i=1:NLoop
-                if isequal(lower(EModOption(1:5)),'hertz')
+                if isequal(lower(EModOption),'hertz')
                     EMods = obj.FM{i}.EModHertz;
-                elseif isequal(lower(EModOption(1:6)),'oliver')
+                elseif isequal(lower(EModOption),'oliver')
                     EMods = obj.FM{i}.EModOliverPharr;
                 else
                     EMods = obj.FM{i}.EModOliverPharr;
