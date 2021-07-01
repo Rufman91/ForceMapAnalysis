@@ -675,7 +675,7 @@ classdef ForceMap < matlab.mixin.Copyable
                 
                 for BigLoop=1:NumPartitions
                     TempSelectedCurves = zeros(obj.NCurves,1);
-                    TempSelectedCurves((1+(BigLoop-1)*PartitionSize):min((BigLoop*PartitionSize),end)) = 1;
+                    TempSelectedCurves((1+(BigLoop-1)*PartitionSize):min((BigLoop*PartitionSize),obj.NCurves)) = 1;
                     TempSelectedCurves = TempSelectedCurves & obj.StashedSelectedCurves;
                     obj.SelectedCurves = TempSelectedCurves;
                     objcell{1,1} = obj;
@@ -1160,18 +1160,21 @@ classdef ForceMap < matlab.mixin.Copyable
                 % Convert the model to the right scale so it can be plotted
                 % correctly later
                 warning('off','all');
-                Hertzfit.a = Hertzfit.a*RangeF/RangeTH.^(3/2);
-                if AllowXShift
-                Hertzfit.b = Hertzfit.b*RangeTH;
-                obj.CP_HertzFitted(i,1) = CP(1)-Hertzfit.b;
-                obj.CP_HertzFitted(i,2) = CP(2);
-                obj.CP(i,:) = obj.CP_HertzFitted(i,:);
-                % Not sure about this one
-                % obj.IndentationDepth(i) = obj.IndentationDepth(i) + Hertzfit.b;
+                try
+                    Hertzfit.a = Hertzfit.a*RangeF/RangeTH.^(3/2);
+                    if AllowXShift
+                        Hertzfit.b = Hertzfit.b*RangeTH;
+                        obj.CP_HertzFitted(i,1) = CP(1)-Hertzfit.b;
+                        obj.CP_HertzFitted(i,2) = CP(2);
+                        obj.CP(i,:) = obj.CP_HertzFitted(i,:);
+                        % Not sure about this one
+                        % obj.IndentationDepth(i) = obj.IndentationDepth(i) + Hertzfit.b;
+                    end
+                    warning('on','all');
+                    obj.HertzFit{i} = Hertzfit;
+                catch
+                    obj.SelectedCurves(i) = 0;
                 end
-                warning('on','all');
-                obj.HertzFit{i} = Hertzfit;
-                
             end
             E = obj.EModHertz;
             HertzFit = obj.HertzFit;
