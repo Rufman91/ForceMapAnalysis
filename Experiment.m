@@ -6,6 +6,9 @@ classdef Experiment < matlab.mixin.Copyable
         ExperimentFolder    % Shows Folder where Experiment is saved
         HostOS              % Shows the current operating system
         HostName            % Shows the current Host (User of running machine)
+        BigDataFlag         % Determines how Experiment loads ForceMap objects. If true, 
+                            % force voluime data are not loaded into RAM
+                            % but read from unpacked jpk data container
         CurrentLogFile
         FM                  % Cellarray containing Force/QI Maps
         NumForceMaps
@@ -68,7 +71,7 @@ classdef Experiment < matlab.mixin.Copyable
             obj.ExperimentFolder = fullfile(ParentFolder,obj.ExperimentName,filesep);
             
             % get Experiment filenames and paths from user input
-            [FileTypes, FullFileStruct, IsValid] = obj.constructor_user_input_parser(obj.ExperimentName,obj.HostOS);
+            [FileTypes, FullFileStruct, IsValid, BigData] = obj.constructor_user_input_parser(obj.ExperimentName,obj.HostOS);
             
             if ~IsValid
                 obj = [];
@@ -76,7 +79,7 @@ classdef Experiment < matlab.mixin.Copyable
             end
             
             % get paths of requested files and load them in
-            obj.take_paths_and_load_files(FileTypes,FullFileStruct,true)
+            obj.take_paths_and_load_files(FileTypes,FullFileStruct,true,BigData)
             
             obj.initialize_flags
             
@@ -88,7 +91,7 @@ classdef Experiment < matlab.mixin.Copyable
             obj.save_experiment();
         end
         
-        function take_paths_and_load_files(obj,FileTypes,FullFileStruct,isNew)
+        function take_paths_and_load_files(obj,FileTypes,FullFileStruct,isNew,BigData)
             
             if nargin<4
                 isNew = false;
@@ -116,6 +119,7 @@ classdef Experiment < matlab.mixin.Copyable
                 obj.NumCantileverTips = 0;
                 obj.CantileverTipNames = cell(0,0);
                 obj.CantileverTipFolders = cell(0,0);
+                obj.BigDataFlag = BigData;
             end
             
             % Need to assign something to *FullFile. Otherwise parfor will
@@ -154,10 +158,10 @@ classdef Experiment < matlab.mixin.Copyable
                             TempID{j,i} = sprintf('%s-%i',obj.ExperimentName,IDs(j+sum(NumFiles(1:i))-NumFiles(i)));
                         end
                         if i == 1 && FileTypes(i) && (j<=NumFiles(i))
-                            TempCell{j,i} = ForceMap(FMFullFile{j},obj.ExperimentFolder,TempID{j,i});
+                            TempCell{j,i} = ForceMap(FMFullFile{j},obj.ExperimentFolder,TempID{j,i},obj.BigDataFlag);
                         end
                         if i == 2 && FileTypes(i) && (j<=NumFiles(i))
-                            TempCell{j,i} = ForceMap(RefFMFullFile{j},obj.ExperimentFolder,TempID{j,i});
+                            TempCell{j,i} = ForceMap(RefFMFullFile{j},obj.ExperimentFolder,TempID{j,i},obj.BigDataFlag);
                         end
                         if i == 3 && FileTypes(i) && (j<=NumFiles(i))
                             TempCell{j,i} = AFMImage(IFullFile{j},obj.ExperimentFolder,TempID{j,i});
@@ -175,10 +179,10 @@ classdef Experiment < matlab.mixin.Copyable
                     for j=1:NumFiles(i)
                         TempID{j,i} = sprintf('%s-%i',obj.ExperimentName,IDs(j+sum(NumFiles(1:i))-NumFiles(i)));
                         if i == 1 && FileTypes(i)
-                            TempCell{j,i} = ForceMap(FMFullFile{j},obj.ExperimentFolder,TempID{j,i});
+                            TempCell{j,i} = ForceMap(FMFullFile{j},obj.ExperimentFolder,TempID{j,i},obj.BigDataFlag);
                         end
                         if i == 2 && FileTypes(i)
-                            TempCell{j,i} = ForceMap(RefFMFullFile{j},obj.ExperimentFolder,TempID{j,i});
+                            TempCell{j,i} = ForceMap(RefFMFullFile{j},obj.ExperimentFolder,TempID{j,i},obj.BigDataFlag);
                         end
                         if i == 3 && FileTypes(i)
                             TempCell{j,i} = AFMImage(IFullFile{j},obj.ExperimentFolder,TempID{j,i});
@@ -438,7 +442,7 @@ classdef Experiment < matlab.mixin.Copyable
             close(h);
         end
         
-        function force_map_analysis_fibril(obj,CPOption,EModOption,BaseLineCorrectBool)
+        function force_map_analysis_fibril(obj,CPOption,EModOption,BaseLineCorrectBool,TemporaryLoadInBool)
             % force_map_analysis_fibril(obj,CPOption,EModOption)
             %
             % CPOption = 'Snap-In' ... Preferred Option for data with
@@ -467,6 +471,9 @@ classdef Experiment < matlab.mixin.Copyable
             
             if nargin < 4
                 BaseLineCorrectBool = false;
+                TemporaryLoadInBool = true;
+            elseif nargin < 5
+                TemporaryLoadInBool = true;
             end
             
             obj.write_to_log_file('Analysis Function','force_map_analysis_fibril()','start')
@@ -557,6 +564,11 @@ classdef Experiment < matlab.mixin.Copyable
                 if isequal(KeepFlagged,'Yes') && obj.FMFlag.FibrilAnalysis(i) == 1
                     continue
                 end
+                
+                if TemporaryLoadInBool && obj.BigDataFlag
+                    obj.FM{i}.temporary_data_load_in(true);
+                end
+                
                 waitbar(i/NLoop,h,sprintf('Processing Fibril %i/%i\nFitting Base Line',i,NLoop));
                 if ~obj.FM{i}.BaseAndTiltFlag
                     obj.FM{i}.base_and_tilt('linear');
@@ -615,6 +627,14 @@ classdef Experiment < matlab.mixin.Copyable
                         end
                     end
                 end
+                
+                if TemporaryLoadInBool && obj.BigDataFlag
+                    obj.FM{i}.temporary_data_load_in(false);
+                    if i < NLoop
+                        obj.save_experiment;
+                    end
+                end
+                
                 Fig{i} = obj.FM{i}.show_analyzed_fibril();
                 obj.FMFlag.FibrilAnalysis(i) = 1;
             end
@@ -3217,7 +3237,7 @@ classdef Experiment < matlab.mixin.Copyable
             uiwait(h.f)
         end
         
-        function [FileTypes,OutStruct,IsValid] = constructor_user_input_parser(ExperimentName,OS)
+        function [FileTypes,OutStruct,IsValid,BigData] = constructor_user_input_parser(ExperimentName,OS)
             
             IsValid = false;
             OutStruct = struct('FullFile',{cell(1,1),cell(1,1),cell(1,1),cell(1,1),cell(1,1)});
@@ -3282,6 +3302,10 @@ classdef Experiment < matlab.mixin.Copyable
             c(15) = uicontrol(h.f,'style','pushbutton','units','normalized',...
                 'position',[.15 .16 .1 .05],'string','Delete Selected',...
                 'Callback',@delete_selected);
+            c(16) = uicontrol(h.f,'style','checkbox','units','normalized',...
+                'position',[.3 .025 .2 .05],'string','Big Data mode',...
+                'tooltip','Recomme2nded when processing >~100000 force curves',...
+                'FontSize',18);
             
             HeightPos = [.82 .64 .46 .28 .1];
             
@@ -3305,9 +3329,9 @@ classdef Experiment < matlab.mixin.Copyable
                 DropListener(jAxis, ... % The component to be observed
                     'DropFcn', @(s, e)onDrop(h.f, s, e)); % Function to call on drop operation
                 h.DragNDrop = uicontrol(h.f,'style','text','units','normalized',...
-                    'position',[.3 .025 .65 .05],...
-                    'string','Drag and Drop files into boxes (excl. to Windows and Linux) or load from browser',...
-                    'FontSize',18);
+                    'position',[.5 .025 .5 .05],...
+                    'string',sprintf('Drag and Drop files into boxes\n (excl. to Windows and Linux) or load from browser'),...
+                    'FontSize',16);
 %             end
             
             % Create OK pushbutton
@@ -3335,6 +3359,7 @@ classdef Experiment < matlab.mixin.Copyable
                     end
                 end
                 IsValid = true;
+                BigData = c(16).Value;
                 close(h.f)
             end
             

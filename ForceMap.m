@@ -30,8 +30,11 @@ classdef ForceMap < matlab.mixin.Copyable
         FileVersion     % Version of jpk-force-map file
         FileType        % File Type: force map or qi-map
         Folder          % location of the .csv files of the force map
+        DataStoreFolder % 
         HostOS          % Operating System
         HostName        % Name of hosting system
+        BigDataFlag     % If true, unpack data container into Experiment subfolder
+                        % and always load force volume data from there
         FractionOfMaxRAM = 1/5 % Specifies how much of MaxRAM space can be taken for certain partitioned calculations 
         NCurves         % number of curves on the force map
         NumProfiles     % number of scanned profiles along the YSize of the force map
@@ -173,7 +176,7 @@ classdef ForceMap < matlab.mixin.Copyable
     methods
         % Main methods of the class
         
-        function obj = ForceMap(MapFullFile,DataFolder,TempID,FakeOpt,NSynthCurves)
+        function obj = ForceMap(MapFullFile,DataFolder,TempID,BigData,FakeOpt,NSynthCurves)
             %%% Constructor of the class
             
             % Specify the folder where the files live. And import them.
@@ -185,39 +188,33 @@ classdef ForceMap < matlab.mixin.Copyable
             current = what();
             
             obj.ID = TempID;
+            obj.BigDataFlag = BigData;
             
-            if nargin >= 4 && isequal(FakeOpt,'Dummy')
+            if nargin >= 5 && isequal(FakeOpt,'Dummy')
                 obj.create_dummy_force_map(NSynthCurves);
             end
             
             % get OS and use appropriate fitting system command
-            FullOS = computer;
-            OS = FullOS(1:3);
-            obj.HostOS = OS;
-            if isequal(OS,'PCW')
-                obj.HostName = getenv('COMPUTERNAME');
-            elseif isequal(OS,'GLN')
-                obj.HostName = getenv('HOSTNAME');
-            elseif isequal(OS,'MAC')
-                obj.HostName = getenv('HOSTNAME');
-            end
+            obj.check_for_new_host
             
             % Unpack jpk-force-map with 7zip call to the terminal
-            TempFolder = obj.unpack_jpk_force_map(MapFullFile,DataFolder);
+            obj.unpack_jpk_force_map(MapFullFile,DataFolder);
             
             Index = regexp(obj.ID,'(?<=\-).','all');
             LoadMessage = sprintf('loading data into ForceMap Nr.%s',obj.ID(Index(end):end));
             disp(LoadMessage)
             
             % reading header properties into object
-            obj.read_in_header_properties(TempFolder);
+            obj.read_in_header_properties;
             obj.SelectedCurves = ones(obj.NCurves,1);
             
-            %loading curve data into cell arrays
-            obj.load_force_curves(TempFolder);
-            
-            %clean up unzipped jpk-force-map file
-            rmdir(TempFolder,'s');
+            if ~obj.BigDataFlag
+                %loading curve data into cell arrays
+                obj.load_force_curves;
+                
+                %clean up unzipped jpk-force-map file
+                rmdir(obj.DataStoreFolder,'s');
+            end
             
             % intitialize masks
             obj.ExclMask = logical(ones(obj.NumProfiles,obj.NumPoints));
@@ -245,9 +242,11 @@ classdef ForceMap < matlab.mixin.Copyable
             f = figure('Name','Curve Selection','Position',[10000 10000 1200 900]);
             movegui(f);
             for i=1:obj.NCurves
+                [App,HHApp] = obj.get_force_curve_data(i,0,0,0);
+                [Ret,HHRet] = obj.get_force_curve_data(i,1,0,0);
                 dlgtitle = sprintf('Curve selection %i/%i',i,obj.NCurves);
                 plottitle = sprintf('Curve Nr. %i',i);
-                plot(obj.HHApp{i},obj.App{i},obj.HHRet{i},obj.Ret{i});
+                plot(HHApp,App,HHRet,Ret);
                 title(plottitle);
                 legend('Approach','Retract');
                 answ = questdlg('Do you want to process this indentation curve?',...
@@ -279,70 +278,24 @@ classdef ForceMap < matlab.mixin.Copyable
             % the non contact domain the function tries to fit a non-affine-linear
             % function. If the linear fit is too bad, the function tries a 9th grade
             % polynomial fit instead
-            if nargin<2
-                RunMode = 'poly9';
-            end
+            
             Range = find(obj.SelectedCurves);
             h = waitbar(0,'Setting up...');
             for i=Range'
-                AppForce = obj.App{i};
-                RetForce = obj.Ret{i};
-                %
-                %                 Force = [AppForce' RetForce'];
-                %
-                %                 % If found, remove sinusoidal approach
-                %                 Force = ForceMap.remove_sinusoidal_approach(Force,0);
-                %
-                %                 AppForce = Force(1:length(AppForce))';
-                %                 RetForce = Force(length(AppForce)+1:end)';
+                [AppForce,HHApp] = obj.get_force_curve_data(i,0,0,0);
                 
                 prog = i/obj.NCurves;
                 waitbar(prog,h,'processing baseline fits...');
                 [ncd , ncidx] = ForceMap.no_contact_domain(AppForce);
-                gof.rsquare = 0;
                 try
-                    for j=1:1
-                        [testfit,goftest] = fit(obj.HHApp{i}(1:ncidx),smooth(ncd),'poly1','Normalize','on');
-                        if goftest.rsquare>gof.rsquare
-                            gof = goftest;
-                            obj.Basefit{i} = testfit;
-                        end
-                    end
-                    SkipAssignment = false;
+                    Params = polyfit(HHApp(1:length(ncd)),ncd,1);
+                    obj.Basefit{i} = Params;
                 catch
                     warning('Error in base and tilt. Skipping current force curve and marked as unselected')
-                    obj.BasedApp{i} = AppForce;
-                    obj.BasedRet{i} = RetForce;
                     obj.SelectedCurves(i) = false;
-                    SkipAssignment = true;
-                end
-                
-                if gof.rsquare < 0.9 && isequal(RunMode,'poly9')
-                    %ncd(ncidx+1:length(obj.App{i})) = feval(obj.Basefit{i},obj.HHApp{i}(ncidx+1:length(obj.HHApp{i})));
-                    ext_range = obj.HHApp{i};
-                    ext_l = length(obj.HHApp{i});
-                    rangefit = fit([1:length(obj.HHApp{i})]',obj.HHApp{i},'poly1','Normalize','on');
-                    ext_range(ext_l+1:floor(1.01*ext_l)) = feval(rangefit,[ext_l+1:floor(1.01*ext_l)]');
-                    ncd(ncidx+1:length(ext_range)) = feval(obj.Basefit{i},ext_range(ncidx+1:length(ext_range)));
-                    [obj.Basefit{i},gof] =  fit(ext_range,smooth(ncd),'poly9','Normalize','on');
-                end
-                if ~SkipAssignment
-                    obj.BasedApp{i} = (AppForce-feval(obj.Basefit{i},obj.HHApp{i}));
-                    obj.BasedRet{i} = (RetForce-feval(obj.Basefit{i},obj.HHRet{i}));
                 end
             end
             
-            
-            % calculate vertical tip position by subtracting vertical tip deflection from head height
-            % Skip this step, if the total number of curves in the
-            % Force Map exceeds 16384
-            if obj.NCurves <= 16384
-                iRange = find(obj.SelectedCurves);
-                for i=iRange'
-                    obj.THApp{i} = obj.HHApp{i} - obj.BasedApp{i}/obj.SpringConstant;
-                    obj.THRet{i} = obj.HHRet{i} - obj.BasedRet{i}/obj.SpringConstant;
-                end
-            end
             close(h);
             obj.BaseAndTiltFlag = true;
         end
@@ -363,10 +316,8 @@ classdef ForceMap < matlab.mixin.Copyable
             
             for i=Range'
                 waitbar(i/obj.NCurves,h,'Refined Base and Tilt...');
-                App = obj.BasedApp{i};
-                Ret = obj.BasedRet{i};
-                HHApp = obj.HHApp{i};
-                HHRet = obj.HHRet{i};
+                [App,HHApp] = obj.get_force_curve_data(i,0,1,0);
+                [Ret,HHRet] = obj.get_force_curve_data(i,1,1,0);
                 CP = obj.CP(i,:);
                 
                 Cutoff = CP(1) - (1-FractionBeforeCP)*(CP(1) - min(HHApp));
@@ -376,11 +327,8 @@ classdef ForceMap < matlab.mixin.Copyable
                 
                 warning('off')
                 Params = polyfit(HHAppFit,AppFit,1);
+                obj.Basefit{i} = obj.Basefit{i} + Params;
                 warning('on')
-                FittedApp = polyval(Params,HHApp);
-                FittedRet = polyval(Params,HHRet);
-                BasedApp = App - FittedApp;
-                BasedRet = Ret - FittedRet;
                 
                 FittedCP = polyval(Params,CP(1));
                 obj.CP(i,2) = CP(2) - FittedCP;
@@ -433,9 +381,6 @@ classdef ForceMap < matlab.mixin.Copyable
                     FittedCP = polyval(Params,obj.Man_CP(i,1));
                     obj.Man_CP(i,2) = obj.Man_CP(i,2) - FittedCP;
                 end
-                
-                obj.BasedApp{i} = BasedApp;
-                obj.BasedRet{i} = BasedRet;
             end
             close(h)
         end
@@ -451,29 +396,31 @@ classdef ForceMap < matlab.mixin.Copyable
             SnapIn = zeros(obj.NCurves,1);
             for i=Range'
                 waitbar(i/obj.NCurves,h,'Finding contact point for Snap-In curve...');
-                AboveZeroBool = zeros(length(obj.BasedApp{i}),1);
-                AboveZeroBool(find(obj.BasedApp{i}>0)) = 1;
+                [App,HHApp] = obj.get_force_curve_data(i,0,1,0);
+                [Ret,HHRet] = obj.get_force_curve_data(i,1,1,0);
+                AboveZeroBool = zeros(length(App),1);
+                AboveZeroBool(find(App>0)) = 1;
                 k = 0;
                 while AboveZeroBool(end-k)
                     k = k + 1;
                 end
                 if k==0
-                    obj.CP(i,1) = obj.HHApp{i}(floor(.5*end));
-                    obj.CP(i,2) = obj.BasedApp{i}(floor(.5*end));
+                    obj.CP(i,1) = HHApp(floor(.5*end));
+                    obj.CP(i,2) = App(floor(.5*end));
                     obj.CP_SnapIn(i,:) = obj.CP(i,:);
                     obj.SelectedCurves(i) = 0;
                     continue
                 end
                     
-                AboveBase = [obj.HHApp{i}(end-(k-1)) obj.BasedApp{i}(end-(k-1))];
-                BelowBase = [obj.HHApp{i}(end-k) obj.BasedApp{i}(end-k)];
+                AboveBase = [HHApp(end-(k-1)) App(end-(k-1))];
+                BelowBase = [HHApp(end-k) App(end-k)];
                 obj.CP(i,1) = mean([AboveBase(1) BelowBase(1)]);
                 obj.CP(i,2) = 0;
                 obj.CP_SnapIn(i,:) = obj.CP(i,:);
                 clear AboveZeroBool
                 
                 try
-                    Force = obj.BasedApp{i} - obj.CP(i,2);
+                    Force = App - obj.CP(i,2);
                     SnapIn(i) = -min(Force);
                     
                 catch
@@ -518,12 +465,13 @@ classdef ForceMap < matlab.mixin.Copyable
             obj.CP_RoV = CP_RoV;
             for i=Range'
                 prog = i/obj.NCurves;
+                [App,HHApp] = obj.get_force_curve_data(i,0,1,0);
                 waitbar(prog,h,'applying ratio of variances method...');
-                obj.RoV{i} = zeros(length(obj.BasedApp{i}),1);
-                SmoothedApp = smoothdata(obj.BasedApp{i});
+                obj.RoV{i} = zeros(length(App),1);
+                SmoothedApp = smoothdata(App);
                 % loop through points and calculate the RoV
-                for j=(WindowSize+1):(length(obj.BasedApp{i})-WindowSize)
-                    obj.RoV{i}(j,1) = var(smoothdata(obj.BasedApp{i}((j+1):(j+WindowSize))))/...
+                for j=(WindowSize+1):(length(App)-WindowSize)
+                    obj.RoV{i}(j,1) = var(smoothdata(App((j+1):(j+WindowSize))))/...
                         var(SmoothedApp((j-WindowSize):(j-1)));
                 end
                 % normalize RoV-curve
@@ -531,7 +479,7 @@ classdef ForceMap < matlab.mixin.Copyable
                 minrov = min(obj.RoV{i}(WindowSize+1:length(obj.RoV{i})-WindowSize));
                 obj.RoV{i}(obj.RoV{i}==0) = minrov;
                 [~,CPidx] = max(obj.RoV{i});
-                obj.CP_RoV(i,:) = [obj.HHApp{i}(CPidx) obj.BasedApp{i}(CPidx)];
+                obj.CP_RoV(i,:) = [HHApp(CPidx) App(CPidx)];
                 obj.CP = obj.CP_RoV;
             end
             close(h)
@@ -554,8 +502,7 @@ classdef ForceMap < matlab.mixin.Copyable
             TipRadius = obj.TipRadius;
             PoissonR = obj.PoissonR;
             for i=Range'
-                Based = obj.BasedApp{i};
-                THApp = obj.HHApp{i} - obj.BasedApp{i}/obj.SpringConstant;
+                [Based,THApp] = obj.get_force_curve_data(i,0,1,1);
                 smoothx = smoothdata(THApp);
                 smoothy = smoothdata(Based);
                 Rsquare = 2*ones(length(Based),1);
@@ -590,9 +537,10 @@ classdef ForceMap < matlab.mixin.Copyable
             obj.CP_Combo = zeros(obj.NCurves,2);
             obj.CPComboCurve = cell(obj.NCurves,1);
             for i=Range'
+                [App,HHApp] = obj.get_force_curve_data(i,0,1,1);
                 obj.CPComboCurve{i} = obj.RoV{i}.*obj.GoF{i};
                 [~,CPidx] = max(obj.CPComboCurve{i});
-                obj.CP_Combo(i,:) = [obj.HHApp{i}(CPidx) obj.BasedApp{i}(CPidx)];
+                obj.CP_Combo(i,:) = [HHApp(CPidx) App(CPidx)];
                 obj.CP(i,:) = obj.CP_Combo(i,:);
             end
             
@@ -704,8 +652,9 @@ classdef ForceMap < matlab.mixin.Copyable
                             iRange = find(obj.SelectedCurves);
                             k = 1;
                             for i=iRange'
-                                obj.CP_CNN(i,1) = Ypredicted(k,1)*range(obj.HHApp{i})+min(obj.HHApp{i});
-                                obj.CP_CNN(i,2) = Ypredicted(k,2)*range(obj.BasedApp{i})+min(obj.BasedApp{i});
+                                [App,HHApp] = obj.get_force_curve_data(i,0,1,0);
+                                obj.CP_CNN(i,1) = Ypredicted(k,1)*range(HHApp)+min(HHApp);
+                                obj.CP_CNN(i,2) = Ypredicted(k,2)*range(App)+min(App);
                                 obj.CP(i,1) = obj.CP_CNN(i,1);
                                 obj.CP(i,2) = obj.CP_CNN(i,2);
                                 k = k + 1;
@@ -735,8 +684,9 @@ classdef ForceMap < matlab.mixin.Copyable
                             iRange = find(obj.SelectedCurves);
                             k = 1;
                             for i=iRange'
-                                obj.CP_MonteCarlo(:,1,i) = obj.YDropPred(:,1,k)*range(obj.HHApp{i})+min(obj.HHApp{i});
-                                obj.CP_MonteCarlo(:,2,i) = obj.YDropPred(:,2,k)*range(obj.BasedApp{i})+min(obj.BasedApp{i});
+                                [App,HHApp] = obj.get_force_curve_data(i,0,1,0);
+                                obj.CP_MonteCarlo(:,1,i) = obj.YDropPred(:,1,k)*range(HHApp)+min(HHApp);
+                                obj.CP_MonteCarlo(:,2,i) = obj.YDropPred(:,2,k)*range(App)+min(App);
                                 obj.CP(i,1) = mean(obj.CP_MonteCarlo(:,1,i));
                                 obj.CP(i,2) = mean(obj.CP_MonteCarlo(:,2,i));
                                 obj.CP_Dropout(i,1) = obj.CP(i,1);
@@ -763,8 +713,9 @@ classdef ForceMap < matlab.mixin.Copyable
                             iRange = find(obj.SelectedCurves);
                             k = 1;
                             for i=iRange'
-                                obj.CP_CNNZoom(i,1) = Ypredicted(k,1)*range(obj.HHApp{i})+min(obj.HHApp{i});
-                                obj.CP_CNNZoom(i,2) = Ypredicted(k,2)*range(obj.BasedApp{i})+min(obj.BasedApp{i});
+                                [App,HHApp] = obj.get_force_curve_data(i,0,1,0);
+                                obj.CP_CNNZoom(i,1) = Ypredicted(k,1)*range(HHApp)+min(HHApp);
+                                obj.CP_CNNZoom(i,2) = Ypredicted(k,2)*range(App)+min(App);
                                 obj.CP(i,1) = obj.CP_CNNZoom(i,1);
                                 obj.CP(i,2) = obj.CP_CNNZoom(i,2);
                                 k = k + 1;
@@ -789,8 +740,9 @@ classdef ForceMap < matlab.mixin.Copyable
                             iRange = find(obj.SelectedCurves);
                             k = 1;
                             for i=iRange'
-                                obj.CP_CNNZoom(i,1) = Ypredicted(k,1)*range(ZoomObj.HHApp{i})+min(ZoomObj.HHApp{i});
-                                obj.CP_CNNZoom(i,2) = Ypredicted(k,2)*range(ZoomObj.BasedApp{i})+min(ZoomObj.BasedApp{i});
+                                [App,HHApp] = ZoomObj.get_force_curve_data(i,0,1,0);
+                                obj.CP_CNNZoom(i,1) = Ypredicted(k,1)*range(HHApp)+min(HHApp);
+                                obj.CP_CNNZoom(i,2) = Ypredicted(k,2)*range(App)+min(App);
                                 obj.CP(i,1) = obj.CP_CNNZoom(i,1);
                                 obj.CP(i,2) = obj.CP_CNNZoom(i,2);
                                 k = k + 1;
@@ -814,8 +766,9 @@ classdef ForceMap < matlab.mixin.Copyable
                             iRange = find(obj.SelectedCurves);
                             k = 1;
                             for i=iRange'
-                                obj.CP_CNNZoom(i,1) = Ypredicted(k,1)*range(obj.HHApp{i})+min(obj.HHApp{i});
-                                obj.CP_CNNZoom(i,2) = Ypredicted(k,2)*range(obj.BasedApp{i})+min(obj.BasedApp{i});
+                                [App,HHApp] = obj.get_force_curve_data(i,0,1,0);
+                                obj.CP_CNNZoom(i,1) = Ypredicted(k,1)*range(HHApp)+min(HHApp);
+                                obj.CP_CNNZoom(i,2) = Ypredicted(k,2)*range(App)+min(App);
                                 obj.CP(i,1) = obj.CP_CNNZoom(i,1);
                                 obj.CP(i,2) = obj.CP_CNNZoom(i,2);
                                 k = k + 1;
@@ -840,8 +793,9 @@ classdef ForceMap < matlab.mixin.Copyable
                             iRange = find(obj.SelectedCurves);
                             k = 1;
                             for i=iRange'
-                                obj.CP_CNNZoom(i,1) = Ypredicted(k,1)*range(ZoomObj.HHApp{i})+min(ZoomObj.HHApp{i});
-                                obj.CP_CNNZoom(i,2) = Ypredicted(k,2)*range(ZoomObj.BasedApp{i})+min(ZoomObj.BasedApp{i});
+                                [App,HHApp] = ZoomObj.get_force_curve_data(i,0,1,0);
+                                obj.CP_CNNZoom(i,1) = Ypredicted(k,1)*range(HHApp)+min(HHApp{i});
+                                obj.CP_CNNZoom(i,2) = Ypredicted(k,2)*range(App)+min(App);
                                 obj.CP(i,1) = obj.CP_CNNZoom(i,1);
                                 obj.CP(i,2) = obj.CP_CNNZoom(i,2);
                                 k = k + 1;
@@ -864,8 +818,9 @@ classdef ForceMap < matlab.mixin.Copyable
                             iRange = find(obj.SelectedCurves);
                             k = 1;
                             for i=iRange'
-                                obj.CP_CNNZoom(i,1) = Ypredicted(k,1)*range(obj.HHApp{i})+min(obj.HHApp{i});
-                                obj.CP_CNNZoom(i,2) = Ypredicted(k,2)*range(obj.BasedApp{i})+min(obj.BasedApp{i});
+                                [App,HHApp] = obj.get_force_curve_data(i,0,1,0);
+                                obj.CP_CNNZoom(i,1) = Ypredicted(k,1)*range(HHApp)+min(HHApp);
+                                obj.CP_CNNZoom(i,2) = Ypredicted(k,2)*range(App)+min(App);
                                 obj.CP(i,1) = obj.CP_CNNZoom(i,1);
                                 obj.CP(i,2) = obj.CP_CNNZoom(i,2);
                                 k = k + 1;
@@ -895,8 +850,9 @@ classdef ForceMap < matlab.mixin.Copyable
                             k = 1;
                             for i=iRange'
                                 for j=1:NumPasses
-                                    TempCP(i,1,j) = Ypredicted(k+length(iRange)*(j-1),1)*range(ZoomCell{j}.HHApp{i})+min(ZoomCell{j}.HHApp{i});
-                                    TempCP(i,2,j) = Ypredicted(k+length(iRange)*(j-1),2)*range(ZoomCell{j}.BasedApp{i})+min(ZoomCell{j}.BasedApp{i});
+                                    [App,HHApp] = ZoomCell{j}.get_force_curve_data(i,0,1,0);
+                                    TempCP(i,1,j) = Ypredicted(k+length(iRange)*(j-1),1)*range(HHApp)+min(HHApp);
+                                    TempCP(i,2,j) = Ypredicted(k+length(iRange)*(j-1),2)*range(App)+min(App);
                                 end
                                 obj.CP_CNNZoomSweep(i,1) = mean(TempCP(i,1,:),3);
                                 obj.CP_CNNZoomSweep(i,2) = mean(TempCP(i,2,:),3);
@@ -931,26 +887,28 @@ classdef ForceMap < matlab.mixin.Copyable
             % Oliver-Pharr analysis
             iRange = find(obj.SelectedCurves);
             for i=iRange'
+                [App,HHApp] = obj.get_force_curve_data(i,0,1,0);
+                [Ret,HHRet] = obj.get_force_curve_data(i,1,1,0);
                 try
-                load = zeros(length(obj.BasedApp{i}),2);
-                unload = zeros(length(obj.Ret{i}),2);
-                for j=1:length(obj.BasedApp{i})
-                    load(end-(j-1),1) = obj.HHApp{i}(j);
-                    load(j,2) = obj.BasedApp{i}(j);
+                load = zeros(length(App),2);
+                unload = zeros(length(Ret),2);
+                for j=1:length(App)
+                    load(end-(j-1),1) = HHApp(j);
+                    load(j,2) = App(j);
                 end
-                for j=1:length(obj.Ret{i})
-                    unload(end-(j-1),1) = obj.HHRet{i}(j);
-                    unload(j,2) = obj.Ret{i}(j);
+                for j=1:length(Ret)
+                    unload(end-(j-1),1) = HHRet(j);
+                    unload(j,2) = Ret(j);
                 end
                 [obj.LoadOld{i},obj.UnloadOld{i},Position,vDef] = ContactPoint_sort(load,unload);
-                obj.CP(i,2) = obj.BasedApp{i}(Position);
-                obj.CP(i,1) = obj.HHApp{i}(Position);
+                obj.CP(i,2) = App(Position);
+                obj.CP(i,1) = HHApp(Position);
                 obj.CP_Old(i,1) =obj.CP(i,1);
                 obj.CP_Old(i,2) =obj.CP(i,2);
                 catch
                     disp(sprintf('Failed to find CP on Curve Nr.%i. \nReplacing with minimum values and unselecting curve',i))
-                    obj.CP(i,2) = obj.BasedApp{i}(1);
-                    obj.CP(i,1) = obj.HHApp{i}(1);
+                    obj.CP(i,2) = App(1);
+                    obj.CP(i,1) = HHApp(1);
                     obj.CP_Old(i,1) =obj.CP(i,1);
                     obj.CP_Old(i,2) =obj.CP(i,2);
                     obj.SelectedCurves(i) = 0;
@@ -984,19 +942,21 @@ classdef ForceMap < matlab.mixin.Copyable
             end
             while sum(jRange==j)
                 %                 fig.WindowState = 'fullscreen';
-                plot(obj.HHApp{j},obj.BasedApp{j});
+                [App,HHApp] = obj.get_force_curve_data(j,0,1,0);
+                [Ret,HHRet] = obj.get_force_curve_data(j,1,1,0);
+                plot(HHApp,App);
                 plottitle = sprintf('Curve Nr.%i/%i\n Click or click and drag the point to the contact point\n Click the red area to exclude the current curve from further analysis\n Click the green area to go back one curve',j,obj.NCurves);
                 title(plottitle);
-                [~, domainidx] = ForceMap.no_contact_domain(obj.App{j});
-                axis([obj.HHApp{j}(floor(domainidx*Zoom)) inf -inf inf])
-                XRange = range(obj.HHApp{j}(floor(domainidx*Zoom):end));
-                YRange = range(obj.BasedApp{j});
+                [~, domainidx] = ForceMap.no_contact_domain(App);
+                axis([HHApp(floor(domainidx*Zoom)) inf -inf inf])
+                XRange = range(HHApp(floor(domainidx*Zoom):end));
+                YRange = range(App);
                 BtnSemAxisX = XRange/8;
                 BtnSemAxisY = YRange/8;
-                XPosDel = max(obj.HHApp{j}) - 5/8*XRange;
-                YPosDel = max(obj.BasedApp{j}) - 1/3*YRange;
-                XPosBack = max(obj.HHApp{j}) - 7/8*XRange;
-                YPosBack = max(obj.BasedApp{j}) - 1/3*YRange;
+                XPosDel = max(HHApp) - 5/8*XRange;
+                YPosDel = max(App) - 1/3*YRange;
+                XPosBack = max(HHApp) - 7/8*XRange;
+                YPosBack = max(App) - 1/3*YRange;
                 DelBtn = drawellipse('Center',[XPosDel YPosDel],...
                     'SemiAxes',[BtnSemAxisX BtnSemAxisY],...
                     'Color','r',...
@@ -1057,10 +1017,11 @@ classdef ForceMap < matlab.mixin.Copyable
             % surfaces
             
             for i=1:obj.NCurves
-                obj.CP_HardSurface(i,1) = obj.HHApp{i}(end) - obj.BasedApp{i}(end)/obj.SpringConstant;
+                [App,HHApp] = obj.get_force_curve_data(i,0,1,0);
+                obj.CP_HardSurface(i,1) = HHApp(end) - App(end)/obj.SpringConstant;
                 obj.CP_HardSurface(i,2) = 0;
                 %% Debugging
-                % plot(obj.HHApp{i},obj.BasedApp{i});
+                % plot(HHApp,App);
                 % drawpoint('Position',[obj.CP_HardSurface(i,1) obj.CP_HardSurface(i,2)]);
             end
             obj.CPFlag.HardSurface = 1;
@@ -1102,8 +1063,9 @@ classdef ForceMap < matlab.mixin.Copyable
                 else
                     CP = obj.CP(i,:);
                 end
-                force = obj.BasedApp{i} - CP(2);
-                tip_h = (obj.HHApp{i} - CP(1)) - force/obj.SpringConstant;
+                [App,HHApp] = obj.get_force_curve_data(i,0,1,0);
+                force = App - CP(2);
+                tip_h = (HHApp - CP(1)) - force/obj.SpringConstant;
                 tip_h(tip_h < 0) = [];
                 if length(tip_h) < 2
                     continue
@@ -1242,8 +1204,9 @@ classdef ForceMap < matlab.mixin.Copyable
             obj.IndentationDepthOliverPharr = zeros(obj.NCurves,1);
             obj.IndentArea = zeros(obj.NCurves,1);
             for i=Range'
-                Z = obj.HHRet{i} - obj.CP(i,1);
-                D = (obj.BasedRet{i} - obj.CP(i,2))/obj.SpringConstant;
+                [Ret,HHRet] = obj.get_force_curve_data(i,1,1,0);
+                Z = HHRet - obj.CP(i,1);
+                D = (Ret - obj.CP(i,2))/obj.SpringConstant;
                 Zmax(i) = max(Z);
                 Dmax(i) = max(D);
                 DCurvePercent = D(D>=(1-CurvePercent)*Dmax(i));
@@ -1336,8 +1299,9 @@ classdef ForceMap < matlab.mixin.Copyable
             Range = find(obj.SelectedCurves);
             MaxAdhesionForce = zeros(obj.NCurves,1);
             for i=Range'
-                Force = obj.BasedRet{i} - obj.CP(i,2);
-                TipHeight = (obj.HHRet{i} - obj.CP(i,1)) - Force/obj.SpringConstant;
+                [Ret,HHRet] = obj.get_force_curve_data(i,1,1,0);
+                Force = Ret - obj.CP(i,2);
+                TipHeight = (HHRet - obj.CP(i,1)) - Force/obj.SpringConstant;
                 MaxAdhesionForce(i) = -min(Force);
             end
             
@@ -1369,10 +1333,12 @@ classdef ForceMap < matlab.mixin.Copyable
             AdhesionEnergy = zeros(obj.NCurves,1);
             AdhesionLength = zeros(obj.NCurves,1);
             for i=Range'
-                AppForce = obj.BasedApp{i} - obj.CP(i,2);
-                AppTipHeight = (obj.HHApp{i} - obj.CP(i,1)) - AppForce/obj.SpringConstant;
-                RetForce = flipud(obj.BasedRet{i}) - obj.CP(i,2);
-                RetTipHeight = (flipud(obj.HHRet{i}) - obj.CP(i,1)) - RetForce/obj.SpringConstant;
+                [App,HHApp] = obj.get_force_curve_data(i,0,1,0);
+                [Ret,HHRet] = obj.get_force_curve_data(i,1,1,0);
+                AppForce = App - obj.CP(i,2);
+                AppTipHeight = (HHApp - obj.CP(i,1)) - AppForce/obj.SpringConstant;
+                RetForce = flipud(Ret) - obj.CP(i,2);
+                RetTipHeight = (flipud(HHRet) - obj.CP(i,1)) - RetForce/obj.SpringConstant;
                 
                 try
                     % Baseline the retraction curve
@@ -1460,10 +1426,12 @@ classdef ForceMap < matlab.mixin.Copyable
             Range = find(obj.SelectedCurves);
             PeakIndentationAngle = zeros(obj.NCurves,1);
             for i=Range'
-                AppForce = obj.BasedApp{i} - obj.CP(i,2);
-                AppHeadHeight = (obj.HHApp{i} - obj.CP(i,1));% - AppForce/obj.SpringConstant;
-                RetForce = obj.BasedRet{i} - obj.CP(i,2);
-                RetHeadHeight = (obj.HHRet{i} - obj.CP(i,1));% - RetForce/obj.SpringConstant;
+                [App,HHApp] = obj.get_force_curve_data(i,0,1,0);
+                [Ret,HHRet] = obj.get_force_curve_data(i,1,1,0);
+                AppForce = App - obj.CP(i,2);
+                AppHeadHeight = (HHApp - obj.CP(i,1));% - AppForce/obj.SpringConstant;
+                RetForce = Ret - obj.CP(i,2);
+                RetHeadHeight = (HHRet - obj.CP(i,1));% - RetForce/obj.SpringConstant;
                 
                 % Convert from force to vDef
                 AppForce = AppForce/obj.SpringConstant;
@@ -1534,10 +1502,12 @@ classdef ForceMap < matlab.mixin.Copyable
             DissipatedEnergy = zeros(obj.NCurves,1);
             ElasticEnergy = zeros(obj.NCurves,1);
             for i=Range'
-                AppForce = obj.BasedApp{i} - obj.CP(i,2);
-                AppTipHeight = (obj.HHApp{i} - obj.CP(i,1)) - AppForce/obj.SpringConstant;
-                RetForce = obj.BasedRet{i} - obj.CP(i,2);
-                RetTipHeight = (obj.HHRet{i} - obj.CP(i,1)) - RetForce/obj.SpringConstant;
+                [App,HHApp] = obj.get_force_curve_data(i,0,1,0);
+                [Ret,HHRet] = obj.get_force_curve_data(i,1,1,0);
+                AppForce = App - obj.CP(i,2);
+                AppTipHeight = (HHApp - obj.CP(i,1)) - AppForce/obj.SpringConstant;
+                RetForce = Ret - obj.CP(i,2);
+                RetTipHeight = (HHRet - obj.CP(i,1)) - RetForce/obj.SpringConstant;
                 try
                     AppX = AppTipHeight(AppTipHeight > 0);
                     AppY = AppForce(AppTipHeight > 0);
@@ -1728,9 +1698,10 @@ classdef ForceMap < matlab.mixin.Copyable
             imgorsize = cell(sum(obj.SelectedCurves),1);
             h = waitbar(0,'Setting up...');
             for i=Range'
+                [App,~] = obj.get_force_curve_data(i,0,1,0);
                 prog = i/obj.NCurves;
                 waitbar(prog,h,'Converting force curves to images...');
-                norm =  round(normalize(obj.BasedApp{i},'range',[1 imres]));
+                norm =  round(normalize(App,'range',[1 imres]));
                 mat = zeros(imres,imres);
                 for m=1:length(norm)
                     mat(m,norm(m)) = 1;
@@ -1770,8 +1741,10 @@ classdef ForceMap < matlab.mixin.Copyable
 
         function [MinApp] = min_force(obj)           
             for ii=1:obj.NCurves
-            MinApp(ii)=min(obj.BasedApp{ii});
-            MinRet(ii)=min(obj.BasedRet{ii}); 
+                [App,HHApp] = obj.get_force_curve_data(ii,0,1,0);
+                [Ret,HHRet] = obj.get_force_curve_data(ii,1,1,0);
+            MinApp(ii)=min(App);
+            MinRet(ii)=min(Ret); 
             end
             obj.MinRet = MinRet;
         end
@@ -2353,11 +2326,6 @@ classdef ForceMap < matlab.mixin.Copyable
             
             Force = deflmeter;
             
-            clear tline SegmentHeaderFileDirectory HeighDataDirectory...
-                vDelfDataDirectory mult_height_volts offset_height_volts...
-                mult_height_meters offset_height_meters...
-                mult_vDefl_volts offset_vDefl_volts...
-                mult_vDefl_meters ;
             fclose(fileID);
         end
         
@@ -2476,206 +2444,7 @@ classdef ForceMap < matlab.mixin.Copyable
             where=strfind(tline,'=');
             spring_constant = str2double(tline(where+1:end));
             
-            clear tline A B where
-            
             fclose(fileID);
-        end
-        
-        function X = CP_CNN_batchprep(objcell,ImgSize)
-            % This function takes as input a 1xN objcell of N objects of the class
-            % 'ForceMap' and combines them into the matrizes needed for NN-training
-            if nargin < 2
-                ImgSize = 128;
-            end
-            Nmaps = length(objcell);
-            
-            % Preallocate sizes of the outputvariables. The trainNetwork() function
-            % requires the batch X of predictor varables (in this case the force-images)
-            % to be a height-by-width-by-channelnumber-by-Numberofimages array and the
-            % prelabeled regression responses Y to be a
-            % Numberofimages-by-Numberofresponses array
-            Nimgs = 0;
-            for i=1:Nmaps
-                Nimgs = Nimgs + sum(objcell{i}.SelectedCurves);
-            end
-            X = zeros(ImgSize,ImgSize,1,Nimgs);
-            
-            fig = figure('Color','w');
-            k = 1;
-            for i=1:Nmaps
-                jRange = find(objcell{i}.SelectedCurves);
-                for j=jRange'
-                    % Save the plots as images and convert them into cropped [0
-                    % 1]-range grayscale images
-                    
-                    figure(fig)
-                    fig.Name = sprintf('%s curve nr.%i',objcell{i}.Name,j);
-                    plot(objcell{i}.THApp{j},objcell{i}.BasedApp{j},'color','black');
-                    axis([min(objcell{i}.THApp{j}) max(objcell{i}.THApp{j}) min(objcell{i}.BasedApp{j}) max(objcell{i}.BasedApp{j})])
-                    axis off
-                    graytest = imcomplement(rgb2gray(frame2im(getframe(fig))));
-                    grayscaled = double(graytest)/255;
-                    % Crop off the rows and columns of the image only containing zeros
-                    crop = [1 size(grayscaled,2) 1 size(grayscaled,1)];
-                    while sum(grayscaled(:,crop(1)))== 0
-                        crop(1) = crop(1) + 1;
-                    end
-                    crop(1) = crop(1) - 1;
-                    while sum(grayscaled(:,crop(2)))== 0
-                        crop(2) = crop(2) - 1;
-                    end
-                    crop(2) = crop(2) + 1;
-                    while sum(grayscaled(crop(3),:))== 0
-                        crop(3) = crop(3) + 1;
-                    end
-                    crop(3) = crop(3) - 1;
-                    while sum(grayscaled(crop(4),:))== 0
-                        crop(4) = crop(4) - 1;
-                    end
-                    crop(4) = crop(4) + 1;
-                    grayscaled(:,[1:crop(1) crop(2):size(grayscaled,2)]) = [];
-                    grayscaled([1:crop(3) crop(4):size(grayscaled,1)],:) = [];
-                    grayfinal = imresize(grayscaled,[ImgSize ImgSize],'bilinear');
-                    % Fill the output variable X
-                    X(:,:,1,k) = grayfinal;
-                    k = k + 1;
-                end
-            end
-            close(fig);
-            
-        end
-        
-        function X = CP_oliver_pharr_batchprep(objcell,ImgSize)
-            % This function takes as input a 1xN objcell of N objects of the class
-            % 'ForceMap' and converts them into 128x128 images needed for
-            % NN-inference
-            if nargin < 2
-                ImgSize = 128;
-            end
-            Nmaps = length(objcell);
-            
-            % Preallocate sizes of the outputvariables. The trainNetwork() function
-            % requires the batch X of predictor varables (in this case the force-images)
-            % to be a height-by-width-by-channelnumber-by-Numberofimages array and the
-            % prelabeled regression responses Y to be a
-            % Numberofimages-by-Numberofresponses array
-            Nimgs = 0;
-            for i=1:Nmaps
-                Nimgs = Nimgs + sum(objcell{i}.SelectedCurves);
-            end
-            X = zeros(ImgSize,ImgSize,1,Nimgs);
-            
-            fig = figure('Color','w');
-            k = 1;
-            for i=1:Nmaps
-                jRange = find(objcell{i}.SelectedCurves);
-                for j=jRange'
-                    % Save the plots as images and convert them into cropped [0
-                    % 1]-range grayscale images
-                    
-                    figure(fig)
-                    fig.Name = sprintf('%s curve nr.%i',objcell{i}.Name,j);
-                    plot(objcell{i}.HHApp{j},objcell{i}.BasedApp{j},'color','black');
-                    axis([min(objcell{i}.HHApp{j}) max(objcell{i}.HHApp{j}) min(objcell{i}.BasedApp{j}) max(objcell{i}.BasedApp{j})])
-                    axis off
-                    graytest = imcomplement(rgb2gray(frame2im(getframe(fig))));
-                    grayscaled = double(graytest)/255;
-                    % Crop off the rows and columns of the image only containing zeros
-                    crop = [1 size(grayscaled,2) 1 size(grayscaled,1)];
-                    while sum(grayscaled(:,crop(1)))== 0
-                        crop(1) = crop(1) + 1;
-                    end
-                    crop(1) = crop(1) - 1;
-                    while sum(grayscaled(:,crop(2)))== 0
-                        crop(2) = crop(2) - 1;
-                    end
-                    crop(2) = crop(2) + 1;
-                    while sum(grayscaled(crop(3),:))== 0
-                        crop(3) = crop(3) + 1;
-                    end
-                    crop(3) = crop(3) - 1;
-                    while sum(grayscaled(crop(4),:))== 0
-                        crop(4) = crop(4) - 1;
-                    end
-                    crop(4) = crop(4) + 1;
-                    grayscaled(:,[1:crop(1) crop(2):size(grayscaled,2)]) = [];
-                    grayscaled([1:crop(3) crop(4):size(grayscaled,1)],:) = [];
-                    grayfinal = imresize(grayscaled,[ImgSize ImgSize],'bilinear');
-                    % Fill the output variable X
-                    X(:,:,1,k) = grayfinal;
-                    k = k + 1;
-                end
-            end
-            close(fig);
-            
-        end
-        
-        function X = CP_batchprep_new(objcell,ImgSizeFinal,ImgSize)
-            
-            if nargin<2
-                ImgSize = 478;
-                ImgSizeFinal = 128;
-            elseif nargin < 3
-                ImgSize = 478;
-            end
-            Nmaps = length(objcell);
-            
-            % Preallocate sizes of the outputvariables. The trainNetwork() function
-            % requires the batch X of predictor varables (in this case the force-images)
-            % to be a height-by-width-by-channelnumber-by-Numberofimages array and the
-            % prelabeled regression responses Y to be a
-            % Numberofimages-by-Numberofresponses array
-            Nimgs = 0;
-            for i=1:Nmaps
-                Nimgs = Nimgs + sum(objcell{i}.SelectedCurves);
-            end
-            X = zeros(ImgSizeFinal,ImgSizeFinal,1,Nimgs);
-            
-            k = 1;
-            for i=1:Nmaps
-                jRange = find(objcell{i}.SelectedCurves);
-                for j=jRange'
-                    
-                    Image = zeros(ImgSize,ImgSize);
-                    
-                    Points(:,1) = objcell{i}.HHApp{j};
-                    Points(:,2) = objcell{i}.BasedApp{j};
-                    Points(:,1) = (Points(:,1)-min(Points(:,1)))/range(Points(:,1))*(ImgSize-1);
-                    Points(:,2) = (Points(:,2)-min(Points(:,2)))/range(Points(:,2))*(ImgSize-1);
-                    
-                    L = length(Points);
-                    for m=1:L
-                        
-                        if m==1
-                            Position = [floor(Points(m,1))+1,floor(Points(m,2))+1];
-                        end
-                        if m<L
-                            NextPosition = [floor(Points(m+1,1))+1,floor(Points(m+1,2))+1];
-                        end
-                        Image((ImgSize+1)-Position(2),Position(1)) = 1;
-                        
-                        % fill out points between actual data points
-                        if m<L
-                            L1Norm = norm(Points(m+1,:)-Points(m,:));
-                            IncrX = (Points(m+1,1) - Points(m,1))/L1Norm;
-                            IncrY = (Points(m+1,2) - Points(m,2))/L1Norm;
-                            FillerPos = Points(m,:);
-                            while norm((FillerPos + [IncrX IncrY]) - Points(m,:)) < norm(Points(m+1,:) - Points(m,:))
-                                FillerPos(1) = FillerPos(1) + IncrX;
-                                FillerPos(2) = FillerPos(2) + IncrY;
-                                Image((ImgSize+1)-(floor(FillerPos(2))+1),floor(FillerPos(1))+1) = 1;
-                            end
-                        end
-                        Position = NextPosition;
-                    end
-                    if ImgSize ~= ImgSizeFinal
-                        Image = imresize(Image,[ImgSizeFinal ImgSizeFinal]);
-                    end
-                    X(:,:,1,k) = Image;
-                    k = k + 1;
-                    clear Points
-                end
-            end
         end
         
         function X = CP_batchprep_3_channel(objcell,ImgSizeFinal,ImgSize,CutPercent)
@@ -2725,8 +2494,9 @@ classdef ForceMap < matlab.mixin.Copyable
                             Image = zeros(ImgSizeFinal,ImgSizeFinal,'single');
                         end
                         
-                        Points(:,1) = objcell{i}.HHApp{j}(floor(n*length(objcell{i}.HHApp{j}))+1:end);
-                        Points(:,2) = objcell{i}.BasedApp{j}(floor(n*length(objcell{i}.BasedApp{j}))+1:end);
+                        [App,HHApp] = objcell{i}.get_force_curve_data(j,0,1,0);
+                        Points(:,1) = HHApp(floor(n*length(HHApp))+1:end);
+                        Points(:,2) = App(floor(n*length(App))+1:end);
                         Points(:,1) = (Points(:,1)-min(Points(:,1)))/range(Points(:,1))*(ImgSize-1);
                         Points(:,2) = (Points(:,2)-min(Points(:,2)))/range(Points(:,2))*(ImgSize-1);
                         
@@ -2833,10 +2603,12 @@ classdef ForceMap < matlab.mixin.Copyable
             % Calculate the DZslopes
             k = 1;
             for i=Range'
+                [App,HHApp] = obj.get_force_curve_data(i,0,1,0);
+                [Ret,HHRet] = obj.get_force_curve_data(i,1,1,0);
                 if (Mask(obj.List2Map(i,1),obj.List2Map(i,2)) == 1) &&...
                         (obj.ExclMask(obj.List2Map(i,1),obj.List2Map(i,2)) == 1)
-                    Z(:,i) = obj.HHRet{i} - obj.CP(i,1);
-                    D(:,i) = (obj.BasedRet{i} - obj.CP(i,2))/obj.SpringConstant;
+                    Z(:,i) = HHRet - obj.CP(i,1);
+                    D(:,i) = (Ret - obj.CP(i,2))/obj.SpringConstant;
                     Dmax = max(D(:,i));
                     DCurvePercent = D(D(:,i)>=(1-CurvePercent)*Dmax,i);
                     ZCurvePercent = Z(1:length(DCurvePercent),i);
@@ -2869,7 +2641,7 @@ classdef ForceMap < matlab.mixin.Copyable
         
         function set_reference_slope_to_value(obj,Value)
             obj.RefSlope = Value; % BEST.FUNCTION.EVER.WRITTEN.
-            obj.HasRefSlope = true;
+            obj.HasRefSlope = true; % so true
         end
         
         function Mask = create_mask_general(obj)
@@ -2925,7 +2697,8 @@ classdef ForceMap < matlab.mixin.Copyable
             end
             Max = zeros(obj.NCurves,1);
             for i=1:obj.NCurves
-                Max(i) = -max(obj.HHApp{i});
+                [~,HHApp] = obj.get_force_curve_data(i,0,0,0);
+                Max(i) = -max(HHApp);
             end
             obj.HeightMap = obj.convert_data_list_to_map(Max);
             % Create an Exclusion Mask with the standard deviation method
@@ -2986,7 +2759,13 @@ classdef ForceMap < matlab.mixin.Copyable
                 obj.Channel(Index) = Height;
             end
             
-            Map = imresize(obj.HeightMap,[1024 1024],'bicubic');
+            if size(obj.HeightMap,1) < 128
+                Map = imresize(obj.HeightMap,[256 256],'bicubic');
+            elseif size(obj.HeightMap,1) < 512
+                Map = imresize(obj.HeightMap,[512 512],'bicubic');
+            else
+                Map = imresize(obj.HeightMap,[1024 1024],'bicubic');
+            end
             for i=1:5
                 Map = AFMImage.subtract_line_fit_vertical_rov(Map,.2,0);
             end
@@ -3006,6 +2785,8 @@ classdef ForceMap < matlab.mixin.Copyable
             else
                 obj.Channel(Index) = Processed;
             end
+            
+            obj.HeightMap = Processed.Image;
             
         end
         
@@ -3068,7 +2849,8 @@ classdef ForceMap < matlab.mixin.Copyable
             mask = zeros(size(obj.HeightMap));
             HeightList = zeros(obj.NCurves,1);
             for i=1:obj.NCurves
-                HeightList(i) = -obj.HHApp{i}(end);
+                [~,HHApp] = obj.get_force_curve_data(i,0,1,0);
+                HeightList(i) = -HHApp(end);
             end
             STDLine = zeros(obj.NCurves,1);
             [HeightSorted,Idx] = sort(HeightList,'descend');
@@ -3173,15 +2955,22 @@ classdef ForceMap < matlab.mixin.Copyable
             
             iRange = find(obj.SelectedCurves)';
             for i=iRange
-                CutOff = min(obj.HHApp{i}) + range(obj.HHApp{i}(obj.HHApp{i}<=obj.CP_CNNZoom(i,1)))*ZoomFactor;
-                obj.HHApp{i}(obj.HHApp{i}<CutOff) = [];
-                obj.BasedApp{i}(1:(end-length(obj.HHApp{i}))) = [];
+                [App,HHApp] = obj.get_force_curve_data(i,0,1,0);
+                CutOff = min(HHApp) + range(HHApp(HHApp<=obj.CP_CNNZoom(i,1)))*ZoomFactor;
+                HHApp(HHApp<CutOff) = [];
+                App(1:(end-length(HHApp))) = [];
             end
             
             
         end
         
-        function TempFolder = unpack_jpk_force_map(obj,MapFullFile,DataFolder)
+        function unpack_jpk_force_map(obj,MapFullFile,DataFolder)
+            
+            if obj.BigDataFlag
+                TempFolderName = sprintf('FM-DataStore-%s',obj.ID);
+            else
+                TempFolderName = sprintf('Temp%s',obj.ID);
+            end
             
             if isequal('PCW',obj.HostOS)
                 % unpack jpk-file into temporary folder to read out data
@@ -3190,7 +2979,6 @@ classdef ForceMap < matlab.mixin.Copyable
                 cmd3 = MapFullFile;
                 cmd4 = '"';
                 cmd5 = ' -o';
-                TempFolderName = sprintf('Temp%s',obj.ID);
                 mkdir(DataFolder,TempFolderName)
                 cmd6 = '"';
                 TempFolder = fullfile(DataFolder,TempFolderName,filesep);
@@ -3233,7 +3021,6 @@ classdef ForceMap < matlab.mixin.Copyable
                 cmd1 = 'unzip -o ';
                 cmd2 = MapFullFile;
                 cmd3 = ' -d ';
-                TempFolderName = sprintf('Temp%s',obj.ID);
                 mkdir(DataFolder,TempFolderName)
                 TempFolder = fullfile(DataFolder,TempFolderName,filesep);
                 CMD = append(cmd1,cmd2,cmd3,TempFolder);
@@ -3267,7 +3054,6 @@ classdef ForceMap < matlab.mixin.Copyable
                 cmd1 = 'unzip -o ';
                 cmd2 = MapFullFile;
                 cmd3 = ' -d ';
-                TempFolderName = sprintf('Temp%s',obj.ID);
                 mkdir(DataFolder,TempFolderName)
                 TempFolder = fullfile(DataFolder,TempFolderName,filesep);
                 CMD = append(cmd1,cmd2,cmd3,TempFolder);
@@ -3296,13 +3082,16 @@ classdef ForceMap < matlab.mixin.Copyable
                 mkdir(DataFolder,'ForceData')
                 obj.Folder = fullfile(DataFolder,'ForceData',filesep);
             end
+            
+            obj.DataStoreFolder = TempFolder;
+            
         end
         
-        function read_in_header_properties(obj,TempFolder)
+        function read_in_header_properties(obj)
             % Check for jpk-software version and get important ForceMap
             % properties
             
-            filedirectory = fullfile(TempFolder,'header.properties');
+            filedirectory = fullfile(obj.DataStoreFolder,'header.properties');
             fileID=fopen(filedirectory,'rt','n','UTF-8'); % fileID = fopen(filename,permission,machinefmt,encodingIn)
             A=fileread(filedirectory);
             % Height: 1. CONVERSION raw-meters & 2. SCALE meters
@@ -3443,13 +3232,13 @@ classdef ForceMap < matlab.mixin.Copyable
             obj.GridAngle = str2double(tline(where+1:end));
             obj.GridAngle = obj.GridAngle*180/pi;
             
-            clear tline A B where
+            obj.HHType = 'capacitiveSensorHeight';
             
             fclose(fileID);
         end
         
-        function load_force_curves(obj,TempFolder)
-            
+        function load_force_curves(obj)
+            TempFolder = obj.DataStoreFolder;
             obj.HHType = 'capacitiveSensorHeight';
             for i=1:obj.NCurves
                 HeaderFileDirectory = fullfile(TempFolder,'shared-data','header.properties');
@@ -3532,6 +3321,131 @@ classdef ForceMap < matlab.mixin.Copyable
                         obj.Ret{i} = zeros(obj.MaxPointsPerCurve,1);
                     end
                 end
+            end
+        end
+        
+        function [OutForce,OutHeight] = get_force_curve_data(obj,CurveNumber,AppRetSwitch,isBased,isTipHeightCorrected)
+            % [OutForce,OutHeight] = get_force_curve_data(obj,CurveNumber,AppRetSwitch,isBased,isTipHeightCorrected)
+            % CurveNumber ... Index of curve to be loaded (counting from 1 to obj.NCurves)
+            % AppRetSwitch ... 0 for approach curve, 1 for retract curve
+            % isBased ... bool for base and tilt subtraction
+            % isTipHeightCorrected ... bool to decide if OutHeight is
+            %                           HeadHeight (=0) or TipHeight (=1)
+            
+            if CurveNumber > obj.NCurves
+                error('Requested curve index (%i) is bigger than maximum number of curves (%i)',CurveNumber,obj.NCurves);
+            end
+            
+            if isempty(obj.BigDataFlag) || ~obj.BigDataFlag
+                if AppRetSwitch==0 && isBased==0 && isTipHeightCorrected==0
+                    OutForce = obj.App{CurveNumber};
+                    OutHeight = obj.HHApp{CurveNumber};
+                elseif AppRetSwitch==1 && isBased==0 && isTipHeightCorrected==0
+                    OutForce = obj.Ret{CurveNumber};
+                    OutHeight = obj.HHRet{CurveNumber};
+                elseif AppRetSwitch==0 && isBased==1 && isTipHeightCorrected==0
+                    OutForce = obj.App{CurveNumber};
+                    OutHeight = obj.HHApp{CurveNumber};
+                    FittedApp = polyval(obj.Basefit{CurveNumber},OutHeight);
+                    OutForce = OutForce - FittedApp;
+                elseif AppRetSwitch==1 && isBased==1 && isTipHeightCorrected==0
+                    OutForce = obj.Ret{CurveNumber};
+                    OutHeight = obj.HHRet{CurveNumber};
+                    FittedRet = polyval(obj.Basefit{CurveNumber},OutHeight);
+                    OutForce = OutForce - FittedRet;
+                elseif AppRetSwitch==0 && isBased==0 && isTipHeightCorrected==1
+                    OutForce = obj.App{CurveNumber};
+                    OutHeight = obj.HHApp{CurveNumber};
+                    FittedApp = polyval(obj.Basefit{CurveNumber},OutHeight);
+                    OutForce = OutForce - FittedApp;
+                    OutHeight = OutHeight - OutForce./obj.SpringConstant;
+                    OutForce = obj.App{CurveNumber};
+                elseif AppRetSwitch==1 && isBased==0 && isTipHeightCorrected==1
+                    OutForce = obj.Ret{CurveNumber};
+                    OutHeight = obj.HHRet{CurveNumber};
+                    FittedRet = polyval(obj.Basefit{CurveNumber},OutHeight);
+                    OutForce = OutForce - FittedRet;
+                    OutHeight = OutHeight - OutForce./obj.SpringConstant;
+                    OutForce = obj.Ret{CurveNumber};
+                elseif AppRetSwitch==0 && isBased==1 && isTipHeightCorrected==1
+                    OutForce = obj.App{CurveNumber};
+                    OutHeight = obj.HHApp{CurveNumber};
+                    FittedApp = polyval(obj.Basefit{CurveNumber},OutHeight);
+                    OutForce = OutForce - FittedApp;
+                    OutHeight = OutHeight - OutForce./obj.SpringConstant;
+                elseif AppRetSwitch==1 && isBased==1 && isTipHeightCorrected==1
+                    OutForce = obj.Ret{CurveNumber};
+                    OutHeight = obj.HHRet{CurveNumber};
+                    FittedRet = polyval(obj.Basefit{CurveNumber},OutHeight);
+                    OutForce = OutForce - FittedRet;
+                    OutHeight = OutHeight - OutForce./obj.SpringConstant;
+                end
+                return
+            end
+            
+            TempFolder = obj.DataStoreFolder;
+            
+            HeaderFileDirectory = fullfile(TempFolder,'shared-data','header.properties');
+            SegmentHeaderFileDirectory = fullfile(TempFolder,'index',string((CurveNumber-1)),'segments',string(AppRetSwitch),'segment-header.properties');
+            HeightDataDirectory = fullfile(TempFolder,'index',string((CurveNumber-1)),'segments',string(AppRetSwitch),'channels','capacitiveSensorHeight.dat');
+            vDefDataDirectory = fullfile(TempFolder,'index',string((CurveNumber-1)),'segments',string(AppRetSwitch),'channels','vDeflection.dat');
+            
+            if ~isfile(HeightDataDirectory) || isequal(obj.HHType,'measuredHeight')
+                HeightDataDirectory = fullfile(TempFolder,'index',string((CurveNumber-1)),'segments',string(AppRetSwitch),'channels','measuredHeight.dat');
+                obj.HHType = 'measuredHeight';
+            end
+            if ~isfile(HeightDataDirectory) || isequal(obj.HHType,'Height')
+                HeightDataDirectory = fullfile(TempFolder,'index',string((CurveNumber-1)),'segments',string(AppRetSwitch),'channels','Height.dat');
+                obj.HHType = 'Height';
+            end
+            
+            try
+                [TempHeight,OutForce,SC,Sens]=...
+                    obj.writedata(HeaderFileDirectory,SegmentHeaderFileDirectory,...
+                    HeightDataDirectory,vDefDataDirectory,obj.HHType);
+                
+                if isempty(obj.Sensitivity)
+                    obj.Sensitivity = Sens;
+                end
+                if isempty(obj.SpringConstant)
+                    obj.SpringConstant = SC;
+                end
+                
+                OutHeight = -TempHeight;
+                OutForce = OutForce.*obj.SpringConstant;
+                
+                if AppRetSwitch==0 && isBased==0 && isTipHeightCorrected==0
+                elseif AppRetSwitch==1 && isBased==0 && isTipHeightCorrected==0
+                elseif AppRetSwitch==0 && isBased==1 && isTipHeightCorrected==0
+                    FittedApp = polyval(obj.Basefit{CurveNumber},OutHeight);
+                    OutForce = OutForce - FittedApp;
+                elseif AppRetSwitch==1 && isBased==1 && isTipHeightCorrected==0
+                    FittedRet = polyval(obj.Basefit{CurveNumber},OutHeight);
+                    OutForce = OutForce - FittedRet;
+                elseif AppRetSwitch==0 && isBased==0 && isTipHeightCorrected==1
+                    TempApp = OutForce;
+                    FittedApp = polyval(obj.Basefit{CurveNumber},OutHeight);
+                    OutForce = OutForce - FittedApp;
+                    OutHeight = OutHeight - OutForce./obj.SpringConstant;
+                    OutForce = TempApp;
+                elseif AppRetSwitch==1 && isBased==0 && isTipHeightCorrected==1
+                    TempRet = OutForce;
+                    FittedRet = polyval(obj.Basefit{CurveNumber},OutHeight);
+                    OutForce = OutForce - FittedRet;
+                    OutHeight = OutHeight - OutForce./obj.SpringConstant;
+                    OutForce = TempRet;
+                elseif AppRetSwitch==0 && isBased==1 && isTipHeightCorrected==1
+                    FittedApp = polyval(obj.Basefit{CurveNumber},OutHeight);
+                    OutForce = OutForce - FittedApp;
+                    OutHeight = OutHeight - OutForce./obj.SpringConstant;
+                elseif AppRetSwitch==1 && isBased==1 && isTipHeightCorrected==1
+                    FittedRet = polyval(obj.Basefit{CurveNumber},OutHeight);
+                    OutForce = OutForce - FittedRet;
+                    OutHeight = OutHeight - OutForce./obj.SpringConstant;
+                end
+            catch
+                disp(sprintf('Curve Nr. %i seems to be corrupted. Replacing with next curve instead',CurveNumber))
+                [OutForce,OutHeight] = obj.get_force_curve_data(mod(CurveNumber,obj.NCurves)+1,AppRetSwitch,isBased,isTipHeightCorrected);
             end
         end
         
@@ -3638,6 +3552,23 @@ classdef ForceMap < matlab.mixin.Copyable
                 PopUp{i+1} = obj.Channel(i).Name;
             end
         end
+        
+        function temporary_data_load_in(obj,OnOffBool)
+            
+            if OnOffBool
+                for i=1:obj.NCurves
+                    [obj.App{i},obj.HHApp{i}] = obj.get_force_curve_data(i,0,0,0);
+                    [obj.Ret{i},obj.HHRet{i}] = obj.get_force_curve_data(i,1,0,0);
+                end
+                obj.BigDataFlag = 0;
+            elseif ~OnOffBool
+                obj.BigDataFlag = 1;
+                obj.App = cell(0,0);
+                obj.HHApp = cell(0,0);
+                obj.Ret = cell(0,0);
+                obj.HHRet = cell(0,0);
+            end
+        end
     end
     
     methods
@@ -3662,15 +3593,11 @@ classdef ForceMap < matlab.mixin.Copyable
             end
             
             try
-                AppX = obj.HHApp{k};
-                AppY = obj.BasedApp{k};
-                RetX = obj.HHRet{k};
-                RetY = obj.BasedRet{k};
+                [AppY,AppX] = obj.get_force_curve_data(k,0,1,0);
+                [RetY,RetX] = obj.get_force_curve_data(k,1,1,0);
             catch
-                AppX = obj.HHApp{k};
-                AppY = obj.App{k};
-                RetX = obj.HHRet{k};
-                RetY = obj.Ret{k};
+                [AppY,AppX] = obj.get_force_curve_data(k,0,0,0);
+                [RetY,RetX] = obj.get_force_curve_data(k,1,0,0);
             end
             
             
@@ -3991,6 +3918,9 @@ classdef ForceMap < matlab.mixin.Copyable
                 end
                 title('Height Map with Apex Points');
                 
+                [AppY,AppX] = obj.get_force_curve_data(k,0,1,0);
+                [RetY,RetX] = obj.get_force_curve_data(k,1,1,0);
+                
                 [MultiplierX,UnitX,~] = AFMImage.parse_unit_scale(range(RetX),'m',10);
                 [MultiplierY,UnitY,~] = AFMImage.parse_unit_scale(range(RetY./obj.SpringConstant),'m',5);
                 [MultiplierPaY,UnitPaY,~] = AFMImage.parse_unit_scale(obj.EModOliverPharr(k),'Pa',5);
@@ -4087,7 +4017,7 @@ classdef ForceMap < matlab.mixin.Copyable
                 if isempty(I)
                     I = obj.HeightMap;
                 end
-                imshow(I.Image,[],'Colormap',AFMImage.define_afm_color_map)
+                imshow(imresize(I.Image,[1024 1024]),[],'Colormap',AFMImage.define_afm_color_map)
                 hold on;
                 for i=1:obj.NumProfiles
                     if obj.RectApexIndex(i)==k
@@ -4102,20 +4032,23 @@ classdef ForceMap < matlab.mixin.Copyable
                 end
                 title('Height Map with Apex Points');
                 
+                [AppY,AppX] = obj.get_force_curve_data(k,0,1,1);
+                [RetY,RetX] = obj.get_force_curve_data(k,1,1,1);
+                
                 subplot(2,2,2)
                 
                 % Determine X-Range for HertzModel
-                X = obj.THApp{m} - obj.CP(m,1);
+                X = AppX - obj.CP(k,1);
                 X(X<0) = [];
                 HertzModelX = 0:range(X)/100:2*max(X);
-                HertzModelY = feval(obj.HertzFit{m},HertzModelX);
+                HertzModelY = feval(obj.HertzFit{k},HertzModelX);
                 
                 
-                plot(HertzModelX(HertzModelY<=max(obj.BasedApp{m} - obj.CP(m,2))),HertzModelY(HertzModelY<=max(obj.BasedApp{m} - obj.CP(m,2))),...
-                    obj.THApp{m} - obj.CP(m,1),obj.BasedApp{m} - obj.CP(m,2),...
-                    obj.THRet{m} - obj.CP(m,1),obj.BasedRet{m} - obj.CP(m,2))
-                xlim([min(obj.THApp{k} - obj.CP(k,1))+range(obj.THApp{k} - obj.CP(k,1))/2 ...
-                    max(obj.THApp{k} - obj.CP(k,1))+range(obj.THApp{k} - obj.CP(k,1))*0.1])
+                plot(HertzModelX(HertzModelY<=max(AppY - obj.CP(k,2))),HertzModelY(HertzModelY<=max(AppY - obj.CP(k,2))),...
+                    AppX - obj.CP(k,1),AppY - obj.CP(k,2),...
+                    RetX - obj.CP(k,1),RetY - obj.CP(k,2))
+                xlim([min(AppX - obj.CP(k,1))+range(AppX - obj.CP(k,1))/2 ...
+                    max(AppX - obj.CP(k,1))+range(AppX - obj.CP(k,1))*0.1])
                 title(sprintf('Apparent Indentation Modulus = %.2f MPa',obj.EModHertz(k)*1e-6))
                 legend('Hertz Fit','Approach','Retract','Location','northwest')
                 xlabel('Cantilever Tip Height [m]')
@@ -4173,7 +4106,7 @@ classdef ForceMap < matlab.mixin.Copyable
                 if isempty(I)
                     I = obj.HeightMap;
                 end
-                imshow(I.Image,[],'Colormap',AFMImage.define_afm_color_map)
+                imshow(imresize(I.Image,[1024 1024]),[],'Colormap',AFMImage.define_afm_color_map)
                 hold on;
                 
                 plot((obj.List2Map(m,2)-1/2)*1024/obj.NumPoints,...
@@ -4184,13 +4117,16 @@ classdef ForceMap < matlab.mixin.Copyable
                 
                 subplot(2,3,2)
                 
-                [MultiplierX,UnitX,~] = AFMImage.parse_unit_scale(range(obj.HHRet{m}),'m',10);
-                [MultiplierY,UnitY,~] = AFMImage.parse_unit_scale(range(obj.BasedRet{m}./obj.SpringConstant),'m',5);
+                [App,HHApp] = obj.get_force_curve_data(m,0,1,0);
+                [Ret,HHRet] = obj.get_force_curve_data(m,1,1,0);
+                
+                [MultiplierX,UnitX,~] = AFMImage.parse_unit_scale(range(HHRet),'m',10);
+                [MultiplierY,UnitY,~] = AFMImage.parse_unit_scale(range(Ret./obj.SpringConstant),'m',5);
                 [MultiplierPaY,UnitPaY,~] = AFMImage.parse_unit_scale(obj.EModOliverPharr(m),'Pa',5);
-                HHApp = obj.HHApp{m}.*MultiplierX;
-                App = obj.BasedApp{m}/obj.SpringConstant.*MultiplierY;
-                HHRet = obj.HHRet{m}.*MultiplierX;
-                Ret = obj.BasedRet{m}/obj.SpringConstant.*MultiplierY;
+                HHApp = HHApp.*MultiplierX;
+                App = App/obj.SpringConstant.*MultiplierY;
+                HHRet = HHRet.*MultiplierX;
+                Ret = Ret/obj.SpringConstant.*MultiplierY;
                 subplot(2,3,2)
                 plot(HHApp,App,...
                     HHRet,Ret)
@@ -4280,7 +4216,7 @@ classdef ForceMap < matlab.mixin.Copyable
                 if isempty(I)
                     I = obj.HeightMap;
                 end
-                imshow(I.Image,[],'Colormap',AFMImage.define_afm_color_map)
+                imshow(imresize(I.Image,[1024 1024]),[],'Colormap',AFMImage.define_afm_color_map)
                 hold on;
                 
                 plot((obj.List2Map(m,2)-1/2)*1024/obj.NumPoints,...
@@ -4291,19 +4227,22 @@ classdef ForceMap < matlab.mixin.Copyable
                 
                 subplot(2,2,2)
                 
+                [AppY,AppX] = obj.get_force_curve_data(m,0,1,1);
+                [RetY,RetX] = obj.get_force_curve_data(m,1,1,1);
+                
                 % Determine X-Range for HertzModel
-                X = obj.THApp{m} - obj.CP(m,1);
+                X = AppX - obj.CP(m,1);
                 X(X<0) = [];
                 HertzModelX = 0:range(X)/100:2*max(X);
                 FitModel = obj.HertzFit{m};
                 FitModel.b = 0;
                 HertzModelY = feval(FitModel,HertzModelX);
                 
-                plot(HertzModelX(HertzModelY<=max(obj.BasedApp{m} - obj.CP(m,2))),HertzModelY(HertzModelY<=max(obj.BasedApp{m} - obj.CP(m,2))),...
-                    obj.THApp{m} - obj.CP(m,1),obj.BasedApp{m} - obj.CP(m,2),...
-                    obj.THRet{m} - obj.CP(m,1),obj.BasedRet{m} - obj.CP(m,2))
-                xlim([min(obj.THApp{m} - obj.CP(m,1))+range(obj.THApp{m} - obj.CP(m,1))/2 ...
-                    max(obj.THApp{m} - obj.CP(m,1))+range(obj.THApp{m} - obj.CP(m,1))*0.1])
+                plot(HertzModelX(HertzModelY<=max(AppY - obj.CP(m,2))),HertzModelY(HertzModelY<=max(AppY - obj.CP(m,2))),...
+                    AppX - obj.CP(m,1),AppY - obj.CP(m,2),...
+                    RetX - obj.CP(m,1),RetY - obj.CP(m,2))
+                xlim([min(AppX - obj.CP(m,1))+range(AppX - obj.CP(m,1))/2 ...
+                    max(AppX - obj.CP(m,1))+range(AppX - obj.CP(m,1))*0.1])
                 title(sprintf('Apparent Indentation Modulus = %.2f MPa',obj.EModHertz(m)*1e-6))
                 legend('Hertz Fit','Approach','Retract','Location','northwest')
                 xlabel('Cantilever Tip Height [m]')
