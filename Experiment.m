@@ -630,8 +630,15 @@ classdef Experiment < matlab.mixin.Copyable
                 
                 if TemporaryLoadInBool && obj.BigDataFlag
                     obj.FM{i}.temporary_data_load_in(false);
-                    if i < NLoop
-                        obj.save_experiment;
+%                     if i < NLoop
+%                         obj.save_experiment;
+%                     end
+                end
+                
+                if i==1
+                    for k=2:NLoop
+                        obj.FM{k}.CPFlag.CNNOpt = 1;
+                        obj.FM{k}.MiniBatchSize = obj.FM{1}.MiniBatchSize;
                     end
                 end
                 
@@ -770,6 +777,11 @@ classdef Experiment < matlab.mixin.Copyable
                 if isequal(KeepFlagged,'Yes') && obj.FMFlag.ForceMapAnalysis(i) == 1
                     continue
                 end
+                
+                if TemporaryLoadInBool && obj.BigDataFlag
+                    obj.FM{i}.temporary_data_load_in(true);
+                end
+                
                 waitbar(i/NLoop,h,sprintf('Processing ForceMap %i/%i\nFitting Base Line',i,NLoop));
                 if ~obj.FM{i}.BaseAndTiltFlag
                     obj.FM{i}.base_and_tilt('linear');
@@ -820,6 +832,21 @@ classdef Experiment < matlab.mixin.Copyable
                 waitbar(i/NLoop,h,sprintf('Processing ForceMap %i/%i\nWrapping Up And Saving',i,NLoop));
                 
                 obj.FMFlag.ForceMapAnalysis(i) = 1;
+                
+                
+                if TemporaryLoadInBool && obj.BigDataFlag
+                    obj.FM{i}.temporary_data_load_in(false);
+%                     if i < NLoop
+%                         obj.save_experiment;
+%                     end
+                end
+                
+                if i==1
+                    for k=2:NLoop
+                        obj.FM{k}.CPFlag.CNNOpt = 1;
+                        obj.FM{k}.MiniBatchSize = obj.FM{1}.MiniBatchSize;
+                    end
+                end
             end
             
             
