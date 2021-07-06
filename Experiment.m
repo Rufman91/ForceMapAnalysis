@@ -2116,35 +2116,54 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             uiwait(h.Fig)
         end
         
-        function Fig = visualize_listed_data(obj,Property,YAxisName,BaseUnit,Method,ErrorBars,ListOfIndizes)
+        function [Fig,DataMat] = visualize_listed_data(obj,Property,YAxisName,BaseUnit,Method,ErrorBars,UseGrouping,ListOfIndizes)
             % visualize_listed_data(varargin)
-            % Input arbitrary ForceMap listed property
+            % Input arbitrary ForceMap listed Property
             % e.g. 'EModOliverPharr' or 'IndentationDepth'
-            % Methods are 'Boxplot', 'Barplot'
+            % Methods are 'Boxplot', 'Barplot', 'BarMedian'
             % ErrorBars, 'std'...standard deviation
             %            'ste'...standard error
             %            'ci'...confidence interval
             
-            if nargin < 5
-                Method = 'Boxplot';
-                ErrorBars = 'ste';
+            if nargin < 8
                 ListOfIndizes = 1:obj.NumForceMaps;
             end
             
             k = 1;
-            for i=ListOfIndizes
-                Data(k).Values = obj.FM{i}.get(Property);
-                [Data(k).Multiplier,Data(k).Unit] = AFMImage.parse_unit_scale(range(Data(k).Values),BaseUnit,1);
-                Data(k).Name = obj.FM{i}.Name;
-                Data(k).Length = length(Data(k).Values);
-                if isequal(ErrorBars,'std')
-                    Data(k).Bars = nanstd(Data(k).Values);
-                elseif isequal(ErrorBars,'ste')
-                    Data(k).Bars = nanstd(Data(k).Values)/sqrt(length(Data(k).Values(~isnan(Data(k).Values))));
-                elseif isequal(ErrorBars,'ci')
-                    [~,~,Data(k).Bars,~] = ttest(Data(k).Values(~isnan(Data(k).Values)),nanmean(Data(k).Values));
+            if UseGrouping
+                for i=1:length(obj.GroupFM)
+                    TempArray = [];
+                    for j=1:length(obj.GroupFM(i).Indices)
+                        TempArray = cat(1,TempArray,reshape(obj.FM{obj.GroupFM(i).Indices(j)}.get(Property),[],1));
+                    end
+                    Data(k).Values = TempArray;
+                    [Data(k).Multiplier,Data(k).Unit] = AFMImage.parse_unit_scale(range(Data(k).Values),BaseUnit,1);
+                    Data(k).Name = obj.GroupFM(i).Name;
+                    Data(k).Length = length(Data(k).Values);
+                    if isequal(ErrorBars,'std')
+                        Data(k).Bars = nanstd(Data(k).Values);
+                    elseif isequal(ErrorBars,'ste')
+                        Data(k).Bars = nanstd(Data(k).Values)/sqrt(length(Data(k).Values(~isnan(Data(k).Values))));
+                    elseif isequal(ErrorBars,'ci')
+                        [~,~,Data(k).Bars,~] = ttest(Data(k).Values(~isnan(Data(k).Values)),nanmean(Data(k).Values));
+                    end
+                    k = k + 1;
                 end
-                k = k + 1;
+            else
+                for i=ListOfIndizes
+                    Data(k).Values = obj.FM{i}.get(Property);
+                    [Data(k).Multiplier,Data(k).Unit] = AFMImage.parse_unit_scale(range(Data(k).Values),BaseUnit,1);
+                    Data(k).Name = obj.FM{i}.Name;
+                    Data(k).Length = length(Data(k).Values);
+                    if isequal(ErrorBars,'std')
+                        Data(k).Bars = nanstd(Data(k).Values);
+                    elseif isequal(ErrorBars,'ste')
+                        Data(k).Bars = nanstd(Data(k).Values)/sqrt(length(Data(k).Values(~isnan(Data(k).Values))));
+                    elseif isequal(ErrorBars,'ci')
+                        [~,~,Data(k).Bars,~] = ttest(Data(k).Values(~isnan(Data(k).Values)),nanmean(Data(k).Values));
+                    end
+                    k = k + 1;
+                end
             end
             
             [MaxMult,MaxIdx] = max([Data(:).Multiplier],[],'all','linear');
@@ -2159,13 +2178,34 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             DataMat = nan(MaxLen,length(Data));
             for i=1:length(Data)
                 DataMat(1:Data(i).Length,i) = Data(i).Values;
+                Data(i).Bars = Data(i).Bars.*Scale;
             end
             DataMat = DataMat.*Scale;
             if isequal(Method,'Boxplot')
                 boxplot(DataMat)
+                title(sprintf('Boxplot of %s',YAxisName))
+            elseif isequal(Method,'Barplot')
+                bar(nanmean(DataMat,1));
+                hold on
+                for i=1:length(Data)
+                    errorbar(i,nanmean(DataMat(:,i)),-Data(i).Bars(1),Data(i).Bars(end),'Color','k','LineWidth',1.5);
+                end
+                title(sprintf('Barplot of %s',YAxisName))
+            elseif isequal(Method,'BarMedian')
+                bar(nanmedian(DataMat,1));
+                hold on
+                for i=1:length(Data)
+                    errorbar(i,nanmedian(DataMat(:,i)),-Data(i).Bars(1),Data(i).Bars(end),'Color','k','LineWidth',1.5);
+                end
+                title(sprintf('Median Barplot of %s',YAxisName))
             end
-            xticklabels(XTickLabels)
+            ax = gca;
+            ax.LineWidth = 1;
+            ax.FontSize = 16;
+            ax.TickLabelInterpreter = 'latex';
+            ax.XTickLabel = XTickLabels;
             ylabel(YAxisLabel)
+            xlim([.5 length(Data)+.5])
         end
     end
     methods
@@ -2627,9 +2667,14 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             % create the appropriate inputdlg for assigning the groups show
             % a table with numbered map-names in background
             Names = obj.ForceMapNames;
-            Fig = figure('Units', 'Normalized', 'Position',[0.2 0.2 0.4 8],'Color','w');
-            T = table(Names');
-            uitable('Data',T{:,:},'Units', 'Normalized', 'Position',[0, 0, 1, 1]);
+            Fig = figure('Units', 'Normalized', 'Position',[0.2 0.2 0.2 .7],'Color','w');
+            Names = reshape(Names,[],1);
+            T = table(Names);
+            Widths = cell(1,length(Names));
+            for i=1:length(Widths)
+                Widths{i} = 10000;
+            end
+            uitable('Data',T{:,:},'Units', 'Normalized', 'Position',[0, 0, 1, 1],'ColumnWidth', Widths);
             
             for i=1:2:2*NGroups
                 prompts{i} = sprintf('Whats the Name of Group %i?',(i+1)/2);
