@@ -273,6 +273,28 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet
             %             cd(current.path)
         end
         
+        function unselect_curves_by_fraction_of_max_data_points(obj,Thresh,AppRetSwitch)
+            % AppRetSwitch ... 0...App, 1...Ret, 2...Both
+            
+            Thresh = Thresh*obj.MaxPointsPerCurve;
+            
+            for i=1:obj.NCurves
+                if AppRetSwitch==0 || AppRetSwitch==2
+                    [App,HHApp] = obj.get_force_curve_data(i,0,0,0);
+                    if (length(App) < Thresh) || (length(HHApp) < Thresh)
+                        obj.SelectedCurves(i) = 0;
+                    end
+                end
+                if AppRetSwitch==1 || AppRetSwitch==2
+                    [Ret,HHRet] = obj.get_force_curve_data(i,1,0,0);
+                    if (length(Ret) < Thresh) || (length(HHRet) < Thresh)
+                        obj.SelectedCurves(i) = 0;
+                    end
+                end
+                
+            end
+        end
+        
         function base_and_tilt(obj,RunMode)
             % subtract baseline and tilt from the forcecurve by fitting a function to
             % the non contact domain the function tries to fit a non-affine-linear
@@ -286,8 +308,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet
                 
                 prog = i/obj.NCurves;
                 waitbar(prog,h,'processing baseline fits...');
-                [ncd , ncidx] = ForceMap.no_contact_domain(AppForce);
                 try
+                    [ncd , ncidx] = ForceMap.no_contact_domain(AppForce);
                     Params = polyfit(HHApp(1:length(ncd)),ncd,1);
                     obj.Basefit{i} = Params;
                 catch
@@ -2967,7 +2989,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet
         function unpack_jpk_force_map(obj,MapFullFile,DataFolder)
             
             if obj.BigDataFlag
-                TempFolderName = sprintf('FM-DataStore-%s',obj.ID);
+                TempFolderName = sprintf('FM_DataStore_%s',obj.ID);
             else
                 TempFolderName = sprintf('Temp%s',obj.ID);
             end
@@ -3335,7 +3357,9 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet
             if CurveNumber > obj.NCurves
                 error('Requested curve index (%i) is bigger than maximum number of curves (%i)',CurveNumber,obj.NCurves);
             end
-            
+            if (isBased || isTipHeightCorrected) && ~obj.BaseAndTiltFlag
+                error('No Base and Tilt data found');
+            end
             if isempty(obj.BigDataFlag) || ~obj.BigDataFlag
                 if AppRetSwitch==0 && isBased==0 && isTipHeightCorrected==0
                     OutForce = obj.App{CurveNumber};
@@ -3555,7 +3579,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet
         
         function temporary_data_load_in(obj,OnOffBool)
             
-            if OnOffBool
+            if OnOffBool && obj.BigDataFlag
                 for i=1:obj.NCurves
                     [obj.App{i},obj.HHApp{i}] = obj.get_force_curve_data(i,0,0,0);
                     [obj.Ret{i},obj.HHRet{i}] = obj.get_force_curve_data(i,1,0,0);

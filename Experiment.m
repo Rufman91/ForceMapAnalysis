@@ -582,12 +582,17 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 % contact point estimation happens here
                 waitbar(i/NLoop,h,sprintf('Processing Fibril %i/%i\nFinding Contact Point',i,NLoop));
                 if BaseLineCorrectBool
-                    obj.cp_option_converter('Fast',i);
+                    if ~obj.FM{i}.CPFlag.CNN
+                        obj.cp_option_converter('Fast',i);
+                    end
                     FractionBeforeCP = .7;
                     obj.FM{1}.base_and_tilt_using_cp(FractionBeforeCP)
                     obj.write_to_log_file('FractionBeforeCP',FractionBeforeCP);
                 end
+                
+                if ~obj.FM{i}.CPFlag.CNNZoomSweep
                 obj.cp_option_converter(CPOption,i);
+                end
                 
                 % reference slope calculation happens here
                 waitbar(i/NLoop,h,sprintf('Processing Fibril %i/%i\nProcessing and calculating Reference Slope',i,NLoop));
@@ -630,9 +635,9 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 
                 if TemporaryLoadInBool && obj.BigDataFlag
                     obj.FM{i}.temporary_data_load_in(false);
-%                     if i < NLoop
-%                         obj.save_experiment;
-%                     end
+                    if i < NLoop
+                        obj.save_experiment;
+                    end
                 end
                 
                 if i==1
@@ -785,6 +790,10 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                     obj.FM{i}.temporary_data_load_in(true);
                 end
                 
+                Thresh = 1/2;
+                AppRetSwitch = 2;
+                obj.FM{i}.unselect_curves_by_fraction_of_max_data_points(Thresh,AppRetSwitch)
+                
                 waitbar(i/NLoop,h,sprintf('Processing ForceMap %i/%i\nFitting Base Line',i,NLoop));
                 if ~obj.FM{i}.BaseAndTiltFlag
                     obj.FM{i}.base_and_tilt('linear');
@@ -796,12 +805,17 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 % contact point estimation happens here
                 waitbar(i/NLoop,h,sprintf('Processing ForceMap %i/%i\nFinding Contact Point',i,NLoop));
                 if BaseLineCorrectBool
-                    obj.cp_option_converter('Fast',i);
+                    if ~obj.FM{i}.CPFlag.CNN
+                        obj.cp_option_converter('Fast',i);
+                    end
                     FractionBeforeCP = .7;
                     obj.FM{1}.base_and_tilt_using_cp(FractionBeforeCP)
                     obj.write_to_log_file('FractionBeforeCP',FractionBeforeCP);
                 end
+                
+                if ~obj.FM{i}.CPFlag.CNNZoomSweep
                 obj.cp_option_converter(CPOption,i);
+                end
                 
                 % reference slope calculation happens here
                 waitbar(i/NLoop,h,sprintf('Processing ForceMap %i/%i\nProcessing and calculating Reference Slope',i,NLoop));
@@ -834,9 +848,6 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 
                 waitbar(i/NLoop,h,sprintf('Processing ForceMap %i/%i\nWrapping Up And Saving',i,NLoop));
                 
-                obj.FMFlag.ForceMapAnalysis(i) = 1;
-                
-                
                 if TemporaryLoadInBool && obj.BigDataFlag
                     obj.FM{i}.temporary_data_load_in(false);
 %                     if i < NLoop
@@ -844,6 +855,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
 %                     end
                 end
                 
+                obj.FMFlag.ForceMapAnalysis(i) = 1;
                 if i==1
                     for k=2:NLoop
                         obj.FM{k}.CPFlag.CNNOpt = 1;
@@ -851,7 +863,6 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                     end
                 end
             end
-            
             
             obj.save_experiment;
             
@@ -1548,7 +1559,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             h.B(20) = uicontrol('style','checkbox',...
                 'String','Lock Channels',...
                 'units','normalized',...
-                'position',[.85 .25 .1 .04],...
+                'position',[.85 .3   .1 .04],...
                 'Callback',@lock_channels);
             
             h.B(21) = uicontrol('style','checkbox',...
