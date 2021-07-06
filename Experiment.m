@@ -1,4 +1,4 @@
-classdef Experiment < matlab.mixin.Copyable
+classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
     
     properties
         % Essential properties for File and subclass management
@@ -676,7 +676,7 @@ classdef Experiment < matlab.mixin.Copyable
             obj.write_to_log_file('','','end')
         end
         
-        function force_map_analysis_general(obj,CPOption,EModOption,BaseLineCorrectBool)
+        function force_map_analysis_general(obj,CPOption,EModOption,BaseLineCorrectBool,TemporaryLoadInBool)
             % force_map_analysis_general(obj,CPOption,EModOption)
             %
             % CPOption = 'Snap-In' ... Preferred Option for data with
@@ -703,7 +703,10 @@ classdef Experiment < matlab.mixin.Copyable
             % Oliver-Pharr-like method (O. Andriotis 2014)
             
             if nargin < 4
-                BasLineCorrectBool = false;
+                BaseLineCorrectBool = false;
+                TemporaryLoadInBool = true;
+            elseif nargin < 5
+                TemporaryLoadInBool = true;
             end
             
             obj.write_to_log_file('Analysis Function','force_map_analysis_general()','start')
@@ -2102,6 +2105,57 @@ classdef Experiment < matlab.mixin.Copyable
             uiwait(h.Fig)
         end
         
+        function Fig = visualize_listed_data(obj,Property,YAxisName,BaseUnit,Method,ErrorBars,ListOfIndizes)
+            % visualize_listed_data(varargin)
+            % Input arbitrary ForceMap listed property
+            % e.g. 'EModOliverPharr' or 'IndentationDepth'
+            % Methods are 'Boxplot', 'Barplot'
+            % ErrorBars, 'std'...standard deviation
+            %            'ste'...standard error
+            %            'ci'...confidence interval
+            
+            if nargin < 5
+                Method = 'Boxplot';
+                ErrorBars = 'ste';
+                ListOfIndizes = 1:obj.NumForceMaps;
+            end
+            
+            k = 1;
+            for i=ListOfIndizes
+                Data(k).Values = obj.FM{i}.get(Property);
+                [Data(k).Multiplier,Data(k).Unit] = AFMImage.parse_unit_scale(range(Data(k).Values),BaseUnit,1);
+                Data(k).Name = obj.FM{i}.Name;
+                Data(k).Length = length(Data(k).Values);
+                if isequal(ErrorBars,'std')
+                    Data(k).Bars = nanstd(Data(k).Values);
+                elseif isequal(ErrorBars,'ste')
+                    Data(k).Bars = nanstd(Data(k).Values)/sqrt(length(Data(k).Values(~isnan(Data(k).Values))));
+                elseif isequal(ErrorBars,'ci')
+                    [~,~,Data(k).Bars,~] = ttest(Data(k).Values(~isnan(Data(k).Values)),nanmean(Data(k).Values));
+                end
+                k = k + 1;
+            end
+            
+            [MaxMult,MaxIdx] = max([Data(:).Multiplier],[],'all','linear');
+            MaxLen = max([Data(:).Length]);
+            
+            Scale = MaxMult;
+            Unit = Data(MaxIdx).Unit;
+            YAxisLabel = sprintf('%s [%s]',YAxisName,Unit);
+            XTickLabels = {Data(:).Name};
+            
+            Fig = figure('Color','w');
+            DataMat = nan(MaxLen,length(Data));
+            for i=1:length(Data)
+                DataMat(1:Data(i).Length,i) = Data(i).Values;
+            end
+            DataMat = DataMat.*Scale;
+            if isequal(Method,'Boxplot')
+                boxplot(DataMat)
+            end
+            xticklabels(XTickLabels)
+            ylabel(YAxisLabel)
+        end
     end
     methods
         %%%   WARNING! %%%
