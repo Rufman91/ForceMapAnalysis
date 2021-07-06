@@ -136,24 +136,7 @@ classdef AFMImage < matlab.mixin.Copyable
             end
         end
         
-        function delete_channel(obj,ChannelName)
-            k = 0;
-            for i=1:length(obj.Channel)
-                if isequal(obj.Channel(i).Name,ChannelName)
-                    ChannelStruct = obj.Channel(i);
-                    Index(k+1) = i;
-                    k = k+1;
-                end
-            end
-            obj.Channel(Index) = [];
-            if k > 1
-                warning(sprintf('Caution! There are more than one channels named %s (%i). Deleted all of them',ChannelName,k))
-            end
-        end
-        
-        function overlay_wrapper(obj,OverlayedImageClassInstance,...
-                BackgroundPercent,MinOverlap,AngleRange,UseParallel,...
-                MaxFunEval,PreMaxFunEval,NumPreSearches,NClusters)
+        function overlay_wrapper(obj,OverlayedImageClassInstance,BackgroundPercent,MinOverlap,AngleRange,UseParallel,MaxFunEval,PreMaxFunEval,NumPreSearches,NClusters)
             % overlay_wrapper(obj,OverlayedImageClassInstance,BackgroundPercent,MinOverlap,AngleRange,UseParallel,MaxFunEval,PreMaxFunEval,NumPreSearches,NClusters)
             
             if nargin < 3
@@ -163,32 +146,20 @@ classdef AFMImage < matlab.mixin.Copyable
                 UseParallel = true;
                 MaxFunEval = 200;
                 PreMaxFunEval = 30;
-                NumPreSearches = 84;
-                NClusters = 4;
+                NumPreSearches = 120;
+                NClusters = 6;
             end
             
             Channel1 = obj.get_channel('Processed');
             Channel2 = OverlayedImageClassInstance.get_channel('Processed');
             
-            [OutChannel,ScaleMultiplier,WhoScaled] = AFMImage.overlay_parameters_by_bayesopt(Channel1,Channel2,...
-                BackgroundPercent,MinOverlap,AngleRange,UseParallel,MaxFunEval,PreMaxFunEval,NumPreSearches,NClusters);
+            OutChannel = AFMImage.overlay_parameters_by_bayesopt(Channel1,Channel2,BackgroundPercent,MinOverlap,AngleRange,UseParallel,MaxFunEval,PreMaxFunEval,NumPreSearches,NClusters);
             
             [Overlay1,Overlay2] = AFMImage.overlay_two_images(Channel1,OutChannel);
             
             % Create Overlay Background masks
             OverlayMask1 = AFMImage.mask_background_by_threshold(Overlay1,BackgroundPercent,'on');
             OverlayMask2 = AFMImage.mask_background_by_threshold(Overlay2,BackgroundPercent,'on');
-            
-            if isequal(WhoScaled,'Channel1')
-                Scale1 = ScaleMultiplier;
-                Scale2 = 1;
-            elseif isequal(WhoScaled,'Channel2')
-                Scale1 = 1;
-                Scale2 = ScaleMultiplier;
-            elseif isequal(WhoScaled,'No one')
-                Scale1 = 1;
-                Scale2 = 1;
-            end
             
             % write the overlays into the corresponding Class instances
             SecondOut = OutChannel;
@@ -197,14 +168,6 @@ classdef AFMImage < matlab.mixin.Copyable
             SecondMaskOut.Image = OverlayMask2;
             SecondMaskOut.Unit = 'Logical';
             SecondMaskOut.Name = 'Overlay Mask';
-            SecondOut.NumPixelsX = size(SecondOut.Image,1);
-            SecondOut.NumPixelsY = size(SecondOut.Image,2);
-            SecondOut.ScanSizeX = Channel2.ScanSizeX*(SecondOut.NumPixelsX/(Channel2.NumPixelsX*Scale2));
-            SecondOut.ScanSizeY = Channel2.ScanSizeY*(SecondOut.NumPixelsY/(Channel2.NumPixelsY*Scale2));
-            SecondMaskOut.NumPixelsX = SecondOut.NumPixelsX;
-            SecondMaskOut.NumPixelsY = SecondOut.NumPixelsY;
-            SecondMaskOut.ScanSizeX = SecondOut.ScanSizeX;
-            SecondMaskOut.ScanSizeY = SecondOut.ScanSizeY;
             
             FirstOut = Channel1;
             FirstMaskOut = Channel1;
@@ -213,14 +176,6 @@ classdef AFMImage < matlab.mixin.Copyable
             FirstMaskOut.Image = OverlayMask1;
             FirstMaskOut.Unit = 'Logical';
             FirstMaskOut.Name = 'Overlay Mask';
-            FirstOut.NumPixelsX = size(FirstOut.Image,1);
-            FirstOut.NumPixelsY = size(FirstOut.Image,2);
-            FirstOut.ScanSizeX = Channel2.ScanSizeX*(FirstOut.NumPixelsX/(Channel1.NumPixelsX*Scale1));
-            FirstOut.ScanSizeY = Channel2.ScanSizeY*(FirstOut.NumPixelsY/(Channel1.NumPixelsY*Scale1));
-            FirstMaskOut.NumPixelsX = FirstOut.NumPixelsX;
-            FirstMaskOut.NumPixelsY = FirstOut.NumPixelsY;
-            FirstMaskOut.ScanSizeX = FirstOut.ScanSizeX;
-            FirstMaskOut.ScanSizeY = FirstOut.ScanSizeY;
             
             obj.Channel(end+1) = FirstOut;
             obj.Channel(end+1) = FirstMaskOut;
@@ -235,7 +190,7 @@ classdef AFMImage < matlab.mixin.Copyable
         function deconvolute_cantilever_tip(obj)
             
             Channel = obj.get_channel('Height (measured) (Trace)');
-            Based = imgaussfilt(AFMImage.subtract_line_fit_hist(Channel.Image,0.4));
+            Based = imgaussfilt(obj.subtract_line_fit_hist(Channel.Image,0.4));
             obj.Channel(end+1) = Channel;
             obj.Channel(end).Name = 'Background Mask';
             obj.Channel(end).Unit = 'Logical';
@@ -260,66 +215,8 @@ classdef AFMImage < matlab.mixin.Copyable
             obj.hasDeconvolutedCantileverTip = true;
         end
         
-        function deconvolute_image(obj,CTClassInstance)
+        function base_image()
             
-            ErodedTip = CTClassInstance.get_channel('Eroded Tip');
-            if isempty(ErodedTip)
-                CTClassInstance.deconvolute_cantilever_tip;
-                ErodedTip = CTClassInstance.get_channel('Eroded Tip');
-            end
-            Processed = obj.get_channel('Processed');
-            if isempty('Processed')
-                warning('Image needs to flattened first')
-                return
-            end
-            
-            % Resize and pad images to same resolution at correct spacial
-            % ratio
-            TempMultiplier = (ErodedTip.NumPixelsX/ErodedTip.ScanSizeX)/(Processed.NumPixelsX/Processed.ScanSizeX);
-            if TempMultiplier*Processed.NumPixelsX > 1024
-                ReductionFactor = 1024/(TempMultiplier*Processed.NumPixelsX);
-                Multiplier = TempMultiplier*ReductionFactor;
-                ReducedRes = round(ErodedTip.NumPixelsX*ReductionFactor);
-                ErodedTip.Image = imresize(ErodedTip.Image,[ReducedRes nan]);
-            end
-            if TempMultiplier >= 1
-                Smaller = ErodedTip.Image;
-                Bigger = Processed.Image;
-            else
-                Smaller = Processed.Image;
-                Bigger = ErodedTip.Image;
-            end
-            Bigger = imresize(Bigger,[round(Multiplier*size(Bigger,1)) nan]);
-            Smaller = padarray(Smaller,size(Bigger)-size(Smaller),...
-                min(Smaller,[],'all'),'post');
-            
-            if TempMultiplier >= 1
-                In1 = Bigger;
-                In2 = Smaller;
-            else
-                In1 = Smaller;
-                In2 = Bigger;
-            end
-            
-            OutImage = obj.deconvolute_by_mathematical_morphology(In1,In2);
-            OutImage = imresize(OutImage,[Processed.NumPixelsX Processed.NumPixelsY]);
-            
-            Deconvoluted = Processed;
-            Deconvoluted.Name = 'Deconvoluted';
-            
-            MinIn = min(Processed.Image,[],'all');
-            MinOut = min(OutImage,[],'all');
-            
-            OutImage = OutImage + (MinIn - MinOut);
-            
-            Deconvoluted.Image = OutImage;
-            
-            [~,Index] = obj.get_channel('Deconvoluted');
-            if isempty(Index)
-                obj.Channel(end+1) = Deconvoluted;
-            else
-                obj.Channel(Index) = Deconvoluted;
-            end
         end
         
         function subtract_overlayed_image(obj,OverlayedImageClassInstance)
@@ -343,130 +240,12 @@ classdef AFMImage < matlab.mixin.Copyable
             end
         end
         
-        function find_and_classify_fibrils(obj,RadiusMeters,NumRotations,MinKernelSize)
-            
-            Channel = obj.get_channel('Processed');
-            
-            [ActivationImage,AngleImage] = AFMImage.mask_apex_points_by_convolution(Channel,RadiusMeters,NumRotations,MinKernelSize);
-            
-            
-            
-        end
-        
-        function find_and_classify_fibrils_old(obj, KernelWindowX,...
-                KernelWindowY, KernelStepSizeX, KernelStepSizeY,ComboSumThresh,DebugBool)
-           
-            Processed = obj.get_channel('Processed');
-            if isempty(Processed)
-                Processed = obj.get_channel('Height (measured) (Trace)');
-                if isempty(Processed)
-                    Processed = obj.get_channel('Height (Trace)');
-                end
-                Processed.Name = 'Processed';
-%                 Processed.Image = AFMImage.subtract_line_fit_hist(Processed.Image,.4);
-                for i=1:5
-                    Processed.Image = AFMImage.subtract_line_fit_vertical_rov(Processed.Image,.2,0);
-                end
-                obj.Channel(end+1) = Processed;
-            end
-            BackgroundMask = obj.get_channel('Background Mask');
-            if isempty(BackgroundMask)
-                BackgroundMask = Processed;
-                BackgroundMask.Image = AFMImage.mask_background_by_threshold(Processed.Image,5);
-                BackgroundMask.Name = 'Background Mask';
-                BackgroundMask.Unit = 'Boolean';
-                obj.Channel(end+1) = BackgroundMask;
-            end
-            ApexMap = obj.get_channel('Apex Map');
-            if isempty(ApexMap)
-                ApexMap = Processed;
-                ApexMap.Image = AFMImage.mask_apex_points_by_rotation(Processed.Image,10,BackgroundMask.Image);
-                ApexMap.Name = 'Apex Map';
-                ApexMap.Unit = 'Apex Confidence';
-                obj.Channel(end+1) = ApexMap;
-            end
-            
-            % Convert window- and stepsizes to pixels
-            KernelWindowX = round(KernelWindowX/Processed.ScanSizeX*Processed.NumPixelsX);
-            KernelWindowY = round(KernelWindowY/Processed.ScanSizeY*Processed.NumPixelsY);
-            KernelStepSizeX = round(KernelStepSizeX/Processed.ScanSizeX*Processed.NumPixelsX);
-            KernelStepSizeY = round(KernelStepSizeY/Processed.ScanSizeY*Processed.NumPixelsY);
-            if ~mod(KernelWindowX,2)
-                KernelWindowX = KernelWindowX + 1;
-            end
-            if ~mod(KernelWindowY,2)
-                KernelWindowY = KernelWindowY + 1;
-            end
-            
-            % scan over the image with the feature kernel, that snaps onto
-            % fibrils, if it finds regions with enough cumsum of
-            % apexpoints. Once the kernel has scanned over all of the
-            % image, the outer while loop terminates
-            ObjectIndex = 1;
-            CurOuterPosX = (KernelWindowX+1)/2;
-            CurOuterPosY = (KernelWindowY+1)/2;
-            OuterCondition = true;
-            if DebugBool
-                Image = imshow(Processed.Image,[]);
-                Rect = drawrectangle('Position',[(CurOuterPosX - (KernelWindowX-1)/2) ...
-                    (CurOuterPosY - (KernelWindowY-1)/2) ...
-                    KernelWindowX, KernelWindowY],...
-                    'RotationAngle',0);
-            end
-            while OuterCondition
-                [ComboSum,AspectRatio,MeanX,MeanY,Angle] = ...
-                    AFMImage.fibril_feature_kernel(...
-                    Processed,ApexMap,CurOuterPosX,CurOuterPosY,...
-                    KernelWindowX,KernelWindowY);
-                if ComboSum > ComboSumThresh
-                    ReachedImageBorder = false;
-                    ObjectEnded = false;
-                    CurInnerPosX = CurOuterPosX;
-                    CurInnerPosY = CurOuterPosY;
-                    Angle = 0;
-                    AdaptiveWindowX = KernelWindowX;
-                    AdaptiveWindowY = KernelWindowY;
-                    while ~ReachedImageBorder || ObjectEnded
-                        [ComboSum,AspectRatio,AdaptiveWindowX,AdaptiveWindowY,Angle] = ...
-                            AFMImage.fibril_feature_kernel(...
-                            Processed,ApexMap,CurInnerPosX,CurInnerPosY,Angle,...
-                            AdaptiveWindowX,AdaptiveWindowY);
-                    end
-                    ObjectIndex = ObjectIndex + 1;
-                end
-                if CurOuterPosX+(KernelWindowX+1)/2 == Processed.NumPixelsX
-                    if CurOuterPosY+(KernelWindowY+1)/2 == Processed.NumPixelsY
-                        OuterCondition = false;
-                    elseif CurOuterPosY+KernelStepSizeY+(KernelWindowY-1)/2 > Processed.NumPixelsY
-                        CurOuterPosX = (KernelWindowX+1)/2;
-                        CurOuterPosY = Processed.NumPixelsY - (KernelWindowY+1)/2;
-                    else
-                        CurOuterPosX = (KernelWindowX+1)/2;
-                        CurOuterPosY = CurOuterPosY + KernelStepSizeY;
-                    end
-                elseif CurOuterPosX+KernelStepSizeX+(KernelWindowX-1)/2 > Processed.NumPixelsX
-                    CurOuterPosX = Processed.NumPixelsX - (KernelWindowX+1)/2;
-                else
-                    CurOuterPosX = CurOuterPosX + KernelStepSizeX;
-                end
-                if DebugBool
-                    Rect.Position = [(CurOuterPosX - (KernelWindowX-1)/2) ...
-                        (CurOuterPosY - (KernelWindowY-1)/2) ...
-                        KernelWindowX, KernelWindowY];
-                    drawnow
-                end
-            end
-            
-        end
-        
     end
     
     methods(Static)
         % Static Main Methods
         
-        function [ChannelOut,ScaleMultiplier,WhoScaled] = overlay_parameters_by_bayesopt(Channel1,Channel2,...
-                BackgroundPercent,MinOverlap,AngleRange,UseParallel,MaxFunEval,...
-                PreMaxFunEval,NumPreSearches,NClusters)
+        function ChannelOut = overlay_parameters_by_bayesopt(Channel1,Channel2,BackgroundPercent,MinOverlap,AngleRange,UseParallel,MaxFunEval,PreMaxFunEval,NumPreSearches,NClusters)
             % ChannelOut = overlay_parameters_by_bayesopt(Channel1,Channel2,BackgroundPercent,MinOverlap,AngleRange,UseParallel,MaxFunEval,PreMaxFunEval,NumPreSearches,NClusters)
             
             % Assume Channel2 has same angle and origin as Channel1
@@ -479,20 +258,16 @@ classdef AFMImage < matlab.mixin.Copyable
             % exactly the same
             SizePerPixel1 = Channel1.ScanSizeX/Channel1.NumPixelsX;
             SizePerPixel2 = Channel2.ScanSizeX/Channel2.NumPixelsX;
-            ScaleMultiplier = 1;
-            WhoScaled = 'No one';
             if SizePerPixel1 > SizePerPixel2
                 ScaleMultiplier = SizePerPixel1/SizePerPixel2;
                 Channel1.Image = imresize(Channel1.Image,ScaleMultiplier);
                 Channel1.NumPixelsX = size(Channel1.Image,1);
                 Channel1.NumPixelsY = size(Channel1.Image,2);
-                WhoScaled = 'Channel1';
             elseif SizePerPixel1 > SizePerPixel2
                 ScaleMultiplier = SizePerPixel2/SizePerPixel1;
                 Channel2.Image = imresize(Channel2.Image,ScaleMultiplier);
                 Channel2.NumPixelsX = size(Channel2.Image,1);
                 Channel2.NumPixelsY = size(Channel2.Image,2);
-                WhoScaled = 'Channel2';
             end
             % Create Background masks
             Mask1 = AFMImage.mask_background_by_threshold(Channel1.Image,BackgroundPercent,'on');
@@ -716,6 +491,23 @@ classdef AFMImage < matlab.mixin.Copyable
             OutImage = InImage;
         end
         
+        function OutImage = subtract_line_fit_diffhist_method(InImage)
+            
+            NumProfiles = size(InImage,1);
+            NumPoints = size(InImage,2);
+            
+            for i=1:NumProfiles
+                Line = InImage(i,:)';
+                CutOff = AFMImage.automatic_cutoff(Line);
+                Indizes = find(Line<=CutOff);
+                LineFit = polyfit(Indizes,Line(Indizes),1);
+                LineEval = [1:NumPoints]'*LineFit(1) + LineFit(2);
+                Line = Line - LineEval;
+                InImage(i,:) = Line;
+            end
+            OutImage = InImage;
+        end
+        
         function OutImage = subtract_line_fit_std_method(InImage)
             NumProfiles = size(InImage,1);
             NumPoints = size(InImage,2);
@@ -742,105 +534,6 @@ classdef AFMImage < matlab.mixin.Copyable
                 Line = [];
             end
             OutImage = InImage;
-        end
-        
-        function OutImage = subtract_line_fit_rov(InImage,WindowSize)
-            
-            NumProfiles = size(InImage,1);
-            NumPoints = size(InImage,2);
-            ForwardRoV = zeros(NumProfiles,NumPoints);
-            BackwardRoV = zeros(NumProfiles,NumPoints);
-            for i=1:10
-                InImage = smoothdata(InImage,2,'movmedian',5);
-                imshow(InImage,[])
-                drawnow
-            end
-            for i=1:NumProfiles
-                for j=(1+WindowSize):(NumPoints-WindowSize)
-                    ForwardRoV(i,j) = std(InImage(i,(j+1):(j+WindowSize)))/std(InImage(i,(j-WindowSize):(j-1)));
-                    BackwardRoV(i,j) = 1/ForwardRoV(i,j);
-                end
-                ForwardRoV(i,:) = normalize(smoothdata(ForwardRoV(i,:),'movmean',5),'range');
-                BackwardRoV(i,:) = normalize(smoothdata(BackwardRoV(i,:),'movmean',5),'range');
-                yyaxis left
-                plot(InImage(i,:))
-                yyaxis right
-                plot(1:NumPoints,ForwardRoV(i,:),1:NumPoints,BackwardRoV(i,:))
-                drawnow
-                
-            end
-            % Dont really know where to go with this atm
-            OutImage = 1;
-        end
-        
-        function OutImage = subtract_line_fit_vertical_rov(InImage,WindowSize,DebugBool)
-            
-            NumProfiles = size(InImage,1);
-            NumPoints = size(InImage,2);
-            if nargin < 2
-                DebugBool = false;
-                WindowSize = .2;
-            elseif nargin < 3
-                DebugBool = false;
-            end
-            
-            WindowSize = round(WindowSize*NumPoints);
-            
-            RoV = zeros(NumProfiles,NumPoints);
-            MaxIdx = zeros(NumProfiles,1);
-            Smoothed = smoothdata(InImage,2,'gaussian',5);
-            Smoothed = smoothdata(Smoothed,2,'gaussian',5);
-            [Sorted, SortedIndex] = sort(Smoothed,2,'descend');
-            
-            % Pre debug block    
-            if DebugBool
-                f = figure('Units','normalized','Position',[0 0 .9 .9]);
-            end
-            
-            for i=1:NumProfiles
-                for j=(1+WindowSize):(NumPoints-WindowSize)
-                    RoV(i,j) = std(Sorted(i,(j-WindowSize):(j-1)))/std(Sorted(i,(j+1):(j+WindowSize)));
-                end
-                [~,MaxIdx(i)] = max(RoV(i,:));
-                
-                % Debug Block
-                if DebugBool
-                    yyaxis left
-                    plot(SortedIndex(i,1:MaxIdx(i)), Sorted(i,1:MaxIdx(i)),'ro',...
-                        SortedIndex(i,MaxIdx(i)+1:end),Sorted(i,MaxIdx(i)+1:end),'go');
-                    yyaxis right
-                    plot(1:NumPoints,RoV(i,:))
-                    drawnow
-                end
-            end
-            % Smooth out the hist cutoff by fitting a gp and using its mean
-            KernelLambda = 5000;
-            KernelSigma = 1;
-            GPNoise = 0;
-            RectMaxIdx = round(predictGP_mean(1:NumProfiles,1:NumProfiles,KernelSigma,KernelLambda,MaxIdx,GPNoise));
-            for i=1:NumProfiles
-                LineFit = polyfit(SortedIndex(i,RectMaxIdx(i)+round(.25*(NumPoints-RectMaxIdx(i))):end),...
-                    Sorted(i,RectMaxIdx(i)+round(.25*(NumPoints-RectMaxIdx(i))):end),1);
-                LineEval = [1:NumPoints]'*LineFit(1) + LineFit(2);
-                Line = InImage(i,:)';
-                Line = Line - LineEval;
-                InImage(i,:) = Line;
-            end
-            
-            OutImage = InImage;
-            
-            % Second debug block
-            if DebugBool
-                close(f)
-                f = figure('Units','normalized','Position',[0 0 .9 .9]);
-                subplot(2,1,1)
-                plot(1:NumProfiles,MaxIdx,'rx',1:NumProfiles,RectMaxIdx,'g-')
-                subplot(2,1,2)
-                imshowpair(Smoothed,OutImage,'montage')
-                drawnow
-                pause(5)
-                close(f)
-            end
         end
         
         function OutMask = mask_background_by_threshold(Image,PercentOfRange,AutoMode)
@@ -875,135 +568,6 @@ classdef AFMImage < matlab.mixin.Copyable
                 OutMask(Row(i),Col(i)) = 1;
             end
             
-        end
-        
-        function OutMask = mask_apex_points_by_rotation(InImage,NumRotations,BackgroundMask)
-            
-            RotAngles = 0:90/NumRotations:90;
-            RotAngles(end) = [];
-            OutMask = zeros(size(InImage));
-            if (nargin > 2) && ~isequal(size(InImage),size(BackgroundMask))
-                BackgroundMask = ones(size(InImage));
-            elseif nargin < 2
-                BackgroundMask = ones(size(InImage));
-            end
-            h = waitbar(0,'Lets start rotating');
-            for i=1:NumRotations
-                waitbar(i/NumRotations,h,sprintf('%i/%i Rotation-scans done',i,NumRotations))
-                TempImage = imrotate(InImage,RotAngles(i));
-                TempMask = zeros(size(TempImage));
-                NumProfiles = size(TempImage,1);
-                for j=1:NumProfiles
-                    [Peaks,PeakIndices] = findpeaks(TempImage(j,:));
-                    TempMask(j,PeakIndices) = 1;
-                end
-                TempMask = imrotate(TempMask,(-RotAngles(i)),'crop');
-                TempImage = imrotate(TempImage,(-RotAngles(i)),'crop');
-                while ~sum(find(TempImage(1,:)))
-                    TempImage(1,:) = [];
-                    TempMask(1,:) = [];
-                end
-                while ~sum(find(TempImage(end,:)))
-                    TempImage(end,:) = [];
-                    TempMask(end,:) = [];
-                end
-                while ~sum(find(TempImage(:,1)))
-                    TempImage(:,1) = [];
-                    TempMask(:,1) = [];
-                end
-                while ~sum(find(TempImage(:,end)))
-                    TempImage(:,end) = [];
-                    TempMask(:,end) = [];
-                end
-                TempMask = imresize(TempMask,size(InImage));
-                OutMask = OutMask + TempMask;
-            end
-            close(h)
-            
-            OutMask(BackgroundMask == 1) = 0;
-            
-            OutMask = OutMask./NumRotations;
-            
-        end
-        
-        function [OutMask,AngleMask] = mask_apex_points_by_convolution(InChannel,RadiusMeters,NumRotations,MinKernelSize,BackgroundMask)
-            
-            OutMask = zeros(size(InChannel.Image));
-            RotAngles = 0:180/NumRotations:180;
-            RotAngles(end) = [];
-            RotAngles = deg2rad(RotAngles);
-            MinKernelSize = MinKernelSize + (1-mod(MinKernelSize,2));
-            
-            MaxSizePerPixel = RadiusMeters/MinKernelSize;
-            SizePerPixel = InChannel.ScanSizeX/InChannel.NumPixelsX;
-            KernelSize = round(RadiusMeters/SizePerPixel);
-            KernelSize = KernelSize + (1-mod(KernelSize,2));
-            if SizePerPixel > MaxSizePerPixel
-                Image = imresize(InChannel.Image,SizePerPixel/MaxSizePerPixel,'bicubic');
-                KernelSize = MinKernelSize;
-                SizePerPixel = MaxSizePerPixel;
-            else
-                Image = InChannel.Image;
-            end
-            
-            Kernel = zeros(KernelSize,KernelSize,NumRotations);
-            FlattenKernel = zeros(KernelSize,KernelSize);
-            KernelCenter = (KernelSize+1)/2;
-            Radius = KernelCenter;
-            % Create Kernel
-            for k=1:NumRotations
-                for i=1:KernelSize
-                    for j=1:KernelSize
-                        if (i-KernelCenter)^2 + (j-KernelCenter)^2 <= Radius^2
-                        a = [(i-KernelCenter) (j-KernelCenter)];
-                        b = [cos(RotAngles(k)) sin(RotAngles(k))];
-                        Dist = dot(a,b)/norm(b);
-                        Kernel(i,j,k) = Radius^3/8 - abs(Dist^3);
-                        if k == 1
-                            FlattenKernel(i,j) = 1;
-                        end
-                        end
-                    end
-                end
-            end
-%             FlattenKernel = imresize(FlattenKernel,[10*KernelSize+1 10*KernelSize+1],'nearest');
-%             FlattenKernel = FlattenKernel/(sum(FlattenKernel,'all'));
-            
-            FlattenedImage = Image - conv2(Image,FlattenKernel,'same');
-            
-%             % Debug section
-%             tiledlayout(5,5)
-%             for i = 1:NumRotations
-%                 nexttile
-%                 imshow(Kernel(:,:,i),[])
-%             end
-            
-            TempMask = zeros([size(Image) NumRotations]);
-            TempMask = gpuArray(TempMask);
-            FlattenedImage = gpuArray(FlattenedImage);
-            Kernel = gpuArray(Kernel);
-            TempMask = convn(FlattenedImage,Kernel);
-            AngleMask = gpuArray(zeros(size(TempMask,1),size(TempMask,2)));
-            
-            [OutMask,AngleIndex] = max(TempMask,[],3);
-            
-            for i=1:NumRotations
-                AngleMask(AngleIndex == i) = RotAngles(i);
-            end
-            
-            if nargin == 5
-                OutMask(imresize(BackgroundMask,size(TempMask(:,:,1)),'nearest')==1) = 0;
-            end
-            
-            OutMask(:,end-(KernelCenter-2):end) = [];
-            OutMask(end-(KernelCenter-2):end,:) = [];
-            OutMask(1:(KernelCenter-1),:) = [];
-            OutMask(:,1:(KernelCenter-1)) = [];
-            
-            AngleMask(:,end-(KernelCenter-2):end) = [];
-            AngleMask(end-(KernelCenter-2):end,:) = [];
-            AngleMask(1:(KernelCenter-1),:) = [];
-            AngleMask(:,1:(KernelCenter-1)) = [];
         end
         
         function OutImage = masked_plane_fit(Image,Mask)
@@ -1150,56 +714,10 @@ classdef AFMImage < matlab.mixin.Copyable
             
         end
         
-        function [ComboSum,AspectRatio,MeanX,MeanY,Angle] = fibril_feature_kernel(Height, ApexMap, PosX, PosY,...
-                AdaptiveWindowX,AdaptiveWindowY)
-            
-            % In order to avoid directional biases, points should be taken
-            % from a circle, not a rectangle
-            Radius = (min([AdaptiveWindowX AdaptiveWindowY])-1)/2;
-            InIndices(1,:) = [PosX PosY];
-            i = 0;
-            j = 0;
-            k = 1;
-            while i^2+j^2 <= Radius^2
-                while i^2+j^2 <= Radius^2
-                    InIndices(k,:) = [PosX+i PosY+j];
-                    k = k + 1;
-                    if j
-                    InIndices(k,:) = [PosX+i PosY-j];
-                    k = k + 1;
-                    end
-                    if i
-                    InIndices(k,:) = [PosX-i PosY+j];
-                    k = k + 1;
-                    end
-                    if i && j
-                    InIndices(k,:) = [PosX-i PosY-j];
-                    k = k + 1;
-                    end
-                    j = j + 1;
-                end
-                i = i + 1;
-                j = 0;
-            end
-            Weights = zeros(length(InIndices),1);
-            for i=1:length(InIndices)
-                Weights(i) = abs(Height.Image(InIndices(i,1),InIndices(i,2))...
-                    *ApexMap.Image(InIndices(i,1),InIndices(i,2)));
-            end
-            [EigenVectors,~,EigenValues,~,~,Means] = pca(InIndices,'Weights',Weights);
-            MeanX = Means(1);
-            MeanY = Means(2);
-            Angle = rad2deg(atan(EigenVectors(1,1)/EigenVectors(2,1)));
-            ComboSum = sum(Weights,'all');
-            AspectRatio = EigenValues(1)/EigenValues(2);
-        end
     end
     
     methods
         % Methods for image visualisation and output
-        % This method has been replaced with the more general show_image
-        % method in the Experiment class
-        
         function show_image(obj)
             % TODO: implement ui elements for customization
             
@@ -1638,7 +1156,7 @@ classdef AFMImage < matlab.mixin.Copyable
             end
             
             uiwait(h.Fig)
-        end  
+        end
         
     end
     
@@ -2213,22 +1731,14 @@ classdef AFMImage < matlab.mixin.Copyable
             end
             
             ScalebarThickness = 1/40;
-            DistFromBorder = 0.08;
+            DistFromBorder = 0.12;
             
             [Multiplier,Unit,SnapTo] = AFMImage.parse_unit_scale(ScanSizeX,'m',BarToImageRatio);
             
             Width = (SnapTo)/(ScanSizeX*Multiplier);
             Height = ScalebarThickness;
-            Left = 1-Width*(1+DistFromBorder*1.8);
+            Left = 1-Width*(1+DistFromBorder*1.5);
             Bottom = 1-(DistFromBorder-Height);
-            
-            BoxDeltaX = Width/4;
-            BoxDeltaY = Height*3;
-            
-            BackR = rectangle('Position',[Left-BoxDeltaX/2 Bottom-5*BoxDeltaY/6 Width+BoxDeltaX Height+BoxDeltaY].*NumPixelsX);
-            BackR.FaceColor = 'k';
-            BackR.EdgeColor = 'w';
-            BackR.LineWidth = 1;
             
             R = rectangle('Position',[Left Bottom Width Height].*NumPixelsX);
             R.FaceColor = 'w';
@@ -2236,7 +1746,7 @@ classdef AFMImage < matlab.mixin.Copyable
             R.LineWidth = 2;
             
             FontSize = round(42*FontSizeMult);
-            A = text((Left*1.13)*NumPixelsX,(1.005*Bottom-3*BoxDeltaY/6)*NumPixelsY,sprintf('%i %s',SnapTo,Unit),'HorizontalAlignment','center');
+            A = text((Left+Width/2)*NumPixelsX,(Bottom-Height)*NumPixelsX-FontSize/2,sprintf('%i %s',SnapTo,Unit),'HorizontalAlignment','center');
             A.Color = 'w';
             A.FontSize = FontSize;
             A.FontWeight = 'bold';
@@ -2443,27 +1953,6 @@ classdef AFMImage < matlab.mixin.Copyable
             
             CutOff = Thresholds(MaxIndex);
             
-        end
-        
-        function OutChannel = resize_channel(InChannel,Multiplicator,TargetRes,TransformToSquare)
-            
-            if nargin < 4
-                TransformToSquare = false;
-            end
-            if nargin == 3
-                Multiplicator = TargetRes/InChannel.NumPixelsX;
-            end
-            OutChannel = InChannel;
-            
-            if ~TransformToSquare
-                OutChannel.Image = imresize(InChannel.Image,Multiplicator);
-                OutChannel.NumPixelsX = size(OutChannel.Image,1);
-                OutChannel.NumPixelsY = size(OutChannel.Image,2);
-            elseif TransformToSquare
-                OutChannel.Image = imresize(InChannel.Image,[TargetRes TargetRes]);
-                OutChannel.NumPixelsX = size(OutChannel.Image,1);
-                OutChannel.NumPixelsY = size(OutChannel.Image,2);
-            end
         end
         
     end

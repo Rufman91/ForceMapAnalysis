@@ -16,7 +16,7 @@ for i =1:length(E.FM)
 end               
 
 tic
-[X,Y] = CP_CNN_batchprep(objcell,ImgSizeFinal,ImgSize,[0 0.3 0.7],'All',DataAugMult,3);
+[X,Y] = CP_CNN_batchprep(objcell,ImgSizeFinal,ImgSize,[0 0.5 0.9],'All',DataAugMult,3);
 toc
 
 NVal = floor(size(X,4)/4);
@@ -342,7 +342,7 @@ MonteCarlo14 = connectLayers(MonteCarlo14,"conv_15","addition_6/in1");
 options = trainingOptions('adam','Plots','training-progress',...
     'ValidationData',{XValidation,YValidation},...
     'ValidationFrequency',50,...
-    'MiniBatchSize',256,...
+    'MiniBatchSize',100,...
     'MaxEpochs',1000,...
     'InitialLearnRate',0.002,...
     'LearnRateSchedule','piecewise',...
@@ -355,10 +355,7 @@ options = trainingOptions('adam','Plots','training-progress',...
 %  For this option to be available, the Parallel-Computing-Toolbox has to be
 %  installed in MATLAB
 
-CP_ResNet101_29_05_21 = trainNetwork(XTrain,YTrain,lgraph_1,options);
-
-save('Session_ResNet101_29_05_21','-v7.3')
-
+CP_MC14_10_11 = trainNetwork(XTrain,YTrain,MonteCarlo14,options);
 % 
 % %% Evaluate your model looking at the models predictions
 % 

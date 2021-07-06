@@ -261,7 +261,7 @@ classdef Experiment < matlab.mixin.Copyable
                 % get paths of requested files and load them in
                 SaveCopy.take_paths_and_load_files(FileTypes,FullFileStruct,isNew)
                 
-                SaveCopy.initialize_flags
+                % SaveCopy.initialize_flags % What to do with this?
                 
                 Out = SaveCopy;
                 Out.save_experiment
@@ -430,6 +430,7 @@ classdef Experiment < matlab.mixin.Copyable
                 obj.FM{i}.base_and_tilt('linear');
                 waitbar(i/NLoop,h,sprintf('Preprocessing ForceMap %i/%i\nWrapping Up And Saving',i,NLoop));
                 
+                obj.FM{i}.save();
                 obj.FMFlag.Preprocessed(i) = 1;
             end
             
@@ -518,22 +519,15 @@ classdef Experiment < matlab.mixin.Copyable
             % Deconvoluting cantilever tip(s)
             if isequal(lower(EModOption),'oliver')
                 if obj.NumCantileverTips == 0
-                    if isequal(class(obj.CantileverTips{1}),'AFMImage')
-                        obj.NumCantileverTips = length(obj.CantileverTips);
-                        obj.CantileverTipFlag = 1;
-                        obj.AssignedCantileverTips = 1;
-                        obj.WhichTip = ones(obj.NumForceMaps,1);
-                    else
-                        Warn = warndlg('You need to load in TGT-1 images of your cantilever for this kind of analysis');
-                        uiwait(Warn);
-                        IsValid = false;
-                        while ~IsValid
-                            UsrInput = inputdlg('How many tips were used in this Experiment?');
-                            NumTips = str2num(UsrInput{1});
-                            IsValid = isnumeric(NumTips)&&~isempty(NumTips);
-                        end
-                        obj.get_paths_and_load_files([0 0 0 0 1],[0 0 0 0 ceil(NumTips)],false);
+                    Warn = warndlg('You need to load in TGT-1 images of your cantilever for this kind of analysis');
+                    uiwait(Warn);
+                    IsValid = false;
+                    while ~IsValid
+                        UsrInput = inputdlg('How many tips were used in this Experiment?');
+                        NumTips = str2num(UsrInput{1});
+                        IsValid = isnumeric(NumTips)&&~isempty(NumTips);
                     end
+                    obj.get_paths_and_load_files([0 0 0 0 1],[0 0 0 0 ceil(NumTips)],false);
                 end
                 if ~obj.AssignedCantileverTips
                     obj.assign_cantilever_tips
@@ -579,19 +573,10 @@ classdef Experiment < matlab.mixin.Copyable
                     end
                 else
                     obj.FM{i}.calculate_e_mod_oliverpharr(obj.CantileverTips{obj.WhichTip(i)}.ProjectedTipArea,0.75);
-                    obj.FM{i}.ProjTipArea = obj.CantileverTips{obj.WhichTip(i)}.ProjectedTipArea;
                     if i == 1
                         obj.write_to_log_file('OliverPharr CurvePercent','0.75')
                     end
                 end
-                
-                obj.FM{i}.calculate_adhesion_energy_and_length(2);
-                obj.write_to_log_file('Adhesion Energy STD-Threshold Multiplier','2')
-                obj.FM{i}.calculate_adhesion_force;
-                obj.FM{i}.calculate_dissipated_and_elastic_energy;
-                obj.FM{i}.calculate_peak_indentation_angle(.5);
-                obj.write_to_log_file('Upper Percent of Curve considered for Peak Indentation','50%')
-                
                 waitbar(i/NLoop,h,sprintf('Processing Fibril %i/%i\nWrapping Up And Saving',i,NLoop));
                 
                 if i > 1
@@ -694,22 +679,15 @@ classdef Experiment < matlab.mixin.Copyable
             % Deconvoluting cantilever tip(s)
             if isequal(lower(EModOption),'oliver')
                 if obj.NumCantileverTips == 0
-                    if isequal(class(obj.CantileverTips{1}),'AFMImage')
-                        obj.NumCantileverTips = length(obj.CantileverTips);
-                        obj.CantileverTipFlag = 1;
-                        obj.AssignedCantileverTips = 1;
-                        obj.WhichTip = ones(obj.NumForceMaps,1);
-                    else
-                        Warn = warndlg('You need to load in TGT-1 images of your cantilever for this kind of analysis');
-                        uiwait(Warn);
-                        IsValid = false;
-                        while ~IsValid
-                            UsrInput = inputdlg('How many tips were used in this Experiment?');
-                            NumTips = str2num(UsrInput{1});
-                            IsValid = isnumeric(NumTips)&&~isempty(NumTips);
-                        end
-                        obj.get_paths_and_load_files([0 0 0 0 1],[0 0 0 0 ceil(NumTips)],false);
+                    Warn = warndlg('You need to load in TGT-1 images of your cantilever for this kind of analysis');
+                    uiwait(Warn);
+                    IsValid = false;
+                    while ~IsValid
+                        UsrInput = inputdlg('How many tips were used in this Experiment?');
+                        NumTips = str2num(UsrInput{1});
+                        IsValid = isnumeric(NumTips)&&~isempty(NumTips);
                     end
+                    obj.get_paths_and_load_files([0 0 0 0 1],[0 0 0 0 ceil(NumTips)],false);
                 end
                 if ~obj.AssignedCantileverTips
                     obj.assign_cantilever_tips
@@ -754,24 +732,14 @@ classdef Experiment < matlab.mixin.Copyable
                     end
                 else
                     obj.FM{i}.calculate_e_mod_oliverpharr(obj.CantileverTips{obj.WhichTip(i)}.ProjectedTipArea,0.75);
-                    obj.FM{i}.ProjTipArea = obj.CantileverTips{obj.WhichTip(i)}.ProjectedTipArea;
                     if i == 1
                         obj.write_to_log_file('OliverPharr CurvePercent','0.75')
                     end
                 end
-                
-                obj.FM{i}.calculate_adhesion_energy_and_length(2);
-                obj.write_to_log_file('Adhesion Energy STD-Threshold Multiplier','2')
-                obj.FM{i}.calculate_adhesion_force;
-                obj.FM{i}.calculate_dissipated_and_elastic_energy;
-                obj.FM{i}.calculate_peak_indentation_angle(.5);
-                obj.write_to_log_file('Upper Percent of Curve considered for Peak Indentation','50%')
-                
                 waitbar(i/NLoop,h,sprintf('Processing ForceMap %i/%i\nWrapping Up And Saving',i,NLoop));
                 
                 obj.FMFlag.ForceMapAnalysis(i) = 1;
             end
-            
             
             obj.save_experiment;
             
@@ -915,11 +883,11 @@ classdef Experiment < matlab.mixin.Copyable
             h = waitbar(0,'setting up...');
             for i=1:obj.NumAFMImages
                 waitbar(i/obj.NumAFMImages,h,{sprintf('Processing %i/%i:',i,obj.NumAFMImages),sprintf('%s',obj.I{i}.Name)});
-                [Processed,Index] = obj.I{i}.get_channel('ProcessedSimple');
+                [Processed,Index] = obj.I{i}.get_channel('Processed');
                 Height = obj.I{i}.get_channel('Height (Trace)');
                 if isempty(Processed)
                     Processed = Height;
-                    Processed.Name = 'ProcessedSimple';
+                    Processed.Name = 'Processed';
                     Index = length(obj.I{i}.Channel)+1;
                     obj.I{i}.NumChannels = Index;
                 end
@@ -929,69 +897,6 @@ classdef Experiment < matlab.mixin.Copyable
                 end
                 obj.I{i}.Channel(Index) = Processed;
                 obj.I{i}.hasProcessed = 1;
-            end
-            close(h)
-        end
-        
-        function image_analysis_flatten_on_even_background_automatic(obj,WindowSize,NIter)
-            
-            if nargin < 2
-                WindowSize = .2;
-                NIter = 3;
-            end
-            %main loop
-            h = waitbar(0,'setting up...');
-            for i=1:obj.NumAFMImages
-                waitbar(i/obj.NumAFMImages,h,{sprintf('Processing %i/%i:',i,obj.NumAFMImages),sprintf('%s',obj.I{i}.Name)});
-                [Processed,Index] = obj.I{i}.get_channel('Processed');
-                Height = obj.I{i}.get_channel('Height (Trace)');
-                if isempty(Processed)
-                    Processed = Height;
-                    Processed.Name = 'Processed';
-                    Index = length(obj.I{i}.Channel)+1;
-                    obj.I{i}.NumChannels = Index;
-                end
-                Processed.Image = AFMImage.subtract_line_fit_hist(Height.Image, .5);
-                for j=1:NIter
-                    Processed.Image = AFMImage.subtract_line_fit_vertical_rov(Processed.Image, WindowSize,false);
-                end
-                obj.I{i}.Channel(Index) = Processed;
-                obj.I{i}.hasProcessed = 1;
-            end
-            close(h)
-        end
-        
-        function image_analysis_flatten_and_combine_trace_retrace_automatic(obj,WindowSize,NIter)
-            
-            if nargin < 2
-                WindowSize = .2;
-                NIter = 3;
-            end
-            
-            %main loop
-            h = waitbar(0,'setting up...');
-            for i=1:obj.NumAFMImages
-                waitbar(i/obj.NumAFMImages,h,{sprintf('Processing %i/%i:',i,obj.NumAFMImages),sprintf('%s',obj.I{i}.Name)});
-                [Processed,Index] = obj.I{i}.get_channel('R-T Combined');
-                T = obj.I{i}.get_channel('Height (Trace)');
-                RT = obj.I{i}.get_channel('Height (Retrace)');
-                if isempty(Processed)
-                    Processed = T;
-                    Processed.Name = 'R-T Combined';
-                    Index = length(obj.I{i}.Channel)+1;
-                    obj.I{i}.NumChannels = Index;
-                end
-                T.Image = AFMImage.subtract_line_fit_hist(T.Image,.5);
-                RT.Image = AFMImage.subtract_line_fit_hist(RT.Image,.5);
-                for j=1:NIter
-                    T.Image = AFMImage.subtract_line_fit_vertical_rov(T.Image,WindowSize,false);
-                    RT.Image = AFMImage.subtract_line_fit_vertical_rov(RT.Image,WindowSize,false);
-                end
-                Processed.Image = min(T.Image,RT.Image);
-                for j=1:NIter
-                    Processed.Image = AFMImage.subtract_line_fit_vertical_rov(Processed.Image,WindowSize,false);
-                end
-                obj.I{i}.Channel(Index) = Processed;
             end
             close(h)
         end
@@ -1454,25 +1359,10 @@ classdef Experiment < matlab.mixin.Copyable
         function show_image(obj)
             % TODO: implement ui elements for customization
             
-            h.ColorMode(1).Background = 'k';
-            h.ColorMode(1).Profile1 = [219 21 223]./255; %[189 0 96]./255; % 'b';
-            h.ColorMode(1).Profile2 = 'c';
-            h.ColorMode(1).Text = 'w';
-            
-            
-            h.ColorMode(2).Background = 'w';
-            h.ColorMode(2).Profile1 = [219 21 223]./255; %[94 170 170]./255; % [189 0 96]./255; %'b';
-            h.ColorMode(2).Profile2 = [0 181 26]./255; % alternatives %[80 200 204]./255;%[0,0.870588235294118,0.407843137254902];
-            h.ColorMode(2).Text = 'k';
-            
-            h.ColorIndex = 1;
-            h.ReferenceFontSize = 24;
-            h.ProfileLineWidth = 3;
-            
             h.Fig = figure('Name',sprintf('%s',obj.ExperimentName),...
                 'Units','pixels',...
                 'Position',[200 200 1024 512],...
-                'Color',h.ColorMode(h.ColorIndex).Background);
+                'Color','k');
             
             h.B(1) = uicontrol('style','togglebutton',...
                 'String','Cross Section',...
@@ -1481,7 +1371,6 @@ classdef Experiment < matlab.mixin.Copyable
                 'Callback',@cross_section_toggle);
             
             [ClassPopUp,ClassIndex] = obj.string_of_existing_class_instances();
-            h.NumClasses = length(ClassPopUp);
             Class{1} = obj.get_class_instance(ClassIndex(1,:));
             Class{2} = obj.get_class_instance(ClassIndex(1,:));
             PopUp = Class{1}.string_of_existing();
@@ -1530,8 +1419,7 @@ classdef Experiment < matlab.mixin.Copyable
             h.B(7) = uicontrol('style','checkbox',...
                 'String','...with white background',...
                 'units','normalized',...
-                'position',[.85 .05 .1 .04],...
-                'Callback',@changed_color);
+                'position',[.85 .05 .1 .04]);
             
             h.B(8) = uicontrol('style','slider',...
                 'Value',1,...
@@ -1577,48 +1465,14 @@ classdef Experiment < matlab.mixin.Copyable
                 'Units','normalized',...
                 'Position',[.95 .56 .03 .02]);
             
-            h.B(18) = uicontrol('Style','checkbox',...
-                'String','Both Channels',...
-                'Value',0,...
-                'Tooltip','Green, if both Channels have the same size scaling',...
-                'Units','normalized',...
-                'Position',[.85 .47 .1 .03],...
-                'Callback',@checked_both_cross_sections);
-            
-            h.B(19) = uicontrol('style','checkbox',...
-                'String','Upscale Images',...
-                'units','normalized',...
-                'position',[.85 .15 .1 .04],...
-                'Callback',@upscale_images);
-            
-            h.B(20) = uicontrol('style','checkbox',...
-                'String','Lock Channels',...
-                'units','normalized',...
-                'position',[.85 .25 .1 .04],...
-                'Callback',@lock_channels);
-            
-            h.B(21) = uicontrol('style','checkbox',...
-                'String','Lock Scalebars',...
-                'units','normalized',...
-                'position',[.85 .20 .1 .04],...
-                'Callback',@lock_scalebars);
-            
             h.Channel1Max = 1;
             h.Channel1Min = 0;
             h.Channel2Max = 1;
             h.Channel2Min = 0;
             
-            h.CurChannel1Idx = h.B(2).Value;
-            h.CurChannel2Idx = h.B(3).Value;
-            h.RelativeChannelIndex = 0;
-            
-            h.MainLine = [];
-            h.ChildLine = [];
+            h.Line = [];
             h.hasCrossSection = 0;
-            h.hasBothCrossSections = 0;
             h.hasChannel2 = 0;
-            h.isUpscaled = false;
-            h.lockedChannels = h.B(20).Value;
             [~,DefIndex] = Class{1}.get_channel('Processed');
             if isempty(DefIndex)
                 DefIndex = 2;
@@ -1684,200 +1538,148 @@ classdef Experiment < matlab.mixin.Copyable
                 h.OnePass = false;
             end
             
-            function moving_cross_section(src,evt)
+            function moving_cross_section_channel_1(src,evt)
+                evname = evt.EventName;
                 if ~get(h.B(1),'Value')
                     return
                 end
-                delete(h.ImAx(3))
-                h.ImAx(3) = [];
-                Pos1 = [h.MainLine.Position(1,1) h.MainLine.Position(1,2)];
-                Pos2 = [h.MainLine.Position(2,1) h.MainLine.Position(2,2)];
-                MainProfile = improfile(h.Image{h.MainIndex},[Pos1(1) Pos2(1)],[Pos1(2) Pos2(2)]);
-                Len = norm(Pos1-Pos2)/h.NumPixelsX(h.MainIndex)*h.ScanSizeX(h.MainIndex);
-                Points = [0:1/(length(MainProfile)-1):1].*Len;
-                [MainMultiplierY,UnitY,~] = AFMImage.parse_unit_scale(range(MainProfile),h.BaseUnit{h.MainIndex},1);
+                Pos1 = [h.Line.Position(1,1) h.Line.Position(1,2)];
+                Pos2 = [h.Line.Position(2,1) h.Line.Position(2,2)];
+                Profile = improfile(h.Image{1},[Pos1(1) Pos2(1)],[Pos1(2) Pos2(2)]);
+                Len = norm(Pos1-Pos2)/Class{1}.NumPixelsX*Class{1}.ScanSizeX;
+                Points = [0:1/(length(Profile)-1):1].*Len;
+                [MultiplierY,UnitY,~] = AFMImage.parse_unit_scale(range(Profile),h.BaseUnit{1},1);
                 [MultiplierX,UnitX,~] = AFMImage.parse_unit_scale(range(Points),'m',1);
                 h.ImAx(3) = subplot(10,10,[71:78 81:88 91:98]);
-                h.P = plot(Points.*MultiplierX,MainProfile.*MainMultiplierY);
-                if h.hasBothCrossSections && (h.hasChannel2 && h.hasChannel1)
-                    yyaxis left
-                end
-                hold on
+                P = plot(Points.*MultiplierX,Profile.*MultiplierY);
                 grid on
-                CurrentAxHeight = round(h.Fig.Position(4)*h.ImAx(h.MainIndex).Position(4));
-                h.ImAx(3).Color = h.ColorMode(h.ColorIndex).Background;
+                CurrentAxHeight = round(h.Fig.Position(4)*h.ImAx(1).Position(4));
+                h.ImAx(3).Color = 'k';
                 h.ImAx(3).LineWidth = 1;
-                h.ImAx(3).FontSize = round(h.ReferenceFontSize*(CurrentAxHeight/756));
-                h.ImAx(3).XColor = h.ColorMode(h.ColorIndex).Text;
-                h.ImAx(3).YColor = h.ColorMode(h.ColorIndex).Profile1;
-                h.ImAx(3).GridColor = h.ColorMode(h.ColorIndex).Text;
+                h.ImAx(3).FontSize = round(22*(CurrentAxHeight/756));
+                h.ImAx(3).XColor = 'w';
+                h.ImAx(3).YColor = 'w';
+                h.ImAx(3).GridColor = 'w';
                 xlabel(sprintf('[%s]',UnitX))
-                ylabel(sprintf('%s [%s]',h.Channel{h.MainIndex},UnitY))
+                ylabel(sprintf('%s [%s]',h.Channel{1},UnitY))
                 xlim([0 Points(end).*MultiplierX])
-                h.P.LineWidth = 2;
-                h.P.Color = h.ColorMode(h.ColorIndex).Profile1;
-                if h.hasBothCrossSections && (h.hasChannel2 && h.hasChannel1)
-                    if ~isempty(h.ChildLine)
-                        if ~isvalid(h.ChildLine)
-                            h.ChildLine = [];
-                        end
-                    end
-                    h.ChildLine.Visible = 'off';
-                    h.ChildLine = drawline('Position',h.MainLine.Position,...
-                        'Parent',h.ImAx(h.ChildIndex),'Color',h.ColorMode(h.ColorIndex).Profile2,...
-                        'LineWidth',h.ProfileLineWidth);
-                    addlistener(h.ChildLine,'MovingROI',@moving_cross_section);
-                    addlistener(h.ChildLine,'ROIMoved',@moving_cross_section);
-                    CPos1 = [h.ChildLine.Position(1,1) h.ChildLine.Position(1,2)];
-                    CPos2 = [h.ChildLine.Position(2,1) h.ChildLine.Position(2,2)];
-                    ChildProfile = improfile(h.Image{h.ChildIndex},[CPos1(1) CPos2(1)],[CPos1(2) CPos2(2)]);
-                    ChildPoints = [0:1/(length(ChildProfile)-1):1].*Len;
-                    [ChildMultiplierY,UnitY,~] = AFMImage.parse_unit_scale(range(ChildProfile),h.BaseUnit{h.ChildIndex},1);
-                    yyaxis right
-                    h.CP = plot(ChildPoints.*MultiplierX,ChildProfile.*ChildMultiplierY);
-                    grid on
-                    CurrentAxHeight = round(h.Fig.Position(4)*h.ImAx(h.ChildIndex).Position(4));
-                    h.ImAx(3).Color = h.ColorMode(h.ColorIndex).Background;
-                    h.ImAx(3).LineWidth = 1;
-                    h.ImAx(3).FontSize = round(h.ReferenceFontSize*(CurrentAxHeight/756));
-                    h.ImAx(3).XColor = h.ColorMode(h.ColorIndex).Text;
-                    h.ImAx(3).YColor = h.ColorMode(h.ColorIndex).Profile2;
-                    h.ImAx(3).GridColor = h.ColorMode(h.ColorIndex).Text;
-                    xlabel(sprintf('[%s]',UnitX))
-                    ylabel(sprintf('%s [%s]',h.Channel{h.ChildIndex},UnitY))
-                    xlim([0 ChildPoints(end).*MultiplierX])
-                    h.CP.LineWidth = 2;
-                    h.CP.Color = h.ColorMode(h.ColorIndex).Profile2;
-                    if isequal(h.BaseUnit{1},h.BaseUnit{2})
-                        yyaxis left
-                        ylim([min([min(ChildProfile)*ChildMultiplierY min(MainProfile)*MainMultiplierY])...
-                            max([max(ChildProfile)*ChildMultiplierY max(MainProfile)*MainMultiplierY])]);
-                        yyaxis right
-                        ylim([min([min(ChildProfile)*ChildMultiplierY min(MainProfile)*MainMultiplierY])...
-                            max([max(ChildProfile)*ChildMultiplierY max(MainProfile)*MainMultiplierY])]);
-                    else
-                        ylim([min(ChildProfile)*ChildMultiplierY max(ChildProfile)*ChildMultiplierY]);
-                    end
-                    
-                    % Temporary
-                    legend({'Before','After'},'Location','northwest',...
-                        'FontSize',h.ReferenceFontSize);
-                    
-                end
-                hold off
+                P.LineWidth = 2;
+                P.Color = 'b';
             end
             
-            function checked_both_cross_sections(varargin)
-                h.hasBothCrossSections = ~h.hasBothCrossSections;
-                try
-                    delete(h.ImAx(3));
-                catch
-                end
-                draw_channel_1
-                draw_channel_2
-            end
-            
-            function get_and_draw_profile(varargin)
+            function moving_cross_section_channel_2(src,evt)
+                evname = evt.EventName;
                 if ~get(h.B(1),'Value')
                     return
                 end
-                if ~isempty(h.MainLine)
-                    if ~isvalid(h.MainLine)
-                        h.MainLine = [];
-                    end
-                end
-                h.MainLine.Visible = 'off';
-                if h.hasBothCrossSections && (h.hasChannel2 && h.hasChannel1)
-                    if ~isempty(h.ChildLine)
-                        if ~isvalid(h.ChildLine)
-                            h.ChildLine = [];
-                        end
-                    end
-                    h.ChildLine.Visible = 'off';
-                end
-                if isequal(varargin{1}.Parent,h.ImAx(1))
-                    h.MainIndex = 1;
-                    h.ChildIndex = 2;
-                elseif isequal(varargin{1}.Parent,h.ImAx(2))
-                    h.MainIndex = 2;
-                    h.ChildIndex = 1;
-                end
-                try
-                    delete(h.ImAx(3))
-                catch
-                end
-                h.MainLine = drawline('Color',h.ColorMode(h.ColorIndex).Profile1,...
-                    'Parent',varargin{1}.Parent,'LineWidth',h.ProfileLineWidth);
-                addlistener(h.MainLine,'MovingROI',@moving_cross_section);
-                addlistener(h.MainLine,'ROIMoved',@moving_cross_section);
-                Pos1 = [h.MainLine.Position(1,1) h.MainLine.Position(1,2)];
-                Pos2 = [h.MainLine.Position(2,1) h.MainLine.Position(2,2)];
+                Pos1 = [h.Line.Position(1,1) h.Line.Position(1,2)];
+                Pos2 = [h.Line.Position(2,1) h.Line.Position(2,2)];
                 if norm(Pos1-Pos2)==0
                     get_and_draw_profile;
                     return
                 end
-                MainProfile = improfile(h.Image{h.MainIndex},[Pos1(1) Pos2(1)],[Pos1(2) Pos2(2)]);
-                Len = norm(Pos1-Pos2)/h.NumPixelsX(h.MainIndex)*h.ScanSizeX(h.MainIndex);
-                Points = [0:1/(length(MainProfile)-1):1].*Len;
-                [MainMultiplierY,UnitY,~] = AFMImage.parse_unit_scale(range(MainProfile),h.BaseUnit{h.MainIndex},1);
+                Profile = improfile(h.Image{2},[Pos1(1) Pos2(1)],[Pos1(2) Pos2(2)]);
+                Len = norm(Pos1-Pos2)/Class{2}.NumPixelsX*Class{2}.ScanSizeX;
+                Points = [0:1/(length(Profile)-1):1].*Len;
+                [MultiplierY,UnitY,~] = AFMImage.parse_unit_scale(range(Profile),h.BaseUnit{2},1);
                 [MultiplierX,UnitX,~] = AFMImage.parse_unit_scale(range(Points),'m',1);
                 h.ImAx(3) = subplot(10,10,[71:78 81:88 91:98]);
-                h.P = plot(Points.*MultiplierX,MainProfile.*MainMultiplierY);
-                if h.hasBothCrossSections && (h.hasChannel2 && h.hasChannel1)
-                    yyaxis left
-                end
-                hold on
+                P = plot(Points.*MultiplierX,Profile.*MultiplierY);
                 grid on
-                CurrentAxHeight = round(h.Fig.Position(4)*h.ImAx(h.MainIndex).Position(4));
-                h.ImAx(3).Color = h.ColorMode(h.ColorIndex).Background;
+                CurrentAxHeight = round(h.Fig.Position(4)*h.ImAx(2).Position(4));
+                h.ImAx(3).Color = 'k';
                 h.ImAx(3).LineWidth = 1;
-                h.ImAx(3).FontSize = round(h.ReferenceFontSize*(CurrentAxHeight/756));
-                h.ImAx(3).XColor = h.ColorMode(h.ColorIndex).Text;
-                h.ImAx(3).YColor = h.ColorMode(h.ColorIndex).Profile1;
-                h.ImAx(3).GridColor = h.ColorMode(h.ColorIndex).Text;
+                h.ImAx(3).FontSize = round(22*(CurrentAxHeight/756));
+                h.ImAx(3).XColor = 'w';
+                h.ImAx(3).YColor = 'w';
+                h.ImAx(3).GridColor = 'w';
                 xlabel(sprintf('[%s]',UnitX))
-                ylabel(sprintf('%s [%s]',h.Channel{h.MainIndex},UnitY))
+                ylabel(sprintf('%s [%s]',h.Channel{2},UnitY))
                 xlim([0 Points(end).*MultiplierX])
-                h.P.LineWidth = 2;
-                h.P.Color = h.ColorMode(h.ColorIndex).Profile1;
-                if h.hasBothCrossSections && (h.hasChannel2 && h.hasChannel1)
-                    h.ChildLine = drawline('Position',h.MainLine.Position,...
-                        'Parent',h.ImAx(h.ChildIndex),'Color',h.ColorMode(h.ColorIndex).Profile2,...
-                        'LineWidth',h.ProfileLineWidth);
-                    addlistener(h.ChildLine,'MovingROI',@moving_cross_section);
-                    addlistener(h.ChildLine,'ROIMoved',@moving_cross_section);
-                    CPos1 = [h.ChildLine.Position(1,1) h.ChildLine.Position(1,2)];
-                    CPos2 = [h.ChildLine.Position(2,1) h.ChildLine.Position(2,2)];
-                    ChildProfile = improfile(h.Image{h.ChildIndex},[CPos1(1) CPos2(1)],[CPos1(2) CPos2(2)]);
-                    ChildPoints = [0:1/(length(ChildProfile)-1):1].*Len;
-                    [ChildMultiplierY,UnitY,~] = AFMImage.parse_unit_scale(range(ChildProfile),h.BaseUnit{h.ChildIndex},1);
-                    h.CP = plot(ChildPoints.*MultiplierX,ChildProfile.*ChildMultiplierY);
-                    yyaxis right
-                    grid on
-                    CurrentAxHeight = round(h.Fig.Position(4)*h.ImAx(h.MainIndex).Position(4));
-                    h.ImAx(3).Color = h.ColorMode(h.ColorIndex).Background;
-                    h.ImAx(3).LineWidth = 1;
-                    h.ImAx(3).FontSize = round(h.ReferenceFontSize*(CurrentAxHeight/756));
-                    h.ImAx(3).XColor = h.ColorMode(h.ColorIndex).Text;
-                    h.ImAx(3).YColor = h.ColorMode(h.ColorIndex).Profile2;
-                    h.ImAx(3).GridColor = h.ColorMode(h.ColorIndex).Text;
-                    xlabel(sprintf('[%s]',UnitX))
-                    ylabel(sprintf('%s [%s]',h.Channel{h.MainIndex},UnitY))
-                    xlim([0 ChildPoints(end).*MultiplierX])
-                    if isequal(h.BaseUnit{1},h.BaseUnit{2})
-                        yyaxis left
-                        ylim([min([min(ChildProfile)*ChildMultiplierY min(MainProfile)*MainMultiplierY])...
-                            max([max(ChildProfile)*ChildMultiplierY max(MainProfile)*MainMultiplierY])]);
-                        yyaxis right
-                        ylim([min([min(ChildProfile)*ChildMultiplierY min(MainProfile)*MainMultiplierY])...
-                            max([max(ChildProfile)*ChildMultiplierY max(MainProfile)*MainMultiplierY])]);
-                    else
-                        ylim([min(ChildProfile)*ChildMultiplierY max(ChildProfile)*ChildMultiplierY]);
-                    end
-                    h.CP.LineWidth = 2;
-                    h.CP.Color = h.ColorMode(h.ColorIndex).Profile2;
+                P.LineWidth = 2;
+                P.Color = 'b';
+            end
+            
+            function get_and_draw_profile_channel_1(varargin)
+                if ~get(h.B(1),'Value')
+                    return
                 end
-                hold off
+                if ~isempty(h.Line)
+                    if ~isvalid(h.Line)
+                        h.Line = [];
+                    end
+                end
+                h.Line.Visible = 'off';
+                h.Line = drawline('Color','b','Parent',h.ImAx(1));
+                addlistener(h.Line,'MovingROI',@moving_cross_section_channel_1);
+                addlistener(h.Line,'ROIMoved',@moving_cross_section_channel_1);
+                Pos1 = [h.Line.Position(1,1) h.Line.Position(1,2)];
+                Pos2 = [h.Line.Position(2,1) h.Line.Position(2,2)];
+                if norm(Pos1-Pos2)==0
+                    get_and_draw_profile_channel_1;
+                    return
+                end
+                Profile = improfile(h.Image{1},[Pos1(1) Pos2(1)],[Pos1(2) Pos2(2)]);
+                Len = norm(Pos1-Pos2)/Class{1}.NumPixelsX*Class{1}.ScanSizeX;
+                Points = [0:1/(length(Profile)-1):1].*Len;
+                [MultiplierY,UnitY,~] = AFMImage.parse_unit_scale(range(Profile),h.BaseUnit{1},1);
+                [MultiplierX,UnitX,~] = AFMImage.parse_unit_scale(range(Points),'m',1);
+                h.ImAx(3) = subplot(10,10,[71:78 81:88 91:98]);
+                P = plot(Points.*MultiplierX,Profile.*MultiplierY);
+                grid on
+                CurrentAxHeight = round(h.Fig.Position(4)*h.ImAx(1).Position(4));
+                h.ImAx(3).Color = 'k';
+                h.ImAx(3).LineWidth = 1;
+                h.ImAx(3).FontSize = round(22*(CurrentAxHeight/756));
+                h.ImAx(3).XColor = 'w';
+                h.ImAx(3).YColor = 'w';
+                h.ImAx(3).GridColor = 'w';
+                xlabel(sprintf('[%s]',UnitX))
+                ylabel(sprintf('%s [%s]',h.Channel{1},UnitY))
+                xlim([0 Points(end).*MultiplierX])
+                P.LineWidth = 2;
+                P.Color = 'b';
+            end
+            
+            function get_and_draw_profile_channel_2(varargin)
+                if ~get(h.B(1),'Value')
+                    return
+                end
+                if ~isempty(h.Line)
+                    if ~isvalid(h.Line)
+                        h.Line = [];
+                    end
+                end
+                h.Line.Visible = 'off';
+                h.Line = drawline('Color','b','Parent',h.ImAx(2));
+                addlistener(h.Line,'MovingROI',@moving_cross_section_channel_2);
+                addlistener(h.Line,'ROIMoved',@moving_cross_section_channel_2);
+                Pos1 = [h.Line.Position(1,1) h.Line.Position(1,2)];
+                Pos2 = [h.Line.Position(2,1) h.Line.Position(2,2)];
+                if norm(Pos1-Pos2)==0
+                    get_and_draw_profile_channel_2;
+                    return
+                end
+                Profile = improfile(h.Image{2},[Pos1(1) Pos2(1)],[Pos1(2) Pos2(2)]);
+                Len = norm(Pos1-Pos2)/Class{2}.NumPixelsX*Class{2}.ScanSizeX;
+                Points = [0:1/(length(Profile)-1):1].*Len;
+                [MultiplierY,UnitY,~] = AFMImage.parse_unit_scale(range(Profile),h.BaseUnit{2},1);
+                [MultiplierX,UnitX,~] = AFMImage.parse_unit_scale(range(Points),'m',1);
+                h.ImAx(3) = subplot(10,10,[71:78 81:88 91:98]);
+                P = plot(Points.*MultiplierX,Profile.*MultiplierY);
+                grid on
+                CurrentAxHeight = round(h.Fig.Position(4)*h.ImAx(2).Position(4));
+                h.ImAx(3).Color = 'k';
+                h.ImAx(3).LineWidth = 1;
+                h.ImAx(3).FontSize = round(22*(CurrentAxHeight/756));
+                h.ImAx(3).XColor = 'w';
+                h.ImAx(3).YColor = 'w';
+                h.ImAx(3).GridColor = 'w';
+                xlabel(sprintf('[%s]',UnitX))
+                ylabel(sprintf('%s [%s]',h.Channel{2},UnitY))
+                xlim([0 Points(end).*MultiplierX])
+                P.LineWidth = 2;
+                P.Color = 'b';
             end
             
             function draw_image(LeftRight,FullPart)
@@ -1910,38 +1712,12 @@ classdef Experiment < matlab.mixin.Copyable
                     end
                 end
                 
-                
-                if h.lockedChannels && Index==1
-                    h.CurChannel1Idx = h.B(16).Value;
-                    h.B(17).Value = mod(h.CurChannel1Idx + h.RelativeChannelIndex,h.NumClasses+1);
-                    h.CurChannel2Idx = h.B(17).Value;
-                    CurIndex = h.CurChannel1Idx;
-                elseif h.lockedChannels && Index==2
-                    h.CurChannel2Idx = h.B(17).Value;
-                    h.B(16).Value = mod(h.CurChannel2Idx - h.RelativeChannelIndex,h.NumClasses+1);
-                    h.CurChannel1Idx = h.B(16).Value;
-                    CurIndex = h.CurChannel2Idx;
-                else
-                    CurIndex = h.B(15+Index).Value;
-                    h.CurChannel2Idx = h.B(17).Value;
-                    h.CurChannel1Idx = h.B(16).Value;
-                end
-                
-                h.RelativeChannelIndex = h.CurChannel2Idx - h.CurChannel1Idx;
-                
-                Class{Index} = obj.get_class_instance(ClassIndex(CurIndex,:));
-                CurrentChannelName = h.B(1+Index).String{h.B(1+Index).Value};
+                Class{Index} = obj.get_class_instance(ClassIndex(h.B(15+Index).Value,:));
                 PopUp = Class{Index}.string_of_existing();
                 set(h.B(1+Index),'String',PopUp)
                 
-                IdxOfSameChannel = find(strcmp(PopUp,CurrentChannelName));
-                
-                if isempty(IdxOfSameChannel)
-                    set(h.B(1+Index),'Value',2);
-                elseif sum(IdxOfSameChannel == h.B(1+Index).Value)
-                    set(h.B(1+Index),'Value',IdxOfSameChannel(find(IdxOfSameChannel == h.B(1+Index).Value)));
-                else
-                    set(h.B(1+Index),'Value',IdxOfSameChannel(1));
+                if h.B(1+Index).Value > (length(Class{Index}.Channel) + 1)
+                    set(h.B(1+Index),'Value',1)
                 end
                 
                 h.Channel{Index} = h.B(1+Index).String{h.B(1+Index).Value};
@@ -1959,81 +1735,41 @@ classdef Experiment < matlab.mixin.Copyable
                     return
                 else
                     [Channel,ChannelIndex] = Class{Index}.get_channel(h.Channel{Index});
-                    if h.isUpscaled
-                        Channel.Image = fillmissing(Channel.Image,'linear','EndValues','nearest');
-                        Channel = AFMImage.resize_channel(Channel,1,1920,true);
-                    end
-                    h.Image{Index} = fillmissing(Channel.Image,'linear','EndValues','nearest');
+                    h.Image{Index} = Channel.Image;
                     h.BaseUnit{Index} = Channel.Unit;
-                    h.ScanSizeX(Index) = Channel.ScanSizeX;
-                    h.ScanSizeY(Index) = Channel.ScanSizeY;
-                    h.NumPixelsX(Index) = Channel.NumPixelsX;
-                    h.NumPixelsY(Index) = Channel.NumPixelsY;
                     ColorPattern = Class{Index}.CMap;
                 end
                 
-                if h.B(21).Value && h.hasChannel2 && h.hasChannel1 && (h.BaseUnit{1}==h.BaseUnit{2})
-                    CurImage = h.Image{Index};
-                    Range = range(CurImage,'all');
-                    OtherImage = h.Image{mod(Index,2)+1};
-                    OtherRange = range(OtherImage,'all');
-                    
-                    [FinalRange,FinalIndex] = max([Range OtherRange]);
-                    
-                    if FinalIndex==1
-                        Min = min(CurImage,[],'all');
-                    else
-                        Min = min(OtherImage,[],'all');
-                    end
-                    
-                    CutMax = FinalRange*h.Channel1Max + Min;
-                    CutMin = FinalRange*h.Channel1Min + Min;
-                else
-                    CurImage = h.Image{Index};
-                    FinalRange = range(CurImage,'all');
-                    if Index==1
-                        CutMax = FinalRange*h.Channel1Max + min(CurImage,[],'all');
-                        CutMin = FinalRange*h.Channel1Min + min(CurImage,[],'all');
-                    elseif Index==2
-                        CutMax = FinalRange*h.Channel2Max + min(CurImage,[],'all');
-                        CutMin = FinalRange*h.Channel2Min + min(CurImage,[],'all');
-                    end
+                CurImage = h.Image{Index};
+                
+                Range = range(CurImage,'all');
+                if Index==1
+                    CutMax = Range*h.Channel1Max + min(CurImage,[],'all');
+                    CutMin = Range*h.Channel1Min + min(CurImage,[],'all');
+                elseif Index==2
+                    CutMax = Range*h.Channel2Max + min(CurImage,[],'all');
+                    CutMin = Range*h.Channel2Min + min(CurImage,[],'all');
                 end
-                
-                
                 CurImage(CurImage>CutMax) = CutMax;
                 CurImage(CurImage<CutMin) = CutMin;
                 
-                if isempty(CurImage(CurImage>=CutMax))
-                    CurImage(1,1) = CutMax;
-                end
-                if isempty(CurImage(CurImage<=CutMin))
-                    CurImage(end,end) = CutMin;
-                end
-                
-                [Multiplier,Unit,~] = AFMImage.parse_unit_scale(FinalRange,h.BaseUnit{Index},1);
+                [Multiplier,Unit,~] = AFMImage.parse_unit_scale(range(CurImage,'all'),h.BaseUnit{Index},1);
                 h.I(Index) = imshow(CurImage*Multiplier,[],'Colormap',ColorPattern);
-                h.I(Index).ButtonDownFcn = @get_and_draw_profile;
+                if Index == 1
+                    h.I(Index).ButtonDownFcn = @get_and_draw_profile_channel_1;
+                else
+                    h.I(Index).ButtonDownFcn = @get_and_draw_profile_channel_2;
+                end
                 hold on
                 CurrentAxHeight = round(h.Fig.Position(4)*h.ImAx(Index).Position(4));
                 CurrentAxWidth = round(h.Fig.Position(3)*h.ImAx(Index).Position(3));
                 AFMImage.draw_scalebar_into_current_image(Channel.NumPixelsX,Channel.NumPixelsY,Channel.ScanSizeX,BarToImageRatio,CurrentAxHeight,CurrentAxWidth);
                 c = colorbar;
-                c.FontSize = round(h.ReferenceFontSize*(CurrentAxHeight/756));
-                c.Color = h.ColorMode(h.ColorIndex).Text;
+                c.FontSize = round(18*(CurrentAxHeight/756));
+                c.Color = 'w';
                 c.Label.String = sprintf('%s [%s]',h.Channel{Index},Unit);
-                c.Label.FontSize = round(h.ReferenceFontSize*(CurrentAxHeight/756));
-                c.Label.Color = h.ColorMode(h.ColorIndex).Text;
-                
-                try
-                    if (h.ScanSizeX(1) == h.ScanSizeX(2)) &&...
-                            (h.ScanSizeY(1) == h.ScanSizeY(2))
-                        h.B(18).BackgroundColor = 'g';
-                    else
-                        h.B(18).BackgroundColor = 'r';
-                    end
-                catch
-                end
+                c.Label.FontSize = round(22*(CurrentAxHeight/756));
+                c.Label.Color = 'w';
             end
             
             function changed_slider(varargin)
@@ -2063,63 +1799,22 @@ classdef Experiment < matlab.mixin.Copyable
             end
             
             function save_figure_to_file(varargin)
+                if h.B(7).Value
+                Frame = print('-RGBImage','-r200');
                 
-                filter = {'*.png';'*.tif'};
+                CroppedFrame = Frame(:,1:round(.82*end),:);
+                
+                filter = {'*.png';'*.tif';'*.jpg'};
                 [file, path] = uiputfile(filter);
+                
                 FullFile = fullfile(path,file);
-                exportgraphics(h.Fig,FullFile,'Resolution',200,'BackgroundColor','current')
-            end
-            
-            function changed_color(varargin)
-                
-                if ~h.B(7).Value
-                    h.ColorIndex = 1;
+                imwrite(CroppedFrame,FullFile);
                 else
-                    h.ColorIndex = 2;
+                    filter = {'*.png';'*.tif'};
+                    [file, path] = uiputfile(filter);
+                    FullFile = fullfile(path,file);
+                    exportgraphics(h.Fig,FullFile,'Resolution',200,'BackgroundColor','current')
                 end
-                
-                h.Fig.Color = h.ColorMode(h.ColorIndex).Background;
-                
-                draw_channel_1
-                draw_channel_2
-                
-            end
-            
-            function upscale_images(varargin)
-                
-                h.isUpscaled = h.B(19).Value;
-                
-                draw_channel_1
-                draw_channel_2
-                
-            end
-            
-            function lock_channels(varargin)
-                
-                h.lockedChannels = h.B(20).Value;
-                
-                h.RelativeChannelIndex = h.CurChannel2Idx - h.CurChannel1Idx;
-                draw_channel_1
-                draw_channel_2
-                
-            end
-            
-            function lock_scalebars(varargin)
-                
-                if h.B(21).Value
-                    h.B(10).Visible = 'off';
-                    h.B(11).Visible = 'off';
-                    h.B(14).Visible = 'off';
-                    h.B(15).Visible = 'off';
-                else
-                    h.B(10).Visible = 'on';
-                    h.B(11).Visible = 'on';
-                    h.B(14).Visible = 'on';
-                    h.B(15).Visible = 'on';
-                end
-                
-                draw_channel_1
-                draw_channel_2
             end
             
             uiwait(h.Fig)
@@ -2239,28 +1934,28 @@ classdef Experiment < matlab.mixin.Copyable
                     'FontSize',12,...
                     'HorizontalAlignment','center')
                 
-                %Statistics for Hertz-Sneddon Method
-                [hHS(i),pHS(i)] = ...
-                    ttest(DataMeansHS(obj.GroupFM(TestMat(i,2)).Indices),...
-                    DataMeansHS(obj.GroupFM(TestMat(i,1)).Indices),'Tail','right');
-                
-                figure('Name','Paired Right Tailed T-Test','Units','normalized','Position',[0.2 0.2 0.5 0.5],'Color','w')
-                boxplot([DataMeansHS(obj.GroupFM(TestMat(i,1)).Indices) DataMeansHS(obj.GroupFM(TestMat(i,2)).Indices)])
-                title('Paired Right Tailed T-Test for Hertz-Sneddon Method')
-                xticklabels({obj.GroupFM(TestMat(i,1)).Name,obj.GroupFM(TestMat(i,2)).Name})
-                xlabel('Test Group')
-                ylabel('E-Mod Hertz-Sneddon[Pa]')
-                DeltaMean = mean(DataMeansHS(obj.GroupFM(TestMat(i,2)).Indices)) - mean(DataMeansHS(obj.GroupFM(TestMat(i,1)).Indices));
-                Sigma = std(DataMeansHS(obj.GroupFM(TestMat(i,2)).Indices) - DataMeansHS(obj.GroupFM(TestMat(i,1)).Indices));
-                Beta = sampsizepwr('t',[0 Sigma],DeltaMean,[],length(obj.GroupFM(TestMat(i,2)).Indices));
-                Stats = {sprintf('\\DeltaMean = %.2f MPa',DeltaMean*1e-6),...
-                    sprintf('P-Value = %.4f%',pHS(i)),...
-                    sprintf('Power \\beta = %.2f%%',Beta*100),...
-                    sprintf('Number of Specimen = %i',length(obj.GroupFM(TestMat(i,2)).Indices))};
-                text(0.5,0.8,Stats,...
-                    'Units','normalized',...
-                    'FontSize',12,...
-                    'HorizontalAlignment','center')
+%                 %Statistics for Hertz-Sneddon Method
+%                 [hHS(i),pHS(i)] = ...
+%                     ttest(DataMeansHS(obj.GroupFM(TestMat(i,2)).Indices),...
+%                     DataMeansHS(obj.GroupFM(TestMat(i,1)).Indices),'Tail','right');
+%                 
+%                 figure('Name','Paired Right Tailed T-Test','Units','normalized','Position',[0.2 0.2 0.5 0.5],'Color','w')
+%                 boxplot([DataMeansHS(obj.GroupFM(TestMat(i,1)).Indices) DataMeansHS(obj.GroupFM(TestMat(i,2)).Indices)])
+%                 title('Paired Right Tailed T-Test for Hertz-Sneddon Method')
+%                 xticklabels({obj.GroupFM(TestMat(i,1)).Name,obj.GroupFM(TestMat(i,2)).Name})
+%                 xlabel('Test Group')
+%                 ylabel('E-Mod Hertz-Sneddon[Pa]')
+%                 DeltaMean = mean(DataMeansHS(obj.GroupFM(TestMat(i,2)).Indices)) - mean(DataMeansHS(obj.GroupFM(TestMat(i,1)).Indices));
+%                 Sigma = std(DataMeansHS(obj.GroupFM(TestMat(i,2)).Indices) - DataMeansHS(obj.GroupFM(TestMat(i,1)).Indices));
+%                 Beta = sampsizepwr('t',[0 Sigma],DeltaMean,[],length(obj.GroupFM(TestMat(i,2)).Indices));
+%                 Stats = {sprintf('\\DeltaMean = %.2f MPa',DeltaMean*1e-6),...
+%                     sprintf('P-Value = %.4f%',pHS(i)),...
+%                     sprintf('Power \\beta = %.2f%%',Beta*100),...
+%                     sprintf('Number of Specimen = %i',length(obj.GroupFM(TestMat(i,2)).Indices))};
+%                 text(0.5,0.8,Stats,...
+%                     'Units','normalized',...
+%                     'FontSize',12,...
+%                     'HorizontalAlignment','center')
             end
             
             % Now test, if the difference in one pair of groups is
@@ -2301,36 +1996,36 @@ classdef Experiment < matlab.mixin.Copyable
                 'FontSize',12,...
                 'HorizontalAlignment','center')
             
-            % For Hertz-Sneddon
-            [hHS,pHS,ciHS,statsHS] = ttest2(DiffMGOHS,DiffControlHS);
-            figure('Name','Two Sample T-Test','Units','normalized','Position',[0.2 0.2 0.5 0.5],'Color','w')
-            yyaxis left
-            boxplot([DiffControlHS DiffMGOHS])
-            ax = gca;
-            YLim = ax.YLim;
-            ylabel('Difference Before-After E-Mod [Pa]')
-            DeltaMean = mean(DiffMGOHS) - mean(DiffControlHS);
-            PooledSTD = statsHS.sd;
-            yyaxis right
-            errorbar(1.5,DeltaMean,ciHS(2)-DeltaMean,'O');
-            ylim(YLim)
-            xticks([1 1.5 2])
-            title('Two Sample T-Test for E-Mod Hertz-Sneddon Method')
-            ax = gca;
-            ax.TickLabelInterpreter = 'tex';
-            xticklabels({sprintf('%s - %s',obj.GroupFM(2).Name,obj.GroupFM(1).Name),...
-                '\DeltaMean with CI',...
-                sprintf('%s - %s',obj.GroupFM(4).Name,obj.GroupFM(3).Name)})
-            ylabel('Difference of Differences [Pa]')
-            Beta = sampsizepwr('t2',[mean(DiffControlHS) PooledSTD],mean(DiffMGOHS),[],length(DiffControlHS),'Ratio',length(DiffMGOHS)/length(DiffControlHS));
-            Stats = {sprintf('\\DeltaMean = %.2f MPa',DeltaMean*1e-6),...
-                sprintf('P-Value = %.4f%',pHS),...
-                sprintf('Power \\beta = %.2f%%',Beta*100),...
-                sprintf('Degrees of freedom df = %i',statsHS.df)};
-            text(0.5,0.8,Stats,...
-                'Units','normalized',...
-                'FontSize',12,...
-                'HorizontalAlignment','center')
+%             % For Hertz-Sneddon
+%             [hHS,pHS,ciHS,statsHS] = ttest2(DiffMGOHS,DiffControlHS);
+%             figure('Name','Two Sample T-Test','Units','normalized','Position',[0.2 0.2 0.5 0.5],'Color','w')
+%             yyaxis left
+%             boxplot([DiffControlHS DiffMGOHS])
+%             ax = gca;
+%             YLim = ax.YLim;
+%             ylabel('Difference Before-After E-Mod [Pa]')
+%             DeltaMean = mean(DiffMGOHS) - mean(DiffControlHS);
+%             PooledSTD = statsHS.sd;
+%             yyaxis right
+%             errorbar(1.5,DeltaMean,ciHS(2)-DeltaMean,'O');
+%             ylim(YLim)
+%             xticks([1 1.5 2])
+%             title('Two Sample T-Test for E-Mod Hertz-Sneddon Method')
+%             ax = gca;
+%             ax.TickLabelInterpreter = 'tex';
+%             xticklabels({sprintf('%s - %s',obj.GroupFM(2).Name,obj.GroupFM(1).Name),...
+%                 '\DeltaMean with CI',...
+%                 sprintf('%s - %s',obj.GroupFM(4).Name,obj.GroupFM(3).Name)})
+%             ylabel('Difference of Differences [Pa]')
+%             Beta = sampsizepwr('t2',[mean(DiffControlHS) PooledSTD],mean(DiffMGOHS),[],length(DiffControlHS),'Ratio',length(DiffMGOHS)/length(DiffControlHS));
+%             Stats = {sprintf('\\DeltaMean = %.2f MPa',DeltaMean*1e-6),...
+%                 sprintf('P-Value = %.4f%',pHS),...
+%                 sprintf('Power \\beta = %.2f%%',Beta*100),...
+%                 sprintf('Degrees of freedom df = %i',statsHS.df)};
+%             text(0.5,0.8,Stats,...
+%                 'Units','normalized',...
+%                 'FontSize',12,...
+%                 'HorizontalAlignment','center')
             
         end
         
@@ -2829,7 +2524,8 @@ classdef Experiment < matlab.mixin.Copyable
                 end
             elseif obj.ReferenceSlopeFlag.FromArea
                 for i=1:obj.NumForceMaps
-                    obj.FM{i}.RefSlopeMask = obj.FM{i}.create_mask_general;
+                    Mask = obj.FM{i}.create_mask_general;
+                    obj.FM{i}.calculate_reference_slope_from_area(Mask)
                 end
             end
             
@@ -2879,8 +2575,6 @@ classdef Experiment < matlab.mixin.Copyable
                 obj.FM{i}.create_automatic_background_mask(.8)
                 Mask = obj.FM{i}.BackgroundMask;
                 obj.FM{i}.calculate_reference_slope_from_area(Mask)
-            elseif obj.ReferenceSlopeFlag.FromArea
-                obj.FM{i}.calculate_reference_slope_from_area(obj.FM{i}.RefSlopeMask)
             end
         end
         
@@ -3015,75 +2709,34 @@ classdef Experiment < matlab.mixin.Copyable
         end
         
         function initialize_flags(obj)
+            NFM = obj.NumForceMaps;
+            obj.FMFlag.FibrilAnalysis = zeros(NFM,1);
+            obj.FMFlag.ForceMapAnalysis = zeros(NFM,1);
+            obj.FMFlag.Preprocessed = zeros(NFM,1);
+            obj.FMFlag.Grouping = 0;
+            NSPM = obj.NumSurfacePotentialMaps;
+            obj.SPMFlag.FibrilAnalysis = zeros(NSPM,1);
+            obj.SPMFlag.Grouping = 0;
             
-            if isempty(obj.FMFlag)
-                NFM = obj.NumForceMaps;
-                obj.FMFlag.FibrilAnalysis = false(NFM,1);
-                obj.FMFlag.ForceMapAnalysis = false(NFM,1);
-                obj.FMFlag.Preprocessed = false(NFM,1);
-                obj.FMFlag.Grouping = false;
-                NSPM = obj.NumSurfacePotentialMaps;
-                obj.SPMFlag.FibrilAnalysis = false(NSPM,1);
-                obj.SPMFlag.Grouping = false;
-                obj.SMFSFlag.SelectFM = false(NFM,1);
-                obj.SMFSFlag.Preprocessed = false(NFM,1);
-                
-                obj.CantileverTipFlag = false;
-                if obj.NumCantileverTips > 0
-                    obj.CantileverTipFlag = true;
-                end
-                obj.AssignedCantileverTips = false;
-                if obj.NumCantileverTips == 1
-                    obj.WhichTip = true(obj.NumForceMaps,1);
-                    obj.AssignedCantileverTips = true;
-                end
-                
-                obj.AssignedReferenceMaps = false;
-                obj.ReferenceSlopeFlag.SetAllToValue = false;
-                obj.ReferenceSlopeFlag.UserInput = false;
-                obj.ReferenceSlopeFlag.FromRefFM = false;
-                obj.ReferenceSlopeFlag.FromArea = false;
-                obj.ReferenceSlopeFlag.AutomaticFibril = false;
-                obj.ReferenceSlopeFlag.Automatic = false;
-                if obj.NumReferenceForceMaps > 0
-                    obj.ReferenceSlopeFlag.FromRefFM = true;
-                end
-            else
-                PrevNFM = length(obj.FMFlag.FibrilAnalysis);
-                NFM = obj.NumForceMaps;
-                DiffFM = NFM - PrevNFM;
-                obj.FMFlag.FibrilAnalysis(end+1:NFM) = false(DiffFM,1);
-                obj.FMFlag.ForceMapAnalysis(end+1:NFM) = false(DiffFM,1);
-                obj.FMFlag.Preprocessed(end+1:NFM) = false(DiffFM,1);
-                obj.FMFlag.Grouping = false;
-                PrevNSPM = length(obj.SPMFlag.FibrilAnalysis);
-                NSPM = obj.NumSurfacePotentialMaps;
-                DiffSPM = PrevNSPM - NSPM;
-                obj.SPMFlag.FibrilAnalysis(end+1:NSPM) = false(DiffSPM,1);
-                obj.SPMFlag.Grouping = false;
-                obj.SMFSFlag.SelectFM(end+1:NFM) = false(DiffFM,1);
-                obj.SMFSFlag.Preprocessed(end+1:NFM) = false(DiffFM,1);
-                
-                obj.CantileverTipFlag = false;
-                if obj.NumCantileverTips > 0
-                    obj.CantileverTipFlag = true;
-                end
-                obj.AssignedCantileverTips = false;
-                if obj.NumCantileverTips == 1
-                    obj.WhichTip(end+1:NFM) = true(DiffFM,1);
-                    obj.AssignedCantileverTips = true;
-                end
-                
-                obj.AssignedReferenceMaps = false;
-                obj.ReferenceSlopeFlag.SetAllToValue = false;
-                obj.ReferenceSlopeFlag.UserInput = false;
-                obj.ReferenceSlopeFlag.FromRefFM = false;
-                obj.ReferenceSlopeFlag.FromArea = false;
-                obj.ReferenceSlopeFlag.AutomaticFibril = false;
-                obj.ReferenceSlopeFlag.Automatic = false;
-                if obj.NumReferenceForceMaps > 0
-                    obj.ReferenceSlopeFlag.FromRefFM = true;
-                end
+            obj.CantileverTipFlag = false;
+            if obj.NumCantileverTips > 0
+                obj.CantileverTipFlag = true;
+            end
+            obj.AssignedCantileverTips = false;
+            if obj.NumCantileverTips == 1
+                obj.WhichTip = ones(obj.NumForceMaps,1);
+                obj.AssignedCantileverTips = true;
+            end
+            
+            obj.AssignedReferenceMaps = false;
+            obj.ReferenceSlopeFlag.SetAllToValue = false;
+            obj.ReferenceSlopeFlag.UserInput = false;
+            obj.ReferenceSlopeFlag.FromRefFM = false;
+            obj.ReferenceSlopeFlag.FromArea = false;
+            obj.ReferenceSlopeFlag.AutomaticFibril = false;
+            obj.ReferenceSlopeFlag.Automatic = false;
+            if obj.NumReferenceForceMaps > 0
+                obj.ReferenceSlopeFlag.FromRefFM = true;
             end
         end
         
@@ -3211,21 +2864,6 @@ classdef Experiment < matlab.mixin.Copyable
                 Class = obj.CantileverTips{ClassIndex(2)};
             end
             
-        end
-        
-        function cast_volume_data_to_single_precision(obj)
-            for i=1:obj.NumForceMaps
-                obj.FM{i}.THApp = [];
-                obj.FM{i}.THRet = [];
-                for j=1:obj.FM{i}.NCurves
-                    obj.FM{i}.App{j} = single(obj.FM{i}.App{j});
-                    obj.FM{i}.Ret{j} = single(obj.FM{i}.Ret{j});
-                    obj.FM{i}.HHApp{j} = single(obj.FM{i}.HHApp{j});
-                    obj.FM{i}.HHRet{j} = single(obj.FM{i}.HHRet{j});
-                    obj.FM{i}.BasedApp{j} = single(obj.FM{i}.BasedApp{j});
-                    obj.FM{i}.BasedRet{j} = single(obj.FM{i}.BasedRet{j});
-                end
-            end
         end
         
     end
@@ -3602,6 +3240,7 @@ classdef Experiment < matlab.mixin.Copyable
                 
                 
                 set(h.ListBox(Index),'String',NewFiles)
+                OutStruct(Index).FullFile
             end
             
             function delete_selected(varargin)
