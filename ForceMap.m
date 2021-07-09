@@ -60,6 +60,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet
         SelectedCurves  % logical vector of length NCurves with 0s for excluded and 1s for included curves. gets initialized with ones
         StashedSelectedCurves % In some calculations, SelectedCurves is changed temporarily inside a method.
                               % Actual Selction is stored and then restored from here
+        CorruptedCurves % Curves that cant be loaded
         TipRadius = 8  % (nominal, if not otherwise calculated) tip radius in nm for the chosen type of tip model
         PoissonR = 0.5  % standard Poisson ratio for most mechanical models
         Medium
@@ -213,7 +214,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet
             
             % reading header properties into object
             obj.read_in_header_properties;
-            obj.SelectedCurves = ones(obj.NCurves,1);
+            obj.SelectedCurves = true(obj.NCurves,1);
+            obj.CorruptedCurves = false(obj.NCurves,1);
             
             if ~obj.BigDataFlag
                 %loading curve data into cell arrays
@@ -2707,50 +2709,9 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet
                 Max(i) = -max(HHApp);
             end
             obj.HeightMap = obj.convert_data_list_to_map(Max);
-            % Create an Exclusion Mask with the standard deviation method
-            MaskParam = 0.65;
-            HghtRange = range(obj.HeightMap,'all');
-            HghtMin = min(obj.HeightMap,[],'all');
-            HghtNorm = (obj.HeightMap-HghtMin)/HghtRange;
-            mask = zeros(size(HghtNorm));
-            STDLine = zeros(obj.NumProfiles,obj.NumPoints);
-            [HghtSorted,Idx] = sort(HghtNorm,[2],'descend');
-            for j=1:obj.NumPoints
-                STDLine(:,j) = std(HghtSorted(:,1:j),0,[2]);
-            end
-            [~,MaxIdx] = max(STDLine,[],[2]);
-            for i=1:obj.NumProfiles
-                mask(i,Idx(i,1:floor(MaxIdx*MaskParam))) = 1;
-            end
-            mask = logical(~mask);
-            
-            masked_map = mask(:,:,1).*obj.HeightMap;
-            % create a N-by-3 matrix with each column being a point in
-            % 3D-space
-            k = 1;
-            HghtVctr = zeros(sum(mask,'all'),3);
-            for i=1:size(masked_map,1)
-                for j=1:size(masked_map,2)
-                    if mask(i,j) == 0
-                    else
-                        HghtVctr(k,:) = [size(masked_map,2)/size(masked_map,1)*i,size(masked_map,1)/size(masked_map,2)*j,masked_map(i,j)];
-                        k = k + 1 ;
-                    end
-                end
-            end
-            % fit a plane to the glass part
-            [Norm,~,Point] = obj.affine_fit(HghtVctr);
-            Plane = zeros(size(masked_map,1),size(masked_map,2));
-            % Create the plane that can then be subtracted from the
-            % complete height data to generate the leveled height data.
-            for i=1:size(masked_map,1)
-                for j=1:size(masked_map,2)
-                    Plane(i,j) = (Point(3)-Norm(1)/Norm(3)*(size(masked_map,2)/size(masked_map,1)*i)-Norm(2)/Norm(3)*(size(masked_map,1)/size(masked_map,2)*j));
-                end
-            end
-            obj.HeightMap = obj.HeightMap - Plane;
             
             % write to Channel
+            obj.delete_channel('Height')
             Height = obj.create_standard_channel(obj.HeightMap,'Height','m');
             
             [Channel,Index] = obj.get_channel('Height');
@@ -2766,18 +2727,21 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet
             end
             
             if size(obj.HeightMap,1) < 128
-                Map = imresize(obj.HeightMap,[256 256],'bicubic');
+                Map = imresize(obj.HeightMap,[256 256],'nearest');
             elseif size(obj.HeightMap,1) < 512
-                Map = imresize(obj.HeightMap,[512 512],'bicubic');
+                Map = imresize(obj.HeightMap,[512 512],'nearest');
             else
-                Map = imresize(obj.HeightMap,[1024 1024],'bicubic');
+                Map = imresize(obj.HeightMap,[1024 1024],'nearest');
             end
             for i=1:5
                 Map = AFMImage.subtract_line_fit_vertical_rov(Map,.2,0);
             end
-            Map = imresize(Map,[obj.NumProfiles obj.NumPoints]);
+            Map = imresize(Map,[obj.NumProfiles obj.NumPoints],'nearest');
+            
+            Map = AFMImage.find_and_replace_outlier_lines(Map,10);
             
             % write to Channel
+            obj.delete_channel('Processed')
             Processed = obj.create_standard_channel(Map,'Processed','m');
             
             [Channel,Index] = obj.get_channel('Processed');
@@ -3434,6 +3398,9 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet
             end
             
             try
+                if obj.CorruptedCurves(CurveNumber)
+                    error('skip this one')
+                end
                 [TempHeight,OutForce,SC,Sens]=...
                     obj.writedata(HeaderFileDirectory,SegmentHeaderFileDirectory,...
                     HeightDataDirectory,vDefDataDirectory,obj.HHType);
@@ -3478,8 +3445,14 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet
                     OutHeight = OutHeight - OutForce./obj.SpringConstant;
                 end
             catch
-                disp(sprintf('Curve Nr. %i seems to be corrupted. Replacing with next curve instead',CurveNumber))
-                [OutForce,OutHeight] = obj.get_force_curve_data(mod(CurveNumber,obj.NCurves)+1,AppRetSwitch,isBased,isTipHeightCorrected);
+                disp(sprintf('Curve Nr. %i seems to be corrupted. Replacing with next non corrupted curve instead',CurveNumber))
+                obj.CorruptedCurves(CurveNumber) = true;
+                obj.SelectedCurves(CurveNumber) = false;
+                k = 1;
+                while obj.CorruptedCurves(mod(CurveNumber,obj.NCurves)+k)
+                    k = k + 1;
+                end
+                [OutForce,OutHeight] = obj.get_force_curve_data(mod(CurveNumber,obj.NCurves)+k,AppRetSwitch,isBased,isTipHeightCorrected);
             end
         end
         
@@ -3552,12 +3525,16 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet
         
         function delete_channel(obj,ChannelName)
             k = 0;
+            Index = [];
             for i=1:length(obj.Channel)
                 if isequal(obj.Channel(i).Name,ChannelName)
                     ChannelStruct = obj.Channel(i);
                     Index(k+1) = i;
                     k = k+1;
                 end
+            end
+            if isempty(Index)
+                return
             end
             obj.Channel(Index) = [];
             if k > 1

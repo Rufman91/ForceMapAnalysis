@@ -1205,13 +1205,13 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet
             DiffNextLine = zeros(PixelsY,1);
             
             for i=2:(PixelsY-1)
-                DiffPreviousLine(i) = abs(InImage(:,i) - InImage(:,i-1));
-                DiffNextLine(i) = abs(InImage(:,i) - InImage(:,i+1));
+                DiffPreviousLine(i) = sum(abs(InImage(i,:) - InImage(i-1,:)));
+                DiffNextLine(i) = sum(abs(InImage(i,:) - InImage(i+1,:)));
             end
             
             DiffSum = DiffPreviousLine + DiffNextLine;
             
-            Median = nanmeadian(DiffSum);
+            Median = nanmedian(DiffSum);
             IQR = iqr(DiffSum);
             
             OutlierLines = find(DiffSum >= Median + IQRMult*IQR);
@@ -1225,17 +1225,20 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet
             % the function will replace with the non-outliers before and
             % after the outlierblock
             
+            OutImage = InImage;
+            
             while length(Indizes) > 0
                 SpanOfBlock = 1;
-                while Indizes(SpanOfBlock)+1 == Indizes(SpanOfBlock+1)
+                while (SpanOfBlock ~= length(Indizes)) && (Indizes(SpanOfBlock)+1 == Indizes(SpanOfBlock+1))
                     SpanOfBlock = SpanOfBlock + 1;
                 end
-                BeforeLine = InImage(:,Indizes(1));
-                AfterLine = InImage(:,Indizes(1)+(SpanOfBlock+1));
-                NewLine = zeros(size(InImage,1),SpanOfBlock);
+                BeforeLine = InImage(Indizes(1)-1,:);
+                AfterLine = InImage(Indizes(1)+(SpanOfBlock+1),:);
+                NewLine = zeros(SpanOfBlock,size(InImage,1));
                 for i=1:SpanOfBlock
-                    NewLine(:,i) = (BeforeLine*i/(SpanOfBlock+1) + AfterLine*(SpanOfBlock+1-i)/(SpanOfBlock+1));
+                    NewLine(i,:) = (BeforeLine*(SpanOfBlock+1-i)/(SpanOfBlock+1) + AfterLine*i/(SpanOfBlock+1));
                 end
+                OutImage(Indizes(1):Indizes(1)+SpanOfBlock-1,:) = NewLine;
                 Indizes(1:SpanOfBlock) = [];
             end
             
