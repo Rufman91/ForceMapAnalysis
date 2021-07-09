@@ -42,10 +42,15 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet
         MaxPointsPerCurve
         XSize           % Size of imaged window in X-direction
         YSize           % Size of imaged window in Y-direction
-        Velocity        % Approach and retraction velocity as defined in the force map settings
+        ExtendTime
+        RetractTime
+        ZLength
+        ExtendVelocity        % Approach  velocity as defined in the force map settings
+        RetractVelocity
         GridAngle       % in degrees (°)
         Sensitivity
         SpringConstant
+        Setpoint
         DBanding        % Fourieranalysis-based estimate of DBanding perdiod (only available with sufficient resolution)
         RefSlope        % Refernce slope as determined from the upper curve slope from data from very hard
         % surfaces (mica,glass), either from glass parts beneath the specimen or from
@@ -132,6 +137,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet
         % Properties related to EMod calculations
         
         Basefit = {}    % fit model used for the baseline fit in the base_and_tilt method
+        Baseline
+        TrueZero
         EModHertz       % List of reduced smaple E-Modulus based on a the Hertz-Sneddon model
         EModOliverPharr % List of reduced sample E-Modulus based on the Oliver-Pharr method
         HertzFit        % HertzFit model generated in the calculate_e_mod_hertz method
@@ -1891,8 +1898,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet
                 NFigures=NFigures+1;
             end    
             % Define variables for the figure name
-            VelocityConvert=num2str(obj.Velocity*1e+9); % Convert into nm
-            %figname=strcat(obj.ID,{'-'},obj.ModDate,{'-'},obj.Velocity,{'-'},obj.Name);
+            VelocityConvert=num2str(obj.ExtendVelocity*1e+9); % Convert into nm
+            %figname=strcat(obj.ID,{'-'},obj.ModDate,{'-'},obj.ExtendVelocity,{'-'},obj.Name);
             figname=strcat(obj.ID,{'-'},obj.ModDate,{'-'},VelocityConvert,{'-'},obj.Substrate,{'-'},obj.EnvCond,{'-'},obj.Chipbox,{'-'},obj.ChipCant);
             figname=char(figname);
             %% Figure loop
@@ -1962,8 +1969,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet
                 NFigures=NFigures+1;
             end    
             %% Figure loop          
-            %figname=strcat(obj.ID,{'-'},obj.ModDate,{'-'},obj.Velocity,{'-'},obj.Name);
-            figname=strcat(obj.ID,{'-'},obj.ModDate,{'-'},obj.Velocity,{'-'},obj.Substrate,{'-'},obj.EnvCond,{'-'},obj.Chipbox,{'-'},obj.ChipCant);
+            %figname=strcat(obj.ID,{'-'},obj.ModDate,{'-'},obj.ExtendVelocity,{'-'},obj.Name);
+            figname=strcat(obj.ID,{'-'},obj.ModDate,{'-'},obj.ExtendVelocity,{'-'},obj.Substrate,{'-'},obj.EnvCond,{'-'},obj.Chipbox,{'-'},obj.ChipCant);
             figname=char(figname);
             for ii=1:NFigures           
             % Figure    
@@ -3215,7 +3222,15 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet
                 fseek(fileID,B,'cof');
                 tline = fgetl(fileID);
                 where=strfind(tline,'=');
-                ExtendTime = str2double(tline(where+1:end));
+                obj.ExtendTime = str2double(tline(where+1:end));
+                
+                clear tline where;
+                frewind(fileID);
+                B=strfind(A,strcat(obj.FileType,'.settings.force-settings.retract-scan-time='));
+                fseek(fileID,B,'cof');
+                tline = fgetl(fileID);
+                where=strfind(tline,'=');
+                obj.RetractTime = str2double(tline(where+1:end));
                 
                 clear tline where;
                 frewind(fileID);
@@ -3231,7 +3246,15 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet
                 fseek(fileID,B,'cof');
                 tline = fgetl(fileID);
                 where=strfind(tline,'=');
-                ExtendTime = str2double(tline(where+1:end));
+                obj.ExtendTime = str2double(tline(where+1:end));
+                
+                clear tline where;
+                frewind(fileID);
+                B=strfind(A,'quantitative-imaging-map.settings.force-settings.extend.duration=');
+                fseek(fileID,B,'cof');
+                tline = fgetl(fileID);
+                where=strfind(tline,'=');
+                obj.RetractTime = str2double(tline(where+1:end));
                 
                 clear tline where;
                 frewind(fileID);
@@ -3239,10 +3262,11 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet
                 fseek(fileID,B,'cof');
                 tline = fgetl(fileID);
                 where=strfind(tline,'=');
-                ZLength = str2double(tline(where+1:end));
+                obj.ZLength = str2double(tline(where+1:end));
             end
             
-            obj.Velocity = ZLength/ExtendTime;
+            obj.ExtendVelocity = obj.ZLength/obj.ExtendTime;
+            obj.RetractVelocity = obj.ZLength/obj.RetractTime;
             
             %   GridAngle
             clear tline where;
@@ -3253,6 +3277,15 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet
             where=strfind(tline,'=');
             obj.GridAngle = str2double(tline(where+1:end));
             obj.GridAngle = obj.GridAngle*180/pi;
+            
+            %   Setpoint
+            clear tline where;
+            frewind(fileID);
+            B=strfind(A,strcat(obj.FileType,'.settings.force-settings.extend.setpoint='));
+            fseek(fileID,B,'cof');
+            tline = fgetl(fileID);
+            where=strfind(tline,'=');
+            obj.Setpoint = str2double(tline(where+1:end)).*obj.Sensitivity.*obj.SpringConstant;
             
             obj.HHType = 'capacitiveSensorHeight';
             

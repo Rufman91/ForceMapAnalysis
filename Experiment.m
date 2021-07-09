@@ -586,7 +586,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                         obj.cp_option_converter('Fast',i);
                     end
                     FractionBeforeCP = .7;
-                    obj.FM{1}.base_and_tilt_using_cp(FractionBeforeCP)
+                    obj.FM{i}.base_and_tilt_using_cp(FractionBeforeCP)
                     obj.write_to_log_file('FractionBeforeCP',FractionBeforeCP);
                 end
                 
@@ -809,7 +809,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                         obj.cp_option_converter('Fast',i);
                     end
                     FractionBeforeCP = .7;
-                    obj.FM{1}.base_and_tilt_using_cp(FractionBeforeCP)
+                    obj.FM{i}.base_and_tilt_using_cp(FractionBeforeCP)
                     obj.write_to_log_file('FractionBeforeCP',FractionBeforeCP);
                 end
                 
@@ -850,9 +850,9 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 
                 if TemporaryLoadInBool && obj.BigDataFlag
                     obj.FM{i}.temporary_data_load_in(false);
-%                     if i < NLoop
-%                         obj.save_experiment;
-%                     end
+                    if i < NLoop
+                        obj.save_experiment;
+                    end
                 end
                 
                 obj.FMFlag.ForceMapAnalysis(i) = 1;
