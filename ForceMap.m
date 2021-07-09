@@ -227,7 +227,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet
             obj.ExclMask = logical(ones(obj.NumProfiles,obj.NumPoints));
             obj.FibMask = logical(zeros(obj.NumProfiles,obj.NumPoints));
             
-            obj.create_and_level_height_map();
+            obj.construct_list_to_map_relations
+            obj.create_and_level_height_map;
             
             
             obj.initialize_flags();
@@ -2697,33 +2698,9 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet
         function create_and_level_height_map(obj)
             % first set Height Map to default values for reproducable
             % results
-            k = 1;
-            obj.List2Map = zeros(obj.NCurves,2);
-            if isequal(obj.FileType,'quantitative-imaging-map')
-                for i=1:obj.NumProfiles
-                    for j=1:obj.NumPoints
-                        obj.Map2List(i,j) = k;
-                        obj.List2Map(k,:) = [i j];
-                        k = k + 1;
-                    end
-                end
-            elseif isequal(obj.FileType,'force-scan-map')
-                for i=1:obj.NumProfiles
-                    if ~mod(i,2)
-                        for j=1:obj.NumPoints
-                            obj.Map2List(i,j) = k;
-                            obj.List2Map(k,:) = [i j];
-                            k = k + 1;
-                        end
-                    else
-                        for j=1:obj.NumPoints
-                            obj.Map2List(i,obj.NumPoints-j+1) = k;
-                            obj.List2Map(k,:) = [i obj.NumPoints-j+1];
-                            k = k + 1;
-                        end
-                    end
-                end
-            end
+            
+            obj.construct_list_to_map_relations()
+            
             Max = zeros(obj.NCurves,1);
             for i=1:obj.NCurves
                 [~,HHApp] = obj.get_force_curve_data(i,0,0,0);
@@ -3626,6 +3603,37 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet
                 obj.HHRet = cell(0,0);
             end
         end
+        
+        function construct_list_to_map_relations(obj)
+            k = 1;
+            obj.List2Map = zeros(obj.NCurves,2);
+            if isequal(obj.FileType,'quantitative-imaging-map')
+                for i=1:obj.NumProfiles
+                    for j=1:obj.NumPoints
+                        obj.Map2List(i,j) = k;
+                        obj.List2Map(k,:) = [i j];
+                        k = k + 1;
+                    end
+                end
+            elseif isequal(obj.FileType,'force-scan-map')
+                for i=1:obj.NumProfiles
+                    if ~mod(i,2)
+                        for j=1:obj.NumPoints
+                            obj.Map2List(i,j) = k;
+                            obj.List2Map(k,:) = [i j];
+                            k = k + 1;
+                        end
+                    else
+                        for j=1:obj.NumPoints
+                            obj.Map2List(i,obj.NumPoints-j+1) = k;
+                            obj.List2Map(k,:) = [i obj.NumPoints-j+1];
+                            k = k + 1;
+                        end
+                    end
+                end
+            end
+        end
+        
     end
     
     methods

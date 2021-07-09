@@ -1193,6 +1193,53 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet
             ComboSum = sum(Weights,'all');
             AspectRatio = EigenValues(1)/EigenValues(2);
         end
+        
+        function OutImage = find_and_replace_outlier_lines(InImage,IQRMult)
+            % creates line to line cahnge statistics and then detects and
+            % replaces outlies
+            
+            PixelsX = size(InImage,1);
+            PixelsY = size(InImage,2);
+            
+            DiffPreviousLine = zeros(PixelsY,1);
+            DiffNextLine = zeros(PixelsY,1);
+            
+            for i=2:(PixelsY-1)
+                DiffPreviousLine(i) = abs(InImage(:,i) - InImage(:,i-1));
+                DiffNextLine(i) = abs(InImage(:,i) - InImage(:,i+1));
+            end
+            
+            DiffSum = DiffPreviousLine + DiffNextLine;
+            
+            Median = nanmeadian(DiffSum);
+            IQR = iqr(DiffSum);
+            
+            OutlierLines = find(DiffSum >= Median + IQRMult*IQR);
+            
+            OutImage = AFMImage.replace_outlier_lines(InImage,OutlierLines);
+        end
+        
+        function OutImage = replace_outlier_lines(InImage,Indizes)
+            % replaces lines in an image interpolating between the
+            % neighbouring Lines. If Indizes contains neighbouring numbers
+            % the function will replace with the non-outliers before and
+            % after the outlierblock
+            
+            while length(Indizes) > 0
+                SpanOfBlock = 1;
+                while Indizes(SpanOfBlock)+1 == Indizes(SpanOfBlock+1)
+                    SpanOfBlock = SpanOfBlock + 1;
+                end
+                BeforeLine = InImage(:,Indizes(1));
+                AfterLine = InImage(:,Indizes(1)+(SpanOfBlock+1));
+                NewLine = zeros(size(InImage,1),SpanOfBlock);
+                for i=1:SpanOfBlock
+                    NewLine(:,i) = (BeforeLine*i/(SpanOfBlock+1) + AfterLine*(SpanOfBlock+1-i)/(SpanOfBlock+1));
+                end
+                Indizes(1:SpanOfBlock) = [];
+            end
+            
+        end
     end
     
     methods
