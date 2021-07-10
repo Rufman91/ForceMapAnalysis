@@ -271,6 +271,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 Out.save_experiment
                 warning('Did you read the warning above?');
             catch ME
+                warning(ME.getReport)
                 disp('data adding failed. restored original experiment object')
                 fclose('all');
                 cd(obj.ExperimentFolder)
@@ -569,6 +570,13 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                     obj.FM{i}.temporary_data_load_in(true);
                 end
                 
+                waitbar(i/NLoop,h,sprintf('Processing Fibril %i/%i\nCreating and levelling Height Map',i,NLoop));
+                obj.FM{i}.create_and_level_height_map
+                
+                Thresh = 1/2;
+                AppRetSwitch = 2;
+                obj.FM{i}.unselect_curves_by_fraction_of_max_data_points(Thresh,AppRetSwitch)
+                
                 waitbar(i/NLoop,h,sprintf('Processing Fibril %i/%i\nFitting Base Line',i,NLoop));
                 if ~obj.FM{i}.BaseAndTiltFlag
                     obj.FM{i}.base_and_tilt('linear');
@@ -622,6 +630,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 obj.FM{i}.calculate_dissipated_and_elastic_energy;
                 obj.FM{i}.calculate_peak_indentation_angle(.5);
                 obj.write_to_log_file('Upper Percent of Curve considered for Peak Indentation','50%')
+                obj.FM{i}.create_and_level_height_map_by_current_cp;
                 
                 waitbar(i/NLoop,h,sprintf('Processing Fibril %i/%i\nWrapping Up And Saving',i,NLoop));
                 
@@ -790,6 +799,9 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                     obj.FM{i}.temporary_data_load_in(true);
                 end
                 
+                waitbar(i/NLoop,h,sprintf('Processing Fibril %i/%i\nCreating and levelling Height Map',i,NLoop));
+                obj.FM{i}.create_and_level_height_map
+                
                 Thresh = 1/2;
                 AppRetSwitch = 2;
                 obj.FM{i}.unselect_curves_by_fraction_of_max_data_points(Thresh,AppRetSwitch)
@@ -845,6 +857,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 obj.FM{i}.calculate_dissipated_and_elastic_energy;
                 obj.FM{i}.calculate_peak_indentation_angle(.5);
                 obj.write_to_log_file('Upper Percent of Curve considered for Peak Indentation','50%')
+                obj.FM{i}.create_and_level_height_map_by_current_cp;
                 
                 waitbar(i/NLoop,h,sprintf('Processing ForceMap %i/%i\nWrapping Up And Saving',i,NLoop));
                 

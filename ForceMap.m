@@ -217,6 +217,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet
             obj.SelectedCurves = true(obj.NCurves,1);
             obj.CorruptedCurves = false(obj.NCurves,1);
             
+            obj.read_jpk_images_from_files
+            
             if ~obj.BigDataFlag
                 %loading curve data into cell arrays
                 obj.load_force_curves;
@@ -230,19 +232,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet
             obj.FibMask = logical(zeros(obj.NumProfiles,obj.NumPoints));
             
             obj.construct_list_to_map_relations
-            obj.create_and_level_height_map;
-            
             
             obj.initialize_flags();
-            
-%             % Save ForceMap and then change back into original folder
-%             cd(current.path);
-%             current = what();
-%             cd(obj.Folder)
-%             savename = sprintf('%s.mat',obj.Name);
-%             save(savename,'obj')
-%             cd(current.path)
-%             disp('loading successfull. object saved in objects folder')
         end
         
         function choose_curves(obj)
@@ -2697,34 +2688,18 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet
             end
         end
         
-        function create_and_level_height_map(obj)
-            % first set Height Map to default values for reproducable
-            % results
+        function read_jpk_images_from_files(obj)
             
-            obj.construct_list_to_map_relations()
-            
-            Max = zeros(obj.NCurves,1);
-            for i=1:obj.NCurves
-                [~,HHApp] = obj.get_force_curve_data(i,0,0,0);
-                Max(i) = -max(HHApp);
+            if isequal(obj.FileType,'quantitative-imaging-map')
+                I = AFMImage(fullfile(obj.DataStoreFolder,'data-image.jpk-qi-image'));
+            elseif isequal(obj.FileType,'force-scan-map')
+                I = AFMImage(fullfile(obj.DataStoreFolder,'data-image.force'));
             end
-            obj.HeightMap = obj.convert_data_list_to_map(Max);
             
-            % write to Channel
-            obj.delete_channel('Height')
-            Height = obj.create_standard_channel(obj.HeightMap,'Height','m');
+            obj.Channel = I.Channel;
             
-            [Channel,Index] = obj.get_channel('Height');
-            if isempty(Channel)
-                Len = length(obj.Channel);
-                if ~Len
-                    obj.Channel = Height;
-                else
-                    obj.Channel(Len+1) = Height;
-                end
-            else
-                obj.Channel(Index) = Height;
-            end
+            Height = obj.get_channel('Height');
+            obj.HeightMap = Height.Image;
             
             if size(obj.HeightMap,1) < 128
                 Map = imresize(obj.HeightMap,[256 256],'nearest');
@@ -2758,6 +2733,88 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet
             
             obj.HeightMap = Processed.Image;
             
+        end
+        
+        function create_and_level_height_map(obj)
+            % first set Height Map to default values for reproducable
+            % results
+            
+            obj.construct_list_to_map_relations()
+            
+            Max = zeros(obj.NCurves,1);
+            for i=1:obj.NCurves
+                [~,HHApp] = obj.get_force_curve_data(i,0,0,0);
+                Max(i) = -max(HHApp);
+            end
+            obj.HeightMap = obj.convert_data_list_to_map(Max);
+            
+            % write to Channel
+            obj.delete_channel('Indented Height')
+            Height = obj.create_standard_channel(obj.HeightMap,'Indented Height','m');
+            
+            [Channel,Index] = obj.get_channel('Indented Height');
+            if isempty(Channel)
+                Len = length(obj.Channel);
+                if ~Len
+                    obj.Channel = Height;
+                else
+                    obj.Channel(Len+1) = Height;
+                end
+            else
+                obj.Channel(Index) = Height;
+            end
+            
+            if size(obj.HeightMap,1) < 128
+                Map = imresize(obj.HeightMap,[256 256],'nearest');
+            elseif size(obj.HeightMap,1) < 512
+                Map = imresize(obj.HeightMap,[512 512],'nearest');
+            else
+                Map = imresize(obj.HeightMap,[1024 1024],'nearest');
+            end
+            for i=1:5
+                Map = AFMImage.subtract_line_fit_vertical_rov(Map,.2,0);
+            end
+            Map = imresize(Map,[obj.NumProfiles obj.NumPoints],'nearest');
+            
+            Map = AFMImage.find_and_replace_outlier_lines(Map,10);
+            
+            % write to Channel
+            obj.delete_channel('Processed Indented Height')
+            Processed = obj.create_standard_channel(Map,'Processed Indented Height','m');
+            
+            [Channel,Index] = obj.get_channel('Processed Indented Height');
+            if isempty(Channel)
+                Len = length(obj.Channel);
+                if ~Len
+                    obj.Channel = Processed;
+                else
+                    obj.Channel(Len+1) = Processed;
+                end
+            else
+                obj.Channel(Index) = Processed;
+            end
+            
+        end
+        
+        function create_and_level_height_map_by_current_cp(obj)
+            
+            Map = obj.convert_data_list_to_map(-obj.CP(:,1));
+            
+            for i=1:obj.NumProfiles
+                Map(i,:) = AFMImage.replace_points_of_certain_value_in_line(Map(i,:),0);
+            end
+            
+            for i=1:5
+                Map = AFMImage.subtract_line_fit_vertical_rov(Map,.2,0);
+            end
+            
+            Map = AFMImage.find_and_replace_outlier_lines(Map,10);
+            
+            % Write to Channel
+            obj.delete_channel('Contact Height')
+            Chan = obj.create_standard_channel(Map,'Contact Height','m');
+            
+            obj.Channel(end+1) = Chan;
         end
         
         function create_fibril_mask(obj,MaskParam)
@@ -3222,7 +3279,11 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet
             %   Setpoint
             clear tline where;
             frewind(fileID);
-            B=strfind(A,strcat(obj.FileType,'.settings.force-settings.extend.setpoint='));
+            if isequal(obj.FileType,'quantitative-imaging-map')
+                B=strfind(A,strcat(obj.FileType,'.settings.force-settings.extend.setpoint='));
+            elseif isequal(obj.FileType,'force-scan-map')
+                B=strfind(A,strcat(obj.FileType,'.settings.force-settings.relative-setpoint='));
+            end
             fseek(fileID,B,'cof');
             tline = fgetl(fileID);
             where=strfind(tline,'=');

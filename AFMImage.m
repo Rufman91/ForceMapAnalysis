@@ -97,6 +97,9 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet
                 ImageFullFile = fullfile(Path, File);
                 TempID = 'AFMImage detached from Experiment-class 1';
             end
+            if nargin == 1
+                TempID = 'AFMImage detached from Experiment-class 1';
+            end
             
             obj. CMap = obj.define_afm_color_map(0);
             
@@ -115,6 +118,48 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet
             obj.read_in_header_properties(ImageFullFile);
             
             obj.load_image_channels(ImageFullFile);
+            
+            obj.preprocess_image
+            
+        end
+        
+        function preprocess_image(obj)
+            
+            Height = obj.get_channel('Height (Trace)');
+            
+            if isempty(Height)
+                return
+            end
+            
+            if size(Height.Image,1) < 128
+                Map = imresize(Height.Image,[256 256],'nearest');
+            elseif size(Height.Image,1) < 512
+                Map = imresize(Height.Image,[512 512],'nearest');
+            else
+                Map = imresize(Height.Image,[1024 1024],'nearest');
+            end
+            for i=1:5
+                Map = AFMImage.subtract_line_fit_vertical_rov(Map,.2,0);
+            end
+            Map = imresize(Map,[obj.NumPixelsY obj.NumPixelsX],'nearest');
+            
+            Map = AFMImage.find_and_replace_outlier_lines(Map,10);
+            
+            % write to Channel
+            obj.delete_channel('Processed')
+            Processed = obj.create_standard_channel(Map,'Processed','m');
+            
+            [Channel,Index] = obj.get_channel('Processed');
+            if isempty(Channel)
+                Len = length(obj.Channel);
+                if ~Len
+                    obj.Channel = Processed;
+                else
+                    obj.Channel(Len+1) = Processed;
+                end
+            else
+                obj.Channel(Index) = Processed;
+            end
             
         end
         
@@ -138,6 +183,7 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet
         
         function delete_channel(obj,ChannelName)
             k = 0;
+            Index = [];
             for i=1:length(obj.Channel)
                 if isequal(obj.Channel(i).Name,ChannelName)
                     ChannelStruct = obj.Channel(i);
@@ -145,10 +191,28 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet
                     k = k+1;
                 end
             end
+            if isempty(Index)
+                return
+            end
             obj.Channel(Index) = [];
             if k > 1
                 warning(sprintf('Caution! There are more than one channels named %s (%i). Deleted all of them',ChannelName,k))
             end
+        end
+        
+        function OutChannel = create_standard_channel(obj,Image,Name,Unit)
+            
+            OutChannel.Image = Image;
+            OutChannel.Name = Name;
+            OutChannel.Unit = Unit;
+            OutChannel.ScanSizeX = obj.ScanSizeX;
+            OutChannel.ScanSizeY = obj.ScanSizeY;
+            OutChannel.ScanAngle = obj.ScanAngle;
+            OutChannel.NumPixelsX = obj.NumPixelsX;
+            OutChannel.NumPixelsY = obj.NumPixelsY;
+            OutChannel.OriginX = obj.OriginX;
+            OutChannel.OriginY = obj.OriginY;
+            
         end
         
         function overlay_wrapper(obj,OverlayedImageClassInstance,...
@@ -1198,8 +1262,8 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet
             % creates line to line cahnge statistics and then detects and
             % replaces outlies
             
-            PixelsX = size(InImage,1);
-            PixelsY = size(InImage,2);
+            PixelsX = size(InImage,2);
+            PixelsY = size(InImage,1);
             
             DiffPreviousLine = zeros(PixelsY,1);
             DiffNextLine = zeros(PixelsY,1);
@@ -1242,6 +1306,45 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet
                 Indizes(1:SpanOfBlock) = [];
             end
             
+        end
+        
+        function OutLine = replace_points_of_certain_value_in_line(InLine,Value)
+            
+            OutLine = InLine;
+            k = 1;
+            while k < length(InLine)
+                SpanOfBlock = 0;
+                Indizes = [];
+                while (k ~= length(InLine)) && (InLine(k) == Value)
+                    SpanOfBlock = SpanOfBlock + 1;
+                    Indizes(SpanOfBlock) = k;
+                    k = k + 1;
+                end
+                if isempty(Indizes)
+                    k = k + 1;
+                end
+                if ~isempty(Indizes)
+                    if length(Indizes) >= length(InLine) - 2
+                        OutLine = InLine;
+                        return
+                    end
+                    if Indizes(1) == 1
+                        OutLine(Indizes) = OutLine(Indizes(end)+1);
+                        continue
+                    else
+                        BeforePoint = OutLine(Indizes(1)-1);
+                        BeforeIndex = Indizes(1)-1;
+                    end
+                    if Indizes(end) == length(InLine)
+                        OutLine(Indizes) = OutLine(Indizes(1)-1);
+                        continue
+                    else
+                        AfterPoint = OutLine(Indizes(end)+1);
+                        AfterIndex = Indizes(end)+1;
+                    end
+                    OutLine(Indizes) = interp1([BeforeIndex AfterIndex],[BeforePoint AfterPoint],Indizes);
+                end
+            end
         end
     end
     
@@ -1703,7 +1806,11 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet
             
             obj.NumChannels = numel(FileInfo) - 1;
             
-            obj.ImagingType = upper(FileInfo(1).UnknownTags(find([FileInfo(1).UnknownTags.ID]==32816)).Value);
+            try
+                obj.ImagingType = upper(FileInfo(1).UnknownTags(find([FileInfo(1).UnknownTags.ID]==32816)).Value);
+            catch
+                obj.ImagingType = 'UNKNOWN';
+            end
             
             try
                 obj.FileVersion = FileInfo(1).UnknownTags(find([FileInfo(1).UnknownTags.ID]==32768)).Value;
@@ -1760,6 +1867,9 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet
                 obj.read_in_ac_header(FileInfo)
             elseif isequal(obj.ImagingType,'CONTACT')
                 obj.read_in_contact_header(FileInfo)
+            elseif isequal(ImageFullFile(end-5:end),'.force') || isequal(ImageFullFile(end-12:end),'.jpk-qi-image')
+            elseif isequal(obj.ImagingType,'UNKNOWN')
+                error('Unknown imaging mode')
             else
                 error('Unknown imaging mode')
             end
@@ -1927,6 +2037,7 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet
                 
                 strsp=(strsplit((FileInfo(i).UnknownTags(find([FileInfo(i).UnknownTags.ID]==32851)).Value)))';
                 
+                trace_type_flag = [];
                 for k=1:size(strsp,1)
                     if(strcmp(strsp{k,1},'retrace')==1)
                         if(strcmp(strsp{k+2,1},'true'))
@@ -1987,23 +2098,33 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet
                     end
                 end
                 
-                afm_image = afm_image(end:-1:1,:); % mirror Y-pixels to flip image to same orientation as in jpk data processing
+%                 afm_image = afm_image(end:-1:1,:); % mirror Y-pixels to flip image to same orientation as in jpk data processing
                 
                 obj.Channel(i-1).Image = afm_image;
-                obj.Channel(i-1).Name = strcat(Channel_Name,' ',trace_type_flag);
+                if ~isempty(trace_type_flag)
+                    obj.Channel(i-1).Name = strcat(Channel_Name,' ',trace_type_flag);
+                else
+                    obj.Channel(i-1).Name = Channel_Name;
+                end
                 if isequal(Channel_Name,'Height') ||...
                         isequal(Channel_Name,'Height (measured)') ||...
                         (isequal(Channel_Name,'Lock-In Amplitude') && obj.hasSensitivity) ||...
-                        (isequal(Channel_Name,'Vertical Deflection') && obj.hasSensitivity && ~obj.hasSpringConstant)
+                        (isequal(Channel_Name,'Vertical Deflection') && obj.hasSensitivity && ~obj.hasSpringConstant) ||...
+                        (isequal(Channel_Name,'Lateral Deflection') && obj.hasSensitivity && ~obj.hasSpringConstant)
                     obj.Channel(i-1).Unit = 'm';
                 elseif isequal(Channel_Name,'Lock-In Phase')
                     obj.Channel(i-1).Unit = 'deg';
-                elseif isequal(Channel_Name,'Vertical Deflection') && obj.hasSensitivity && obj.hasSpringConstant
+                elseif isequal(Channel_Name,'Vertical Deflection') && obj.hasSensitivity && obj.hasSpringConstant ||...
+                        isequal(Channel_Name,'Lateral Deflection') && obj.hasSensitivity && obj.hasSpringConstant
                     obj.Channel(i-1).Unit = 'N';
                 elseif isequal(Channel_Name,'Error Signal') ||...
                         (isequal(Channel_Name,'Lock-In Amplitude') && ~obj.hasSensitivity && ~obj.hasSpringConstant) ||...
                         isequal(Channel_Name,'Lateral Deflection')
                     obj.Channel(i-1).Unit = 'V';
+                elseif isequal(Channel_Name,'Slope')
+                    obj.Channel(i-1).Unit = 'm/m';
+                elseif isequal(Channel_Name,'Adhesion')
+                    obj.Channel(i-1).Unit = 'N';
                 end
                 obj.Channel(i-1).NumPixelsX = obj.NumPixelsX;
                 obj.Channel(i-1).NumPixelsY = obj.NumPixelsY;
