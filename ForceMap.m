@@ -49,6 +49,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet
         RetractVelocity
         GridAngle       % in degrees (°)
         Sensitivity
+        RefSlopeCorrectedSensitivity
         SpringConstant
         Setpoint
         DBanding        % Fourieranalysis-based estimate of DBanding perdiod (only available with sufficient resolution)
@@ -133,6 +134,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet
         RectApex        % Value of rectified apex location in each profile
         ApexIndex       % Index of highest pixel in each profile (List indexing!)
         RectApexIndex   % Index of rectified apex location in each profile (List indexing!)
+        hasOverlay = 0
     end
     properties
         % Properties related to EMod calculations
@@ -1050,7 +1052,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet
             obj.CPFlag.HardSurface = 1;
         end
         
-        function [E,HertzFit] = calculate_e_mod_hertz(obj,CPType,TipShape,curve_percent,AllowXShift)
+        function [E,HertzFit] = calculate_e_mod_hertz(obj,CPType,TipShape,curve_percent,AllowXShift,CorrectSensitivity)
             % [E,HertzFit] = calculate_e_mod_hertz(obj,CPType,TipShape,curve_percent)
             %
             % calculate the E modulus of the chosen curves using the CP
@@ -1088,6 +1090,9 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet
                 end
                 [App,HHApp] = obj.get_force_curve_data(i,0,1,0);
                 force = App - CP(2);
+                if CorrectSensitivity
+                    force = force.*obj.RefSlopeCorrectedSensitivity/obj.Sensitivity;
+                end
                 tip_h = (HHApp - CP(1)) - force/obj.SpringConstant;
                 tip_h(tip_h < 0) = [];
                 if length(tip_h) < 2
@@ -1130,7 +1135,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet
                             R_eff = 1/(1/(obj.TipRadius*1e-9) + 1/(obj.FibDiam/2));
                         end
                         EMod = 3*(Hertzfit.a*RangeF/RangeTH^(3/2))/(4*sqrt(R_eff))*(1-obj.PoissonR^2);
-                    catch
+                    catch ME
                         EMod = nan;
                         Hertzfit.a = 0;
                         if AllowXShift
@@ -2615,26 +2620,28 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet
             disp(savemsg);
         end
         
-        function calculate_reference_slope_from_area(obj,Mask)
+        function calculate_reference_slope_from_area(obj,Mask,AppRetSwitch)
             % Calculates the distribution of DZslopes on the curves
             % that that are neihter on the fibril nor the excluded zones.
             %  the upper 25% of the curve are considered for the
             %  calculation
             
-            Range = find(obj.SelectedCurves);
+            Range = find(obj.SelectedCurves & ~obj.CorruptedCurves);
             CurvePercent = 0.25;
             % Calculate the DZslopes
             k = 1;
             for i=Range'
-                [App,HHApp] = obj.get_force_curve_data(i,0,1,0);
-                [Ret,HHRet] = obj.get_force_curve_data(i,1,1,0);
+                [Force,Height] = obj.get_force_curve_data(i,AppRetSwitch,1,0);
                 if (Mask(obj.List2Map(i,1),obj.List2Map(i,2)) == 1) &&...
                         (obj.ExclMask(obj.List2Map(i,1),obj.List2Map(i,2)) == 1)
-                    Z(:,i) = HHRet - obj.CP(i,1);
-                    D(:,i) = (Ret - obj.CP(i,2))/obj.SpringConstant;
-                    Dmax = max(D(:,i));
-                    DCurvePercent = D(D(:,i)>=(1-CurvePercent)*Dmax,i);
-                    ZCurvePercent = Z(1:length(DCurvePercent),i);
+                    Z = Height - obj.CP(i,1);
+                    D = (Force - obj.CP(i,2))/obj.SpringConstant;
+                    Dmax = max(D);
+                    DCurvePercent = D(D>=(1-CurvePercent)*Dmax);
+                    if length(DCurvePercent) < 2
+                        DCurvePercent = D(end-1:end);
+                    end
+                    ZCurvePercent = Z(1:length(DCurvePercent));    
                     LineFit = polyfit(ZCurvePercent,DCurvePercent,1);
                     DZslope(k) = LineFit(1);
                     k = k + 1;
@@ -2643,6 +2650,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet
             % Fit the Gaussian
             Gaussian = fitdist(DZslope','Normal');
             obj.RefSlope = Gaussian.mean;
+            obj.RefSlopeCorrectedSensitivity = obj.Sensitivity/obj.RefSlope;
             obj.HasRefSlope = true;
         end
         
@@ -2657,6 +2665,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet
                     continue
                 end
                 obj.RefSlope = str2double(UsrInput{1});
+                obj.RefSlopeCorrectedSensitivity = obj.Sensitivity/obj.RefSlope;
                 obj.HasRefSlope = true;
                 IsValidInput = true;
             end
@@ -2664,6 +2673,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet
         
         function set_reference_slope_to_value(obj,Value)
             obj.RefSlope = Value; % BEST.FUNCTION.EVER.WRITTEN.
+            obj.RefSlopeCorrectedSensitivity = obj.Sensitivity/obj.RefSlope;
             obj.HasRefSlope = true; % so true
         end
         
@@ -2746,11 +2756,11 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet
                 [~,HHApp] = obj.get_force_curve_data(i,0,0,0);
                 Max(i) = -max(HHApp);
             end
-            obj.HeightMap = obj.convert_data_list_to_map(Max);
+            TempHeightMap = obj.convert_data_list_to_map(Max);
             
             % write to Channel
             obj.delete_channel('Indented Height')
-            Height = obj.create_standard_channel(obj.HeightMap,'Indented Height','m');
+            Height = obj.create_standard_channel(TempHeightMap,'Indented Height','m');
             
             [Channel,Index] = obj.get_channel('Indented Height');
             if isempty(Channel)
@@ -2765,11 +2775,11 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet
             end
             
             if size(obj.HeightMap,1) < 128
-                Map = imresize(obj.HeightMap,[256 256],'nearest');
+                Map = imresize(TempHeightMap,[256 256],'nearest');
             elseif size(obj.HeightMap,1) < 512
-                Map = imresize(obj.HeightMap,[512 512],'nearest');
+                Map = imresize(TempHeightMap,[512 512],'nearest');
             else
-                Map = imresize(obj.HeightMap,[1024 1024],'nearest');
+                Map = imresize(TempHeightMap,[1024 1024],'nearest');
             end
             for i=1:5
                 Map = AFMImage.subtract_line_fit_vertical_rov(Map,.2,0);
@@ -2868,37 +2878,11 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet
             %             cd(current.path)
         end
         
-        function create_automatic_background_mask(obj,MaskParam)
+        function create_automatic_background_mask(obj,PercentOfRange)
             
-            if nargin < 2
-                MaskParam = 0.5;
-            end
-            mask = zeros(size(obj.HeightMap));
-            HeightList = zeros(obj.NCurves,1);
-            for i=1:obj.NCurves
-                [~,HHApp] = obj.get_force_curve_data(i,0,1,0);
-                HeightList(i) = -HHApp(end);
-            end
-            STDLine = zeros(obj.NCurves,1);
-            [HeightSorted,Idx] = sort(HeightList,'descend');
-            for i=1:obj.NCurves
-                STDLine(i) = std(HeightSorted(1:i));
-            end
-            [~,MaxIdx] = max(STDLine);
-            MapIndex = obj.List2Map(Idx(1:floor(MaxIdx*MaskParam)),:);
-            for i=1:length(MapIndex)
-                mask(MapIndex(i,1),MapIndex(i,2)) = 1;
-            end
-            mask = logical(mask);
-            mask = bwareafilt(mask,1,4);
+            Channel = obj.get_channel('Processed');
             
-            obj.BackgroundMask = ~mask;
-            
-            %             current = what();
-            %             cd(obj.Folder)
-            %             savename = sprintf('%s.mat',obj.Name);
-            %             save(savename,'obj')
-            %             cd(current.path)
+            obj.BackgroundMask = AFMImage.mask_background_by_threshold(Channel.Image,PercentOfRange);
         end
         
         function check_for_new_host(obj)

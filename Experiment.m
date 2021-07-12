@@ -465,7 +465,10 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             % CPOption = 'Manual' ... go through manual CP determination for contact point estimation
             %
             % EModOption = 'Hertz' ... E-Modulus calculation through Hertz-Sneddon
-            % method
+            %                           method
+            % EModOption = 'HertzCorrected' ... E-Modulus calculation through Hertz-Sneddon
+            %                               method with RefSlope-corrected
+            %                               senstitivity
             % EModOption = 'Oliver' ... E-Modulus calculation through
             % Oliver-Pharr-like method (O. Andriotis 2014)
             % EModOption = 'Both'   ... 'Oliver' and 'Hertz'
@@ -572,6 +575,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 
                 waitbar(i/NLoop,h,sprintf('Processing Fibril %i/%i\nCreating and levelling Height Map',i,NLoop));
                 obj.FM{i}.create_and_level_height_map
+                obj.FM{i}.create_automatic_background_mask(1)
                 
                 Thresh = 1/2;
                 AppRetSwitch = 2;
@@ -607,9 +611,14 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 obj.reference_slope_calculator(i);
                 
                 waitbar(i/NLoop,h,sprintf('Processing Fibril %i/%i\nCalculating E-Modulus',i,NLoop));
-                if isequal(lower(EModOption),'hertz') || isequal(lower(EModOption),'both')
+                if isequal(lower(EModOption),'hertz') || isequal(lower(EModOption),'both') || isequal(lower(EModOption),'hertzcorrected')
+                    if isequal(lower(EModOption),'hertzcorrected') || isequal(lower(EModOption),'both')
+                        CorrectSens = true;
+                    else
+                        CorrectSens = false;
+                    end
                     AllowXShift = true;
-                    obj.FM{i}.calculate_e_mod_hertz(CPOption,'parabolic',1,AllowXShift);
+                    obj.FM{i}.calculate_e_mod_hertz(CPOption,'parabolic',1,AllowXShift,CorrectSens);
                     if i == 1
                         obj.write_to_log_file('Hertzian Tip-Shape','parabolic')
                         obj.write_to_log_file('Hertzian CurvePercent','1')
@@ -645,7 +654,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 if TemporaryLoadInBool && obj.BigDataFlag
                     obj.FM{i}.temporary_data_load_in(false);
                     if i < NLoop
-                        obj.save_experiment;
+%                         obj.save_experiment;
                     end
                 end
                 
@@ -713,6 +722,9 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             %
             % EModOption = 'Hertz' ... E-Modulus calculation through Hertz-Sneddon
             % method
+            % EModOption = 'HertzCorrected' ... E-Modulus calculation through Hertz-Sneddon
+            %                               method with RefSlope-corrected
+            %                               senstitivity
             % EModOption = 'Oliver' ... E-Modulus calculation through
             % Oliver-Pharr-like method (O. Andriotis 2014)
             
@@ -801,6 +813,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 
                 waitbar(i/NLoop,h,sprintf('Processing Fibril %i/%i\nCreating and levelling Height Map',i,NLoop));
                 obj.FM{i}.create_and_level_height_map
+                obj.FM{i}.create_automatic_background_mask(1)
                 
                 Thresh = 1/2;
                 AppRetSwitch = 2;
@@ -834,9 +847,14 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 obj.reference_slope_calculator(i);
                 
                 waitbar(i/NLoop,h,sprintf('Processing Fibril %i/%i\nCalculating E-Modulus',i,NLoop));
-                if isequal(lower(EModOption),'hertz') || isequal(lower(EModOption),'both')
+                if isequal(lower(EModOption),'hertz') || isequal(lower(EModOption),'both') || isequal(lower(EModOption),'hertzcorrected')
+                    if isequal(lower(EModOption),'hertzcorrected') || isequal(lower(EModOption),'both')
+                        CorrectSens = true;
+                    else
+                        CorrectSens = false;
+                    end
                     AllowXShift = true;
-                    obj.FM{i}.calculate_e_mod_hertz(CPOption,'parabolic',1,AllowXShift);
+                    obj.FM{i}.calculate_e_mod_hertz(CPOption,'parabolic',1,AllowXShift,CorrectSens);
                     if i == 1
                         obj.write_to_log_file('Hertzian Tip-Shape','parabolic')
                         obj.write_to_log_file('Hertzian CurvePercent','1')
@@ -864,7 +882,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 if TemporaryLoadInBool && obj.BigDataFlag
                     obj.FM{i}.temporary_data_load_in(false);
                     if i < NLoop
-                        obj.save_experiment;
+%                         obj.save_experiment;
                     end
                 end
                 
@@ -2882,7 +2900,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             
             Methods = false(6,1);
             Methods(DefaultOption) = true;
-            ChosenMethod = obj.reference_slope_parser_gui(Methods);
+            [ChosenMethod, AppRetSwitch] = obj.reference_slope_parser_gui(Methods);
             Methods = false(6,1);
             Methods(ChosenMethod) = true;
             
@@ -2892,6 +2910,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             obj.ReferenceSlopeFlag.FromArea = Methods(4);
             obj.ReferenceSlopeFlag.AutomaticFibril = Methods(5);
             obj.ReferenceSlopeFlag.Automatic = Methods(6);
+            obj.ReferenceSlopeFlag.AppRetSwitch = AppRetSwitch;
             
             % Process all the RefSlope-Methods that can be done frontloaded
             if obj.ReferenceSlopeFlag.SetAllToValue
@@ -2909,7 +2928,6 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                     obj.FM{i}.RefSlopeMask = obj.FM{i}.create_mask_general;
                 end
             end
-            
         end
         
         function reference_slope_calculator(obj,Index)
@@ -2950,14 +2968,14 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                     obj.FM{i}.HasRefSlope = true;
                 end
             elseif obj.ReferenceSlopeFlag.AutomaticFibril
-                Mask = ~obj.FM{i}.FibMask;
-                obj.FM{i}.calculate_reference_slope_from_area(Mask)
+                Mask = obj.FM{i}.BackgroundMask;
+                obj.FM{i}.calculate_reference_slope_from_area(Mask,obj.ReferenceSlopeFlag.AppRetSwitch)
             elseif obj.ReferenceSlopeFlag.Automatic
                 obj.FM{i}.create_automatic_background_mask(.8)
                 Mask = obj.FM{i}.BackgroundMask;
-                obj.FM{i}.calculate_reference_slope_from_area(Mask)
+                obj.FM{i}.calculate_reference_slope_from_area(Mask,obj.ReferenceSlopeFlag.AppRetSwitch)
             elseif obj.ReferenceSlopeFlag.FromArea
-                obj.FM{i}.calculate_reference_slope_from_area(obj.FM{i}.RefSlopeMask)
+                obj.FM{i}.calculate_reference_slope_from_area(obj.FM{i}.RefSlopeMask,obj.ReferenceSlopeFlag.AppRetSwitch)
             end
         end
         
@@ -3336,7 +3354,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             fclose(fid);
         end
         
-        function Out = reference_slope_parser_gui(Methods)
+        function [Out, AppRetSwitch] = reference_slope_parser_gui(Methods)
             % Create figure
             left = 0.3;
             bottom = 0.4;
@@ -3346,7 +3364,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 'toolbar','none','menu','none');
             
             h.bg = uibuttongroup('Visible','off',...
-                  'Position',[0.1 0.15 0.8 0.8]);
+                  'Position',[0.1 0.15 0.5 0.8]);
             
             % Create checkboxes
             c(1) = uicontrol(h.bg,'style','radiobutton','units','normalized',...
@@ -3366,6 +3384,18 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             
             h.bg.Visible = 'on';
             
+            
+            h.bgAR = uibuttongroup('Visible','off',...
+                  'Position',[0.65 0.15 0.3 0.8]);
+            
+            % Create checkboxes
+            cAR(1) = uicontrol(h.bgAR,'style','radiobutton','units','normalized',...
+                'position',[0.05 0.6 0.9 1/7],'string','From Approach');
+            cAR(2) = uicontrol(h.bgAR,'style','radiobutton','units','normalized',...
+                'position',[0.05 0.3 0.9 1/7],'string','From Retract');
+            
+            h.bgAR.Visible = 'on';
+            
             % Create OK pushbutton
             h.p = uicontrol('style','pushbutton','units','normalized',...
                 'position',[0.4 0.05 0.2 0.1],'string','OK',...
@@ -3382,6 +3412,9 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 vals = get(c,'Value');
                 checked = find([vals{:}]);
                 Out = checked;
+                valsAR = get(cAR,'Value');
+                checkedAR = find([valsAR{:}]);
+                AppRetSwitch = checkedAR - 1;
                 close(h.f)
             end
             uiwait(h.f)

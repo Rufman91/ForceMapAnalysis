@@ -215,87 +215,6 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet
             
         end
         
-        function overlay_wrapper(obj,OverlayedImageClassInstance,...
-                BackgroundPercent,MinOverlap,AngleRange,UseParallel,...
-                MaxFunEval,PreMaxFunEval,NumPreSearches,NClusters)
-            % overlay_wrapper(obj,OverlayedImageClassInstance,BackgroundPercent,MinOverlap,AngleRange,UseParallel,MaxFunEval,PreMaxFunEval,NumPreSearches,NClusters)
-            
-            if nargin < 3
-                BackgroundPercent = 0;
-                MinOverlap = .6;
-                AngleRange = 30;
-                UseParallel = true;
-                MaxFunEval = 200;
-                PreMaxFunEval = 30;
-                NumPreSearches = 84;
-                NClusters = 4;
-            end
-            
-            Channel1 = obj.get_channel('Processed');
-            Channel2 = OverlayedImageClassInstance.get_channel('Processed');
-            
-            [OutChannel,ScaleMultiplier,WhoScaled] = AFMImage.overlay_parameters_by_bayesopt(Channel1,Channel2,...
-                BackgroundPercent,MinOverlap,AngleRange,UseParallel,MaxFunEval,PreMaxFunEval,NumPreSearches,NClusters);
-            
-            [Overlay1,Overlay2] = AFMImage.overlay_two_images(Channel1,OutChannel);
-            
-            % Create Overlay Background masks
-            OverlayMask1 = AFMImage.mask_background_by_threshold(Overlay1,BackgroundPercent,'on');
-            OverlayMask2 = AFMImage.mask_background_by_threshold(Overlay2,BackgroundPercent,'on');
-            
-            if isequal(WhoScaled,'Channel1')
-                Scale1 = ScaleMultiplier;
-                Scale2 = 1;
-            elseif isequal(WhoScaled,'Channel2')
-                Scale1 = 1;
-                Scale2 = ScaleMultiplier;
-            elseif isequal(WhoScaled,'No one')
-                Scale1 = 1;
-                Scale2 = 1;
-            end
-            
-            % write the overlays into the corresponding Class instances
-            SecondOut = OutChannel;
-            SecondMaskOut = OutChannel;
-            SecondOut.Image = Overlay2;
-            SecondMaskOut.Image = OverlayMask2;
-            SecondMaskOut.Unit = 'Logical';
-            SecondMaskOut.Name = 'Overlay Mask';
-            SecondOut.NumPixelsX = size(SecondOut.Image,1);
-            SecondOut.NumPixelsY = size(SecondOut.Image,2);
-            SecondOut.ScanSizeX = Channel2.ScanSizeX*(SecondOut.NumPixelsX/(Channel2.NumPixelsX*Scale2));
-            SecondOut.ScanSizeY = Channel2.ScanSizeY*(SecondOut.NumPixelsY/(Channel2.NumPixelsY*Scale2));
-            SecondMaskOut.NumPixelsX = SecondOut.NumPixelsX;
-            SecondMaskOut.NumPixelsY = SecondOut.NumPixelsY;
-            SecondMaskOut.ScanSizeX = SecondOut.ScanSizeX;
-            SecondMaskOut.ScanSizeY = SecondOut.ScanSizeY;
-            
-            FirstOut = Channel1;
-            FirstMaskOut = Channel1;
-            FirstOut.Image = Overlay1;
-            FirstOut.Name = 'Overlay';
-            FirstMaskOut.Image = OverlayMask1;
-            FirstMaskOut.Unit = 'Logical';
-            FirstMaskOut.Name = 'Overlay Mask';
-            FirstOut.NumPixelsX = size(FirstOut.Image,1);
-            FirstOut.NumPixelsY = size(FirstOut.Image,2);
-            FirstOut.ScanSizeX = Channel2.ScanSizeX*(FirstOut.NumPixelsX/(Channel1.NumPixelsX*Scale1));
-            FirstOut.ScanSizeY = Channel2.ScanSizeY*(FirstOut.NumPixelsY/(Channel1.NumPixelsY*Scale1));
-            FirstMaskOut.NumPixelsX = FirstOut.NumPixelsX;
-            FirstMaskOut.NumPixelsY = FirstOut.NumPixelsY;
-            FirstMaskOut.ScanSizeX = FirstOut.ScanSizeX;
-            FirstMaskOut.ScanSizeY = FirstOut.ScanSizeY;
-            
-            obj.Channel(end+1) = FirstOut;
-            obj.Channel(end+1) = FirstMaskOut;
-            
-            OverlayedImageClassInstance.Channel(end+1) = SecondOut;
-            OverlayedImageClassInstance.Channel(end+1) = SecondMaskOut;
-            
-            obj.hasOverlay = true;
-            OverlayedImageClassInstance.hasOverlay = true;
-        end
-        
         function deconvolute_cantilever_tip(obj)
             
             Channel = obj.get_channel('Height (measured) (Trace)');
@@ -761,6 +680,87 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet
                 OverlayMask1 = TempOverlayMask1(MinX:MaxX,MinY:MaxY);
                 OverlayMask2 = TempOverlayMask2(MinX:MaxX,MinY:MaxY);
             end
+        end
+        
+        function overlay_wrapper(FirstClassInstance,OverlayedClassInstance,...
+                BackgroundPercent,MinOverlap,AngleRange,UseParallel,...
+                MaxFunEval,PreMaxFunEval,NumPreSearches,NClusters)
+            % overlay_wrapper(obj,OverlayedImageClassInstance,BackgroundPercent,MinOverlap,AngleRange,UseParallel,MaxFunEval,PreMaxFunEval,NumPreSearches,NClusters)
+            
+            if nargin < 3
+                BackgroundPercent = 0;
+                MinOverlap = .6;
+                AngleRange = 30;
+                UseParallel = true;
+                MaxFunEval = 200;
+                PreMaxFunEval = 30;
+                NumPreSearches = 84;
+                NClusters = 4;
+            end
+            
+            Channel1 = FirstClassInstance.get_channel('Processed');
+            Channel2 = OverlayedClassInstance.get_channel('Processed');
+            
+            [OutChannel,ScaleMultiplier,WhoScaled] = AFMImage.overlay_parameters_by_bayesopt(Channel1,Channel2,...
+                BackgroundPercent,MinOverlap,AngleRange,UseParallel,MaxFunEval,PreMaxFunEval,NumPreSearches,NClusters);
+            
+            [Overlay1,Overlay2] = AFMImage.overlay_two_images(Channel1,OutChannel);
+            
+            % Create Overlay Background masks
+            OverlayMask1 = AFMImage.mask_background_by_threshold(Overlay1,BackgroundPercent,'on');
+            OverlayMask2 = AFMImage.mask_background_by_threshold(Overlay2,BackgroundPercent,'on');
+            
+            if isequal(WhoScaled,'Channel1')
+                Scale1 = ScaleMultiplier;
+                Scale2 = 1;
+            elseif isequal(WhoScaled,'Channel2')
+                Scale1 = 1;
+                Scale2 = ScaleMultiplier;
+            elseif isequal(WhoScaled,'No one')
+                Scale1 = 1;
+                Scale2 = 1;
+            end
+            
+            % write the overlays into the corresponding Class instances
+            SecondOut = OutChannel;
+            SecondMaskOut = OutChannel;
+            SecondOut.Image = Overlay2;
+            SecondMaskOut.Image = OverlayMask2;
+            SecondMaskOut.Unit = 'Logical';
+            SecondMaskOut.Name = 'Overlay Mask';
+            SecondOut.NumPixelsX = size(SecondOut.Image,1);
+            SecondOut.NumPixelsY = size(SecondOut.Image,2);
+            SecondOut.ScanSizeX = Channel2.ScanSizeX*(SecondOut.NumPixelsX/(Channel2.NumPixelsX*Scale2));
+            SecondOut.ScanSizeY = Channel2.ScanSizeY*(SecondOut.NumPixelsY/(Channel2.NumPixelsY*Scale2));
+            SecondMaskOut.NumPixelsX = SecondOut.NumPixelsX;
+            SecondMaskOut.NumPixelsY = SecondOut.NumPixelsY;
+            SecondMaskOut.ScanSizeX = SecondOut.ScanSizeX;
+            SecondMaskOut.ScanSizeY = SecondOut.ScanSizeY;
+            
+            FirstOut = Channel1;
+            FirstMaskOut = Channel1;
+            FirstOut.Image = Overlay1;
+            FirstOut.Name = 'Overlay';
+            FirstMaskOut.Image = OverlayMask1;
+            FirstMaskOut.Unit = 'Logical';
+            FirstMaskOut.Name = 'Overlay Mask';
+            FirstOut.NumPixelsX = size(FirstOut.Image,1);
+            FirstOut.NumPixelsY = size(FirstOut.Image,2);
+            FirstOut.ScanSizeX = Channel2.ScanSizeX*(FirstOut.NumPixelsX/(Channel1.NumPixelsX*Scale1));
+            FirstOut.ScanSizeY = Channel2.ScanSizeY*(FirstOut.NumPixelsY/(Channel1.NumPixelsY*Scale1));
+            FirstMaskOut.NumPixelsX = FirstOut.NumPixelsX;
+            FirstMaskOut.NumPixelsY = FirstOut.NumPixelsY;
+            FirstMaskOut.ScanSizeX = FirstOut.ScanSizeX;
+            FirstMaskOut.ScanSizeY = FirstOut.ScanSizeY;
+            
+            FirstClassInstance.Channel(end+1) = FirstOut;
+            FirstClassInstance.Channel(end+1) = FirstMaskOut;
+            
+            OverlayedClassInstance.Channel(end+1) = SecondOut;
+            OverlayedClassInstance.Channel(end+1) = SecondMaskOut;
+            
+            FirstClassInstance.hasOverlay = true;
+            OverlayedClassInstance.hasOverlay = true;
         end
         
         function OutImage = subtract_line_fit_hist(InImage,CutOff)
