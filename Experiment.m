@@ -2784,22 +2784,24 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
     methods
         % auxiliary methods
         
-        function RadiusNM = calculate_tip_radius(obj,TipDepthNM)
+        function RadiusNM = calculate_tip_radius(obj,TipDepthNM,TipIndex)
             if nargin < 2
                 TipDepthNM = 20;
             end
+            Chan = obj.CantileverTips{TipIndex}.get_channel('Eroded Tip');
+            TipImage = -Chan.Image;
             m = 1;
-            Niter = 200;
+            Niter = 100;
             Cumulative = zeros(Niter,1);
             for n=1:Niter
                 k = 1;
-                SizeArray = size(obj.CantileverTip.data);
+                SizeArray = size(TipImage);
                 for i=1:SizeArray(1)
                     for j=1:SizeArray(2)
-                        if obj.CantileverTip.data(i,j) > -TipDepthNM*1e-9
-                            X(k) = (i-1)*obj.CantileverTip.XaxisSizeUM*1e-6/SizeArray(1);
-                            Y(k) = (j-1)*obj.CantileverTip.YaxisSizeUM*1e-6/SizeArray(2);
-                            Z(k) = obj.CantileverTip.data(i,j);
+                        if TipImage(i,j) > -TipDepthNM*1e-9
+                            X(k) = (i-1)*obj.CantileverTips{TipIndex}.ScanSizeX/SizeArray(1);
+                            Y(k) = (j-1)*obj.CantileverTips{TipIndex}.ScanSizeY/SizeArray(2);
+                            Z(k) = TipImage(i,j);
                             k = k + 1;
                         end
                     end
@@ -2850,26 +2852,10 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             end
             Sorted = sort(Cumulative);
             RadiusNM = mean(Sorted(1:round(Niter/2)));
-            obj.CantileverTip.RadiusNM = RadiusNM;
-            for i=1:obj.NumForceMaps
-                obj.FM{i}.TipRadius = RadiusNM;
-            end
-        end
-        
-        function show_tip_data(obj)
-            figure('Name','Cantilever Tip',...
-                'Units','normalized','Position',[0.7 0.1 0.3 0.8],'Color','w');
-            subplot(3,1,1)
-            surf(obj.CantileverTip.data,'LineStyle','none','FaceLighting','gouraud','FaceColor','interp')
-            light('Style','local')
-            subplot(3,1,2)
-            plot(1:length(obj.CantileverTip.ProjArea),obj.CantileverTip.ProjArea)
-            xlabel('Indentation Depth [nm]')
-            ylabel('Projected Area [m^2]')
-            subplot(3,1,3)
-            plot(1:30,obj.CantileverTip.ProjArea(1:30))
-            xlabel('Typical Indentation Depth [nm]')
-            ylabel('Projected Area [m^2]')
+%             obj.CantileverTip.RadiusNM = RadiusNM;
+%             for i=1:obj.NumForceMaps
+%                 obj.FM{i}.TipRadius = RadiusNM;
+%             end
         end
         
         function check_for_new_host(obj)
