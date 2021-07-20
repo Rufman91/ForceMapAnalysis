@@ -26,17 +26,22 @@ classdef ForceMap < matlab.mixin.Copyable
         Name            % name of the force map. taken as the name of the folder, containing the .csv files
         Date            % date when the force map was detected
         Time            % time when the force map was detected
+        ExtendVelocity  % ExtendZLength/ExtendTime;
+        ExtendVelocityConvert % ExtendVelocity converted into nm/s
+            
         DateAdapt       % date with dots removed
         TimeAdapt       % time with dots removed
         ID              % Identifier for relation to Experiment
         FileVersion     % Version of jpk-force-map file
         FileType        % File Type: force map or qi-map
         Folder          % location of the .csv files of the force map
+        HoldingTime=0   % Holding time at the substrate surface
         HostOS          % Operating System
         HostName        % Name of hosting system
         NCurves         % number of curves on the force map
         NumProfiles     % number of scanned profiles along the YSize of the force map
         NumPoints       % number of scanned points per profile along the XSize of the force map
+        NumSegment      % number of segments per force curve (jpk assigns approach and retraction as well as possible holding times into segments)
         MaxPointsPerCurve
         XSize           % Size of imaged window in X-direction
         YSize           % Size of imaged window in Y-direction
@@ -46,6 +51,8 @@ classdef ForceMap < matlab.mixin.Copyable
         SpringConstant
         DBanding        % Fourieranalysis-based estimate of DBanding perdiod (only available with sufficient resolution)
         RefSlope        % Refernce slope as determined from the upper curve slope from data from very hard
+        RetractVelocity % RetractZLength/RetractTime;
+        RetractVelocityConvert % RetractVelocity converted into nm/s   
         % surfaces (mica,glass), either from glass parts beneath the specimen or from
         % separate reference force maps
         PixApp          % maximum number of measured points during approach
@@ -3369,160 +3376,244 @@ classdef ForceMap < matlab.mixin.Copyable
         
         function read_in_header_properties(obj,TempFolder)
             % Check for jpk-software version and get important ForceMap
-            % properties
+            % properties from the file header properties
+            % ("FILENAME\header.properties")
             
-            filedirectory = fullfile(TempFolder,'header.properties');
-            fileID=fopen(filedirectory,'rt','n','UTF-8'); % fileID = fopen(filename,permission,machinefmt,encodingIn)
-            A=fileread(filedirectory);
-            % Height: 1. CONVERSION raw-meters & 2. SCALE meters
-            % Conversion RAW -> VOLTS
-            fseek(fileID,1,'cof'); % goes at the first position in the file
             
-            %   Check for file type (.jpk-force-map, .jpk-qi-data)
-            frewind(fileID);
-            B=strfind(A,'jpk-data-file=');
-            fseek(fileID,B,'cof');
-            tline = fgetl(fileID);
-            where=strfind(tline,'=');
-            TempType = tline(where+1:end);
+            %% Read the jpk-file
+            FileDirectory = fullfile(TempFolder,'header.properties');
+            FileID=fopen(FileDirectory,'rt','n','UTF-8'); % opens the choosen file
+            % fopen(filename,permission,machinefmt,encodingIn)
+            % permission 'rt': 'r' to open file for reading, 't' to open file in text mode
+            FileCont=fileread(FileDirectory); % Reads content of the file as text        
+                      
+            %% Check for file type
+            frewind(FileID); % Move file position indicator to beginning of the open file
+            StrPos=strfind(FileCont,'jpk-data-file='); % Find the searched text within the file and give the position 
+            fseek(FileID,StrPos,'cof'); % Move to specified position in file
+            % 'cof': Current position in file
+            TextLine = fgetl(FileID); % reads the rest of the line starting from the defined string until the end of the line
+            LinePos=strfind(TextLine,'='); % finds the position of the '='-sign in the line
+            TempType = TextLine(LinePos+1:end); % allocates all found next to the '='-sign until the end of the line
             if isequal(TempType, 'spm-quantitative-image-data-file')   % Valid for software versions 6.1.158  
                 obj.FileType = 'quantitative-imaging-map';
             elseif isequal(TempType,'spm-force-scan-map-file')         % Valid for software versions 6.1.158 
                 obj.FileType = 'force-scan-map';
-            end
-            
-            %   Check for file version
-            clear tline where;
-            frewind(fileID);
-            B=strfind(A,strcat(obj.FileType,'.description.source-software='));
-            fseek(fileID,B,'cof');
-            tline = fgetl(fileID);
-            where=strfind(tline,'=');
-            obj.FileVersion = tline(where+1:end);
-            
-            %   NCurves
-            clear tline where;
-            frewind(fileID);
-            B=strfind(A,strcat(obj.FileType,'.indexes.max='));
-            % strfind(file,string) is looking for a specific string in the file.
-            fseek(fileID,B,'cof');
-            % moves at the location where specific string is located
-            tline = fgetl(fileID);
+            end            
+            % Restore initial conditions
+            frewind(FileID); % Move file position indicator back to beginning of the open file
+                       
+            %%   Check for the file version            
+            StrPos=strfind(FileCont,strcat(obj.FileType,'.description.source-software=')); % finds the position of the string searched for
+            fseek(FileID,StrPos,'cof'); % Move to specified position in file
+            % 'cof': Current position in file
+            TextLine = fgetl(FileID); % reads the rest of the line starting from the defined string until the end of the line
+            LinePos=strfind(TextLine,'='); % finds the position of the '='-sign in the line
+            obj.FileVersion = TextLine(LinePos+1:end); % allocates all found next to the '='-sign until the end of the line
+            % Restore initial conditions
+            frewind(FileID); % Move file position indicator back to beginning of the open file
+
+            %   Number of curves (COMMENT: JPK starts from 0 not from 1)
+            StrPos=strfind(FileCont,strcat(obj.FileType,'.indexes.max=')); % strfind(file,string) is looking for a specific string in the file.
+            fseek(FileID,StrPos,'cof'); % moves at the location where specific string is located
+            TextLine = fgetl(FileID); % reads the rest of the line starting from the defined string until the end of the line
             % stores that string in a character
-            where=strfind(tline,'=');
-            % "where" is the position of the "=" symbol in the tline string
-            obj.NCurves = 1 + str2double(... % convert the string to number
-                tline(where+1:end)... % this is the number
+            LinePos=strfind(TextLine,'='); % finds the position of the '='-sign in the line
+            obj.NCurves = 1 + str2double(... % convert the string to number and add '1' to start from 1 not from 0
+                TextLine(LinePos+1:end)... % read out the number
                 );
+            % Restore initial conditions
+            frewind(FileID); % Move file position indicator back to beginning of the open file
             
-            %   NumProfiles
-            clear tline where;
-            frewind(fileID);
-            B=strfind(A,strcat(obj.FileType,'.position-pattern.grid.jlength='));
-            fseek(fileID,B,'cof');
-            tline = fgetl(fileID);
-            where=strfind(tline,'=');
-            obj.NumProfiles = str2double(tline(where+1:end));
+            %%   Number of Profiles            
+            StrPos=strfind(FileCont,strcat(obj.FileType,'.position-pattern.grid.jlength='));
+            fseek(FileID,StrPos,'cof');
+            TextLine = fgetl(FileID);
+            LinePos=strfind(TextLine,'=');
+            obj.NumProfiles = str2double(TextLine(LinePos+1:end));
+            % Restore initial conditions
+            frewind(FileID); % Move file position indicator back to beginning of the open file                      
+            %   Number of Points
+            StrPos=strfind(FileCont,strcat(obj.FileType,'.position-pattern.grid.ilength='));
+            fseek(FileID,StrPos,'cof');
+            TextLine = fgetl(FileID);
+            LinePos=strfind(TextLine,'=');
+            obj.NumPoints = str2double(TextLine(LinePos+1:end));
+            % Restore initial conditions
+            frewind(FileID); % Move file position indicator back to beginning of the open file
+
+            %% Size of the measured map
+            % XSize
+            StrPos=strfind(FileCont,strcat(obj.FileType,'.position-pattern.grid.ulength='));
+            fseek(FileID,StrPos,'cof');
+            TextLine = fgetl(FileID);
+            LinePos=strfind(TextLine,'=');
+            obj.XSize = str2double(TextLine(LinePos+1:end));
+            % Restore initial conditions
+            frewind(FileID); % Move file position indicator back to beginning of the open file
+            % YSize
+            StrPos=strfind(FileCont,strcat(obj.FileType,'.position-pattern.grid.vlength='));
+            fseek(FileID,StrPos,'cof');
+            TextLine = fgetl(FileID);
+            LinePos=strfind(TextLine,'=');
+            obj.YSize = str2double(TextLine(LinePos+1:end));
+            % Restore initial conditions
+            frewind(FileID); % Move file position indicator back to beginning of the open file
             
-            %   NumPoints
-            clear tline where;
-            frewind(fileID);
-            B=strfind(A,strcat(obj.FileType,'.position-pattern.grid.ilength='));
-            fseek(fileID,B,'cof');
-            tline = fgetl(fileID);
-            where=strfind(tline,'=');
-            obj.NumPoints = str2double(tline(where+1:end));
-            
-            %   XSize
-            clear tline where;
-            frewind(fileID);
-            B=strfind(A,strcat(obj.FileType,'.position-pattern.grid.ulength='));
-            fseek(fileID,B,'cof');
-            tline = fgetl(fileID);
-            where=strfind(tline,'=');
-            obj.XSize = str2double(tline(where+1:end));
-            
-            %   YSize
-            clear tline where;
-            frewind(fileID);
-            B=strfind(A,strcat(obj.FileType,'.position-pattern.grid.vlength='));
-            fseek(fileID,B,'cof');
-            tline = fgetl(fileID);
-            where=strfind(tline,'=');
-            obj.YSize = str2double(tline(where+1:end));
-            
-            %   MaxPonintsPerCurve
-            clear tline where;
-            frewind(fileID);
+            %%   Number of data points per curve        
             if isequal(obj.FileType,'force-scan-map')
-                B=strfind(A,strcat(obj.FileType,'.settings.force-settings.extend-k-length='));
+                StrPos=strfind(FileCont,strcat(obj.FileType,'.settings.force-settings.type='));
+                fseek(FileID,StrPos,'cof');
+                TextLine = fgetl(FileID);
+                LinePos=strfind(TextLine,'=');
+                TempType=TextLine(LinePos+1:end);
+                % Restore initial conditions
+                frewind(FileID); % Move file position indicator back to beginning of the open file
+                if isequal(TempType,'relative-force-settings')
+                    StrPos1=strfind(FileCont,strcat(obj.FileType,'.settings.force-settings.extend-k-length='));
+                    fseek(FileID,StrPos1,'cof');
+                    TextLine = fgetl(FileID);
+                    LinePos=strfind(TextLine,'=');
+                    obj.MaxPointsPerCurve=str2double(TextLine(LinePos+1:end));
+                elseif isequal(TempType,'segmented-force-settings')
+                    StrPos1=strfind(FileCont,strcat(obj.FileType,'.settings.force-settings.segments.size='));
+                    fseek(FileID,StrPos1,'cof');
+                    TextLine = fgetl(FileID);
+                    LinePos=strfind(TextLine,'=');
+                    obj.NumSegment=str2double(TextLine(LinePos+1:end)); % jpk assigns approach and retraction as well as possible holding times into segments
+                    % Restore initial conditions
+                    frewind(FileID); % Move file position indicator back to beginning of the open file
+                    % Number of data points
+                    StrPos2=strfind(FileCont,strcat(obj.FileType,'.settings.force-settings.segment.0.num-points='));          
+                    fseek(FileID,StrPos2,'cof');
+                    TextLine = fgetl(FileID);
+                    LinePos=strfind(TextLine,'=');
+                    obj.MaxPointsPerCurve=str2double(TextLine(LinePos+1:end))*obj.NumSegment;
+                    % Restore initial conditions
+                    frewind(FileID); % Move file position indicator back to beginning of the open file
+                end                    
             elseif isequal(obj.FileType,'quantitative-imaging-map')
-                B=strfind(A,strcat(obj.FileType,'.settings.force-settings.extend.num-points='));
-            end
-            fseek(fileID,B,'cof');
-            tline = fgetl(fileID);
-            where=strfind(tline,'=');
-            obj.MaxPointsPerCurve = str2double(tline(where+1:end));
-            
-            %   Velocity
-            
-            if isequal(obj.FileType,'force-scan-map')
-                clear tline where;
-                frewind(fileID);
-                B=strfind(A,strcat(obj.FileType,'.settings.force-settings.extend-scan-time='));
-                fseek(fileID,B,'cof');
-                tline = fgetl(fileID);
-                where=strfind(tline,'=');
-                ExtendTime = str2double(tline(where+1:end));
-                
-                clear tline where;
-                frewind(fileID);
-                B=strfind(A,strcat(obj.FileType,'.settings.force-settings.relative-z-start='));
-                fseek(fileID,B,'cof');
-                tline = fgetl(fileID);
-                where=strfind(tline,'=');
-                ZLength = str2double(tline(where+1:end));
-            elseif isequal(obj.FileType,'quantitative-imaging-map')
-                clear tline where;
-                frewind(fileID);
-                B=strfind(A,'quantitative-imaging-map.settings.force-settings.extend.duration=');
-                fseek(fileID,B,'cof');
-                tline = fgetl(fileID);
-                where=strfind(tline,'=');
-                ExtendTime = str2double(tline(where+1:end));
-                
-                clear tline where;
-                frewind(fileID);
-                B=strfind(A,'quantitative-imaging-map.settings.force-settings.extend.z-start=');
-                fseek(fileID,B,'cof');
-                tline = fgetl(fileID);
-                where=strfind(tline,'=');
-                ZLength = str2double(tline(where+1:end));
+                StrPos=strfind(FileCont,strcat(obj.FileType,'.settings.force-settings.extend.num-points='));
+                fseek(FileID,StrPos,'cof');
+                TextLine = fgetl(FileID);
+                LinePos=strfind(TextLine,'=');
+                obj.MaxPointsPerCurve=str2double(TextLine(LinePos+1:end));
+                % Restore initial conditions
+                frewind(FileID); % Move file position indicator back to beginning of the open file
             end
             
-            obj.Velocity = ZLength/ExtendTime;
-            obj.VelocityConvert=obj.Velocity*1e+9; % Convert into nm/s
+            %%   Velocity
+            if isequal(obj.FileType,'force-scan-map')
+%                 StrPos=strfind(FileCont,strcat(obj.FileType,'.settings.force-settings.type='));
+%                 fseek(FileID,StrPos,'cof');
+%                 TextLine = fgetl(FileID);
+%                 LinePos=strfind(TextLine,'=');
+%                 TempType=TextLine(LinePos+1:end);
+                % Restore initial conditions
+                frewind(FileID); % Move file position indicator back to beginning of the open file
+                if isequal(TempType,'relative-force-settings')
+                    % Scan time
+                    StrPos=strfind(FileCont,strcat(obj.FileType,'.settings.force-settings.extend-scan-time='));
+                    fseek(FileID,StrPos,'cof');
+                    TextLine = fgetl(FileID);
+                    LinePos=strfind(TextLine,'=');
+                    ExtendTime = str2double(TextLine(LinePos+1:end));
+                    % Restore initial conditions
+                    frewind(FileID); % Move file position indicator back to beginning of the open file
+                    % z-height
+                    StrPos=strfind(FileCont,strcat(obj.FileType,'.settings.force-settings.relative-z-start='));
+                    fseek(FileID,StrPos,'cof');
+                    TextLine = fgetl(FileID);
+                    LinePos=strfind(TextLine,'=');
+                    ExtendZLength = str2double(TextLine(LinePos+1:end));
+                    % Restore initial conditions
+                    frewind(FileID); % Move file position indicator back to beginning of the open file
+                elseif isequal(TempType,'segmented-force-settings')
+                    % Extend
+                    % Scan time
+                    StrPos=strfind(FileCont,strcat(obj.FileType,'.settings.force-settings.segment.0.duration='));
+                    fseek(FileID,StrPos,'cof');
+                    TextLine = fgetl(FileID);
+                    LinePos=strfind(TextLine,'=');
+                    ExtendTime = str2double(TextLine(LinePos+1:end));
+                    % Restore initial conditions
+                    frewind(FileID); % Move file position indicator back to beginning of the open file
+                    % z-height
+                    StrPos=strfind(FileCont,strcat(obj.FileType,'.settings.force-settings.segment.0.z-start'));
+                    fseek(FileID,StrPos,'cof');
+                    TextLine = fgetl(FileID);
+                    LinePos=strfind(TextLine,'=');
+                    ExtendZLength = str2double(TextLine(LinePos+1:end));
+                    % Restore initial conditions
+                    frewind(FileID); % Move file position indicator back to beginning of the open file
+                    % Retract
+                    % Scan time
+                    StrPos=strfind(FileCont,strcat(obj.FileType,sprintf('.settings.force-settings.segment.%d.duration=',obj.NumSegment-1)));
+                    fseek(FileID,StrPos,'cof');
+                    TextLine = fgetl(FileID);
+                    LinePos=strfind(TextLine,'=');
+                    RetractTime = str2double(TextLine(LinePos+1:end));
+                    % Restore initial conditions
+                    frewind(FileID); % Move file position indicator back to beginning of the open file
+                    % z-height
+                    StrPos=strfind(FileCont,strcat(obj.FileType,sprintf('.settings.force-settings.segment.%d.z-start',obj.NumSegment-1)));                  
+                    fseek(FileID,StrPos,'cof');
+                    TextLine = fgetl(FileID);
+                    LinePos=strfind(TextLine,'=');
+                    RetractZLength = str2double(TextLine(LinePos+1:end));
+                    % Restore initial conditions
+                    frewind(FileID); % Move file position indicator back to beginning of the open file
+                    % Allocate data
+                    obj.RetractVelocity = RetractZLength/RetractTime;
+                    obj.RetractVelocityConvert=obj.RetractVelocity*1e+9; % Convert into nm/s   
+                end                    
+            elseif isequal(obj.FileType,'quantitative-imaging-map')
+                StrPos=strfind(FileCont,'quantitative-imaging-map.settings.force-settings.extend.duration=');
+                fseek(FileID,StrPos,'cof');
+                TextLine = fgetl(FileID);
+                LinePos=strfind(TextLine,'=');
+                ExtendTime = str2double(TextLine(LinePos+1:end));
+                % Restore initial conditions
+                frewind(FileID); % Move file position indicator back to beginning of the open file
+                StrPos=strfind(FileCont,'quantitative-imaging-map.settings.force-settings.extend.z-start=');
+                fseek(FileID,StrPos,'cof');
+                TextLine = fgetl(FileID);
+                LinePos=strfind(TextLine,'=');
+                ExtendZLength = str2double(TextLine(LinePos+1:end));
+                % Restore initial conditions
+                frewind(FileID); % Move file position indicator back to beginning of the open file
+            end
+            obj.ExtendVelocity = ExtendZLength/ExtendTime;
+            obj.ExtendVelocityConvert=obj.ExtendVelocity*1e+9; % Convert into nm/s
             
-            %   GridAngle
-            clear tline where;
-            frewind(fileID);
-            B=strfind(A,strcat(obj.FileType,'.position-pattern.grid.theta='));
-            fseek(fileID,B,'cof');
-            tline = fgetl(fileID);
-            where=strfind(tline,'=');
-            obj.GridAngle = str2double(tline(where+1:end));
+            %% Holding time
+            if isequal(TempType,'segmented-force-settings') && obj.NumSegment == 3
+                    % Scan time
+                    StrPos=strfind(FileCont,strcat(obj.FileType,'.settings.force-settings.segment.1.duration'));
+                    fseek(FileID,StrPos,'cof');
+                    TextLine = fgetl(FileID);
+                    LinePos=strfind(TextLine,'=');
+                    obj.HoldingTime = str2double(TextLine(LinePos+1:end));
+                    % Restore initial conditions
+                    frewind(FileID); % Move file position indicator back to beginning of the open file                    
+            end
+            %%   Grid angle
+            StrPos=strfind(FileCont,strcat(obj.FileType,'.position-pattern.grid.theta='));
+            fseek(FileID,StrPos,'cof');
+            TextLine = fgetl(FileID);
+            LinePos=strfind(TextLine,'=');
+            obj.GridAngle = str2double(TextLine(LinePos+1:end));
             obj.GridAngle = obj.GridAngle*180/pi;
             
-            clear tline A B where
-            
-            fclose(fileID);
+            fclose(FileID); 
         end
-        
+  
         function load_force_curves(obj,TempFolder)
             
             obj.HHType = 'capacitiveSensorHeight';
             for i=1:obj.NCurves
                 HeaderFileDirectory = fullfile(TempFolder,'shared-data','header.properties');
+                % 0 segment = approach part
                 SegmentHeaderFileDirectory = fullfile(TempFolder,'index',string((i-1)),'segments','0','segment-header.properties');
                 HeightDataDirectory = fullfile(TempFolder,'index',string((i-1)),'segments','0','channels','capacitiveSensorHeight.dat');
                 vDefDataDirectory = fullfile(TempFolder,'index',string((i-1)),'segments','0','channels','vDeflection.dat');
@@ -3544,30 +3635,18 @@ classdef ForceMap < matlab.mixin.Copyable
                 obj.App{i} = obj.App{i}.*obj.SpringConstant;
                 clear TempHHApp
                 
-                % Below there is a workaround for jpk-force-map files,
-                % where the capacitiveSensorHeight
-                % written into an additional segment folder '2' instead of
-                % '1'. This occurs, when there is a nonzero holding time,
-                % which gets writtem into the '1'-folder instead
+                % Following segments
                 
-                % To be implemented: read holding segment into ForceMap
-                % class
-                
-                SegmentHeaderFileDirectory = fullfile(TempFolder,'index',string((i-1)),'segments','1','segment-header.properties');
-                HeightDataDirectory = fullfile(TempFolder,'index',string((i-1)),'segments','1','channels','capacitiveSensorHeight.dat');
-                vDefDataDirectory = fullfile(TempFolder,'index',string((i-1)),'segments','1','channels','vDeflection.dat');
-                
-                if isfolder(fullfile(TempFolder,'index',string((i-1)),'segments','2'))
-                    SegmentHeaderFileDirectory = fullfile(TempFolder,'index',string((i-1)),'segments','2','segment-header.properties');
-                    HeightDataDirectory = fullfile(TempFolder,'index',string((i-1)),'segments','2','channels','capacitiveSensorHeight.dat');
-                    vDefDataDirectory = fullfile(TempFolder,'index',string((i-1)),'segments','2','channels','vDeflection.dat');
-                    if ~isfile(HeightDataDirectory)  || isequal(obj.HHType,'measuredHeight')
-                        HeightDataDirectory = fullfile(TempFolder,'index',string((i-1)),'segments','2','channels','measuredHeight.dat');
-                    end
-                end
+                SegmentHeaderFileDirectory = fullfile(TempFolder,'index',string((i-1)),'segments',string(obj.NumSegment-1),'segment-header.properties');
+                HeightDataDirectory = fullfile(TempFolder,'index',string((i-1)),'segments',string(obj.NumSegment-1),'channels','capacitiveSensorHeight.dat');
+                vDefDataDirectory = fullfile(TempFolder,'index',string((i-1)),'segments',string(obj.NumSegment-1),'channels','vDeflection.dat');
                 
                 if ~isfile(HeightDataDirectory) || isequal(obj.HHType,'measuredHeight')
-                    HeightDataDirectory = fullfile(TempFolder,'index',string((i-1)),'segments','1','channels','measuredHeight.dat');
+                    HeightDataDirectory = fullfile(TempFolder,'index',string((i-1)),'segments',string(obj.NumSegment-1),'channels','measuredHeight.dat');
+                end
+                 if ~isfile(HeightDataDirectory) || isequal(obj.HHType,'Height')
+                    HeightDataDirectory = fullfile(TempFolder,'index',string((i-1)),'segments',string(obj.NumSegment-1),'channels','Height.dat');
+                    obj.HHType = 'Height';
                 end
                 
                 [TempHHRet,obj.Ret{i}]=...
