@@ -1831,8 +1831,9 @@ classdef Experiment < matlab.mixin.Copyable
 %                   obj.FM{ii}.fc_pulling_length
 %                   obj.FM{ii}.fc_adhesion_energy_idxpulllength
 %                   obj.FM{ii}.fc_adhesion_energy_threshold
-                    obj.FM{ii}.find_idx
+                %    obj.FM{ii}.find_idx
               %    obj.FM{ii}.fc_adh_force_max
+              obj.FM{ii}.fc_print
             
             end
             

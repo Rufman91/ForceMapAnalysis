@@ -28,7 +28,8 @@ classdef ForceMap < matlab.mixin.Copyable
         Time            % time when the force map was detected
         ExtendVelocity  % ExtendZLength/ExtendTime;
         ExtendVelocityConvert % ExtendVelocity converted into nm/s
-            
+        RetractVelocity % RetractZLength/RetractTime;
+        RetractVelocityConvert % RetractVelocity converted into nm/s       
         DateAdapt       % date with dots removed
         TimeAdapt       % time with dots removed
         ID              % Identifier for relation to Experiment
@@ -45,14 +46,11 @@ classdef ForceMap < matlab.mixin.Copyable
         MaxPointsPerCurve
         XSize           % Size of imaged window in X-direction
         YSize           % Size of imaged window in Y-direction
-        Velocity        % Approach and retraction velocity as defined in the force map settings
         GridAngle       % in degrees (°)
         Sensitivity
         SpringConstant
         DBanding        % Fourieranalysis-based estimate of DBanding perdiod (only available with sufficient resolution)
-        RefSlope        % Refernce slope as determined from the upper curve slope from data from very hard
-        RetractVelocity % RetractZLength/RetractTime;
-        RetractVelocityConvert % RetractVelocity converted into nm/s   
+        RefSlope        % Refernce slope as determined from the upper curve slope from data from very hard      
         % surfaces (mica,glass), either from glass parts beneath the specimen or from
         % separate reference force maps
         PixApp          % maximum number of measured points during approach
@@ -158,7 +156,6 @@ classdef ForceMap < matlab.mixin.Copyable
         EnvCond         % Environmental condition during the experiment
         ChipCant        % AFM-Chip number and Cantilever label
         Chipbox         % AFM-Chipbox number (in Roman numerals)
-        VelocityConvert % Velocity converted (nm/s)
         SMFSFlag        %
         BasedRetCorr    % BasedRet data corrected based on a selection of the approach data
         BasedRetCorr2   % BasedRet data corrected based on a selection of the retraction data
@@ -1687,12 +1684,10 @@ classdef ForceMap < matlab.mixin.Copyable
             end 
                       
             % Define variables for the figure name
-            VelocityConvert=num2str(obj.Velocity*1e+9); % Convert into nm
+            ExtendVelocityConvert=num2str(obj.ExtendVelocityConvert)
+            RetractVelocityConvert=num2str(obj.RetractVelocityConvert)
             % Classification criteria
-            %figname=strcat(obj.ID,{'-'},obj.DateAdapt,{'-'},VelocityConvert,{'-'},obj.Name);
-            %figname=strcat(obj.ID,{'-'},obj.DateAdapt,{'-'},VelocityConvert,{'-'},obj.Substrate,{'-'},obj.EnvCond,{'-'},obj.Chipbox,{'-'},obj.ChipCant);
-            %figname=strcat(obj.DateAdapt,{'_'},obj.TimeAdapt,{'_'},obj.Linker,{'_'},obj.ID,{'_'},obj.Substrate,{'_'},obj.EnvCond,{'_'},VelocityConvert,{'_'},obj.Chipbox,{'_'},obj.ChipCant);
-            figname=strcat(obj.DateAdapt,{'_'},obj.TimeAdapt,{'_'},obj.ID,{'_'},obj.Substrate,{'_'},obj.EnvCond,{'_'},VelocityConvert,{'_'},obj.Chipbox,{'_'},obj.ChipCant);
+            figname=strcat(obj.DateAdapt,{'_'},obj.TimeAdapt,{'_'},obj.ID,{'_'},obj.Substrate,{'_'},obj.EnvCond,{'_'},{'_'},obj.Chipbox,{'_'},obj.ChipCant,{'_'},ExtendVelocityConvert,{'_'},RetractVelocityConvert);
             figname=char(figname);
             %% Figure loop
             for ii=1:NFigures           
@@ -1778,11 +1773,10 @@ classdef ForceMap < matlab.mixin.Copyable
                     x150=-150e-9; % Defines 150nm
                     x500=-500e-9; % Defines 500nm
             % Define variables for the figure name
-            VelocityConvert=num2str(obj.Velocity*1e+9); % Convert into nm
+            ExtendVelocityConvert=num2str(obj.ExtendVelocityConvert)
+            RetractVelocityConvert=num2str(obj.RetractVelocityConvert)
             % Classification criteria
-            %figname=strcat(obj.ID,{'-'},obj.DateAdapt,{'-'},VelocityConvert{'-'},obj.Name);
-            %figname=strcat(obj.ID,{'-'},obj.DateAdapt,{'-'},VelocityConvert,{'-'},obj.Substrate,{'-'},obj.EnvCond,{'-'},obj.Chipbox,{'-'},obj.ChipCant);
-            figname=strcat(obj.ID,{'-'},obj.DateAdapt,{'-'},VelocityConvert,{'-'},obj.Linker,{'-'},obj.Substrate,{'-'},obj.EnvCond,{'-'},obj.Chipbox,{'-'},obj.ChipCant);
+            figname=strcat(obj.DateAdapt,{'_'},obj.TimeAdapt,{'_'},obj.ID,{'_'},obj.Substrate,{'_'},obj.EnvCond,{'_'},{'_'},obj.Chipbox,{'_'},obj.ChipCant,{'_'},ExtendVelocityConvert,{'_'},RetractVelocityConvert);
             figname=char(figname);
             %% Figure loop   
             for ii=1:NFigures           
@@ -1989,9 +1983,10 @@ classdef ForceMap < matlab.mixin.Copyable
                 YMax= inf;
             end
             % Define variables for the figure name
-            obj.VelocityConvert=num2str(obj.Velocity*1e+9); % Convert into nm/s
+            ExtendVelocityConvert=num2str(obj.ExtendVelocityConvert)
+            RetractVelocityConvert=num2str(obj.RetractVelocityConvert)
             % Classification criteria
-            figname=strcat(obj.DateAdapt,{'_'},obj.TimeAdapt,{'_'},obj.ID,{'_'},obj.Substrate,{'_'},obj.EnvCond,{'_'},obj.VelocityConvert,{'_'},obj.Chipbox,{'_'},obj.ChipCant);
+            figname=strcat(obj.DateAdapt,{'_'},obj.TimeAdapt,{'_'},obj.ID,{'_'},obj.Substrate,{'_'},obj.EnvCond,{'_'},{'_'},obj.Chipbox,{'_'},obj.ChipCant,{'_'},ExtendVelocityConvert,{'_'},RetractVelocityConvert);
             figname=char(figname);
             % Define variables for the plot loop
             mm=ceil(sqrt(NumFcMax));
@@ -3475,6 +3470,7 @@ classdef ForceMap < matlab.mixin.Copyable
                     TextLine = fgetl(FileID);
                     LinePos=strfind(TextLine,'=');
                     obj.MaxPointsPerCurve=str2double(TextLine(LinePos+1:end));
+                    obj.NumSegment=2;
                 elseif isequal(TempType,'segmented-force-settings')
                     StrPos1=strfind(FileCont,strcat(obj.FileType,'.settings.force-settings.segments.size='));
                     fseek(FileID,StrPos1,'cof');
@@ -3587,8 +3583,17 @@ classdef ForceMap < matlab.mixin.Copyable
             obj.ExtendVelocityConvert=obj.ExtendVelocity*1e+9; % Convert into nm/s
             
             %% Holding time
-            if isequal(TempType,'segmented-force-settings') && obj.NumSegment == 3
-                    % Scan time
+            if isequal(TempType,'relative-force-settings')
+                    % Holding time
+                    StrPos=strfind(FileCont,strcat(obj.FileType,'.settings.force-settings.extended-pause-time'));
+                    fseek(FileID,StrPos,'cof');
+                    TextLine = fgetl(FileID);
+                    LinePos=strfind(TextLine,'=');
+                    obj.HoldingTime = str2double(TextLine(LinePos+1:end));
+                    % Restore initial conditions
+                    frewind(FileID); % Move file position indicator back to beginning of the open file  
+            elseif isequal(TempType,'segmented-force-settings') && obj.NumSegment == 3
+                    % Holding time
                     StrPos=strfind(FileCont,strcat(obj.FileType,'.settings.force-settings.segment.1.duration'));
                     fseek(FileID,StrPos,'cof');
                     TextLine = fgetl(FileID);
