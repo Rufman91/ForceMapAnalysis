@@ -2709,7 +2709,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet
             obj.Channel = I.Channel;
             
             Height = obj.get_channel('Height');
-            obj.HeightMap = Height.Image;
+            obj.HeightMap = fliplr(Height.Image);
             
             if size(obj.HeightMap,1) < 128
                 Map = imresize(obj.HeightMap,[256 256],'nearest');

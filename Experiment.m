@@ -2148,6 +2148,8 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
         end
         
         function [Fig,DataMat] = visualize_listed_data(obj,Property,YAxisName,BaseUnit,Method,ErrorBars,UseGrouping,ListOfIndizes)
+            % [Fig,DataMat] = visualize_listed_data(obj,Property,YAxisName,BaseUnit,Method,ErrorBars,UseGrouping,ListOfIndizes)
+            %
             % visualize_listed_data(varargin)
             % Input arbitrary ForceMap listed Property
             % e.g. 'EModOliverPharr' or 'IndentationDepth'
