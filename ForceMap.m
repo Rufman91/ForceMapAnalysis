@@ -25,18 +25,13 @@ classdef ForceMap < matlab.mixin.Copyable
         
         Name            % name of the force map. taken as the name of the folder, containing the .csv files
         Date            % date when the force map was detected
-        Time            % time when the force map was detected
-        ExtendVelocity  % ExtendZLength/ExtendTime;
-        ExtendVelocityConvert % ExtendVelocity converted into nm/s
-        RetractVelocity % RetractZLength/RetractTime;
-        RetractVelocityConvert % RetractVelocity converted into nm/s       
+        Time            % time when the force map was detected      
         DateAdapt       % date with dots removed
         TimeAdapt       % time with dots removed
         ID              % Identifier for relation to Experiment
         FileVersion     % Version of jpk-force-map file
         FileType        % File Type: force map or qi-map
         Folder          % location of the .csv files of the force map
-        HoldingTime=0   % Holding time at the substrate surface
         HostOS          % Operating System
         HostName        % Name of hosting system
         NCurves         % number of curves on the force map
@@ -56,6 +51,11 @@ classdef ForceMap < matlab.mixin.Copyable
         PixApp          % maximum number of measured points during approach
         PixRet          % maximum number of measured points during retraction
         SelectedCurves  % logical vector of length NCurves with 0s for excluded and 1s for included curves. gets initialized with ones
+        ExtendVelocity  % ExtendZLength/ExtendTime;
+        ExtendVelocityConvert % ExtendVelocity converted into nm/s
+        RetractVelocity % RetractZLength/RetractTime;
+        RetractVelocityConvert % RetractVelocity converted into nm/s
+        HoldingTime=0   % Holding time at the substrate surface
         TipRadius = 8  % (nominal, if not otherwise calculated) tip radius in nm for the chosen type of tip model
         PoissonR = 0.5  % standard Poisson ratio for most mechanical models
         Medium
@@ -3500,14 +3500,10 @@ classdef ForceMap < matlab.mixin.Copyable
             
             %%   Velocity
             if isequal(obj.FileType,'force-scan-map')
-%                 StrPos=strfind(FileCont,strcat(obj.FileType,'.settings.force-settings.type='));
-%                 fseek(FileID,StrPos,'cof');
-%                 TextLine = fgetl(FileID);
-%                 LinePos=strfind(TextLine,'=');
-%                 TempType=TextLine(LinePos+1:end);
-                % Restore initial conditions
+
                 frewind(FileID); % Move file position indicator back to beginning of the open file
                 if isequal(TempType,'relative-force-settings')
+                    % Extend
                     % Scan time
                     StrPos=strfind(FileCont,strcat(obj.FileType,'.settings.force-settings.extend-scan-time='));
                     fseek(FileID,StrPos,'cof');
@@ -3522,6 +3518,23 @@ classdef ForceMap < matlab.mixin.Copyable
                     TextLine = fgetl(FileID);
                     LinePos=strfind(TextLine,'=');
                     ExtendZLength = str2double(TextLine(LinePos+1:end));
+                    % Restore initial conditions
+                    frewind(FileID); % Move file position indicator back to beginning of the open file
+                    % Retract
+                    % Scan time
+                    StrPos=strfind(FileCont,strcat(obj.FileType,'.settings.force-settings.retract-scan-time='));
+                    fseek(FileID,StrPos,'cof');
+                    TextLine = fgetl(FileID);
+                    LinePos=strfind(TextLine,'=');
+                    RetractTime = str2double(TextLine(LinePos+1:end));
+                    % Restore initial conditions
+                    frewind(FileID); % Move file position indicator back to beginning of the open file
+                    % z-height
+                    StrPos=strfind(FileCont,strcat(obj.FileType,'.settings.force-settings.relative-z-start='));
+                    fseek(FileID,StrPos,'cof');
+                    TextLine = fgetl(FileID);
+                    LinePos=strfind(TextLine,'=');
+                    RetractZLength = str2double(TextLine(LinePos+1:end));
                     % Restore initial conditions
                     frewind(FileID); % Move file position indicator back to beginning of the open file
                 elseif isequal(TempType,'segmented-force-settings')
@@ -3558,10 +3571,7 @@ classdef ForceMap < matlab.mixin.Copyable
                     LinePos=strfind(TextLine,'=');
                     RetractZLength = str2double(TextLine(LinePos+1:end));
                     % Restore initial conditions
-                    frewind(FileID); % Move file position indicator back to beginning of the open file
-                    % Allocate data
-                    obj.RetractVelocity = RetractZLength/RetractTime;
-                    obj.RetractVelocityConvert=obj.RetractVelocity*1e+9; % Convert into nm/s   
+                    frewind(FileID); % Move file position indicator back to beginning of the open file   
                 end                    
             elseif isequal(obj.FileType,'quantitative-imaging-map')
                 StrPos=strfind(FileCont,'quantitative-imaging-map.settings.force-settings.extend.duration=');
@@ -3579,8 +3589,11 @@ classdef ForceMap < matlab.mixin.Copyable
                 % Restore initial conditions
                 frewind(FileID); % Move file position indicator back to beginning of the open file
             end
+            % Allocate data
             obj.ExtendVelocity = ExtendZLength/ExtendTime;
-            obj.ExtendVelocityConvert=obj.ExtendVelocity*1e+9; % Convert into nm/s
+            obj.ExtendVelocityConvert=obj.ExtendVelocity*1e+9; % Convert into nm/s           
+            obj.RetractVelocity = RetractZLength/RetractTime;
+            obj.RetractVelocityConvert=obj.RetractVelocity*1e+9; % Convert into nm/s
             
             %% Holding time
             if isequal(TempType,'relative-force-settings')
