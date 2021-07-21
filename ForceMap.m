@@ -144,6 +144,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet
         TrueZero
         EModHertz       % List of reduced smaple E-Modulus based on a the Hertz-Sneddon model
         EModOliverPharr % List of reduced sample E-Modulus based on the Oliver-Pharr method
+        FibrilEModOliverPharr
+        FibrilEModHertz
         HertzFit        % HertzFit model generated in the calculate_e_mod_hertz method
         SnapIn
         MaxAdhesionForce

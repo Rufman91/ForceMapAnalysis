@@ -2299,6 +2299,11 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             DataMeansOP = nanmean(DataOP,2);
             DataMeansHS = nanmean(DataHS,2);
             
+            for i=1:obj.NumForceMaps
+                obj.FM{i}.FibrilEModOliverPharr = DataMeansOP(i);
+                obj.FM{i}.FibrilEModHertz = DataMeansHS(i);
+            end
+            
             figure('Name','OliverPharr vs HertzSneddon','Color','w');
             plot(DataMeansHS,DataMeansOP,'bO')
             legend(sprintf('E-Mod Hertz vs. Oliver-Pharr (R=%.3f)',corr(DataMeansHS,DataMeansOP)))
@@ -2423,6 +2428,8 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 'Units','normalized',...
                 'FontSize',12,...
                 'HorizontalAlignment','center')
+            
+            
             
         end
         
