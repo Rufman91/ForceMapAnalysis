@@ -66,6 +66,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet
         PoissonR = 0.5  % standard Poisson ratio for most mechanical models
         Medium
         FibrilFlag
+        FibPot
     end
     properties
         % Curve data Properties
@@ -3992,7 +3993,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet
                 if isempty(I)
                     I = obj.HeightMap;
                 end
-                imshow(I.Image,[],'Colormap',AFMImage.define_afm_color_map)
+                imshow(imresize(I.Image,[1024 1024]),[],'Colormap',AFMImage.define_afm_color_map)
                 hold on;
                 for i=1:obj.NumProfiles
                     if obj.RectApexIndex(i)==k

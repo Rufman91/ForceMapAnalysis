@@ -947,7 +947,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                     Index = length(obj.I{i}.Channel)+1;
                     obj.I{i}.NumChannels = Index;
                 end
-                Processed.Image = AFMImage.subtract_line_fit_hist(Height.Image, .5);
+               % Processed.Image = AFMImage.subtract_line_fit_hist(Height.Image, .5);
                 for j=1:NIter
                     Processed.Image = AFMImage.subtract_line_fit_vertical_rov(Processed.Image, WindowSize,false);
                 end
@@ -2170,7 +2170,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                         TempArray = cat(1,TempArray,reshape(obj.FM{obj.GroupFM(i).Indices(j)}.get(Property),[],1));
                     end
                     Data(k).Values = TempArray;
-                    [Data(k).Multiplier,Data(k).Unit] = AFMImage.parse_unit_scale(range(Data(k).Values),BaseUnit,1);
+                    [Data(k).Multiplier,Data(k).Unit] = AFMImage.parse_unit_scale(range(Data(k).Values),BaseUnit,5);
                     Data(k).Name = obj.GroupFM(i).Name;
                     Data(k).Length = length(Data(k).Values);
                     if isequal(ErrorBars,'std')
@@ -2185,7 +2185,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             else
                 for i=ListOfIndizes
                     Data(k).Values = obj.FM{i}.get(Property);
-                    [Data(k).Multiplier,Data(k).Unit] = AFMImage.parse_unit_scale(range(Data(k).Values),BaseUnit,1);
+                    [Data(k).Multiplier,Data(k).Unit] = AFMImage.parse_unit_scale(range(Data(k).Values),BaseUnit,5);
                     Data(k).Name = obj.FM{i}.Name;
                     Data(k).Length = length(Data(k).Values);
                     if isequal(ErrorBars,'std')
