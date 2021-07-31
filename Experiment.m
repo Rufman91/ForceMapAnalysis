@@ -618,7 +618,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                         CorrectSens = false;
                     end
                     AllowXShift = true;
-                    obj.FM{i}.calculate_e_mod_hertz(CPOption,'parabolic',1,AllowXShift,CorrectSens);
+                    obj.FM{i}.calculate_e_mod_hertz(CPOption,'parabolic',1,AllowXShift,CorrectSens,1,0,obj.CantileverTips{1});
                     if i == 1
                         obj.write_to_log_file('Hertzian Tip-Shape','parabolic')
                         obj.write_to_log_file('Hertzian CurvePercent','1')
@@ -854,7 +854,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                         CorrectSens = false;
                     end
                     AllowXShift = true;
-                    obj.FM{i}.calculate_e_mod_hertz(CPOption,'parabolic',1,AllowXShift,CorrectSens);
+                    obj.FM{i}.calculate_e_mod_hertz(CPOption,'parabolic',1,AllowXShift,CorrectSens,1,0,obj.CantileverTips{1});
                     if i == 1
                         obj.write_to_log_file('Hertzian Tip-Shape','parabolic')
                         obj.write_to_log_file('Hertzian CurvePercent','1')

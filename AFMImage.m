@@ -65,7 +65,6 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet
     properties
         ErodedTip
         DepthDependendTipRadius
-        DepthDependendTipShape
         ProjectedTipArea
     end
     properties
@@ -238,7 +237,7 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet
             
             obj.ProjectedTipArea = obj.calculate_projected_area(obj.Channel(end).Image,PixelSizeX,PixelSizeY,StepSize);
             
-%             [obj.DepthDependendTipRadius,obj.DepthDependendTipShape] = obj.calculate_depth_dependend_tip_data(obj.ProjectedTipArea,RangePercent);
+            obj.DepthDependendTipRadius = obj.calculate_depth_dependend_tip_data(obj.ProjectedTipArea,75);
             
             obj.hasDeconvolutedCantileverTip = true;
         end
@@ -1149,20 +1148,16 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet
             close(h);
         end
         
-        function [DepthDependendTipRadius,DepthDependendTipShape] = calculate_depth_dependend_tip_data(ProjectedTipArea,RangePercent)
+        function DepthDependendTipRadius = calculate_depth_dependend_tip_data(ProjectedTipArea,RangePercent)
             
             if nargin < 2
                 RangePercent = 100;
             end
-            
+            MinIdx = 2;
             MaxIdx = floor(RangePercent/100*length(ProjectedTipArea));
-            ProjectedTipArea = ProjectedTipArea*(1e9)^2;
             DepthDependendTipRadius = zeros(MaxIdx,1);
-            DepthDependendTipShape = cell(MaxIdx,1);
             
-            % Fit a sphere and a parabola for every depthstep and choose
-            % the one with better fit. Start at 5nm ind. depth 
-            for i=5:MaxIdx
+            for i=MinIdx:MaxIdx
                 % fit projected area of a parabolic tip
                 SphOpt = fitoptions('Method','NonlinearLeastSquares',...
                     'Lower',0,...
@@ -1175,43 +1170,28 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet
                     'MaxFunEvals',4000,...
                     'TolFun',1e-20,...
                     'TolX',1e-20);
-                ProjAParabola = fittype('pi*a*x',...
+                ProjAParabola = fittype('pi*x/a',...
                     'dependent',{'y'},'independent',{'x'},...
                     'coefficients',{'a'},...
                     'options',SphOpt);
-                Depth = [1:i]';
-                [ParabolaFit,GoFParabola] = fit(Depth,...
-                    ProjectedTipArea(1:i),...
-                    ProjAParabola);
+                Depth = [1:i]'.*1e-9;
+                X = Depth/range(Depth);
+                Y = ProjectedTipArea(1:i)/range(ProjectedTipArea(1:i));
+                ParabolaFit = fit(X,...
+                    Y,...
+                    ProjAParabola,...
+                    'Weights',[1:i]'.^2);
+                warning('off')
+                ParabolaFit.a = ParabolaFit.a*range(Depth)/range(ProjectedTipArea(1:i));
+                warning('on')
                 RParabola = 1/(2*ParabolaFit.a);
-                % fit projected area of a spherical tip
-                ProjASphere = fittype('(R^2-(R-x)^2)',...
-                    'dependent',{'y'},'independent',{'x'},...
-                    'coefficients',{'R'},...
-                    'options',SphOpt);
-                [SphereFit,GoFSphere] = fit(Depth,...
-                    ProjectedTipArea(1:i),...
-                    ProjASphere);
-                RSphere = SphereFit.R;
-                if GoFParabola.rmse <= GoFSphere.rmse
-                    DepthDependendTipRadius(i) = RParabola;
-                    DepthDependendTipShape{i} = 'parabolic';
-                else
-                    DepthDependendTipRadius(i) = RSphere;
-                    DepthDependendTipShape{i} = 'spherical';
-                end
-                plot(Depth,ProjectedTipArea(1:i),'rO',Depth,feval(SphereFit,Depth),'b',Depth,feval(ParabolaFit,Depth),'g')
-                legend({'Proj. A. from Eroded Tip','Proj. A. Spherical Fit','Proj. A. Parabolic Fit'})
-                title({'Spherical Fit',sprintf('Radius:%d nm  Depth:%i nm GoF.rmse: %d',SphereFit.R,i,GoFSphere.rmse),...
-                    'Parabolic Fit',sprintf('Radius:%d nm  Depth:%i nm GoF.rmse: %d',RParabola,i,GoFParabola.rmse)})
-                % choose the better fit and fill Output
+                DepthDependendTipRadius(i) = RParabola;
+%                 plot(Depth,ProjectedTipArea(1:i),'rO',Depth,feval(ParabolaFit,Depth),'g')
             end
             % Fill the first 4 nm with the data from the 5th nm
-            for i=1:4
-                DepthDependendTipRadius(i) = DepthDependendTipRadius(5);
-                DepthDependendTipShape(i) = DepthDependendTipShape(5);
+            for i=1:MinIdx
+                DepthDependendTipRadius(i) = DepthDependendTipRadius(MinIdx);
             end
-            
         end
         
         function [ComboSum,AspectRatio,MeanX,MeanY,Angle] = fibril_feature_kernel(Height, ApexMap, PosX, PosY,...

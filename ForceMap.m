@@ -1055,7 +1055,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet
             obj.CPFlag.HardSurface = 1;
         end
         
-        function [E,HertzFit] = calculate_e_mod_hertz(obj,CPType,TipShape,curve_percent,AllowXShift,CorrectSensitivity)
+        function [E,HertzFit] = calculate_e_mod_hertz(obj,CPType,TipShape,curve_percent,AllowXShift,CorrectSensitivity,UseTipData,UseTopology,TipObject)
             % [E,HertzFit] = calculate_e_mod_hertz(obj,CPType,TipShape,curve_percent)
             %
             % calculate the E modulus of the chosen curves using the CP
@@ -1069,6 +1069,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet
             end
             if nargin < 5
                 AllowXShift = false;
+                CorrectSensitivity = false;
+                UseTipData = false;
             end
             iRange = find(obj.SelectedCurves);
             obj.EModHertz = zeros(obj.NCurves,1);
@@ -1132,10 +1134,42 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet
                             force,f);
                         % calculate E module based on the Hertz model. Be careful
                         % to convert to unnormalized data again
-                        if isempty(obj.FibDiam)
-                            R_eff = obj.TipRadius*1e-9;
+                        if isempty(obj.FibDiam) || UseTopology
+                            if UseTipData
+                                if UseTopology
+                                    
+                                else
+                                    DepthIndex = floor(obj.IndentationDepth(i)*1e9);
+                                    DepthRemainder = obj.IndentationDepth(i)*1e9 - DepthIndex;
+                                    if DepthIndex >= length(TipObject.DepthDependendTipRadius)
+                                        DepthIndex = length(TipObject.DepthDependendTipRadius) - 1;
+                                    end
+                                    if DepthIndex == 0
+                                        TipRadius = TipObject.DepthDependendTipRadius(DepthIndex+1)*DepthRemainder;
+                                    else
+                                        TipRadius = TipObject.DepthDependendTipRadius(DepthIndex)*(1-DepthRemainder) + TipObject.DepthDependendTipRadius(DepthIndex+1)*DepthRemainder;
+                                    end
+                                    R_eff = TipRadius;
+                                end
+                            else
+                                R_eff = obj.TipRadius*1e-9;
+                            end
                         else
-                            R_eff = 1/(1/(obj.TipRadius*1e-9) + 1/(obj.FibDiam/2));
+                            if UseTipData
+                                DepthIndex = floor(obj.IndentationDepth(i)*1e9);
+                                DepthRemainder = obj.IndentationDepth(i) - DepthIndex;
+                                if DepthIndex >= length(TipObject.DepthDependendTipRadius)
+                                    DepthIndex = length(TipObject.DepthDependendTipRadius) - 1;
+                                end
+                                if DepthIndex == 0
+                                    TipRadius = TipObject.DepthDependendTipRadius(DepthIndex+1)*DepthRemainder;
+                                else
+                                    TipRadius = TipObject.DepthDependendTipRadius(DepthIndex)*(1-DepthRemainder) + TipObject.DepthDependendTipRadius(DepthIndex+1)*DepthRemainder;
+                                end
+                                R_eff = 1/(1/TipRadius + 1/(obj.FibDiam/2));
+                            else
+                                R_eff = 1/(1/(obj.TipRadius*1e-9) + 1/(obj.FibDiam/2));
+                            end
                         end
                         EMod = 3*(Hertzfit.a*RangeF/RangeTH^(3/2))/(4*sqrt(R_eff))*(1-obj.PoissonR^2);
                     catch ME
@@ -2707,12 +2741,15 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet
                 I = AFMImage(fullfile(obj.DataStoreFolder,'data-image.jpk-qi-image'));
             elseif isequal(obj.FileType,'force-scan-map')
                 I = AFMImage(fullfile(obj.DataStoreFolder,'data-image.force'));
+                for i=1:length(I.Channel)
+                    I.Channel(i).Image = fliplr(I.Channel(i).Image);
+                end
             end
             
             obj.Channel = I.Channel;
             
             Height = obj.get_channel('Height');
-            obj.HeightMap = fliplr(Height.Image);
+            obj.HeightMap = Height.Image;
             
             if size(obj.HeightMap,1) < 128
                 Map = imresize(obj.HeightMap,[256 256],'nearest');
