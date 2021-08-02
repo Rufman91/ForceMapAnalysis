@@ -222,7 +222,10 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet
             obj.SelectedCurves = true(obj.NCurves,1);
             obj.CorruptedCurves = false(obj.NCurves,1);
             
-            obj.read_jpk_images_from_files
+            try
+                obj.read_jpk_images_from_files
+            catch
+            end
             
             if ~obj.BigDataFlag
                 %loading curve data into cell arrays
@@ -1117,7 +1120,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet
                 if isequal(TipShape,'parabolic')
                     if AllowXShift
                         s = fitoptions('Method','NonlinearLeastSquares',...
-                            'Lower',[10^(-5) 0],...
+                            'Lower',[10^(-5) -min(tip_h)],...
                             'Upper',[inf inf],...
                             'MaxIter',100,...
                             'Startpoint',[1 0]);
@@ -3534,10 +3537,10 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet
                 obj.CorruptedCurves(CurveNumber) = true;
                 obj.SelectedCurves(CurveNumber) = false;
                 k = 1;
-                while obj.CorruptedCurves(mod(CurveNumber,obj.NCurves)+k)
+                while obj.CorruptedCurves(mod(CurveNumber+k-1,obj.NCurves)+1)
                     k = k + 1;
                 end
-                [OutForce,OutHeight] = obj.get_force_curve_data(mod(CurveNumber,obj.NCurves)+k,AppRetSwitch,isBased,isTipHeightCorrected);
+                [OutForce,OutHeight] = obj.get_force_curve_data(mod(CurveNumber+k-1,obj.NCurves)+1,AppRetSwitch,isBased,isTipHeightCorrected);
             end
         end
         

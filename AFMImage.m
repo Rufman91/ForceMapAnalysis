@@ -1277,7 +1277,7 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet
                     SpanOfBlock = SpanOfBlock + 1;
                 end
                 BeforeLine = InImage(Indizes(1)-1,:);
-                AfterLine = InImage(Indizes(1)+(SpanOfBlock+1),:);
+                AfterLine = InImage(Indizes(1)+(SpanOfBlock),:);
                 NewLine = zeros(SpanOfBlock,size(InImage,2));
                 for i=1:SpanOfBlock
                     NewLine(i,:) = (BeforeLine*(SpanOfBlock+1-i)/(SpanOfBlock+1) + AfterLine*i/(SpanOfBlock+1));

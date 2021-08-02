@@ -443,7 +443,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             close(h);
         end
         
-        function force_map_analysis_fibril(obj,CPOption,EModOption,BaseLineCorrectBool,TemporaryLoadInBool)
+        function force_map_analysis_fibril(obj,CPOption,EModOption,BaseLineCorrectBool,TemporaryLoadInBool,UseTipInHertzBool)
             % force_map_analysis_fibril(obj,CPOption,EModOption)
             %
             % CPOption = 'Snap-In' ... Preferred Option for data with
@@ -476,8 +476,10 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             if nargin < 4
                 BaseLineCorrectBool = false;
                 TemporaryLoadInBool = true;
+                UseTipInHertzBool = true;
             elseif nargin < 5
                 TemporaryLoadInBool = true;
+                UseTipInHertzBool = true;
             end
             
             obj.write_to_log_file('Analysis Function','force_map_analysis_fibril()','start')
@@ -532,7 +534,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             obj.write_to_log_file('Reference Slope Option',RefSlopeOption)
             
             % Deconvoluting cantilever tip(s)
-            if isequal(lower(EModOption),'oliver') || isequal(lower(EModOption),'both')
+            if isequal(lower(EModOption),'oliver') || isequal(lower(EModOption),'both') || UseTipInHertzBool
                 if obj.NumCantileverTips == 0
                     if isequal(class(obj.CantileverTips{1}),'AFMImage')
                         obj.NumCantileverTips = length(obj.CantileverTips);
@@ -618,7 +620,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                         CorrectSens = false;
                     end
                     AllowXShift = true;
-                    obj.FM{i}.calculate_e_mod_hertz(CPOption,'parabolic',1,AllowXShift,CorrectSens,1,0,obj.CantileverTips{1});
+                    obj.FM{i}.calculate_e_mod_hertz(CPOption,'parabolic',1,AllowXShift,CorrectSens,UseTipInHertzBool,0,obj.CantileverTips{obj.WhichTip(i)});
                     if i == 1
                         obj.write_to_log_file('Hertzian Tip-Shape','parabolic')
                         obj.write_to_log_file('Hertzian CurvePercent','1')
@@ -699,7 +701,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             obj.write_to_log_file('','','end')
         end
         
-        function force_map_analysis_general(obj,CPOption,EModOption,BaseLineCorrectBool,TemporaryLoadInBool)
+        function force_map_analysis_general(obj,CPOption,EModOption,BaseLineCorrectBool,TemporaryLoadInBool,UseTipInHertzBool)
             % force_map_analysis_general(obj,CPOption,EModOption)
             %
             % CPOption = 'Snap-In' ... Preferred Option for data with
@@ -731,8 +733,10 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             if nargin < 4
                 BaseLineCorrectBool = false;
                 TemporaryLoadInBool = true;
+                UseTipInHertzBool = true;
             elseif nargin < 5
                 TemporaryLoadInBool = true;
+                UseTipInHertzBool = true;
             end
             
             obj.write_to_log_file('Analysis Function','force_map_analysis_general()','start')
@@ -771,7 +775,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             obj.write_to_log_file('Reference Slope Option',RefSlopeOption)
             
             % Deconvoluting cantilever tip(s)
-            if isequal(lower(EModOption),'oliver')
+            if isequal(lower(EModOption),'oliver') || isequal(lower(EModOption),'both') || UseTipInHertzBool
                 if obj.NumCantileverTips == 0
                     if isequal(class(obj.CantileverTips{1}),'AFMImage')
                         obj.NumCantileverTips = length(obj.CantileverTips);
@@ -854,7 +858,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                         CorrectSens = false;
                     end
                     AllowXShift = true;
-                    obj.FM{i}.calculate_e_mod_hertz(CPOption,'parabolic',1,AllowXShift,CorrectSens,1,0,obj.CantileverTips{1});
+                    obj.FM{i}.calculate_e_mod_hertz(CPOption,'parabolic',.75,AllowXShift,CorrectSens,UseTipInHertzBool,0,obj.CantileverTips{obj.WhichTip(i)});
                     if i == 1
                         obj.write_to_log_file('Hertzian Tip-Shape','parabolic')
                         obj.write_to_log_file('Hertzian CurvePercent','1')
@@ -875,7 +879,10 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 obj.FM{i}.calculate_dissipated_and_elastic_energy;
                 obj.FM{i}.calculate_peak_indentation_angle(.5);
                 obj.write_to_log_file('Upper Percent of Curve considered for Peak Indentation','50%')
-                obj.FM{i}.create_and_level_height_map_by_current_cp;
+                try
+                    obj.FM{i}.create_and_level_height_map_by_current_cp;
+                catch
+                end
                 
                 waitbar(i/NLoop,h,sprintf('Processing ForceMap %i/%i\nWrapping Up And Saving',i,NLoop));
                 
