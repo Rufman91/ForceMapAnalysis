@@ -1078,50 +1078,54 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet
             iRange = find(obj.SelectedCurves);
             obj.EModHertz = zeros(obj.NCurves,1);
             obj.IndentationDepth = zeros(obj.NCurves,1);
-            for i=iRange'
+            while ~isempty(iRange')
+                NumWorkers = 8;
+                BatchSize = min(NumWorkers,length(iRange));
                 if isequal(lower(CPType),'cnn')
-                    CP = obj.CP(i,:);
+                    CP = obj.CP(iRange(1:BatchSize),:);
                 elseif isequal(lower(CPType),'old')
-                    CP = obj.CP_Old(i,:);
+                    CP = obj.CP_Old(iRange(1:BatchSize),:);
                 elseif isequal(lower(CPType),'rov')
-                    CP = obj.CP_RoV(i,:);
+                    CP = obj.CP_RoV(iRange(1:BatchSize),:);
                 elseif isequal(lower(CPType),'gof')
-                    CP = obj.CP_GoF(i,:);
+                    CP = obj.CP_GoF(iRange(1:BatchSize),:);
                 elseif isequal(lower(CPType),'combo')
-                    CP = obj.CP_Combo(i,:);
+                    CP = obj.CP_Combo(iRange(1:BatchSize),:);
                 elseif isequal(lower(CPType),'manual')
-                    CP = obj.Man_CP(i,:);
+                    CP = obj.Man_CP(iRange(1:BatchSize),:);
                 elseif isequal(lower(CPType),'snap-in')
-                    CP = obj.CP_SnapIn(i,:);
+                    CP = obj.CP_SnapIn(iRange(1:BatchSize),:);
                 else
-                    CP = obj.CP(i,:);
+                    CP = obj.CP(iRange(1:BatchSize),:);
                 end
-                [App,HHApp] = obj.get_force_curve_data(i,0,1,0);
-                force = App - CP(2);
-                if CorrectSensitivity
-                    force = force.*obj.RefSlopeCorrectedSensitivity/obj.Sensitivity;
+                for i=1:BatchSize
+                    [App{i},HHApp{i}] = obj.get_force_curve_data(iRange(i),0,1,0);
+                    force{i} = App{i} - CP(i,2);
+                    if CorrectSensitivity
+                        force{i} = force{i}.*obj.RefSlopeCorrectedSensitivity/obj.Sensitivity;
+                    end
+                    tip_h{i} = (HHApp{i} - CP(i,1)) - force{i}/obj.SpringConstant;
+                    tip_h{i}(tip_h{i} < 0) = [];
+                    if length(tip_h{i}) < 2
+                        continue
+                    end
+                    Max{i} = max(tip_h{i});
+                    obj.IndentationDepth(iRange(i)) = Max{i}(1);
+                    % delete everything below curve_percent of the maximum
+                    % force
+                    force{i}(1:(length(force{i})-length(tip_h{i}))) = [];
+                    force{i}(force{i}<(1-curve_percent)*max(force{i})) = [];
+                    tip_h{i}(1:(length(tip_h{i})-length(force{i}))) = [];
+                    RangeF{i} = range(force{i});
+                    RangeTH{i} = range(tip_h{i});
+                    force{i} = force{i}/RangeF{i};
+                    tip_h{i} = tip_h{i}/RangeTH{i};
                 end
-                tip_h = (HHApp - CP(1)) - force/obj.SpringConstant;
-                tip_h(tip_h < 0) = [];
-                if length(tip_h) < 2
-                    continue
-                end
-                Max = max(tip_h);
-                obj.IndentationDepth(i) = Max(1);
-                % delete everything below curve_percent of the maximum
-                % force
-                force(1:(length(force)-length(tip_h))) = [];
-                force(force<(1-curve_percent)*max(force)) = [];
-                tip_h(1:(length(tip_h)-length(force))) = [];
-                RangeF = range(force);
-                RangeTH = range(tip_h);
-                force = force/RangeF;
-                tip_h = tip_h/RangeTH;
-                if isequal(TipShape,'parabolic')
+                parfor i=1:BatchSize
                     if AllowXShift
                         s = fitoptions('Method','NonlinearLeastSquares',...
-                            'Lower',[10^(-5) -min(tip_h)],...
-                            'Upper',[inf inf],...
+                            'Lower',[10^(-5) -min(tip_h{i})],...
+                            'Upper',[inf min(tip_h{i})],...
                             'MaxIter',100,...
                             'Startpoint',[1 0]);
                         f = fittype('a*(x+b)^(3/2)','options',s);
@@ -1133,8 +1137,14 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet
                         f = fittype('a*(x)^(3/2)','options',s);
                     end
                     try
-                        Hertzfit = fit(tip_h,...
-                            force,f);
+                        Hertzfit{i} = fit(tip_h{i},...
+                            force{i},f);
+                    catch
+                        Hertzfit{i} = nan;
+                    end
+                end
+                for i=1:BatchSize
+                    try
                         % calculate E module based on the Hertz model. Be careful
                         % to convert to unnormalized data again
                         if isempty(obj.FibDiam) || UseTopology
@@ -1142,8 +1152,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet
                                 if UseTopology
                                     
                                 else
-                                    DepthIndex = floor(obj.IndentationDepth(i)*1e9);
-                                    DepthRemainder = obj.IndentationDepth(i)*1e9 - DepthIndex;
+                                    DepthIndex = floor(obj.IndentationDepth(iRange(i))*1e9);
+                                    DepthRemainder = obj.IndentationDepth(iRange(i))*1e9 - DepthIndex;
                                     if DepthIndex >= length(TipObject.DepthDependendTipRadius)
                                         DepthIndex = length(TipObject.DepthDependendTipRadius) - 1;
                                     end
@@ -1159,8 +1169,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet
                             end
                         else
                             if UseTipData
-                                DepthIndex = floor(obj.IndentationDepth(i)*1e9);
-                                DepthRemainder = obj.IndentationDepth(i) - DepthIndex;
+                                DepthIndex = floor(obj.IndentationDepth(iRange(i))*1e9);
+                                DepthRemainder = obj.IndentationDepth(iRange(i)) - DepthIndex;
                                 if DepthIndex >= length(TipObject.DepthDependendTipRadius)
                                     DepthIndex = length(TipObject.DepthDependendTipRadius) - 1;
                                 end
@@ -1174,37 +1184,35 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet
                                 R_eff = 1/(1/(obj.TipRadius*1e-9) + 1/(obj.FibDiam/2));
                             end
                         end
-                        EMod = 3*(Hertzfit.a*RangeF/RangeTH^(3/2))/(4*sqrt(R_eff))*(1-obj.PoissonR^2);
+                        EMod{i} = 3*(Hertzfit{i}.a*RangeF{i}/RangeTH{i}^(3/2))/(4*sqrt(R_eff))*(1-obj.PoissonR^2);
                     catch ME
-                        EMod = nan;
-                        Hertzfit.a = 0;
+                        EMod{i} = nan;
+%                         Hertzfit{i}.a = 0;
+%                         if AllowXShift
+%                             Hertzfit{i}.b = 0;
+%                         end
+                    end
+                    obj.EModHertz(iRange(i)) = EMod{i};
+                    % Convert the model to the right scale so it can be plotted
+                    % correctly later
+                    warning('off','all');
+                    try
+                        Hertzfit{i}.a = Hertzfit{i}.a*RangeF{i}/RangeTH{i}.^(3/2);
                         if AllowXShift
-                            Hertzfit.b = 0;
+                            Hertzfit{i}.b = Hertzfit{i}.b*RangeTH{i};
+                            obj.CP_HertzFitted(iRange(i),1) = CP(i,1)-Hertzfit{i}.b;
+                            obj.CP_HertzFitted(iRange(i),2) = CP(i,2);
+                            % Not sure about this one
+                            % obj.IndentationDepth(i) = obj.IndentationDepth(i) + Hertzfit.b;
                         end
+                        warning('on','all');
+                        obj.HertzFit{iRange(i)} = Hertzfit{i};
+                    catch
+                        obj.SelectedCurves(iRange(i)) = 0;
+                        warning('on','all');
                     end
-                elseif isequal(shape,'spherical')
-                elseif isequal(shape,'conical')
-                elseif isequal(shape,'pyramid')
                 end
-                obj.EModHertz(i) = EMod;
-                % Convert the model to the right scale so it can be plotted
-                % correctly later
-                warning('off','all');
-                try
-                    Hertzfit.a = Hertzfit.a*RangeF/RangeTH.^(3/2);
-                    if AllowXShift
-                        Hertzfit.b = Hertzfit.b*RangeTH;
-                        obj.CP_HertzFitted(i,1) = CP(1)-Hertzfit.b;
-                        obj.CP_HertzFitted(i,2) = CP(2);
-                        obj.CP(i,:) = obj.CP_HertzFitted(i,:);
-                        % Not sure about this one
-                        % obj.IndentationDepth(i) = obj.IndentationDepth(i) + Hertzfit.b;
-                    end
-                    warning('on','all');
-                    obj.HertzFit{i} = Hertzfit;
-                catch
-                    obj.SelectedCurves(i) = 0;
-                end
+                iRange(1:BatchSize) = [];
             end
             E = obj.EModHertz;
             HertzFit = obj.HertzFit;
