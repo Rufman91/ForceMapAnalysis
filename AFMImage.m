@@ -243,6 +243,7 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet
         end
         
         function deconvolute_image(obj,CTClassInstance)
+            % Comment
             
             ErodedTip = CTClassInstance.get_channel('Eroded Tip');
             if isempty(ErodedTip)
