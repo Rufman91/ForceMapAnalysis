@@ -1,4 +1,4 @@
-classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet
+classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & AFMBaseClass
     % This is supposed to be a class for analysis and processing of AFM
     % data at the image level in general and isn't restricted to a specific
     % mode of image acquisition. As such, it should be able to load, access
@@ -8,23 +8,10 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet
    
     properties
         % File and Header properties
-        Name
-        ID
-        HostOS
-        HostName
         ImagingType
         FileVersion
         DateTime
         NumChannels
-    end
-    properties
-        % All possible image channels. The Channels are all part of the
-        % struct Channel and should each contain the properties Image,
-        % Unit, Name, ScanSizeX, ScanSizeY, NumPixelsX, NumPixelsY,
-        % ScanAngle, OriginX and OriginY. This might seem redundant but
-        % allows for image cropping, image-overlays and easy addition of
-        % other kinds of image-data (e.g. AdhesionMaps, EModMaps)
-        Channel
     end
     properties
         % Image Data Properties. All dimensions in SI-units, Angles in
@@ -59,7 +46,6 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet
     end
     properties
         % Properties related to Image processing/segmenting/classification
-        CMap
         MaskBackground
     end
     properties

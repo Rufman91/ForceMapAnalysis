@@ -1,4 +1,4 @@
-classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet
+classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & ForceMapAnalysis.AFMBaseClass
     % The force map class represents a single jpk force map file and
     % contains all necessary functions to process the forcecurves.
     % General naming convention for this class is:
@@ -23,16 +23,12 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet
         % Properties shared for the whole Force Map. All data is given SI
         % units otherwise it would be stated separately 
         
-        Name            % name of the force map. taken as the name of the folder, containing the .csv files
         Date            % date when the force map was detected
         Time            % time when the force map was detected
-        ID              % Identifier for relation to Experiment
         FileVersion     % Version of jpk-force-map file
         FileType        % File Type: force map or qi-map
         Folder          % location of the .csv files of the force map
         DataStoreFolder % 
-        HostOS          % Operating System
-        HostName        % Name of hosting system
         BigDataFlag     % If true, unpack data container into Experiment subfolder
                         % and always load force volume data from there
         FractionOfMaxRAM = 1/5 % Specifies how much of MaxRAM space can be taken for certain partitioned calculations 
@@ -115,12 +111,6 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet
     properties
         % Properties related to topological calculations, such as mapping and masking and visualisation
         
-        Channel         % Image Channels that work with most of the AFMImage static Channel methods. Merge
-                        % or at least write everything image-related into
-                        % this struct! Channels have the Stuct-properties:
-                        % Image (This is where the actual image data goes), Name, Unit, NumPixelsX, NumPixelsY,
-                        % ScanSizeX, ScanSizeY and ScanAngle
-        CMap = AFMImage.define_afm_color_map
         HeightMap       % height profile map taken from the maximum head-height from approach max(hhapp)
         EModMapHertz    % E modulus profile map. same ordering as HeightMap
         EModMapOliverPharr % """"
