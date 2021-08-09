@@ -3397,10 +3397,14 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                     cd(obj.ExperimentFolder);
                     
                     obj.write_to_log_file('Date and Time',datestr(now,0))
-                    obj.write_to_log_file('Branch',GitInfo.branch)
-                    obj.write_to_log_file('Hash of current commit',GitInfo.hash)
-                    obj.write_to_log_file('Remote',GitInfo.remote)
-                    obj.write_to_log_file('URL',GitInfo.url)
+                    if isempty(GitInfo)
+                        obj.write_to_log_file('GitHub Error','Could not determine GitInfo')
+                    else
+                        obj.write_to_log_file('Branch',GitInfo.branch)
+                        obj.write_to_log_file('Hash of current commit',GitInfo.hash)
+                        obj.write_to_log_file('Remote',GitInfo.remote)
+                        obj.write_to_log_file('URL',GitInfo.url)
+                    end
                 elseif isequal(lower(StartEnd),'end')
                     obj.write_to_log_file('Analysis ended successfully',':D')
                     obj.CurrentLogFile = [];
