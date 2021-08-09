@@ -2648,16 +2648,6 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
     methods
         % non-static auxiliary methods
         
-        function save(obj)
-            current = what();
-            cd(obj.Folder)
-            savename = sprintf('%s.mat',obj.Name);
-            save(savename,'obj','-v7.3')
-            cd(current.path)
-            savemsg = sprintf('Changes to ForceMap %s saved to %s',obj.Name,obj.Folder);
-            disp(savemsg);
-        end
-        
         function calculate_reference_slope_from_area(obj,Mask,AppRetSwitch)
             % Calculates the distribution of DZslopes on the curves
             % that that are neihter on the fibril nor the excluded zones.
@@ -3591,65 +3581,6 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             return
         end
         
-        function [ChannelStruct,Index] = get_channel(obj,ChannelName)
-            k = 0;
-            for i=1:length(obj.Channel)
-                if isequal(obj.Channel(i).Name,ChannelName)
-                    ChannelStruct = obj.Channel(i);
-                    Index = i;
-                    k = k+1;
-                end
-            end
-            if k > 1
-                warning(sprintf('Caution! There are more than one channels named %s (%i)',ChannelName,k))
-            end
-            if k == 0
-                ChannelStruct = [];
-                Index = [];
-            end
-        end
-        
-        function delete_channel(obj,ChannelName)
-            k = 0;
-            Index = [];
-            for i=1:length(obj.Channel)
-                if isequal(obj.Channel(i).Name,ChannelName)
-                    ChannelStruct = obj.Channel(i);
-                    Index(k+1) = i;
-                    k = k+1;
-                end
-            end
-            if isempty(Index)
-                return
-            end
-            obj.Channel(Index) = [];
-            if k > 1
-                warning(sprintf('Caution! There are more than one channels named %s (%i). Deleted all of them',ChannelName,k))
-            end
-        end
-        
-        function OutChannel = create_standard_channel(obj,Image,Name,Unit)
-            
-            OutChannel.Image = Image;
-            OutChannel.Name = Name;
-            OutChannel.Unit = Unit;
-            OutChannel.ScanSizeX = obj.XSize;
-            OutChannel.ScanSizeY = obj.YSize;
-            OutChannel.ScanAngle = obj.GridAngle;
-            OutChannel.NumPixelsX = obj.NumProfiles;
-            OutChannel.NumPixelsY = obj.NumPoints;
-            OutChannel.OriginX = 0;
-            OutChannel.OriginY = 0;
-            
-        end
-        
-        function PopUp = string_of_existing(obj)
-            PopUp{1} = 'none';
-            for i=1:length(obj.Channel)
-                PopUp{i+1} = obj.Channel(i).Name;
-            end
-        end
-        
         function temporary_data_load_in(obj,OnOffBool)
             
             if OnOffBool && obj.BigDataFlag
@@ -3664,36 +3595,6 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 obj.HHApp = cell(0,0);
                 obj.Ret = cell(0,0);
                 obj.HHRet = cell(0,0);
-            end
-        end
-        
-        function construct_list_to_map_relations(obj)
-            k = 1;
-            obj.List2Map = zeros(obj.NCurves,2);
-            if isequal(obj.FileType,'quantitative-imaging-map')
-                for i=1:obj.NumProfiles
-                    for j=1:obj.NumPoints
-                        obj.Map2List(i,j) = k;
-                        obj.List2Map(k,:) = [i j];
-                        k = k + 1;
-                    end
-                end
-            elseif isequal(obj.FileType,'force-scan-map')
-                for i=1:obj.NumProfiles
-                    if ~mod(i,2)
-                        for j=1:obj.NumPoints
-                            obj.Map2List(i,j) = k;
-                            obj.List2Map(k,:) = [i j];
-                            k = k + 1;
-                        end
-                    else
-                        for j=1:obj.NumPoints
-                            obj.Map2List(i,obj.NumPoints-j+1) = k;
-                            obj.List2Map(k,:) = [i obj.NumPoints-j+1];
-                            k = k + 1;
-                        end
-                    end
-                end
             end
         end
         
