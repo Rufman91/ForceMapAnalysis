@@ -344,6 +344,44 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 end
             end
         end
+        
+        function delete_experiment(obj)
+            
+            if ~isequal(obj.HostOS,'PCW')
+                disp('This method is only available on Windows systems at the moment');
+                return
+            end
+            
+            Folder = string(obj.ExperimentFolder);
+            
+            answer = questdlg('Caution! This PERMANENTLY deletes the experiment folder, experiment file and all subfolders', ...
+                sprintf('Deletion of %s',Folder),'Yes, delete all', ...
+                'Abort','Abort');
+            % Handle response
+            switch answer
+                case 'Yes, delete all'
+                    disp(sprintf('Deleting %s. This may take from a few to tens of minutes',obj.ExperimentName))
+                    
+                    current = what();
+                    cd(Folder)
+                    cd ..
+                    
+                    cmd1_1 = string('DEL /F/Q/S ');
+                    cmd1_2 = string(' > nul');
+                    cmd2_1 = string('RMDIR /Q/S ');
+                    
+                    CMD1 = strcat(cmd1_1,Folder,cmd1_2);
+                    CMD2 = strcat(cmd2_1,Folder);
+                    
+                    system(CMD1);
+                    system(CMD2);
+                    
+                    cd(current.path)
+                case 'Abort'
+                    return
+            end
+            
+        end
     end
     methods(Static)
         % Static methods related with Experiment-file handling
@@ -372,6 +410,9 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             for i=1:E.NumForceMaps
                 if ~isempty(E.FM{i})
                     E.FM{i}.check_for_new_host();
+                    OldDataStore = E.FM{i}.DataStoreFolder;
+                    Split = strsplit(OldDataStore,filesep);
+                    E.FM{i}.DataStoreFolder = fullfile(Path,Split{end-1});
                     E.FM{i}.Folder = FMFolder;
                     E.ForceMapFolders{i} = FMFolder;
                 end
@@ -393,6 +434,44 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             end
             
             E.ExperimentFolder = Path;
+            
+        end
+        
+        function delete_folderstructure(FolderPath)
+            
+            if ~isequal(obj.HostOS,'PCW')
+                disp('This method is only available on Windows systems at the moment');
+                return
+            end
+            
+            Folder = FolderPath;
+            
+            answer = questdlg('Caution! This PERMANENTLY deletes the given folder, its files and all subfolders', ...
+                sprintf('Deletion of %s',Folder),'Yes, delete all', ...
+                'Abort','Abort');
+            % Handle response
+            switch answer
+                case 'Yes, delete all'
+                    disp(sprintf('Deleting %s. This may take from a few to tens of minutes',Folder))
+                    
+                    current = what();
+                    cd(Folder)
+                    cd ..
+                    
+                    cmd1_1 = string('DEL /F/Q/S ');
+                    cmd1_2 = string(' > nul');
+                    cmd2_1 = string('RMDIR /Q/S ');
+                    
+                    CMD1 = strcat(cmd1_1,Folder,cmd1_2);
+                    CMD2 = strcat(cmd2_1,Folder);
+                    
+                    system(CMD1);
+                    system(CMD2);
+                    
+                    cd(current.path)
+                case 'Abort'
+                    return
+            end
             
         end
         
@@ -2246,6 +2325,14 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             ax.XTickLabel = XTickLabels;
             ylabel(YAxisLabel)
             xlim([.5 length(Data)+.5])
+        end
+        
+        function visualize_depth_dependend_tip_radius(obj,CantileverTipIndex)
+            
+            TipClass = obj.CantileverTips{CantileverTipIndex};
+            DepthRadii = TipClass.DepthDependendTipRadius;
+            
+            
         end
     end
     methods
