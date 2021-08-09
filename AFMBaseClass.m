@@ -1,4 +1,4 @@
-classdef AFMBaseClass
+classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle
     % This a baseclass for the classes AFMImage and ForceMap to inherit
     % shared methods and properties from
     
@@ -27,6 +27,13 @@ classdef AFMBaseClass
     
     methods
         % Main Methods
+        
+        function obj = AFMBaseClass()
+            
+            disp('this does nothing')
+            
+        end
+        
         function choose_fibril_segments(obj)
             A = 1000*obj.Name;
         end

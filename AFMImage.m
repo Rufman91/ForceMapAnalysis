@@ -1,4 +1,4 @@
-classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & AFMBaseClass
+classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBaseClass
     % This is supposed to be a class for analysis and processing of AFM
     % data at the image level in general and isn't restricted to a specific
     % mode of image acquisition. As such, it should be able to load, access

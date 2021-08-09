@@ -1,4 +1,4 @@
-classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & ForceMapAnalysis.AFMBaseClass
+classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBaseClass
     % The force map class represents a single jpk force map file and
     % contains all necessary functions to process the forcecurves.
     % General naming convention for this class is:
