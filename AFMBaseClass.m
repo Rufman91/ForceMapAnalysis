@@ -163,8 +163,8 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle
             OutChannel.Image = Image;
             OutChannel.Name = Name;
             OutChannel.Unit = Unit;
-            OutChannel.ScanSizeX = obj.XSize;
-            OutChannel.ScanSizeY = obj.YSize;
+            OutChannel.ScanSizeX = obj.ScanSizeX;
+            OutChannel.ScanSizeY = obj.ScanSizeY;
             OutChannel.ScanAngle = obj.GridAngle;
             OutChannel.NumPixelsX = obj.NumProfiles;
             OutChannel.NumPixelsY = obj.NumPoints;
