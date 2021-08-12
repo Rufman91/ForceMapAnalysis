@@ -26,22 +26,18 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
         Date            % date when the force map was detected
         Time            % time when the force map was detected
         FileVersion     % Version of jpk-force-map file
-        FileType        % File Type: force map or qi-map
         Folder          % location of the .csv files of the force map
         DataStoreFolder % 
         BigDataFlag     % If true, unpack data container into Experiment subfolder
                         % and always load force volume data from there
         FractionOfMaxRAM = 1/5 % Specifies how much of MaxRAM space can be taken for certain partitioned calculations 
         NCurves         % number of curves on the force map
-        NumProfiles     % number of scanned profiles along the ScanSizeY of the force map
-        NumPoints       % number of scanned points per profile along the ScanSizeX of the force map
         MaxPointsPerCurve
         ExtendTime
         RetractTime
         ZLength
         ExtendVelocity        % Approach  velocity as defined in the force map settings
         RetractVelocity
-        GridAngle       % in degrees (°)
         Sensitivity
         RefSlopeCorrectedSensitivity
         SpringConstant
@@ -112,8 +108,6 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
         HeightMap       % height profile map taken from the maximum head-height from approach max(hhapp)
         EModMapHertz    % E modulus profile map. same ordering as HeightMap
         EModMapOliverPharr % """"
-        List2Map        % An R->RxR ((k)->(i,j)) mapping of indices to switch between the two representations
-        Map2List        % An RxR->R ((i,j)->(k))mapping of indices to switch between the two representations
         FibDiam = []    % Estimated fibril diameter
         FibDiamSTD      % Estimated fibril diameter std
         FibMask         % Logical mask marking the whole fibril
@@ -224,8 +218,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             end
             
             % intitialize masks
-            obj.ExclMask = logical(ones(obj.NumProfiles,obj.NumPoints));
-            obj.FibMask = logical(zeros(obj.NumProfiles,obj.NumPoints));
+            obj.ExclMask = logical(ones(obj.NumPixelsX,obj.NumPixelsY));
+            obj.FibMask = logical(zeros(obj.NumPixelsX,obj.NumPixelsY));
             
             obj.construct_list_to_map_relations
             
@@ -449,8 +443,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             
             obj.SnapIn = SnapIn;
             
-            for i=1:obj.NumProfiles
-                for j=1:obj.NumPoints
+            for i=1:obj.NumPixelsX
+                for j=1:obj.NumPixelsY
                     SnapInMap(i,j) = obj.SnapIn(obj.Map2List(i,j));
                 end
             end
@@ -1211,8 +1205,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             elseif isequal(lower(CPType),'rov')
                 obj.EModHertz_RoV = E;
             end
-            for i=1:obj.NumProfiles
-                for j=1:obj.NumPoints
+            for i=1:obj.NumPixelsX
+                for j=1:obj.NumPixelsY
                     obj.EModMapHertz(i,j,1) = obj.EModHertz(obj.Map2List(i,j));
                     IndDepMap(i,j) = obj.IndentationDepth(obj.Map2List(i,j));
                 end
@@ -1304,8 +1298,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             obj.EModOliverPharr = EMod;
             % Write values into EModMapOliverPharr
             
-            for i=1:obj.NumProfiles
-                for j=1:obj.NumPoints
+            for i=1:obj.NumPixelsX
+                for j=1:obj.NumPixelsY
                     obj.EModMapOliverPharr(i,j,1) = obj.EModOliverPharr(obj.Map2List(i,j));
                     IndDepthMapOP(i,j) = obj.IndentationDepthOliverPharr(obj.Map2List(i,j));
                     DZMap(i,j) = obj.DZslope(obj.Map2List(i,j));
@@ -1371,8 +1365,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             
             obj.MaxAdhesionForce = MaxAdhesionForce;
             
-            for i=1:obj.NumProfiles
-                for j=1:obj.NumPoints
+            for i=1:obj.NumPixelsX
+                for j=1:obj.NumPixelsY
                     MaxAdhesionForceMap(i,j) = obj.MaxAdhesionForce(obj.Map2List(i,j));
                 end
             end
@@ -1445,8 +1439,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             obj.AdhesionEnergy = AdhesionEnergy;
             obj.AdhesionLength = AdhesionLength;
             
-            for i=1:obj.NumProfiles
-                for j=1:obj.NumPoints
+            for i=1:obj.NumPixelsX
+                for j=1:obj.NumPixelsY
                     AEMap(i,j) = obj.AdhesionEnergy(obj.Map2List(i,j));
                     ALMap(i,j) = obj.AdhesionLength(obj.Map2List(i,j));
                 end
@@ -1544,8 +1538,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             
             obj.PeakIndentationAngle = PeakIndentationAngle;
             
-            for i=1:obj.NumProfiles
-                for j=1:obj.NumPoints
+            for i=1:obj.NumPixelsX
+                for j=1:obj.NumPixelsY
                     PIAMap(i,j) = obj.PeakIndentationAngle(obj.Map2List(i,j));
                 end
             end
@@ -1593,8 +1587,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             
             obj.DissipatedEnergy = DissipatedEnergy;
             
-            for i=1:obj.NumProfiles
-                for j=1:obj.NumPoints
+            for i=1:obj.NumPixelsX
+                for j=1:obj.NumPixelsY
                     DEMap(i,j) = obj.DissipatedEnergy(obj.Map2List(i,j));
                 end
             end
@@ -1621,8 +1615,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             
             obj.ElasticEnergy = ElasticEnergy;
             
-            for i=1:obj.NumProfiles
-                for j=1:obj.NumPoints
+            for i=1:obj.NumPixelsX
+                for j=1:obj.NumPixelsY
                     EEMap(i,j) = obj.ElasticEnergy(obj.Map2List(i,j));
                 end
             end
@@ -1670,7 +1664,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
         
         function manual_exclusion(obj)
             
-            obj.ExclMask = logical(ones(obj.NumProfiles,obj.NumPoints));
+            obj.ExclMask = logical(ones(obj.NumPixelsX,obj.NumPixelsY));
             CheckSum = 100;
             while CheckSum > 1
                 f = figure('Name','Choose areas to be excluded');
@@ -1712,10 +1706,10 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             [obj.Apex,obj.ApexIndex] = max(HeightMap.*obj.FibMask,[],2);
             
             if obj.FibrilFlag.Straight == 1
-                obj.RectApex = zeros(obj.NumProfiles,1);
-                obj.RectApexIndex = zeros(obj.NumProfiles,1);
-                obj.RectApexIndex = round(predictGP_mean([1:obj.NumProfiles],[1:obj.NumProfiles],1,5*obj.NumProfiles,obj.ApexIndex,1));
-                for i=1:obj.NumProfiles
+                obj.RectApex = zeros(obj.NumPixelsX,1);
+                obj.RectApexIndex = zeros(obj.NumPixelsX,1);
+                obj.RectApexIndex = round(predictGP_mean([1:obj.NumPixelsX],[1:obj.NumPixelsX],1,5*obj.NumPixelsX,obj.ApexIndex,1));
+                for i=1:obj.NumPixelsX
                     obj.RectApex(i) = obj.HeightMap(i,obj.RectApexIndex(i),1);
                 end
             else
@@ -1724,7 +1718,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             end
             
             k = 1;
-            for i=1:obj.NumProfiles
+            for i=1:obj.NumPixelsX
                 if obj.ExclMask(i,obj.RectApexIndex(i)) == 1
                     FibHeight(k) = obj.RectApex(i);
                     k = k + 1;
@@ -1736,7 +1730,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             % Convert RectApexIndex and ApexIndex, so that they are
             % consistent with the Map2List-List2Map format (its entrances
             % being the corresponding list values)
-            for i=1:obj.NumProfiles
+            for i=1:obj.NumPixelsX
                 obj.RectApexIndex(i) = obj.Map2List(i,obj.RectApexIndex(i));
                 obj.ApexIndex(i) = obj.Map2List(i,obj.ApexIndex(i));
             end
@@ -1789,8 +1783,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             end
             q = quantile(obj.HeightMap(:,:,1),pth_quantile,'All');
             mask = ones(size(obj.HeightMap));
-            for i=1:obj.NumProfiles
-                for j=1:obj.NumPoints
+            for i=1:obj.NumPixelsX
+                for j=1:obj.NumPixelsY
                     if obj.HeightMap(i,j,1) < q
                         obj.SelectedCurves(obj.HeightMap(i,j,2)) = 0;
                         mask(i,j,1) = 0;
@@ -2705,7 +2699,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
         
         function Mask = create_mask_general(obj)
             
-            Mask = logical(zeros(obj.NumProfiles,obj.NumPoints));
+            Mask = logical(zeros(obj.NumPixelsX,obj.NumPixelsY));
             CheckSum = 100;
             while CheckSum > 1
                 f = figure('Name','Choose areas');
@@ -2750,7 +2744,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             for i=1:5
                 Map = AFMImage.subtract_line_fit_vertical_rov(Map,.2,0);
             end
-            Map = imresize(Map,[obj.NumProfiles obj.NumPoints],'nearest');
+            Map = imresize(Map,[obj.NumPixelsX obj.NumPixelsY],'nearest');
             
             Map = AFMImage.find_and_replace_outlier_lines(Map,10);
             
@@ -2813,7 +2807,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             for i=1:5
                 Map = AFMImage.subtract_line_fit_vertical_rov(Map,.2,0);
             end
-            Map = imresize(Map,[obj.NumProfiles obj.NumPoints],'nearest');
+            Map = imresize(Map,[obj.NumPixelsX obj.NumPixelsY],'nearest');
             
             Map = AFMImage.find_and_replace_outlier_lines(Map,10);
             
@@ -2839,7 +2833,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             
             Map = obj.convert_data_list_to_map(-obj.CP(:,1));
             
-            for i=1:obj.NumProfiles
+            for i=1:obj.NumPixelsX
                 Map(i,:) = AFMImage.replace_points_of_certain_value_in_line(Map(i,:),0);
             end
             
@@ -2865,13 +2859,13 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             HghtMin = min(obj.HeightMap,[],'all');
             HghtNorm = (obj.HeightMap-HghtMin)/HghtRange;
             mask = zeros(size(HghtNorm));
-            STDLine = zeros(obj.NumProfiles,obj.NumPoints);
+            STDLine = zeros(obj.NumPixelsX,obj.NumPixelsY);
             [HghtSorted,Idx] = sort(HghtNorm,[2],'descend');
-            for j=1:obj.NumPoints
+            for j=1:obj.NumPixelsY
                 STDLine(:,j) = std(HghtSorted(:,1:j),0,[2]);
             end
             [~,MaxIdx] = max(STDLine,[],[2]);
-            for i=1:obj.NumProfiles
+            for i=1:obj.NumPixelsX
                 mask(i,Idx(i,1:floor(MaxIdx*MaskParam))) = 1;
             end
             mask = logical(mask);
@@ -2880,15 +2874,15 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             % determine linear orientation angle of the fibril and pad
             % accordingly
             k = 1;
-            for i=1:obj.NumProfiles
-                for j = 1:obj.NumPoints
+            for i=1:obj.NumPixelsX
+                for j = 1:obj.NumPixelsY
                     if mask(i,j) == 1
                         xy(k,:) = [i,j];
                         k = k + 1;
                     end
                 end
             end
-            FitLine = fit(xy(:,1).*obj.ScanSizeX/obj.NumProfiles,xy(:,2).*obj.ScanSizeY/obj.NumPoints,'poly1');
+            FitLine = fit(xy(:,1).*obj.ScanSizeX/obj.NumPixelsX,xy(:,2).*obj.ScanSizeY/obj.NumPixelsY,'poly1');
             obj.FibrilFlag.Straight = 0;
             if abs(FitLine.p1) <= 0.05
                 obj.FibrilFlag.Straight = 1;
@@ -3175,23 +3169,23 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 tline(where+1:end)... % this is the number
                 );
             
-            %   NumProfiles
+            %   NumPixelsX
             clear tline where;
             frewind(fileID);
             B=strfind(A,strcat(obj.FileType,'.position-pattern.grid.jlength='));
             fseek(fileID,B,'cof');
             tline = fgetl(fileID);
             where=strfind(tline,'=');
-            obj.NumProfiles = str2double(tline(where+1:end));
+            obj.NumPixelsX = str2double(tline(where+1:end));
             
-            %   NumPoints
+            %   NumPixelsY
             clear tline where;
             frewind(fileID);
             B=strfind(A,strcat(obj.FileType,'.position-pattern.grid.ilength='));
             fseek(fileID,B,'cof');
             tline = fgetl(fileID);
             where=strfind(tline,'=');
-            obj.NumPoints = str2double(tline(where+1:end));
+            obj.NumPixelsY = str2double(tline(where+1:end));
             
             %   ScanSizeX
             clear tline where;
@@ -3279,15 +3273,15 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             obj.ExtendVelocity = obj.ZLength/obj.ExtendTime;
             obj.RetractVelocity = obj.ZLength/obj.RetractTime;
             
-            %   GridAngle
+            %   ScanAngle
             clear tline where;
             frewind(fileID);
             B=strfind(A,strcat(obj.FileType,'.position-pattern.grid.theta='));
             fseek(fileID,B,'cof');
             tline = fgetl(fileID);
             where=strfind(tline,'=');
-            obj.GridAngle = str2double(tline(where+1:end));
-            obj.GridAngle = obj.GridAngle*180/pi;
+            obj.ScanAngle = str2double(tline(where+1:end));
+            obj.ScanAngle = obj.ScanAngle*180/pi;
             
             %   Setpoint
             clear tline where;
@@ -3763,12 +3757,12 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             axis on
             hold on;
             try
-                for i=1:obj.NumProfiles
+                for i=1:obj.NumPixelsX
                     plot((obj.List2Map(obj.RectApexIndex(i),2)),...
                         (obj.List2Map(obj.RectApexIndex(i),1)),...
                         'g+', 'MarkerSize', 10, 'LineWidth', 2);
-                    %                 plot((obj.List2Map(obj.ApexIndex(i),2)-1/2)*1024/obj.NumPoints,...
-                    %                     (obj.List2Map(obj.ApexIndex(i),1)-1/2)*1024/obj.NumProfiles,...
+                    %                 plot((obj.List2Map(obj.ApexIndex(i),2)-1/2)*1024/obj.NumPixelsY,...
+                    %                     (obj.List2Map(obj.ApexIndex(i),1)-1/2)*1024/obj.NumPixelsX,...
                     %                     'g+', 'MarkerSize', 10, 'LineWidth', 1);
                 end
             catch
@@ -3799,17 +3793,6 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             end
         end
         
-        function Map = convert_data_list_to_map(obj,List)
-            
-            Map = zeros(obj.NumProfiles,obj.NumPoints);
-            for i=1:obj.NumProfiles
-                for j=1:obj.NumPoints
-                    Map(i,j) = List(obj.Map2List(i,j));
-                end
-            end
-            
-        end
-        
         function Fig = show_analyzed_fibril(obj)
             T = sprintf('Height Map of %s\nwith chosen indentation points',obj.Name);
             Fig = figure('Name',T,'Units','normalized','Color','w','Position',[0.5 0.1 0.5 0.8]);
@@ -3823,12 +3806,12 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             c1.Label.String = 'Height [nm]';
             hold on;
             try
-                for i=1:obj.NumProfiles
-                    plot((obj.List2Map(obj.RectApexIndex(i),2)-1/2)*1024/obj.NumPoints,...
-                        (obj.List2Map(obj.RectApexIndex(i),1)-1/2)*1024/obj.NumProfiles,...
+                for i=1:obj.NumPixelsX
+                    plot((obj.List2Map(obj.RectApexIndex(i),2)-1/2)*1024/obj.NumPixelsY,...
+                        (obj.List2Map(obj.RectApexIndex(i),1)-1/2)*1024/obj.NumPixelsX,...
                         'g+', 'MarkerSize', 10, 'LineWidth', 2);
-                    %                 plot((obj.List2Map(obj.ApexIndex(i),2)-1/2)*1024/obj.NumPoints,...
-                    %                     (obj.List2Map(obj.ApexIndex(i),1)-1/2)*1024/obj.NumProfiles,...
+                    %                 plot((obj.List2Map(obj.ApexIndex(i),2)-1/2)*1024/obj.NumPixelsY,...
+                    %                     (obj.List2Map(obj.ApexIndex(i),1)-1/2)*1024/obj.NumPixelsX,...
                     %                     'g+', 'MarkerSize', 10, 'LineWidth', 1);
                 end
             catch
@@ -3932,14 +3915,14 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 end
                 imshow(imresize(I.Image,[1024 1024]),[],'Colormap',AFMImage.define_afm_color_map)
                 hold on;
-                for i=1:obj.NumProfiles
+                for i=1:obj.NumPixelsX
                     if obj.RectApexIndex(i)==k
-                        plot((obj.List2Map(obj.RectApexIndex(i),2)-1/2)*1024/obj.NumPoints,...
-                            (obj.List2Map(obj.RectApexIndex(i),1)-1/2)*1024/obj.NumProfiles,...
+                        plot((obj.List2Map(obj.RectApexIndex(i),2)-1/2)*1024/obj.NumPixelsY,...
+                            (obj.List2Map(obj.RectApexIndex(i),1)-1/2)*1024/obj.NumPixelsX,...
                             'g*', 'MarkerSize', 10, 'LineWidth', 2);
                     else
-                        plot((obj.List2Map(obj.RectApexIndex(i),2)-1/2)*1024/obj.NumPoints,...
-                            (obj.List2Map(obj.RectApexIndex(i),1)-1/2)*1024/obj.NumProfiles,...
+                        plot((obj.List2Map(obj.RectApexIndex(i),2)-1/2)*1024/obj.NumPixelsY,...
+                            (obj.List2Map(obj.RectApexIndex(i),1)-1/2)*1024/obj.NumPixelsX,...
                             'r+', 'MarkerSize', 5, 'LineWidth', 1);
                     end
                 end
@@ -3977,11 +3960,11 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 end
                 
                 subplot(2,3,4)
-                plot(0:obj.NumProfiles+1,obj.RefSlope*ones(obj.NumProfiles+2,1))
+                plot(0:obj.NumPixelsX+1,obj.RefSlope*ones(obj.NumPixelsX+2,1))
                 ylim([0 1.3])
-                xlim([0 obj.NumProfiles+1])
+                xlim([0 obj.NumPixelsX+1])
                 hold on
-                plot(1:obj.NumProfiles,obj.DZslope(obj.RectApexIndex),'bO')
+                plot(1:obj.NumPixelsX,obj.DZslope(obj.RectApexIndex),'bO')
                 plot(m,obj.DZslope(obj.RectApexIndex(m)),'rO','MarkerFaceColor','r')
                 xlabel('Index')
                 ylabel('DZ-Slope')
@@ -4012,7 +3995,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 hold off
                 
                 pause(PauseTime)
-                if m<obj.NumProfiles
+                if m<obj.NumPixelsX
                     m = m + 1;
                 else
                     m = 1;
@@ -4046,14 +4029,14 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 end
                 imshow(imresize(I.Image,[1024 1024]),[],'Colormap',AFMImage.define_afm_color_map)
                 hold on;
-                for i=1:obj.NumProfiles
+                for i=1:obj.NumPixelsX
                     if obj.RectApexIndex(i)==k
-                        plot((obj.List2Map(obj.RectApexIndex(i),2)-1/2)*1024/obj.NumPoints,...
-                            (obj.List2Map(obj.RectApexIndex(i),1)-1/2)*1024/obj.NumProfiles,...
+                        plot((obj.List2Map(obj.RectApexIndex(i),2)-1/2)*1024/obj.NumPixelsY,...
+                            (obj.List2Map(obj.RectApexIndex(i),1)-1/2)*1024/obj.NumPixelsX,...
                             'g*', 'MarkerSize', 10, 'LineWidth', 2);
                     else
-                        plot((obj.List2Map(obj.RectApexIndex(i),2)-1/2)*1024/obj.NumPoints,...
-                            (obj.List2Map(obj.RectApexIndex(i),1)-1/2)*1024/obj.NumProfiles,...
+                        plot((obj.List2Map(obj.RectApexIndex(i),2)-1/2)*1024/obj.NumPixelsY,...
+                            (obj.List2Map(obj.RectApexIndex(i),1)-1/2)*1024/obj.NumPixelsX,...
                             'r+', 'MarkerSize', 5, 'LineWidth', 1);
                     end
                 end
@@ -4104,7 +4087,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 hold off
                 
                 pause(PauseTime)
-                if m<obj.NumProfiles
+                if m<obj.NumPixelsX
                     m = m + 1;
                 else
                     m = 1;
@@ -4136,8 +4119,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 imshow(imresize(I.Image,[1024 1024]),[],'Colormap',AFMImage.define_afm_color_map)
                 hold on;
                 
-                plot((obj.List2Map(m,2)-1/2)*1024/obj.NumPoints,...
-                    (obj.List2Map(m,1)-1/2)*1024/obj.NumProfiles,...
+                plot((obj.List2Map(m,2)-1/2)*1024/obj.NumPixelsY,...
+                    (obj.List2Map(m,1)-1/2)*1024/obj.NumPixelsX,...
                     'g*', 'MarkerSize', 10, 'LineWidth', 2);
                 
                 title('Height Map');
@@ -4246,8 +4229,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 imshow(imresize(I.Image,[1024 1024]),[],'Colormap',AFMImage.define_afm_color_map)
                 hold on;
                 
-                plot((obj.List2Map(m,2)-1/2)*1024/obj.NumPoints,...
-                    (obj.List2Map(m,1)-1/2)*1024/obj.NumProfiles,...
+                plot((obj.List2Map(m,2)-1/2)*1024/obj.NumPixelsY,...
+                    (obj.List2Map(m,1)-1/2)*1024/obj.NumPixelsX,...
                     'g*', 'MarkerSize', 10, 'LineWidth', 2);
                 
                 title('Height Map');
@@ -4335,9 +4318,9 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             
             % Comparing all apex force curves
             subplot(2,2,[3 4])
-            plot(1:obj.NumProfiles,obj.EModOliverPharr(obj.RectApexIndex)*1e-6,'bO')
+            plot(1:obj.NumPixelsX,obj.EModOliverPharr(obj.RectApexIndex)*1e-6,'bO')
             hold on
-            plot(1:obj.NumProfiles,obj.EModHertz(obj.RectApexIndex)*1e-6,'rO')
+            plot(1:obj.NumPixelsX,obj.EModHertz(obj.RectApexIndex)*1e-6,'rO')
             xlabel('Index')
             ylabel('Apparent Indentation Modulus [MPa]')
         end

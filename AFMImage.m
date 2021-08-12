@@ -16,11 +16,6 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
     properties
         % Image Data Properties. All dimensions in SI-units, Angles in
         % degrees
-        OriginX
-        OriginY
-        ScanAngle
-        NumPixelsX
-        NumPixelsY
         IGain
         PGain
         RelativeSetpoint

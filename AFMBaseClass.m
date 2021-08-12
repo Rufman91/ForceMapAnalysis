@@ -7,8 +7,16 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle
         ID
         HostOS          % Operating System
         HostName        % Name of hosting system
+        FileType = 'Image'
         ScanSizeX           % Size of imaged window in X-direction
         ScanSizeY           % Size of imaged window in Y-direction
+        ScanAngle       % in degrees (°)
+        NumPixelsX
+        NumPixelsY
+        OriginX = 0
+        OriginY = 0
+        List2Map        % An R->RxR ((k)->(i,j)) mapping of indices to switch between the two representations
+        Map2List        % An RxR->R ((i,j)->(k))mapping of indices to switch between the two representations
     end
         
     properties
@@ -95,30 +103,49 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle
             k = 1;
             obj.List2Map = zeros(obj.NCurves,2);
             if isequal(obj.FileType,'quantitative-imaging-map')
-                for i=1:obj.NumProfiles
-                    for j=1:obj.NumPoints
+                for i=1:obj.NumPixelsX
+                    for j=1:obj.NumPixelsY
                         obj.Map2List(i,j) = k;
                         obj.List2Map(k,:) = [i j];
                         k = k + 1;
                     end
                 end
             elseif isequal(obj.FileType,'force-scan-map')
-                for i=1:obj.NumProfiles
+                for i=1:obj.NumPixelsX
                     if ~mod(i,2)
-                        for j=1:obj.NumPoints
+                        for j=1:obj.NumPixelsY
                             obj.Map2List(i,j) = k;
                             obj.List2Map(k,:) = [i j];
                             k = k + 1;
                         end
                     else
-                        for j=1:obj.NumPoints
-                            obj.Map2List(i,obj.NumPoints-j+1) = k;
-                            obj.List2Map(k,:) = [i obj.NumPoints-j+1];
+                        for j=1:obj.NumPixelsY
+                            obj.Map2List(i,obj.NumPixelsY-j+1) = k;
+                            obj.List2Map(k,:) = [i obj.NumPixelsY-j+1];
                             k = k + 1;
                         end
                     end
                 end
+            else
+                for i=1:obj.NumPixelsX
+                    for j=1:obj.NumPixelsY
+                        obj.Map2List(i,j) = k;
+                        obj.List2Map(k,:) = [i j];
+                        k = k + 1;
+                    end
+                end
             end
+        end
+        
+        function Map = convert_data_list_to_map(obj,List)
+            
+            Map = zeros(obj.NumPixelsX,obj.NumPixelsY);
+            for i=1:obj.NumPixelsX
+                for j=1:obj.NumPixelsY
+                    Map(i,j) = List(obj.Map2List(i,j));
+                end
+            end
+            
         end
         
         function [ChannelStruct,Index] = get_channel(obj,ChannelName)
@@ -165,9 +192,9 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle
             OutChannel.Unit = Unit;
             OutChannel.ScanSizeX = obj.ScanSizeX;
             OutChannel.ScanSizeY = obj.ScanSizeY;
-            OutChannel.ScanAngle = obj.GridAngle;
-            OutChannel.NumPixelsX = obj.NumProfiles;
-            OutChannel.NumPixelsY = obj.NumPoints;
+            OutChannel.ScanAngle = obj.ScanAngle;
+            OutChannel.NumPixelsX = obj.NumPixelsX;
+            OutChannel.NumPixelsY = obj.NumPixelsY;
             OutChannel.OriginX = 0;
             OutChannel.OriginY = 0;
             
