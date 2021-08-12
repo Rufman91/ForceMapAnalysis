@@ -32,8 +32,6 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle
         
         function obj = AFMBaseClass()
             
-            disp('this does nothing')
-            
         end
         
         function choose_segments_manually(obj,SegmentType)
