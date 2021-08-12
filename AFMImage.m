@@ -18,8 +18,6 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
         % degrees
         OriginX
         OriginY
-        ScanSizeX
-        ScanSizeY
         ScanAngle
         NumPixelsX
         NumPixelsY

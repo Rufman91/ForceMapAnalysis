@@ -7,6 +7,8 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle
         ID
         HostOS          % Operating System
         HostName        % Name of hosting system
+        ScanSizeX           % Size of imaged window in X-direction
+        ScanSizeY           % Size of imaged window in Y-direction
     end
         
     properties

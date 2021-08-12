@@ -33,11 +33,9 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                         % and always load force volume data from there
         FractionOfMaxRAM = 1/5 % Specifies how much of MaxRAM space can be taken for certain partitioned calculations 
         NCurves         % number of curves on the force map
-        NumProfiles     % number of scanned profiles along the YSize of the force map
-        NumPoints       % number of scanned points per profile along the XSize of the force map
+        NumProfiles     % number of scanned profiles along the ScanSizeY of the force map
+        NumPoints       % number of scanned points per profile along the ScanSizeX of the force map
         MaxPointsPerCurve
-        XSize           % Size of imaged window in X-direction
-        YSize           % Size of imaged window in Y-direction
         ExtendTime
         RetractTime
         ZLength
@@ -2890,7 +2888,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                     end
                 end
             end
-            FitLine = fit(xy(:,1).*obj.XSize/obj.NumProfiles,xy(:,2).*obj.YSize/obj.NumPoints,'poly1');
+            FitLine = fit(xy(:,1).*obj.ScanSizeX/obj.NumProfiles,xy(:,2).*obj.ScanSizeY/obj.NumPoints,'poly1');
             obj.FibrilFlag.Straight = 0;
             if abs(FitLine.p1) <= 0.05
                 obj.FibrilFlag.Straight = 1;
@@ -3195,23 +3193,23 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             where=strfind(tline,'=');
             obj.NumPoints = str2double(tline(where+1:end));
             
-            %   XSize
+            %   ScanSizeX
             clear tline where;
             frewind(fileID);
             B=strfind(A,strcat(obj.FileType,'.position-pattern.grid.ulength='));
             fseek(fileID,B,'cof');
             tline = fgetl(fileID);
             where=strfind(tline,'=');
-            obj.XSize = str2double(tline(where+1:end));
+            obj.ScanSizeX = str2double(tline(where+1:end));
             
-            %   YSize
+            %   ScanSizeY
             clear tline where;
             frewind(fileID);
             B=strfind(A,strcat(obj.FileType,'.position-pattern.grid.vlength='));
             fseek(fileID,B,'cof');
             tline = fgetl(fileID);
             where=strfind(tline,'=');
-            obj.YSize = str2double(tline(where+1:end));
+            obj.ScanSizeY = str2double(tline(where+1:end));
             
             %   MaxPonintsPerCurve
             clear tline where;
