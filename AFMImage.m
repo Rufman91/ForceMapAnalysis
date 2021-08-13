@@ -97,13 +97,15 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             
             obj.load_image_channels(ImageFullFile);
             
+            obj.construct_list_to_map_relations();
+            
             obj.preprocess_image
             
         end
         
         function preprocess_image(obj)
             
-            Height = obj.get_channel('Height (Trace)');
+            Height = obj.get_unprocessed_height_channel('Height (Trace)');
             
             if isempty(Height)
                 return
@@ -143,7 +145,7 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
         
         function deconvolute_cantilever_tip(obj)
             
-            Channel = obj.get_channel('Height (measured) (Trace)');
+            Channel = obj.get_unprocessed_height_channel('Height (measured) (Trace)');
             Based = imgaussfilt(AFMImage.subtract_line_fit_hist(Channel.Image,0.4));
             obj.Channel(end+1) = Channel;
             obj.Channel(end).Name = 'Background Mask';
@@ -179,7 +181,7 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             end
             Processed = obj.get_channel('Processed');
             if isempty('Processed')
-                warning('Image needs to flattened first')
+                warning('Image needs to be flattened first')
                 return
             end
             
@@ -266,14 +268,9 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
         function find_and_classify_fibrils_old(obj, KernelWindowX,...
                 KernelWindowY, KernelStepSizeX, KernelStepSizeY,ComboSumThresh,DebugBool)
            
-            Processed = obj.get_channel('Processed');
-            if isempty(Processed)
-                Processed = obj.get_channel('Height (measured) (Trace)');
-                if isempty(Processed)
-                    Processed = obj.get_channel('Height (Trace)');
-                end
+            [Processed,~,isProcessed] = obj.get_unprocessed_height_channel('Processed');
+            if ~isProcessed
                 Processed.Name = 'Processed';
-%                 Processed.Image = AFMImage.subtract_line_fit_hist(Processed.Image,.4);
                 for i=1:5
                     Processed.Image = AFMImage.subtract_line_fit_vertical_rov(Processed.Image,.2,0);
                 end

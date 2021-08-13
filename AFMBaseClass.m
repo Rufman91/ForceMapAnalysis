@@ -10,7 +10,7 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle
         FileType = 'Image'
         ScanSizeX           % Size of imaged window in X-direction
         ScanSizeY           % Size of imaged window in Y-direction
-        ScanAngle       % in degrees (°)
+        ScanAngle = 0   % in degrees (°)
         NumPixelsX
         NumPixelsY
         OriginX = 0
@@ -101,7 +101,7 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle
         
         function construct_list_to_map_relations(obj)
             k = 1;
-            obj.List2Map = zeros(obj.NCurves,2);
+            obj.List2Map = zeros(obj.NumPixelsX*obj.NumPixelsY,2);
             if isequal(obj.FileType,'quantitative-imaging-map')
                 for i=1:obj.NumPixelsX
                     for j=1:obj.NumPixelsY
@@ -163,6 +163,38 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle
             if k == 0
                 ChannelStruct = [];
                 Index = [];
+            end
+        end
+        
+        function [Channel,Index,FoundRequested] = get_unprocessed_height_channel(obj,ChannelName)
+            % Goes over all possible variations of height channels in a
+            % certain order and spits out an alternative one should the
+            % specified one not exist
+            
+            HeightChannelList = {'Height (measured) (Trace)',...
+                                    'Height (Trace)',...
+                                    'Height (measured)',...
+                                    'Height',...
+                                    'Height (measured) (Retrace)',...
+                                    'Height (Retrace)'};
+            
+            [Channel,Index] = obj.get_channel(ChannelName);
+            if ~isempty(Channel)
+                FoundRequested = true;
+                return
+            end
+            
+            for i=1:length(HeightChannelList)
+                [Channel,Index] = obj.get_channel(HeightChannelList{i});
+                if ~isempty(Channel)
+                    warning(sprintf('Could not find a Channel named "%s", loaded Channel "%s" instead',ChannelName,HeightChannelList{i}))
+                    FoundRequested = false;
+                    return
+                end
+            end
+            
+            if isempty(Channel)
+                error('No Channel found')
             end
         end
         

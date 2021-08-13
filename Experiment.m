@@ -3746,7 +3746,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                                 (isequal(FileExtension,'jpk-force-map') || isequal(FileExtension,'jpk-qi-data'))
                             % All Good
                         elseif ((Index == 3) || (Index == 5)) &&...
-                                (isequal(FileExtension,'jpk'))
+                                (isequal(FileExtension,'jpk') || isequal(FileExtension,'jpk-qi-image'))
                             % All Good
                         elseif (Index == 4)&&...
                                 (isequal(FileExtension,'sdf'))
@@ -3827,8 +3827,8 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                             'Valid Types (*.sdf)'};
                     case .53
                         Index = 3;
-                        AllowedFiles = {'*.jpk',...
-                            'Valid Types (*.jpk)'};
+                        AllowedFiles = {'*.jpk;*.jpk-qi-image',...
+                            'Valid Types (*.jpk,*.jpk-qi-image)'};
                     case .7
                         Index = 2;
                         AllowedFiles = {'*.jpk-force-map;*.jpk-qi-data',...
