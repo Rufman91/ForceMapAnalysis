@@ -3819,8 +3819,8 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 switch ButtonPos(2)
                     case .16
                         Index = 5;
-                        AllowedFiles = {'*.jpk',...
-                            'Valid Types (*.jpk)'};
+                        AllowedFiles = {'*.jpk;*.jpk-qi-image',...
+                            'Valid Types (*.jpk,*.jpk-qi-image)'};
                     case .34
                         Index = 4;
                         AllowedFiles = {'*.sdf',...
