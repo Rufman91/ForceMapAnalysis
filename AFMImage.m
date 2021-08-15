@@ -147,17 +147,18 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             
             Channel = obj.get_unprocessed_height_channel('Height (measured) (Trace)');
             Based = imgaussfilt(AFMImage.subtract_line_fit_hist(Channel.Image,0.4));
+            Channel.Image = Based;
             obj.Channel(end+1) = Channel;
             obj.Channel(end).Name = 'Background Mask';
             obj.Channel(end).Unit = 'Logical';
-            obj.Channel(end).Image = obj.mask_background_by_threshold(Based,1);
-            Based = obj.masked_plane_fit(Based,obj.Channel(end).Image);
-            ConeHeight = range(Based,'all');
+            obj.Channel(end).Image = obj.mask_background_by_threshold(Channel.Image,1);
+            Channel.Image = obj.masked_plane_fit(Channel,obj.Channel(end).Image);
+            ConeHeight = range(Channel.Image,'all');
             Cone = obj.cone(obj.NumPixelsX,obj.NumPixelsY,ConeHeight,obj.ScanSizeX,obj.ScanSizeY,10e-9);
             obj.Channel(end+1) = Channel;
             obj.Channel(end).Name = 'Eroded Tip';
             obj.Channel(end).Unit = 'm';
-            obj.Channel(end).Image = obj.deconvolute_by_mathematical_morphology(Based,Cone);
+            obj.Channel(end).Image = obj.deconvolute_by_mathematical_morphology(Channel.Image,Cone);
             
             StepSize = 1e-9;
             
@@ -994,10 +995,12 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             AngleMask(:,1:(KernelCenter-1)) = [];
         end
         
-        function OutImage = masked_plane_fit(Image,Mask)
+        function OutImage = masked_plane_fit(Channel,Mask)
+            
+            Image = Channel.Image;
             
             % Convert Image to Point Cloud for plane fit
-            [X,Y,Z] = AFMImage.convert_masked_to_point_cloud(Image,Mask);
+            [X,Y,Z] = AFMImage.convert_masked_to_point_cloud(Channel,Mask);
             
             [Norm,~,Point] = AFMImage.affine_fit([X Y Z]);
             Plane = zeros(size(Image));
@@ -1250,6 +1253,13 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                     OutLine(Indizes) = interp1([BeforeIndex AfterIndex],[BeforePoint AfterPoint],Indizes);
                 end
             end
+        end
+        
+        function OutChannel = project_height_image_to_tilted_surface(X,Y,Z,PolarAngle,AzimuthalAngle)
+            % Creates an alternative projection of a list of points in
+            % space X,Y,Z, quantizes them onto a grid, choosing the closest
+            % point to the surface, should multiple points fall into a
+            % pixel.
         end
     end
     
@@ -1769,21 +1779,13 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             V = V(:,2:end);
         end
         
-        function [X,Y,Z] = convert_masked_to_point_cloud(Image,Mask,ScanSizeX,ScanSizeY,OriginX,OriginY,ScanAngle)
+        function [X,Y,Z] = convert_masked_to_point_cloud(InChannel,Mask)
             
-            if nargin<4
-                ScanSizeX = 1;
-                ScanSizeY = 1;
-                OriginX = 0;
-                OriginY = 0;
-                ScanAngle = 0;
-            end
-            if nargin<7
-                OriginX = 0;
-                OriginY = 0;
-                ScanAngle = 0;
+            if nargin < 2
+                Mask = ones(size(InChannel.Image));
             end
             
+            Image = InChannel.Image;
             
             [X,Y] = find(Mask);
             Z = zeros(length(X),1);
@@ -1795,11 +1797,11 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             % the Origin so first shift the origin to mid image, then rotate and finally scale and shift to OriginX/Y;
             X1 = X - (size(Image,1)/2 + 1);
             Y1 = Y - (size(Image,2)/2 + 1);
-            X = X1.*cosd(ScanAngle) + Y1.*sind(ScanAngle);
-            Y = -X1.*sind(ScanAngle) + Y1.*cosd(ScanAngle);
+            X = X1.*cosd(InChannel.ScanAngle) + Y1.*sind(InChannel.ScanAngle);
+            Y = -X1.*sind(InChannel.ScanAngle) + Y1.*cosd(InChannel.ScanAngle);
             
-            X = X.*ScanSizeX - OriginX;
-            Y = Y.*ScanSizeY - OriginY;
+            X = X.*InChannel.ScanSizeX/InChannel.NumPixelsX - InChannel.OriginX;
+            Y = Y.*InChannel.ScanSizeY/InChannel.NumPixelsY - InChannel.OriginY;
         end
         
         function [XOut,YOut] = rotate_and_shift_point_cloud(X,Y,ShiftX,ShiftY,Angle)
