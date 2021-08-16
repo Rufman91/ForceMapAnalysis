@@ -143,7 +143,7 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             
         end
         
-        function deconvolute_cantilever_tip(obj)
+        function deconvolute_cantilever_tip(obj,StepSize)
             
             Channel = obj.get_unprocessed_height_channel('Height (measured) (Trace)');
             Based = imgaussfilt(AFMImage.subtract_line_fit_hist(Channel.Image,0.4));
@@ -160,16 +160,23 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             obj.Channel(end).Unit = 'm';
             obj.Channel(end).Image = obj.deconvolute_by_mathematical_morphology(Channel.Image,Cone);
             
-            StepSize = 1e-9;
+            if nargin < 2
+                StepSize = 1e-9;
+            end
             
             PixelSizeX = obj.ScanSizeX/obj.NumPixelsX;
             PixelSizeY = obj.ScanSizeY/obj.NumPixelsY;
             
+            h = waitbar(1/3,'Calculating projected tip area');
+            
             obj.ProjectedTipArea = obj.calculate_projected_area(obj.Channel(end).Image,PixelSizeX,PixelSizeY,StepSize);
+            
+            waitbar(2/3,'Calculating depth dependent tip radius')
             
             obj.DepthDependendTipRadius = obj.calculate_depth_dependend_tip_data(obj.ProjectedTipArea,75);
             
             obj.hasDeconvolutedCantileverTip = true;
+            close(h); 
         end
         
         function deconvolute_image(obj,CTClassInstance)
@@ -1008,7 +1015,7 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             % complete height data to generate the leveled height data.
             for i=1:size(Image,1)
                 for j=1:size(Image,2)
-                    Plane(i,j) = (Point(3)-Norm(1)/Norm(3)*i-Norm(2)/Norm(3)*j);
+                    Plane(i,j) = (Point(3)-Norm(1)/Norm(3)*i*Channel.ScanSizeX/Channel.NumPixelsX-Norm(2)/Norm(3)*j*Channel.ScanSizeY/Channel.NumPixelsY);
                 end
             end
             
@@ -1255,11 +1262,40 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             end
         end
         
-        function OutChannel = project_height_image_to_tilted_surface(X,Y,Z,PolarAngle,AzimuthalAngle)
+        function [GridX,GridY,ProjLength] = project_height_image_to_tilted_surface(X,Y,Z,InChannel,PolarAngle,AzimuthalAngle)
             % Creates an alternative projection of a list of points in
             % space X,Y,Z, quantizes them onto a grid, choosing the closest
             % point to the surface, should multiple points fall into a
             % pixel.
+            
+            u1 = [ cos(PolarAngle)*cos(AzimuthalAngle) ; cos(PolarAngle)*sin(AzimuthalAngle) ; cos(PolarAngle) ];
+            u2 = [ -sin(AzimuthalAngle) ; cos(AzimuthalAngle) ; 0 ];
+            
+            % Define the projection matrix. It is calculated from P=A*A^T,
+            % where A=[u1,u2] and u1,u2 are the base vectors of the plane the 
+            % point cloud needs to be projected to
+            P = [cos(PolarAngle)^2*cos(AzimuthalAngle)^2+sin(AzimuthalAngle)^2 ...
+                -cos(AzimuthalAngle)*sin(PolarAngle)^2*sin(AzimuthalAngle) ...
+                cos(PolarAngle)*cos(AzimuthalAngle)*sin(PolarAngle) ;...
+                -cos(AzimuthalAngle)*sin(PolarAngle)^2*sin(AzimuthalAngle) ...
+                cos(AzimuthalAngle)^2+cos(PolarAngle)^2*sin(AzimuthalAngle)^2 ...
+                cos(PolarAngle)*sin(PolarAngle)*sin(AzimuthalAngle) ;...
+                cos(PolarAngle)*cos(AzimuthalAngle)*sin(PolarAngle) ...
+                cos(PolarAngle)*sin(PolarAngle)*sin(AzimuthalAngle) ...
+                sin(PolarAngle)^2];
+            
+            L = length(X);
+            for i=1:L
+                V = [X(i); Y(i); Z(i)];
+                VHat = P*V;
+                XHat(i) = VHat(1);
+                YHat(i) = VHat(2);
+                ZHat(i) = VHat(3);
+                ProjLength(i) = norm(VHat - V);
+                GridX(i) = VHat'*u1;
+                GridY(i) = VHat'*u2;
+            end
+            
         end
     end
     
