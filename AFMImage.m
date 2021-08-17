@@ -1262,27 +1262,54 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             end
         end
         
-        function [GridX,GridY,ProjLength] = project_height_image_to_tilted_surface(X,Y,Z,InChannel,PolarAngle,AzimuthalAngle)
+        function [GridX,GridY,ProjLength,XHat,YHat,ZHat] = project_height_image_to_tilted_surface(X,Y,Z,InChannel,PolarAngle,AzimuthalAngle)
             % Creates an alternative projection of a list of points in
             % space X,Y,Z, quantizes them onto a grid, choosing the closest
             % point to the surface, should multiple points fall into a
             % pixel.
             
-            u1 = [ cos(PolarAngle)*cos(AzimuthalAngle) ; cos(PolarAngle)*sin(AzimuthalAngle) ; cos(PolarAngle) ];
+            u1 = [ cos(PolarAngle)*cos(AzimuthalAngle) ; cos(PolarAngle)*sin(AzimuthalAngle) ; -sin(PolarAngle) ];
             u2 = [ -sin(AzimuthalAngle) ; cos(AzimuthalAngle) ; 0 ];
             
+            % The pointcloud needs to be shifted perpendicular to the
+            % surface to be projected on to avoid numerical instabilities
+            % as well as deformations caused by zero-crossings ignored by the
+            % norm-operation. Add a vector to X,Y,Z a few ranges in length
+            % and in direction u1 x u2 (cross-operation) = u3, with u3
+            % being the radial base vector in spherical coordinates;
+            
+            u3 = [ sin(PolarAngle)*cos(AzimuthalAngle) ; sin(PolarAngle)*sin(AzimuthalAngle) ; cos(PolarAngle) ];
+            
+            X = X - mean(X);
+            Y = Y - mean(Y);
+            Z = Z - mean(Z);
+            
+            Range = max([range(X) range(Y) range(Z)]);
+            
+            X = X + 10*Range*u3(1);
+            Y = Y + 10*Range*u3(2);
+            Z = Z + 10*Range*u3(3);
+            
             % Define the projection matrix. It is calculated from P=A*A^T,
-            % where A=[u1,u2] and u1,u2 are the base vectors of the plane the 
+            % where A=[u1,u2] and u1,u2 are the base vectors of the plane the
             % point cloud needs to be projected to
-            P = [cos(PolarAngle)^2*cos(AzimuthalAngle)^2+sin(AzimuthalAngle)^2 ...
-                -cos(AzimuthalAngle)*sin(PolarAngle)^2*sin(AzimuthalAngle) ...
-                cos(PolarAngle)*cos(AzimuthalAngle)*sin(PolarAngle) ;...
-                -cos(AzimuthalAngle)*sin(PolarAngle)^2*sin(AzimuthalAngle) ...
-                cos(AzimuthalAngle)^2+cos(PolarAngle)^2*sin(AzimuthalAngle)^2 ...
-                cos(PolarAngle)*sin(PolarAngle)*sin(AzimuthalAngle) ;...
-                cos(PolarAngle)*cos(AzimuthalAngle)*sin(PolarAngle) ...
-                cos(PolarAngle)*sin(PolarAngle)*sin(AzimuthalAngle) ...
+            P = [cos(PolarAngle)^2*cos(AzimuthalAngle)^2 + sin(AzimuthalAngle)^2 ...
+                -cos(AzimuthalAngle)*sin(AzimuthalAngle) + cos(PolarAngle)^2*cos(AzimuthalAngle)*sin(AzimuthalAngle) ...
+                -cos(PolarAngle)*cos(AzimuthalAngle)*sin(PolarAngle) ;...
+                -cos(AzimuthalAngle)*sin(AzimuthalAngle) + cos(PolarAngle)^2*cos(AzimuthalAngle)*sin(AzimuthalAngle) ...
+                cos(AzimuthalAngle)^2 + cos(PolarAngle)^2*sin(AzimuthalAngle)^2 ...
+                -cos(PolarAngle)*sin(PolarAngle)*sin(AzimuthalAngle) ;...
+                -cos(PolarAngle)*cos(AzimuthalAngle)*sin(PolarAngle) ...
+                -cos(PolarAngle)*sin(PolarAngle)*sin(AzimuthalAngle) ...
                 sin(PolarAngle)^2];
+            
+            
+            XHat = zeros(size(X));
+            YHat = zeros(size(X));
+            ZHat = zeros(size(X));
+            ProjLength = zeros(size(X));
+            GridX = zeros(size(X));
+            GridY = zeros(size(X));
             
             L = length(X);
             for i=1:L
