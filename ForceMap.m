@@ -286,11 +286,15 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             end
         end
         
-        function base_and_tilt(obj,RunMode)
+        function base_and_tilt(obj,RunMode,TiltCorrectionBool)
             % subtract baseline and tilt from the forcecurve by fitting a function to
             % the non contact domain the function tries to fit a non-affine-linear
             % function. If the linear fit is too bad, the function tries a 9th grade
             % polynomial fit instead
+            
+            if nargin < 3
+                TiltCorrectionBool = true;
+            end
             
             Range = find(obj.SelectedCurves);
             h = waitbar(0,'Setting up...');
@@ -302,7 +306,11 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 try
                     [ncd , ncidx] = ForceMap.no_contact_domain(AppForce);
                     Params = polyfit(HHApp(1:length(ncd)),ncd,1);
-                    obj.Basefit{i} = Params;
+                    if TiltCorrectionBool
+                        obj.Basefit{i} = Params;
+                    else
+                        obj.Basefit{i} = [0 Params(2)];
+                    end
                 catch
                     warning('Error in base and tilt. Skipping current force curve and marked as unselected')
                     obj.SelectedCurves(i) = false;

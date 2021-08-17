@@ -785,7 +785,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             obj.write_to_log_file('','','end')
         end
         
-        function force_map_analysis_general(obj,CPOption,EModOption,BaseLineCorrectBool,TemporaryLoadInBool,UseTipInHertzBool)
+        function force_map_analysis_general(obj,CPOption,EModOption,BaseLineCorrectBool,TemporaryLoadInBool,UseTipInHertzBool,TiltCorrectionBool)
             % force_map_analysis_general(obj,CPOption,EModOption)
             %
             % CPOption = 'Snap-In' ... Preferred Option for data with
@@ -818,9 +818,14 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 BaseLineCorrectBool = false;
                 TemporaryLoadInBool = true;
                 UseTipInHertzBool = true;
+                TiltCorrectionBool = true;
             elseif nargin < 5
                 TemporaryLoadInBool = true;
                 UseTipInHertzBool = true;
+                TiltCorrectionBool = true;
+            elseif nargin < 6
+                UseTipInHertzBool = true;
+                TiltCorrectionBool = true;
             end
             
             obj.write_to_log_file('Analysis Function','force_map_analysis_general()','start')
@@ -910,7 +915,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 
                 waitbar(i/NLoop,h,sprintf('Processing ForceMap %i/%i\nFitting Base Line',i,NLoop));
                 if ~obj.FM{i}.BaseAndTiltFlag
-                    obj.FM{i}.base_and_tilt('linear');
+                    obj.FM{i}.base_and_tilt('linear',TiltCorrectionBool);
                 if i == 1
                     obj.write_to_log_file('Baseline and Tilt option','linear')
                 end
