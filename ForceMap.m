@@ -305,7 +305,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 waitbar(prog,h,'processing baseline fits...');
                 try
                     [ncd , ncidx] = ForceMap.no_contact_domain(AppForce);
-                    Params = polyfit(HHApp(1:length(ncd)),ncd,1);
+                    Params = polyfit(HHApp(1:length(ncd)),ncd,2);
                     if TiltCorrectionBool
                         obj.Basefit{i} = Params;
                     else
