@@ -171,7 +171,7 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             
             obj.ProjectedTipArea = obj.calculate_projected_area(obj.Channel(end).Image,PixelSizeX,PixelSizeY,StepSize);
             
-            waitbar(2/3,'Calculating depth dependent tip radius')
+            waitbar(2/3,h,'Calculating depth dependent tip radius');
             
             obj.DepthDependendTipRadius = obj.calculate_depth_dependend_tip_data(obj.ProjectedTipArea,75);
             
@@ -1323,6 +1323,39 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 GridY(i) = VHat'*u2;
             end
             
+            OutChannel = AFMImage.convert_point_cloud_to_image(GridX,GridY,ProjLength,InChannel);
+            
+        end
+        
+        function OutChannel = convert_point_cloud_to_image(X,Y,Z,InChannel,ResMultiplier)
+            % Embedds X and Y into an Image grid with Pixel values Z. If
+            % multiple pointas fall into one pixel, the one with higher Z
+            % value is chosen. If a pixel is empty, it is interpolated
+            % from neighboring points.
+            
+            if nargin < 5
+                ResMultiplier = 1;
+            end
+            
+            DummyScaled = imresize(InChannel.Image,ResMultiplier);
+            OutChannel = InChannel;
+            OutChannel.NumPixelsX = size(DummyScaled,1);
+            OutChannel.NumPixelsY = size(DummyScaled,2);
+            OutChannel.ScanSizeX = range(X);
+            OutChannel.ScanSizeY = range(Y);
+            
+            % Quantize the X and Y coordinates and sort out multiples with
+            % lower z-values.
+            XMult = (OutChannel.NumPixelsX-1)/OutChannel.ScanSizeX;
+            YMult = (OutChannel.NumPixelsY-1)/OutChannel.ScanSizeY;
+            XQ = floor((X-min(X)).*XMult) + 1;
+            YQ = floor((Y-min(Y)).*YMult) + 1;
+            for i=1:OutChannel.NumPixelsX
+                for j=1:OutChannel.NumPixelsY
+                    IndexStruct(i,j).Indizes = find(XQ==i & YQ==j);
+                end
+            end
+                
         end
     end
     

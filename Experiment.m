@@ -2192,7 +2192,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 CurrentAxHeight = round(h.Fig.Position(4)*h.ImAx(Index).Position(4));
                 CurrentAxWidth = round(h.Fig.Position(3)*h.ImAx(Index).Position(3));
                 AFMImage.draw_scalebar_into_current_image(Channel.NumPixelsX,Channel.NumPixelsY,Channel.ScanSizeX,BarToImageRatio,CurrentAxHeight,CurrentAxWidth);
-                c = colorbar;
+                c = colorbar('northoutside');
                 c.FontSize = round(h.ReferenceFontSize*(CurrentAxHeight/756));
                 c.Color = h.ColorMode(h.ColorIndex).Text;
                 c.Label.String = sprintf('%s [%s]',h.Channel{Index},h.Unit{Index});
@@ -2244,7 +2244,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 filter = {'*.png';'*.tif'};
                 [file, path] = uiputfile(filter);
                 FullFile = fullfile(path,file);
-                exportgraphics(h.Fig,FullFile,'Resolution',200,'BackgroundColor','current')
+                exportgraphics(h.Fig,FullFile,'Resolution',300,'BackgroundColor','current')
             end
             
             function changed_color(varargin)
