@@ -1262,11 +1262,20 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             end
         end
         
-        function [GridX,GridY,ProjLength,XHat,YHat,ZHat] = project_height_image_to_tilted_surface(X,Y,Z,InChannel,PolarAngle,AzimuthalAngle)
+        function [OutChannel,GridX,GridY,ProjLength] = project_height_image_to_tilted_surface(InChannel,PolarAngle,AzimuthalAngle,ResMultiplier,UpscaleMult)
             % Creates an alternative projection of a list of points in
             % space X,Y,Z, quantizes them onto a grid, choosing the closest
             % point to the surface, should multiple points fall into a
             % pixel.
+            
+            % Upscale to UpscaleMult*ResMultiplier in order to get enough points to
+            % fill all pixels in the endresult
+            
+            InChannel.Image = imresize(InChannel.Image,UpscaleMult*ResMultiplier);
+            InChannel.NumPixelsX = size(InChannel.Image,1);
+            InChannel.NumPixelsY = size(InChannel.Image,2);
+            
+            [X,Y,Z] = AFMImage.convert_masked_to_point_cloud(InChannel,AFMImage.mask_background_by_threshold(InChannel.Image,50,0));
             
             u1 = [ cos(PolarAngle)*cos(AzimuthalAngle) ; cos(PolarAngle)*sin(AzimuthalAngle) ; -sin(PolarAngle) ];
             u2 = [ -sin(AzimuthalAngle) ; cos(AzimuthalAngle) ; 0 ];
@@ -1323,7 +1332,7 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 GridY(i) = VHat'*u2;
             end
             
-            OutChannel = AFMImage.convert_point_cloud_to_image(GridX,GridY,ProjLength,InChannel);
+            OutChannel = AFMImage.convert_point_cloud_to_image(GridX,GridY,ProjLength,InChannel,1/UpscaleMult);
             
         end
         
@@ -1350,12 +1359,17 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             YMult = (OutChannel.NumPixelsY-1)/OutChannel.ScanSizeY;
             XQ = floor((X-min(X)).*XMult) + 1;
             YQ = floor((Y-min(Y)).*YMult) + 1;
-            for i=1:OutChannel.NumPixelsX
-                for j=1:OutChannel.NumPixelsY
-                    IndexStruct(i,j).Indizes = find(XQ==i & YQ==j);
+            
+            I = zeros(OutChannel.NumPixelsX,OutChannel.NumPixelsY);
+            for i=1:length(XQ)
+                if I(XQ(i),YQ(i)) < Z(i)
+                    I(XQ(i),YQ(i)) = Z(i);
                 end
             end
-                
+            
+            I(I==0) = min(Z);
+            
+            OutChannel.Image = I;
         end
     end
     
@@ -2164,6 +2178,5 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             CutOff = Thresholds(MaxIndex);
             
         end
-        
     end
 end
