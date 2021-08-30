@@ -1075,7 +1075,7 @@ classdef Experiment < matlab.mixin.Copyable
             
             % force map loop
             for ii=1:obj.NumForceMaps
-            % for ii=270 % debugging
+            % for ii=1:20 % debugging
                 if isequal(KeepFlagged,'Yes') && obj.SMFSFlag.Preprocessed(ii) == 1
                     continue
                 end
@@ -1111,7 +1111,7 @@ classdef Experiment < matlab.mixin.Copyable
             
             % Loop over the imported force maps
             for ii=1:obj.NumForceMaps
-            %for ii=46:obj.NumForceMaps % Debugging
+            %for ii=1:20 % Debugging
                 if isequal(KeepFlagged,'Yes') && obj.SMFSFlag.Preprocessed(ii) == 1
                     continue
                 end
@@ -1145,8 +1145,8 @@ classdef Experiment < matlab.mixin.Copyable
             cd(currpath); 
             
             % Loop over the imported force maps
-            for ii=1:obj.NumForceMaps
-            %for ii=23:obj.NumForceMaps % Debugging
+            %for ii=1:obj.NumForceMaps
+            for ii=1:10 % Debugging
                % Command window output
                sprintf('Force Map No. %d of %d',ii,obj.NumForceMaps) % Gives current Force Map Position
                % Run the chosen functions
@@ -1235,8 +1235,8 @@ classdef Experiment < matlab.mixin.Copyable
             cd(currpath); 
             
             % Loop over the imported force maps
-            for ii=1:obj.NumForceMaps
-            %for ii=2 % Debugging
+            %for ii=1:obj.NumForceMaps
+            for ii=1:10 % Debugging
             % Presort condition 
               %  if ~obj.SMFSFlag(ii)   % Selects all flagged 1 force maps
                 %if obj.SMFSFlag(ii)     % Selects all flagged 0 force maps
@@ -1825,16 +1825,18 @@ classdef Experiment < matlab.mixin.Copyable
         function SMFS_testing_function(obj,XMin,XMax,YMin,YMax,ii)
             % Function to quickly loop over all force maps for testing and
             % debugging
-            for ii=1:obj.NumForceMaps
-            %for ii=1
+            % for ii=1:obj.NumForceMaps
+            for ii=1
+                obj.FM{ii}.initialize_flags
                   % obj.FM{ii}.fc_fc_measurement_prop;
 %                   obj.FM{ii}.fc_pulling_length
 %                   obj.FM{ii}.fc_adhesion_energy_idxpulllength
 %                   obj.FM{ii}.fc_adhesion_energy_threshold
                 %    obj.FM{ii}.find_idx
               %    obj.FM{ii}.fc_adh_force_max
-              obj.FM{ii}.fc_print
-            
+              obj.FM{ii}.fc_datapoints_accordance
+              
+              %obj.FM{ii}.fc_app_ret_substraction            
             end
             
           

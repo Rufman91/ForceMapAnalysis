@@ -157,8 +157,10 @@ classdef ForceMap < matlab.mixin.Copyable
         ChipCant        % AFM-Chip number and Cantilever label
         Chipbox         % AFM-Chipbox number (in Roman numerals)
         SMFSFlag        %
+        HHAppAlign={}   % capacitive-sensor-height approach data in meters with aligned datapoints to the corresponding retraction data
+        HHRetAlign={}   % capacitive-sensor-height retraction data in meters with aligned datapoints to the corresponding approach data
         BasedRetCorr    % BasedRet data corrected based on a selection of the approach data
-        BasedRetCorr2   % BasedRet data corrected based on a selection of the retraction data
+        BasedRetCorr2   % BasedRet data corrected based on a selection of the retraction data        
         CorrMeanApp     % Mean of a selection of the approach data for baseline correction
         CorrStdApp      % Corresponding standard deviation of the selection of the approach data for baseline correction
         CorrMeanRet     % Mean of a selection of the retraction data for baseline correction
@@ -1274,7 +1276,120 @@ classdef ForceMap < matlab.mixin.Copyable
         % line([x100 x100], ylim,'Color','k'); % Draws a vertical line
         % line([x500 x500], ylim,'Color','k'); % Draws a vertical line
         end
+        
+        function fc_datapoints_accordance(obj)
+            % Verifies the amount of data points in the approach and
+            % retraction data and, if necessary, aligns them. Additionally,
+            % the force curves are flagged:
+            % SMFSFlag.Aligned = '0': Force curves has not been checked 
+            % SMFSFlag.Aligned = '1': Original data where already aligned           
+            % SMFSFlag.Aligned = '2': Data sets had been aligned
+            
+            for jj=1:obj.NCurves
+            % Allocate data
+            xAppData=obj.HHApp{:,jj};
+            xRetData=obj.HHRet{:,jj};
+            % Determine number of data points
+            AppDataPts=length(obj.HHApp{:,jj});
+            RetDataPts=length(obj.HHRet{:,jj});
+            % Set flags 
+            if AppDataPts == RetDataPts
+                obj.SMFSFlag.Aligned(jj)=1;
+            elseif AppDataPts ~= RetDataPts
+                obj.SMFSFlag.Aligned(jj)=2;
+                % Align the number of data points
+                  DataPtsDiff=max(AppDataPts,RetDataPts)-min(AppDataPts,RetDataPts); % Determine the difference in data points of approach and retraction data
+                  if AppDataPts > RetDataPts
+                    xAppData(1:DataPtsDiff)=[];   
+                    obj.HHAppAlign{jj}=xAppData;    
+                  elseif AppDataPts < RetDataPts          
+                    xRetData(1+end-DataPtsDiff:end)=[];                    
+                    obj.HHRetAlign{jj}=xRetData;          
+                  end    
+            end
+            end
+                %% Appendix
+%                 close all
+%                 % Define variables
+%                 ii=2;
+%                 jj=15;
+%                 % Allocate data
+%                 xApp=obj.THApp{ii}-obj.CP_HardSurface(ii);
+%                 xRet=obj.THRet{ii}-obj.CP_HardSurface(ii);
+%                 yApp=obj.BasedApp{ii};
+%                 yRet=obj.BasedRetCorr2{ii};  
+% 
+%                 hold on
+%                 plot(xApp,yApp,'b')
+%                 plot(xRet,yRet,'r')
+%                 plot(xRet(1+end-DataPtsDiff:end),yRet(1+end-DataPtsDiff:end),'g')
+            
+        end
+        
+        function fc_app_ret_substraction(obj,DataShareStartApp,DataShareEndApp,DataShareStartRet,DataShareEndRet)
+            % fc_based_ret_correction: A function to correct for an AFM
+            % based baseline deviation between the approach and retraction
+            % data
+        if nargin <2
+            DataShareStartApp=0.05; % 5%
+            DataShareEndApp=0.1; % 10%
+            DataShareStartRet=0.01; % 1%
+            DataShareEndRet=0.06; % 5%
+        end
+        % Loop over all force curves  
+        for ii=1:obj.NCurves
+            %%%
+            aa=a.FM{1}.BasedApp{kk}-a.FM{1}.BasedRet{kk}
+            %%%
+            
+            % Correction based on the approach data
+            DataPtsApp=size(obj.BasedApp{ii}); % Determine the amount of data points in the force curve 
+            LimitIdxApp1=round(DataPtsApp(1)*DataShareStartApp); % Determine the corresponidng index
+            LimitIdxApp2=round(DataPtsApp(1)*DataShareEndApp);
+            obj.CorrMeanApp(ii)=mean(abs(obj.BasedApp{ii}(LimitIdxApp1:LimitIdxApp2,1))-abs(obj.BasedRet{ii}(DataPtsApp(1)-LimitIdxApp2:DataPtsApp(1)-LimitIdxApp1,1))); % Calculate the mean of the difference data
+            obj.CorrStdApp(ii)=std(obj.BasedApp{ii}(DataPtsApp(1)-LimitIdxApp2:DataPtsApp(1)-LimitIdxApp1,1));             
+            obj.BasedRetCorr{ii}=obj.BasedRet{ii}-obj.CorrMeanApp(ii); % Correct the BasedRet data with the mean of the correction data
+            
+            % Correction based on the retraction data
+            DataPtsRet=size(obj.BasedRet{ii}); % Determine the amount of data points in the force curve 
+            LimitIdxRet1=round(DataPtsRet(1)*DataShareStartRet); % Determine the corresponidng index
+            LimitIdxRet2=round(DataPtsRet(1)*DataShareEndRet);
+            obj.CorrMeanRet(ii)=mean(obj.BasedRet{ii}(DataPtsRet(1)-LimitIdxRet2:DataPtsRet(1)-LimitIdxRet1,1)); % Calculate the mean of the difference data
+            obj.CorrStdApp(ii)=std(obj.BasedRet{ii}(DataPtsRet(1)-LimitIdxRet2:DataPtsRet(1)-LimitIdxRet1,1));   % Calculate the standard deviation of the difference data            
+            obj.BasedRetCorr2{ii}=obj.BasedRet{ii}-obj.CorrMeanRet(ii); % Correct the BasedRet data with the mean of the correction data          
+        end   
+              
+        %% Appendix
+        close all
+        % Define variables
+        kk=1
+        x100=-100e-9; % Defines 100nm
+        x500=-500e-9; % Defines 500nm
+        % Graphical preview
+        fig=gcf;
+        fig.Units='normalized'; % changes to normalized unit settings, necessary to receive the full screen size in the next line
+        fig.Color='white'; % changes the background color of the figure
+        fig.OuterPosition=[0.5 0 0.5 1];% changes the size of the figure to half screen
+        fig.PaperOrientation='landscape';
+        grid on
+        hold on
+        % "Origin" data
+        plot(a.FM{1}.THApp{kk}-a.FM{1}.CP_HardSurface(kk,1),a.FM{1}.BasedApp{kk},'b');
+        plot(a.FM{1}.THRet{kk}-a.FM{1}.CP_HardSurface(kk,1),a.FM{1}.BasedRet{kk},'r');
+        % Retention data corrected
+        plot(a.FM{1}.THRet{kk}-a.FM{1}.CP_HardSurface(kk,1),a.FM{ii}.BasedRetCorr{kk},'g');
+        % DataShare part of the data
+        plot(a.FM{1}.THApp{kk}(LimitIdx1:LimitIdx2,1)-a.FM{1}.CP_HardSurface(kk,1),a.FM{1}.BasedApp{kk}(LimitIdx1:LimitIdx2,1),'y');
+        plot(a.FM{1}.THRet{kk}(DataPts(1)-LimitIdx2:DataPts(1)-LimitIdx1,1)-a.FM{1}.CP_HardSurface(kk,1),a.FM{1}.BasedRet{kk}(DataPts(1)-LimitIdx2:DataPts(1)-LimitIdx1,1),'m');
+        % Markers
+        plot(a.FM{1}.THRet{kk}(ThreshIdx,1)-a.FM{1}.CP_HardSurface(kk,1),a.FM{1}.BasedRet{kk}(ThreshIdx,1),'kx','MarkerSize',20);
+        plot(a.FM{1}.THApp{kk}(ThreshIdx,1)-a.FM{1}.CP_HardSurface(kk,1),a.FM{1}.BasedApp{kk}(ThreshIdx,1),'mx','MarkerSize',20);
+        Distances lines
+        line([x100 x100], ylim,'Color','k'); % Draws a vertical line
+        line([x500 x500], ylim,'Color','k'); % Draws a vertical line
+        end
              
+        
         function fc_measurement_prop(obj)
                % fc_chipprop: A fct to read out properties about the SMFS measurements from the name of the jpk data file (i.e. "JPK-FORCE-MAP").  
                 % Chip number and Cantilever
@@ -3700,6 +3815,7 @@ classdef ForceMap < matlab.mixin.Copyable
             obj.SMFSFlag.Uncorrupt=ones(1,obj.NCurves);
             obj.SMFSFlag.Min=zeros(1,obj.NCurves);
             obj.SMFSFlag.Length=zeros(1,obj.NCurves);
+            obj.SMFSFlag.Aligned=zeros(1,obj.NCurves);
             
         end
         
