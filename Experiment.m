@@ -1746,6 +1746,13 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 'Units','normalized',...
                 'Position',[.96 .5 .04 .05]);
             
+            h.B(31) = uicontrol('Style','checkbox',...
+                'String','Use Overlay',...
+                'Value',0,...
+                'Tooltip','Green, if both Channels share an overlay',...
+                'Units','normalized',...
+                'Position',[.85 .39 .1 .03]);
+            
             h.Channel1Max = 1;
             h.Channel1Min = 0;
             h.Channel2Max = 1;
@@ -1866,7 +1873,40 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                         end
                     end
                     h.ChildLine.Visible = 'off';
-                    h.ChildLine = drawline('Position',h.MainLine.Position,...
+                    
+                    if h.B(31).Value && ...
+                            Class{h.MainIndex}.OverlayGroup.hasOverlayGroup &&...
+                            Class{h.ChildIndex}.OverlayGroup.hasOverlayGroup &&...
+                            isequal(Class{h.MainIndex}.OverlayGroup.Names,Class{h.ChildIndex}.OverlayGroup.Names)
+                        XDiff = Class{h.MainIndex}.Channel(1).OriginX - Class{h.ChildIndex}.Channel(1).OriginX;
+                        SizePerPixelX = Class{h.ChildIndex}.Channel(1).ScanSizeX./Class{h.ChildIndex}.Channel(1).NumPixelsX;
+                        XDiff = XDiff/SizePerPixelX;
+                        YDiff = Class{h.MainIndex}.Channel(1).OriginY - Class{h.ChildIndex}.Channel(1).OriginY;
+                        SizePerPixelY = Class{h.ChildIndex}.Channel(1).ScanSizeY./Class{h.ChildIndex}.Channel(1).NumPixelsY;
+                        YDiff = YDiff/SizePerPixelY;
+                        AngleDiff = Class{h.MainIndex}.Channel(1).ScanAngle - Class{h.ChildIndex}.Channel(1).ScanAngle;
+                        AngleDiff = deg2rad(AngleDiff);
+                        
+                        InitPos = h.MainLine.Position;
+                        
+                        CPos1 = [InitPos(1,1) InitPos(1,2)];
+                        CPos2 = [InitPos(2,1) InitPos(2,2)];
+                        
+                        ImCenter = [Class{h.ChildIndex}.Channel(1).NumPixelsX/2 Class{h.ChildIndex}.Channel(1).NumPixelsY/2];
+                        
+                        TempCP1 = CPos1 - ImCenter;
+                        TempCP2 = CPos2 - ImCenter;
+                        
+                        RotationMatrix = [cos(AngleDiff) -sin(AngleDiff);sin(AngleDiff) cos(AngleDiff)];
+                        
+                        CPos1 = [RotationMatrix*TempCP1']' + ImCenter + [XDiff -YDiff];
+                        CPos2 = [RotationMatrix*TempCP2']' + ImCenter + [XDiff -YDiff];
+                        
+                        InitPos = [CPos1(1) CPos1(2); CPos2(1) CPos2(2)];
+                    else
+                        InitPos = h.MainLine.Position;
+                    end
+                    h.ChildLine = drawline('Position',InitPos,...
                         'Parent',h.ImAx(h.ChildIndex),'Color',h.ColorMode(h.ColorIndex).Profile2,...
                         'LineWidth',h.ProfileLineWidth);
                     addlistener(h.ChildLine,'MovingROI',@moving_cross_section);
@@ -1984,7 +2024,40 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 h.P.LineWidth = 2;
                 h.P.Color = h.ColorMode(h.ColorIndex).Profile1;
                 if h.hasBothCrossSections && (h.hasChannel2 && h.hasChannel1)
-                    h.ChildLine = drawline('Position',h.MainLine.Position,...
+                    
+                    if h.B(31).Value && ...
+                            Class{h.MainIndex}.OverlayGroup.hasOverlayGroup &&...
+                            Class{h.ChildIndex}.OverlayGroup.hasOverlayGroup &&...
+                            isequal(Class{h.MainIndex}.OverlayGroup.Names,Class{h.ChildIndex}.OverlayGroup.Names)
+                        XDiff = Class{h.MainIndex}.Channel(1).OriginX - Class{h.ChildIndex}.Channel(1).OriginX;
+                        SizePerPixelX = Class{h.ChildIndex}.Channel(1).ScanSizeX./Class{h.ChildIndex}.Channel(1).NumPixelsX;
+                        XDiff = XDiff/SizePerPixelX;
+                        YDiff = Class{h.MainIndex}.Channel(1).OriginY - Class{h.ChildIndex}.Channel(1).OriginY;
+                        SizePerPixelY = Class{h.ChildIndex}.Channel(1).ScanSizeY./Class{h.ChildIndex}.Channel(1).NumPixelsY;
+                        YDiff = YDiff/SizePerPixelY;
+                        AngleDiff = Class{h.MainIndex}.Channel(1).ScanAngle - Class{h.ChildIndex}.Channel(1).ScanAngle;
+                        AngleDiff = deg2rad(AngleDiff);
+                        
+                        InitPos = h.MainLine.Position;
+                        
+                        CPos1 = [InitPos(1,1) InitPos(1,2)];
+                        CPos2 = [InitPos(2,1) InitPos(2,2)];
+                        
+                        ImCenter = [Class{h.ChildIndex}.Channel(1).NumPixelsX/2 Class{h.ChildIndex}.Channel(1).NumPixelsY/2];
+                        
+                        TempCP1 = CPos1 - ImCenter;
+                        TempCP2 = CPos2 - ImCenter;
+                        
+                        RotationMatrix = [cos(AngleDiff) -sin(AngleDiff);sin(AngleDiff) cos(AngleDiff)];
+                        
+                        CPos1 = [RotationMatrix*TempCP1']' + ImCenter + [XDiff -YDiff];
+                        CPos2 = [RotationMatrix*TempCP2']' + ImCenter + [XDiff -YDiff];
+                        
+                        InitPos = [CPos1(1) CPos1(2); CPos2(1) CPos2(2)];
+                    else
+                        InitPos = h.MainLine.Position;
+                    end
+                    h.ChildLine = drawline('Position',InitPos,...
                         'Parent',h.ImAx(h.ChildIndex),'Color',h.ColorMode(h.ColorIndex).Profile2,...
                         'LineWidth',h.ProfileLineWidth);
                     addlistener(h.ChildLine,'MovingROI',@moving_cross_section);

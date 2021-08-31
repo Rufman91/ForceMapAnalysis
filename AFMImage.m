@@ -616,10 +616,10 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             end
         end
         
-        function overlay_wrapper(FirstClassInstance,OverlayedClassInstance,...
+        function overlay_wrapper_old(FirstClassInstance,OverlayedClassInstance,...
                 BackgroundPercent,MinOverlap,AngleRange,UseParallel,...
                 MaxFunEval,PreMaxFunEval,NumPreSearches,NClusters)
-            % overlay_wrapper(obj,OverlayedImageClassInstance,BackgroundPercent,MinOverlap,AngleRange,UseParallel,MaxFunEval,PreMaxFunEval,NumPreSearches,NClusters)
+            % overlay_wrapper_old(obj,OverlayedImageClassInstance,BackgroundPercent,MinOverlap,AngleRange,UseParallel,MaxFunEval,PreMaxFunEval,NumPreSearches,NClusters)
             
             if nargin < 3
                 BackgroundPercent = 0;
@@ -695,6 +695,56 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             
             FirstClassInstance.hasOverlay = true;
             OverlayedClassInstance.hasOverlay = true;
+        end
+        
+        function overlay_wrapper(FirstClassInstance,OverlayedClassInstance,...
+                BackgroundPercent,MinOverlap,AngleRange,UseParallel,...
+                MaxFunEval,PreMaxFunEval,NumPreSearches,NClusters)
+            % overlay_wrapper(FirstClassInstance,OverlayedClassInstance,...
+            %    BackgroundPercent,MinOverlap,AngleRange,UseParallel,...
+            %    MaxFunEval,PreMaxFunEval,NumPreSearches,NClusters)
+            
+            if nargin < 3
+                BackgroundPercent = 0;
+                MinOverlap = .6;
+                AngleRange = 30;
+                UseParallel = true;
+                MaxFunEval = 200;
+                PreMaxFunEval = 30;
+                NumPreSearches = 84;
+                NClusters = 4;
+            end
+            
+            Channel1 = FirstClassInstance.get_channel('Processed');
+            Channel2 = OverlayedClassInstance.get_channel('Processed');
+            
+            [OutChannel,ScaleMultiplier,WhoScaled] = AFMImage.overlay_parameters_by_bayesopt(Channel1,Channel2,...
+                BackgroundPercent,MinOverlap,AngleRange,UseParallel,MaxFunEval,PreMaxFunEval,NumPreSearches,NClusters);
+            
+            OverlayedClassInstance.set_channel_positions(OutChannel.OriginX,OutChannel.OriginY,OutChannel.ScanAngle);
+            
+        end
+        
+        function create_overlay_group(AllToOneBool,varargin)
+            
+            for i=1:length(varargin)
+                Names{i} = varargin{i}.Name;
+            end
+            
+            for i=1:(length(varargin)-1)
+                if AllToOneBool
+                    AFMImage.overlay_wrapper(varargin{1},varargin{i+1})
+                else
+                    AFMImage.overlay_wrapper(varargin{i},varargin{i+1})
+                end
+            end
+            
+            for i=1:length(varargin)
+                varargin{i}.OverlayGroup.hasOverlayGroup = true;
+                varargin{i}.OverlayGroup.Size = length(varargin);
+                varargin{i}.OverlayGroup.Names = Names;
+            end
+            
         end
         
         function OutImage = subtract_line_fit_hist(InImage,CutOff)

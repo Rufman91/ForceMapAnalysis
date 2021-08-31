@@ -33,6 +33,7 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle
         % Properties for handling of image segmentation, fibril
         % segmentation, specifically
         Segment
+        OverlayGroup
     end
     
     methods
@@ -40,6 +41,7 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle
         
         function obj = AFMBaseClass()
             
+            obj.OverlayGroup.hasOverlayGroup = false;
         end
         
         function choose_segments_manually(obj,SegmentType)
@@ -227,9 +229,20 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle
             OutChannel.ScanAngle = obj.ScanAngle;
             OutChannel.NumPixelsX = obj.NumPixelsX;
             OutChannel.NumPixelsY = obj.NumPixelsY;
-            OutChannel.OriginX = 0;
-            OutChannel.OriginY = 0;
+            OutChannel.OriginX = obj.OriginX;
+            OutChannel.OriginY = obj.OriginY;
             
+        end
+        
+        function set_channel_positions(obj,OriginX,OriginY,ScanAngle)
+            
+            NumChan = length(obj.Channel);
+            
+            for i=1:NumChan
+                obj.Channel(i).OriginX = OriginX;
+                obj.Channel(i).OriginY = OriginY;
+                obj.Channel(i).ScanAngle = ScanAngle;
+            end
         end
         
         function create_pixel_difference_channel(obj,useSlowScanDirBool)
