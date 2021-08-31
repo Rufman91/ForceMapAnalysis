@@ -1885,7 +1885,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                         SizePerPixelY = Class{h.ChildIndex}.Channel(1).ScanSizeY./Class{h.ChildIndex}.Channel(1).NumPixelsY;
                         YDiff = YDiff/SizePerPixelY;
                         AngleDiff = Class{h.MainIndex}.Channel(1).ScanAngle - Class{h.ChildIndex}.Channel(1).ScanAngle;
-                        AngleDiff = deg2rad(AngleDiff);
+                        AngleDiff = deg2rad(-AngleDiff);
                         
                         InitPos = h.MainLine.Position;
                         
@@ -2036,7 +2036,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                         SizePerPixelY = Class{h.ChildIndex}.Channel(1).ScanSizeY./Class{h.ChildIndex}.Channel(1).NumPixelsY;
                         YDiff = YDiff/SizePerPixelY;
                         AngleDiff = Class{h.MainIndex}.Channel(1).ScanAngle - Class{h.ChildIndex}.Channel(1).ScanAngle;
-                        AngleDiff = deg2rad(AngleDiff);
+                        AngleDiff = deg2rad(-AngleDiff);
                         
                         InitPos = h.MainLine.Position;
                         
