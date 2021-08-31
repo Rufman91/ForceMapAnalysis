@@ -222,6 +222,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             obj.FibMask = logical(zeros(obj.NumPixelsX,obj.NumPixelsY));
             
             obj.construct_list_to_map_relations
+            obj.create_pixel_difference_channel
             
             obj.initialize_flags();
         end

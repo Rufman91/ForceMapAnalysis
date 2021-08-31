@@ -232,6 +232,29 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle
             
         end
         
+        function create_pixel_difference_channel(obj,useSlowScanDirBool)
+            
+            obj.delete_channel('Pixel Difference');
+            
+            InChannel = obj.get_unprocessed_height_channel('Processed');
+            
+            if nargin < 2
+                useSlowScanDirBool = false;
+            end
+            
+            InImage = InChannel.Image;
+            
+            if useSlowScanDirBool
+                InImage = imrotate(InImage,90);
+            end
+            
+            OutImage = AFMImage.create_pixel_difference_map(InImage);
+            
+            OutChannel = obj.create_standard_channel(OutImage,'Pixel Difference','m');
+            
+            obj.Channel(end+1) = OutChannel;
+        end
+        
         function PopUp = string_of_existing(obj)
             PopUp{1} = 'none';
             for i=1:length(obj.Channel)

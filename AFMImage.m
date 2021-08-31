@@ -141,6 +141,8 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 obj.Channel(Index) = Processed;
             end
             
+            obj.create_pixel_difference_channel;
+            
         end
         
         function deconvolute_cantilever_tip(obj,StepSize)
@@ -1370,6 +1372,13 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             I(I==0) = min(Z);
             
             OutChannel.Image = I;
+        end
+        
+        function OutImage = create_pixel_difference_map(InImage)
+            
+            OutImage = diff(InImage,1,2);
+            OutImage = imresize(OutImage,size(InImage));
+            
         end
     end
     
