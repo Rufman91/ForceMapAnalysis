@@ -1825,18 +1825,19 @@ classdef Experiment < matlab.mixin.Copyable
         function SMFS_testing_function(obj,XMin,XMax,YMin,YMax,ii)
             % Function to quickly loop over all force maps for testing and
             % debugging
-            % for ii=1:obj.NumForceMaps
-            for ii=1
-                obj.FM{ii}.initialize_flags
+             for ii=1:obj.NumForceMaps
+            %for ii=1
+         %       obj.FM{ii}.initialize_flags
                   % obj.FM{ii}.fc_fc_measurement_prop;
 %                   obj.FM{ii}.fc_pulling_length
 %                   obj.FM{ii}.fc_adhesion_energy_idxpulllength
 %                   obj.FM{ii}.fc_adhesion_energy_threshold
                 %    obj.FM{ii}.find_idx
               %    obj.FM{ii}.fc_adh_force_max
-              obj.FM{ii}.fc_datapoints_accordance
-              
-              %obj.FM{ii}.fc_app_ret_substraction            
+             % obj.FM{ii}.fc_datapoints_accordance
+              obj.FM{ii}.fc_sinoidal_fit
+              obj.FM{ii}.fc_corrected_fitdata
+           % obj.FM{ii}.test      
             end
             
           
