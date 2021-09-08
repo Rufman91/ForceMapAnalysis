@@ -48,7 +48,6 @@ classdef Experiment < matlab.mixin.Copyable
         FMFlag
         SPMFlag
         SMFSFlag
-        SMFSFlagPrint
         ReferenceSlopeFlag
         AssignedReferenceMaps
         CantileverTipFlag
@@ -1013,7 +1012,27 @@ classdef Experiment < matlab.mixin.Copyable
         end
         
         % SMFS section
-        
+                   
+        function SMFS_testing_function(obj,XMin,XMax,YMin,YMax,ii)
+            % Function to quickly loop over all force maps for testing and
+            % debugging
+             for ii=1:obj.NumForceMaps
+            %for ii=2
+               % obj.FM{ii}.initialize_flags
+                  % obj.FM{ii}.fc_fc_measurement_prop;
+                   obj.FM{ii}.fc_pulling_length
+%                   obj.FM{ii}.fc_adhesion_energy_idxpulllength
+%                   obj.FM{ii}.fc_adhesion_energy_threshold
+                %    obj.FM{ii}.find_idx
+          %       obj.FM{ii}.fc_adh_force_max
+             % obj.FM{ii}.fc_datapoints_accordance
+            %  obj.FM{ii}.fc_sinoidal_fit
+         %     obj.FM{ii}.test
+            
+            end                    
+            
+        end
+                    
         function SMFS_min_max(obj)
             
 
@@ -1081,7 +1100,7 @@ classdef Experiment < matlab.mixin.Copyable
                 end
                 waitbar(ii/NLoop,h,sprintf('Preprocessing ForceMap %i/%i\nProcessing force curves',ii,NLoop));
                 obj.FM{ii}.fc_measurement_prop             
-                obj.FM{ii}.fc_based_ret_correction
+              %  obj.FM{ii}.fc_based_ret_correction
                 waitbar(ii/NLoop,h,sprintf('Preprocessing ForceMap %i/%i\nWrapping Up And Saving',ii,NLoop));
                                 
                 obj.FM{ii}.save();
@@ -1089,7 +1108,38 @@ classdef Experiment < matlab.mixin.Copyable
             end
             close(h);
         end
-                
+                  
+        function SMFS_sinoidal_fit(obj)
+            % SMFS_sinoidal_fit: This function allows to conduct an automated presorting of the force curves 
+            % The function flags force curves and whole force maps that are
+            % non-functionalize
+            % Needed function: obj.preprocessing
+            
+             h = waitbar(0,'setting up','Units','normalized','Position',[0.4 0.3 0.2 0.1]);
+            NLoop = length(obj.ForceMapNames);
+            if sum(obj.SMFSFlag.Fit) >= 1
+                KeepFlagged = questdlg(sprintf('Some maps have been processed already.\nDo you want to skip them and keep old results?'),...
+                    'Processing Options',...
+                    'Yes',...
+                    'No',...
+                    'No');
+            else
+                KeepFlagged = 'No';
+            end
+            
+            
+            % Loop over the imported force maps
+            for ii=1:obj.NumForceMaps
+            %for ii=1:2 % Debugging
+                waitbar(ii/NLoop,h,sprintf('Preprocessing ForceMap %i/%i\nProcessing force curves',ii,NLoop));
+                obj.FM{ii}.fc_sinoidal_fit
+                obj.FM{ii}.fc_fit_based_yData
+                waitbar(ii/NLoop,h,sprintf('Preprocessing ForceMap %i/%i\nWrapping Up And Saving',ii,NLoop));
+                sprintf('Force Map No. %d of %d',ii,obj.NumForceMaps) % Gives current Force Map Position             
+            end
+            close(h);
+        end
+                       
         function SMFS_presorting(obj)
             % SMFS_presorting: This function allows to conduct an automated presorting of the force curves 
             % The function flags force curves and whole force maps that are
@@ -1111,18 +1161,17 @@ classdef Experiment < matlab.mixin.Copyable
             
             % Loop over the imported force maps
             for ii=1:obj.NumForceMaps
-            %for ii=1:20 % Debugging
+            % for ii=3 % Debugging
                 if isequal(KeepFlagged,'Yes') && obj.SMFSFlag.Preprocessed(ii) == 1
                     continue
-                end
-                obj.FM{ii}.fc_measurement_prop   
+                end   
                 waitbar(ii/NLoop,h,sprintf('Preprocessing ForceMap %i/%i\nProcessing force curves',ii,NLoop));
-        %        obj.FM{ii}.base_and_tilt('linear');
+                obj.FM{ii}.fc_TipHeight_calculation;
                 waitbar(ii/NLoop,h,sprintf('Preprocessing ForceMap %i/%i\nWrapping Up And Saving',ii,NLoop));
                 sprintf('Force Map No. %d of %d',ii,obj.NumForceMaps) % Gives current Force Map Position
                 
                 obj.FM{ii}.estimate_cp_hardsurface
-                obj.FM{ii}.fc_selection_procedure
+           %     obj.FM{ii}.fc_selection_threshold
                     if nnz(obj.FM{ii}.SMFSFlag.Min)<20 % Only if more than 20 force curves fulfil the citeria the whole force map is considered successfully functionalized
                         obj.SMFSFlag.SelectFM(ii)=0;
                     else
@@ -1132,8 +1181,8 @@ classdef Experiment < matlab.mixin.Copyable
             end
             close(h);
         end
-        
-        function SMFS_selection(obj)
+      
+        function SMFS_visual_selection(obj)
             % 
             
             % Change into the Folder of Interest
@@ -1146,11 +1195,11 @@ classdef Experiment < matlab.mixin.Copyable
             
             % Loop over the imported force maps
             %for ii=1:obj.NumForceMaps
-            for ii=1:10 % Debugging
+            for ii=1 % Debugging
                % Command window output
                sprintf('Force Map No. %d of %d',ii,obj.NumForceMaps) % Gives current Force Map Position
                % Run the chosen functions
-               obj.FM{ii}.fc_selection;     
+               obj.FM{ii}.fc_visual_selection;     
                %obj.save_experiment;        % Save immediately after each force curve
             end    
         end
@@ -1165,9 +1214,9 @@ classdef Experiment < matlab.mixin.Copyable
             % that result in natural numbers after square root extraction.
             if nargin<2
                 XMin= -inf;     % Limit of the X-axis in meters (m)
-                XMax= inf;      % Limit of the X-axis in meters (m)
+                XMax= 50e-9;      % Limit of the X-axis in meters (m)
                 YMin= -inf;     % Limit of the Y-axis in Newtons (N)
-                YMax= inf;      % Limit of the Y-axis in Newtons (N)
+                YMax= 100e-12;      % Limit of the Y-axis in Newtons (N)
                 NumFcMax = 25;   % Maximum number of force curves per figure
             elseif nargin<3
                 XMin= -inf;     % Limit of the X-axis in meters (m)
@@ -1186,14 +1235,16 @@ classdef Experiment < matlab.mixin.Copyable
             cd(currpath);
             %% loop
             for hh=1:obj.NumForceMaps
-            %for hh=36:38 % Debugging
+            %for hh=3:6 % Debugging
                sprintf('Force map No. %d',hh);
                % Print force curves containing label for the pulling length
                % and colored area for the adhesion energy               
                % 50 nm limit index
                obj.FM{hh}.fc_find_idx
+               % Baseline correction
+               obj.FM{hh}.fc_based_ret_correction
                % Pulling length
-               obj.FM{hh}.fc_pulling_length
+               obj.FM{hh}.fc_pulling_length               
                % Maximum adhesion force
                obj.FM{hh}.fc_adh_force_max
                % Adhesion energy
@@ -1235,8 +1286,8 @@ classdef Experiment < matlab.mixin.Copyable
             cd(currpath); 
             
             % Loop over the imported force maps
-            %for ii=1:obj.NumForceMaps
-            for ii=1:10 % Debugging
+            for ii=1:obj.NumForceMaps
+            %for ii=1:10 % Debugging
             % Presort condition 
               %  if ~obj.SMFSFlag(ii)   % Selects all flagged 1 force maps
                 %if obj.SMFSFlag(ii)     % Selects all flagged 0 force maps
@@ -1245,7 +1296,7 @@ classdef Experiment < matlab.mixin.Copyable
                % Command window output
                sprintf('Force Map No. %d of %d',ii,obj.NumForceMaps) % Gives current Force Map Position
                % Run the chosen functions
-               obj.FM{ii}.fc_print(XMin,XMax,YMin,YMax);     
+               obj.FM{ii}.fc_print_raw(XMin,XMax,YMin,YMax);     
              %  obj.save_experiment;        % Save immediately after each force curve
             end    
         end
@@ -1274,8 +1325,9 @@ classdef Experiment < matlab.mixin.Copyable
                 EndDate='2999.00.00';
             end
             % Loop over the imported force maps
-             for ii=1:obj.NumForceMaps
-                % Needed function               
+             % for ii=1:obj.NumForceMaps
+             for ii=3
+                 % Needed function               
                 %if ~obj.SMFSFlag(ii)     % Selects all flagged 1 force maps
                 %if obj.SMFSFlag(ii)     % Selects all flagged 0 force maps
                 %    continue
@@ -1301,8 +1353,6 @@ classdef Experiment < matlab.mixin.Copyable
                     continue
                 end  
                 % Define variables for the folder name
-                SMFSFlagConvert=num2str(obj.SMFSFlag(ii));
-                VelocityConvert=num2str(obj.FM{ii}.Velocity*1e+9); % Convert into nm
                 StartDateMod=strrep(StartDate,'.','');
                 EndDateMod=strrep(EndDate,'.','');
                 %foldername=append('FM_Flag',SMFSFlagConvert,'_',VelocityConvert,'_',obj.FM{ii}.Substrate,'_',obj.FM{ii}.EnvCond,'_',StartDateMod,'-',EndDateMod); % Defines the folder name
@@ -1312,9 +1362,8 @@ classdef Experiment < matlab.mixin.Copyable
                 warning('on','all');
                 cd(foldername)         
                % Run the chosen functions    
-               obj.FM{ii}.fc_print(XMin,XMax,YMin,YMax)
-               cd(obj.ExperimentFolder) % Move into the folder 
-               obj.SMFSFlagPrint(ii)=1;               
+               obj.FM{ii}.fc_print_raw(XMin,XMax,YMin,YMax)
+               cd(obj.ExperimentFolder) % Move into the folder                             
             end 
             %obj.save_experiment        % Save immediately after each force curve
         end
@@ -1560,8 +1609,7 @@ classdef Experiment < matlab.mixin.Copyable
         
         
         function SMFS_boxplot_pulllength(obj,XMin,XMax,YMin,YMax) % fc ... force curve
-            % fc_print: A function to simply plot all force curves of a
-            % force map without any selection taking place
+            %
             if nargin < 2
                 XMin= -inf;
                 XMax= inf;
@@ -1821,29 +1869,7 @@ classdef Experiment < matlab.mixin.Copyable
             PercentCorrupt=100-PercentUncorrupt;
         end
         
-        
-        function SMFS_testing_function(obj,XMin,XMax,YMin,YMax,ii)
-            % Function to quickly loop over all force maps for testing and
-            % debugging
-             for ii=1:obj.NumForceMaps
-            %for ii=1
-         %       obj.FM{ii}.initialize_flags
-                  % obj.FM{ii}.fc_fc_measurement_prop;
-%                   obj.FM{ii}.fc_pulling_length
-%                   obj.FM{ii}.fc_adhesion_energy_idxpulllength
-%                   obj.FM{ii}.fc_adhesion_energy_threshold
-                %    obj.FM{ii}.find_idx
-              %    obj.FM{ii}.fc_adh_force_max
-             % obj.FM{ii}.fc_datapoints_accordance
-              obj.FM{ii}.fc_sinoidal_fit
-              obj.FM{ii}.fc_corrected_fitdata
-           % obj.FM{ii}.test      
-            end
-            
-          
-            
-        end
-            
+     
             
     end
     methods
@@ -3192,6 +3218,10 @@ classdef Experiment < matlab.mixin.Copyable
                 obj.SMFSFlag.SelectFM = false(NFM,1);
                 obj.SMFSFlag.Preprocessed = false(NFM,1);
                 obj.SMFSFlag.Presorted = false(NFM,1);
+                obj.SMFSFlag.Uncorrupt= false(NFM,1);
+                obj.SMFSFlag.Min= false(NFM,1);
+                obj.SMFSFlag.Length= false(NFM,1);
+                obj.SMFSFlag.Fit= false(NFM,1);
                 
                 obj.CantileverTipFlag = false;
                 if obj.NumCantileverTips > 0
