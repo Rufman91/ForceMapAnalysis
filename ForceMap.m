@@ -3593,31 +3593,31 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             % vDelfDataDirectory=vDefldir;
             % find the number of total points
             A=fileread(SegmentHeaderFileDirectory);
-            fileID=fopen(SegmentHeaderFileDirectory,'rt','n','UTF-8');
-            % fileID = fopen(filename,permission,machinefmt,encodingIn)
+            FileID=fopen(SegmentHeaderFileDirectory,'rt','n','UTF-8');
+            % FileID = fopen(filename,permission,machinefmt,encodingIn)
             
             B=strfind(A,'force-segment-header.num-points=');
             % strfind(file,string) is looking for a specific string in the file.
-            fseek(fileID,B,'cof');
+            fseek(FileID,B,'cof');
             % moves at the location where specific string is located
             
-            tline = fgetl(fileID);
+            tline = fgetl(FileID);
             where=strfind(tline,'=');
             % "where" is the position of the "=" symbol in the tline string
             n = str2double(tline(where+1:end)); % number of points
-            fclose(fileID);
+            fclose(FileID);
             
             % Read the height measured data and the vertical deflection.
             % Reading the raw height data into a column of length n
-            fileID = fopen(HeighDataDirectory);
-            % fread(fileID,sizeA,precision,skip,machinefmt)
-            RawHeight = fread(fileID,n,'int32',0,'b'); %raw data
-            fclose(fileID);
+            FileID = fopen(HeighDataDirectory);
+            % fread(FileID,sizeA,precision,skip,machinefmt)
+            RawHeight = fread(FileID,n,'int32',0,'b'); %raw data
+            fclose(FileID);
             
             
             % Reading the deflection height data into a column of length n
-            fileID = fopen(vDelfDataDirectory);
-            RawvDeflection = fread(fileID,n,'int32',0,'b'); %raw data
+            FileID = fopen(vDelfDataDirectory);
+            RawvDeflection = fread(FileID,n,'int32',0,'b'); %raw data
             
             
             % get scaling factors from header file
@@ -3644,7 +3644,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             
             Force = deflmeter;
             
-            fclose(fileID);
+            fclose(FileID);
         end
         
         function [mult_height_meters1, offset_height_meters1,...
@@ -3656,33 +3656,33 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             % reads header from a force scan series and extracts the scaling
             % parameters.
             % filedirectory=HeaderFileDirectory;
-            fileID=fopen(filedirectory,'rt','n','UTF-8'); % fileID = fopen(filename,permission,machinefmt,encodingIn)
+            FileID=fopen(filedirectory,'rt','n','UTF-8'); % FileID = fopen(filename,permission,machinefmt,encodingIn)
             A=fileread(filedirectory);
             % Height: 1. CONVERSION raw-meters & 2. SCALE meters
             % Conversion RAW -> VOLTS
-            fseek(fileID,1,'cof'); % goes at the first position in the file
+            fseek(FileID,1,'cof'); % goes at the first position in the file
             
             exp1='\d{1}';
             
-            frewind(fileID);
+            frewind(FileID);
             B=strfind(A,HHType);
             tline = A(B:end);
             HHNum = regexp(tline,exp1,'match','once');
             
             clear tline;
-            frewind(fileID);
+            frewind(FileID);
             B=strfind(A,'vDeflection');
             tline = A(B:end);
             vDefNum = regexp(tline,exp1,'match','once');
             
             %   Multiplier
             clear tline;
-            frewind(fileID);
+            frewind(FileID);
             B=strfind(A,strcat('lcd-info.',HHNum,'.encoder.scaling.multiplier='));
             % strfind(file,string) is looking for a specific string in the file.
-            fseek(fileID,B,'cof');
+            fseek(FileID,B,'cof');
             % moves at the location where specific string is located
-            tline = fgetl(fileID);
+            tline = fgetl(FileID);
             % stores that string in a character
             where=strfind(tline,'=');
             % "where" is the position of the "=" symbol in the tline string
@@ -3692,29 +3692,29 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             
             %   Offset
             clear tline where;
-            frewind(fileID);
+            frewind(FileID);
             B=strfind(A,strcat('lcd-info.',HHNum,'.encoder.scaling.offset='));
-            fseek(fileID,B,'cof');
-            tline = fgetl(fileID);
+            fseek(FileID,B,'cof');
+            tline = fgetl(FileID);
             where=strfind(tline,'=');
             offset_height_meters1 = str2double(tline(where+1:end));
             
             %   Multiplier
             clear tline where;
-            frewind(fileID);
+            frewind(FileID);
             B=strfind(A,strcat('lcd-info.',HHNum,'.conversion-set.conversion.nominal.scaling.multiplier='));
-            fseek(fileID,B,'cof');
-            tline = fgetl(fileID);
+            fseek(FileID,B,'cof');
+            tline = fgetl(FileID);
             where=strfind(tline,'=');
             mult_height_meters2 = str2double(tline(where+1:end));
             
             
             %   Offset
             clear tline where;
-            frewind(fileID);
+            frewind(FileID);
             B=strfind(A,strcat('lcd-info.',HHNum,'.conversion-set.conversion.nominal.scaling.offset='));
-            fseek(fileID,B,'cof');
-            tline = fgetl(fileID);
+            fseek(FileID,B,'cof');
+            tline = fgetl(FileID);
             where=strfind(tline,'=');
             offset_height_meters2 = str2double(tline(where+1:end));
             
@@ -3724,19 +3724,19 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             
             %   Multiplier
             clear tline where;
-            frewind(fileID);
+            frewind(FileID);
             B=strfind(A,strcat('lcd-info.',vDefNum,'.encoder.scaling.multiplier='));
-            fseek(fileID,B,'cof');
-            tline = fgetl(fileID);
+            fseek(FileID,B,'cof');
+            tline = fgetl(FileID);
             where=strfind(tline,'=');
             mult_vDefl_volts = str2double(tline(where+1:end)); % multiplier for scaling the raw height data and convert to volts
             
             %   Offset
             clear tline where;
-            frewind(fileID);
+            frewind(FileID);
             B=strfind(A,strcat('lcd-info.',vDefNum,'.encoder.scaling.offset='));
-            fseek(fileID,B,'cof');
-            tline = fgetl(fileID);
+            fseek(FileID,B,'cof');
+            tline = fgetl(FileID);
             where=strfind(tline,'=');
             offset_vDefl_volts = str2double(tline(where+1:end));
             
@@ -3745,24 +3745,24 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             
             %   Multiplier (that is the sensitivity measured in meters per Volts)
             clear tline where;
-            frewind(fileID);
+            frewind(FileID);
             B=strfind(A,strcat('lcd-info.',vDefNum,'.conversion-set.conversion.distance.scaling.multiplier='));
-            fseek(fileID,B,'cof');
-            tline = fgetl(fileID);
+            fseek(FileID,B,'cof');
+            tline = fgetl(FileID);
             where=strfind(tline,'=');
             sensitivity = str2double(tline(where+1:end));
             
             % Spring constant
             
             clear tline where;
-            frewind(fileID);
+            frewind(FileID);
             B=strfind(A,strcat('lcd-info.',vDefNum,'.conversion-set.conversion.force.scaling.multiplier='));
-            fseek(fileID,B,'cof');
-            tline = fgetl(fileID);
+            fseek(FileID,B,'cof');
+            tline = fgetl(FileID);
             where=strfind(tline,'=');
             spring_constant = str2double(tline(where+1:end));
             
-            fclose(fileID);
+            fclose(FileID);
         end
         
         function X = CP_batchprep_3_channel(objcell,ImgSizeFinal,ImgSize,CutPercent)
@@ -4392,17 +4392,17 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             % properties
             
             filedirectory = fullfile(obj.DataStoreFolder,'header.properties');
-            fileID=fopen(filedirectory,'rt','n','UTF-8'); % fileID = fopen(filename,permission,machinefmt,encodingIn)
-            A=fileread(filedirectory);
+            FileID=fopen(filedirectory,'rt','n','UTF-8'); % FileID = fopen(filename,permission,machinefmt,encodingIn)
+            FileCont=fileread(filedirectory);
             % Height: 1. CONVERSION raw-meters & 2. SCALE meters
             % Conversion RAW -> VOLTS
-            fseek(fileID,1,'cof'); % goes at the first position in the file
+            fseek(FileID,1,'cof'); % goes at the first position in the file
             
             %   Check for file type (.jpk-force-map, .jpk-qi-data)
-            frewind(fileID);
-            B=strfind(A,'jpk-data-file=');
-            fseek(fileID,B,'cof');
-            tline = fgetl(fileID);
+            frewind(FileID);
+            StrPos=strfind(FileCont,'jpk-data-file=');
+            fseek(FileID,StrPos,'cof');
+            tline = fgetl(FileID);
             where=strfind(tline,'=');
             TempType = tline(where+1:end);
             if isequal(TempType, 'spm-quantitative-image-data-file')   % Valid for software versions 6.1.158  
@@ -4435,43 +4435,43 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             
             %   NumPixelsX
             clear tline where;
-            frewind(fileID);
-            B=strfind(A,strcat(obj.FileType,'.position-pattern.grid.jlength='));
-            fseek(fileID,B,'cof');
-            tline = fgetl(fileID);
+            frewind(FileID);
+            StrPos=strfind(FileCont,strcat(obj.FileType,'.position-pattern.grid.jlength='));
+            fseek(FileID,StrPos,'cof');
+            tline = fgetl(FileID);
             where=strfind(tline,'=');
             obj.NumPixelsX = str2double(tline(where+1:end));
             
             %   NumPixelsY
             clear tline where;
-            frewind(fileID);
-            B=strfind(A,strcat(obj.FileType,'.position-pattern.grid.ilength='));
-            fseek(fileID,B,'cof');
-            tline = fgetl(fileID);
+            frewind(FileID);
+            StrPos=strfind(FileCont,strcat(obj.FileType,'.position-pattern.grid.ilength='));
+            fseek(FileID,StrPos,'cof');
+            tline = fgetl(FileID);
             where=strfind(tline,'=');
             obj.NumPixelsY = str2double(tline(where+1:end));
             
             %   ScanSizeX
             clear tline where;
-            frewind(fileID);
-            B=strfind(A,strcat(obj.FileType,'.position-pattern.grid.ulength='));
-            fseek(fileID,B,'cof');
-            tline = fgetl(fileID);
+            frewind(FileID);
+            StrPos=strfind(FileCont,strcat(obj.FileType,'.position-pattern.grid.ulength='));
+            fseek(FileID,StrPos,'cof');
+            tline = fgetl(FileID);
             where=strfind(tline,'=');
             obj.ScanSizeX = str2double(tline(where+1:end));
             
             %   ScanSizeY
             clear tline where;
-            frewind(fileID);
-            B=strfind(A,strcat(obj.FileType,'.position-pattern.grid.vlength='));
-            fseek(fileID,B,'cof');
-            tline = fgetl(fileID);
+            frewind(FileID);
+            StrPos=strfind(FileCont,strcat(obj.FileType,'.position-pattern.grid.vlength='));
+            fseek(FileID,StrPos,'cof');
+            tline = fgetl(FileID);
             where=strfind(tline,'=');
             obj.ScanSizeY = str2double(tline(where+1:end));
             
             %   MaxPointsPerCurve
             clear tline where;
-            frewind(fileID);
+            frewind(FileID);
             if isequal(obj.FileType,'force-scan-map')
                 StrPos=strfind(FileCont,strcat(obj.FileType,'.settings.force-settings.type='));
                 fseek(FileID,StrPos,'cof');
@@ -4612,26 +4612,26 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 end     
             elseif isequal(obj.FileType,'quantitative-imaging-map')
                 clear tline where;
-                frewind(fileID);
-                B=strfind(A,'quantitative-imaging-map.settings.force-settings.extend.duration=');
-                fseek(fileID,B,'cof');
-                tline = fgetl(fileID);
+                frewind(FileID);
+                StrPos=strfind(FileCont,'quantitative-imaging-map.settings.force-settings.extend.duration=');
+                fseek(FileID,StrPos,'cof');
+                tline = fgetl(FileID);
                 where=strfind(tline,'=');
                 obj.ExtendTime = str2double(tline(where+1:end));
                 
                 clear tline where;
-                frewind(fileID);
-                B=strfind(A,'quantitative-imaging-map.settings.force-settings.extend.duration=');
-                fseek(fileID,B,'cof');
-                tline = fgetl(fileID);
+                frewind(FileID);
+                StrPos=strfind(FileCont,'quantitative-imaging-map.settings.force-settings.extend.duration=');
+                fseek(FileID,StrPos,'cof');
+                tline = fgetl(FileID);
                 where=strfind(tline,'=');
                 obj.RetractTime = str2double(tline(where+1:end));
                 
                 clear tline where;
-                frewind(fileID);
-                B=strfind(A,'quantitative-imaging-map.settings.force-settings.extend.z-start=');
-                fseek(fileID,B,'cof');
-                tline = fgetl(fileID);
+                frewind(FileID);
+                StrPos=strfind(FileCont,'quantitative-imaging-map.settings.force-settings.extend.z-start=');
+                fseek(FileID,StrPos,'cof');
+                tline = fgetl(FileID);
                 where=strfind(tline,'=');
                 obj.ExtendZLength = str2double(tline(where+1:end));
                 obj.RetractZLength = obj.ExtendZLength;
@@ -4642,30 +4642,30 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             
             %   ScanAngle
             clear tline where;
-            frewind(fileID);
-            B=strfind(A,strcat(obj.FileType,'.position-pattern.grid.theta='));
-            fseek(fileID,B,'cof');
-            tline = fgetl(fileID);
+            frewind(FileID);
+            StrPos=strfind(FileCont,strcat(obj.FileType,'.position-pattern.grid.theta='));
+            fseek(FileID,StrPos,'cof');
+            tline = fgetl(FileID);
             where=strfind(tline,'=');
             obj.ScanAngle = str2double(tline(where+1:end));
             obj.ScanAngle = obj.ScanAngle*180/pi;
             
             %   Setpoint
             clear tline where;
-            frewind(fileID);
+            frewind(FileID);
             if isequal(obj.FileType,'quantitative-imaging-map')
-                B=strfind(A,strcat(obj.FileType,'.settings.force-settings.extend.setpoint='));
+                StrPos=strfind(FileCont,strcat(obj.FileType,'.settings.force-settings.extend.setpoint='));
             elseif isequal(obj.FileType,'force-scan-map')
-                B=strfind(A,strcat(obj.FileType,'.settings.force-settings.relative-setpoint='));
+                StrPos=strfind(FileCont,strcat(obj.FileType,'.settings.force-settings.relative-setpoint='));
             end
-            fseek(fileID,B,'cof');
-            tline = fgetl(fileID);
+            fseek(FileID,StrPos,'cof');
+            tline = fgetl(FileID);
             where=strfind(tline,'=');
             obj.Setpoint = str2double(tline(where+1:end)).*obj.Sensitivity.*obj.SpringConstant;
             
             obj.HHType = 'capacitiveSensorHeight';
             
-            fclose(fileID);
+            fclose(FileID);
         end
         
         function load_force_curves(obj)
