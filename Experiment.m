@@ -1416,7 +1416,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 obj.FM{ii}.fc_measurement_prop             
                 waitbar(ii/NLoop,h,sprintf('Preprocessing ForceMap %i/%i\nWrapping Up And Saving',ii,NLoop));
                                 
-                obj.FM{ii}.save();
+                
                 obj.SMFSFlag.Preprocessed(ii) = 1;
             end
             close(h);
@@ -1440,6 +1440,13 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 KeepFlagged = 'No';
             end
             
+            % Change into the Folder of Interest
+            cd(obj.ExperimentFolder) % Move into the folder
+            % Create folders for saving the produced figures
+            foldername='FM_sinoidal_fits';    % for debugging                
+            mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
+            currpath=fullfile(obj.ExperimentFolder,foldername);
+            cd(currpath);
             
             % Loop over the imported force maps
             for ii=1:obj.NumForceMaps
@@ -1479,7 +1486,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                     continue
                 end   
                 waitbar(ii/NLoop,h,sprintf('Preprocessing ForceMap %i/%i\nProcessing force curves',ii,NLoop));
-                obj.FM{ii}.fc_TipHeight_calculation;
+          %      obj.FM{ii}.fc_TipHeight_calculation;
                 waitbar(ii/NLoop,h,sprintf('Preprocessing ForceMap %i/%i\nWrapping Up And Saving',ii,NLoop));
                 sprintf('Force Map No. %d of %d',ii,obj.NumForceMaps) % Gives current Force Map Position
                 
@@ -1495,9 +1502,19 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             close(h);
         end
       
-        function SMFS_visual_selection(obj)
+        function SMFS_visual_selection(obj,XMin,XMax,YMin,YMax)
             % 
-            
+            if nargin<2
+                XMin= -inf;     % Limit of the X-axis in meters (m)
+                XMax= 50e-9;      % Limit of the X-axis in meters (m)
+                YMin= -inf;     % Limit of the Y-axis in Newtons (N)
+                YMax= 100e-12;      % Limit of the Y-axis in Newtons (N)              
+            elseif nargin<3
+                XMin= -inf;     % Limit of the X-axis in meters (m)
+                XMax= inf;      % Limit of the X-axis in meters (m)
+                YMin= -inf;     % Limit of the Y-axis in Newtons (N)
+                YMax= inf;      % Limit of the Y-axis in Newtons (N)
+            end
             % Change into the Folder of Interest
             cd(obj.ExperimentFolder) % Move into the folder 
             % Create folders for saving the produced figures
@@ -1512,7 +1529,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                % Command window output
                sprintf('Force Map No. %d of %d',ii,obj.NumForceMaps) % Gives current Force Map Position
                % Run the chosen functions
-               obj.FM{ii}.fc_visual_selection;     
+               obj.FM{ii}.fc_visual_selection(XMin,XMax,YMin,YMax);     
                %obj.save_experiment;        % Save immediately after each force curve
             end    
         end
@@ -1557,20 +1574,18 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                % Baseline correction
                obj.FM{hh}.fc_based_ret_correction
                % Pulling length
-               obj.FM{hh}.fc_pulling_length               
+               obj.FM{hh}.fc_pulling_length_MAD               
                % Maximum adhesion force
                obj.FM{hh}.fc_adh_force_max
                % Adhesion energy
                obj.FM{hh}.fc_adhesion_energy_idxpulllength
                % Determine needed input variable
                NumFcUncorrupt(hh)=nnz(obj.FM{hh}.SMFSFlag.Uncorrupt); % Determine the number of uncorrupted force curves     
-               obj.FM{hh}.fc_print_properties(XMin,XMax,YMin,YMax,NumFcMax,NumFcUncorrupt,hh)
-                
+               obj.FM{hh}.fc_print_properties(XMin,XMax,YMin,YMax,NumFcMax,NumFcUncorrupt,hh)              
             end
             obj.NumFcUncorrupt=NumFcUncorrupt;
         end
-               
-              
+                            
         
         function SMFS_print(obj,XMin,XMax,YMin,YMax)
             % SMFS_print: A function to simply plot all force curves of all
@@ -1630,9 +1645,6 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 XMax= inf;      % Limit of the X-axis in meters (m)
                 YMin= -inf;     % Limit of the Y-axis in Newtons (N)   
                 YMax= inf;      % Limit of the Y-axis in Newtons (N)
-        %    elseif nargin<6
-         %       XMax= 50e-9;      % Limit of the X-axis in meters (m)
-          %      YMax= 100e-12;      % Limit of the Y-axis in Newtons (N)
             elseif nargin<6    
                 StartDate='0000.00.00';
                 EndDate='2999.00.00';
@@ -1689,7 +1701,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 RGB9=[0 181 26]./255; % Green
                 RGB10=[69 22 113]./255; % Violet
                 RGB11=[124 223 124]./255; % Light Green
-
+                % Loop
                 for ii=1:obj.NumForceMaps
                     if (strcmpi(obj.FM{ii}.VelocityConvert,VelocityValue) || strcmpi(VelocityValue,'All')) ...
                             && (strcmpi(obj.FM{ii}.Substrate,SubstrateValue) || strcmpi(SubstrateValue,'All')) ...
