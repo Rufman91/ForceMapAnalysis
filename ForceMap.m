@@ -33,9 +33,12 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
         FractionOfMaxRAM = 1/5 % Specifies how much of MaxRAM space can be taken for certain partitioned calculations 
         NCurves         % number of curves on the force map
         MaxPointsPerCurve
+        HoldingTime = 0
+        NumSegments
         ExtendTime
         RetractTime
-        ZLength
+        ExtendZLength
+        RetractZLength
         ExtendVelocity        % Approach  velocity as defined in the force map settings
         RetractVelocity
         Sensitivity
@@ -2018,8 +2021,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             SelectedPercentage=0.7;
             NFigures=4;
             NLoop=25;
-            ExtendVelocityConvert=num2str(obj.ExtendVelocityConvert);
-            RetractVelocityConvert=num2str(obj.RetractVelocityConvert);
+            ExtendVelocityConvert=num2str(obj.ExtendVelocity*1e9);
+            RetractVelocityConvert=num2str(obj.RetractVelocity*1e9);
             % Classification criteria
             figname=strcat(obj.DateAdapt,{'_'},obj.TimeAdapt,{'_'},obj.ID,{'_'},obj.Substrate,{'_'},obj.EnvCond,{'_'},{'_'},obj.Chipbox,{'_'},obj.ChipCant,{'_'},ExtendVelocityConvert,{'_'},RetractVelocityConvert);
             figname=char(figname);    
@@ -2190,8 +2193,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                     x150=-150e-9; % Defines 150nm
                     x500=-500e-9; % Defines 500nm
             % Define variables for the figure name
-            ExtendVelocityConvert=num2str(obj.ExtendVelocityConvert);
-            RetractVelocityConvert=num2str(obj.RetractVelocityConvert);
+            ExtendVelocityConvert=num2str(obj.ExtendVelocity*1e9);
+            RetractVelocityConvert=num2str(obj.RetractVelocity*1e9);
             % Classification criteria
             figname=strcat(obj.DateAdapt,{'_'},obj.TimeAdapt,{'_'},obj.ID,{'_'},obj.Substrate,{'_'},obj.EnvCond,{'_'},{'_'},obj.Chipbox,{'_'},obj.ChipCant,{'_'},ExtendVelocityConvert,{'_'},RetractVelocityConvert);
             figname=char(figname);
@@ -2885,8 +2888,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 YMax= inf;
             end
             % Define variables for the figure name
-            ExtendVelocityConvert=num2str(obj.ExtendVelocityConvert);
-            RetractVelocityConvert=num2str(obj.RetractVelocityConvert);
+            ExtendVelocityConvert=num2str(obj.ExtendVelocity*1e9);
+            RetractVelocityConvert=num2str(obj.RetractVelocity*1e9);
             % Classification criteria
             figname=strcat(obj.DateAdapt,{'_'},obj.TimeAdapt,{'_'},obj.ID,{'_'},obj.Substrate,{'_'},obj.EnvCond,{'_'},{'_'},obj.Chipbox,{'_'},obj.ChipCant,{'_'},ExtendVelocityConvert,{'_'},RetractVelocityConvert);
             figname=char(figname);
@@ -3205,8 +3208,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             end 
                       
             % Define variables for the figure name
-            ExtendVelocityConvert=num2str(obj.ExtendVelocityConvert);
-            RetractVelocityConvert=num2str(obj.RetractVelocityConvert);
+            ExtendVelocityConvert=num2str(obj.ExtendVelocity*1e9);
+            RetractVelocityConvert=num2str(obj.RetractVelocity*1e9);
             % Classification criteria
             figname=strcat(obj.DateAdapt,{'_'},obj.TimeAdapt,{'_'},obj.ID,{'_'},obj.Substrate,{'_'},obj.EnvCond,{'_'},obj.Linker,{'_'},obj.Chipbox,{'_'},obj.ChipCant,{'_'},ExtendVelocityConvert,{'_'},RetractVelocityConvert);
             figname=char(figname);
@@ -3293,8 +3296,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             end 
                       
             % Define variables for the figure name
-            ExtendVelocityConvert=num2str(obj.ExtendVelocityConvert);
-            RetractVelocityConvert=num2str(obj.RetractVelocityConvert);
+            ExtendVelocityConvert=num2str(obj.ExtendVelocity*1e9);
+            RetractVelocityConvert=num2str(obj.RetractVelocity*1e9);
             % Classification criteria
             figname=strcat(obj.DateAdapt,{'_'},obj.TimeAdapt,{'_'},obj.ID,{'_'},obj.Substrate,{'_'},obj.EnvCond,{'_'},obj.Linker,{'_'},obj.Chipbox,{'_'},obj.ChipCant,{'_'},ExtendVelocityConvert,{'_'},RetractVelocityConvert);
             figname=char(figname);
@@ -4466,7 +4469,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             where=strfind(tline,'=');
             obj.ScanSizeY = str2double(tline(where+1:end));
             
-            %   MaxPonintsPerCurve
+            %   MaxPointsPerCurve
             clear tline where;
             frewind(fileID);
             if isequal(obj.FileType,'force-scan-map')
@@ -4483,13 +4486,13 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                     TextLine = fgetl(FileID);
                     LinePos=strfind(TextLine,'=');
                     obj.MaxPointsPerCurve=str2double(TextLine(LinePos+1:end));
-                    obj.NumSegment=2;
+                    obj.NumSegments=2;
                 elseif isequal(TempType,'segmented-force-settings')
                     StrPos1=strfind(FileCont,strcat(obj.FileType,'.settings.force-settings.segments.size='));
                     fseek(FileID,StrPos1,'cof');
                     TextLine = fgetl(FileID);
                     LinePos=strfind(TextLine,'=');
-                    obj.NumSegment=str2double(TextLine(LinePos+1:end)); % jpk assigns approach and retraction as well as possible holding times into segments
+                    obj.NumSegments=str2double(TextLine(LinePos+1:end)); % jpk assigns approach and retraction as well as possible holding times into segments
                     % Restore initial conditions
                     frewind(FileID); % Move file position indicator back to beginning of the open file
                     % Number of data points
@@ -4497,7 +4500,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                     fseek(FileID,StrPos2,'cof');
                     TextLine = fgetl(FileID);
                     LinePos=strfind(TextLine,'=');
-                    obj.MaxPointsPerCurve=str2double(TextLine(LinePos+1:end))*obj.NumSegment;
+                    obj.MaxPointsPerCurve=str2double(TextLine(LinePos+1:end));
                     % Restore initial conditions
                     frewind(FileID); % Move file position indicator back to beginning of the open file
                 end                    
@@ -4511,6 +4514,27 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 frewind(FileID); % Move file position indicator back to beginning of the open file
             end
             
+            %% Holding time
+            if isequal(TempType,'relative-force-settings')
+                    % Holding time
+                    StrPos=strfind(FileCont,strcat(obj.FileType,'.settings.force-settings.extended-pause-time'));
+                    fseek(FileID,StrPos,'cof');
+                    TextLine = fgetl(FileID);
+                    LinePos=strfind(TextLine,'=');
+                    obj.HoldingTime = str2double(TextLine(LinePos+1:end));
+                    % Restore initial conditions
+                    frewind(FileID); % Move file position indicator back to beginning of the open file  
+            elseif isequal(TempType,'segmented-force-settings') && obj.NumSegments == 3
+                    % Holding time
+                    StrPos=strfind(FileCont,strcat(obj.FileType,'.settings.force-settings.segment.1.duration'));
+                    fseek(FileID,StrPos,'cof');
+                    TextLine = fgetl(FileID);
+                    LinePos=strfind(TextLine,'=');
+                    obj.HoldingTime = str2double(TextLine(LinePos+1:end));
+                    % Restore initial conditions
+                    frewind(FileID); % Move file position indicator back to beginning of the open file                    
+            end
+            
             %%   Velocity
             if isequal(obj.FileType,'force-scan-map')
 
@@ -4522,7 +4546,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                     fseek(FileID,StrPos,'cof');
                     TextLine = fgetl(FileID);
                     LinePos=strfind(TextLine,'=');
-                    ExtendTime = str2double(TextLine(LinePos+1:end));
+                    obj.ExtendTime = str2double(TextLine(LinePos+1:end));
                     % Restore initial conditions
                     frewind(FileID); % Move file position indicator back to beginning of the open file
                     % z-height
@@ -4530,7 +4554,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                     fseek(FileID,StrPos,'cof');
                     TextLine = fgetl(FileID);
                     LinePos=strfind(TextLine,'=');
-                    ExtendZLength = str2double(TextLine(LinePos+1:end));
+                    obj.ExtendZLength = str2double(TextLine(LinePos+1:end));
                     % Restore initial conditions
                     frewind(FileID); % Move file position indicator back to beginning of the open file
                     % Retract
@@ -4539,7 +4563,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                     fseek(FileID,StrPos,'cof');
                     TextLine = fgetl(FileID);
                     LinePos=strfind(TextLine,'=');
-                    RetractTime = str2double(TextLine(LinePos+1:end));
+                    obj.RetractTime = str2double(TextLine(LinePos+1:end));
                     % Restore initial conditions
                     frewind(FileID); % Move file position indicator back to beginning of the open file
                     % z-height
@@ -4547,7 +4571,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                     fseek(FileID,StrPos,'cof');
                     TextLine = fgetl(FileID);
                     LinePos=strfind(TextLine,'=');
-                    RetractZLength = str2double(TextLine(LinePos+1:end));
+                    obj.RetractZLength = str2double(TextLine(LinePos+1:end));
                     % Restore initial conditions
                     frewind(FileID); % Move file position indicator back to beginning of the open file
                 elseif isequal(TempType,'segmented-force-settings')
@@ -4557,7 +4581,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                     fseek(FileID,StrPos,'cof');
                     TextLine = fgetl(FileID);
                     LinePos=strfind(TextLine,'=');
-                    ExtendTime = str2double(TextLine(LinePos+1:end));
+                    obj.ExtendTime = str2double(TextLine(LinePos+1:end));
                     % Restore initial conditions
                     frewind(FileID); % Move file position indicator back to beginning of the open file
                     % z-height
@@ -4565,105 +4589,27 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                     fseek(FileID,StrPos,'cof');
                     TextLine = fgetl(FileID);
                     LinePos=strfind(TextLine,'=');
-                    ExtendZLength = str2double(TextLine(LinePos+1:end));
+                    obj.ExtendZLength = str2double(TextLine(LinePos+1:end));
                     % Restore initial conditions
                     frewind(FileID); % Move file position indicator back to beginning of the open file
                     % Retract
                     % Scan time
-                    StrPos=strfind(FileCont,strcat(obj.FileType,sprintf('.settings.force-settings.segment.%d.duration=',obj.NumSegment-1)));
+                    StrPos=strfind(FileCont,strcat(obj.FileType,sprintf('.settings.force-settings.segment.%d.duration=',obj.NumSegments-1)));
                     fseek(FileID,StrPos,'cof');
                     TextLine = fgetl(FileID);
                     LinePos=strfind(TextLine,'=');
-                    RetractTime = str2double(TextLine(LinePos+1:end));
+                    obj.RetractTime = str2double(TextLine(LinePos+1:end));
                     % Restore initial conditions
                     frewind(FileID); % Move file position indicator back to beginning of the open file
                     % z-height
-                    StrPos=strfind(FileCont,strcat(obj.FileType,sprintf('.settings.force-settings.segment.%d.z-start',obj.NumSegment-1)));                  
+                    StrPos=strfind(FileCont,strcat(obj.FileType,sprintf('.settings.force-settings.segment.%d.z-start',obj.NumSegments-1)));                  
                     fseek(FileID,StrPos,'cof');
                     TextLine = fgetl(FileID);
                     LinePos=strfind(TextLine,'=');
-                    RetractZLength = str2double(TextLine(LinePos+1:end));
+                    obj.RetractZLength = str2double(TextLine(LinePos+1:end));
                     % Restore initial conditions
                     frewind(FileID); % Move file position indicator back to beginning of the open file   
-                end                    
-            elseif isequal(obj.FileType,'quantitative-imaging-map')
-                StrPos=strfind(FileCont,'quantitative-imaging-map.settings.force-settings.extend.duration=');
-                fseek(FileID,StrPos,'cof');
-                TextLine = fgetl(FileID);
-                LinePos=strfind(TextLine,'=');
-                ExtendTime = str2double(TextLine(LinePos+1:end));
-                % Restore initial conditions
-                frewind(FileID); % Move file position indicator back to beginning of the open file
-                StrPos=strfind(FileCont,'quantitative-imaging-map.settings.force-settings.extend.z-start=');
-                fseek(FileID,StrPos,'cof');
-                TextLine = fgetl(FileID);
-                LinePos=strfind(TextLine,'=');
-                ExtendZLength = str2double(TextLine(LinePos+1:end));
-                % Restore initial conditions
-                frewind(FileID); % Move file position indicator back to beginning of the open file
-            end
-            % Allocate data
-            obj.ExtendVelocity = ExtendZLength/ExtendTime;
-            obj.ExtendVelocityConvert=obj.ExtendVelocity*1e+9; % Convert into nm/s           
-            obj.RetractVelocity = RetractZLength/RetractTime;
-            obj.RetractVelocityConvert=obj.RetractVelocity*1e+9; % Convert into nm/s
-            
-            %% Holding time
-            if isequal(TempType,'relative-force-settings')
-                    % Holding time
-                    StrPos=strfind(FileCont,strcat(obj.FileType,'.settings.force-settings.extended-pause-time'));
-                    fseek(FileID,StrPos,'cof');
-                    TextLine = fgetl(FileID);
-                    LinePos=strfind(TextLine,'=');
-                    obj.HoldingTime = str2double(TextLine(LinePos+1:end));
-                    % Restore initial conditions
-                    frewind(FileID); % Move file position indicator back to beginning of the open file  
-            elseif isequal(TempType,'segmented-force-settings') && obj.NumSegment == 3
-                    % Holding time
-                    StrPos=strfind(FileCont,strcat(obj.FileType,'.settings.force-settings.segment.1.duration'));
-                    fseek(FileID,StrPos,'cof');
-                    TextLine = fgetl(FileID);
-                    LinePos=strfind(TextLine,'=');
-                    obj.HoldingTime = str2double(TextLine(LinePos+1:end));
-                    % Restore initial conditions
-                    frewind(FileID); % Move file position indicator back to beginning of the open file                    
-            end
-            %%   Grid angle
-            StrPos=strfind(FileCont,strcat(obj.FileType,'.position-pattern.grid.theta='));
-            fseek(FileID,StrPos,'cof');
-            TextLine = fgetl(FileID);
-            LinePos=strfind(TextLine,'=');
-            obj.GridAngle = str2double(TextLine(LinePos+1:end));
-            obj.GridAngle = obj.GridAngle*180/pi;
-            
-            fclose(FileID); 
-        end
-  
-        function load_force_curves(obj,TempFolder)
-            
-                clear tline where;
-                frewind(fileID);
-                B=strfind(A,strcat(obj.FileType,'.settings.force-settings.extend-scan-time='));
-                fseek(fileID,B,'cof');
-                tline = fgetl(fileID);
-                where=strfind(tline,'=');
-                obj.ExtendTime = str2double(tline(where+1:end));
-                
-                clear tline where;
-                frewind(fileID);
-                B=strfind(A,strcat(obj.FileType,'.settings.force-settings.retract-scan-time='));
-                fseek(fileID,B,'cof');
-                tline = fgetl(fileID);
-                where=strfind(tline,'=');
-                obj.RetractTime = str2double(tline(where+1:end));
-                
-                clear tline where;
-                frewind(fileID);
-                B=strfind(A,strcat(obj.FileType,'.settings.force-settings.relative-z-start='));
-                fseek(fileID,B,'cof');
-                tline = fgetl(fileID);
-                where=strfind(tline,'=');
-                ZLength = str2double(tline(where+1:end));
+                end     
             elseif isequal(obj.FileType,'quantitative-imaging-map')
                 clear tline where;
                 frewind(fileID);
@@ -4687,11 +4633,12 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 fseek(fileID,B,'cof');
                 tline = fgetl(fileID);
                 where=strfind(tline,'=');
-                obj.ZLength = str2double(tline(where+1:end));
+                obj.ExtendZLength = str2double(tline(where+1:end));
+                obj.RetractZLength = obj.ExtendZLength;
             end
             
-            obj.ExtendVelocity = obj.ZLength/obj.ExtendTime;
-            obj.RetractVelocity = obj.ZLength/obj.RetractTime;
+            obj.ExtendVelocity = obj.ExtendZLength/obj.ExtendTime;
+            obj.RetractVelocity = obj.RetractZLength/obj.RetractTime;
             
             %   ScanAngle
             clear tline where;
@@ -4763,15 +4710,15 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 
                 % Following segments
                 
-                SegmentHeaderFileDirectory = fullfile(TempFolder,'index',string((i-1)),'segments',string(obj.NumSegment-1),'segment-header.properties');
-                HeightDataDirectory = fullfile(TempFolder,'index',string((i-1)),'segments',string(obj.NumSegment-1),'channels','capacitiveSensorHeight.dat');
-                vDefDataDirectory = fullfile(TempFolder,'index',string((i-1)),'segments',string(obj.NumSegment-1),'channels','vDeflection.dat');
+                SegmentHeaderFileDirectory = fullfile(TempFolder,'index',string((i-1)),'segments',string(obj.NumSegments-1),'segment-header.properties');
+                HeightDataDirectory = fullfile(TempFolder,'index',string((i-1)),'segments',string(obj.NumSegments-1),'channels','capacitiveSensorHeight.dat');
+                vDefDataDirectory = fullfile(TempFolder,'index',string((i-1)),'segments',string(obj.NumSegments-1),'channels','vDeflection.dat');
                 
                 if ~isfile(HeightDataDirectory) || isequal(obj.HHType,'measuredHeight')
-                    HeightDataDirectory = fullfile(TempFolder,'index',string((i-1)),'segments',string(obj.NumSegment-1),'channels','measuredHeight.dat');
+                    HeightDataDirectory = fullfile(TempFolder,'index',string((i-1)),'segments',string(obj.NumSegments-1),'channels','measuredHeight.dat');
                 end
                  if ~isfile(HeightDataDirectory) || isequal(obj.HHType,'Height')
-                    HeightDataDirectory = fullfile(TempFolder,'index',string((i-1)),'segments',string(obj.NumSegment-1),'channels','Height.dat');
+                    HeightDataDirectory = fullfile(TempFolder,'index',string((i-1)),'segments',string(obj.NumSegments-1),'channels','Height.dat');
                     obj.HHType = 'Height';
                 end
                 
