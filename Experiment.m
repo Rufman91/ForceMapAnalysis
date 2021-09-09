@@ -1018,15 +1018,16 @@ classdef Experiment < matlab.mixin.Copyable
             % debugging
              for ii=1:obj.NumForceMaps
             %for ii=2
-               % obj.FM{ii}.initialize_flags
+             %   obj.FM{ii}.initialize_flags
                   % obj.FM{ii}.fc_fc_measurement_prop;
-                   obj.FM{ii}.fc_pulling_length
+                   obj.FM{ii}.fc_pulling_length_MAD
 %                   obj.FM{ii}.fc_adhesion_energy_idxpulllength
 %                   obj.FM{ii}.fc_adhesion_energy_threshold
                 %    obj.FM{ii}.find_idx
           %       obj.FM{ii}.fc_adh_force_max
-             % obj.FM{ii}.fc_datapoints_accordance
-            %  obj.FM{ii}.fc_sinoidal_fit
+          %  obj.FM{ii}.fc_sinoidal_fit    
+        %  obj.FM{ii}.fc_fit_based_yData
+            
          %     obj.FM{ii}.test
             
             end                    
@@ -1099,8 +1100,8 @@ classdef Experiment < matlab.mixin.Copyable
                     continue
                 end
                 waitbar(ii/NLoop,h,sprintf('Preprocessing ForceMap %i/%i\nProcessing force curves',ii,NLoop));
+            %    obj.FM{ii}.initialize_flags
                 obj.FM{ii}.fc_measurement_prop             
-              %  obj.FM{ii}.fc_based_ret_correction
                 waitbar(ii/NLoop,h,sprintf('Preprocessing ForceMap %i/%i\nWrapping Up And Saving',ii,NLoop));
                                 
                 obj.FM{ii}.save();
@@ -1171,7 +1172,7 @@ classdef Experiment < matlab.mixin.Copyable
                 sprintf('Force Map No. %d of %d',ii,obj.NumForceMaps) % Gives current Force Map Position
                 
                 obj.FM{ii}.estimate_cp_hardsurface
-           %     obj.FM{ii}.fc_selection_threshold
+                obj.FM{ii}.fc_selection_threshold
                     if nnz(obj.FM{ii}.SMFSFlag.Min)<20 % Only if more than 20 force curves fulfil the citeria the whole force map is considered successfully functionalized
                         obj.SMFSFlag.SelectFM(ii)=0;
                     else
@@ -1325,8 +1326,8 @@ classdef Experiment < matlab.mixin.Copyable
                 EndDate='2999.00.00';
             end
             % Loop over the imported force maps
-             % for ii=1:obj.NumForceMaps
-             for ii=3
+             for ii=1:obj.NumForceMaps
+             %for ii=3
                  % Needed function               
                 %if ~obj.SMFSFlag(ii)     % Selects all flagged 1 force maps
                 %if obj.SMFSFlag(ii)     % Selects all flagged 0 force maps

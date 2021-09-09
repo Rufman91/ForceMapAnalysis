@@ -1223,18 +1223,33 @@ classdef ForceMap < matlab.mixin.Copyable
             % SMFSFlag.Min = 0:  Force curves indicate a naked tip
             % SMFSFlag.Min = 1:  Force curves indicate a functionalized tip
             if nargin <2
-                ThresholdDist=50e-9;  % 50 nm
-                ThreshValue=50e-12;    % 50 pN
+                ThresholdDist1=50e-9;   % 50 nm
+                ThresholdDist2=75e-9;   % 75 nm
+                ThresholdDist3=100e-9;  % 100 nm
+                ThresholdDist4=150e-9;  % 150 nm
+                ThreshValue=25e-12;     % 25 pN
             elseif nargin<3
-                ThreshValue=50e-12;    % 50 pN
+                ThreshValue=25e-12;    % 25 pN
             end
             % loop over all force curves
             for kk=1:100
             % Determine the index corresponding to the threshold distance
-            ThreshDist=abs(obj.THRet{kk}-obj.CP_HardSurface(kk,1)+ThresholdDist);
-            [~, ThreshIdx]=min(ThreshDist);
+            ThreshDist1=abs(obj.THRet{kk}-obj.CP_HardSurface(kk,1)+ThresholdDist1);
+            [~, ThreshIdx1]=min(ThreshDist1);
+            ThreshDist2=abs(obj.THRet{kk}-obj.CP_HardSurface(kk,1)+ThresholdDist2);
+            [~, ThreshIdx2]=min(ThreshDist2);
+            ThreshDist3=abs(obj.THRet{kk}-obj.CP_HardSurface(kk,1)+ThresholdDist3);
+            [~, ThreshIdx3]=min(ThreshDist3);
+            ThreshDist4=abs(obj.THRet{kk}-obj.CP_HardSurface(kk,1)+ThresholdDist4);
+            [~, ThreshIdx4]=min(ThreshDist4);
             % Check if the force curve is selected 
-               if (obj.BasedApp{kk}(ThreshIdx)-obj.BasedRet{kk}(ThreshIdx))>ThreshValue
+               if obj.BasedRet{kk}(ThreshIdx1)>ThreshValue
+                   obj.SMFSFlag.Min(kk)=1;
+               elseif obj.BasedRet{kk}(ThreshIdx1)<ThreshValue && obj.BasedRet{kk}(ThreshIdx2)>ThreshValue
+                   obj.SMFSFlag.Min(kk)=1;
+               elseif obj.BasedRet{kk}(ThreshIdx1)<ThreshValue && obj.BasedRet{kk}(ThreshIdx2)<ThreshValue && obj.BasedRet{kk}(ThreshIdx3)>ThreshValue
+                   obj.SMFSFlag.Min(kk)=1;
+               elseif obj.BasedRet{kk}(ThreshIdx1)<ThreshValue && obj.BasedRet{kk}(ThreshIdx2)<ThreshValue && obj.BasedRet{kk}(ThreshIdx3)<ThreshValue && obj.BasedRet{kk}(ThreshIdx4)>ThreshValue
                    obj.SMFSFlag.Min(kk)=1;
                else
                    obj.SMFSFlag.Min(kk)=0;
@@ -1795,9 +1810,8 @@ classdef ForceMap < matlab.mixin.Copyable
 %         line([x500 x500], ylim,'Color','k'); % Draws a vertical line
         end
                 
-        function fc_pulling_length(obj)
+        function fc_pulling_length_sigma(obj)
             sigma=1;
-            batchsize=20;
             for ii=1:obj.NCurves
             %for ii=55 % debugging
                 if ~obj.SMFSFlag.Uncorrupt(ii)     % Exclude corrupted force curves from the analysis     
@@ -1815,42 +1829,122 @@ classdef ForceMap < matlab.mixin.Copyable
                 end
 
                 % Find the index and determine the pulling length
-%                 if obj.SMFSFlag.Fit(ii)==1
-%                 obj.PullingLengthIdx(ii)=find(yRet<obj.yRetFitMean(ii)-obj.yRetFitStd(ii)*sigma,1,'last'); % Finds the index of the value that fulfils the condition         
-%                 obj.PullingLength(ii)=abs(xRet(obj.PullingLengthIdx(ii))); % Corresponding x-value of the index
-%                 else
-%                 obj.PullingLengthIdx(ii)=find(yRet<obj.CorrMeanRet(ii)-obj.CorrStdApp(ii)*sigma,1,'last'); % Finds the index of the value that fulfils the condition         
-%                 obj.PullingLength(ii)=abs(xRet(obj.PullingLengthIdx(ii))); % Corresponding x-value of the index
-%                 end
-                
-                 % Loop through points and calculate the RoV
-                for jj=(100+batchsize+1):(length(obj.BasedRet{ii})-batchsize)
-                    RoV{ii}(jj,1) = var(smoothdata(obj.BasedRet{ii}((jj+1):(jj+batchsize))))/...
-                        var(obj.BasedRet{ii}((jj-batchsize):(jj-1)));
-                end
-                
-                % Normalize RoV-curve
-                RoV{ii} = RoV{ii}/range(RoV{ii});
-                minrov = min(RoV{ii}(batchsize+1:length(RoV{ii})-batchsize));
-                RoV{ii}(RoV{ii}==0) = minrov;
-                [~,obj.PullingLengthIdx(ii)] = max(RoV{ii});
-                
-                subplot(3,1,1)
-                plot(batchsize+1:batchsize+length(RoV{ii}),RoV{ii})
-                subplot(3,1,2)
-                plot(batchsize+1:batchsize+length(RoV{ii}),1./RoV{ii})
-                subplot(3,1,3)
-                plot(obj.BasedRet{ii})
-                drawnow      
-                pause(3)
-            end
+                if obj.SMFSFlag.Fit(ii)==1
+                obj.PullingLengthIdx(ii)=find(yRet<obj.yRetFitMean(ii)-obj.yRetFitStd(ii)*sigma,1,'last'); % Finds the index of the value that fulfils the condition         
+                obj.PullingLength(ii)=abs(xRet(obj.PullingLengthIdx(ii))); % Corresponding x-value of the index
+                else
+                obj.PullingLengthIdx(ii)=find(yRet<obj.CorrMeanRet(ii)-obj.CorrStdApp(ii)*sigma,1,'last'); % Finds the index of the value that fulfils the condition         
+                obj.PullingLength(ii)=abs(xRet(obj.PullingLengthIdx(ii))); % Corresponding x-value of the index
+                end                 
+            end           
             obj.FMPullingLengthMean=mean(obj.PullingLength);
             obj.FMPullingLengthMin=min(obj.PullingLength);
             obj.FMPullingLengthMax=max(obj.PullingLength);
             
-            
-                               
-            
+%             %% Appendix
+%             close all
+%             % Define variables
+%             qq=1;
+%             % Allocate data
+%             xApp=obj.THApp{qq}-obj.CP_HardSurface(qq);
+%             xRet=obj.THRet{qq}-obj.CP_HardSurface(qq);
+%             yApp=obj.BasedApp{qq};
+%             yRet=obj.BasedRetCorr2{qq};    
+%             % Graphical preview
+%             h_fig=figure(1);
+%             h_fig.Color='white'; % changes the background color of the figure
+%             h_fig.Units='normalized'; % Defines the units
+%             h_fig.OuterPosition=[0 0 1 1];% changes the size of the to the whole screen
+%             h_fig.PaperOrientation='landscape';
+%             %% Plotting the tiles
+%             t = tiledlayout(2,2);
+%             %t.TileSpacing = 'compact';
+%             %t.Padding = 'compact';
+%             t.TileSpacing = 'none'; % To reduce the spacing between the tiles
+%             t.Padding = 'none'; % To reduce the padding of perimeter of a tile
+%             nexttile
+%             hold on
+%             grid on
+%             plot(xApp,yApp,'b');
+%             plot(xRet,yRet,'r');
+%             nexttile
+%             hold on
+%             grid on
+%             plot(xApp,yApp,'b');
+%             plot(xRet,yRet,'r');
+%             plot(obj.THRet{qq}(obj.PullingLengthIdx(qq))-obj.CP_HardSurface(qq),obj.BasedRetCorr2{qq}(obj.PullingLengthIdx(qq)),'*','MarkerSize',10,'MarkerEdgeColor','g')              
+        end
+        
+        
+        function fc_pulling_length_MAD(obj)
+                      
+             % Define variables
+             beforePts=5;
+             afterPts=10;
+             movWindow=[beforePts afterPts];          
+             yLimit1=0.04; 
+             
+             for jj=1:obj.NCurves
+                if ~obj.SMFSFlag.Uncorrupt(jj)     % Exclude corrupted force curves from the analysis     
+                continue
+                end
+                % Allocate data
+                xRet{jj}=obj.THRet{jj}-obj.CP_HardSurface(jj);
+                yRet{jj}=obj.BasedRet{jj};
+
+                % Determine the pulling length index                   
+                normRet{jj}=normalize(flip(yRet{jj}));  % Normalize and flip the data             
+                M1{jj} = movmad(normRet{jj},movWindow); % Apply the moving median absolute deviation                 
+                Peak1{jj}=find(M1{jj}>yLimit1,1,'first'); % Find the index in the data fulfilling the condition
+                obj.PullingLengthIdx{jj}=Peak1{jj}+1; % 
+             end
+                
+          %      obj.PullingLength(ii)=abs(xRet(obj.PullingLengthIdx(ii))); % Corresponding x-value of the index
+         
+             %% Appendix
+%             close all
+             % Graphical preview
+%              for ii=1:obj.NCurves
+%                 h_fig=figure(1);
+%                 h_fig.Color='white'; % changes the background color of the figure
+%                 h_fig.Units='normalized'; % Defines the units
+%                 h_fig.OuterPosition=[0 0 1 1];% changes the size of the to the whole screen
+%                 h_fig.PaperOrientation='landscape';
+%                 subplot(3,1,1)
+%                 hold on
+%                 plot(flip(yRet{ii}))
+%                 plot(obj.PullingLengthIdx{ii},flip(yRet{ii}(obj.PullingLengthIdx{ii})),'kx','MarkerSize',20)
+%                 plot(Peak1{ii},flip(yRet{ii}(Peak1{ii})),'r*','MarkerSize',20)
+%                 hold off
+%                 ax21=gca;
+%                 ax21.XLim = [500 inf];
+%                 ax21.YLim = [-inf inf];
+%                 subplot(3,1,2)
+%                 hold on
+%                 plot(xRet{ii},yRet{ii})
+%                 plot(xRet{ii}(length(yRet{ii})-obj.PullingLengthIdx{ii}),yRet{ii}(length(yRet{ii})-obj.PullingLengthIdx{ii}),'kx','MarkerSize',20)
+%                 plot(xRet{ii}(length(yRet{ii})-Peak1{ii}),yRet{ii}(length(yRet{ii})-Peak1{ii}),'r*','MarkerSize',20)
+%                 hold off
+%                 ax22=gca;
+%                 ax22.XLim = [-inf inf];
+%                 ax22.YLim = [-inf inf];
+%                 subplot(3,1,3)
+%                 hold on
+%                 plot(M1{ii})
+%                 plot(Peak1{ii},M1{ii}(Peak1{ii}),'kx','MarkerSize',20)
+%                 hold off
+%                 ax23=gca;
+%                 ax23.XLim = [500 inf];
+%                 ax23.YLim = [0 0.2];
+%                 drawnow     
+%                 pause(3)
+%                 close figure 1
+%              end
+% %             obj.FMPullingLengthMean=mean(obj.PullingLength);
+%             obj.FMPullingLengthMin=min(obj.PullingLength);
+%             obj.FMPullingLengthMax=max(obj.PullingLength);
+%             
+         
             
 %             %% Appendix
 %             close all
@@ -1886,6 +1980,8 @@ classdef ForceMap < matlab.mixin.Copyable
 %             plot(obj.THRet{qq}(obj.PullingLengthIdx(qq))-obj.CP_HardSurface(qq),obj.BasedRetCorr2{qq}(obj.PullingLengthIdx(qq)),'*','MarkerSize',10,'MarkerEdgeColor','g')              
         end
                 
+        
+        
         function fc_adh_force_max(obj)
             % Function to find the maximum adhesion force value in the
             % approach and retraction data of a force curve
@@ -4116,11 +4212,13 @@ classdef ForceMap < matlab.mixin.Copyable
             obj.CPFlag.HardSurface = 0;
             obj.HasRefSlope = false;
             % SMFS
+            obj.SMFSFlag.SelectFM=ones(1,obj.NCurves);
+            obj.SMFSFlag.Preprocessed=ones(1,obj.NCurves);
+            obj.SMFSFlag.Presorted=ones(1,obj.NCurves);
             obj.SMFSFlag.Uncorrupt=ones(1,obj.NCurves);
             obj.SMFSFlag.Min=zeros(1,obj.NCurves);
             obj.SMFSFlag.Length=zeros(1,obj.NCurves);
-            obj.SMFSFlag.Fit=zeros(1,obj.NCurves);
-            
+            obj.SMFSFlag.Fit=zeros(1,obj.NCurves);      
         end
         
         function create_dummy_force_map(obj,NSynthCurves)
