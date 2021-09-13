@@ -1332,10 +1332,10 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             %for ii=2
              %   obj.FM{ii}.initialize_flags
                   % obj.FM{ii}.fc_fc_measurement_prop;
-                   obj.FM{ii}.fc_pulling_length_MAD
+                %   obj.FM{ii}.fc_pulling_length_MAD
 %                   obj.FM{ii}.fc_adhesion_energy_idxpulllength
 %                   obj.FM{ii}.fc_adhesion_energy_threshold
-                %    obj.FM{ii}.find_idx
+                    obj.FM{ii}.fc_find_idx
           %       obj.FM{ii}.fc_adh_force_max
           %  obj.FM{ii}.fc_sinoidal_fit    
         %  obj.FM{ii}.fc_fit_based_yData
@@ -1411,8 +1411,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 if isequal(KeepFlagged,'Yes') && obj.SMFSFlag.Preprocessed(ii) == 1
                     continue
                 end
-                waitbar(ii/NLoop,h,sprintf('Preprocessing ForceMap %i/%i\nProcessing force curves',ii,NLoop));
-            %    obj.FM{ii}.initialize_flags
+                waitbar(ii/NLoop,h,sprintf('Preprocessing ForceMap %i/%i\nProcessing force curves',ii,NLoop));            
                 obj.FM{ii}.fc_measurement_prop             
                 waitbar(ii/NLoop,h,sprintf('Preprocessing ForceMap %i/%i\nWrapping Up And Saving',ii,NLoop));
                                 
@@ -1486,11 +1485,9 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                     continue
                 end   
                 waitbar(ii/NLoop,h,sprintf('Preprocessing ForceMap %i/%i\nProcessing force curves',ii,NLoop));
-          %      obj.FM{ii}.fc_TipHeight_calculation;
                 waitbar(ii/NLoop,h,sprintf('Preprocessing ForceMap %i/%i\nWrapping Up And Saving',ii,NLoop));
-                sprintf('Force Map No. %d of %d',ii,obj.NumForceMaps) % Gives current Force Map Position
-                
-                obj.FM{ii}.estimate_cp_hardsurface
+                sprintf('Force Map No. %d of %d',ii,obj.NumForceMaps) % Gives current Force Map Position               
+                obj.FM{ii}.fc_estimate_cp_hardsurface
                 obj.FM{ii}.fc_selection_threshold
                     if nnz(obj.FM{ii}.SMFSFlag.Min)<20 % Only if more than 20 force curves fulfil the citeria the whole force map is considered successfully functionalized
                         obj.SMFSFlag.SelectFM(ii)=0;
@@ -1568,13 +1565,15 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             %for hh=3:6 % Debugging
                sprintf('Force map No. %d',hh);
                % Print force curves containing label for the pulling length
-               % and colored area for the adhesion energy               
-               % 50 nm limit index
-               obj.FM{hh}.fc_find_idx
+               % and colored area for the adhesion energy                              
                % Baseline correction
                obj.FM{hh}.fc_based_ret_correction
+               % Snap-in
+               obj.FM{hh}.fc_snap_in_length_MAD
                % Pulling length
-               obj.FM{hh}.fc_pulling_length_MAD               
+               obj.FM{hh}.fc_pulling_length_MAD
+               % 50 nm limit index
+               obj.FM{hh}.fc_find_idx
                % Maximum adhesion force
                obj.FM{hh}.fc_adh_force_max
                % Adhesion energy
@@ -1587,7 +1586,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
         end
                             
         
-        function SMFS_print(obj,XMin,XMax,YMin,YMax)
+        function SMFS_print_raw(obj,XMin,XMax,YMin,YMax)
             % SMFS_print: A function to simply plot all force curves of all
             % force maps loaded and calssified based on the SMFS Flag
             % Needed function: obj.presorting
