@@ -1335,12 +1335,12 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 %   obj.FM{ii}.fc_pulling_length_MAD
 %                   obj.FM{ii}.fc_adhesion_energy_idxpulllength
 %                   obj.FM{ii}.fc_adhesion_energy_threshold
-                    obj.FM{ii}.fc_find_idx
+              %      obj.FM{ii}.fc_find_idx
           %       obj.FM{ii}.fc_adh_force_max
           %  obj.FM{ii}.fc_sinoidal_fit    
         %  obj.FM{ii}.fc_fit_based_yData
             
-         %     obj.FM{ii}.test
+              obj.FM{ii}.fc_print_raw
             
             end                    
             

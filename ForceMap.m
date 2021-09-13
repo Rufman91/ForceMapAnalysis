@@ -2461,7 +2461,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             sigma=1;
             for ii=1:obj.NCurves
             %for ii=55 % debugging
-                if ~obj.SMFSFlag.Uncorrupt(ii)     % Exclude corrupted force curves from the analysis     
+                if ~obj.SMFSFlag.Uncorrupt(jj) || ~obj.SMFSFlag.Min(jj)     % Exclude corrupted force curves from the analysis     
                 continue
                 end
                 % Allocate data
@@ -2531,7 +2531,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
              yLimit1=0.045; 
              
              for jj=1:obj.NCurves
-                if ~obj.SMFSFlag.Uncorrupt(jj)     % Exclude corrupted force curves from the analysis     
+                if ~obj.SMFSFlag.Uncorrupt(jj) || ~obj.SMFSFlag.Min(jj)     % Exclude corrupted force curves from the analysis     
                 continue
                 end
                 % Allocate data
@@ -2599,7 +2599,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
              yLimit1=0.1; 
              
              for jj=1:obj.NCurves
-                if ~obj.SMFSFlag.Uncorrupt(jj)     % Exclude corrupted force curves from the analysis     
+                if ~obj.SMFSFlag.Uncorrupt(jj) || ~obj.SMFSFlag.Min(jj)     % Exclude corrupted force curves from the analysis     
                 continue
                 end
                 % Allocate data               
@@ -2711,8 +2711,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             xDistance=10e-9;
             % Loop
             for ii=1:obj.NCurves
-            if ~obj.SMFSFlag.Uncorrupt(ii)     % Exclude corrupted force curves from the analysis     
-            continue
+            if ~obj.SMFSFlag.Uncorrupt(ii) || ~obj.SMFSFlag.Min(ii)     % Exclude corrupted force curves from the analysis     
+                continue
             end
             % Allocate data
             xRet=obj.HHRet{ii}-obj.CP_HardSurface(ii);
@@ -2740,8 +2740,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             
             for ii=1:100
             % for ii=55:100 % for debugging
-            if ~obj.SMFSFlag.Uncorrupt(ii)     % Selects all flagged 1 
-            continue
+            if ~obj.SMFSFlag.Uncorrupt(ii) || ~obj.SMFSFlag.Min(ii)     % Exclude corrupted force curves from the analysis     
+                continue
             end
             % Allocate data
             %xApp=obj.THApp{ii}-obj.CP_HardSurface(ii);
@@ -2816,9 +2816,9 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             %% Loop over all force curves
             for ii=1:obj.NCurves
             %for ii=97 % For debugging and testing 
-                if ~obj.SMFSFlag.Uncorrupt(ii)     % Selects all flagged 1 
+                if ~obj.SMFSFlag.Uncorrupt(ii) || ~obj.SMFSFlag.Min(ii)     % Exclude corrupted force curves from the analysis     
                 continue
-                end                
+                end            
                 % Allocate data
                 xRet=obj.HHRet{ii}-obj.CP_HardSurface(ii); % Retraction x-data (m): Vertical tip height data corrected by the determined contact point using the hard surface method 
                 xApp=obj.HHApp{ii}-obj.CP_HardSurface(ii); % Retraction x-data (m): Vertical tip height data corrected by the determined contact point using the hard surface method 
@@ -2919,9 +2919,9 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             %% Loop over all force curves
                 for ii=1:obj.NCurves
             %for ii=97 % % For debugging and testing
-                if ~obj.SMFSFlag.Uncorrupt(ii)     % Selects all flagged 1 
+                if ~obj.SMFSFlag.Uncorrupt(ii) || ~obj.SMFSFlag.Min(ii)     % Exclude corrupted force curves from the analysis     
                 continue
-                end                
+                end               
                 % Allocate data
                 xRet=obj.HHRet{ii}-obj.CP_HardSurface(ii); % Retraction x-data (m): Vertical tip height data corrected by the determined contact point using the hard surface method 
                 xApp=obj.HHApp{ii}-obj.CP_HardSurface(ii); % Retraction x-data (m): Vertical tip height data corrected by the determined contact point using the hard surface method 
@@ -3040,18 +3040,22 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             RetractVelocityConvert=num2str(obj.RetractVelocity*1e9);
             % Classification criteria
             figname=strcat(obj.Date,{'_'},obj.Time,{'_'},obj.ID,{'_'},obj.Substrate,{'_'},obj.EnvCond,{'_'},{'_'},obj.Chipbox,{'_'},obj.ChipCant,{'_'},ExtendVelocityConvert,{'_'},RetractVelocityConvert);
-            figname=char(figname);
+            figname=char(figname); 
             % Define variables for the plot loop
             mm=ceil(sqrt(NumFcMax));
             nn=mm;
             ww=1; % "flag while loop" variable
             DiffFc=0;
-            NumFigures=ceil(NumFcUncorrupt(hh)/NumFcMax);
-            RemainderMax=mod(NumFcUncorrupt(hh),NumFcMax); % Check for remainder
+            NumFcUncorrupt=nnz(obj.SMFSFlag.Uncorrupt.*obj.SMFSFlag.Min); % Determine the amount of uncorrupted force curves            
+            NumFigures=ceil(NumFcUncorrupt/NumFcMax);
+            if NumFigures==0     % If condition is fulfilled stop function and return to calling function     
+                return              
+            end 
+            RemainderMax=mod(NumFcUncorrupt,NumFcMax); % Check for remainder           
             if RemainderMax ~= 0
                 oo=round(sqrt(RemainderMax)); % Determine the number of rows in the figure
                 pp=ceil(sqrt(RemainderMax)); % Determine the number of columns in the figure
-                RemainderReal=mod(NumFcUncorrupt(hh),oo*pp); % Correct the remainder based on the determined rows times columns
+                RemainderReal=mod(NumFcUncorrupt,oo*pp); % Correct the remainder based on the determined rows times columns
             end
             %% figure loop
             for ii=1:NumFigures               
@@ -3818,6 +3822,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             fclose(FileID);
         end
         
+       
+        
         function [mult_height_meters1, offset_height_meters1,...
                 mult_height_meters2, offset_height_meters2,...
                 mult_vDefl_volts, offset_vDefl_volts,...
@@ -4561,10 +4567,14 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
         function read_in_header_properties(obj)
             % Check for jpk-software version and get important ForceMap
             % properties
-            
             filedirectory = fullfile(obj.DataStoreFolder,'header.properties');
             FileID=fopen(filedirectory,'rt','n','UTF-8'); % FileID = fopen(filename,permission,machinefmt,encodingIn)
             FileCont=fileread(filedirectory);
+            % Shared-data file directory 
+            FileDirectoryShared = fullfile(obj.DataStoreFolder,'shared-data','header.properties');
+            FileIDShared=fopen(FileDirectoryShared,'rt','n','UTF-8'); % FileID = fopen(filename,permission,machinefmt,encodingIn)
+            FileContShared=fileread(FileDirectoryShared);
+            
             % Height: 1. CONVERSION raw-meters & 2. SCALE meters
             % Conversion RAW -> VOLTS
             fseek(FileID,1,'cof'); % goes at the first position in the file
@@ -4657,15 +4667,9 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                     TextLine = fgetl(FileID);
                     LinePos=strfind(TextLine,'=');
                     obj.MaxPointsPerCurve=str2double(TextLine(LinePos+1:end));
-                    obj.NumSegments=2;
-                elseif isequal(TempType,'segmented-force-settings')
-                    StrPos1=strfind(FileCont,strcat(obj.FileType,'.settings.force-settings.segments.size='));
-                    fseek(FileID,StrPos1,'cof');
-                    TextLine = fgetl(FileID);
-                    LinePos=strfind(TextLine,'=');
-                    obj.NumSegments=str2double(TextLine(LinePos+1:end)); % jpk assigns approach and retraction as well as possible holding times into segments
                     % Restore initial conditions
                     frewind(FileID); % Move file position indicator back to beginning of the open file
+                elseif isequal(TempType,'segmented-force-settings')                   
                     % Number of data points
                     StrPos2=strfind(FileCont,strcat(obj.FileType,'.settings.force-settings.segment.0.num-points='));          
                     fseek(FileID,StrPos2,'cof');
@@ -4683,8 +4687,19 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 obj.MaxPointsPerCurve=str2double(TextLine(LinePos+1:end));
                 % Restore initial conditions
                 frewind(FileID); % Move file position indicator back to beginning of the open file
-            end
-            
+            end            
+
+            % Number of Segments
+            clear tline where;
+            frewind(FileIDShared);
+                StrPos=strfind(FileContShared,'force-segment-header-infos.count=');
+                fseek(FileIDShared,StrPos,'cof');
+                TextLine = fgetl(FileIDShared);
+                LinePos=strfind(TextLine,'=');
+                obj.NumSegments=str2double(TextLine(LinePos+1:end)); % jpk assigns approach and retraction as well as possible holding times into segments
+                % Restore initial conditions
+                frewind(FileIDShared); % Move file position indicator back to beginning of the open file                   
+                      
             %% Holding time
             if isequal(TempType,'relative-force-settings')
                     % Holding time
@@ -4708,7 +4723,6 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             
             %%   Velocity
             if isequal(obj.FileType,'force-scan-map')
-
                 frewind(FileID); % Move file position indicator back to beginning of the open file
                 if isequal(TempType,'relative-force-settings')
                     % Extend
@@ -4826,17 +4840,36 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             frewind(FileID);
             if isequal(obj.FileType,'quantitative-imaging-map')
                 StrPos=strfind(FileCont,strcat(obj.FileType,'.settings.force-settings.extend.setpoint='));
+                fseek(FileID,StrPos,'cof');
+                tline = fgetl(FileID);
+                where=strfind(tline,'=');
+                obj.Setpoint = str2double(tline(where+1:end)).*obj.Sensitivity.*obj.SpringConstant;
+                % Restore initial conditions
+                frewind(FileID); % Move file position indicator back to beginning of the open file
             elseif isequal(obj.FileType,'force-scan-map')
-                StrPos=strfind(FileCont,strcat(obj.FileType,'.settings.force-settings.relative-setpoint='));
-            end
-            fseek(FileID,StrPos,'cof');
-            tline = fgetl(FileID);
-            where=strfind(tline,'=');
-            obj.Setpoint = str2double(tline(where+1:end)).*obj.Sensitivity.*obj.SpringConstant;
-            
-            obj.HHType = 'capacitiveSensorHeight';
-            
+                if isequal(TempType,'relative-force-settings')
+                    % Extend                   
+                    StrPos=strfind(FileCont,strcat(obj.FileType,'.settings.force-settings.relative-setpoint='));
+                    fseek(FileID,StrPos,'cof');
+                    tline = fgetl(FileID);
+                    where=strfind(tline,'=');
+                    obj.Setpoint = str2double(tline(where+1:end)).*obj.Sensitivity.*obj.SpringConstant;
+                    % Restore initial conditions
+                    frewind(FileID); % Move file position indicator back to beginning of the open file                
+                elseif isequal(TempType,'segmented-force-settings')
+                    % Extend                   
+                    StrPos=strfind(FileCont,strcat(obj.FileType,'.settings.force-settings.segment.0.duration='));
+                    fseek(FileID,StrPos,'cof');
+                    tline = fgetl(FileID);
+                    where=strfind(tline,'=');
+                    obj.Setpoint = str2double(tline(where+1:end)).*obj.Sensitivity.*obj.SpringConstant;
+                    % Restore initial conditions
+                    frewind(FileID); % Move file position indicator back to beginning of the open file
+                end                
+            end                        
+            obj.HHType = 'capacitiveSensorHeight';           
             fclose(FileID);
+            fclose(FileIDShared);
         end
         
         function load_force_curves(obj)
@@ -4977,6 +5010,11 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             end
             
             TempFolder = obj.DataStoreFolder;
+            
+            % Correct for potential holding segment
+            if AppRetSwitch
+                AppRetSwitch=obj.NumSegments-1;
+            end
             
             HeaderFileDirectory = fullfile(TempFolder,'shared-data','header.properties');
             SegmentHeaderFileDirectory = fullfile(TempFolder,'index',string((CurveNumber-1)),'segments',string(AppRetSwitch),'segment-header.properties');
