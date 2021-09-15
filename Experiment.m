@@ -293,6 +293,17 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             
         end
         
+        function add_dummy_tip_data(obj)
+            
+            TempFile = uigetfile('*.mat');
+            TempObj = load(TempFile);
+            obj.CantileverTipFolders{end+1} = TempObj{1};
+            obj.CantileverTips{end+1} = Temp;
+            obj.CantileverTipFlag = 1;
+            obj.NumCantileverTips = obj.NumCantileverTips + 1;
+            
+        end
+        
         function save_experiment(obj)
             current = what();
             cd(obj.ExperimentFolder)
