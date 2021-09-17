@@ -1819,7 +1819,7 @@ classdef ForceMap < matlab.mixin.Copyable
                             %iN = 500;
                             %obj.FilterF{i,j} = filter(ones(1,iN)/iN,1,ForceTrend{i,j});
                             %1D-digital filter
-                            iN = Invarianz/1000;
+                            iN = Invarianz/100;
                             d = ones(1,fix(iN))/iN;
                             obj.FilterF{i,j} = filtfilt(d,1,ForceTrend{i,j});
                             %obj.FilterF{i,j} = obj.Force{i,j}-maxF+(DiffF/2);
