@@ -65,6 +65,7 @@ classdef ForceMap < matlab.mixin.Copyable
         Medium
         FibrilFlag
         DeltaPhi        % phase shift between indentation and force
+        LossTangent     % Loss tangent 
         SineVarsF       % Variables of Force fitted Sine (Amplitude, Phaseshift)
         SineVarsH       % Variables of Height fitted Sine (..)
         SineFunctionF   % Y-values of Force fitted sine function
@@ -1888,6 +1889,9 @@ classdef ForceMap < matlab.mixin.Copyable
                         
                         % phase shift between indentation and force in degrees:
                         obj.DeltaPhi{i,j} = (obj.SineVarsF{i,j}(3)-obj.SineVarsH{i,j}(3))*180/pi;
+                        
+                        % loss tangent:
+                        obj.LossTangent{i,j} = tan(obj.DeltaPhi{i,j});
                         
                         % turn range back to normal
                         obj.Force{i,j} = obj.Force{i,j}*rangeF;
