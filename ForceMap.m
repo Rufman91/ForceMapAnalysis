@@ -69,17 +69,11 @@ classdef ForceMap < matlab.mixin.Copyable
         SineVarsH       % Variables of Height fitted Sine (..)
         SineFunctionF   % Y-values of Force fitted sine function
         SineFunctionH   % Y-values of Height fitted sine function
-        firstsignchangeF
-        firstsignchangeH
-        %AmplitudeF
-        %AmplitudeH
-        %PeriodF
-        %PeriodH
         FilterF
         FilterH
+        FZShift
+        HZShift
         fitresult
-        ZeroCrossF
-        ZeroCrossTimeF
         phaseFrad
         phaseHrad
         phaseF
@@ -1786,6 +1780,7 @@ classdef ForceMap < matlab.mixin.Copyable
 %                         findpeaks(-HHGP)
 %                         drawnow
                         
+                        % Divide data through their range
                         rangeF = range(obj.Force{i,j});
                         rangeH = range(obj.Height{i,j});
                         
@@ -1793,7 +1788,7 @@ classdef ForceMap < matlab.mixin.Copyable
                         obj.Height{i,j} = obj.Height{i,j}/rangeH;
                         
                         % Max values of Force and Height
-                        maxF = max(obj.Force{i,j});
+                         maxF = max(obj.Force{i,j});
                          maxH = max(obj.Height{i,j});
 
                          % Min values of Force and Height
@@ -1806,42 +1801,29 @@ classdef ForceMap < matlab.mixin.Copyable
 
 
                          % Shift to Zero Line
-                         FZShift{i,j} = obj.Force{i,j}-maxF+(DiffF/2);
-                         HZShift{i,j} = obj.Height{i,j}-maxH+(DiffH/2);
+                         obj.FZShift{i,j} = obj.Force{i,j}-maxF+(DiffF/2);
+                         obj.HZShift{i,j} = obj.Height{i,j}-maxH+(DiffH/2);
                          
-                         Abtastrate = 1/obj.SecPerPoint{j};
-                         Invarianz = Abtastrate/obj.SegFrequency{j};
+                         % Calculation of Sampling rate and Invariance to
+                         % be able to subsequently choose the right filter
+                         Samplingrate = 1/obj.SecPerPoint{j};
+                         Invariance = Samplingrate/obj.SegFrequency{j};
 
+                         % Force-Data are only placed horizontally in 
+                         % the zero line with detrend
+                         ForceTrend{i,j} = detrend(obj.FZShift{i,j});
+                         %1D-digital filter
+                         iN = Invariance/100;
+                         d = ones(1,fix(iN))/iN;
+                         obj.FilterF{i,j} = filtfilt(d,1,ForceTrend{i,j});
+                         
+                         % Height-Data only need a filter, because of 
+                         % height-driven modulation
+                         iN = Invariance/100;
+                         d = ones(1,fix(iN))/iN;
+                         obj.FilterH{i,j} = filtfilt(d,1,obj.HZShift{i,j});
 
-
-                       % if Invarianz > 10000
-                            ForceTrend{i,j} = detrend(FZShift{i,j});
-                            %iN = 500;
-                            %obj.FilterF{i,j} = filter(ones(1,iN)/iN,1,ForceTrend{i,j});
-                            %1D-digital filter
-                            iN = Invarianz/100;
-                            d = ones(1,fix(iN))/iN;
-                            obj.FilterF{i,j} = filtfilt(d,1,ForceTrend{i,j});
-                            %obj.FilterF{i,j} = obj.Force{i,j}-maxF+(DiffF/2);
-                      %  else
-                            %ForceTrend{i,j} = detrend(FZShift{i,j});
-                           % iN = Invarianz/100;
-                           % d = ones(1,fix(iN))/iN;
-                           % obj.FilterF{i,j} = filtfilt(d,1,FZShift{i,j});
-                       % end
-                        
-                        
-                        
-                        %if obj.SegFrequency{j} > 0.5
-                            iN = Invarianz/100;
-                            d = ones(1,fix(iN))/iN;
-                            obj.FilterH{i,j} = filtfilt(d,1,HZShift{i,j});
-                       % else
-                       %     iN = 500;
-                       %     d = ones(1,iN)/iN;
-                       %     obj.FilterH{i,j} = filtfilt(d,1,HZShift{i,j});
-                       % end
-                        
+                         % Time Vectors with more entries for interpolation
                          obj.InterpTimeF{i} = obj.TStart{i}:0.1:obj.TEnd{i};
                          obj.InterpTimeF{i} = obj.InterpTimeF{i}.';
                          
@@ -1849,7 +1831,7 @@ classdef ForceMap < matlab.mixin.Copyable
                          obj.InterpTimeH{i} = obj.InterpTimeH{i}.';
                         
                          %INTERPOLATION with the purpose to add more points to indentation data
-                         %at every timestep z1_H
+                         %at every newly added timestep
                          FInterp{i,j} = interp1(obj.SegTime{j},obj.FilterF{i,j},obj.InterpTimeF{j});
                          HInterp{i,j} = interp1(obj.SegTime{j},obj.FilterH{i,j},obj.InterpTimeH{j});
 
@@ -1857,7 +1839,7 @@ classdef ForceMap < matlab.mixin.Copyable
                          row_F = find(isnan(FInterp{i,j}));
                          row_H = find(isnan(HInterp{i,j}));
 
-                         %also deleting those rows from the timestep vector z1_H:
+                         %also deleting those rows from the timestep vector:
                          obj.InterpTimeF{j}(row_F,:)=[];
                          obj.InterpTimeH{j}(row_H,:)=[];
 
@@ -1872,8 +1854,8 @@ classdef ForceMap < matlab.mixin.Copyable
                          signchangeH{i,j} = find( diff( sign(HInterp{i,j}) ) ~= 0 );
                         
                          %interpolation and time data where the sign changes
-                         obj.ZeroCrossF{i,j} = FInterp{i,j}(signchangeF{i,j});
-                         obj.ZeroCrossTimeF{i,j} = obj.InterpTimeF{j}(signchangeF{i,j});
+                         ZeroCrossF{i,j} = FInterp{i,j}(signchangeF{i,j});
+                         ZeroCrossTimeF{i,j} = obj.InterpTimeF{j}(signchangeF{i,j});
                          ZeroCrossH{i,j} = HInterp{i,j}(signchangeH{i,j});
                          ZeroCrossTimeH{i,j} = obj.InterpTimeH{j}(signchangeH{i,j});
                          
@@ -1884,8 +1866,8 @@ classdef ForceMap < matlab.mixin.Copyable
 
                          %define the time span between first time step and first change of sign
                          %which will be a parameter for the sine fit later:
-                         obj.firstsignchangeF = obj.InterpTimeF{j}(help_F) - obj.InterpTimeF{j}(1);
-                         obj.firstsignchangeH = obj.InterpTimeH{j}(help_H)- obj.InterpTimeH{j}(1);
+                         firstsignchangeF = obj.InterpTimeF{j}(help_F) - obj.InterpTimeF{j}(1);
+                         firstsignchangeH = obj.InterpTimeH{j}(help_H)- obj.InterpTimeH{j}(1);
 
                          % Max values of Force and Height
                          maxF = max(obj.FilterF{i,j});
@@ -1900,7 +1882,7 @@ classdef ForceMap < matlab.mixin.Copyable
                          DiffH = maxH - minH;
 
                          % shift the zero crossings to the original height again:
-                         FZLoc{i,j} = obj.ZeroCrossF{i,j}+maxF-(DiffF/2);
+                         FZLoc{i,j} = ZeroCrossF{i,j}+maxF-(DiffF/2);
                          HZLoc{i,j} = ZeroCrossH{i,j}+maxH-(DiffH/2);
 
                          % Amplitude
@@ -1908,7 +1890,7 @@ classdef ForceMap < matlab.mixin.Copyable
                          AmplitudeH=(DiffH/2);
  
                          % Estimate period
-                         PeriodF = 2*mean(diff(obj.ZeroCrossTimeF{i,j}));
+                         PeriodF = 2*mean(diff(ZeroCrossTimeF{i,j}));
                          PeriodH = 2*mean(diff(ZeroCrossTimeH{i,j}));
 
                          % Estimate offset
@@ -1924,7 +1906,7 @@ classdef ForceMap < matlab.mixin.Copyable
                          fcn = @(b) sum((fit(b,x) - obj.FilterF{i,j}).^2);       
                          % Minimise Least-Squares with estimated start values:
                          options = optimset('MaxFunEvals',10000);
-                         obj.SineVarsF{i,j} = fminsearch(fcn, [AmplitudeF;  PeriodF;  obj.firstsignchangeF],options); 
+                         obj.SineVarsF{i,j} = fminsearch(fcn, [AmplitudeF;  PeriodF;  firstsignchangeF],options); 
                          % Spacing of time vector:
                          xpF = linspace(min(obj.InterpTimeF{j}),max(obj.InterpTimeF{j}),100000);
                          
@@ -1934,7 +1916,7 @@ classdef ForceMap < matlab.mixin.Copyable
                          % Least-Squares cost function:
                          fcn = @(a) sum((fit(a,x) - obj.FilterH{i,j}).^2);       
                          % Minimise Least-Squares with estimated start values:
-                         obj.SineVarsH{i,j} = fminsearch(fcn, [AmplitudeH;  PeriodH;  obj.firstsignchangeH]); 
+                         obj.SineVarsH{i,j} = fminsearch(fcn, [AmplitudeH;  PeriodH;  firstsignchangeH]); 
                          % Spacing of time vector:
                          xpH = linspace(min(obj.InterpTimeH{j}),max(obj.InterpTimeH{j}),100000);
                         
@@ -1957,21 +1939,21 @@ classdef ForceMap < matlab.mixin.Copyable
                         ypF = fit(obj.SineVarsF{i,j},xpF);
                         ypH = fit(obj.SineVarsH{i,j},xpH);
                         
-                        figure('Name',sprintf('Force Curve %i Segment %j x',i,j))
-                        subplot(3,1,1)
-                        plot(x,FZShift{i,j},x,obj.FilterF{i,j},xpF,ypF)
-                        legend({'shifted force data to zero line','filtered force data','fitted force data 1'},'Location','southoutside')
-                        subplot(3,1,2)
-                        plot(x,HZShift{i,j},x,obj.FilterH{i,j},xpH,ypH)
-                        legend({'shifted height data to zero line','filtered height data','fitted height data 1'},'Location','southoutside')
-                        subplot(3,1,3)
-                        findpeaks(obj.SineFunctionF)
-                        hold on
-                        %findpeaks(-obj.SineFunctionF)
-                        findpeaks(obj.SineFunctionH)
-                        %findpeaks(-obj.SineFunctionH)
-                        legend({'force','force peak','height','height peak'},'Location','southoutside')
-                        drawnow
+%                         figure('Name',sprintf('Force Curve %i Segment %j x',i,j))
+%                         subplot(3,1,1)
+%                         plot(x,obj.FZShift{i,j},x,obj.FilterF{i,j},xpF,ypF)
+%                         legend({'shifted force data to zero line','filtered force data','fitted force data 1'},'Location','southoutside')
+%                         subplot(3,1,2)
+%                         plot(x,obj.HZShift{i,j},x,obj.FilterH{i,j},xpH,ypH)
+%                         legend({'shifted height data to zero line','filtered height data','fitted height data 1'},'Location','southoutside')
+%                         subplot(3,1,3)
+%                         findpeaks(obj.SineFunctionF)
+%                         hold on
+%                         %findpeaks(-obj.SineFunctionF)
+%                         findpeaks(obj.SineFunctionH)
+%                         %findpeaks(-obj.SineFunctionH)
+%                         legend({'force','force peak','height','height peak'},'Location','southoutside')
+%                         drawnow
                         
                     end
                 end
@@ -4069,22 +4051,31 @@ classdef ForceMap < matlab.mixin.Copyable
                     
                     if obj.SegFrequency{j} > 0
                         
-                        x=linspace(-pi/4, 2*pi, 1001);
+                        x= obj.SegTime{j};
+                        xpF = linspace(min(obj.InterpTimeF{j}),max(obj.InterpTimeF{j}),100000);
+                        xpH = linspace(min(obj.InterpTimeH{j}),max(obj.InterpTimeH{j}),100000);
                         
                         %Y-values fitted sine of indentation and force:
-                        obj.SineFunctionF = obj.SineVarsF{i,j}(1)*(sin((2*pi*x)/obj.SineVarsF{i,j}(2) + 2*pi/obj.SineVarsF{i,j}(3)));
-                        obj.SineFunctionH = obj.SineVarsH{i,j}(1)*(sin((2*pi*x)/obj.SineVarsH{i,j}(2) + 2*pi/obj.SineVarsH{i,j}(3)));
+                        ypF = obj.SineVarsF{i,j}(1)*(sin((2*pi*xpF)/obj.SineVarsF{i,j}(2) + 2*pi/obj.SineVarsF{i,j}(3)));
+                        ypH = obj.SineVarsH{i,j}(1)*(sin((2*pi*xpH)/obj.SineVarsH{i,j}(2) + 2*pi/obj.SineVarsH{i,j}(3)));
                         
                         k = k + 1;
                          % time indentation
-                        figure(k)
-                        plot(x,obj.SineFunctionF,'r', x,obj.SineFunctionH,'b')
-                        grid on
-                        grid minor
-                        legend('force sine function', 'height sine function')
-                        title('Sine Functions')
-                        xlabel('time in s')
-                        ylabel('Height in microm')
+                        figure('Name',sprintf('Force Curve %i Segment %j x',i,j))
+                        subplot(3,1,1)
+                        plot(x,obj.FZShift{i,j},x,obj.FilterF{i,j},xpF,ypF)
+                        legend({'shifted force data to zero line','filtered force data','fitted force data 1'},'Location','southoutside')
+                        subplot(3,1,2)
+                        plot(x,obj.HZShift{i,j},x,obj.FilterH{i,j},xpH,ypH)
+                        legend({'shifted height data to zero line','filtered height data','fitted height data 1'},'Location','southoutside')
+                        subplot(3,1,3)
+                        findpeaks(ypF)
+                        hold on
+                        %findpeaks(-obj.SineFunctionF)
+                        findpeaks(ypH)
+                        %findpeaks(-obj.SineFunctionH)
+                        legend({'force','force peak','height','height peak'},'Location','southoutside')
+                        drawnow
                     end
                         
                 end

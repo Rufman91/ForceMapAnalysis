@@ -1832,7 +1832,7 @@ classdef Experiment < matlab.mixin.Copyable
                 %obj.FM{i}.show_microrheology;
 %                 obj.FM{i}.show_sine_fit_Force;
                 %obj.FM{i}.show_sine_fit_Height;
-                %obj.FM{i}.show_sine;
+                obj.FM{i}.show_sine;
                 
 
             end
