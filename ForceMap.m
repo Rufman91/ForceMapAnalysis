@@ -1932,28 +1932,6 @@ classdef ForceMap < matlab.mixin.Copyable
                         obj.DeltaPhi{i,j} = (obj.SineVarsF{i,j}(3)-obj.SineVarsH{i,j}(3))*180/pi;
                         
 
-                        %Y-values fitted sine of indentation and force:
-                        obj.SineFunctionF = obj.SineVarsF{i,j}(1)*(sin((2*pi*x)/obj.SineVarsF{i,j}(2) + 2*pi/obj.SineVarsF{i,j}(3)));
-                        obj.SineFunctionH = obj.SineVarsH{i,j}(1)*(sin((2*pi*x)/obj.SineVarsH{i,j}(2) + 2*pi/obj.SineVarsH{i,j}(3)));
-                        
-                        ypF = fit(obj.SineVarsF{i,j},xpF);
-                        ypH = fit(obj.SineVarsH{i,j},xpH);
-                        
-%                         figure('Name',sprintf('Force Curve %i Segment %j x',i,j))
-%                         subplot(3,1,1)
-%                         plot(x,obj.FZShift{i,j},x,obj.FilterF{i,j},xpF,ypF)
-%                         legend({'shifted force data to zero line','filtered force data','fitted force data 1'},'Location','southoutside')
-%                         subplot(3,1,2)
-%                         plot(x,obj.HZShift{i,j},x,obj.FilterH{i,j},xpH,ypH)
-%                         legend({'shifted height data to zero line','filtered height data','fitted height data 1'},'Location','southoutside')
-%                         subplot(3,1,3)
-%                         findpeaks(obj.SineFunctionF)
-%                         hold on
-%                         %findpeaks(-obj.SineFunctionF)
-%                         findpeaks(obj.SineFunctionH)
-%                         %findpeaks(-obj.SineFunctionH)
-%                         legend({'force','force peak','height','height peak'},'Location','southoutside')
-%                         drawnow
                         
                     end
                 end
