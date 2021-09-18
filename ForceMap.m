@@ -1122,8 +1122,8 @@ classdef ForceMap < matlab.mixin.Copyable
                         obj.DeltaPhi{i,j} = abs(2*pi/obj.SineVarsH{i,j}(3)-2*pi/obj.SineVarsF{i,j}(3));
 
                         %Y-values fitted sine of indentation and force:
-                        obj.SineFunctionF = obj.SineVarsF{i,j}(1)*(sin((2*pi*x)/obj.SineVarsF{i,j}(2) + 2*pi/obj.SineVarsF{i,j}(3)));
-                        obj.SineFunctionH = obj.SineVarsH{i,j}(1)*(sin((2*pi*x)/obj.SineVarsH{i,j}(2) + 2*pi/obj.SineVarsH{i,j}(3)));
+                        %obj.SineFunctionF = obj.SineVarsF{i,j}(1)*(sin((2*pi*x)/obj.SineVarsF{i,j}(2) + 2*pi/obj.SineVarsF{i,j}(3)));
+                        %obj.SineFunctionH = obj.SineVarsH{i,j}(1)*(sin((2*pi*x)/obj.SineVarsH{i,j}(2) + 2*pi/obj.SineVarsH{i,j}(3)));
 
 
                         try
@@ -3678,23 +3678,29 @@ classdef ForceMap < matlab.mixin.Copyable
                 
                 
                 %force indentation
-                h=2*obj.NCurves + 1;
+                h=2*obj.NCurves + 10*i;
                 for j=1:obj.NumSegments
                     
+                    
                     if obj.SegFrequency{j} > 0
+                        
                         figure(h)
                         plot(obj.Force{i,j},obj.Height{i,j},'--b')
-                        title(sprintf('Force Indentation Curve %i',i))
+                        title(sprintf('Force Indentation Curve %i Segment %j x',i,j))
                         xlabel('Indentation in m')
                         ylabel('Force in N')
-
-                        h=h+1;
+                       
+                        
+                        
                     end
+                    h=h+1;
                        
                 end
                 
                 k= k+1;
                 g=g+1;
+                h=h+1;
+
             end
             
         end
