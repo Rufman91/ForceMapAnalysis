@@ -82,7 +82,8 @@ classdef ForceMap < matlab.mixin.Copyable
         App = {}        % approach force data in Newton
         Force = {}      % all force data in Newton
         Ret = {}        % retraction force data in Newton
-        Height = {}     % all height data in Newton
+        Height = {}     % all height data in meters
+        Indentation = {}% all indentation data in meters
         HHApp = {}      % capacitive-sensor-height approach data in meters
         HHRet = {}      % capacitive-sensor-height retract data in meters
         HHType          % Type of Head Height.(Default is capacitiveSensorHeight; switches to measuredHeight, if default does'nt exist)
@@ -3200,6 +3201,9 @@ classdef ForceMap < matlab.mixin.Copyable
                         HeightDataDirectory,vDefDataDirectory,obj.HHType);
 
                     obj.Height{i,j} = -TempHHApp;
+                    % indentation = z-piezo-height - deflection
+                    obj.Indentation{i,j} = obj.Height{i,j}- obj.Force{i,j};
+                    % force = deflection * spring constant
                     obj.Force{i,j} = obj.Force{i,j}.*obj.SpringConstant;
                     clear TempHHApp
                     
@@ -3626,6 +3630,7 @@ classdef ForceMap < matlab.mixin.Copyable
            %for k=1:obj.NCurves 
             k=1;
             g=obj.NCurves + 1;
+            h=2*obj.NCurves + 1;
             for i=1:obj.NCurves
                 
                 %force time
@@ -3655,7 +3660,7 @@ classdef ForceMap < matlab.mixin.Copyable
                        
                 end
                        
-                height time
+                %height time
                 figure(g)
                 hold on
                 for j=1:obj.NumSegments
@@ -3674,22 +3679,47 @@ classdef ForceMap < matlab.mixin.Copyable
                        obj.SegTime{obj.NumSegments} = obj.TStart{obj.NumSegments}:obj.SecPerPoint{obj.NumSegments}:obj.TEnd{obj.NumSegments};
                        obj.SegTime{obj.NumSegments} = obj.SegTime{obj.NumSegments}.';
 
-                       plot(obj.SegTime{j},obj.Height{i,j},'b')
+                       plot(obj.SegTime{j},obj.Indentation{i,j},'b')
                        title(sprintf('Height Time Curve %i',i))
                        xlabel('time in s')
                        ylabel('Height in m')
                 end
                 
+                %force indentation all segments
+                figure(h)
+                hold on
+                for j=1:obj.NumSegments
+                    
+                       lengthHHApp = length(obj.HHApp{i});
+                       obj.SecPerPoint{1} = obj.SegDuration{1}/lengthHHApp;
+                       obj.TStart{1} = obj.SecPerPoint{1}/2;
+                       obj.TEnd{1} = obj.SeriesTime{1};
+                       obj.SegTime{1} = obj.TStart{1}:obj.SecPerPoint{1}:obj.TEnd{1};
+                       obj.SegTime{1} = obj.SegTime{1}.';
+                       
+                       lengthHHRet = length(obj.HHRet{i});
+                       obj.SecPerPoint{obj.NumSegments} = obj.SegDuration{obj.NumSegments}/lengthHHRet;
+                       obj.TStart{obj.NumSegments} = obj.SeriesTime{obj.NumSegments - 1}+(obj.SecPerPoint{obj.NumSegments}/2);
+                       obj.TEnd{obj.NumSegments} = obj.SeriesTime{obj.NumSegments};
+                       obj.SegTime{obj.NumSegments} = obj.TStart{obj.NumSegments}:obj.SecPerPoint{obj.NumSegments}:obj.TEnd{obj.NumSegments};
+                       obj.SegTime{obj.NumSegments} = obj.SegTime{obj.NumSegments}.';
+
+                       plot(obj.Force{i,j},obj.Indentation{i,j},'--b')
+                       title(sprintf('Force Indentation Curve %i',i))
+                       xlabel('Indentation in m')
+                       ylabel('Force in N')
+                end
                 
-                %force indentation
-                h=2*obj.NCurves + 10*i;
+                
+                %force indentation only segments
+                s=2*obj.NCurves + 10*i;
                 for j=1:obj.NumSegments
                     
                     
                     if obj.SegFrequency{j} > 0
                         
-                        figure(h)
-                        plot(obj.Force{i,j},obj.Height{i,j},'--b')
+                        figure(s)
+                        plot(obj.Force{i,j},obj.Indentation{i,j},'--b')
                         title(sprintf('Force Indentation Curve %i Segment %j x',i,j))
                         xlabel('Indentation in m')
                         ylabel('Force in N')
@@ -3697,9 +3727,11 @@ classdef ForceMap < matlab.mixin.Copyable
                         
                         
                     end
-                    h=h+1;
+                    s=s+1;
                        
                 end
+                
+                
                 
                 k= k+1;
                 g=g+1;
