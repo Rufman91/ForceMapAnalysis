@@ -1735,18 +1735,18 @@ classdef ForceMap < matlab.mixin.Copyable
                         
                         % Divide data through their range
                         rangeF = range(obj.Force{i,j});
-                        rangeH = range(obj.Height{i,j});
+                        rangeH = range(obj.Indentation{i,j});
                         
                         obj.Force{i,j} = obj.Force{i,j}/rangeF;
-                        obj.Height{i,j} = obj.Height{i,j}/rangeH;
+                        obj.Indentation{i,j} = obj.Indentation{i,j}/rangeH;
                         
                         % Max values of Force and Height
                          maxF = max(obj.Force{i,j});
-                         maxH = max(obj.Height{i,j});
+                         maxH = max(obj.Indentation{i,j});
 
                          % Min values of Force and Height
                          minF = min(obj.Force{i,j});
-                         minH = min(obj.Height{i,j});
+                         minH = min(obj.Indentation{i,j});
 
                          % Difference max min
                          DiffF = maxF - minF;
@@ -1755,7 +1755,7 @@ classdef ForceMap < matlab.mixin.Copyable
 
                          % Shift to Zero Line
                          obj.FZShift{i,j} = obj.Force{i,j}-maxF+(DiffF/2);
-                         obj.HZShift{i,j} = obj.Height{i,j}-maxH+(DiffH/2);
+                         obj.HZShift{i,j} = obj.Indentation{i,j}-maxH+(DiffH/2);
                          
                          % Calculation of Sampling rate and Invariance to
                          % be able to subsequently choose the right filter
@@ -1896,7 +1896,7 @@ classdef ForceMap < matlab.mixin.Copyable
                         
                         % turn range back to normal
                         obj.Force{i,j} = obj.Force{i,j}*rangeF;
-                        obj.Height{i,j} = obj.Height{i,j}*rangeH;
+                        obj.Indentation{i,j} = obj.Indentation{i,j}*rangeH;
                         
                         
 
