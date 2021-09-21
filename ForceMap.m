@@ -3656,7 +3656,7 @@ classdef ForceMap < matlab.mixin.Copyable
                        plot(obj.SegTime{j},obj.Force{i,j},'b')
                        title(sprintf('Force Time Curve %i',i))
                        xlabel('time in s')
-                       ylabel('Force in N')
+                       ylabel('force in N')
                        
                 end
                        
@@ -3680,9 +3680,9 @@ classdef ForceMap < matlab.mixin.Copyable
                        obj.SegTime{obj.NumSegments} = obj.SegTime{obj.NumSegments}.';
 
                        plot(obj.SegTime{j},obj.Indentation{i,j},'b')
-                       title(sprintf('Height Time Curve %i',i))
+                       title(sprintf('Indentation Time Curve %i',i))
                        xlabel('time in s')
-                       ylabel('Height in m')
+                       ylabel('indentation in m')
                 end
                 
                 %force indentation all segments
@@ -3704,7 +3704,7 @@ classdef ForceMap < matlab.mixin.Copyable
                        obj.SegTime{obj.NumSegments} = obj.TStart{obj.NumSegments}:obj.SecPerPoint{obj.NumSegments}:obj.TEnd{obj.NumSegments};
                        obj.SegTime{obj.NumSegments} = obj.SegTime{obj.NumSegments}.';
 
-                       plot(obj.Force{i,j},obj.Indentation{i,j},'--b')
+                       plot(obj.Indentation{i,j},obj.Force{i,j},'b')
                        title(sprintf('Force Indentation Curve %i',i))
                        xlabel('Indentation in m')
                        ylabel('Force in N')
@@ -3719,7 +3719,7 @@ classdef ForceMap < matlab.mixin.Copyable
                     if obj.SegFrequency{j} > 0
                         
                         figure(s)
-                        plot(obj.Force{i,j},obj.Indentation{i,j},'--b')
+                        plot(obj.Indentation{i,j},obj.Force{i,j},'--b')
                         title(sprintf('Force Indentation Curve %i Segment %j x',i,j))
                         xlabel('Indentation in m')
                         ylabel('Force in N')
