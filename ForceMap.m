@@ -1740,11 +1740,11 @@ classdef ForceMap < matlab.mixin.Copyable
                         obj.Force{i,j} = obj.Force{i,j}/rangeF;
                         obj.Indentation{i,j} = obj.Indentation{i,j}/rangeH;
                         
-                        % Max values of Force and Height
+                        % Max values of Force and Indentation
                          maxF = max(obj.Force{i,j});
                          maxH = max(obj.Indentation{i,j});
 
-                         % Min values of Force and Height
+                         % Min values of Force and Indentation
                          minF = min(obj.Force{i,j});
                          minH = min(obj.Indentation{i,j});
 
@@ -1770,11 +1770,11 @@ classdef ForceMap < matlab.mixin.Copyable
                          d = ones(1,fix(iN))/iN;
                          obj.FilterF{i,j} = filtfilt(d,1,ForceTrend{i,j});
                          
-                         % Height-Data only need a filter, because of 
-                         % height-driven modulation
+                         % Modification of Indentation-Data
+                         IndentTrend{i,j} = detrend(obj.HZShift{i,j});
                          iN = Invariance/100;
                          d = ones(1,fix(iN))/iN;
-                         obj.FilterH{i,j} = filtfilt(d,1,obj.HZShift{i,j});
+                         obj.FilterH{i,j} = filtfilt(d,1,IndentTrend{i,j});
                          
                          % Amplitude Correction
                          AmplFilt = trapz(abs(obj.FilterF{i,j}));
@@ -1829,11 +1829,11 @@ classdef ForceMap < matlab.mixin.Copyable
                          firstsignchangeF = obj.InterpTimeF{j}(help_F) - obj.InterpTimeF{j}(1);
                          firstsignchangeH = obj.InterpTimeH{j}(help_H)- obj.InterpTimeH{j}(1);
 
-                         % Max values of Force and Height
+                         % Max values of Force and Indentation
                          maxF = max(obj.FilterF{i,j});
                          maxH = max(obj.FilterH{i,j});
 
-                         % Min values of Force and Height
+                         % Min values of Force and Indentation
                          minF = min(obj.FilterF{i,j});
                          minH = min(obj.FilterH{i,j});
 
@@ -1870,7 +1870,7 @@ classdef ForceMap < matlab.mixin.Copyable
                          % Spacing of time vector:
                          xpF = linspace(min(obj.InterpTimeF{j}),max(obj.InterpTimeF{j}),100000);
                          
-                         % Function to fit height data 
+                         % Function to fit indentation data 
                          %b(1) (max-min)/2 b(2) FFT b(3) first sign change b(4) mean
                          fit = @(a,x)  a(1).*(sin(2*pi*x./a(2) + 2*pi/a(3)));    
                          % Least-Squares cost function:
@@ -3765,14 +3765,14 @@ classdef ForceMap < matlab.mixin.Copyable
                         legend({'shifted force data to zero line','filtered force data','fitted force data 1'},'Location','southoutside')
                         subplot(3,1,2)
                         plot(x,obj.HZShift{i,j},x,obj.FilterH{i,j},xpH,ypH)
-                        legend({'shifted height data to zero line','filtered height data','fitted height data 1'},'Location','southoutside')
+                        legend({'shifted indentation data to zero line','filtered indentation data','fitted indentation data 1'},'Location','southoutside')
                         subplot(3,1,3)
                         findpeaks(ypF)
                         hold on
                         %findpeaks(-obj.SineFunctionF)
                         findpeaks(ypH)
                         %findpeaks(-obj.SineFunctionH)
-                        legend({'force','force peak','height','height peak'},'Location','southoutside')
+                        legend({'force','force peak','indentation','indentation peak'},'Location','southoutside')
                         drawnow
                     end
                         
