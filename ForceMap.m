@@ -1203,6 +1203,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                                     DepthRemainder = obj.IndentationDepth(iRange(i))*1e9 - DepthIndex;
                                     if DepthIndex >= length(TipObject.DepthDependendTipRadius)
                                         DepthIndex = length(TipObject.DepthDependendTipRadius) - 1;
+                                        DepthRemainder = 0;
                                     end
                                     if DepthIndex == 0
                                         TipRadius = TipObject.DepthDependendTipRadius(DepthIndex+1)*DepthRemainder;
@@ -1217,7 +1218,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                         else
                             if UseTipData
                                 DepthIndex = floor(obj.IndentationDepth(iRange(i))*1e9);
-                                DepthRemainder = obj.IndentationDepth(iRange(i)) - DepthIndex;
+                                DepthRemainder = obj.IndentationDepth(iRange(i))*1e9 - DepthIndex;
                                 if DepthIndex >= length(TipObject.DepthDependendTipRadius)
                                     DepthIndex = length(TipObject.DepthDependendTipRadius) - 1;
                                 end
