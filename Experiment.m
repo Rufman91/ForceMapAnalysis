@@ -2211,7 +2211,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
     end
     methods
         % Methods for data visualization spanning all the data
-       
+        
         function show_image(obj)
             % TODO: implement ui elements for customization
             
@@ -2433,6 +2433,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             h.MainLine = [];
             h.ChildLine = [];
             h.hasCrossSection = 0;
+            h.hasBothCrossSections = 0;
             h.hasChannel2 = 0;
             h.isUpscaled = false;
             h.lockedChannels = h.B(20).Value;
@@ -2501,8 +2502,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 h.OnePass = false;
             end
             
-            function moving_cross_section_channel_1(src,evt)
-                evname = evt.EventName;
+            function moving_cross_section(src,evt)
                 if ~get(h.B(1),'Value')
                     return
                 end
@@ -2516,7 +2516,11 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 [MainMultiplierY,UnitY,~] = AFMImage.parse_unit_scale(range(MainProfile),h.BaseUnit{h.MainIndex},1);
                 [MultiplierX,UnitX,~] = AFMImage.parse_unit_scale(range(Points),'m',1);
                 h.ImAx(3) = subplot(10,10,[71:78 81:88 91:98]);
-                P = plot(Points.*MultiplierX,Profile.*MultiplierY);
+                h.P = plot(Points.*MultiplierX,MainProfile.*MainMultiplierY);
+                if h.hasBothCrossSections && (h.hasChannel2 && h.hasChannel1)
+                    yyaxis left
+                end
+                hold on
                 grid on
                 CurrentAxHeight = round(h.Fig.Position(4)*h.ImAx(h.MainIndex).Position(4));
                 h.ImAx(3).Color = h.ColorMode(h.ColorIndex).Background;
@@ -2526,7 +2530,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 h.ImAx(3).YColor = h.ColorMode(h.ColorIndex).Profile1;
                 h.ImAx(3).GridColor = h.ColorMode(h.ColorIndex).Text;
                 xlabel(sprintf('[%s]',UnitX))
-                ylabel(sprintf('%s [%s]',h.Channel{1},UnitY))
+                ylabel(sprintf('%s [%s]',h.Channel{h.MainIndex},UnitY))
                 xlim([0 Points(end).*MultiplierX])
                 h.P.LineWidth = 2;
                 h.P.Color = h.ColorMode(h.ColorIndex).Profile1;
@@ -2614,88 +2618,44 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 hold off
             end
             
-            function moving_cross_section_channel_2(src,evt)
-                evname = evt.EventName;
-                if ~get(h.B(1),'Value')
-                    return
+            function checked_both_cross_sections(varargin)
+                h.hasBothCrossSections = ~h.hasBothCrossSections;
+                try
+                    delete(h.ImAx(3));
+                catch
                 end
-                Pos1 = [h.Line.Position(1,1) h.Line.Position(1,2)];
-                Pos2 = [h.Line.Position(2,1) h.Line.Position(2,2)];
-                if norm(Pos1-Pos2)==0
-                    get_and_draw_profile;
-                    return
-                end
-                Profile = improfile(h.Image{2},[Pos1(1) Pos2(1)],[Pos1(2) Pos2(2)]);
-                Len = norm(Pos1-Pos2)/Class{2}.NumPixelsX*Class{2}.ScanSizeX;
-                Points = [0:1/(length(Profile)-1):1].*Len;
-                [MultiplierY,UnitY,~] = AFMImage.parse_unit_scale(range(Profile),h.BaseUnit{2},1);
-                [MultiplierX,UnitX,~] = AFMImage.parse_unit_scale(range(Points),'m',1);
-                h.ImAx(3) = subplot(10,10,[71:78 81:88 91:98]);
-                P = plot(Points.*MultiplierX,Profile.*MultiplierY);
-                grid on
-                CurrentAxHeight = round(h.Fig.Position(4)*h.ImAx(2).Position(4));
-                h.ImAx(3).Color = 'k';
-                h.ImAx(3).LineWidth = 1;
-                h.ImAx(3).FontSize = round(22*(CurrentAxHeight/756));
-                h.ImAx(3).XColor = 'w';
-                h.ImAx(3).YColor = 'w';
-                h.ImAx(3).GridColor = 'w';
-                xlabel(sprintf('[%s]',UnitX))
-                ylabel(sprintf('%s [%s]',h.Channel{2},UnitY))
-                xlim([0 Points(end).*MultiplierX])
-                P.LineWidth = 2;
-                P.Color = 'b';
+                draw_channel_1
+                draw_channel_2
             end
             
-            function get_and_draw_profile_channel_1(varargin)
+            function get_and_draw_profile(varargin)
                 if ~get(h.B(1),'Value')
                     return
                 end
-                if ~isempty(h.Line)
-                    if ~isvalid(h.Line)
-                        h.Line = [];
+                if ~isempty(h.MainLine)
+                    if ~isvalid(h.MainLine)
+                        h.MainLine = [];
                     end
                 end
-                h.Line.Visible = 'off';
-                h.Line = drawline('Color','b','Parent',h.ImAx(1));
-                addlistener(h.Line,'MovingROI',@moving_cross_section_channel_1);
-                addlistener(h.Line,'ROIMoved',@moving_cross_section_channel_1);
-                Pos1 = [h.Line.Position(1,1) h.Line.Position(1,2)];
-                Pos2 = [h.Line.Position(2,1) h.Line.Position(2,2)];
-                if norm(Pos1-Pos2)==0
-                    get_and_draw_profile_channel_1;
-                    return
-                end
-                Profile = improfile(h.Image{1},[Pos1(1) Pos2(1)],[Pos1(2) Pos2(2)]);
-                Len = norm(Pos1-Pos2)/Class{1}.NumPixelsX*Class{1}.ScanSizeX;
-                Points = [0:1/(length(Profile)-1):1].*Len;
-                [MultiplierY,UnitY,~] = AFMImage.parse_unit_scale(range(Profile),h.BaseUnit{1},1);
-                [MultiplierX,UnitX,~] = AFMImage.parse_unit_scale(range(Points),'m',1);
-                h.ImAx(3) = subplot(10,10,[71:78 81:88 91:98]);
-                P = plot(Points.*MultiplierX,Profile.*MultiplierY);
-                grid on
-                CurrentAxHeight = round(h.Fig.Position(4)*h.ImAx(1).Position(4));
-                h.ImAx(3).Color = 'k';
-                h.ImAx(3).LineWidth = 1;
-                h.ImAx(3).FontSize = round(22*(CurrentAxHeight/756));
-                h.ImAx(3).XColor = 'w';
-                h.ImAx(3).YColor = 'w';
-                h.ImAx(3).GridColor = 'w';
-                xlabel(sprintf('[%s]',UnitX))
-                ylabel(sprintf('%s [%s]',h.Channel{1},UnitY))
-                xlim([0 Points(end).*MultiplierX])
-                P.LineWidth = 2;
-                P.Color = 'b';
-            end
-            
-            function get_and_draw_profile_channel_2(varargin)
-                if ~get(h.B(1),'Value')
-                    return
-                end
-                if ~isempty(h.Line)
-                    if ~isvalid(h.Line)
-                        h.Line = [];
+                h.MainLine.Visible = 'off';
+                if h.hasBothCrossSections && (h.hasChannel2 && h.hasChannel1)
+                    if ~isempty(h.ChildLine)
+                        if ~isvalid(h.ChildLine)
+                            h.ChildLine = [];
+                        end
                     end
+                    h.ChildLine.Visible = 'off';
+                end
+                if isequal(varargin{1}.Parent,h.ImAx(1))
+                    h.MainIndex = 1;
+                    h.ChildIndex = 2;
+                elseif isequal(varargin{1}.Parent,h.ImAx(2))
+                    h.MainIndex = 2;
+                    h.ChildIndex = 1;
+                end
+                try
+                    delete(h.ImAx(3))
+                catch
                 end
                 h.MainLine = drawline('Color',h.ColorMode(h.ColorIndex).Profile1,...
                     'Parent',varargin{1}.Parent,'LineWidth',h.ProfileLineWidth);
@@ -2704,7 +2664,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 Pos1 = [h.MainLine.Position(1,1) h.MainLine.Position(1,2)];
                 Pos2 = [h.MainLine.Position(2,1) h.MainLine.Position(2,2)];
                 if norm(Pos1-Pos2)==0
-                    get_and_draw_profile_channel_2;
+                    get_and_draw_profile;
                     return
                 end
                 MainProfile = improfile(h.Image{h.MainIndex},[Pos1(1) Pos2(1)],[Pos1(2) Pos2(2)],'bicubic');
@@ -2713,7 +2673,11 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 [MainMultiplierY,UnitY,~] = AFMImage.parse_unit_scale(range(MainProfile),h.BaseUnit{h.MainIndex},1);
                 [MultiplierX,UnitX,~] = AFMImage.parse_unit_scale(range(Points),'m',1);
                 h.ImAx(3) = subplot(10,10,[71:78 81:88 91:98]);
-                P = plot(Points.*MultiplierX,Profile.*MultiplierY);
+                h.P = plot(Points.*MultiplierX,MainProfile.*MainMultiplierY);
+                if h.hasBothCrossSections && (h.hasChannel2 && h.hasChannel1)
+                    yyaxis left
+                end
+                hold on
                 grid on
                 CurrentAxHeight = round(h.Fig.Position(4)*h.ImAx(h.MainIndex).Position(4));
                 h.ImAx(3).Color = h.ColorMode(h.ColorIndex).Background;
@@ -2723,7 +2687,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 h.ImAx(3).YColor = h.ColorMode(h.ColorIndex).Profile1;
                 h.ImAx(3).GridColor = h.ColorMode(h.ColorIndex).Text;
                 xlabel(sprintf('[%s]',UnitX))
-                ylabel(sprintf('%s [%s]',h.Channel{2},UnitY))
+                ylabel(sprintf('%s [%s]',h.Channel{h.MainIndex},UnitY))
                 xlim([0 Points(end).*MultiplierX])
                 h.P.LineWidth = 2;
                 h.P.Color = h.ColorMode(h.ColorIndex).Profile1;
@@ -2854,8 +2818,14 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 PopUp = Class{Index}.string_of_existing();
                 set(h.B(1+Index),'String',PopUp)
                 
-                if h.B(1+Index).Value > (length(Class{Index}.Channel) + 1)
-                    set(h.B(1+Index),'Value',1)
+                IdxOfSameChannel = find(strcmp(PopUp,CurrentChannelName));
+                
+                if isempty(IdxOfSameChannel)
+                    set(h.B(1+Index),'Value',2);
+                elseif sum(IdxOfSameChannel == h.B(1+Index).Value)
+                    set(h.B(1+Index),'Value',IdxOfSameChannel(find(IdxOfSameChannel == h.B(1+Index).Value)));
+                else
+                    set(h.B(1+Index),'Value',IdxOfSameChannel(1));
                 end
                 
                 h.Channel{Index} = h.B(1+Index).String{h.B(1+Index).Value};
@@ -3077,16 +3047,6 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             end
             
             function statistical_cmapping(varargin)
-                draw_channel_1
-                draw_channel_2
-            end
-            
-            function checked_both_cross_sections(varargin)
-                h.hasBothCrossSections = ~h.hasBothCrossSections;
-                try
-                    delete(h.ImAx(3));
-                catch
-                end
                 draw_channel_1
                 draw_channel_2
             end
