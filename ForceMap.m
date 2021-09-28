@@ -278,6 +278,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             
             obj.construct_list_to_map_relations
             obj.create_pixel_difference_channel
+            obj.set_channel_positions(obj.Channel(end).OriginX,obj.Channel(end).OriginY,obj.Channel(end).ScanAngle);
             
             obj.initialize_flags();
         end

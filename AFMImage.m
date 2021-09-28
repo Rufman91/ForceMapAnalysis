@@ -716,7 +716,7 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             Channel1 = FirstClassInstance.get_channel('Processed');
             Channel2 = OverlayedClassInstance.get_channel('Processed');
             
-            [OutChannel,ScaleMultiplier,WhoScaled] = AFMImage.overlay_parameters_by_bayesopt(Channel1,Channel2,...
+            OutChannel = AFMImage.overlay_parameters_by_bayesopt(Channel1,Channel2,...
                 BackgroundPercent,MinOverlap,AngleRange,UseParallel,MaxFunEval,PreMaxFunEval,NumPreSearches,NClusters);
             
             OverlayedClassInstance.set_channel_positions(OutChannel.OriginX,OutChannel.OriginY,OutChannel.ScanAngle);
