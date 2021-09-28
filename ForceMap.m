@@ -33,9 +33,12 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
         FractionOfMaxRAM = 1/5 % Specifies how much of MaxRAM space can be taken for certain partitioned calculations 
         NCurves         % number of curves on the force map
         MaxPointsPerCurve
+        HoldingTime = 0
+        NumSegments
         ExtendTime
         RetractTime
-        ZLength
+        ExtendZLength
+        RetractZLength
         ExtendVelocity        % Approach  velocity as defined in the force map settings
         RetractVelocity
         Sensitivity
@@ -43,7 +46,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
         SpringConstant
         Setpoint
         DBanding        % Fourieranalysis-based estimate of DBanding perdiod (only available with sufficient resolution)
-        RefSlope        % Refernce slope as determined from the upper curve slope from data from very hard
+        RefSlope        % Refernce slope as determined from the upper curve slope from data from very hard      
         % surfaces (mica,glass), either from glass parts beneath the specimen or from
         % separate reference force maps
         PixApp          % maximum number of measured points during approach
@@ -143,7 +146,6 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
         IndentationDepthOliverPharr
         IndentArea
         ProjTipArea
-        RefSlopeMask
         HasRefSlope
     end
     properties
@@ -158,14 +160,67 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
     end
     properties
         % SMFS related 
-        MinRet % Minimum value of the
+        
+        Linker          % Used NHS-PEG-MI Linker (short or long) 
         Substrate       % Used substrate for the measurement 
         EnvCond         % Environmental condition during the experiment
         ChipCant        % AFM-Chip number and Cantilever label
         Chipbox         % AFM-Chipbox number (in Roman numerals)
-        ModDate         % Modified Date is a modification of the poperty Date. Dots are removed
         SMFSFlag        %
-        BasedRetCorr    % BasedRet data corrected
+        BasedAppDataPts
+        BasedRetDataPts
+        BasedAppAlign={}   % capacitive-sensor-height approach data in meters with aligned datapoints to the corresponding retraction data
+        BasedRetAlign={}   % capacitive-sensor-height retraction data in meters with aligned datapoints to the corresponding approach data
+        xAppRetSubstracted={} 
+        BasedRetCorr    % BasedRet data corrected based on a selection of the approach data
+        BasedRetCorr2   % BasedRet data corrected based on a selection of the retraction data        
+        CorrMeanApp     % Mean of a selection of the approach data for baseline correction
+        CorrStdApp      % Corresponding standard deviation of the selection of the approach data for baseline correction
+        CorrMeanRet     % Mean of a selection of the retraction data for baseline correction
+        CorrStdRet      % Corresponding standard deviation of the selection of the retraction data for baseline correction
+        EndIdx          % Index correspoding to a predefined value
+        UnbindingBoundaryIdx % Unbinding boundary index
+        yRetLim        % Modified retraction data to allow a valid integration
+        yRetLim2        % Modified retraction data to allow a valid integration
+        yAppLim         %  Modified approach data to allow a valid integration
+        RetAdhEnergy_ThresholdMethod % Adhesion Energy of the retraction curve based on the threshold method
+        AppAdhEnergy_IdxMethod % Adhesion Energy of the retraction curve based on the pulling length index method
+        RetAdhEnergy_IdxMethod % Adhesion Energy of the retraction curve based on the pulling length index method
+        FMAppAdhEnergyMean  % Mean of the adhesion energy of a force map
+        FMAppAdhEnergyStd   % Standard deviation of the adhesion energy of a force map
+        FMRetAdhEnergyMean  % Mean of the adhesion energy of a force map
+        FMRetAdhEnergyStd   % Standard deviation of the adhesion energy of a force map
+        SnapInIdx           % Index of the data point indentified as snap-in value 
+        SnapInLength        % Snap-in length
+        FMSnapInMean        % Mean snap-in length of a force map in meters (m) 
+        FMSnapInMin         % Min snap-in length of a force map in meters (m) 
+        FMSnapInMax         % Max snap-in length of a force map in meters (m)        
+        PullingLengthIdx % Index of the data point identified as pulling length value
+        PullingLength   % Pulling length in meters (m)
+        FMPullingLengthMean  % Mean pulling length of a force map in meters (m)   
+        FMPullingLengthMin   % Min pulling length of a force map in meters (m) 
+        FMPullingLengthMax   % Max pulling length of a force map in meters (m)
+        AdhForceMaxApp      % Maximum adhesion force of the approach data
+        AdhForceMaxRet      % Maximum adhesion force of the retraction data
+        AdhForceUnbinding 
+        AdhForceMaxAppIdx   % Index of the maximum adhesion force of the approach data 
+        AdhForceMaxRetIdx   % Index of the maximum adhesion force of the retraction data
+        AdhForceUnbindingIdx
+        Idx50nm             % Index closest to 50 nm distance 
+        FitCoeffa1          % Sinus fit coefficient a1 derived from the fit function
+        FitCoeffb1          % Sinus fit coefficient b1 derived from the fit function
+        FitCoeffc1          % Sinus fit coefficient c1 derived from the fit function
+        FitCoeffd1          % Sinus fit coefficient d1 derived from the fit function
+        FitCoeffe1          % Sinus fit coefficient e1 derived from the fit function
+        FitRSquare          % R sqare of the sinus fit
+        FitSSE              % SSE of the sinus fit
+        yAppFitCorr
+        yRetFitCorr
+        yRetFitMean
+        yRetFitStd
+        xDataToFit      % ONLY A TESTING PROPERTY
+        yDataToFit      % ONLY A TESTING PROPERTY
+
     end
     
     methods
@@ -223,6 +278,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             
             obj.construct_list_to_map_relations
             obj.create_pixel_difference_channel
+            obj.set_channel_positions(obj.OriginX,obj.OriginY,obj.ScanAngle);
             
             obj.initialize_flags();
         end
@@ -1673,24 +1729,50 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
         
         function manual_exclusion(obj)
             
-            obj.ExclMask = logical(ones(obj.NumPixelsX,obj.NumPixelsY));
             CheckSum = 100;
+            f = figure('Name','Choose areas to be excluded');
+            f.WindowState = 'maximized';
+            
+            if ~isempty(obj.ExclMask)
+                obj.ExclMask = logical(ones(obj.NumPixelsX,obj.NumPixelsY));
+            else
+                TempMap = obj.HeightMap(:,:,1);
+                TempMap(obj.ExclMask == 0) = max(TempMap,[],'all');
+                imshow(TempMap,[])
+                
+                answer = questdlg('There already exists an exclusion mask!', ...
+                    'Keep it!', ...
+                    'Draw new!','Draw new!');
+                % Handle response
+                switch answer
+                    case 'Keep it!'
+                        close(f)
+                        return
+                    case 'Draw new!'
+                        obj.ExclMask = logical(ones(obj.NumPixelsX,obj.NumPixelsY));
+                        close(f)
+                        f = figure('Name','Choose areas to be excluded');
+                        f.WindowState = 'maximized';
+                end
+            end
+            
             while CheckSum > 1
-                f = figure('Name','Choose areas to be excluded');
-                f.WindowState = 'maximized';
                 subplot(2,1,2)
                 surf(imresize(imrotate(obj.HeightMap(:,:,1)',90),[1024 1024]),'LineStyle','none','FaceLighting','gouraud','FaceColor','interp')
                 light('Style','local')
                 subplot(2,1,1)
-                imshow(obj.HeightMap(:,:,1).*obj.ExclMask,[min(obj.HeightMap(:,:,1),[],'all') max(obj.HeightMap(:,:,1),[],'all')])
+                TempMap = obj.HeightMap(:,:,1);
+                TempMap(obj.ExclMask == 0) = max(TempMap,[],'all');
+                imshow(TempMap,[])
                 title(sprintf('%s: Draw Freehand ROI around areas, that are to be excluded\nThe area will be taken out and the same map redrawn \n If there is nothing to do just click on the image once without dragging the cursor',obj.Name))
                 ROI = drawfreehand;
                 CheckSum = length(ROI.Waypoints);
                 Mask = ~createMask(ROI);
                 obj.ExclMask = obj.ExclMask.*Mask;
-                close(f)
+                drawnow
             end
             
+            close(f)
             %             current = what();
             %             cd(obj.Folder)
             %             savename = sprintf('%s.mat',obj.Name);
@@ -1804,68 +1886,99 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             imshowpair(imresize(mat2gray(obj.HeightMap(:,:,1)),[1024 1024]),imresize(mask(:,:,1),[1024 1024]),'montage')
             %            pause(5)
             close(f)
-        end        
-
-        function [MinApp] = min_force(obj)           
-            for ii=1:obj.NCurves
-                [App,HHApp] = obj.get_force_curve_data(ii,0,1,0);
-                [Ret,HHRet] = obj.get_force_curve_data(ii,1,1,0);
-            MinApp(ii)=min(App);
-            MinRet(ii)=min(Ret); 
+        end
+        
+    %% SMFS related
+    
+        function fc_flag_workaround(obj)
+    % fc_flag_workaround: Function to fix some differences in the
+    % prerequirements between the SMFS batch and imaging parts of the class
+      
+             for ii=1:obj.NCurves
+             obj.BaseAndTiltFlag=1;
+         %    obj.BigDataFlag=1;
+             end
+        end
+        
+        function fc_estimate_cp_hardsurface(obj)
+            % contact point estimation for force curves detected on hard
+            % surfaces
+            
+            for ii=1:obj.NCurves 
+                obj.CP_HardSurface(ii,1) = obj.HHApp{ii}(end) - obj.App{ii}(end)/obj.SpringConstant; % Determine the contact point by simply substracting the last entries of height and force and correct with the spring constant
+                obj.CP_HardSurface(ii,2) = 0;
+                %% Debugging
+                % plot(HHApp,App);
+                % drawpoint('Position',[obj.CP_HardSurface(i,1) obj.CP_HardSurface(i,2)]);
             end
-            obj.MinRet = MinRet;
+            obj.CPFlag.HardSurface = 1;
         end
         
-        function fc_based_ret_correction(obj,DataShareStart,DataShareEnd)  
-            % fc_based_ret_correction: A function to correct for an AFM
-            % based baseline deviation between the approach and retraction
-            % data
-        if nargin <2
-            DataShareStart=0.05; % 5%
-            DataShareEnd=0.1; % 1%
-        end
-        % loop over all force curves  
-        for kk=1:100
-            DataPts=size(obj.BasedApp{kk}); % Determine the quantity of data points in the force curve 
-            LimitIdx1=round(DataPts(1)*DataShareStart); % Determine the corresponidng index
-            LimitIdx2=round(DataPts(1)*DataShareEnd);
-            CorrMean=mean(abs(obj.BasedApp{kk}(LimitIdx1:LimitIdx2,1))-abs(obj.BasedRet{kk}(DataPts(1)-LimitIdx2:DataPts(1)-LimitIdx1,1))); % Calculate the mean of the difference data
-            obj.BasedRetCorr{kk}=obj.BasedRet{kk}-CorrMean; % Correct the BasedRet data with the mean of the correction data
-        end        
-        % %% Appendix
-        % close all
-        % % Define variables
-        % kk=1
-        % x100=-100e-9; % Defines 100nm
-        % x500=-500e-9; % Defines 500nm
-        % % Graphical preview
-        % fig=gcf;
-        % fig.Units='normalized'; % changes to normalized unit settings, necessary to receive the full screen size in the next line
-        % fig.Color='white'; % changes the background color of the figure
-        % fig.OuterPosition=[0.5 0 0.5 1];% changes the size of the figure to half screen
-        % fig.PaperOrientation='landscape';
-        % grid on
-        % hold on
-        % % "Origin" data
-        % plot(a.FM{1}.THApp{kk}-a.FM{1}.CP_HardSurface(kk,1),a.FM{1}.BasedApp{kk},'b');
-        % plot(a.FM{1}.THRet{kk}-a.FM{1}.CP_HardSurface(kk,1),a.FM{1}.BasedRet{kk},'r');
-        % % Retention data corrected
-        % plot(a.FM{1}.THRet{kk}-a.FM{1}.CP_HardSurface(kk,1),a.FM{ii}.BasedRetCorr{kk},'g');
-        % % DataShare part of the data
-        % plot(a.FM{1}.THApp{kk}(LimitIdx1:LimitIdx2,1)-a.FM{1}.CP_HardSurface(kk,1),a.FM{1}.BasedApp{kk}(LimitIdx1:LimitIdx2,1),'y');
-        % plot(a.FM{1}.THRet{kk}(DataPts(1)-LimitIdx2:DataPts(1)-LimitIdx1,1)-a.FM{1}.CP_HardSurface(kk,1),a.FM{1}.BasedRet{kk}(DataPts(1)-LimitIdx2:DataPts(1)-LimitIdx1,1),'m');
-        % % Markers
-        % plot(a.FM{1}.THRet{kk}(ThreshIdx,1)-a.FM{1}.CP_HardSurface(kk,1),a.FM{1}.BasedRet{kk}(ThreshIdx,1),'kx','MarkerSize',20);
-        % plot(a.FM{1}.THApp{kk}(ThreshIdx,1)-a.FM{1}.CP_HardSurface(kk,1),a.FM{1}.BasedApp{kk}(ThreshIdx,1),'mx','MarkerSize',20);
-        % Distances lines
-        % line([x100 x100], ylim,'Color','k'); % Draws a vertical line
-        % line([x500 x500], ylim,'Color','k'); % Draws a vertical line
-        end
         
-        function fc_chipprop(obj)
-                 
+        function fc_selection_threshold(obj,ThresholdDist,ThreshValue)
+            % fc_selection_threshold: A function to distinguish between
+            % force curves that fulfil or do not fulfil the logical
+            % statement
+            % SMFSFlag.Min = 0:  Force curves indicate a naked tip
+            % SMFSFlag.Min = 1:  Force curves indicate a functionalized tip
+            if nargin <2
+                ThresholdDist1=50e-9;   % 50 nm
+                ThresholdDist2=75e-9;   % 75 nm
+                ThresholdDist3=100e-9;  % 100 nm
+                ThresholdDist4=150e-9;  % 150 nm
+                ThreshValue=25e-12;     % 25 pN
+            elseif nargin<3
+                ThreshValue=25e-12;    % 25 pN
+            end
+            % loop over all force curves
+            for kk=1:100
+            % Determine the index corresponding to the threshold distance
+            ThreshDist1=abs(obj.HHRet{kk}-obj.CP_HardSurface(kk,1)+ThresholdDist1);
+            [~, ThreshIdx1]=min(ThreshDist1);
+            ThreshDist2=abs(obj.HHRet{kk}-obj.CP_HardSurface(kk,1)+ThresholdDist2);
+            [~, ThreshIdx2]=min(ThreshDist2);
+            ThreshDist3=abs(obj.HHRet{kk}-obj.CP_HardSurface(kk,1)+ThresholdDist3);
+            [~, ThreshIdx3]=min(ThreshDist3);
+            ThreshDist4=abs(obj.HHRet{kk}-obj.CP_HardSurface(kk,1)+ThresholdDist4);
+            [~, ThreshIdx4]=min(ThreshDist4);
+            % Check if the force curve is selected 
+               if obj.BasedRet{kk}(ThreshIdx1)>ThreshValue
+                   obj.SMFSFlag.Min(kk)=1;
+               elseif obj.BasedRet{kk}(ThreshIdx1)<ThreshValue && obj.BasedRet{kk}(ThreshIdx2)>ThreshValue
+                   obj.SMFSFlag.Min(kk)=1;
+               elseif obj.BasedRet{kk}(ThreshIdx1)<ThreshValue && obj.BasedRet{kk}(ThreshIdx2)<ThreshValue && obj.BasedRet{kk}(ThreshIdx3)>ThreshValue
+                   obj.SMFSFlag.Min(kk)=1;
+               elseif obj.BasedRet{kk}(ThreshIdx1)<ThreshValue && obj.BasedRet{kk}(ThreshIdx2)<ThreshValue && obj.BasedRet{kk}(ThreshIdx3)<ThreshValue && obj.BasedRet{kk}(ThreshIdx4)>ThreshValue
+                   obj.SMFSFlag.Min(kk)=1;
+               else
+                   obj.SMFSFlag.Min(kk)=0;
+               end
+            end           
+%             %% Appendix
+%             close all
+%             % Define variables
+%             kk=1
+%             x100=-100e-9; % Defines 100nm
+%             x500=-500e-9; % Defines 500nm
+%             % Graphical preview
+%             fig=gcf;
+%             fig.Units='normalized'; % changes to normalized unit settings, necessary to receive the full screen size in the next line
+%             fig.Color='white'; % changes the background color of the figure
+%             fig.OuterPosition=[0.5 0 0.5 1];% changes the size of the figure to half screen
+%             fig.PaperOrientation='landscape';
+%             grid on
+%             hold on
+%             plot(obj.FM{1}.THApp{kk}-obj.FM{1}.CP_HardSurface(kk,1),obj.FM{1}.BasedApp{kk},'b');
+%             plot(obj.FM{1}.THRet{kk}-obj.FM{1}.CP_HardSurface(kk,1),obj.FM{1}.BasedRet{kk},'r'); 
+%             plot(obj.FM{1}.THRet{kk}(ThreshIdx,1)-obj.FM{1}.CP_HardSurface(kk,1),obj.FM{1}.BasedRet{kk}(ThreshIdx,1),'kx','MarkerSize',20);
+%             line([x100 x100], ylim,'Color','k'); % Draws a vertical line                  
+%             line([x500 x500], ylim,'Color','k'); % Draws a vertical line      
+        end
+                
+        function fc_measurement_prop(obj)
+               % fc_chipprop: A fct to read out properties about the SMFS measurements from the name of the jpk data file (i.e. "JPK-FORCE-MAP").  
                 % Chip number and Cantilever
-                exp15='(?!10)\d+\w{1}'; % Finds the chip number and the cantilever   
+                exp15='(\d+\D{1}\>)'; % Finds the chip number and the cantilever   
                 obj.ChipCant = regexp(obj.Name, exp15, 'match','once');                 
                 % Chip box
                 exp16 = '(?!L)[CLXVI]+'; % Finds the chip number given in roman numerals 
@@ -1912,104 +2025,240 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 exp32='HAc';
                 pat=regexpPattern(exp32,"IgnoreCase",true);
                 ext32=extract(obj.Name,pat);
+                % CAPS buffer
+                exp33='CAPS';
+                pat=regexpPattern(exp33,"IgnoreCase",true);
+                ext33=extract(obj.Name,pat);
+                % Dulbecco's phospate buffered saline (DPBS) buffer
+                exp34='DPBS';
+                pat=regexpPattern(exp34,"IgnoreCase",true);
+                ext34=extract(obj.Name,pat);
                 % Environmental conditions
                 if isempty(ext31)==0
                     obj.EnvCond='Water'; % Milli-Q water
                 elseif isempty(ext32)==0
                     obj.EnvCond='HAc'; % Acetic acid
+                elseif isempty(ext33)==0
+                    obj.EnvCond='CAPS'; % CAPS
+                elseif isempty(ext34)==0
+                    obj.EnvCond='DPBS'; % Dulbecco's phospate buffered saline
                 else
-                    obj.EnvCond='PBS'; % Phosphate buffered saline
+                    obj.EnvCond='';
                 end
+                % Long linker
+                exp41='long';
+                pat=regexpPattern(exp41,"IgnoreCase",true);
+                ext41=extract(obj.Name,pat);
+                % Short linker
+                exp42='short';
+                pat=regexpPattern(exp42,"IgnoreCase",true);
+                ext42=extract(obj.Name,pat);              
+                % Linker
+                if isempty(ext41)==0
+                    obj.Linker='long'; % long linker
+                elseif isempty(ext42)==0
+                    obj.Linker='short'; % short linker
+                else
+                  %  obj.Linker='long';
+                    obj.Linker='short';
+                end
+                
         end
         
-        function fc_print(obj) % fc ... force curve
-            % fc_print: A function to simply plot all force curves of a
-            % force map without any selection taking place
-            
-            % Remove dots in obj.Date
-            obj.ModDate=strrep(obj.Date,'.','');
-            
-            % Define remainder situation
-            Remainder=mod(obj.NCurves,25);
-            NFigures=floor(obj.NCurves./25);
-            if Remainder ~= 0
-                NFigures=NFigures+1;
-            end    
-            % Define variables for the figure name
-            VelocityConvert=num2str(obj.ExtendVelocity*1e+9); % Convert into nm
-            %figname=strcat(obj.ID,{'-'},obj.ModDate,{'-'},obj.ExtendVelocity,{'-'},obj.Name);
-            figname=strcat(obj.ID,{'-'},obj.ModDate,{'-'},VelocityConvert,{'-'},obj.Substrate,{'-'},obj.EnvCond,{'-'},obj.Chipbox,{'-'},obj.ChipCant);
-            figname=char(figname);
-            %% Figure loop
-            for ii=1:NFigures           
-            % Figure    
-            h_fig=figure(ii);
-            h_fig.Color='white'; % changes the background color of the figure
-            h_fig.Units='normalized'; % Defines the units 
-            h_fig.OuterPosition=[0 0 1 1];% changes the size of the to the whole screen
-            h_fig.PaperOrientation='landscape';
-            h_fig.Name=figname;         
-            %% Plotting the tiles
-            t = tiledlayout(5,5);
-            %t.TileSpacing = 'compact';
-            %t.Padding = 'compact';
-            t.TileSpacing = 'none'; % To reduce the spacing between the tiles
-            t.Padding = 'none'; % To reduce the padding of perimeter of a tile
-            
-            % Defining variables
-            if ii==NFigures && Remainder~=0
-                NLoop=Remainder;
-            else
-                NLoop=25;
-            end
-                %% Plot loop    
-                for jj=1:NLoop
-                    % Tile jj
-                    kk=jj+25*(ii-1);
-                    %%% Define some variables
-                    x50=-50e-9; % Defines 100nm
-                    x500=-500e-9; % Defines 500nm
-                    % Plot tile
-                    nexttile
-                    hold on
-                    grid on
-                    plot(obj.THApp{kk}-obj.CP_HardSurface(kk,1),obj.BasedApp{kk});
-                    plot(obj.THRet{kk}-obj.CP_HardSurface(kk,1),obj.BasedRetCorr{kk});
-                    line([x50 x50], ylim,'Color','k'); % Draws a vertical line                  
-                    line([x500 x500], ylim,'Color','k'); % Draws a vertical line
-                    % Title for each Subplot
-                    ti=title(sprintf('%i',kk),'Color','k');                                     
-                    ti.Units='normalized'; % Set units to 'normalized'  
-                    ti.Position=[0.5,0.9]; % Position the subplot title within the subplot
-                    % Legend, x- and y-labels
-                    %legend('Approach','Retraction','Location','best')
-                    %xlabel('Tip-sample seperation  (nm)','FontSize',11,'Interpreter','latex');
-                    %ylabel('Force (nN)','FontSize',11,'Interpreter','latex');                  
-                end
+        function [fitresult, gof] = fc_sinoidal_fit(obj)
+        %CREATEFIT1(X,Y)
+        %  Create a fit.
+        %
+        %  Data for 'untitled fit 1' fit:
+        %      X Input : x
+        %      Y Output: y
+        %  Output:
+        %      fitresult : a fit object representing the fit.
+        %      gof : structure with goodness-of fit info.
+        %
+        %  See also FIT, CFIT, SFIT.
 
-            %% Save figures
-            %%% Define the name for the figure title    
-            partname=sprintf('-p%d',ii);        
-           % fullname=sprintf('%s%s',figname,partname);
-            fullname=sprintf('%s%s',figname,partname);
-            %%% Save the current figure in the current folder
-            print(gcf,fullname,'-dpng'); 
-            end
-        close Figure 1 Figure 2 Figure 3 Figure 4
+        %  Auto-generated by MATLAB on 02-Sep-2021 17:40:40
+
+            % Define variables
+            RGB3=[80 220 100]./255; % Emerald
+            RGB4=[200 81 160]./255; % Compl to RGB3
+            mega=10e6;
+            giga=10e9;
+            SelectedPercentage=0.7;
+            NFigures=4;
+            NLoop=25;
+            ExtendVelocityConvert=num2str(obj.ExtendVelocity*1e9);
+            RetractVelocityConvert=num2str(obj.RetractVelocity*1e9);
+            % Classification criteria
+            figname=strcat(obj.Date,{'_'},obj.Time,{'_'},obj.ID,{'_'},obj.Substrate,{'_'},obj.EnvCond,{'_'},obj.Linker,{'_'},obj.Chipbox,{'_'},obj.ChipCant,{'_'},ExtendVelocityConvert,{'_'},RetractVelocityConvert);
+            figname=char(figname);    
+                % Figure loop
+                for jj=1:NFigures
+                % figure properties
+                h_fig=figure(jj);
+                h_fig.Color='white'; % changes the background color of the figure
+                h_fig.Units='normalized'; % Defines the units 
+                h_fig.OuterPosition=[0 0 1 1];% changes the size of the to the whole screen
+                h_fig.PaperOrientation='landscape';
+                h_fig.Name=figname; 
+                % Tile properties
+                t = tiledlayout(5,5);
+                t.TileSpacing = 'none'; % To reduce the spacing between the tiles
+                t.Padding = 'none'; % To reduce the padding of perimeter of a tile
+                %% Tile loop
+                    for kk=1:NLoop
+                    % Tile
+                    oo=kk+25*(jj-1);    
+                    % Allocate data
+                    x=obj.HHApp{oo}*mega; % Transform head height to nm, needed for the fit
+                    y=obj.App{oo}*giga; % Transform approach force data to pN, needed for the fit
+                    % Select only a percentage of the data so that a potential
+                    % snap-in is excluded from the fit
+                    x(ceil(end*SelectedPercentage):end)=[];
+                    y(ceil(end*SelectedPercentage):end)=[];                    
+                    % Prepare data
+                    [xData, yData] = prepareCurveData( x, y );                  
+                    % Set up fittype and options.
+                    % Fit 1
+                    ft1 = fittype( 'a1*sin(b1*x+c1)+d1', 'independent', 'x', 'dependent', 'y' );
+                    opts1= fitoptions( 'Method', 'NonlinearLeastSquares' );
+                    opts1.Display = 'Off';
+                    opts1.Robust = 'Bisquare';
+                    a1Range=range(yData)/2;
+                    %opts1.StartPoint = [a1Range -1.8 x(1,1) y(1,1)];
+                    opts1.StartPoint = [-0.2 -1.8 x(1,1) y(1,1)];      
+                    [fitresult1, gof1] = fit( xData, yData, ft1, opts1 ); % Fit                    
+                    % Fit 2
+                    % Set up fittype and options.
+                    ft2 = fittype( 'a1*sin(b1*x+c1)+d1+e1*x', 'independent', 'x', 'dependent', 'y' );
+                    opts2= fitoptions( 'Method', 'NonlinearLeastSquares' );
+                    opts2.Display = 'Off';                   
+                    opts2.StartPoint = [fitresult1.a1 fitresult1.b1 fitresult1.c1 fitresult1.d1 0];                  
+                    [fitresult2, gof2] = fit( xData, yData, ft2, opts2 ); % Fit                    
+                    % Allocate variables
+                    obj.FitCoeffa1(oo)=fitresult2.a1;
+                    obj.FitCoeffb1(oo)=fitresult2.b1;
+                    obj.FitCoeffc1(oo)=fitresult2.c1;
+                    obj.FitCoeffd1(oo)=fitresult2.d1;
+                    obj.FitCoeffe1(oo)=fitresult2.e1;
+                    obj.FitRSquare(oo)=gof2.rsquare;
+                    obj.FitSSE(oo)=gof2.sse;                     
+                    % Flag fitting results basaed on the received R-squared
+                    % value
+                    RSquareLimit=0.5;
+                    if obj.FitRSquare(oo)<RSquareLimit
+                         obj.SMFSFlag.Fit(oo)=0;
+                    else
+                         obj.SMFSFlag.Fit(oo)=1;
+                    end
+                    
+                    %% Plotting the tiles
+                    nexttile;     
+                    hold on
+                    grid on
+                    plot(xData,yData,'.','Color',RGB4) 
+                    plot(xData,obj.FitCoeffa1(oo)*sin(obj.FitCoeffb1(oo)*xData+obj.FitCoeffc1(oo))+obj.FitCoeffd1(oo)+obj.FitCoeffe1(oo)*xData,'LineWidth',2,'Color',RGB3)
+                    % Plotted Text  
+                    NE = [max(xlim) max(ylim)]-[diff(xlim) diff(ylim)]*0.01; % Define the position in the plot  
+                    partstrA1='R^2=';
+                    partstrA2=num2str(round(gof2.rsquare,2));
+                    fullstrA=strcat(partstrA1,partstrA2); % Define the string that shall be shown in the plot
+                    te1=text(NE(1), NE(2),fullstrA, 'VerticalAlignment','top', 'HorizontalAlignment','right');
+                    te1.FontSize = 14;
+                    % Title for each Subplot                    
+                    ti=title(sprintf('%i',oo),'Color','k');                    
+                    ti.Units='normalized'; % Set units to 'normalized'  
+                    ti.Position=[0.5,0.95]; % Position the subplot title within the subplot 
+                    end                              
+                 %% Save figures
+                 %%% Define the name for the figure title   
+                 partname=sprintf('-part%d',jj);  
+                 fullname=sprintf('%s%s',figname,partname);
+                 %%% Save the current figure in the current folder
+                 print(gcf,fullname,'-dpng');             
+                end
+                close Figure 1 Figure 2 Figure 3 Figure 4
         end
-        
-        function fc_selection(obj) % fc ... force curve
+                
+        function fc_fit_based_yData(obj)
+            % Based on the fitting equation this function calculates the
+            % y-data of the corresponding retraction x-data
+            % f(x) = a1*sin(b1*x+c1)+d1
             
+            for jj=1:obj.NCurves
+            %for jj=30
+                % Define variables
+                mega=10e6;
+                giga=10e9;
+                % Allocate data
+                xApp=obj.HHApp{jj}*mega;
+                xRet=obj.HHRet{jj}*mega; % Transform head height to nm
+                yApp=obj.App{jj}*giga; % Transform approach force data to pN
+                yRet=obj.Ret{jj}*giga; % Transform approach force data to pN                
+                % Determine the corresponding y-data of the x retraction
+                % data by using the determined fitting coefficiantsb (a1,b1,c1,d1) and the
+                % fitting equation: f(x) = a1*sin(b1*x+c1)+d1+e1*x
+                yAppFitbased=obj.FitCoeffa1(jj)*sin(obj.FitCoeffb1(jj)*xApp+obj.FitCoeffc1(jj))+obj.FitCoeffd1(jj)+obj.FitCoeffe1(jj)*xApp;
+                yRetFitbased=obj.FitCoeffa1(jj)*sin(obj.FitCoeffb1(jj)*xRet+obj.FitCoeffc1(jj))+obj.FitCoeffd1(jj)+obj.FitCoeffe1(jj)*xRet;                
+                % Substract the determined y-data from the original data
+                % and allocate
+                obj.BasedApp{jj}=(yApp-yAppFitbased)/giga;
+                obj.BasedRet{jj}=(yRet-yRetFitbased)/giga;                
+            end            
+            %% Appendix
+%             close all
+%             % Plot  
+%             hold on
+%             plot(xApp,yApp,'b')
+%             plot(xRet,yRet,'r')
+%             plot(xRet,yRetFitbased,'g')
+%             plot(xApp,obj.BasedApp(jj),'k')
+%             plot(xRet,obj.BasedRet(jj),'m')
+           
+        end
+                
+        function fc_TipHeight_calculation(obj)
+            % Function to determine the TipHeight based on the Head Height
+            % and the fit based y data
+            
+            for jj=1:obj.NCurves
+                obj.THApp{jj} = obj.HHApp{jj} - obj.BasedApp{jj}/obj.SpringConstant;
+                obj.THRet{jj} = obj.HHRet{jj} - obj.BasedRet{jj}/obj.SpringConstant;
+            end
+        end
+
+        
+        function fc_visual_selection(obj,XMin,XMax,YMin,YMax) % fc ... force curve
+            % fc_visual_selection: function plots all force curves of a force map
+                        
+            if nargin < 2
+                XMin= -inf;
+                XMax= inf;
+                YMin= -inf;
+                YMax= inf;
+            end
             % Define remainder situation
             Remainder=mod(obj.NCurves,25);
             NFigures=floor(obj.NCurves./25);
             if Remainder ~= 0
                 NFigures=NFigures+1;
             end    
-            %% Figure loop          
-            %figname=strcat(obj.ID,{'-'},obj.ModDate,{'-'},obj.ExtendVelocity,{'-'},obj.Name);
-            figname=strcat(obj.ID,{'-'},obj.ModDate,{'-'},obj.ExtendVelocity,{'-'},obj.Substrate,{'-'},obj.EnvCond,{'-'},obj.Chipbox,{'-'},obj.ChipCant);
+            %% Define some variables
+            RGB1=[0 26 255]./255;  % Blue 
+            RGB2=[255 119 0]./255; % Orange
+            RGB10=[69 22 113]./255; % Violet
+            % Define variables for the plotted tiles 
+                    x50=-50e-9; % Defines 50nm
+                    x150=-150e-9; % Defines 150nm
+                    x500=-500e-9; % Defines 500nm
+            % Define variables for the figure name
+            ExtendVelocityConvert=num2str(obj.ExtendVelocity*1e9);
+            RetractVelocityConvert=num2str(obj.RetractVelocity*1e9);
+            % Classification criteria
+            figname=strcat(obj.Date,{'_'},obj.Time,{'_'},obj.ID,{'_'},obj.Substrate,{'_'},obj.EnvCond,{'_'},obj.Linker,{'_'},obj.Chipbox,{'_'},obj.ChipCant,{'_'},ExtendVelocityConvert,{'_'},RetractVelocityConvert);
             figname=char(figname);
+            %% Figure loop   
             for ii=1:NFigures           
             % Figure    
             h_fig=figure(ii);
@@ -2018,13 +2267,12 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             h_fig.OuterPosition=[0 0 1 1];% changes the size of the to the whole screen
             h_fig.PaperOrientation='landscape';
             h_fig.Name=figname;         
-            %% Plotting the tiles
+            % Plotting the tiles
             t = tiledlayout(5,5);
             %t.TileSpacing = 'compact';
             %t.Padding = 'compact';
             t.TileSpacing = 'none'; % To reduce the spacing between the tiles
-            t.Padding = 'none'; % To reduce the padding of perimeter of a tile
-            
+            t.Padding = 'none'; % To reduce the padding of perimeter of a tile           
             % Defining variables
             if ii==NFigures && Remainder~=0
                 NLoop=Remainder;
@@ -2034,86 +2282,77 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 %% Plot loop    
                 for jj=1:NLoop
                     % Tile jj
-                    kk=jj+25*(ii-1);
-                    %%% Define some variables
-                    x100=-100e-9; % Defines 100nm
-                    x500=-500e-9; % Defines 100nm
+                    kk=jj+25*(ii-1);                    
                     % Plot tile
-                    nexttile
+                    ax=nexttile;      
+                    ax.XLim = [XMin XMax];
+                    ax.YLim = [YMin YMax];
                     hold on
                     grid on
-                    plot(obj.THApp{kk}-obj.CP_HardSurface(kk,1),obj.BasedApp{kk});
-                    plot(obj.THRet{kk}-obj.CP_HardSurface(kk,1),obj.BasedRet{kk});
-                    line([x100 x100], ylim,'Color','k'); % Draws a vertical line                  
-                    line([x500 x500], ylim,'Color','k'); % Draws a vertical line
+                    % For sinoidal fitted data
+                    plot(obj.HHApp{kk}-obj.CP_HardSurface(kk,1),obj.BasedApp{kk},'Color',RGB1);
+                    plot(obj.HHRet{kk}-obj.CP_HardSurface(kk,1),obj.BasedRet{kk},'Color',RGB2);
+                    % Non fitted data
+                    %plot(obj.THApp{kk}-obj.CP_HardSurface(kk,1),obj.BasedApp{kk});
+                    %plot(obj.THRet{kk}-obj.CP_HardSurface(kk,1),obj.BasedRet{kk});
+                    xline(x50,'Color',RGB10); % Draws a vertical line
+                    xline(x150,'Color',RGB10); % Draws a vertical line   
+                    xline(x500,'Color',RGB10); % Draws a vertical line
                     % Title for each Subplot
-                    if obj.SelectedCurves(kk) == 0
+                    if obj.SMFSFlag.Uncorrupt(kk)==0
                         ti=title(sprintf('%i',kk),'Color','r');
-                    elseif obj.SelectedCurves(kk) == 1
+                    elseif obj.SMFSFlag.Uncorrupt(kk)==1
                         ti=title(sprintf('%i',kk),'Color','b');
                     end
                     ti.Units='normalized'; % Set units to 'normalized'  
-                    ti.Position=[0.5,0.9]; % Position the subplot title within the subplot
-                    % Legend, x- and y-labels
-                    %legend('Approach','Retraction','Location','best')
-                    %xlabel('Tip-sample seperation  (nm)','FontSize',11,'Interpreter','latex');
-                    %ylabel('Force (nN)','FontSize',11,'Interpreter','latex');                  
+                    ti.Position=[0.5,0.95]; % Position the subplot title within the subplot                 
                 end
                 
                 %% Dialog boxes
-                % Function 'bttnChoiseDialog.m' is needed to excute this section
-                
+                % Function 'bttnChoiseDialog.m' is needed to excute this section               
                 inputOptions={'Select all', 'Select none', 'Select all - except of', 'Select none - except of'}; % Define the input arguments
                 % 'Select all' = 1
                 % 'Select none' = 2
                 % 'Select all - except of' = 3
                 % 'Select none - except of' = 4
-
                 defSelection=inputOptions{1}; % Default selection; Defined selection if the window is closed without choosing a selection possibility
-
                 SelectBttns=bttnChoiseDialog(inputOptions, 'Force curve selection', defSelection,...
                 'Please choose the appropriate button ...'); % Stores the selected button number per figure
-
                 % Case 1: Select all
                 if SelectBttns == 1
-                    obj.SelectedCurves(kk-24:kk) = 1;
+                    obj.SMFSFlag.Uncorrupt(kk-24:kk)=1;
                 end
-
                 % Case 2: Select none
                 if SelectBttns == 2
-                    obj.SelectedCurves(kk-24:kk) = 0;
+                    obj.SMFSFlag.Uncorrupt(kk-24:kk)=0;
                 end
-
                 % Case 3: Select all - except of
                 if SelectBttns == 3
-                    obj.SelectedCurves(kk-24:kk) = 1;
+                    obj.SMFSFlag.Uncorrupt(kk-24:kk)=1;
                     prompt = {'Enter the force curve number you do not want to keep for analysis (For multiple selections just use the space key to separeat entries)'};
                     definput = {''};
                     opts.Interpreter = 'tex';
-                    IndSelec=inputdlg(prompt,'Select all except of ...',[1 150],definput,opts); % Stores the individual selected fc as a cell array of character vectors 
-                    IndSelec=str2num(IndSelec{1}); % Convert the cell array to numerals
-                    obj.SelectedCurves(IndSelec) = 0;
+                    IdxExc=inputdlg(prompt,'Select all - except of ...',[1 150],definput,opts); % Stores the individual selected fc as a cell array of character vectors 
+                    IdxExc=str2num(IdxExc{1}); % Convert the cell array to numerals
+                    obj.SMFSFlag.Uncorrupt(IdxExc)=0;
                 end
-
-                if obj.SelectedCurves(kk-24:kk) == 0
-                    t=title(sprintf('%i',kk),'Color','r');
-                    elseif obj.SelectedCurves(kk-24:kk) == 1
-                    t=title(sprintf('%i',kk),'Color','b');
-                end
-        
+                if obj.SMFSFlag.Uncorrupt(kk-24:kk)==0
+                    title(sprintf('%i',kk),'Color','r');
+                elseif obj.SMFSFlag.Uncorrupt(kk-24:kk)==1    
+                    title(sprintf('%i',kk),'Color','b');
+                end        
                 % Case 4: Select none - except of
                 if SelectBttns == 4
-                    obj.SelectedCurves(kk-24:kk) = 0;
+                    obj.SMFSFlag.Uncorrupt(kk-24:kk)=0;
                     prompt = {'Enter the force curve number you want want to keep for analysis (For multiple selections just use the space key to separeat entries)'};
                     definput = {''};
                     opts.Interpreter = 'tex';
-                    IndSelec=inputdlg(prompt,'Select all except of ...',[1 150],definput,opts); % Stores the individual selected fc as a cell array of character vectors 
-                    IndSelec=str2num(IndSelec{1}); % Convert the cell array to numerals
-                    obj.SelectedCurves(IndSelec) = 1;
+                    IdxExc=inputdlg(prompt,'Select none - except of ...',[1 150],definput,opts); % Stores the individual selected fc as a cell array of character vectors 
+                    IdxExc=str2num(IdxExc{1}); % Convert the cell array to numerals
+                    obj.SMFSFlag.Uncorrupt(IdxExc)=1;
                 end
             end
-                % Housekeeping
-                close all
+            close all
                 
             %%% Colour highlighting of the force curves regarding the choosen answer and storage in a structure
             %% Figure loop
@@ -2132,35 +2371,36 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 %t.Padding = 'compact';
                 t.TileSpacing = 'none'; % To reduce the spacing between the tiles
                 t.Padding = 'none'; % To reduce the padding of perimeter of a tile
-
                 % Defining variables
                 if ii==NFigures && Remainder~=0
                     NLoop=Remainder;
                 else
                     NLoop=25;
-                end 
-               
+                end               
                 %% Title loop
                 for jj=1:NLoop
                     % Tile jj
                     kk=jj+25*(ii-1);
-                    nexttile
+                    ax=nexttile;      
+                    ax.XLim = [XMin XMax];
+                    ax.YLim = [YMin YMax];
                     hold on
                     grid on
-                    plot(obj.THApp{kk}-obj.CP_HardSurface(kk,1),obj.BasedApp{kk});
-                    plot(obj.THRet{kk}-obj.CP_HardSurface(kk,1),obj.BasedRet{kk});                    
+                    plot(obj.HHApp{kk}-obj.CP_HardSurface(kk,1),obj.BasedApp{kk},'Color',RGB1);
+                    plot(obj.HHRet{kk}-obj.CP_HardSurface(kk,1),obj.BasedRet{kk},'Color',RGB2);
+                    %plot(obj.THApp{kk}-obj.CP_HardSurface(kk,1),obj.BasedApp{kk});
+                    %plot(obj.THRet{kk}-obj.CP_HardSurface(kk,1),obj.BasedRet{kk});
+                    xline(x50,'Color',RGB10); % Draws a vertical line
+                    xline(x150,'Color',RGB10); % Draws a vertical line   
+                    xline(x500,'Color',RGB10); % Draws a vertical line
                     % Title for each Subplot
-                    if obj.SelectedCurves(kk) == 0
+                    if obj.SMFSFlag.Uncorrupt(kk)==0
                         ti=title(sprintf('%i',kk),'Color','r');
-                    elseif obj.SelectedCurves(kk) == 1
+                    elseif obj.SMFSFlag.Uncorrupt(kk)==1
                         ti=title(sprintf('%i',kk),'Color','b');
                     end
                     ti.Units='normalized'; % Set units to 'normalized'  
-                    ti.Position=[0.5,0.9]; % Position the subplot title within the subplot
-                    % Legend, x- and y-labels
-                    %legend('Approach','Retraction','Location','best')
-                    %xlabel('Tip-sample seperation  (nm)','FontSize',11,'Interpreter','latex');
-                    %ylabel('Force (nN)','FontSize',11,'Interpreter','latex');                  
+                    ti.Position=[0.5,0.95]; % Position the subplot title within the subplot                                  
                 end
 
             %% Save figures
@@ -2173,53 +2413,1266 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
         close Figure 1 Figure 2 Figure 3 Figure 4
         end
         
-        function fc_selection_procedure(obj,ThresholdDist,ThreshValue)
-            % fc_selection_procedure: A function to distinguish between
-            % force curves that fulfil or do not fulfil the logical
-            % statement
-            % SMFSFlag.Min = 0:  Force curves indicate a naked tip
-            % SMFSFlag.Min = 1:  Force curves indicate a functionalized tip
-            if nargin <2
-                ThresholdDist=50e-9;  % 50 nm
-                ThreshValue=50e-12;    % 50 pN
-            elseif nargin<3
-                ThreshValue=50e-12;    % 50 pN
+        
+        function fc_based_ret_correction(obj,DataShareStartApp,DataShareEndApp,DataShareStartRet,DataShareEndRet)
+            % fc_based_ret_correction: A function to correct for an AFM
+            % based baseline deviation between the approach and retraction
+            % data
+        if nargin <2
+            DataShareStartApp=0.05; % 5%
+            DataShareEndApp=0.15; % 15%
+            DataShareStartRet=0.01; % 1%
+            DataShareEndRet=0.11; % 5%
+        end
+        % Loop over all force curves  
+        for ii=1:obj.NCurves
+            
+            % Define limits
+            DataPtsApp=size(obj.BasedApp{ii}); % Determine the amount of data points in the force curve 
+            LimitIdxApp1=round(DataPtsApp(1)*DataShareStartApp); % Determine the corresponidng index
+            LimitIdxApp2=round(DataPtsApp(1)*DataShareEndApp); % Determine the corresponidng index
+            DataPtsRet=size(obj.BasedRet{ii}); % Determine the amount of data points in the force curve 
+            LimitIdxRet1=round(DataPtsRet(1)*DataShareStartRet); % Determine the corresponidng index
+            LimitIdxRet2=round(DataPtsRet(1)*DataShareEndRet); % Determine the corresponidng index
+            
+            if obj.SMFSFlag.Fit(ii)==1
+            % Mean and standard deviation of a selection of the fitted y retantion data           
+            obj.yRetFitMean(ii)=mean(obj.BasedRet{ii}(DataPtsRet(1)-LimitIdxRet2:DataPtsRet(1)-LimitIdxRet1,1)); % Calculate the mean of the difference data
+            obj.yRetFitStd(ii)=std(obj.BasedRet{ii}(DataPtsRet(1)-LimitIdxRet2:DataPtsRet(1)-LimitIdxRet1,1));   % Calculate the standard deviation of the difference data
+     
+            else
+            % Correction based on the approach data            
+            obj.CorrMeanApp(ii)=mean(abs(obj.BasedApp{ii}(LimitIdxApp1:LimitIdxApp2,1))-abs(obj.BasedRet{ii}(DataPtsApp(1)-LimitIdxApp2:DataPtsApp(1)-LimitIdxApp1,1))); % Calculate the mean of the difference data
+            obj.CorrStdApp(ii)=std(obj.BasedApp{ii}(DataPtsApp(1)-LimitIdxApp2:DataPtsApp(1)-LimitIdxApp1,1));             
+            obj.BasedRetCorr{ii}=obj.BasedRet{ii}-obj.CorrMeanApp(ii); % Correct the BasedRet data with the mean of the correction data
+            
+            % Correction based on the retraction data                     
+            obj.CorrMeanRet(ii)=mean(obj.BasedRet{ii}(DataPtsRet(1)-LimitIdxRet2:DataPtsRet(1)-LimitIdxRet1,1)); % Calculate the mean of the difference data
+            obj.CorrStdRet(ii)=std(obj.BasedRet{ii}(DataPtsRet(1)-LimitIdxRet2:DataPtsRet(1)-LimitIdxRet1,1));   % Calculate the standard deviation of the difference data            
+            obj.BasedRetCorr2{ii}=obj.BasedRet{ii}-obj.CorrMeanRet(ii); % Correct the BasedRet data with the mean of the correction data          
+                        
             end
-            % loop over all force curves
-            for kk=1:100
-            % Determine the index corresponding to the threshold distance
-            ThreshDist=abs(obj.THRet{kk}-obj.CP_HardSurface(kk,1)+ThresholdDist);
-            [~, ThreshIdx]=min(ThreshDist);
-            % Check if the force curve is selected 
-                if (obj.BasedApp{kk}(ThreshIdx)-obj.BasedRetCorr{kk}(ThreshIdx))>ThreshValue
-                    obj.SMFSFlag.Min(kk)=1;
-                else
-                    obj.SMFSFlag.Min(kk)=0;
+        end   
+              
+        %% Appendix
+%         close all
+%         % Define variables
+%         kk=1
+%         x100=-100e-9; % Defines 100nm
+%         x500=-500e-9; % Defines 500nm
+%         % Graphical preview
+%         fig=gcf;
+%         fig.Units='normalized'; % changes to normalized unit settings, necessary to receive the full screen size in the next line
+%         fig.Color='white'; % changes the background color of the figure
+%         fig.OuterPosition=[0.5 0 0.5 1];% changes the size of the figure to half screen
+%         fig.PaperOrientation='landscape';
+%         grid on
+%         hold on
+%         % "Origin" data
+%         plot(a.FM{1}.THApp{kk}-a.FM{1}.CP_HardSurface(kk,1),a.FM{1}.BasedApp{kk},'b');
+%         plot(a.FM{1}.THRet{kk}-a.FM{1}.CP_HardSurface(kk,1),a.FM{1}.BasedRet{kk},'r');
+%         % Retention data corrected
+%         plot(a.FM{1}.THRet{kk}-a.FM{1}.CP_HardSurface(kk,1),a.FM{ii}.BasedRetCorr{kk},'g');
+%         % DataShare part of the data
+%         plot(a.FM{1}.THApp{kk}(LimitIdx1:LimitIdx2,1)-a.FM{1}.CP_HardSurface(kk,1),a.FM{1}.BasedApp{kk}(LimitIdx1:LimitIdx2,1),'y');
+%         plot(a.FM{1}.THRet{kk}(DataPts(1)-LimitIdx2:DataPts(1)-LimitIdx1,1)-a.FM{1}.CP_HardSurface(kk,1),a.FM{1}.BasedRet{kk}(DataPts(1)-LimitIdx2:DataPts(1)-LimitIdx1,1),'m');
+%         % Markers
+%         plot(a.FM{1}.THRet{kk}(ThreshIdx,1)-a.FM{1}.CP_HardSurface(kk,1),a.FM{1}.BasedRet{kk}(ThreshIdx,1),'kx','MarkerSize',20);
+%         plot(a.FM{1}.THApp{kk}(ThreshIdx,1)-a.FM{1}.CP_HardSurface(kk,1),a.FM{1}.BasedApp{kk}(ThreshIdx,1),'mx','MarkerSize',20);
+%         Distances lines
+%         line([x100 x100], ylim,'Color','k'); % Draws a vertical line
+%         line([x500 x500], ylim,'Color','k'); % Draws a vertical line
+        end
+                
+        function fc_pulling_length_sigma(obj)
+            sigma=1;
+            for ii=1:obj.NCurves
+            %for ii=55 % debugging
+                if ~obj.SMFSFlag.Uncorrupt(jj) || ~obj.SMFSFlag.Min(jj)     % Exclude corrupted force curves from the analysis     
+                continue
                 end
+                % Allocate data
+                xApp=obj.THApp{ii}-obj.CP_HardSurface(ii);
+                xRet=obj.THRet{ii}-obj.CP_HardSurface(ii);
+                if obj.SMFSFlag.Fit(ii)==1
+                yApp=obj.BasedApp{ii};
+                yRet=obj.BasedRet{ii};
+                else
+                yApp=obj.BasedApp{ii};
+                yRet=obj.BasedRetCorr2{ii};
+                end
+
+                % Find the index and determine the pulling length
+                if obj.SMFSFlag.Fit(ii)==1
+                obj.PullingLengthIdx(ii)=find(yRet<obj.yRetFitMean(ii)-obj.yRetFitStd(ii)*sigma,1,'last'); % Finds the index of the value that fulfils the condition         
+                obj.PullingLength(ii)=abs(xRet(obj.PullingLengthIdx(ii))); % Corresponding x-value of the index
+                else
+                obj.PullingLengthIdx(ii)=find(yRet<obj.CorrMeanRet(ii)-obj.CorrStdApp(ii)*sigma,1,'last'); % Finds the index of the value that fulfils the condition         
+                obj.PullingLength(ii)=abs(xRet(obj.PullingLengthIdx(ii))); % Corresponding x-value of the index
+                end                 
             end           
+            obj.FMPullingLengthMean=mean(obj.PullingLength);
+            obj.FMPullingLengthMin=min(obj.PullingLength);
+            obj.FMPullingLengthMax=max(obj.PullingLength);
+            
 %             %% Appendix
 %             close all
 %             % Define variables
-%             kk=1
-%             x100=-100e-9; % Defines 100nm
-%             x500=-500e-9; % Defines 500nm
+%             qq=1;
+%             % Allocate data
+%             xApp=obj.THApp{qq}-obj.CP_HardSurface(qq);
+%             xRet=obj.THRet{qq}-obj.CP_HardSurface(qq);
+%             yApp=obj.BasedApp{qq};
+%             yRet=obj.BasedRetCorr2{qq};    
 %             % Graphical preview
-%             fig=gcf;
-%             fig.Units='normalized'; % changes to normalized unit settings, necessary to receive the full screen size in the next line
-%             fig.Color='white'; % changes the background color of the figure
-%             fig.OuterPosition=[0.5 0 0.5 1];% changes the size of the figure to half screen
-%             fig.PaperOrientation='landscape';
-%             grid on
+%             h_fig=figure(1);
+%             h_fig.Color='white'; % changes the background color of the figure
+%             h_fig.Units='normalized'; % Defines the units
+%             h_fig.OuterPosition=[0 0 1 1];% changes the size of the to the whole screen
+%             h_fig.PaperOrientation='landscape';
+%             %% Plotting the tiles
+%             t = tiledlayout(2,2);
+%             %t.TileSpacing = 'compact';
+%             %t.Padding = 'compact';
+%             t.TileSpacing = 'none'; % To reduce the spacing between the tiles
+%             t.Padding = 'none'; % To reduce the padding of perimeter of a tile
+%             nexttile
 %             hold on
-%             plot(obj.FM{1}.THApp{kk}-obj.FM{1}.CP_HardSurface(kk,1),obj.FM{1}.BasedApp{kk},'b');
-%             plot(obj.FM{1}.THRet{kk}-obj.FM{1}.CP_HardSurface(kk,1),obj.FM{1}.BasedRet{kk},'r'); 
-%             plot(obj.FM{1}.THRet{kk}(ThreshIdx,1)-obj.FM{1}.CP_HardSurface(kk,1),obj.FM{1}.BasedRet{kk}(ThreshIdx,1),'kx','MarkerSize',20);
-%             line([x100 x100], ylim,'Color','k'); % Draws a vertical line                  
-%             line([x500 x500], ylim,'Color','k'); % Draws a vertical line      
-        end
-       
-   end  
+%             grid on
+%             plot(xApp,yApp,'b');
+%             plot(xRet,yRet,'r');
+%             nexttile
+%             hold on
+%             grid on
+%             plot(xApp,yApp,'b');
+%             plot(xRet,yRet,'r');
+%             plot(obj.THRet{qq}(obj.PullingLengthIdx(qq))-obj.CP_HardSurface(qq),obj.BasedRetCorr2{qq}(obj.PullingLengthIdx(qq)),'*','MarkerSize',10,'MarkerEdgeColor','g')              
+        end        
         
+        function fc_pulling_length_MAD(obj)
+                      
+             % Define variables
+             beforePts=5;
+             afterPts=10;
+             movWindow=[beforePts afterPts]; % moving data point window for the moving median absolute deviation         
+             yLimit1=0.045; 
+             
+             for jj=1:obj.NCurves
+                if ~obj.SMFSFlag.Uncorrupt(jj) || ~obj.SMFSFlag.Min(jj)     % Exclude corrupted force curves from the analysis     
+                continue
+                end
+                % Allocate data
+                xRet{jj}=obj.HHRet{jj}-obj.CP_HardSurface(jj);
+                yRet{jj}=obj.BasedRet{jj};
+                % Determine the pulling length index 
+                normRet{jj}=normalize(flip(yRet{jj}));  % Normalize and flip the data             
+                normRetMAD{jj} = movmad(normRet{jj},movWindow); % Apply the moving median absolute deviation                 
+                Peak1{jj}=find(normRetMAD{jj}>yLimit1,1,'first'); % Find the index in the data fulfilling the condition
+                obj.PullingLengthIdx(jj)=length(yRet{jj})-Peak1{jj}; % Correct for the flipped data the peak index is based on by substracting from the number of data points
+                obj.PullingLength(jj)=abs(xRet{jj}(obj.PullingLengthIdx(jj))); % Corresponding x-value of the index
+             end           
+            % Allocate data  
+            obj.FMPullingLengthMean=mean(obj.PullingLength);
+            obj.FMPullingLengthMin=min(obj.PullingLength);
+            obj.FMPullingLengthMax=max(obj.PullingLength);
+        
+             %% Appendix
+%             close all
+%              % Graphical preview
+%              for ii=1:obj.NCurves
+%                 h_fig=figure(1);
+%                 h_fig.Color='white'; % changes the background color of the figure
+%                 h_fig.Units='normalized'; % Defines the units
+%                 h_fig.OuterPosition=[0 0 1 1];% changes the size of the to the whole screen
+%                 h_fig.PaperOrientation='landscape';
+%                 subplot(3,1,1)
+%                 hold on
+%                 plot(flip(yRet{ii}))
+%                 plot(obj.PullingLengthIdx(ii),flip(yRet{ii}(obj.PullingLengthIdx(ii))),'kx','MarkerSize',20)
+%                 plot(Peak1{ii},flip(yRet{ii}(Peak1{ii})),'r*','MarkerSize',20)
+%                 hold off
+%                 ax21=gca;
+%                 ax21.XLim = [100 inf];
+%                 ax21.YLim = [-inf inf];
+%                 subplot(3,1,2)
+%                 hold on
+%                 plot(xRet{ii},yRet{ii})
+%                 plot(xRet{ii}(length(yRet{ii})-obj.PullingLengthIdx(ii)),yRet{ii}(length(yRet{ii})-obj.PullingLengthIdx(ii)),'kx','MarkerSize',20)
+%                 plot(xRet{ii}(length(yRet{ii})-Peak1{ii}),yRet{ii}(length(yRet{ii})-Peak1{ii}),'r*','MarkerSize',20)
+%                 hold off
+%                 ax22=gca;
+%                 ax22.XLim = [-inf inf];
+%                 ax22.YLim = [-inf inf];
+%                 subplot(3,1,3)
+%                 hold on
+%                 plot(normRetMAD{jj})
+%                 plot(Peak1{ii},normRetMAD{ii}(Peak1{ii}),'kx','MarkerSize',20)
+%                 hold off
+%                 ax23=gca;
+%                 ax23.XLim = [100 inf];
+%                 ax23.YLim = [0 0.2];
+%                 drawnow     
+%                 pause(3)
+%                 close figure 1
+%              end
+        end
+             
+        function fc_snap_in_length_MAD(obj)
+                      
+             % Define variables
+             beforePts=75;
+             afterPts=75;
+             movWindow=[beforePts afterPts]; % moving data point window for the moving median absolute deviation        
+             yLimit1=0.1; 
+             
+             for jj=1:obj.NCurves
+                if ~obj.SMFSFlag.Uncorrupt(jj) || ~obj.SMFSFlag.Min(jj)     % Exclude corrupted force curves from the analysis     
+                continue
+                end
+                % Allocate data               
+                xApp{jj}=obj.HHApp{jj}-obj.CP_HardSurface(jj); 
+                yApp{jj}=obj.BasedApp{jj};
+                % Determine the pulling length index 
+                normApp{jj}=normalize(flip(yApp{jj}));  % Normalize and flip the data             
+                normAppMAD{jj} = movmad(normApp{jj},movWindow); % Apply the moving median absolute deviation                           
+                Peak1{jj}=find(normAppMAD{jj}>yLimit1,1,'last'); % Find the index in the data fulfilling the condition
+                obj.SnapInIdx(jj)=length(yApp{jj})-Peak1{jj}; % Correct for the data the peak index is based on by substracting from the number of data points               
+                obj.SnapInLength(jj)=abs(xApp{jj}(obj.SnapInIdx(jj))); % Corresponding x-value of the index
+             end
+            % Allocate data  
+            obj.FMSnapInMean=mean(obj.PullingLength);
+            obj.FMSnapInMin=min(obj.PullingLength);
+            obj.FMSnapInMax=max(obj.PullingLength);
+        
+             %% Appendix
+%            close all
+%             % Graphical preview
+%             % Figure 1
+%              for ii=1:obj.NCurves
+%                 h_fig=figure(1);
+%                 h_fig.Color='white'; % changes the background color of the figure
+%                 h_fig.Units='normalized'; % Defines the units
+%                 h_fig.OuterPosition=[0 0 1 1];% changes the size of the to the whole screen
+%                 h_fig.PaperOrientation='landscape';
+%                 subplot(3,1,1)
+%                 hold on
+%                 plot(yApp{ii})
+%                 plot(obj.SnapInIdx(ii),yApp{ii}(obj.SnapInIdx(ii)),'kx','MarkerSize',20)
+%                 plot(Peak1{ii},yApp{ii}(Peak1{ii}),'r*','MarkerSize',20)
+%                 hold off
+%                 ax21=gca;
+%                 ax21.XLim = [100 inf];
+%                 ax21.YLim = [-inf inf];
+%                 subplot(3,1,2)
+%                 hold on
+%                 plot(xApp{ii},yApp{ii})
+%                 plot(xApp{ii}(obj.SnapInIdx(ii)),yApp{ii}(obj.SnapInIdx(ii)),'kx','MarkerSize',20)
+%                 plot(xApp{ii}(Peak1{ii}),yApp{ii}(Peak1{ii}),'r*','MarkerSize',20)
+%                 hold off
+%                 ax22=gca;
+%                 ax22.XLim = [-inf inf];
+%                 ax22.YLim = [0 2];
+%                 subplot(3,1,3)
+%                 hold on
+%                 plot(normAppMAD{ii})
+%                 plot(Peak2{ii},normAppMAD{ii}(Peak1{ii}),'kx','MarkerSize',20)
+%                 hold off
+%                 ax23=gca;
+%                 ax23.XLim = [-inf inf];
+%                 ax23.YLim = [0 2];
+%                 drawnow     
+%                 pause(3)
+%                 close figure 1
+%              end
+            % Figure 2
+            %  Test different windows
+%                for jj=1:obj.NCurves
+%                   movWindow1=[50 50]; % moving data point window for the moving median absolute deviation      
+%                   normAppMAD1{jj} = movmad(normApp{jj},movWindow1); % Apply the moving median absolute deviation   
+%                   Peak2{jj}=find(normAppMAD1{jj}>yLimit1,1,'last'); % Find the index in the data fulfilling the condition
+%                   SnapInIdx(jj)=length(yApp{jj})-Peak2{jj}; % Correct for the data the peak index is based on by substracting from the number of data points                  
+%                end
+%               for ii=1:obj.NCurves
+%                 h_fig=figure(2);
+%                 h_fig.Color='white'; % changes the background color of the figure
+%                 h_fig.Units='normalized'; % Defines the units
+%                 h_fig.OuterPosition=[0 0 1 1];% changes the size of the to the whole screen
+%                 h_fig.PaperOrientation='landscape';
+%                 subplot(3,1,1)
+%                 hold on
+%                 plot(flip(yApp{ii}))              
+%              %   plot(obj.SnapInIdx(ii),flip(yApp{ii}(obj.SnapInIdx(ii))),'kx','MarkerSize',20)
+%              %   plot(SnapInIdx(ii),flip(yApp{ii}(SnapInIdx(ii))),'r*','MarkerSize',20)
+%                 hold off
+%                 ax21=gca;
+%                 ax21.XLim = [-inf inf];
+%                 ax21.YLim = [-inf inf];
+%                 subplot(3,1,2)
+%                 hold on
+%                 plot(normAppMAD{ii})
+%                 plot(Peak1{ii},normAppMAD{ii}(Peak1{ii}),'kx','MarkerSize',20)
+%                 hold off
+%                 ax22=gca;
+%                 ax22.XLim = [-inf inf];
+%                 ax22.YLim = [0 0.7];
+%                 subplot(3,1,3)
+%                 hold on
+%                 plot(normAppMAD1{ii})
+%                 plot(Peak2{ii},normAppMAD1{ii}(Peak2{ii}),'kx','MarkerSize',20)
+%                 hold off
+%                 ax23=gca;
+%                 ax23.XLim = [-inf inf];
+%                 ax23.YLim = [0 0.7];
+%                 drawnow     
+%                 pause(3)
+%                 close figure 2
+%              end
+            
+        end
+        
+        function fc_find_idx(obj)
+            % Finds the corresponding indices of an array of data points
+            
+            % Define the corresponding data points            
+            xLimit=-50e-9;  % Value on the x-axis
+            xDistance=10e-9;
+            % Loop
+            for ii=1:obj.NCurves
+            if ~obj.SMFSFlag.Uncorrupt(ii) || ~obj.SMFSFlag.Min(ii)     % Exclude corrupted force curves from the analysis     
+                continue
+            end
+            % Allocate data
+            xRet=obj.HHRet{ii}-obj.CP_HardSurface(ii);
+            if obj.SMFSFlag.Fit(ii)==1
+            yApp=obj.BasedApp{ii};
+            yRet=obj.BasedRet{ii};
+            else
+            yApp=obj.BasedApp{ii};
+            yRet=obj.BasedRetCorr2{ii};
+            end      
+            % 50 nm index                          
+            EndLogical=xRet<xLimit; % Determine the elements that fulfil the logical argument           
+            EndIdx(ii)=find(EndLogical,1,'first'); % Read out the index of the first cell that fulfil the argument
+            % Allocate data
+            obj.Idx50nm(ii)=EndIdx(ii);
+            % 10 nm before pulling length index
+            xUnbdingBoundary=obj.PullingLength(ii)-xDistance;
+            [~,obj.UnbindingBoundaryIdx(ii)]=min(abs(abs(xRet)-xUnbdingBoundary));         
+            end            
+        end
+        
+        function fc_adh_force_max(obj)
+            % Function to find the maximum adhesion force value in the
+            % approach and retraction data of a force curve
+            
+            for ii=1:100
+            % for ii=55:100 % for debugging
+            if ~obj.SMFSFlag.Uncorrupt(ii) || ~obj.SMFSFlag.Min(ii)     % Exclude corrupted force curves from the analysis     
+                continue
+            end
+            % Allocate data
+            %xApp=obj.THApp{ii}-obj.CP_HardSurface(ii);
+            %xRet=obj.THRet{ii}-obj.CP_HardSurface(ii);            
+            if obj.SMFSFlag.Fit(ii)==1
+            yApp=obj.BasedApp{ii};
+            yRet=obj.BasedRet{ii};
+            else
+            yApp=obj.BasedApp{ii};
+            yRet=obj.BasedRetCorr2{ii};
+            end           
+            % Determine the maximum adhesion force 
+            obj.AdhForceMaxApp(ii)=min(yApp(1:end)); % Determine maximum adhesion forces from the pulling length index to the last data point
+            obj.AdhForceMaxRet(ii)=min(yRet(obj.Idx50nm(ii):obj.PullingLengthIdx(ii))); % Determine maximum adhesion forces from the 50nm index to the pulling length index
+            obj.AdhForceUnbinding(ii)=min(yRet(obj.UnbindingBoundaryIdx(ii):obj.PullingLengthIdx(ii))); % Determine maximum adhesion forces close to the pulling length
+            % Maximum adhesion force in a predefined range before the
+            % pulling length
+            % Determine the corresponding indices
+            obj.AdhForceMaxAppIdx(ii)=find(yApp==obj.AdhForceMaxApp(ii)); % Finds the index of the value that fulfils the condition         
+            obj.AdhForceMaxRetIdx(ii)=find(yRet==obj.AdhForceMaxRet(ii)); % Finds the index of the value that fulfils the condition          
+            UnbindingBoundaryIdx=find(yRet(obj.UnbindingBoundaryIdx(ii):obj.PullingLengthIdx(ii))==obj.AdhForceUnbinding(ii)); % Finds the index of the value that fulfils the condition
+            obj.AdhForceUnbindingIdx(ii)=obj.UnbindingBoundaryIdx(ii)+UnbindingBoundaryIdx; % Correct for the shifted starting position
+            end
+           
+%             %% Appendix
+%             close all
+%             % Define variables
+%             qq=1;
+%             % Allocate data
+%             xApp=obj.THApp{qq}-obj.CP_HardSurface(qq);
+%             xRet=obj.THRet{qq}-obj.CP_HardSurface(qq);
+%             yApp=obj.BasedApp{qq};
+%             yRet=obj.BasedRetCorr2{qq};    
+%             % Graphical preview
+%             h_fig=figure(1);
+%             h_fig.Color='white'; % changes the background color of the figure
+%             h_fig.Units='normalized'; % Defines the units
+%             h_fig.OuterPosition=[0 0 1 1];% changes the size of the to the whole screen
+%             h_fig.PaperOrientation='landscape';
+%             %% Plotting the tiles
+%             t = tiledlayout(2,2);
+%             %t.TileSpacing = 'compact';
+%             %t.Padding = 'compact';
+%             t.TileSpacing = 'none'; % To reduce the spacing between the tiles
+%             t.Padding = 'none'; % To reduce the padding of perimeter of a tile
+%             nexttile
+%             hold on
+%             grid on
+%             plot(xApp,yApp,'b');
+%             plot(xRet,yRet,'r');
+%             nexttile
+%             hold on
+%             grid on
+%             plot(xApp,yApp,'b');
+%             plot(xRet,yRet,'r');
+%             plot(obj.THRet{qq}(obj.AdhForceMaxRetIdx(qq))-obj.CP_HardSurface(qq),obj.BasedRetCorr2{qq}(obj.AdhForceMaxRetIdx(qq)),'*','MarkerSize',10,'MarkerEdgeColor','g')              
+%             plot(obj.THApp{qq}(obj.AdhForceMaxAppIdx(qq))-obj.CP_HardSurface(qq),obj.BasedApp{qq}(obj.AdhForceMaxAppIdx(qq)),'*','MarkerSize',10,'MarkerEdgeColor','m')              
+%             nexttile
+%             hold on
+%             grid on
+%             plot(xApp,yApp,'b');
+%             plot(xRet,yRet,'r');
+%             plot(xRet(obj.AdhForceMaxRetIdx(qq)),yRet(obj.AdhForceMaxRetIdx(qq)),'*','MarkerSize',10,'MarkerEdgeColor','g')              
+%             plot(xApp(obj.AdhForceMaxAppIdx(qq)),yApp(obj.AdhForceMaxAppIdx(qq)),'*','MarkerSize',10,'MarkerEdgeColor','m')              
+       
+        end
+        
+        function fc_adhesion_energy_threshold(obj)
+            % Determine the adhesion energy using a predefined force
+            % threshold to distinguish interactions from background noise
+            
+            %% Loop over all force curves
+            for ii=1:obj.NCurves
+            %for ii=97 % For debugging and testing 
+                if ~obj.SMFSFlag.Uncorrupt(ii) || ~obj.SMFSFlag.Min(ii)     % Exclude corrupted force curves from the analysis     
+                continue
+                end            
+                % Allocate data
+                xRet=obj.HHRet{ii}-obj.CP_HardSurface(ii); % Retraction x-data (m): Vertical tip height data corrected by the determined contact point using the hard surface method 
+                xApp=obj.HHApp{ii}-obj.CP_HardSurface(ii); % Retraction x-data (m): Vertical tip height data corrected by the determined contact point using the hard surface method 
+                if obj.SMFSFlag.Fit(ii)==1
+                yApp=obj.BasedApp{ii};
+                yRet=obj.BasedRet{ii};
+                else
+                yApp=obj.BasedApp{ii};
+                yRet=obj.BasedRetCorr2{ii};
+                end
+                % Define variables
+                limit1=0;   % Define the limit
+                % Apply the limit
+                % Approach
+                yApp(yApp>Limit1)=0;
+                yApp(obj.PullingLengthIdx(ii):end)=0; % Set all data points with a higher index (surface distance is higher) than the pulling length index to 0
+                % Retention 
+                yRet(yRet>limit1)=0;  % Set all values above the zero line of the x-axis 0
+                yRet(obj.PullingLengthIdx(ii):end)=0; % Set all data points with a higher index (surface distance is higher) than the pulling length index to 0
+                % Allocate data
+                obj.yRetLim{ii}=yRet; 
+                obj.yAppLim{ii}=yApp; 
+                % Determine the adhesion energy
+                IntApp(ii)=trapz(yApp,xApp); % Integrates over the modified y-retraction data with respect to the corresponding x-retraction data 
+                obj.AppAdhEnergy_IdxMethod(ii)=IntApp(ii);
+                IntRet(ii)=trapz(yRet,xRet); % Integrates over the modified y-retraction data with respect to the corresponding x-retraction data 
+                obj.RetAdhEnergy_IdxMethod(ii)=IntRet(ii);
+            end
+                obj.FMAppAdhEnergyMean=mean(obj.AppAdhEnergy_IdxMethod);
+                obj.FMAppAdhEnergyStd=std(obj.AppAdhEnergy_IdxMethod); 
+                obj.FMRetAdhEnergyMean=mean(obj.RetAdhEnergy_IdxMethod);
+                obj.FMRetAdhEnergyStd=std(obj.RetAdhEnergy_IdxMethod);      
+                      
+%             % %% Appendix
+%             close all
+%             % Testing
+%             % Allocate data
+%             xApp=obj.THApp{ii}-obj.CP_HardSurface(ii); % Approach x-data (m): Vertical tip height data corrected by the determined contact point using the hard surface method 
+%             yApp=obj.BasedApp{ii};             
+%             % Define variables
+%             limit2=-20e-12;  % Define the limit
+%             yRetLimTest=obj.yRetLim{ii};           
+%             yRetLimTest(yRetLimTest>limit2)=0;
+%             yRetLimTest(1:obj.PullingLengthIdx(ii))=-100e-12; % Set all data points with a lower index (surface distance is lower and lies within origin and pulling length) than the pulling length index to a constant value
+%             % Determine the adhesion energy
+%             AdhEne2=trapz(yRetLimTest,xRet); % Integrate the modified retraction data
+%             AdhEneCum2=cumtrapz(yRetLimTest,xRet);
+%             % Graphical preview
+%             h_fig=figure(1);
+%             h_fig.Color='white'; % changes the background color of the figure
+%             h_fig.Units='normalized'; % Defines the units
+%             h_fig.OuterPosition=[0 0 1 1];% changes the size of the to the whole screen
+%             h_fig.PaperOrientation='landscape';
+%             %% Plotting the tiles
+%             t = tiledlayout(2,2);
+%             %t.TileSpacing = 'compact';
+%             %t.Padding = 'compact';
+%             t.TileSpacing = 'none'; % To reduce the spacing between the tiles
+%             t.Padding = 'none'; % To reduce the padding of perimeter of a tile
+%             % Tile 1
+%             nexttile
+%             hold on
+%             grid on
+%             plot(xApp,yApp,'g')
+%             plot(xRet,obj.BasedRet{ii},'m')
+%             plot(xRet,yRetLim,'b')
+%             plot(xRet,yRetLimTest,'k')
+%             plot(xRet(obj.PullingLengthIdx(ii)),yRetLim(obj.PullingLengthIdx(ii)),'*','MarkerSize',10,'MarkerEdgeColor','r')
+%             legend('Approach data','Retraction data, y-data corrected','Retraction data, y-data corrected, limits included','Test Retraction data, y-data corrected, limits included, levelled','Pulling length position')
+%             % Tile 2
+%             nexttile;
+%             plot(AdhEneCum2)
+%             title('Cumulative adhesion energy of "yRetLimTest"')
+%             % Tile 3
+%             nexttile;
+%             hold on
+%             plot(xApp,yApp,'g');
+%             plot(xRet,yRetLimTest,'k');
+%             plot(xRet(obj.PullingLengthIdx(ii)),yRetLim(obj.PullingLengthIdx(ii)),'*','MarkerSize',10,'MarkerEdgeColor','r') 
+%             legend('Approach x-data','Test Retraction x-data corrected, limits included, levelled','Pulling length position')     
+%             % Tile 4
+%             nexttile
+%             hold on
+%             grid on
+%             xlim([-inf 10e-9]) % Define the x axes limits [min max]
+%             ylim([-inf 200e-12]) % Define the y axes limits [min max]
+%             plot(xApp,yApp,'g');
+%             plot(xRet,yRetLim,'b');
+%             area(xRet,obj.BasedRetCorr2{ii},'FaceColor','y')
+%             plot(xRet(obj.PullingLengthIdx(ii)),yRetLim(obj.PullingLengthIdx(ii)),'*','MarkerSize',10,'MarkerEdgeColor','r')
+%             area(xRet(1:obj.PullingLengthIdx(ii)),yRetLim(1:obj.PullingLengthIdx(ii)),'FaceColor','c') % Highlights the area with starting and end points: Pulling length and origin
+%             legend('Approach data','Retraction data, y-data corrected, limits included','Adhesion force based on Retraction data, y-data corrected','Pulling length position','Adhesion force based on Retraction data, y-data corrected, limits included')    
+           end
+        
+        function fc_adhesion_energy_idxpulllength(obj)
+            % Determine the adhesion energy using the previous defined pulling length index
+            
+            %% Loop over all force curves
+                for ii=1:obj.NCurves
+            %for ii=97 % % For debugging and testing
+                if ~obj.SMFSFlag.Uncorrupt(ii) || ~obj.SMFSFlag.Min(ii)     % Exclude corrupted force curves from the analysis     
+                continue
+                end               
+                % Allocate data
+                xRet=obj.HHRet{ii}-obj.CP_HardSurface(ii); % Retraction x-data (m): Vertical tip height data corrected by the determined contact point using the hard surface method 
+                xApp=obj.HHApp{ii}-obj.CP_HardSurface(ii); % Retraction x-data (m): Vertical tip height data corrected by the determined contact point using the hard surface method 
+                if obj.SMFSFlag.Fit(ii)==1
+                yApp=obj.BasedApp{ii};
+                yRet=obj.BasedRet{ii};
+                else
+                yApp=obj.BasedApp{ii};
+                yRet=obj.BasedRetCorr2{ii};
+                end
+                % Define variables
+                limit1=0;   % Define the limit
+                % Apply the limit
+                % Approach
+                yApp(yApp>limit1)=0; % Set all data points representing surface contact (set point related, above the y-axis 0 line) to 0
+                yApp(1:obj.PullingLengthIdx(ii))=0; % Set all data points with a higher index (surface distance is higher) than the pulling length index to 0
+                % Retention 
+                yRet(yRet>limit1)=0;  % Set all data points representing surface contact (set point related, above the y-axis 0 line) to 0
+                yRet(obj.PullingLengthIdx(ii):end)=0; % Set all data points with a higher index (surface distance is higher) than the pulling length index to 0
+                % Allocate data
+                obj.yRetLim{ii}=yRet; 
+                obj.yAppLim{ii}=yApp; 
+                % Determine the adhesion energy
+                IntApp(ii)=trapz(yApp,xApp); % Integrates over the modified y-retraction data with respect to the corresponding x-retraction data 
+                obj.AppAdhEnergy_IdxMethod(ii)=IntApp(ii);
+                IntRet(ii)=trapz(yRet,xRet); % Integrates over the modified y-retraction data with respect to the corresponding x-retraction data 
+                obj.RetAdhEnergy_IdxMethod(ii)=IntRet(ii);
+                end
+                obj.FMAppAdhEnergyMean=mean(obj.AppAdhEnergy_IdxMethod);
+                obj.FMAppAdhEnergyStd=std(obj.AppAdhEnergy_IdxMethod); 
+                obj.FMRetAdhEnergyMean=mean(obj.RetAdhEnergy_IdxMethod);
+                obj.FMRetAdhEnergyStd=std(obj.RetAdhEnergy_IdxMethod);       
+            
+%             % %% Appendix
+%             close all
+%             % Testing
+%             % Allocate data
+%             xApp=obj.THApp{ii}-obj.CP_HardSurface(ii); % Approach x-data (m): Vertical tip height data corrected by the determined contact point using the hard surface method 
+%             yApp=obj.BasedApp{ii};             
+%             % Define variables
+%             limit2=-20e-12;  % Define the limit
+%             yRetLimTest=obj.yRetLim{ii};           
+%             yRetLimTest(yRetLimTest>limit2)=0;
+%             yRetLimTest(1:obj.PullingLengthIdx(ii))=-100e-12; % Set all data points with a lower index (surface distance is lower and lies within origin and pulling length) than the pulling length index to a constant value
+%             % Determine the adhesion energy
+%             AdhEne2=trapz(yRetLimTest,xRet); % Integrate the modified retraction data
+%             AdhEneCum2=cumtrapz(yRetLimTest,xRet);
+%             % Graphical preview
+%             h_fig=figure(1);
+%             h_fig.Color='white'; % changes the background color of the figure
+%             h_fig.Units='normalized'; % Defines the units
+%             h_fig.OuterPosition=[0 0 1 1];% changes the size of the to the whole screen
+%             h_fig.PaperOrientation='landscape';
+%             %% Plotting the tiles
+%             t = tiledlayout(2,2);
+%             %t.TileSpacing = 'compact';
+%             %t.Padding = 'compact';
+%             t.TileSpacing = 'none'; % To reduce the spacing between the tiles
+%             t.Padding = 'none'; % To reduce the padding of perimeter of a tile
+%             % Tile 1
+%             nexttile
+%             hold on
+%             grid on
+%             plot(xApp,yApp,'g')
+%             plot(xRet,obj.BasedRet{ii},'m')
+%             plot(xRet,yRetLim,'b')
+%             plot(xRet,yRetLimTest,'k')
+%             plot(xRet(obj.PullingLengthIdx(ii)),yRetLim(obj.PullingLengthIdx(ii)),'*','MarkerSize',10,'MarkerEdgeColor','r')
+%             legend('Approach data','Retraction data, y-data corrected','Retraction data, y-data corrected, limits included','Test Retraction data, y-data corrected, limits included, levelled','Pulling length position')
+%             % Tile 2
+%             nexttile;
+%             plot(AdhEneCum2)
+%             title('Cumulative adhesion energy of "yRetLimTest"')
+%             % Tile 3
+%             nexttile;
+%             hold on
+%             plot(xApp,yApp,'g');
+%             plot(xRet,yRetLimTest,'k');
+%             plot(xRet(obj.PullingLengthIdx(ii)),yRetLim(obj.PullingLengthIdx(ii)),'*','MarkerSize',10,'MarkerEdgeColor','r') 
+%             legend('Approach x-data','Test Retraction x-data corrected, limits included, levelled','Pulling length position')     
+%             % Tile 4
+%             nexttile
+%             hold on
+%             grid on
+%             xlim([-inf 10e-9]) % Define the x axes limits [min max]
+%             ylim([-inf 200e-12]) % Define the y axes limits [min max]
+%             plot(xApp,yApp,'g');
+%             plot(xRet,yRetLim,'b');
+%             area(xRet,obj.BasedRetCorr2{ii},'FaceColor','y')
+%             plot(xRet(obj.PullingLengthIdx(ii)),yRetLim(obj.PullingLengthIdx(ii)),'*','MarkerSize',10,'MarkerEdgeColor','r')
+%             area(xRet(1:obj.PullingLengthIdx(ii)),yRetLim(1:obj.PullingLengthIdx(ii)),'FaceColor','c') % Highlights the area with starting and end points: Pulling length and origin
+%             legend('Approach data','Retraction data, y-data corrected, limits included','Adhesion force based on Retraction data, y-data corrected','Pulling length position','Adhesion force based on Retraction data, y-data corrected, limits included')    
+        end
+                 
+        function fc_print_properties(obj,XMin,XMax,YMin,YMax,NumFcMax,NumFcUncorrupt,hh) % fc ... force curve
+            % fc_print_adhenergy_pulllength: A function to plot all selected force curves of a
+            % force map including adhesion energy and pulling length in
+            % each force curve
+            if nargin < 2
+                XMin= -inf;
+                XMax= inf;
+                YMin= -inf;
+                YMax= inf;
+            end
+            % Define variables
+            RGB1=[0 26 255]./255;  % Blue 
+            RGB2=[255 119 0]./255; % Orange
+            RGB7=[255 230 0]./255; % Yellow
+            RGB8=[80 200 204]./255; % Turquoise
+            RGB10=[200 0 255]./255; % Violet
+            RGB11=[200 255 150]./255; % Light Green
+            RGB12=[185 230 254]./255; % Light Blue
+            RGB13=[200 0 0]./255; % Red
+            % Define variables for the figure name
+            ExtendVelocityConvert=num2str(obj.ExtendVelocity*1e9);
+            RetractVelocityConvert=num2str(obj.RetractVelocity*1e9);
+            % Classification criteria
+            figname=strcat(obj.Date,{'_'},obj.Time,{'_'},obj.ID,{'_'},obj.Substrate,{'_'},obj.EnvCond,{'_'},{'_'},obj.Chipbox,{'_'},obj.ChipCant,{'_'},ExtendVelocityConvert,{'_'},RetractVelocityConvert);
+            figname=char(figname); 
+            % Define variables for the plot loop
+            mm=ceil(sqrt(NumFcMax));
+            nn=mm;
+            ww=1; % "flag while loop" variable
+            DiffFc=0;
+            NumFcUncorrupt=nnz(obj.SMFSFlag.Uncorrupt.*obj.SMFSFlag.Min); % Determine the amount of uncorrupted force curves            
+            NumFigures=ceil(NumFcUncorrupt/NumFcMax);
+            if NumFigures==0     % If condition is fulfilled stop function and return to calling function     
+                return              
+            end 
+            RemainderMax=mod(NumFcUncorrupt,NumFcMax); % Check for remainder           
+            if RemainderMax ~= 0
+                oo=round(sqrt(RemainderMax)); % Determine the number of rows in the figure
+                pp=ceil(sqrt(RemainderMax)); % Determine the number of columns in the figure
+                RemainderReal=mod(NumFcUncorrupt,oo*pp); % Correct the remainder based on the determined rows times columns
+            end
+            %% figure loop
+            for ii=1:NumFigures               
+                % Define variables
+                jj=1; % "force curve plotted per figure" variable        
+                % Figure
+                h_fig=figure(ii);
+                h_fig.Color='white'; % changes the background color of the figure
+                h_fig.Units='normalized'; % Defines the units
+                h_fig.OuterPosition=[0 0 1 1];% changes the size of the to the whole screen
+                h_fig.PaperOrientation='landscape';
+                h_fig.Name=figname;
+                %% Plotting the tiles
+                if RemainderMax == 0
+                    t = tiledlayout(mm,nn);
+                    t.TileSpacing = 'none'; % To reduce the spacing between the tiles
+                    t.Padding = 'none'; % To reduce the padding of perimeter of a tile
+                    if ii==1
+                        NumFcCorSelec(ii)=nnz(~obj.SMFSFlag.Uncorrupt(1:NumFcMax));
+                    elseif ii==2
+                        NumFcCorSelec(ii)=nnz(obj.SMFSFlag.Uncorrupt((NumFcMax+1):(NumFcMax*(ii))));
+                    else
+                        NumFcCorSelec(ii)=nnz(obj.SMFSFlag.Uncorrupt((NumFcMax*(ii-1)+1):(NumFcMax*(ii))));
+                    end
+                    
+                    if ii==1
+                        kk=jj;
+                    else
+                        kk=jj+mm*nn*(ii-1);
+                    end
+                    %% Plot loop
+                    for qq=kk:obj.NCurves % Loop over all force curves in the force map
+                        if ww<qq+DiffFc
+                            ww=qq+DiffFc;
+                        end
+                        while ~obj.SMFSFlag.Uncorrupt(ww)     % Stay in the while loop as long as the entry is zero
+                            ww=ww+1;
+                            if ww>qq
+                                DiffFc=ww-qq;
+                            end
+                        end
+                        % if condition
+                        if ww>qq
+                            ax=nexttile;
+                            ax.XLim = [XMin XMax];
+                            ax.YLim = [YMin YMax];                                     
+                            if obj.SMFSFlag.Fit(qq+DiffFc)==1                            
+                            grid on
+                            hold on
+                            area(obj.HHRet{qq+DiffFc}(1:obj.PullingLengthIdx(qq+DiffFc))-obj.CP_HardSurface(qq+DiffFc),obj.yRetLim{qq+DiffFc}(1:obj.PullingLengthIdx(qq+DiffFc)),'FaceColor',RGB11)
+                            area(obj.HHApp{qq+DiffFc}(obj.SnapInIdx(qq+DiffFc):end)-obj.CP_HardSurface(qq+DiffFc),obj.yAppLim{qq+DiffFc}(obj.SnapInIdx(qq+DiffFc):end),'FaceColor',RGB7)
+                            plot(obj.HHApp{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc),obj.BasedApp{qq+DiffFc},'Color',RGB1);
+                            plot(obj.HHRet{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc),obj.BasedRet{qq+DiffFc},'Color',RGB2);
+                            plot(obj.HHRet{qq+DiffFc}(obj.PullingLengthIdx(qq+DiffFc))-obj.CP_HardSurface(qq+DiffFc),obj.BasedRet{qq+DiffFc}(obj.PullingLengthIdx(qq+DiffFc)),'d','MarkerSize',14,'MarkerFaceColor',RGB8,'MarkerEdgeColor',RGB8)                          
+                            plot(obj.HHApp{qq+DiffFc}(obj.SnapInIdx(qq+DiffFc))-obj.CP_HardSurface(qq+DiffFc),obj.BasedApp{qq+DiffFc}(obj.SnapInIdx(qq+DiffFc)),'d','MarkerSize',14,'MarkerFaceColor',RGB10,'MarkerEdgeColor',RGB10)                                           
+                            plot(obj.HHRet{qq+DiffFc}(obj.AdhForceMaxRetIdx(qq+DiffFc))-obj.CP_HardSurface(qq+DiffFc),obj.BasedRet{qq+DiffFc}(obj.AdhForceMaxRetIdx(qq+DiffFc)),'h','MarkerSize',10,'MarkerFaceColor',RGB2,'MarkerEdgeColor',RGB2)              
+                            plot(obj.HHApp{qq+DiffFc}(obj.AdhForceMaxAppIdx(qq+DiffFc))-obj.CP_HardSurface(qq+DiffFc),obj.BasedApp{qq+DiffFc}(obj.AdhForceMaxAppIdx(qq+DiffFc)),'h','MarkerSize',10,'MarkerFaceColor',RGB1,'MarkerEdgeColor',RGB1)                                                                   
+                            plot(obj.HHRet{qq+DiffFc}(obj.AdhForceUnbindingIdx(qq+DiffFc))-obj.CP_HardSurface(qq+DiffFc),obj.BasedRet{qq+DiffFc}(obj.AdhForceUnbindingIdx(qq+DiffFc)),'p','MarkerSize',12,'MarkerFaceColor',RGB13,'MarkerEdgeColor',RGB13)                                                                     
+                            else
+                            area(obj.HHRet{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc),obj.yRetLim{qq+DiffFc},'FaceColor',RGB12)
+                            plot(obj.HHApp{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc),obj.BasedApp{qq+DiffFc},'Color',RGB1);
+                            plot(obj.HHRet{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc),obj.BasedRetCorr2{qq+DiffFc},'Color',RGB2);
+                            plot(obj.HHRet{qq+DiffFc}(obj.PullingLengthIdx(qq+DiffFc))-obj.CP_HardSurface(qq+DiffFc),obj.BasedRetCorr2{qq+DiffFc}(obj.PullingLengthIdx(qq+DiffFc)),'d','MarkerSize',10,'MarkerFaceColor','b','MarkerEdgeColor','b')                          
+                            plot(obj.HHRet{qq+DiffFc}(obj.AdhForceMaxRetIdx(qq+DiffFc))-obj.CP_HardSurface(qq+DiffFc),obj.BasedRetCorr2{qq+DiffFc}(obj.AdhForceMaxRetIdx(qq+DiffFc)),'p','MarkerSize',10,'MarkerFaceColor','g','MarkerEdgeColor','g')              
+                            plot(obj.HHApp{qq+DiffFc}(obj.AdhForceMaxAppIdx(qq+DiffFc))-obj.CP_HardSurface(qq+DiffFc),obj.BasedApp{qq+DiffFc}(obj.AdhForceMaxAppIdx(qq+DiffFc)),'h','MarkerSize',10,'MarkerFaceColor',RGB7,'MarkerEdgeColor',RGB7)                                                                                            
+                            end
+                            
+                            % Title for each Subplot
+                            ti=title(sprintf('%i',qq+DiffFc),'Color','k');
+                            ti.Units='normalized'; % Set units to 'normalized'
+                            ti.Position=[0.5,0.95]; % Position the subplot title within the subplot
+                        else
+                            ax=nexttile;
+                            ax.XLim = [XMin XMax];
+                            ax.YLim = [YMin YMax];
+                            if obj.SMFSFlag.Fit(qq+DiffFc)==1                            
+                            grid on
+                            hold on
+                            area(obj.HHRet{qq+DiffFc}(1:obj.PullingLengthIdx(qq+DiffFc))-obj.CP_HardSurface(qq+DiffFc),obj.yRetLim{qq+DiffFc}(1:obj.PullingLengthIdx(qq+DiffFc)),'FaceColor',RGB11)
+                            area(obj.HHApp{qq+DiffFc}(obj.SnapInIdx(qq+DiffFc):end)-obj.CP_HardSurface(qq+DiffFc),obj.yAppLim{qq+DiffFc}(obj.SnapInIdx(qq+DiffFc):end),'FaceColor',RGB7)
+                            plot(obj.HHApp{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc),obj.BasedApp{qq+DiffFc},'Color',RGB1);
+                            plot(obj.HHRet{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc),obj.BasedRet{qq+DiffFc},'Color',RGB2);
+                            plot(obj.HHRet{qq+DiffFc}(obj.PullingLengthIdx(qq+DiffFc))-obj.CP_HardSurface(qq+DiffFc),obj.BasedRet{qq+DiffFc}(obj.PullingLengthIdx(qq+DiffFc)),'d','MarkerSize',14,'MarkerFaceColor',RGB8,'MarkerEdgeColor',RGB8)                          
+                            plot(obj.HHApp{qq+DiffFc}(obj.SnapInIdx(qq+DiffFc))-obj.CP_HardSurface(qq+DiffFc),obj.BasedApp{qq+DiffFc}(obj.SnapInIdx(qq+DiffFc)),'d','MarkerSize',14,'MarkerFaceColor',RGB10,'MarkerEdgeColor',RGB10)                                           
+                            plot(obj.HHRet{qq+DiffFc}(obj.AdhForceMaxRetIdx(qq+DiffFc))-obj.CP_HardSurface(qq+DiffFc),obj.BasedRet{qq+DiffFc}(obj.AdhForceMaxRetIdx(qq+DiffFc)),'h','MarkerSize',10,'MarkerFaceColor',RGB2,'MarkerEdgeColor',RGB2)              
+                            plot(obj.HHApp{qq+DiffFc}(obj.AdhForceMaxAppIdx(qq+DiffFc))-obj.CP_HardSurface(qq+DiffFc),obj.BasedApp{qq+DiffFc}(obj.AdhForceMaxAppIdx(qq+DiffFc)),'h','MarkerSize',10,'MarkerFaceColor',RGB1,'MarkerEdgeColor',RGB1)                                                                   
+                            plot(obj.HHRet{qq+DiffFc}(obj.AdhForceUnbindingIdx(qq+DiffFc))-obj.CP_HardSurface(qq+DiffFc),obj.BasedRet{qq+DiffFc}(obj.AdhForceUnbindingIdx(qq+DiffFc)),'p','MarkerSize',12,'MarkerFaceColor',RGB13,'MarkerEdgeColor',RGB13)                                                                     
+                            else
+                            area(obj.HHRet{qq}-obj.CP_HardSurface(qq),obj.yRetLim{qq},'FaceColor',RGB12)
+                            plot(obj.HHApp{qq}-obj.CP_HardSurface(qq),obj.BasedApp{qq},'Color',RGB1);
+                            plot(obj.HHRet{qq}-obj.CP_HardSurface(qq),obj.BasedRetCorr2{qq},'Color',RGB2);
+                            plot(obj.HHRet{qq}(obj.PullingLengthIdx(qq))-obj.CP_HardSurface(qq),obj.BasedRetCorr2{qq}(obj.PullingLengthIdx(qq)),'d','MarkerSize',10,'MarkerFaceColor','b','MarkerEdgeColor','b')                          
+                            plot(obj.HHRet{qq}(obj.AdhForceMaxRetIdx(qq))-obj.CP_HardSurface(qq),obj.BasedRetCorr2{qq}(obj.AdhForceMaxRetIdx(qq)),'p','MarkerSize',10,'MarkerFaceColor','g','MarkerEdgeColor','g')              
+                            plot(obj.HHApp{qq}(obj.AdhForceMaxAppIdx(qq))-obj.CP_HardSurface(qq),obj.BasedApp{qq}(obj.AdhForceMaxAppIdx(qq)),'h','MarkerSize',10,'MarkerFaceColor',RGB7,'MarkerEdgeColor',RGB7)                                                                                            
+                            end
+                            % Title for each Subplot
+                            ti=title(sprintf('%i',qq),'Color','k');
+                            ti.Units='normalized'; % Set units to 'normalized'
+                            ti.Position=[0.5,0.95]; % Position the subplot title within the subplot
+                        end
+                        if jj == NumFcMax
+                            break
+                        end
+                        jj=jj+1;
+                    end
+                    
+                else
+                    if ii~=NumFigures
+                        t = tiledlayout(mm,nn);
+                        t.TileSpacing = 'none'; % To reduce the spacing between the tiles
+                        t.Padding = 'none'; % To reduce the padding of perimeter of a tile
+                        if ii==1
+                            NumFcCorSelec(ii)=nnz(~obj.SMFSFlag.Uncorrupt(1:NumFcMax));
+                        elseif ii==2
+                            NumFcCorSelec(ii)=nnz(obj.SMFSFlag.Uncorrupt((NumFcMax+1):(NumFcMax*(ii))));
+                        else
+                            NumFcCorSelec(ii)=nnz(obj.SMFSFlag.Uncorrupt((NumFcMax*(ii-1)+1):(NumFcMax*(ii))));
+                        end
+                        
+                        if ii==1
+                            kk=jj;
+                        else
+                            kk=jj+mm*nn*(ii-1);
+                        end
+                        %% Plot loop
+                        for qq=kk:obj.NCurves % Loop over all force curves in the force map
+                            if ww<qq+DiffFc
+                                ww=qq+DiffFc;
+                            end
+                            while ~obj.SMFSFlag.Uncorrupt(ww)     % Stay in the while loop as long as the entry is zero
+                                ww=ww+1;
+                                if ww>qq
+                                    DiffFc=ww-qq;
+                                end
+                            end
+                            if ww>qq
+                                ax=nexttile;
+                                ax.XLim = [XMin XMax];
+                                ax.YLim = [YMin YMax];
+                                if obj.SMFSFlag.Fit(qq+DiffFc)==1                            
+                                grid on
+                                hold on
+                                area(obj.HHRet{qq+DiffFc}(1:obj.PullingLengthIdx(qq+DiffFc))-obj.CP_HardSurface(qq+DiffFc),obj.yRetLim{qq+DiffFc}(1:obj.PullingLengthIdx(qq+DiffFc)),'FaceColor',RGB11)
+                                area(obj.HHApp{qq+DiffFc}(obj.SnapInIdx(qq+DiffFc):end)-obj.CP_HardSurface(qq+DiffFc),obj.yAppLim{qq+DiffFc}(obj.SnapInIdx(qq+DiffFc):end),'FaceColor',RGB7)
+                                plot(obj.HHApp{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc),obj.BasedApp{qq+DiffFc},'Color',RGB1);
+                                plot(obj.HHRet{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc),obj.BasedRet{qq+DiffFc},'Color',RGB2);
+                                plot(obj.HHRet{qq+DiffFc}(obj.PullingLengthIdx(qq+DiffFc))-obj.CP_HardSurface(qq+DiffFc),obj.BasedRet{qq+DiffFc}(obj.PullingLengthIdx(qq+DiffFc)),'d','MarkerSize',14,'MarkerFaceColor',RGB8,'MarkerEdgeColor',RGB8)
+                                plot(obj.HHApp{qq+DiffFc}(obj.SnapInIdx(qq+DiffFc))-obj.CP_HardSurface(qq+DiffFc),obj.BasedApp{qq+DiffFc}(obj.SnapInIdx(qq+DiffFc)),'d','MarkerSize',14,'MarkerFaceColor',RGB10,'MarkerEdgeColor',RGB10)
+                                plot(obj.HHRet{qq+DiffFc}(obj.AdhForceMaxRetIdx(qq+DiffFc))-obj.CP_HardSurface(qq+DiffFc),obj.BasedRet{qq+DiffFc}(obj.AdhForceMaxRetIdx(qq+DiffFc)),'h','MarkerSize',10,'MarkerFaceColor',RGB2,'MarkerEdgeColor',RGB2)
+                                plot(obj.HHApp{qq+DiffFc}(obj.AdhForceMaxAppIdx(qq+DiffFc))-obj.CP_HardSurface(qq+DiffFc),obj.BasedApp{qq+DiffFc}(obj.AdhForceMaxAppIdx(qq+DiffFc)),'h','MarkerSize',10,'MarkerFaceColor',RGB1,'MarkerEdgeColor',RGB1)
+                                plot(obj.HHRet{qq+DiffFc}(obj.AdhForceUnbindingIdx(qq+DiffFc))-obj.CP_HardSurface(qq+DiffFc),obj.BasedRet{qq+DiffFc}(obj.AdhForceUnbindingIdx(qq+DiffFc)),'p','MarkerSize',12,'MarkerFaceColor',RGB13,'MarkerEdgeColor',RGB13)                                                                     
+                                else
+                                area(obj.HHRet{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc),obj.yRetLim{qq+DiffFc},'FaceColor',RGB12)
+                                plot(obj.HHApp{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc),obj.BasedApp{qq+DiffFc},'Color',RGB1);
+                                plot(obj.HHRet{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc),obj.BasedRetCorr2{qq+DiffFc},'Color',RGB2);
+                                plot(obj.HHRet{qq+DiffFc}(obj.PullingLengthIdx(qq+DiffFc))-obj.CP_HardSurface(qq+DiffFc),obj.BasedRetCorr2{qq+DiffFc}(obj.PullingLengthIdx(qq+DiffFc)),'d','MarkerSize',10,'MarkerFaceColor','b','MarkerEdgeColor','b')                          
+                                plot(obj.HHRet{qq+DiffFc}(obj.AdhForceMaxRetIdx(qq+DiffFc))-obj.CP_HardSurface(qq+DiffFc),obj.BasedRetCorr2{qq+DiffFc}(obj.AdhForceMaxRetIdx(qq+DiffFc)),'p','MarkerSize',10,'MarkerFaceColor','g','MarkerEdgeColor','g')              
+                                plot(obj.HHApp{qq+DiffFc}(obj.AdhForceMaxAppIdx(qq+DiffFc))-obj.CP_HardSurface(qq+DiffFc),obj.BasedApp{qq+DiffFc}(obj.AdhForceMaxAppIdx(qq+DiffFc)),'h','MarkerSize',10,'MarkerFaceColor',RGB7,'MarkerEdgeColor',RGB7)                                                                                            
+                                end
+                                % Title for each Subplot
+                                ti=title(sprintf('%i',qq+DiffFc),'Color','k');
+                                ti.Units='normalized'; % Set units to 'normalized'
+                                ti.Position=[0.5,0.95]; % Position the subplot title within the subplot
+                            else
+                                ax=nexttile;
+                                ax.XLim = [XMin XMax];
+                                ax.YLim = [YMin YMax];
+                                if obj.SMFSFlag.Fit(qq+DiffFc)==1                            
+                                grid on
+                                hold on
+                                area(obj.HHRet{qq+DiffFc}(1:obj.PullingLengthIdx(qq+DiffFc))-obj.CP_HardSurface(qq+DiffFc),obj.yRetLim{qq+DiffFc}(1:obj.PullingLengthIdx(qq+DiffFc)),'FaceColor',RGB11)
+                                area(obj.HHApp{qq+DiffFc}(obj.SnapInIdx(qq+DiffFc):end)-obj.CP_HardSurface(qq+DiffFc),obj.yAppLim{qq+DiffFc}(obj.SnapInIdx(qq+DiffFc):end),'FaceColor',RGB7)
+                                plot(obj.HHApp{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc),obj.BasedApp{qq+DiffFc},'Color',RGB1);
+                                plot(obj.HHRet{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc),obj.BasedRet{qq+DiffFc},'Color',RGB2);
+                                plot(obj.HHRet{qq+DiffFc}(obj.PullingLengthIdx(qq+DiffFc))-obj.CP_HardSurface(qq+DiffFc),obj.BasedRet{qq+DiffFc}(obj.PullingLengthIdx(qq+DiffFc)),'d','MarkerSize',14,'MarkerFaceColor',RGB8,'MarkerEdgeColor',RGB8)                          
+                                plot(obj.HHApp{qq+DiffFc}(obj.SnapInIdx(qq+DiffFc))-obj.CP_HardSurface(qq+DiffFc),obj.BasedApp{qq+DiffFc}(obj.SnapInIdx(qq+DiffFc)),'d','MarkerSize',14,'MarkerFaceColor',RGB10,'MarkerEdgeColor',RGB10)                                           
+                                plot(obj.HHRet{qq+DiffFc}(obj.AdhForceMaxRetIdx(qq+DiffFc))-obj.CP_HardSurface(qq+DiffFc),obj.BasedRet{qq+DiffFc}(obj.AdhForceMaxRetIdx(qq+DiffFc)),'h','MarkerSize',10,'MarkerFaceColor',RGB2,'MarkerEdgeColor',RGB2)              
+                                plot(obj.HHApp{qq+DiffFc}(obj.AdhForceMaxAppIdx(qq+DiffFc))-obj.CP_HardSurface(qq+DiffFc),obj.BasedApp{qq+DiffFc}(obj.AdhForceMaxAppIdx(qq+DiffFc)),'h','MarkerSize',10,'MarkerFaceColor',RGB1,'MarkerEdgeColor',RGB1)                                                                   
+                                plot(obj.HHRet{qq+DiffFc}(obj.AdhForceUnbindingIdx(qq+DiffFc))-obj.CP_HardSurface(qq+DiffFc),obj.BasedRet{qq+DiffFc}(obj.AdhForceUnbindingIdx(qq+DiffFc)),'p','MarkerSize',12,'MarkerFaceColor',RGB13,'MarkerEdgeColor',RGB13)                                                                     
+                                else
+                                area(obj.HHRet{qq}-obj.CP_HardSurface(qq),obj.yRetLim{qq},'FaceColor',RGB12)
+                                plot(obj.HHApp{qq}-obj.CP_HardSurface(qq),obj.BasedApp{qq},'Color',RGB1);
+                                plot(obj.HHRet{qq}-obj.CP_HardSurface(qq),obj.BasedRetCorr2{qq},'Color',RGB2);
+                                plot(obj.HHRet{qq}(obj.PullingLengthIdx(qq))-obj.CP_HardSurface(qq),obj.BasedRetCorr2{qq}(obj.PullingLengthIdx(qq)),'d','MarkerSize',10,'MarkerFaceColor','b','MarkerEdgeColor','b')                          
+                                plot(obj.HHRet{qq}(obj.AdhForceMaxRetIdx(qq))-obj.CP_HardSurface(qq),obj.BasedRetCorr2{qq}(obj.AdhForceMaxRetIdx(qq)),'p','MarkerSize',10,'MarkerFaceColor','g','MarkerEdgeColor','g')              
+                                plot(obj.HHApp{qq}(obj.AdhForceMaxAppIdx(qq))-obj.CP_HardSurface(qq),obj.BasedApp{qq}(obj.AdhForceMaxAppIdx(qq)),'h','MarkerSize',10,'MarkerFaceColor',RGB7,'MarkerEdgeColor',RGB7)                                                                                            
+                                end     
+                                % Title for each Subplot
+                                ti=title(sprintf('%i',qq),'Color','k');
+                                ti.Units='normalized'; % Set units to 'normalized'
+                                ti.Position=[0.5,0.95]; % Position the subplot title within the subplot
+                            end
+                            if jj == NumFcMax
+                                break
+                            end
+                            jj=jj+1;
+                        end
+                    else % corresponds to the last figure plotted
+                        t = tiledlayout(oo,pp);
+                        t.TileSpacing = 'none'; % To reduce the spacing between the tiles
+                        t.Padding = 'none'; % To reduce the padding of perimeter of a tile
+                        NumFcPlot=oo*pp;
+                        if ii==1
+                            NumFcCorSelec(ii)=nnz(~obj.SMFSFlag.Uncorrupt(1:NumFcPlot));
+                        elseif ii==2
+                            NumFcCorSelec(ii)=nnz(obj.SMFSFlag.Uncorrupt((NumFcPlot+1):(NumFcPlot*(ii))));
+                        else
+                            NumFcCorSelec(ii)=nnz(obj.SMFSFlag.Uncorrupt((NumFcPlot*(ii-1)+1):(NumFcPlot*(ii))));
+                        end
+                        
+                        if ii==1
+                            kk=jj;
+                        else
+                            kk=jj+mm*nn*(ii-1);
+                        end
+                        %% Plot loop
+                        for qq=kk:obj.NCurves % Loop over all force curves in the force map
+                            if ww<qq+DiffFc
+                                ww=qq+DiffFc;
+                            end
+                            while ~obj.SMFSFlag.Uncorrupt(ww)     % Stay in the while loop as long as the entry is zero
+                                ww=ww+1;
+                                if ww>qq
+                                    DiffFc=ww-qq;
+                                end
+                            end
+                            if ww>qq
+                                ax=nexttile;
+                                ax.XLim = [XMin XMax];
+                                ax.YLim = [YMin YMax];
+                                if obj.SMFSFlag.Fit(qq+DiffFc)==1                            
+                                grid on
+                                hold on
+                                area(obj.HHRet{qq+DiffFc}(1:obj.PullingLengthIdx(qq+DiffFc))-obj.CP_HardSurface(qq+DiffFc),obj.yRetLim{qq+DiffFc}(1:obj.PullingLengthIdx(qq+DiffFc)),'FaceColor',RGB11)
+                                area(obj.HHApp{qq+DiffFc}(obj.SnapInIdx(qq+DiffFc):end)-obj.CP_HardSurface(qq+DiffFc),obj.yAppLim{qq+DiffFc}(obj.SnapInIdx(qq+DiffFc):end),'FaceColor',RGB7)
+                                plot(obj.HHApp{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc),obj.BasedApp{qq+DiffFc},'Color',RGB1);
+                                plot(obj.HHRet{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc),obj.BasedRet{qq+DiffFc},'Color',RGB2);
+                                plot(obj.HHRet{qq+DiffFc}(obj.PullingLengthIdx(qq+DiffFc))-obj.CP_HardSurface(qq+DiffFc),obj.BasedRet{qq+DiffFc}(obj.PullingLengthIdx(qq+DiffFc)),'d','MarkerSize',14,'MarkerFaceColor',RGB8,'MarkerEdgeColor',RGB8)                          
+                                plot(obj.HHApp{qq+DiffFc}(obj.SnapInIdx(qq+DiffFc))-obj.CP_HardSurface(qq+DiffFc),obj.BasedApp{qq+DiffFc}(obj.SnapInIdx(qq+DiffFc)),'d','MarkerSize',14,'MarkerFaceColor',RGB10,'MarkerEdgeColor',RGB10)                                           
+                                plot(obj.HHRet{qq+DiffFc}(obj.AdhForceMaxRetIdx(qq+DiffFc))-obj.CP_HardSurface(qq+DiffFc),obj.BasedRet{qq+DiffFc}(obj.AdhForceMaxRetIdx(qq+DiffFc)),'h','MarkerSize',10,'MarkerFaceColor',RGB2,'MarkerEdgeColor',RGB2)              
+                                plot(obj.HHApp{qq+DiffFc}(obj.AdhForceMaxAppIdx(qq+DiffFc))-obj.CP_HardSurface(qq+DiffFc),obj.BasedApp{qq+DiffFc}(obj.AdhForceMaxAppIdx(qq+DiffFc)),'h','MarkerSize',10,'MarkerFaceColor',RGB1,'MarkerEdgeColor',RGB1)                                                                   
+                                plot(obj.HHRet{qq+DiffFc}(obj.AdhForceUnbindingIdx(qq+DiffFc))-obj.CP_HardSurface(qq+DiffFc),obj.BasedRet{qq+DiffFc}(obj.AdhForceUnbindingIdx(qq+DiffFc)),'p','MarkerSize',12,'MarkerFaceColor',RGB13,'MarkerEdgeColor',RGB13)                                                                     
+                                else
+                                area(obj.HHRet{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc),obj.yRetLim{qq+DiffFc},'FaceColor',RGB12)
+                                plot(obj.HHApp{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc),obj.BasedApp{qq+DiffFc},'Color',RGB1);
+                                plot(obj.HHRet{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc),obj.BasedRetCorr2{qq+DiffFc},'Color',RGB2);
+                                plot(obj.HHRet{qq+DiffFc}(obj.PullingLengthIdx(qq+DiffFc))-obj.CP_HardSurface(qq+DiffFc),obj.BasedRetCorr2{qq+DiffFc}(obj.PullingLengthIdx(qq+DiffFc)),'d','MarkerSize',10,'MarkerFaceColor','b','MarkerEdgeColor','b')                          
+                                plot(obj.HHRet{qq+DiffFc}(obj.AdhForceMaxRetIdx(qq+DiffFc))-obj.CP_HardSurface(qq+DiffFc),obj.BasedRetCorr2{qq+DiffFc}(obj.AdhForceMaxRetIdx(qq+DiffFc)),'p','MarkerSize',10,'MarkerFaceColor','g','MarkerEdgeColor','g')              
+                                plot(obj.HHApp{qq+DiffFc}(obj.AdhForceMaxAppIdx(qq+DiffFc))-obj.CP_HardSurface(qq+DiffFc),obj.BasedApp{qq+DiffFc}(obj.AdhForceMaxAppIdx(qq+DiffFc)),'h','MarkerSize',10,'MarkerFaceColor','c','MarkerEdgeColor','c')                                                                                            
+                                end
+                                % Title for each Subplot
+                                ti=title(sprintf('%i',qq+DiffFc),'Color','k');
+                                %ti=title(sprintf('%i',(kk+ww)/2),'Color','k');
+                                ti.Units='normalized'; % Set units to 'normalized'
+                                ti.Position=[0.5,0.95]; % Position the subplot title within the subplot
+                            else
+                                ax=nexttile;
+                                ax.XLim = [XMin XMax];
+                                ax.YLim = [YMin YMax];
+                                if obj.SMFSFlag.Fit(qq+DiffFc)==1                            
+                                grid on
+                                hold on
+                                area(obj.HHRet{qq+DiffFc}(1:obj.PullingLengthIdx(qq+DiffFc))-obj.CP_HardSurface(qq+DiffFc),obj.yRetLim{qq+DiffFc}(1:obj.PullingLengthIdx(qq+DiffFc)),'FaceColor',RGB11)
+                                area(obj.HHApp{qq+DiffFc}(obj.SnapInIdx(qq+DiffFc):end)-obj.CP_HardSurface(qq+DiffFc),obj.yAppLim{qq+DiffFc}(obj.SnapInIdx(qq+DiffFc):end),'FaceColor',RGB7)
+                                plot(obj.HHApp{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc),obj.BasedApp{qq+DiffFc},'Color',RGB1);
+                                plot(obj.HHRet{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc),obj.BasedRet{qq+DiffFc},'Color',RGB2);
+                                plot(obj.HHRet{qq+DiffFc}(obj.PullingLengthIdx(qq+DiffFc))-obj.CP_HardSurface(qq+DiffFc),obj.BasedRet{qq+DiffFc}(obj.PullingLengthIdx(qq+DiffFc)),'d','MarkerSize',14,'MarkerFaceColor',RGB8,'MarkerEdgeColor',RGB8)                          
+                                plot(obj.HHApp{qq+DiffFc}(obj.SnapInIdx(qq+DiffFc))-obj.CP_HardSurface(qq+DiffFc),obj.BasedApp{qq+DiffFc}(obj.SnapInIdx(qq+DiffFc)),'d','MarkerSize',14,'MarkerFaceColor',RGB10,'MarkerEdgeColor',RGB10)                                           
+                                plot(obj.HHRet{qq+DiffFc}(obj.AdhForceMaxRetIdx(qq+DiffFc))-obj.CP_HardSurface(qq+DiffFc),obj.BasedRet{qq+DiffFc}(obj.AdhForceMaxRetIdx(qq+DiffFc)),'h','MarkerSize',10,'MarkerFaceColor',RGB2,'MarkerEdgeColor',RGB2)              
+                                plot(obj.HHApp{qq+DiffFc}(obj.AdhForceMaxAppIdx(qq+DiffFc))-obj.CP_HardSurface(qq+DiffFc),obj.BasedApp{qq+DiffFc}(obj.AdhForceMaxAppIdx(qq+DiffFc)),'h','MarkerSize',10,'MarkerFaceColor',RGB1,'MarkerEdgeColor',RGB1)                                                                   
+                                plot(obj.HHRet{qq+DiffFc}(obj.AdhForceUnbindingIdx(qq+DiffFc))-obj.CP_HardSurface(qq+DiffFc),obj.BasedRet{qq+DiffFc}(obj.AdhForceUnbindingIdx(qq+DiffFc)),'p','MarkerSize',12,'MarkerFaceColor',RGB13,'MarkerEdgeColor',RGB13)                                                                     
+                                else
+                                area(obj.HHRet{qq}-obj.CP_HardSurface(qq),obj.yRetLim{qq},'FaceColor',RGB12)
+                                plot(obj.HHApp{qq}-obj.CP_HardSurface(qq),obj.BasedApp{qq},'Color',RGB1);
+                                plot(obj.HHRet{qq}-obj.CP_HardSurface(qq),obj.BasedRetCorr2{qq},'Color',RGB2);
+                                plot(obj.HHRet{qq}(obj.PullingLengthIdx(qq))-obj.CP_HardSurface(qq),obj.BasedRetCorr2{qq}(obj.PullingLengthIdx(qq)),'d','MarkerSize',10,'MarkerFaceColor','b','MarkerEdgeColor','b')                          
+                                plot(obj.HHRet{qq}(obj.AdhForceMaxRetIdx(qq))-obj.CP_HardSurface(qq),obj.BasedRetCorr2{qq}(obj.AdhForceMaxRetIdx(qq)),'p','MarkerSize',10,'MarkerFaceColor','g','MarkerEdgeColor','g')              
+                                plot(obj.HHApp{qq}(obj.AdhForceMaxAppIdx(qq))-obj.CP_HardSurface(qq),obj.BasedApp{qq}(obj.AdhForceMaxAppIdx(qq)),'h','MarkerSize',10,'MarkerFaceColor','c','MarkerEdgeColor','c')                                                                                            
+                                end
+                                % Title for each Subplot
+                                ti=title(sprintf('%i',qq),'Color','k');
+                                %ti=title(sprintf('%i',(kk+ww)/2),'Color','k');
+                                ti.Units='normalized'; % Set units to 'normalized'
+                                ti.Position=[0.5,0.95]; % Position the subplot title within the subplot
+                            end
+                            if jj == RemainderReal
+                                break
+                            end
+                            jj=jj+1;
+                        end
+                    end
+                end
+                %% Save figures
+                %%% Define the name for the figure title
+                partname=sprintf('-p%d',ii);
+                % fullname=sprintf('%s%s',figname,partname);
+                fullname=sprintf('%s%s',figname,partname);
+                %%% Save the current figure in the current folder
+                print(gcf,fullname,'-dpng');
+            end
+            close all
+        end
+         
+                   
+        function fc_print_raw(obj,XMin,XMax,YMin,YMax) % fc ... force curve
+            % fc_print_raw: A function to simply plot all force curves of a
+            % force map without any selection taking place
+       
+            if nargin < 2
+                XMin= -inf;
+                XMax= inf;
+                YMin= -inf;
+                YMax= inf;
+            end
+            % Define remainder situation
+            Remainder=mod(obj.NCurves,25);
+            NFigures=floor(obj.NCurves./25);
+            if Remainder ~= 0
+                NFigures=NFigures+1;
+            end 
+            % Define variables
+            RGB1=[0 26 255]./255;  % Blue 
+            RGB2=[255 119 0]./255; % Orange
+            RGB10=[69 22 113]./255; % Violet
+            % Define variables for the figure name
+            ExtendVelocityConvert=num2str(obj.ExtendVelocity*1e9);
+            RetractVelocityConvert=num2str(obj.RetractVelocity*1e9);
+            % Classification criteria
+            figname=strcat(obj.Date,{'_'},obj.Time,{'_'},obj.ID,{'_'},obj.Substrate,{'_'},obj.EnvCond,{'_'},obj.Linker,{'_'},obj.Chipbox,{'_'},obj.ChipCant,{'_'},ExtendVelocityConvert,{'_'},RetractVelocityConvert);
+            figname=char(figname);
+            %% Figure loop
+            for ii=1:NFigures           
+            % Figure    
+            h_fig=figure(ii);
+            h_fig.Color='white'; % changes the background color of the figure
+            h_fig.Units='normalized'; % Defines the units 
+            h_fig.OuterPosition=[0 0 1 1];% changes the size of the to the whole screen
+            h_fig.PaperOrientation='landscape';
+            h_fig.Name=figname;         
+            %% Plotting the tiles
+            t = tiledlayout(5,5);
+            %t.TileSpacing = 'compact';
+            %t.Padding = 'compact';
+            t.TileSpacing = 'none'; % To reduce the spacing between the tiles
+            t.Padding = 'none'; % To reduce the padding of perimeter of a tile
+            
+            % Defining variables
+            if ii==NFigures && Remainder~=0
+                NLoop=Remainder;
+            else
+                NLoop=25;
+            end
+                %% Plot loop    
+                for jj=1:NLoop
+                    % Tile jj
+                    kk=jj+25*(ii-1);
+                    %%% Define some variables
+                    x50=-50e-9; % Defines 50nm
+                    x150=-150e-9; % Defines 150nm
+                    x500=-500e-9; % Defines 500nm
+                    % Plot tile
+                    ax=nexttile;      
+                    ax.XLim = [XMin XMax];
+                    ax.YLim = [YMin YMax];
+                    hold on
+                    grid on
+                    %plot(obj.HHApp{kk}-obj.CP_HardSurface(kk,1),obj.BasedApp{kk},'Color',RGB1);
+                    plot(obj.HHApp{kk},obj.App{kk},'Color',RGB1);
+                    %plot(obj.HHRet{kk}-obj.CP_HardSurface(kk,1),obj.BasedRetCorr{kk});
+                    %plot(obj.HHRet{kk}-obj.CP_HardSurface(kk,1),obj.BasedRet{kk},'Color',RGB2); 
+                    plot(obj.HHRet{kk},obj.Ret{kk},'Color',RGB2); 
+                    %xline(x50,'Color',RGB10); % Draws a vertical line
+                    %xline(x150,'Color',RGB10); % Draws a vertical line   
+                    %xline(x500,'Color',RGB10); % Draws a vertical line
+                    % Title for each Subplot
+                    ti=title(sprintf('%i',kk),'Color','k');                                     
+                    ti.Units='normalized'; % Set units to 'normalized'  
+                    ti.Position=[0.5,0.95]; % Position the subplot title within the subplot                   
+                    % Legend, x- and y-labels
+                    %legend('Approach','Retraction','Location','best')
+                    %xlabel('Tip-sample seperation  (nm)','FontSize',11,'Interpreter','latex');
+                    %ylabel('Force (nN)','FontSize',11,'Interpreter','latex');                  
+                end
+
+            %% Save figures
+            %%% Define the name for the figure title    
+            partname=sprintf('-p%d',ii);        
+            % fullname=sprintf('%s%s',figname,partname);
+            fullname=sprintf('%s%s',figname,partname);
+            %%% Save the current figure in the current folder
+            print(gcf,fullname,'-dpng'); 
+            end
+        close Figure 1 Figure 2 Figure 3 Figure 4
+        end
+    
+        %%
+        %%
+        function fc_print_coloured_section(obj,XMin,XMax,YMin,YMax) % fc ... force curve
+            % fc_print_raw: A function to simply plot all force curves of a
+            % force map without any selection taking place
+       
+            if nargin < 2
+                XMin= -inf;
+                XMax= inf;
+                YMin= -inf;
+                YMax= inf;
+            end
+            % Define remainder situation
+            Remainder=mod(obj.NCurves,25);
+            NFigures=floor(obj.NCurves./25);
+            if Remainder ~= 0
+                NFigures=NFigures+1;
+            end 
+                      
+            % Define variables for the figure name
+            ExtendVelocityConvert=num2str(obj.ExtendVelocity*1e9);
+            RetractVelocityConvert=num2str(obj.RetractVelocity*1e9);
+            % Classification criteria
+            figname=strcat(obj.Date,{'_'},obj.Time,{'_'},obj.ID,{'_'},obj.Substrate,{'_'},obj.EnvCond,{'_'},obj.Linker,{'_'},obj.Chipbox,{'_'},obj.ChipCant,{'_'},ExtendVelocityConvert,{'_'},RetractVelocityConvert);
+            figname=char(figname);
+            %% Figure loop
+            for ii=1:NFigures           
+            % Figure    
+            h_fig=figure(ii);
+            h_fig.Color='white'; % changes the background color of the figure
+            h_fig.Units='normalized'; % Defines the units 
+            h_fig.OuterPosition=[0 0 1 1];% changes the size of the to the whole screen
+            h_fig.PaperOrientation='landscape';
+            h_fig.Name=figname;         
+            %% Plotting the tiles
+            t = tiledlayout(5,5);
+            %t.TileSpacing = 'compact';
+            %t.Padding = 'compact';
+            t.TileSpacing = 'none'; % To reduce the spacing between the tiles
+            t.Padding = 'none'; % To reduce the padding of perimeter of a tile
+            
+            % Defining variables
+            if ii==NFigures && Remainder~=0
+                NLoop=Remainder;
+            else
+                NLoop=25;
+            end
+                %% Plot loop    
+                for jj=1:NLoop
+                    % Tile jj
+                    kk=jj+25*(ii-1);
+                    %%% Define some variables
+                    x50=-50e-9; % Defines 50nm
+                    x150=-150e-9; % Defines 150nm
+                    x500=-500e-9; % Defines 500nm
+                    % Plot tile
+                    ax=nexttile;      
+                    ax.XLim = [XMin XMax];
+                    ax.YLim = [YMin YMax];
+                    hold on
+                    grid on
+                    plot(obj.THApp{kk}-obj.CP_HardSurface(kk,1),obj.BasedApp{kk});
+                    %plot(obj.THRet{kk}-obj.CP_HardSurface(kk,1),obj.BasedRetCorr{kk});
+                    plot(obj.THRet{kk}-obj.CP_HardSurface(kk,1),obj.BasedRet{kk});                    
+                    xline(x50,'Color','r'); % Draws a vertical line
+                    xline(x150,'Color','r'); % Draws a vertical line   
+                    xline(x500,'Color','r'); % Draws a vertical line
+                    % Title for each Subplot
+                    ti=title(sprintf('%i',kk),'Color','k');                                     
+                    ti.Units='normalized'; % Set units to 'normalized'  
+                    ti.Position=[0.5,0.95]; % Position the subplot title within the subplot                   
+                    % Legend, x- and y-labels
+                    %legend('Approach','Retraction','Location','best')
+                    %xlabel('Tip-sample seperation  (nm)','FontSize',11,'Interpreter','latex');
+                    %ylabel('Force (nN)','FontSize',11,'Interpreter','latex');                  
+                end
+
+            %% Save figures
+            %%% Define the name for the figure title    
+            partname=sprintf('-p%d',ii);        
+            % fullname=sprintf('%s%s',figname,partname);
+            fullname=sprintf('%s%s',figname,partname);
+            %%% Save the current figure in the current folder
+            print(gcf,fullname,'-dpng'); 
+            end
+        close Figure 1 Figure 2 Figure 3 Figure 4
+        end
+          
+       
+        function fc_fine_figure(obj,XMin,XMax,YMin,YMax,ii)
+             
+            if nargin < 2
+                XMin= -inf;
+                XMax= inf;
+                YMin= -inf;
+                YMax= inf;
+            end
+            
+            % Define RGB colours
+            RGB1=[0 26 255]./255;  % Blue 
+            RGB2=[255 119 0]./255; % Orange
+            RGB3=[80 220 100]./255; % Emerald
+            RGB10=[205 207 208]./255; % Grey
+              
+            [Xmultiplier,Xunit,~] = AFMImage.parse_unit_scale(1e+9,'nm',1);
+            [Ymultiplier,Yunit,~] = AFMImage.parse_unit_scale(1e+9,'nN',1);
+            
+            % Define some variables
+            kk=21;
+            VelocityConvert=num2str(obj.Velocity/Xmultiplier); % Convert into nm
+            figname=strcat(obj.Date,{'_'},obj.Time,{'_'},obj.ID,{'_'},obj.Substrate,{'_'},obj.EnvCond,{'_'},VelocityConvert,{'_'},obj.Chipbox,{'_'},obj.ChipCant);
+            figname=char(figname);
+          
+            % Allocate data
+           xApp1=(obj.THApp{kk}-obj.CP_HardSurface(kk))/-Xmultiplier;
+          %  xApp1b=(obj.THApp{kk})*-1e9;
+            yApp1=(obj.BasedApp{kk})/Ymultiplier;
+            xRet1=(obj.THRet{kk}-obj.CP_HardSurface(kk))/-Xmultiplier;
+            xRet1b=(obj.THRet{kk})/-Xmultiplier;
+            yRet1=(obj.BasedRetCorr2{kk})/Ymultiplier;
+            
+            yRet_2=(obj.yRetLim2{kk})*1e9;
+            yRet_1=(obj.yRetLim{kk})*1e9;
+        
+            % Figure
+            h_fig=figure(ii);
+            h_fig.Color='white'; % changes the background color of the figure
+            h_fig.Units='normalized'; % Defines the units
+            h_fig.OuterPosition=[0 0 1 1];% changes the size of the to the whole screen
+            h_fig.PaperOrientation='landscape';
+            h_fig.Name=figname;
+            % Plot
+            hold on
+            grid on
+           % area(xRet1,yRet_1,'FaceColor',RGB10);
+            area(xRet1,yRet1,'FaceColor',RGB10);
+            plot(xApp1,yApp1,'Color',RGB1,'LineWidth',6);
+            plot(xRet1,yRet1,'Color',RGB2,'LineWidth',6);
+          %  plot(xApp1,yApp1,'Color',RGB1,'LineWidth',4);
+        %    plot(xRet1(obj.PullingLengthIdx:end),yRet1(obj.PullingLengthIdx:end),'Color',RGB3,'LineWidth',4);
+            % Title for each Subplot
+           % ti=title(sprintf('Typical force-distance curve',kk),'Color','k');
+           % ti.Units='normalized'; % Set units to 'normalized'
+           % ti.Position=[0.5,0.95]; % Position the subplot title within the subplot
+            % Legend
+            le=legend(' Adhesion energy',' Approach data',' Retraction data','Location','best');
+            le.FontSize = 48;      
+            le.EdgeColor='w';
+            %le.Box = 'off';
+            %%% Axes
+            ax = gca; % current axes
+            ax.FontSize = 48;
+            ax.LineWidth = 5;
+            ax.XTick=0:100:400;
+           % ax.XTickLabel=[];
+            ax.YTick=-0.3:0.1:0.2;
+           % ax.YTickLabel=[];
+            %ax.XLabel.String = sprintf('Tip-Substrate separation (%s)',Xunit);
+            ax.XLabel.String = 'Tip-Substrate separation (nm)';
+            ax.XLabel.FontSize = 52;
+            %ax.YLabel.String = sprintf('Force (%s)',Yunit);
+            ax.YLabel.String = 'Force (nN)';
+            ax.YLabel.FontSize = 52;
+            ax.XLim = [XMin XMax];
+            ax.YLim = [YMin YMax];
+            %% Save figures
+            %%% Define the name for the figure title
+            partname=sprintf('-ForceCurve%d',kk);
+            % fullname=sprintf('%s%s',figname,partname);
+            fullname=sprintf('%s%s',figname,partname);
+            %%% Save the current figure in the current folder
+            print(gcf,fullname,'-dpng');
+        end
+                
+        function test(obj) 
+            % TEST FUNCTION
+            mega=10e6;
+                giga=10e9;
+                tera=10e12;
+            jj=5;
+           obj.xDataToFit=obj.HHApp{jj}*mega
+           obj.yDataToFit=obj.App{jj}*giga
+           
+
+            obj.yDataToFit(ceil(end*0.9):end)=[]
+            obj.xDataToFit(ceil(end*0.9):end)=[]
+          
+%               xApp=obj.HHApp{ii}-obj.CP_HardSurface(ii);
+%                 xRet=obj.HHRet{ii}-obj.CP_HardSurface(ii);
+              
+            
+        end
+
+      
+    end    
     methods (Static)
         % Auxiliary methods
         
@@ -2342,31 +3795,31 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             % vDelfDataDirectory=vDefldir;
             % find the number of total points
             A=fileread(SegmentHeaderFileDirectory);
-            fileID=fopen(SegmentHeaderFileDirectory,'rt','n','UTF-8');
-            % fileID = fopen(filename,permission,machinefmt,encodingIn)
+            FileID=fopen(SegmentHeaderFileDirectory,'rt','n','UTF-8');
+            % FileID = fopen(filename,permission,machinefmt,encodingIn)
             
             B=strfind(A,'force-segment-header.num-points=');
             % strfind(file,string) is looking for a specific string in the file.
-            fseek(fileID,B,'cof');
+            fseek(FileID,B,'cof');
             % moves at the location where specific string is located
             
-            tline = fgetl(fileID);
+            tline = fgetl(FileID);
             where=strfind(tline,'=');
             % "where" is the position of the "=" symbol in the tline string
             n = str2double(tline(where+1:end)); % number of points
-            fclose(fileID);
+            fclose(FileID);
             
             % Read the height measured data and the vertical deflection.
             % Reading the raw height data into a column of length n
-            fileID = fopen(HeighDataDirectory);
-            % fread(fileID,sizeA,precision,skip,machinefmt)
-            RawHeight = fread(fileID,n,'int32',0,'b'); %raw data
-            fclose(fileID);
+            FileID = fopen(HeighDataDirectory);
+            % fread(FileID,sizeA,precision,skip,machinefmt)
+            RawHeight = fread(FileID,n,'int32',0,'b'); %raw data
+            fclose(FileID);
             
             
             % Reading the deflection height data into a column of length n
-            fileID = fopen(vDelfDataDirectory);
-            RawvDeflection = fread(fileID,n,'int32',0,'b'); %raw data
+            FileID = fopen(vDelfDataDirectory);
+            RawvDeflection = fread(FileID,n,'int32',0,'b'); %raw data
             
             
             % get scaling factors from header file
@@ -2393,8 +3846,10 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             
             Force = deflmeter;
             
-            fclose(fileID);
+            fclose(FileID);
         end
+        
+       
         
         function [mult_height_meters1, offset_height_meters1,...
                 mult_height_meters2, offset_height_meters2,...
@@ -2405,33 +3860,33 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             % reads header from a force scan series and extracts the scaling
             % parameters.
             % filedirectory=HeaderFileDirectory;
-            fileID=fopen(filedirectory,'rt','n','UTF-8'); % fileID = fopen(filename,permission,machinefmt,encodingIn)
+            FileID=fopen(filedirectory,'rt','n','UTF-8'); % FileID = fopen(filename,permission,machinefmt,encodingIn)
             A=fileread(filedirectory);
             % Height: 1. CONVERSION raw-meters & 2. SCALE meters
             % Conversion RAW -> VOLTS
-            fseek(fileID,1,'cof'); % goes at the first position in the file
+            fseek(FileID,1,'cof'); % goes at the first position in the file
             
             exp1='\d{1}';
             
-            frewind(fileID);
+            frewind(FileID);
             B=strfind(A,HHType);
             tline = A(B:end);
             HHNum = regexp(tline,exp1,'match','once');
             
             clear tline;
-            frewind(fileID);
+            frewind(FileID);
             B=strfind(A,'vDeflection');
             tline = A(B:end);
             vDefNum = regexp(tline,exp1,'match','once');
             
             %   Multiplier
             clear tline;
-            frewind(fileID);
+            frewind(FileID);
             B=strfind(A,strcat('lcd-info.',HHNum,'.encoder.scaling.multiplier='));
             % strfind(file,string) is looking for a specific string in the file.
-            fseek(fileID,B,'cof');
+            fseek(FileID,B,'cof');
             % moves at the location where specific string is located
-            tline = fgetl(fileID);
+            tline = fgetl(FileID);
             % stores that string in a character
             where=strfind(tline,'=');
             % "where" is the position of the "=" symbol in the tline string
@@ -2441,29 +3896,29 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             
             %   Offset
             clear tline where;
-            frewind(fileID);
+            frewind(FileID);
             B=strfind(A,strcat('lcd-info.',HHNum,'.encoder.scaling.offset='));
-            fseek(fileID,B,'cof');
-            tline = fgetl(fileID);
+            fseek(FileID,B,'cof');
+            tline = fgetl(FileID);
             where=strfind(tline,'=');
             offset_height_meters1 = str2double(tline(where+1:end));
             
             %   Multiplier
             clear tline where;
-            frewind(fileID);
+            frewind(FileID);
             B=strfind(A,strcat('lcd-info.',HHNum,'.conversion-set.conversion.nominal.scaling.multiplier='));
-            fseek(fileID,B,'cof');
-            tline = fgetl(fileID);
+            fseek(FileID,B,'cof');
+            tline = fgetl(FileID);
             where=strfind(tline,'=');
             mult_height_meters2 = str2double(tline(where+1:end));
             
             
             %   Offset
             clear tline where;
-            frewind(fileID);
+            frewind(FileID);
             B=strfind(A,strcat('lcd-info.',HHNum,'.conversion-set.conversion.nominal.scaling.offset='));
-            fseek(fileID,B,'cof');
-            tline = fgetl(fileID);
+            fseek(FileID,B,'cof');
+            tline = fgetl(FileID);
             where=strfind(tline,'=');
             offset_height_meters2 = str2double(tline(where+1:end));
             
@@ -2473,19 +3928,19 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             
             %   Multiplier
             clear tline where;
-            frewind(fileID);
+            frewind(FileID);
             B=strfind(A,strcat('lcd-info.',vDefNum,'.encoder.scaling.multiplier='));
-            fseek(fileID,B,'cof');
-            tline = fgetl(fileID);
+            fseek(FileID,B,'cof');
+            tline = fgetl(FileID);
             where=strfind(tline,'=');
             mult_vDefl_volts = str2double(tline(where+1:end)); % multiplier for scaling the raw height data and convert to volts
             
             %   Offset
             clear tline where;
-            frewind(fileID);
+            frewind(FileID);
             B=strfind(A,strcat('lcd-info.',vDefNum,'.encoder.scaling.offset='));
-            fseek(fileID,B,'cof');
-            tline = fgetl(fileID);
+            fseek(FileID,B,'cof');
+            tline = fgetl(FileID);
             where=strfind(tline,'=');
             offset_vDefl_volts = str2double(tline(where+1:end));
             
@@ -2494,24 +3949,24 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             
             %   Multiplier (that is the sensitivity measured in meters per Volts)
             clear tline where;
-            frewind(fileID);
+            frewind(FileID);
             B=strfind(A,strcat('lcd-info.',vDefNum,'.conversion-set.conversion.distance.scaling.multiplier='));
-            fseek(fileID,B,'cof');
-            tline = fgetl(fileID);
+            fseek(FileID,B,'cof');
+            tline = fgetl(FileID);
             where=strfind(tline,'=');
             sensitivity = str2double(tline(where+1:end));
             
             % Spring constant
             
             clear tline where;
-            frewind(fileID);
+            frewind(FileID);
             B=strfind(A,strcat('lcd-info.',vDefNum,'.conversion-set.conversion.force.scaling.multiplier='));
-            fseek(fileID,B,'cof');
-            tline = fgetl(fileID);
+            fseek(FileID,B,'cof');
+            tline = fgetl(FileID);
             where=strfind(tline,'=');
             spring_constant = str2double(tline(where+1:end));
             
-            fclose(fileID);
+            fclose(FileID);
         end
         
         function X = CP_batchprep_3_channel(objcell,ImgSizeFinal,ImgSize,CutPercent)
@@ -3053,6 +4508,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 obj.Date = char(obj.Date{1});
                 obj.Time = regexp(Strings(end,1), exp3, 'match');
                 obj.Time = char(obj.Time{1});
+                obj.Date=strrep(obj.Date,'.','-'); % Remove dots in obj.Date
+                obj.Time=strrep(obj.Time,'.','-'); % Remove dots in obj.Time
                 %%% Create a data folder to store the force data
                 mkdir(DataFolder,'ForceData')
                 obj.Folder = fullfile(DataFolder,'ForceData',filesep);
@@ -3088,6 +4545,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 obj.Date = char(obj.Date{1});
                 obj.Time = regexp(Strings(end,1), exp3, 'match');
                 obj.Time = char(obj.Time{1});
+                obj.Date=strrep(obj.Date,'.','-'); % Remove dots in obj.Date
+                obj.Time=strrep(obj.Time,'.','-'); % Remove dots in obj.Time
                 %%% Create a data folder to store the force data
                 mkdir(DataFolder,'ForceData')
                 obj.Folder = fullfile(DataFolder,'ForceData',filesep);
@@ -3121,6 +4580,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 obj.Date = char(obj.Date{1});
                 obj.Time = regexp(Strings(end,1), exp3, 'match');
                 obj.Time = char(obj.Time{1});
+                obj.Date=strrep(obj.Date,'.','-'); % Remove dots in obj.Date
+                obj.Time=strrep(obj.Time,'.','-'); % Remove dots in obj.Time
                 %%% Create a data folder to store the force data
                 mkdir(DataFolder,'ForceData')
                 obj.Folder = fullfile(DataFolder,'ForceData',filesep);
@@ -3133,181 +4594,309 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
         function read_in_header_properties(obj)
             % Check for jpk-software version and get important ForceMap
             % properties
-            
             filedirectory = fullfile(obj.DataStoreFolder,'header.properties');
-            fileID=fopen(filedirectory,'rt','n','UTF-8'); % fileID = fopen(filename,permission,machinefmt,encodingIn)
-            A=fileread(filedirectory);
+            FileID=fopen(filedirectory,'rt','n','UTF-8'); % FileID = fopen(filename,permission,machinefmt,encodingIn)
+            FileCont=fileread(filedirectory);
+            % Shared-data file directory 
+            FileDirectoryShared = fullfile(obj.DataStoreFolder,'shared-data','header.properties');
+            FileIDShared=fopen(FileDirectoryShared,'rt','n','UTF-8'); % FileID = fopen(filename,permission,machinefmt,encodingIn)
+            FileContShared=fileread(FileDirectoryShared);
+            
             % Height: 1. CONVERSION raw-meters & 2. SCALE meters
             % Conversion RAW -> VOLTS
-            fseek(fileID,1,'cof'); % goes at the first position in the file
+            fseek(FileID,1,'cof'); % goes at the first position in the file
             
             %   Check for file type (.jpk-force-map, .jpk-qi-data)
-            frewind(fileID);
-            B=strfind(A,'jpk-data-file=');
-            fseek(fileID,B,'cof');
-            tline = fgetl(fileID);
+            frewind(FileID);
+            StrPos=strfind(FileCont,'jpk-data-file=');
+            fseek(FileID,StrPos,'cof');
+            tline = fgetl(FileID);
             where=strfind(tline,'=');
             TempType = tline(where+1:end);
             if isequal(TempType, 'spm-quantitative-image-data-file')   % Valid for software versions 6.1.158  
                 obj.FileType = 'quantitative-imaging-map';
             elseif isequal(TempType,'spm-force-scan-map-file')         % Valid for software versions 6.1.158 
                 obj.FileType = 'force-scan-map';
-            end
-            
-            %   Check for file version
-            clear tline where;
-            frewind(fileID);
-            B=strfind(A,strcat(obj.FileType,'.description.source-software='));
-            fseek(fileID,B,'cof');
-            tline = fgetl(fileID);
-            where=strfind(tline,'=');
-            obj.FileVersion = tline(where+1:end);
-            
-            %   NCurves
-            clear tline where;
-            frewind(fileID);
-            B=strfind(A,strcat(obj.FileType,'.indexes.max='));
-            % strfind(file,string) is looking for a specific string in the file.
-            fseek(fileID,B,'cof');
-            % moves at the location where specific string is located
-            tline = fgetl(fileID);
+            end            
+            % Restore initial conditions
+            frewind(FileID); % Move file position indicator back to beginning of the open file
+                       
+            %%   Check for the file version            
+            StrPos=strfind(FileCont,strcat(obj.FileType,'.description.source-software=')); % finds the position of the string searched for
+            fseek(FileID,StrPos,'cof'); % Move to specified position in file
+            % 'cof': Current position in file
+            TextLine = fgetl(FileID); % reads the rest of the line starting from the defined string until the end of the line
+            LinePos=strfind(TextLine,'='); % finds the position of the '='-sign in the line
+            obj.FileVersion = TextLine(LinePos+1:end); % allocates all found next to the '='-sign until the end of the line
+            % Restore initial conditions
+            frewind(FileID); % Move file position indicator back to beginning of the open file
+
+            %   Number of curves (COMMENT: JPK starts from 0 not from 1)
+            StrPos=strfind(FileCont,strcat(obj.FileType,'.indexes.max=')); % strfind(file,string) is looking for a specific string in the file.
+            fseek(FileID,StrPos,'cof'); % moves at the location where specific string is located
+            TextLine = fgetl(FileID); % reads the rest of the line starting from the defined string until the end of the line
             % stores that string in a character
-            where=strfind(tline,'=');
-            % "where" is the position of the "=" symbol in the tline string
-            obj.NCurves = 1 + str2double(... % convert the string to number
-                tline(where+1:end)... % this is the number
+            LinePos=strfind(TextLine,'='); % finds the position of the '='-sign in the line
+            obj.NCurves = 1 + str2double(... % convert the string to number and add '1' to start from 1 not from 0
+                TextLine(LinePos+1:end)... % read out the number
                 );
             
             %   NumPixelsX
             clear tline where;
-            frewind(fileID);
-            B=strfind(A,strcat(obj.FileType,'.position-pattern.grid.jlength='));
-            fseek(fileID,B,'cof');
-            tline = fgetl(fileID);
+            frewind(FileID);
+            StrPos=strfind(FileCont,strcat(obj.FileType,'.position-pattern.grid.jlength='));
+            fseek(FileID,StrPos,'cof');
+            tline = fgetl(FileID);
             where=strfind(tline,'=');
             obj.NumPixelsX = str2double(tline(where+1:end));
             
             %   NumPixelsY
             clear tline where;
-            frewind(fileID);
-            B=strfind(A,strcat(obj.FileType,'.position-pattern.grid.ilength='));
-            fseek(fileID,B,'cof');
-            tline = fgetl(fileID);
+            frewind(FileID);
+            StrPos=strfind(FileCont,strcat(obj.FileType,'.position-pattern.grid.ilength='));
+            fseek(FileID,StrPos,'cof');
+            tline = fgetl(FileID);
             where=strfind(tline,'=');
             obj.NumPixelsY = str2double(tline(where+1:end));
             
             %   ScanSizeX
             clear tline where;
-            frewind(fileID);
-            B=strfind(A,strcat(obj.FileType,'.position-pattern.grid.ulength='));
-            fseek(fileID,B,'cof');
-            tline = fgetl(fileID);
+            frewind(FileID);
+            StrPos=strfind(FileCont,strcat(obj.FileType,'.position-pattern.grid.ulength='));
+            fseek(FileID,StrPos,'cof');
+            tline = fgetl(FileID);
             where=strfind(tline,'=');
             obj.ScanSizeX = str2double(tline(where+1:end));
             
             %   ScanSizeY
             clear tline where;
-            frewind(fileID);
-            B=strfind(A,strcat(obj.FileType,'.position-pattern.grid.vlength='));
-            fseek(fileID,B,'cof');
-            tline = fgetl(fileID);
+            frewind(FileID);
+            StrPos=strfind(FileCont,strcat(obj.FileType,'.position-pattern.grid.vlength='));
+            fseek(FileID,StrPos,'cof');
+            tline = fgetl(FileID);
             where=strfind(tline,'=');
             obj.ScanSizeY = str2double(tline(where+1:end));
             
-            %   MaxPonintsPerCurve
+            %   MaxPointsPerCurve
             clear tline where;
-            frewind(fileID);
+            frewind(FileID);
             if isequal(obj.FileType,'force-scan-map')
-                B=strfind(A,strcat(obj.FileType,'.settings.force-settings.extend-k-length='));
+                StrPos=strfind(FileCont,strcat(obj.FileType,'.settings.force-settings.type='));
+                fseek(FileID,StrPos,'cof');
+                TextLine = fgetl(FileID);
+                LinePos=strfind(TextLine,'=');
+                TempType=TextLine(LinePos+1:end);
+                % Restore initial conditions
+                frewind(FileID); % Move file position indicator back to beginning of the open file
+                if isequal(TempType,'relative-force-settings')
+                    StrPos1=strfind(FileCont,strcat(obj.FileType,'.settings.force-settings.extend-k-length='));
+                    fseek(FileID,StrPos1,'cof');
+                    TextLine = fgetl(FileID);
+                    LinePos=strfind(TextLine,'=');
+                    obj.MaxPointsPerCurve=str2double(TextLine(LinePos+1:end));
+                    % Restore initial conditions
+                    frewind(FileID); % Move file position indicator back to beginning of the open file
+                elseif isequal(TempType,'segmented-force-settings')                   
+                    % Number of data points
+                    StrPos2=strfind(FileCont,strcat(obj.FileType,'.settings.force-settings.segment.0.num-points='));          
+                    fseek(FileID,StrPos2,'cof');
+                    TextLine = fgetl(FileID);
+                    LinePos=strfind(TextLine,'=');
+                    obj.MaxPointsPerCurve=str2double(TextLine(LinePos+1:end));
+                    % Restore initial conditions
+                    frewind(FileID); % Move file position indicator back to beginning of the open file
+                end                    
             elseif isequal(obj.FileType,'quantitative-imaging-map')
-                B=strfind(A,strcat(obj.FileType,'.settings.force-settings.extend.num-points='));
+                StrPos=strfind(FileCont,strcat(obj.FileType,'.settings.force-settings.extend.num-points='));
+                fseek(FileID,StrPos,'cof');
+                TextLine = fgetl(FileID);
+                LinePos=strfind(TextLine,'=');
+                obj.MaxPointsPerCurve=str2double(TextLine(LinePos+1:end));
+                % Restore initial conditions
+                frewind(FileID); % Move file position indicator back to beginning of the open file
+            end            
+
+            % Number of Segments
+            clear tline where;
+            frewind(FileIDShared);
+                StrPos=strfind(FileContShared,'force-segment-header-infos.count=');
+                fseek(FileIDShared,StrPos,'cof');
+                TextLine = fgetl(FileIDShared);
+                LinePos=strfind(TextLine,'=');
+                obj.NumSegments=str2double(TextLine(LinePos+1:end)); % jpk assigns approach and retraction as well as possible holding times into segments
+                % Restore initial conditions
+                frewind(FileIDShared); % Move file position indicator back to beginning of the open file                   
+                      
+            %% Holding time
+            if isequal(TempType,'relative-force-settings')
+                    % Holding time
+                    StrPos=strfind(FileCont,strcat(obj.FileType,'.settings.force-settings.extended-pause-time'));
+                    fseek(FileID,StrPos,'cof');
+                    TextLine = fgetl(FileID);
+                    LinePos=strfind(TextLine,'=');
+                    obj.HoldingTime = str2double(TextLine(LinePos+1:end));
+                    % Restore initial conditions
+                    frewind(FileID); % Move file position indicator back to beginning of the open file  
+            elseif isequal(TempType,'segmented-force-settings') && obj.NumSegments == 3
+                    % Holding time
+                    StrPos=strfind(FileCont,strcat(obj.FileType,'.settings.force-settings.segment.1.duration'));
+                    fseek(FileID,StrPos,'cof');
+                    TextLine = fgetl(FileID);
+                    LinePos=strfind(TextLine,'=');
+                    obj.HoldingTime = str2double(TextLine(LinePos+1:end));
+                    % Restore initial conditions
+                    frewind(FileID); % Move file position indicator back to beginning of the open file                    
             end
-            fseek(fileID,B,'cof');
-            tline = fgetl(fileID);
-            where=strfind(tline,'=');
-            obj.MaxPointsPerCurve = str2double(tline(where+1:end));
             
-            %   Velocity
-            
+            %%   Velocity
             if isequal(obj.FileType,'force-scan-map')
+                frewind(FileID); % Move file position indicator back to beginning of the open file
+                if isequal(TempType,'relative-force-settings')
+                    % Extend
+                    % Scan time
+                    StrPos=strfind(FileCont,strcat(obj.FileType,'.settings.force-settings.extend-scan-time='));
+                    fseek(FileID,StrPos,'cof');
+                    TextLine = fgetl(FileID);
+                    LinePos=strfind(TextLine,'=');
+                    obj.ExtendTime = str2double(TextLine(LinePos+1:end));
+                    % Restore initial conditions
+                    frewind(FileID); % Move file position indicator back to beginning of the open file
+                    % z-height
+                    StrPos=strfind(FileCont,strcat(obj.FileType,'.settings.force-settings.relative-z-start='));
+                    fseek(FileID,StrPos,'cof');
+                    TextLine = fgetl(FileID);
+                    LinePos=strfind(TextLine,'=');
+                    obj.ExtendZLength = str2double(TextLine(LinePos+1:end));
+                    % Restore initial conditions
+                    frewind(FileID); % Move file position indicator back to beginning of the open file
+                    % Retract
+                    % Scan time
+                    StrPos=strfind(FileCont,strcat(obj.FileType,'.settings.force-settings.retract-scan-time='));
+                    fseek(FileID,StrPos,'cof');
+                    TextLine = fgetl(FileID);
+                    LinePos=strfind(TextLine,'=');
+                    obj.RetractTime = str2double(TextLine(LinePos+1:end));
+                    % Restore initial conditions
+                    frewind(FileID); % Move file position indicator back to beginning of the open file
+                    % z-height
+                    StrPos=strfind(FileCont,strcat(obj.FileType,'.settings.force-settings.relative-z-start='));
+                    fseek(FileID,StrPos,'cof');
+                    TextLine = fgetl(FileID);
+                    LinePos=strfind(TextLine,'=');
+                    obj.RetractZLength = str2double(TextLine(LinePos+1:end));
+                    % Restore initial conditions
+                    frewind(FileID); % Move file position indicator back to beginning of the open file
+                elseif isequal(TempType,'segmented-force-settings')
+                    % Extend
+                    % Scan time
+                    StrPos=strfind(FileCont,strcat(obj.FileType,'.settings.force-settings.segment.0.duration='));
+                    fseek(FileID,StrPos,'cof');
+                    TextLine = fgetl(FileID);
+                    LinePos=strfind(TextLine,'=');
+                    obj.ExtendTime = str2double(TextLine(LinePos+1:end));
+                    % Restore initial conditions
+                    frewind(FileID); % Move file position indicator back to beginning of the open file
+                    % z-height
+                    StrPos=strfind(FileCont,strcat(obj.FileType,'.settings.force-settings.segment.0.z-start'));
+                    fseek(FileID,StrPos,'cof');
+                    TextLine = fgetl(FileID);
+                    LinePos=strfind(TextLine,'=');
+                    obj.ExtendZLength = str2double(TextLine(LinePos+1:end));
+                    % Restore initial conditions
+                    frewind(FileID); % Move file position indicator back to beginning of the open file
+                    % Retract
+                    % Scan time
+                    StrPos=strfind(FileCont,strcat(obj.FileType,sprintf('.settings.force-settings.segment.%d.duration=',obj.NumSegments-1)));
+                    fseek(FileID,StrPos,'cof');
+                    TextLine = fgetl(FileID);
+                    LinePos=strfind(TextLine,'=');
+                    obj.RetractTime = str2double(TextLine(LinePos+1:end));
+                    % Restore initial conditions
+                    frewind(FileID); % Move file position indicator back to beginning of the open file
+                    % z-height
+                    StrPos=strfind(FileCont,strcat(obj.FileType,sprintf('.settings.force-settings.segment.%d.z-start',obj.NumSegments-1)));                  
+                    fseek(FileID,StrPos,'cof');
+                    TextLine = fgetl(FileID);
+                    LinePos=strfind(TextLine,'=');
+                    obj.RetractZLength = str2double(TextLine(LinePos+1:end));
+                    % Restore initial conditions
+                    frewind(FileID); % Move file position indicator back to beginning of the open file   
+                end     
+            elseif isequal(obj.FileType,'quantitative-imaging-map')
                 clear tline where;
-                frewind(fileID);
-                B=strfind(A,strcat(obj.FileType,'.settings.force-settings.extend-scan-time='));
-                fseek(fileID,B,'cof');
-                tline = fgetl(fileID);
+                frewind(FileID);
+                StrPos=strfind(FileCont,'quantitative-imaging-map.settings.force-settings.extend.duration=');
+                fseek(FileID,StrPos,'cof');
+                tline = fgetl(FileID);
                 where=strfind(tline,'=');
                 obj.ExtendTime = str2double(tline(where+1:end));
                 
                 clear tline where;
-                frewind(fileID);
-                B=strfind(A,strcat(obj.FileType,'.settings.force-settings.retract-scan-time='));
-                fseek(fileID,B,'cof');
-                tline = fgetl(fileID);
+                frewind(FileID);
+                StrPos=strfind(FileCont,'quantitative-imaging-map.settings.force-settings.extend.duration=');
+                fseek(FileID,StrPos,'cof');
+                tline = fgetl(FileID);
                 where=strfind(tline,'=');
                 obj.RetractTime = str2double(tline(where+1:end));
                 
                 clear tline where;
-                frewind(fileID);
-                B=strfind(A,strcat(obj.FileType,'.settings.force-settings.relative-z-start='));
-                fseek(fileID,B,'cof');
-                tline = fgetl(fileID);
+                frewind(FileID);
+                StrPos=strfind(FileCont,'quantitative-imaging-map.settings.force-settings.extend.z-start=');
+                fseek(FileID,StrPos,'cof');
+                tline = fgetl(FileID);
                 where=strfind(tline,'=');
-                ZLength = str2double(tline(where+1:end));
-            elseif isequal(obj.FileType,'quantitative-imaging-map')
-                clear tline where;
-                frewind(fileID);
-                B=strfind(A,'quantitative-imaging-map.settings.force-settings.extend.duration=');
-                fseek(fileID,B,'cof');
-                tline = fgetl(fileID);
-                where=strfind(tline,'=');
-                obj.ExtendTime = str2double(tline(where+1:end));
-                
-                clear tline where;
-                frewind(fileID);
-                B=strfind(A,'quantitative-imaging-map.settings.force-settings.extend.duration=');
-                fseek(fileID,B,'cof');
-                tline = fgetl(fileID);
-                where=strfind(tline,'=');
-                obj.RetractTime = str2double(tline(where+1:end));
-                
-                clear tline where;
-                frewind(fileID);
-                B=strfind(A,'quantitative-imaging-map.settings.force-settings.extend.z-start=');
-                fseek(fileID,B,'cof');
-                tline = fgetl(fileID);
-                where=strfind(tline,'=');
-                obj.ZLength = str2double(tline(where+1:end));
+                obj.ExtendZLength = str2double(tline(where+1:end));
+                obj.RetractZLength = obj.ExtendZLength;
             end
             
-            obj.ExtendVelocity = obj.ZLength/obj.ExtendTime;
-            obj.RetractVelocity = obj.ZLength/obj.RetractTime;
+            obj.ExtendVelocity = obj.ExtendZLength/obj.ExtendTime;
+            obj.RetractVelocity = obj.RetractZLength/obj.RetractTime;
             
             %   ScanAngle
             clear tline where;
-            frewind(fileID);
-            B=strfind(A,strcat(obj.FileType,'.position-pattern.grid.theta='));
-            fseek(fileID,B,'cof');
-            tline = fgetl(fileID);
+            frewind(FileID);
+            StrPos=strfind(FileCont,strcat(obj.FileType,'.position-pattern.grid.theta='));
+            fseek(FileID,StrPos,'cof');
+            tline = fgetl(FileID);
             where=strfind(tline,'=');
             obj.ScanAngle = str2double(tline(where+1:end));
             obj.ScanAngle = obj.ScanAngle*180/pi;
             
             %   Setpoint
             clear tline where;
-            frewind(fileID);
+            frewind(FileID);
             if isequal(obj.FileType,'quantitative-imaging-map')
-                B=strfind(A,strcat(obj.FileType,'.settings.force-settings.extend.setpoint='));
+                StrPos=strfind(FileCont,strcat(obj.FileType,'.settings.force-settings.extend.setpoint='));
+                fseek(FileID,StrPos,'cof');
+                tline = fgetl(FileID);
+                where=strfind(tline,'=');
+                obj.Setpoint = str2double(tline(where+1:end)).*obj.Sensitivity.*obj.SpringConstant;
+                % Restore initial conditions
+                frewind(FileID); % Move file position indicator back to beginning of the open file
             elseif isequal(obj.FileType,'force-scan-map')
-                B=strfind(A,strcat(obj.FileType,'.settings.force-settings.relative-setpoint='));
-            end
-            fseek(fileID,B,'cof');
-            tline = fgetl(fileID);
-            where=strfind(tline,'=');
-            obj.Setpoint = str2double(tline(where+1:end)).*obj.Sensitivity.*obj.SpringConstant;
-            
-            obj.HHType = 'capacitiveSensorHeight';
-            
-            fclose(fileID);
+                if isequal(TempType,'relative-force-settings')
+                    % Extend                   
+                    StrPos=strfind(FileCont,strcat(obj.FileType,'.settings.force-settings.relative-setpoint='));
+                    fseek(FileID,StrPos,'cof');
+                    tline = fgetl(FileID);
+                    where=strfind(tline,'=');
+                    obj.Setpoint = str2double(tline(where+1:end)).*obj.Sensitivity.*obj.SpringConstant;
+                    % Restore initial conditions
+                    frewind(FileID); % Move file position indicator back to beginning of the open file                
+                elseif isequal(TempType,'segmented-force-settings')
+                    % Extend                   
+                    StrPos=strfind(FileCont,strcat(obj.FileType,'.settings.force-settings.segment.0.duration='));
+                    fseek(FileID,StrPos,'cof');
+                    tline = fgetl(FileID);
+                    where=strfind(tline,'=');
+                    obj.Setpoint = str2double(tline(where+1:end)).*obj.Sensitivity.*obj.SpringConstant;
+                    % Restore initial conditions
+                    frewind(FileID); % Move file position indicator back to beginning of the open file
+                end                
+            end                        
+            obj.HHType = 'capacitiveSensorHeight';           
+            fclose(FileID);
+            fclose(FileIDShared);
         end
         
         function load_force_curves(obj)
@@ -3315,6 +4904,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             obj.HHType = 'capacitiveSensorHeight';
             for i=1:obj.NCurves
                 HeaderFileDirectory = fullfile(TempFolder,'shared-data','header.properties');
+                % 0 segment = approach part
                 SegmentHeaderFileDirectory = fullfile(TempFolder,'index',string((i-1)),'segments','0','segment-header.properties');
                 HeightDataDirectory = fullfile(TempFolder,'index',string((i-1)),'segments','0','channels','capacitiveSensorHeight.dat');
                 vDefDataDirectory = fullfile(TempFolder,'index',string((i-1)),'segments','0','channels','vDeflection.dat');
@@ -3349,30 +4939,18 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                     end
                 end
                 
-                % Below there is a workaround for jpk-force-map files,
-                % where the capacitiveSensorHeight
-                % written into an additional segment folder '2' instead of
-                % '1'. This occurs, when there is a nonzero holding time,
-                % which gets writtem into the '1'-folder instead
+                % Following segments
                 
-                % To be implemented: read holding segment into ForceMap
-                % class
-                
-                SegmentHeaderFileDirectory = fullfile(TempFolder,'index',string((i-1)),'segments','1','segment-header.properties');
-                HeightDataDirectory = fullfile(TempFolder,'index',string((i-1)),'segments','1','channels','capacitiveSensorHeight.dat');
-                vDefDataDirectory = fullfile(TempFolder,'index',string((i-1)),'segments','1','channels','vDeflection.dat');
-                
-                if isfolder(fullfile(TempFolder,'index',string((i-1)),'segments','2'))
-                    SegmentHeaderFileDirectory = fullfile(TempFolder,'index',string((i-1)),'segments','2','segment-header.properties');
-                    HeightDataDirectory = fullfile(TempFolder,'index',string((i-1)),'segments','2','channels','capacitiveSensorHeight.dat');
-                    vDefDataDirectory = fullfile(TempFolder,'index',string((i-1)),'segments','2','channels','vDeflection.dat');
-                    if ~isfile(HeightDataDirectory)  || isequal(obj.HHType,'measuredHeight')
-                        HeightDataDirectory = fullfile(TempFolder,'index',string((i-1)),'segments','2','channels','measuredHeight.dat');
-                    end
-                end
+                SegmentHeaderFileDirectory = fullfile(TempFolder,'index',string((i-1)),'segments',string(obj.NumSegments-1),'segment-header.properties');
+                HeightDataDirectory = fullfile(TempFolder,'index',string((i-1)),'segments',string(obj.NumSegments-1),'channels','capacitiveSensorHeight.dat');
+                vDefDataDirectory = fullfile(TempFolder,'index',string((i-1)),'segments',string(obj.NumSegments-1),'channels','vDeflection.dat');
                 
                 if ~isfile(HeightDataDirectory) || isequal(obj.HHType,'measuredHeight')
-                    HeightDataDirectory = fullfile(TempFolder,'index',string((i-1)),'segments','1','channels','measuredHeight.dat');
+                    HeightDataDirectory = fullfile(TempFolder,'index',string((i-1)),'segments',string(obj.NumSegments-1),'channels','measuredHeight.dat');
+                end
+                 if ~isfile(HeightDataDirectory) || isequal(obj.HHType,'Height')
+                    HeightDataDirectory = fullfile(TempFolder,'index',string((i-1)),'segments',string(obj.NumSegments-1),'channels','Height.dat');
+                    obj.HHType = 'Height';
                 end
                 
                 try
@@ -3459,6 +5037,11 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             end
             
             TempFolder = obj.DataStoreFolder;
+            
+            % Correct for potential holding segment
+            if AppRetSwitch
+                AppRetSwitch=obj.NumSegments-1;
+            end
             
             HeaderFileDirectory = fullfile(TempFolder,'shared-data','header.properties');
             SegmentHeaderFileDirectory = fullfile(TempFolder,'index',string((CurveNumber-1)),'segments',string(AppRetSwitch),'segment-header.properties');
@@ -3553,9 +5136,13 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             obj.CPFlag.HardSurface = 0;
             obj.HasRefSlope = false;
             % SMFS
+            obj.SMFSFlag.SelectFM=ones(1,obj.NCurves);
+            obj.SMFSFlag.Preprocessed=ones(1,obj.NCurves);
+            obj.SMFSFlag.Presorted=ones(1,obj.NCurves);
+            obj.SMFSFlag.Uncorrupt=ones(1,obj.NCurves);
             obj.SMFSFlag.Min=zeros(1,obj.NCurves);
             obj.SMFSFlag.Length=zeros(1,obj.NCurves);
-            
+            obj.SMFSFlag.Fit=zeros(1,obj.NCurves);      
         end
         
         function create_dummy_force_map(obj,NSynthCurves)

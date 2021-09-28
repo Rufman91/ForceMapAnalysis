@@ -244,6 +244,10 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             end
         end
         
+        function base_image()
+            
+        end
+        
         function subtract_overlayed_image(obj,OverlayedImageClassInstance)
             
             if ~obj.hasOverlay
@@ -381,9 +385,7 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
     methods(Static)
         % Static Main Methods
         
-        function [ChannelOut,ScaleMultiplier,WhoScaled] = overlay_parameters_by_bayesopt(Channel1,Channel2,...
-                BackgroundPercent,MinOverlap,AngleRange,UseParallel,MaxFunEval,...
-                PreMaxFunEval,NumPreSearches,NClusters)
+        function ChannelOut = overlay_parameters_by_bayesopt(Channel1,Channel2,BackgroundPercent,MinOverlap,AngleRange,UseParallel,MaxFunEval,PreMaxFunEval,NumPreSearches,NClusters)
             % ChannelOut = overlay_parameters_by_bayesopt(Channel1,Channel2,BackgroundPercent,MinOverlap,AngleRange,UseParallel,MaxFunEval,PreMaxFunEval,NumPreSearches,NClusters)
             
             % Assume Channel2 has same angle and origin as Channel1
@@ -396,20 +398,16 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             % exactly the same
             SizePerPixel1 = Channel1.ScanSizeX/Channel1.NumPixelsX;
             SizePerPixel2 = Channel2.ScanSizeX/Channel2.NumPixelsX;
-            ScaleMultiplier = 1;
-            WhoScaled = 'No one';
             if SizePerPixel1 > SizePerPixel2
                 ScaleMultiplier = SizePerPixel1/SizePerPixel2;
                 Channel1.Image = imresize(Channel1.Image,ScaleMultiplier);
                 Channel1.NumPixelsX = size(Channel1.Image,1);
                 Channel1.NumPixelsY = size(Channel1.Image,2);
-                WhoScaled = 'Channel1';
             elseif SizePerPixel1 > SizePerPixel2
                 ScaleMultiplier = SizePerPixel2/SizePerPixel1;
                 Channel2.Image = imresize(Channel2.Image,ScaleMultiplier);
                 Channel2.NumPixelsX = size(Channel2.Image,1);
                 Channel2.NumPixelsY = size(Channel2.Image,2);
-                WhoScaled = 'Channel2';
             end
             % Create Background masks
             Mask1 = AFMImage.mask_background_by_threshold(Channel1.Image,BackgroundPercent,'on');
@@ -718,7 +716,7 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             Channel1 = FirstClassInstance.get_channel('Processed');
             Channel2 = OverlayedClassInstance.get_channel('Processed');
             
-            [OutChannel,ScaleMultiplier,WhoScaled] = AFMImage.overlay_parameters_by_bayesopt(Channel1,Channel2,...
+            OutChannel = AFMImage.overlay_parameters_by_bayesopt(Channel1,Channel2,...
                 BackgroundPercent,MinOverlap,AngleRange,UseParallel,MaxFunEval,PreMaxFunEval,NumPreSearches,NClusters);
             
             OverlayedClassInstance.set_channel_positions(OutChannel.OriginX,OutChannel.OriginY,OutChannel.ScanAngle);
@@ -726,6 +724,19 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
         end
         
         function create_overlay_group(AllToOneBool,varargin)
+            % create_overlay_group(AllToOneBool,varargin)
+            %
+            % AllToOneBool... if true, all overlay-relations are tied to
+            % the first Class-instance that is input to the function
+            %
+            % varargin... Input all the class-instances that should be
+            % overlayed (Works for all classes inheriting from
+            % AFMBaseClass).
+            %
+            % Example: E.create_overlay_group(false,E.FM{1},E.FM{2},E.FM{3},...
+            %                      E.I{1},E.I{2})
+            % This will overlay FM{1}->FM{2}->FM{3}->I{1}->I{2} in this
+            % exact order
             
             for i=1:length(varargin)
                 Names{i} = varargin{i}.Name;
@@ -757,6 +768,23 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 Line = InImage(i,:)';
                 [~, SortedIndex] = sort(Line,'ascend');
                 LineFit = polyfit(SortedIndex(1:CutOff),Line(SortedIndex(1:CutOff)),1);
+                LineEval = [1:NumPoints]'*LineFit(1) + LineFit(2);
+                Line = Line - LineEval;
+                InImage(i,:) = Line;
+            end
+            OutImage = InImage;
+        end
+        
+        function OutImage = subtract_line_fit_diffhist_method(InImage)
+            
+            NumProfiles = size(InImage,1);
+            NumPoints = size(InImage,2);
+            
+            for i=1:NumProfiles
+                Line = InImage(i,:)';
+                CutOff = AFMImage.automatic_cutoff(Line);
+                Indizes = find(Line<=CutOff);
+                LineFit = polyfit(Indizes,Line(Indizes),1);
                 LineEval = [1:NumPoints]'*LineFit(1) + LineFit(2);
                 Line = Line - LineEval;
                 InImage(i,:) = Line;
