@@ -724,6 +724,19 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
         end
         
         function create_overlay_group(AllToOneBool,varargin)
+            % create_overlay_group(AllToOneBool,varargin)
+            %
+            % AllToOneBool... if true, all overlay-relations are tied to
+            % the first Class-instance that is input to the function
+            %
+            % varargin... Input all the class-instances that should be
+            % overlayed (Works for all classes inheriting from
+            % AFMBaseClass).
+            %
+            % Example: E.create_overlay_group(false,E.FM{1},E.FM{2},E.FM{3},...
+            %                      E.I{1},E.I{2})
+            % This will overlay FM{1}->FM{2}->FM{3}->I{1}->I{2} in this
+            % exact order
             
             for i=1:length(varargin)
                 Names{i} = varargin{i}.Name;
