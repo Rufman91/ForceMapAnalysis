@@ -3661,7 +3661,7 @@ classdef ForceMap < matlab.mixin.Copyable
                        
                 end
                        
-                %height time
+                %indentation time
                 figure(g)
                 hold on
                 for j=1:obj.NumSegments
@@ -3705,55 +3705,19 @@ classdef ForceMap < matlab.mixin.Copyable
                        obj.SegTime{obj.NumSegments} = obj.TStart{obj.NumSegments}:obj.SecPerPoint{obj.NumSegments}:obj.TEnd{obj.NumSegments};
                        obj.SegTime{obj.NumSegments} = obj.SegTime{obj.NumSegments}.';
 
-                       plot(obj.SegTime{j},obj.Indentation{i,j},obj.SegTime{j},obj.Force{i,j})
-                       legend({'indentation time data','force time data'},'Location','southoutside')
+                       hold on
+
+                       yyaxis left
+                       plot(obj.SegTime{j},obj.Indentation{i,j})
+                       xlabel('time in s')
+                       ylabel('indentation in m')
+                       %xlim([1.4 2.4])
+
+                       yyaxis right
+                       plot(obj.SegTime{j},obj.Force{i,j})
+                       ylabel('force in N')
 
                 end
-                
-%                 figure('Name',sprintf('Curve %i S',i))
-%                 hold on
-%                 for j=1:obj.NumSegments
-%                     
-%                        lengthHHApp = length(obj.HHApp{i});
-%                        obj.SecPerPoint{1} = obj.SegDuration{1}/lengthHHApp;
-%                        obj.TStart{1} = obj.SecPerPoint{1}/2;
-%                        obj.TEnd{1} = obj.SeriesTime{1};
-%                        obj.SegTime{1} = obj.TStart{1}:obj.SecPerPoint{1}:obj.TEnd{1};
-%                        obj.SegTime{1} = obj.SegTime{1}.';
-%                        
-%                        lengthHHRet = length(obj.HHRet{i});
-%                        obj.SecPerPoint{obj.NumSegments} = obj.SegDuration{obj.NumSegments}/lengthHHRet;
-%                        obj.TStart{obj.NumSegments} = obj.SeriesTime{obj.NumSegments - 1}+(obj.SecPerPoint{obj.NumSegments}/2);
-%                        obj.TEnd{obj.NumSegments} = obj.SeriesTime{obj.NumSegments};
-%                        obj.SegTime{obj.NumSegments} = obj.TStart{obj.NumSegments}:obj.SecPerPoint{obj.NumSegments}:obj.TEnd{obj.NumSegments};
-%                        obj.SegTime{obj.NumSegments} = obj.SegTime{obj.NumSegments}.';
-%                        
-%                        subplot(2,1,1)
-%                        hold on
-%                        plot(obj.SegTime{j},obj.Force{i,j},'b')
-%                        title(sprintf('Force Time Curve %i',i))
-%                        xlabel('time in s')
-%                        ylabel('force in N')
-%                        subplot(2,1,2)
-%                        hold on
-%                        plot(obj.SegTime{j},obj.Indentation{i,j},'b')
-%                        title(sprintf('Indentation Time Curve %i',i))
-%                        xlabel('time in s')
-%                        ylabel('indentation in m')
-%                        subplot(2,2,1)
-%                        hold on
-%                        plot(obj.SegTime{j},obj.Force{i,j},obj.SegTime{j},obj.Indentation{i,j})
-%                        title(sprintf('Force Indentation Curve %i',i))
-%                        xlabel('Indentation in m')
-%                        ylabel('Force in N')
-%                        subplot(2,2,2)
-%                        hold on
-%                        plot(obj.Indentation{i,j},obj.Force{i,j},'b')
-%                        title(sprintf('Force Indentation Curve %i',i))
-%                        xlabel('Indentation in m')
-%                        ylabel('Force in N')
-%                 end
-                
 
                 
                 %force indentation all segments
