@@ -1729,24 +1729,50 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
         
         function manual_exclusion(obj)
             
-            obj.ExclMask = logical(ones(obj.NumPixelsX,obj.NumPixelsY));
             CheckSum = 100;
+            f = figure('Name','Choose areas to be excluded');
+            f.WindowState = 'maximized';
+            
+            if ~isempty(obj.ExclMask)
+                obj.ExclMask = logical(ones(obj.NumPixelsX,obj.NumPixelsY));
+            else
+                TempMap = obj.HeightMap(:,:,1);
+                TempMap(obj.ExclMask == 0) = max(TempMap,[],'all');
+                imshow(TempMap,[])
+                
+                answer = questdlg('There already exists an exclusion mask!', ...
+                    'Keep it!', ...
+                    'Draw new!','Draw new!');
+                % Handle response
+                switch answer
+                    case 'Keep it!'
+                        close(f)
+                        return
+                    case 'Draw new!'
+                        obj.ExclMask = logical(ones(obj.NumPixelsX,obj.NumPixelsY));
+                        close(f)
+                        f = figure('Name','Choose areas to be excluded');
+                        f.WindowState = 'maximized';
+                end
+            end
+            
             while CheckSum > 1
-                f = figure('Name','Choose areas to be excluded');
-                f.WindowState = 'maximized';
                 subplot(2,1,2)
                 surf(imresize(imrotate(obj.HeightMap(:,:,1)',90),[1024 1024]),'LineStyle','none','FaceLighting','gouraud','FaceColor','interp')
                 light('Style','local')
                 subplot(2,1,1)
-                imshow(obj.HeightMap(:,:,1).*obj.ExclMask,[min(obj.HeightMap(:,:,1),[],'all') max(obj.HeightMap(:,:,1),[],'all')])
+                TempMap = obj.HeightMap(:,:,1);
+                TempMap(obj.ExclMask == 0) = max(TempMap,[],'all');
+                imshow(TempMap,[])
                 title(sprintf('%s: Draw Freehand ROI around areas, that are to be excluded\nThe area will be taken out and the same map redrawn \n If there is nothing to do just click on the image once without dragging the cursor',obj.Name))
                 ROI = drawfreehand;
                 CheckSum = length(ROI.Waypoints);
                 Mask = ~createMask(ROI);
                 obj.ExclMask = obj.ExclMask.*Mask;
-                close(f)
+                drawnow
             end
             
+            close(f)
             %             current = what();
             %             cd(obj.Folder)
             %             savename = sprintf('%s.mat',obj.Name);
