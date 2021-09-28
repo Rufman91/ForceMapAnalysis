@@ -3081,6 +3081,16 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 draw_channel_2
             end
             
+            function checked_both_cross_sections(varargin)
+                h.hasBothCrossSections = ~h.hasBothCrossSections;
+                try
+                    delete(h.ImAx(3));
+                catch
+                end
+                draw_channel_1
+                draw_channel_2
+            end
+            
             uiwait(h.Fig)
         end
         
