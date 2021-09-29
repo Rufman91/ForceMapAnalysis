@@ -58,6 +58,11 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
         AssignedCantileverTips
     end
     
+    % SMFS related
+    properties
+        SMFSResults
+    end
+    
     methods
         % constructor method and methods related with Experiment-file handling
         
@@ -1325,7 +1330,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
         end
         
         % SMFS section
-                   
+                        
         function SMFS_min_max(obj)
             
 
@@ -1470,7 +1475,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 obj.FM{ii}.fc_estimate_cp_hardsurface
                 obj.FM{ii}.fc_find_idx
                 obj.FM{ii}.fc_selection_threshold
-                    if nnz(obj.FM{ii}.SMFSFlag.Min)<20 % Only if more than 20 force curves fulfil the citeria the whole force map is considered successfully functionalized
+                    if nnz(obj.FM{ii}.SMFSFlag.RetMinCrit)<20 % Only if more than 20 force curves fulfil the citeria the whole force map is considered successfully functionalized
                         obj.SMFSFlag.SelectFM(ii)=0;
                     else
                         obj.SMFSFlag.SelectFM(ii)=1;
@@ -1517,10 +1522,13 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             % criteria, i.e. pulling length, adhesion energy. 
             %% Folder
             % Change into the Folder of Interest
+            
+          
+            
             %% loop
             for hh=1:obj.NumForceMaps
-            %for hh=3:6 % Debugging
-               sprintf('Force map No. %d',hh);
+            %for hh=2 % Debugging     
+               sprintf('Force Map No. %d of %d',hh,obj.NumForceMaps) % Gives current Force Map Position   
                % Print force curves containing label for the pulling length
                % and colored area for the adhesion energy                              
                % Baseline correction
@@ -1565,7 +1573,8 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             cd(currpath);
             %% loop
             for hh=1:obj.NumForceMaps
-            %for hh=3:6 % Debugging
+            %for hh=2 % Debugging
+            sprintf('Force Map No. %d of %d',hh,obj.NumForceMaps) % Gives current Force Map Position   
             % Determine needed input variable
                NumFcUncorrupt(hh)=nnz(obj.FM{hh}.SMFSFlag.Uncorrupt); % Determine the number of uncorrupted force curves     
                obj.FM{hh}.fc_print_properties(XMin,XMax,YMin,YMax,NumFcMax,NumFcUncorrupt,hh)         
@@ -1577,7 +1586,16 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             % SMFS_print: A function to simply plot all force curves of all
             % force maps loaded and calssified based on the SMFS Flag
             % Needed function: obj.presorting
-
+            
+            if nargin<2
+                XMin= -inf;     % Limit of the X-axis in meters (m)  
+                XMax= inf;      % Limit of the X-axis in meters (m)
+                YMin= -inf;     % Limit of the Y-axis in Newtons (N)   
+                YMax= inf;      % Limit of the Y-axis in Newtons (N)
+            else
+                
+            end
+            
             % Change into the Folder of Interest
             cd(obj.ExperimentFolder) % Move into the folder 
             % Create folders for saving the produced figures
@@ -1964,6 +1982,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 
                 % Define variables
                 j=1;
+                IdxArray=[];
                 for ii=1:obj.NumForceMaps
                     if ((obj.FM{ii}.ExtendVelocity==ExtVelocityValue || ExtVelocityValue==0) ...
                             && (obj.FM{ii}.RetractVelocity==RetVelocityValue || RetVelocityValue==0) ...
@@ -1975,27 +1994,16 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                         % Define variables for the if condition 
                         IdxArray(j,1)=ii;
                         % Adjust variable
-                        j=j+1;
-
-%                         if ~isempty(IdxArray) && IdxNonzero==ii
-%                             obj.FM{ii}.PullingLength(obj.FM{ii}.PullingLength==0)=nan;
-%                             ConcatArrayPullingLength1=obj.FM{ii}.PullingLength(:);
-%                             ConcatArrayPullingLength2=obj.FM{ii}.PullingLength(:);
-%                             obj.FM{ii}.RetAdhEnergy_IdxMethod(obj.FM{ii}.RetAdhEnergy_IdxMethod==0)=nan;
-%                             ConcatArrayRetAdhEnergy1=obj.FM{ii}.RetAdhEnergy_IdxMethod(:);
-%                             ConcatArrayRetAdhEnergy2=obj.FM{ii}.RetAdhEnergy_IdxMethod(:);
-%                         else
-%                             obj.FM{ii}.PullingLength(obj.FM{ii}.PullingLength==0)=nan;
-%                             ConcatArrayPullingLength1=horzcat(ConcatArrayPullingLength1,obj.FM{ii}.PullingLength(:));
-%                             ConcatArrayPullingLength2=vertcat(ConcatArrayPullingLength2,obj.FM{ii}.PullingLength(:));
-%                             obj.FM{ii}.RetAdhEnergy_IdxMethod(obj.FM{ii}.RetAdhEnergy_IdxMethod==0)=nan;
-%                             ConcatArrayRetAdhEnergy1=horzcat(ConcatArrayRetAdhEnergy1,obj.FM{ii}.RetAdhEnergy_IdxMethod(:));
-%                             ConcatArrayRetAdhEnergy2=vertcat(ConcatArrayRetAdhEnergy2,obj.FM{ii}.RetAdhEnergy_IdxMethod(:));
-%                         end
-                    end                    
+                        j=j+1;             
+                    end
+                        
                 end
-                
-                % Defne variables
+                if isempty(IdxArray)  
+                  return
+                else
+                   
+                end
+                % Define variables
                 ExtVelocityValueStr=num2str(ExtVelocityValue);
                 RetVelocityValueStr=num2str(RetVelocityValue);
                 RGB11=[200 255 150]./255;
@@ -2034,12 +2042,12 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             %t.Padding = 'none'; % To reduce the padding of perimeter of a tile
                        
             % Define variables
-            ConcateArray1=zeros(100,1);
-            ConcateArray2=zeros(100,1);
-            ConcateArray3=zeros(100,1);
-            ConcateArray4=zeros(100,1);
-            ConcateArray5=zeros(100,1);
-            ConcateArray6=zeros(100,1);
+            ConcateArray1=zeros(1,1);
+            ConcateArray2=zeros(1,1);
+            ConcateArray3=zeros(1,1);
+            ConcateArray4=zeros(1,1);
+            ConcateArray5=zeros(1,1);
+            ConcateArray6=zeros(1,1);
            
                  for ff=1:length(IdxArray)
                  % Allocate data
@@ -2050,9 +2058,9 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                   yAdhEneRet=obj.FM{IdxArray(ff)}.RetAdhEnergy_IdxMethod;
                   yPullingLength=obj.FM{IdxArray(ff)}.PullingLength;
                   % 
-                    vectorlength=length(yAdhMaxRet); % Define the length of the vector
-                    row_start = ((ff-1) * vectorlength) + 1; % Define the appropriate row start to append the new data
-                    row_end   = ff * vectorlength; % Define the appropriate row end to append the new data
+                    ArrayLength=length(yAdhMaxRet); % Define the length of the array
+                    row_start = ((ff-1) * ArrayLength) + 1; % Define the appropriate row start to append the new data
+                    row_end   = ff * ArrayLength; % Define the appropriate row end to append the new data
                     % Concatenated data
                     ConcateArray1(row_start:row_end,:)=yAdhMaxApp; % Append the new data into the concatenated vector
                     ConcateArray2(row_start:row_end,:)=yAdhMaxRet; % Append the new data into the concatenated vector
@@ -2060,6 +2068,8 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                     ConcateArray4(row_start:row_end,:)=yAdhEneApp; % Append the new data into the concatenated vector
                     ConcateArray5(row_start:row_end,:)=yAdhEneRet; % Append the new data into the concatenated vector
                     ConcateArray6(row_start:row_end,:)=yPullingLength; % Append the new data into the concatenated vector
+                    
+                    
                     % Statistics
                     AdhMaxAppSelMean=mean(ConcateArray1);
                     AdhMaxAppSelStd=std(ConcateArray1);
@@ -2170,12 +2180,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 fullstr7d=strcat(partstr71d,partstr72d); % Define the string that shall be shown in the plot
                 te7=text(ax7,ax7TextPos(1), ax7TextPos(2),{fullstr7a, fullstr7b, fullstr7c, fullstr7d}, 'VerticalAlignment','top', 'HorizontalAlignment','center');               
                 te7.FontSize = 14;
-
-             
-           
-                    
-                    
-                 
+    
                 % Save figure
                 %%% Define the name for the figure title
                 partname='boxplot';
@@ -2184,98 +2189,30 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 fullname1=char(fullname1);
                 %%% Save the current figure in the current folder
                 print(h_fig1,fullname1,'-dpng');
-            
-                % Figure 2
-                h_fig2=figure(2);
-                h_fig2.Color='white'; % changes the background color of the figure
-                h_fig2.Units='normalized'; % Defines the units
-                h_fig2.OuterPosition=[0 0 1 1];% changes the size of the to the whole screen
-                h_fig2.PaperOrientation='landscape';
-                h_fig2.Name=figname;
-                % boxplot
-                bo2= boxplot(ConcatArrayRetAdhEnergy1);
-                % title
-                t2=title(fulltitle2);
-                % Axes
-                ax2 = gca; % current axes
-                ax2.FontSize = 16;
-                ax2.XLabel.String = 'Force map number (1)';
-                ax2.XLabel.FontSize = 20;
-                ax2.YLabel.String = 'Adhesion Energy (J)';
-                ax2.YLabel.FontSize = 20;
-                % Save figure
-                %%% Define the name for the figure title
-                partname='boxplot';
-                % fullname=sprintf('%s%s',figname,partname);
-                fullname2=strcat(figname,{'_'},parttitle2,{'_'},partname);
-                fullname2=char(fullname2);
-                %%% Save the current figure in the current folder
-                print(gcf,fullname2,'-dpng');
                 
-                % Figure 3
-                h_fig3=figure(3);
-                h_fig3.Color='white'; % changes the background color of the figure
-                h_fig3.Units='normalized'; % Defines the units
-                h_fig3.OuterPosition=[0 0 1 1];% changes the size of the to the whole screen
-                h_fig3.PaperOrientation='landscape';
-                h_fig3.Name=figname;
-                % Histogram
-                h3=histogram(ConcatArrayPullingLength2);
-                h3.BinWidth=1e-9;
-                h3.FaceAlpha=1;
-                h3.FaceColor='b';
-                h3.EdgeColor='k';
-                % title
-                t1=title(fulltitle1);
-                % axes
-                ax3=gca;
-                ax3.FontSize = 16;
-                ax3.XLabel.String = 'PullingLength (m)';
-                ax3.XLabel.FontSize = 20;
-                ax3.YLabel.String = 'Frequency count (1)';
-                ax3.YLabel.FontSize = 20;               
-                hold on;
-                % Save figure
-                %%% Define the name for the figure title
-                partname='histo';
-                % fullname=sprintf('%s%s',figname,partname);
-                fullname3=strcat(figname,{'_'},parttitle1,{'_'},partname);
-                fullname3=char(fullname3);
-                %%% Save the current figure in the current folder
-                print(gcf,fullname3,'-dpng');
-                
-                % Figure 4
-                h_fig4=figure(4);
-                h_fig4.Color='white'; % changes the background color of the figure
-                h_fig4.Units='normalized'; % Defines the units
-                h_fig4.OuterPosition=[0 0 1 1];% changes the size of the to the whole screen
-                h_fig4.PaperOrientation='landscape';
-                h_fig4.Name=figname;
-                % Histogram
-                h4=histogram(ConcatArrayRetAdhEnergy2);
-                h4.BinWidth=1e-19;
-                h4.FaceAlpha=1;
-                h4.FaceColor='g';
-                h4.EdgeColor='k';
-                % title
-                t2=title(fulltitle2);
-                % axes
-                ax4=gca;
-                ax4.FontSize = 16;
-                ax4.YScale='log';
-                ax4.XLabel.String = 'Adhesion Energy (J)';
-                ax4.XLabel.FontSize = 20;
-                ax4.YLabel.String = 'Frequency count (1)';
-                ax4.YLabel.FontSize = 20;               
-                hold on;
-                % Save figure
-                %%% Define the name for the figure title
-                partname='histo';
-                % fullname=sprintf('%s%s',figname,partname);
-                fullname4=strcat(figname,{'_'},parttitle2,{'_'},partname);
-                fullname4=char(fullname4);
-                %%% Save the current figure in the current folder
-                print(gcf,fullname3,'-dpng');
+                % Check entry
+                if length(obj.SMFSResults)>0
+                    jj=length(obj.SMFSResults)+1;
+                else
+                    jj=1;
+                end
+                % Append the new data into the concatenated array
+                  obj.SMFSResults{jj,1}.Data(1).AdhMAxApp=ConcateArray1; 
+                  obj.SMFSResults{jj,1}.Data(1).AdhMAxRet= ConcateArray2; 
+                  obj.SMFSResults{jj,1}.Data(1).AdhUnbinding=ConcateArray3; 
+                  obj.SMFSResults{jj,1}.Data(1).AdhEneApp=ConcateArray4; 
+                  obj.SMFSResults{jj,1}.Data(1).AdhEneRet=ConcateArray5; 
+                  obj.SMFSResults{jj,1}.Data(1).AdhPullingLength=ConcateArray6;                    
+                  obj.SMFSResults{jj,1}.Properties(1).ExtendVelocity=ExtVelocityValue;
+                  obj.SMFSResults{jj,1}.Properties(1).RetractVelocity=RetVelocityValue;
+                  obj.SMFSResults{jj,1}.Properties(1).Substrate=SubstrateValue;
+                  obj.SMFSResults{jj,1}.Properties(1).Medium=EnvCondValue;
+                  obj.SMFSResults{jj,1}.Properties(1).ChipCantilever=ChipCantValue;
+                  obj.SMFSResults{jj,1}.Properties(1).Chipbox=ChipboxValue;
+                  obj.SMFSResults{jj,1}.Properties(1).Linker=LinkerValue;
+                  obj.SMFSResults{jj,1}.FMIndex=IdxArray;
+
+                  
                 %% House keeping
                 close all
         end
@@ -2315,26 +2252,22 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
         function SMFS_testing_function(obj,XMin,XMax,YMin,YMax,ii)
             % Function to quickly loop over all force maps for testing and
             % debugging
-             for ii=1:obj.NumForceMaps
-            %for ii=2
-             %   obj.FM{ii}.initialize_flags
-                  % obj.FM{ii}.fc_fc_measurement_prop;
-                   obj.FM{ii}.fc_snap_in_length_MAD
-%                   obj.FM{ii}.fc_adhesion_energy_idxpulllength
-%                   obj.FM{ii}.fc_adhesion_energy_threshold
-              %      obj.FM{ii}.fc_find_idx
-          %       obj.FM{ii}.fc_adh_force_max
-          %  obj.FM{ii}.fc_sinoidal_fit    
-        %  obj.FM{ii}.fc_fit_based_yData
-            
-              obj.FM{ii}.fc_print_raw
+             %for ii=1:obj.NumForceMaps
+            for ii=1
+              %  obj.FM{ii}.initialize_flags
+              %obj.FM{ii}.fc_find_idx
+                   obj.FM{ii}.fc_selection_threshold;
+                  
+
             
             end                    
             
         end
      
             
-    end
+        end
+   
+    
     methods
         % Methods for data visualization spanning all the data
        
@@ -3312,6 +3245,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             
         end
     end
+    
     methods
         %%%   WARNING! %%%
         % The following methods were programmed for specific use cases
@@ -4191,7 +4125,8 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 obj.SMFSFlag.Preprocessed = false(NFM,1);
                 obj.SMFSFlag.Presorted = false(NFM,1);
                 obj.SMFSFlag.Uncorrupt= false(NFM,1);
-                obj.SMFSFlag.Min= false(NFM,1);
+                obj.SMFSFlag.AppMinCrit= false(NFM,1);
+                obj.SMFSFlag.RetMinCrit= false(NFM,1);
                 obj.SMFSFlag.Length= false(NFM,1);
                 obj.SMFSFlag.Fit= false(NFM,1);
                 obj.SMFSFlag.SnapIn= false(NFM,1);
