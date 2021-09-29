@@ -3077,7 +3077,12 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                         TempArray = cat(1,TempArray,reshape(obj.FM{obj.GroupFM(i).Indices(j)}.get(Property),[],1));
                     end
                     Data(k).Values = TempArray;
-                    [Data(k).Multiplier,Data(k).Unit] = AFMImage.parse_unit_scale(range(Data(k).Values),BaseUnit,5);
+                    if length(Data(k).Values) == 1
+                        Range = Data(k).Values;
+                    else
+                        Range = range(Data(k).Values);
+                    end
+                    [Data(k).Multiplier,Data(k).Unit] = AFMImage.parse_unit_scale(Range,BaseUnit,5);
                     Data(k).Name = obj.GroupFM(i).Name;
                     Data(k).Length = length(Data(k).Values);
                     if isequal(ErrorBars,'std')
@@ -3092,7 +3097,12 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             else
                 for i=ListOfIndizes
                     Data(k).Values = obj.FM{i}.get(Property);
-                    [Data(k).Multiplier,Data(k).Unit] = AFMImage.parse_unit_scale(range(Data(k).Values),BaseUnit,5);
+                    if length(Data(k).Values) == 1
+                        Range = Data(k).Values;
+                    else
+                        Range = range(Data(k).Values);
+                    end
+                    [Data(k).Multiplier,Data(k).Unit] = AFMImage.parse_unit_scale(Range,BaseUnit,5);
                     Data(k).Name = obj.FM{i}.Name;
                     Data(k).Length = length(Data(k).Values);
                     if isequal(ErrorBars,'std')
@@ -3187,19 +3197,19 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             % also replace data points that lie on the exclusion mask with
             % NaN
             for i=1:N
-                DataOP(i,:) = obj.FM{i}.EModOliverPharr(obj.FM{i}.RectApexIndex);
+%                 DataOP(i,:) = obj.FM{i}.EModOliverPharr(obj.FM{i}.RectApexIndex);
                 DataHS(i,:) = obj.FM{i}.EModHertz(obj.FM{i}.RectApexIndex);
-                OutliersOP = isoutlier(DataOP(i,:));
+%                 OutliersOP = isoutlier(DataOP(i,:));
                 OutliersHS = isoutlier(DataHS(i,:));
                 for j=1:length(obj.FM{i}.RectApexIndex)
-                    if DataOP(i,j) > (nanmedian(DataOP(i,:))+2.5*iqr(DataOP(i,:))) || ...
-                            DataOP(i,j) < (nanmedian(DataOP(i,:))-2.5*iqr(DataOP(i,:))) || ...
-                            obj.FM{i}.ExclMask(obj.FM{i}.List2Map(obj.FM{i}.RectApexIndex(j),1),obj.FM{i}.List2Map(obj.FM{i}.RectApexIndex(j),2)) == 0 ||...
-                            OutliersOP(j) == 1
-                        DataOP(i,j) = NaN;
-                    elseif DataOP(i,j) < 0
-                        DataOP(i,j) = NaN;
-                    end
+%                     if DataOP(i,j) > (nanmedian(DataOP(i,:))+2.5*iqr(DataOP(i,:))) || ...
+%                             DataOP(i,j) < (nanmedian(DataOP(i,:))-2.5*iqr(DataOP(i,:))) || ...
+%                             obj.FM{i}.ExclMask(obj.FM{i}.List2Map(obj.FM{i}.RectApexIndex(j),1),obj.FM{i}.List2Map(obj.FM{i}.RectApexIndex(j),2)) == 0 ||...
+%                             OutliersOP(j) == 1
+%                         DataOP(i,j) = NaN;
+%                     elseif DataOP(i,j) < 0
+%                         DataOP(i,j) = NaN;
+%                     end
                     if DataHS(i,j) > (nanmedian(DataHS(i,:))+2.5*iqr(DataHS(i,:))) || ...
                             DataHS(i,j) < (nanmedian(DataHS(i,:))-2.5*iqr(DataHS(i,:))) || ...
                             obj.FM{i}.ExclMask(obj.FM{i}.List2Map(obj.FM{i}.RectApexIndex(j),1),obj.FM{i}.List2Map(obj.FM{i}.RectApexIndex(j),2)) == 0 ||...
@@ -3211,45 +3221,45 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 end
             end
             
-            DataMeansOP = nanmean(DataOP,2);
+%             DataMeansOP = nanmean(DataOP,2);
             DataMeansHS = nanmean(DataHS,2);
             
             for i=1:obj.NumForceMaps
-                obj.FM{i}.FibrilEModOliverPharr = DataMeansOP(i);
+%                 obj.FM{i}.FibrilEModOliverPharr = DataMeansOP(i);
                 obj.FM{i}.FibrilEModHertz = DataMeansHS(i);
             end
-            
-            figure('Name','OliverPharr vs HertzSneddon','Color','w');
-            plot(DataMeansHS,DataMeansOP,'bO')
-            legend(sprintf('E-Mod Hertz vs. Oliver-Pharr (R=%.3f)',corr(DataMeansHS,DataMeansOP)))
-%             xlim([0,N+1])
-            xlabel('E-Mod Hertz [Pa]')
-            ylabel('E-Mod Oliver-Pharr [Pa]')
+%             
+%             figure('Name','OliverPharr vs HertzSneddon','Color','w');
+%             plot(DataMeansHS,DataMeansOP,'bO')
+%             legend(sprintf('E-Mod Hertz vs. Oliver-Pharr (R=%.3f)',corr(DataMeansHS,DataMeansOP)))
+% %             xlim([0,N+1])
+%             xlabel('E-Mod Hertz [Pa]')
+%             ylabel('E-Mod Oliver-Pharr [Pa]')
             
             % loop over all rows of the Test Matrix, doing paired ttests
             for i=1:size(TestMat,1)
-                % Statistics for Oliver-Pharr Method
-                [hOP(i),pOP(i)] = ...
-                    ttest(DataMeansOP(obj.GroupFM(TestMat(i,2)).Indices),...
-                    DataMeansOP(obj.GroupFM(TestMat(i,1)).Indices),'Tail','right');
-                
-                figure('Name','Paired Right Tailed T-Test','Units','normalized','Position',[0.2 0.2 0.5 0.5],'Color','w')
-                boxplot([DataMeansOP(obj.GroupFM(TestMat(i,1)).Indices) DataMeansOP(obj.GroupFM(TestMat(i,2)).Indices)]*1e-6)
-                title('Paired Right Tailed T-Test for Oliver-Pharr Method')
-                xticklabels({obj.GroupFM(TestMat(i,1)).Name,obj.GroupFM(TestMat(i,2)).Name})
-                xlabel('Test Group')
-                ylabel('Indentation Modulus [MPa]')
-                DeltaMean = mean(DataMeansOP(obj.GroupFM(TestMat(i,2)).Indices)) - mean(DataMeansOP(obj.GroupFM(TestMat(i,1)).Indices));
-                Sigma = std(DataMeansOP(obj.GroupFM(TestMat(i,2)).Indices) - DataMeansOP(obj.GroupFM(TestMat(i,1)).Indices));
-                Beta = sampsizepwr('t',[0 Sigma],DeltaMean,[],length(obj.GroupFM(TestMat(i,2)).Indices));
-                Stats = {sprintf('\\DeltaMean = %.2fMPa',DeltaMean*1e-6),...
-                    sprintf('P-Value = %.4f%',pOP(i)),...
-                    sprintf('Power \\beta = %.2f%%',Beta*100),...
-                    sprintf('Number of Specimen = %i',length(obj.GroupFM(TestMat(i,2)).Indices))};
-                text(0.5,0.8,Stats,...
-                    'Units','normalized',...
-                    'FontSize',12,...
-                    'HorizontalAlignment','center')
+%                 % Statistics for Oliver-Pharr Method
+%                 [hOP(i),pOP(i)] = ...
+%                     ttest(DataMeansOP(obj.GroupFM(TestMat(i,2)).Indices),...
+%                     DataMeansOP(obj.GroupFM(TestMat(i,1)).Indices),'Tail','right');
+%                 
+%                 figure('Name','Paired Right Tailed T-Test','Units','normalized','Position',[0.2 0.2 0.5 0.5],'Color','w')
+%                 boxplot([DataMeansOP(obj.GroupFM(TestMat(i,1)).Indices) DataMeansOP(obj.GroupFM(TestMat(i,2)).Indices)]*1e-6)
+%                 title('Paired Right Tailed T-Test for Oliver-Pharr Method')
+%                 xticklabels({obj.GroupFM(TestMat(i,1)).Name,obj.GroupFM(TestMat(i,2)).Name})
+%                 xlabel('Test Group')
+%                 ylabel('Indentation Modulus [MPa]')
+%                 DeltaMean = mean(DataMeansOP(obj.GroupFM(TestMat(i,2)).Indices)) - mean(DataMeansOP(obj.GroupFM(TestMat(i,1)).Indices));
+%                 Sigma = std(DataMeansOP(obj.GroupFM(TestMat(i,2)).Indices) - DataMeansOP(obj.GroupFM(TestMat(i,1)).Indices));
+%                 Beta = sampsizepwr('t',[0 Sigma],DeltaMean,[],length(obj.GroupFM(TestMat(i,2)).Indices));
+%                 Stats = {sprintf('\\DeltaMean = %.2fMPa',DeltaMean*1e-6),...
+%                     sprintf('P-Value = %.4f%',pOP(i)),...
+%                     sprintf('Power \\beta = %.2f%%',Beta*100),...
+%                     sprintf('Number of Specimen = %i',length(obj.GroupFM(TestMat(i,2)).Indices))};
+%                 text(0.5,0.8,Stats,...
+%                     'Units','normalized',...
+%                     'FontSize',12,...
+%                     'HorizontalAlignment','center')
                 
                 %Statistics for Hertz-Sneddon Method
                 [hHS(i),pHS(i)] = ...
@@ -3277,41 +3287,41 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             
             % Now test, if the difference in one pair of groups is
             % statistically different from the other in a two sample t test
-            DiffControlOP = DataMeansOP(11:20) - DataMeansOP(1:10);
-            DiffMGOOP = DataMeansOP(31:40) - DataMeansOP(21:30);
+%             DiffControlOP = DataMeansOP(11:20) - DataMeansOP(1:10);
+%             DiffMGOOP = DataMeansOP(31:40) - DataMeansOP(21:30);
             DiffControlHS = DataMeansHS(11:20) - DataMeansHS(1:10);
             DiffMGOHS = DataMeansHS(31:40) - DataMeansHS(21:30);
             
-            % For Oliver-Pharr
-            [hOP,pOP,ciOP,statsOP] = ttest2(DiffMGOOP,DiffControlOP);
-            figure('Name','Two Sample T-Test','Units','normalized','Position',[0.2 0.2 0.5 0.5],'Color','w')
-            yyaxis left
-            boxplot([DiffControlOP DiffMGOOP])
-            ax = gca;
-            YLim = ax.YLim;
-            ylabel('Difference Before-After E-Mod [Pa]')
-            DeltaMean = mean(DiffMGOOP) - mean(DiffControlOP);
-            PooledSTD = statsOP.sd;
-            yyaxis right
-            errorbar(1.5,DeltaMean,ciOP(2)-DeltaMean,'O');
-            ylim(YLim)
-            xticks([1 1.5 2])
-            title('Two Sample T-Test for E-Mod Oliver-Pharr Method')
-            ax = gca;
-            ax.TickLabelInterpreter = 'tex';
-            xticklabels({sprintf('%s - %s',obj.GroupFM(2).Name,obj.GroupFM(1).Name),...
-                '\DeltaMean with CI',...
-                sprintf('%s - %s',obj.GroupFM(4).Name,obj.GroupFM(3).Name)})
-            ylabel('Difference of Differences [Pa]')
-            Beta = sampsizepwr('t2',[mean(DiffControlOP) PooledSTD],mean(DiffMGOOP),[],length(DiffControlOP),'Ratio',length(DiffMGOOP)/length(DiffControlOP));
-            Stats = {sprintf('\\DeltaMean = %.2f MPa',DeltaMean*1e-6),...
-                sprintf('P-Value = %.4f%',pOP),...
-                sprintf('Power \\beta = %.2f%%',Beta*100),...
-                sprintf('Degrees of freedom df = %i',statsOP.df)};
-            text(0.5,0.8,Stats,...
-                'Units','normalized',...
-                'FontSize',12,...
-                'HorizontalAlignment','center')
+%             % For Oliver-Pharr
+%             [hOP,pOP,ciOP,statsOP] = ttest2(DiffMGOOP,DiffControlOP);
+%             figure('Name','Two Sample T-Test','Units','normalized','Position',[0.2 0.2 0.5 0.5],'Color','w')
+%             yyaxis left
+%             boxplot([DiffControlOP DiffMGOOP])
+%             ax = gca;
+%             YLim = ax.YLim;
+%             ylabel('Difference Before-After E-Mod [Pa]')
+%             DeltaMean = mean(DiffMGOOP) - mean(DiffControlOP);
+%             PooledSTD = statsOP.sd;
+%             yyaxis right
+%             errorbar(1.5,DeltaMean,ciOP(2)-DeltaMean,'O');
+%             ylim(YLim)
+%             xticks([1 1.5 2])
+%             title('Two Sample T-Test for E-Mod Oliver-Pharr Method')
+%             ax = gca;
+%             ax.TickLabelInterpreter = 'tex';
+%             xticklabels({sprintf('%s - %s',obj.GroupFM(2).Name,obj.GroupFM(1).Name),...
+%                 '\DeltaMean with CI',...
+%                 sprintf('%s - %s',obj.GroupFM(4).Name,obj.GroupFM(3).Name)})
+%             ylabel('Difference of Differences [Pa]')
+%             Beta = sampsizepwr('t2',[mean(DiffControlOP) PooledSTD],mean(DiffMGOOP),[],length(DiffControlOP),'Ratio',length(DiffMGOOP)/length(DiffControlOP));
+%             Stats = {sprintf('\\DeltaMean = %.2f MPa',DeltaMean*1e-6),...
+%                 sprintf('P-Value = %.4f%',pOP),...
+%                 sprintf('Power \\beta = %.2f%%',Beta*100),...
+%                 sprintf('Degrees of freedom df = %i',statsOP.df)};
+%             text(0.5,0.8,Stats,...
+%                 'Units','normalized',...
+%                 'FontSize',12,...
+%                 'HorizontalAlignment','center')
             
             % For Hertz-Sneddon
             [hHS,pHS,ciHS,statsHS] = ttest2(DiffMGOHS,DiffControlHS);
