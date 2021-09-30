@@ -1465,7 +1465,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             
             % Loop over the imported force maps
             for ii=1:obj.NumForceMaps
-            % for ii=3 % Debugging
+             %for ii=2 % Debugging
                 if isequal(KeepFlagged,'Yes') && obj.SMFSFlag.Preprocessed(ii) == 1
                     continue
                 end   
@@ -2254,11 +2254,10 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             % debugging
              %for ii=1:obj.NumForceMaps
             for ii=1
-              %  obj.FM{ii}.initialize_flags
-              %obj.FM{ii}.fc_find_idx
-                   obj.FM{ii}.fc_selection_threshold;
-                  
-
+              %   obj.FM{ii}.test
+                 %  obj.FM{ii}.fc_sinoidal_fit
+                  %obj.FM{ii}.fc_pulling_length_MAD
+                      obj.FM{ii}.fc_adh_force_max
             
             end                    
             
