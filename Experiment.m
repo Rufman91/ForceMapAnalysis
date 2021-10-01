@@ -851,6 +851,9 @@ classdef Experiment < matlab.mixin.Copyable
                 waitbar(i/NLoop,h,sprintf('Processing ForceMap %i/%i\nProcessing and calculating Reference Slope',i,NLoop));
                 obj.reference_slope_calculator(i);
                 
+                % calculation of indentation for oscillation segments
+                obj.FM{i}.indentation;
+                
                 % sine fit for modulation segments
                 obj.FM{i}.sine_fit_for_microrheology;
         
