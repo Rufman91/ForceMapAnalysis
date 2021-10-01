@@ -1907,6 +1907,21 @@ classdef ForceMap < matlab.mixin.Copyable
            
         end  
         
+        function indentation(obj)
+            
+            
+            for i=1:obj.NCurves
+                lastseg = obj.NumSegments-1;
+                for j=2:lastseg
+                    Z{i,j} = obj.Height{i,j} - obj.CP(i,1);
+                    D{i,j} = (obj.Force{i,j} - obj.CP(i,2))/obj.SpringConstant;
+                    obj.Indentation{i,j} = Z{i,j} - D{i,j};
+                end
+                
+            end
+        end
+        
+        
     end
         
    
@@ -3201,8 +3216,6 @@ classdef ForceMap < matlab.mixin.Copyable
                         HeightDataDirectory,vDefDataDirectory,obj.HHType);
 
                     obj.Height{i,j} = -TempHHApp;
-                    % indentation = z-piezo-height - deflection
-                    obj.Indentation{i,j} = obj.Height{i,j}- obj.Force{i,j};
                     % force = deflection * spring constant
                     obj.Force{i,j} = obj.Force{i,j}.*obj.SpringConstant;
                     clear TempHHApp

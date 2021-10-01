@@ -852,19 +852,19 @@ classdef Experiment < matlab.mixin.Copyable
                 obj.reference_slope_calculator(i);
                 
                 % sine fit for modulation segments
-                %obj.FM{i}.sine_fit_for_microrheology;
+                obj.FM{i}.sine_fit_for_microrheology;
         
                 
-                waitbar(i/NLoop,h,sprintf('Processing ForceMap %i/%i\nCalculating E-Modulus',i,NLoop));
-                obj.FM{i}.calculate_e_mod_microrheology(obj.CantileverTips{obj.WhichTip(i)}.ProjectedTipArea,0.75);
-                if i == 1
-                    obj.write_to_log_file('Microrheology CurvePercent','0.75')
-                end
-         
-                
-                waitbar(i/NLoop,h,sprintf('Processing ForceMap %i/%i\nWrapping Up And Saving',i,NLoop));
-                
-                obj.FMFlag.ForceMapAnalysis(i) = 1;
+%                 waitbar(i/NLoop,h,sprintf('Processing ForceMap %i/%i\nCalculating E-Modulus',i,NLoop));
+%                 obj.FM{i}.calculate_e_mod_microrheology(obj.CantileverTips{obj.WhichTip(i)}.ProjectedTipArea,0.75);
+%                 if i == 1
+%                     obj.write_to_log_file('Microrheology CurvePercent','0.75')
+%                 end
+%          
+%                 
+%                 waitbar(i/NLoop,h,sprintf('Processing ForceMap %i/%i\nWrapping Up And Saving',i,NLoop));
+%                 
+%                 obj.FMFlag.ForceMapAnalysis(i) = 1;
             end
             
             %obj.save_experiment;
