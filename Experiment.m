@@ -1977,7 +1977,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
            
         end
              
-        function SMFS_analysis_selection(obj,ExtVelocityValue,RetVelocityValue,SubstrateValue,EnvCondValue,ChipCantValue,ChipboxValue,LinkerValue)
+        function SMFS_analysis_selection(obj,ExtVelocityValue,RetVelocityValue,HoldingTimeValue,SubstrateValue,EnvCondValue,ChipCantValue,ChipboxValue,LinkerValue)
                 % I all velocities should be selected use input variable: 0
                 
                 % Define variables
@@ -1986,6 +1986,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 for ii=1:obj.NumForceMaps
                     if ((obj.FM{ii}.ExtendVelocity==ExtVelocityValue || ExtVelocityValue==0) ...
                             && (obj.FM{ii}.RetractVelocity==RetVelocityValue || RetVelocityValue==0) ...
+                            && (obj.FM{ii}.HoldingTime==HoldingTimeValue || HoldingTimeValue==0) ...
                             && (strcmpi(obj.FM{ii}.Substrate,SubstrateValue) || strcmpi(SubstrateValue,'All')) ...
                             && (strcmpi(obj.FM{ii}.EnvCond,EnvCondValue) || strcmpi(EnvCondValue,'All')) ...
                             && (strcmpi(obj.FM{ii}.ChipCant,ChipCantValue) || strcmpi(ChipCantValue,'All')) ...
@@ -2048,6 +2049,9 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             ConcateArray4=zeros(1,1);
             ConcateArray5=zeros(1,1);
             ConcateArray6=zeros(1,1);
+            ConcateArray7=zeros(1,1);
+            
+            
            
                  for ff=1:length(IdxArray)
                  % Allocate data
@@ -2057,6 +2061,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                   yAdhEneApp=obj.FM{IdxArray(ff)}.AppAdhEnergy_IdxMethod;
                   yAdhEneRet=obj.FM{IdxArray(ff)}.RetAdhEnergy_IdxMethod;
                   yPullingLength=obj.FM{IdxArray(ff)}.PullingLength;
+                  ySnapInLength=obj.FM{IdxArray(ff)}.SnapInLength;
                   % 
                     ArrayLength=length(yAdhMaxRet); % Define the length of the array
                     row_start = ((ff-1) * ArrayLength) + 1; % Define the appropriate row start to append the new data
@@ -2068,6 +2073,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                     ConcateArray4(row_start:row_end,:)=yAdhEneApp; % Append the new data into the concatenated vector
                     ConcateArray5(row_start:row_end,:)=yAdhEneRet; % Append the new data into the concatenated vector
                     ConcateArray6(row_start:row_end,:)=yPullingLength; % Append the new data into the concatenated vector
+                    ConcateArray7(row_start:row_end,:)=ySnapInLength; % Append the new data into the concatenated vector
                     
                     
                     % Statistics
@@ -2108,12 +2114,16 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                   plot(yPullingLength,'o') 
                   % Tile 7
                   ax7=nexttile(7);
-                  ax7.Color=RGB11;
-                  ax7.Box='on';
-                  ax7.XTick=[];
-                  ax7.XTickLabel=[];
-                  ax7.YTick=[];
-                  ax7.YTickLabel=[];
+                  hold on               
+                  plot(ySnapInLength,'o') 
+                  % Tile 8
+                  ax8=nexttile(7);
+                  ax8.Color=RGB11;
+                  ax8.Box='on';
+                  ax8.XTick=[];
+                  ax8.XTickLabel=[];
+                  ax8.YTick=[];
+                  ax8.YTickLabel=[];
                  end                 
                 % Axes
                 ax1.FontSize = 14;
@@ -2163,23 +2173,23 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 fullstr1a=strcat(partstr51,partstr52,partstr53); % Define the string that shall be shown in the plot
                 te5=text(ax5,ax5TextPos(1), ax5TextPos(2),fullstr1a, 'VerticalAlignment','top', 'HorizontalAlignment','right');
                 te5.FontSize = 14;
-                ax7TextPos = [max(ax7.XLim)*0.5 max(ax7.YLim)*0.5];  % Define the position in the plot                 
-                partstr71a='Extend Velocity: ';
-                partstr72a=num2str(ExtVelocityValueStr);
-                partstr73a='m*s^{-1}';
-                fullstr7a=strcat(partstr71a,partstr72a,partstr73a); % Define the string that shall be shown in the plot
-                partstr71b='Retract Velocity: ';
-                partstr72b=num2str(RetVelocityValueStr);
-                partstr73b='m*s^{-1}';
-                fullstr7b=strcat(partstr71b,partstr72b,partstr73b); % Define the string that shall be shown in the plot
-                partstr71c='Number of force curves analysed: ';
-                partstr72c=num2str(length(ConcateArray1));
-                fullstr7c=strcat(partstr71c,partstr72c); % Define the string that shall be shown in the plot
-                partstr71d='Number of force maps analysed: ';
-                partstr72d=num2str(length(IdxArray));
-                fullstr7d=strcat(partstr71d,partstr72d); % Define the string that shall be shown in the plot
-                te7=text(ax7,ax7TextPos(1), ax7TextPos(2),{fullstr7a, fullstr7b, fullstr7c, fullstr7d}, 'VerticalAlignment','top', 'HorizontalAlignment','center');               
-                te7.FontSize = 14;
+                ax8TextPos = [max(ax8.XLim)*0.5 max(ax8.YLim)*0.5];  % Define the position in the plot                 
+                partstr81a='Extend Velocity: ';
+                partstr82a=num2str(ExtVelocityValueStr);
+                partstr83a='m*s^{-1}';
+                fullstr8a=strcat(partstr81a,partstr82a,partstr83a); % Define the string that shall be shown in the plot
+                partstr81b='Retract Velocity: ';
+                partstr82b=num2str(RetVelocityValueStr);
+                partstr83b='m*s^{-1}';
+                fullstr8b=strcat(partstr81b,partstr82b,partstr83b); % Define the string that shall be shown in the plot
+                partstr81c='Number of force curves analysed: ';
+                partstr82c=num2str(length(ConcateArray1));
+                fullstr8c=strcat(partstr81c,partstr82c); % Define the string that shall be shown in the plot
+                partstr81d='Number of force maps analysed: ';
+                partstr82d=num2str(length(IdxArray));
+                fullstr8d=strcat(partstr81d,partstr82d); % Define the string that shall be shown in the plot
+                te8=text(ax8,ax8TextPos(1), ax8TextPos(2),{fullstr8a, fullstr8b, fullstr8c, fullstr8d}, 'VerticalAlignment','top', 'HorizontalAlignment','center');               
+                te8.FontSize = 14;
     
                 % Save figure
                 %%% Define the name for the figure title
@@ -2254,11 +2264,10 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             % debugging
              %for ii=1:obj.NumForceMaps
             for ii=1
-              %   obj.FM{ii}.test
-                 %  obj.FM{ii}.fc_sinoidal_fit
-                  %obj.FM{ii}.fc_pulling_length_MAD
-                      obj.FM{ii}.fc_adh_force_max
-            
+               % obj.FM{ii}.test
+                % obj.FM{ii}.fc_sinoidal_fit
+                % obj.FM{ii}.fc_pulling_length_MAD
+                  obj.FM{ii}.fc_based_ret_correction
             end                    
             
         end

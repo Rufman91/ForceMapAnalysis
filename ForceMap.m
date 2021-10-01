@@ -173,7 +173,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
         BasedRetAlign={}   % capacitive-sensor-height retraction data in meters with aligned datapoints to the corresponding approach data
         xAppRetSubstracted={} 
         BasedRetCorr    % BasedRet data corrected based on a selection of the approach data
-        BasedRetCorr2   % BasedRet data corrected based on a selection of the retraction data        
+        BasedRetCorr2   % BasedRet data corrected based on a selection of the retraction data     
+        CorrBasedRet    % BasedRet data corrected based on a selection of the approach data
         CorrMeanApp     % Mean of a selection of the approach data for baseline correction
         CorrStdApp      % Corresponding standard deviation of the selection of the approach data for baseline correction
         CorrMeanRet     % Mean of a selection of the retraction data for baseline correction
@@ -218,6 +219,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
         FitSSE              % SSE of the sinus fit
         yAppFitCorr
         yRetFitCorr
+        yAppFitMean
         yRetFitMean
         yRetFitStd
         xDataToFit      % ONLY A TESTING PROPERTY
@@ -2112,15 +2114,15 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 obj.BasedApp{jj}=(yApp-yAppFitbased)/giga;
                 obj.BasedRet{jj}=(yRet-yRetFitbased)/giga;                
             end            
-            %% Appendix
+%             %% Appendix
 %             close all
 %             % Plot  
 %             hold on
 %             plot(xApp,yApp,'b')
 %             plot(xRet,yRet,'r')
 %             plot(xRet,yRetFitbased,'g')
-%             plot(xApp,obj.BasedApp(jj),'k')
-%             plot(xRet,obj.BasedRet(jj),'m')
+%             plot(xApp,obj.BasedApp{jj},'k')
+%             plot(xRet,obj.BasedRet{jj},'m')
            
         end
         
@@ -2238,66 +2240,74 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             DataShareStartApp=0.05; % 5%
             DataShareEndApp=0.15; % 15%
             DataShareStartRet=0.01; % 1%
-            DataShareEndRet=0.11; % 5%
+            DataShareEndRet=0.06; % 6%
         end
         % Loop over all force curves  
         for kk=1:obj.NCurves
-            
+            % Allocate data
+            yApp=obj.BasedApp{kk};
+            yRet=obj.BasedRet{kk};
             % Define limits
-            DataPtsApp=size(obj.BasedApp{kk}); % Determine the amount of data points in the force curve 
+            DataPtsApp=size(yApp); % Determine the amount of data points in the force curve 
             LimitIdxApp1=round(DataPtsApp(1)*DataShareStartApp); % Determine the corresponidng index
             LimitIdxApp2=round(DataPtsApp(1)*DataShareEndApp); % Determine the corresponidng index
-            DataPtsRet=size(obj.BasedRet{kk}); % Determine the amount of data points in the force curve 
+            DataPtsRet=size(yRet); % Determine the amount of data points in the force curve 
             LimitIdxRet1=round(DataPtsRet(1)*DataShareStartRet); % Determine the corresponidng index
             LimitIdxRet2=round(DataPtsRet(1)*DataShareEndRet); % Determine the corresponidng index
-            
             if obj.SMFSFlag.Fit(kk)==1
-            % Mean and standard deviation of a selection of the fitted y retantion data           
-            obj.yRetFitMean(kk)=mean(obj.BasedRet{kk}(DataPtsRet(1)-LimitIdxRet2:DataPtsRet(1)-LimitIdxRet1,1)); % Calculate the mean of the difference data
-            obj.yRetFitStd(kk)=std(obj.BasedRet{kk}(DataPtsRet(1)-LimitIdxRet2:DataPtsRet(1)-LimitIdxRet1,1));   % Calculate the standard deviation of the difference data
-     
+            % Mean and standard deviation of a selection of the fitted y retention data   
+            obj.yAppFitMean(kk)=mean(yApp(LimitIdxApp1:LimitIdxApp2,1)); % Calculate the mean of the difference data
+            obj.yRetFitMean(kk)=mean(yRet(DataPtsRet(1)-LimitIdxRet2:DataPtsRet(1)-LimitIdxRet1,1)); % Calculate the mean of the difference data
+            obj.yRetFitStd(kk)=std(yRet(DataPtsRet(1)-LimitIdxRet2:DataPtsRet(1)-LimitIdxRet1,1));   % Calculate the standard deviation of the difference data
+            DiffAppRet=abs(obj.yAppFitMean(kk)-obj.yRetFitMean(kk));
+            obj.CorrBasedRet{kk}=yRet+DiffAppRet; % Correct the BasedRet data with the mean of the correction data
             else
             % Correction based on the approach data            
-            obj.CorrMeanApp(kk)=mean(abs(obj.BasedApp{kk}(LimitIdxApp1:LimitIdxApp2,1))-abs(obj.BasedRet{kk}(DataPtsApp(1)-LimitIdxApp2:DataPtsApp(1)-LimitIdxApp1,1))); % Calculate the mean of the difference data
-            obj.CorrStdApp(kk)=std(obj.BasedApp{kk}(DataPtsApp(1)-LimitIdxApp2:DataPtsApp(1)-LimitIdxApp1,1));             
-            obj.BasedRetCorr{kk}=obj.BasedRet{kk}-obj.CorrMeanApp(kk); % Correct the BasedRet data with the mean of the correction data
-            
+            obj.CorrMeanApp(kk)=mean(abs(yApp(LimitIdxApp1:LimitIdxApp2,1))-abs(obj.BasedRet{kk}(DataPtsApp(1)-LimitIdxApp2:DataPtsApp(1)-LimitIdxApp1,1))); % Calculate the mean of the difference data
+            obj.CorrStdApp(kk)=std(yApp(DataPtsApp(1)-LimitIdxApp2:DataPtsApp(1)-LimitIdxApp1,1));             
+            obj.BasedRetCorr{kk}=yRet-obj.CorrMeanApp(kk); % Correct the BasedRet data with the mean of the correction data
             % Correction based on the retraction data                     
-            obj.CorrMeanRet(kk)=mean(obj.BasedRet{kk}(DataPtsRet(1)-LimitIdxRet2:DataPtsRet(1)-LimitIdxRet1,1)); % Calculate the mean of the difference data
-            obj.CorrStdRet(kk)=std(obj.BasedRet{kk}(DataPtsRet(1)-LimitIdxRet2:DataPtsRet(1)-LimitIdxRet1,1));   % Calculate the standard deviation of the difference data            
-            obj.BasedRetCorr2{kk}=obj.BasedRet{kk}-obj.CorrMeanRet(kk); % Correct the BasedRet data with the mean of the correction data          
-                        
+            obj.CorrMeanRet(kk)=mean(yRet(DataPtsRet(1)-LimitIdxRet2:DataPtsRet(1)-LimitIdxRet1,1)); % Calculate the mean of the difference data
+            obj.CorrStdRet(kk)=std(yRet(DataPtsRet(1)-LimitIdxRet2:DataPtsRet(1)-LimitIdxRet1,1));   % Calculate the standard deviation of the difference data            
+            obj.BasedRetCorr2{kk}=yRet-obj.CorrMeanRet(kk); % Correct the BasedRet data with the mean of the correction data          
             end
         end   
               
         %% Appendix
-%         close all
-%         % Define variables
-%         kk=1
-%         x100=-100e-9; % Defines 100nm
-%         x500=-500e-9; % Defines 500nm
-%         % Graphical preview
-%         fig=gcf;
-%         fig.Units='normalized'; % changes to normalized unit settings, necessary to receive the full screen size in the next line
-%         fig.Color='white'; % changes the background color of the figure
-%         fig.OuterPosition=[0.5 0 0.5 1];% changes the size of the figure to half screen
-%         fig.PaperOrientation='landscape';
-%         grid on
-%         hold on
-%         % "Origin" data
-%         plot(a.FM{1}.THApp{kk}-a.FM{1}.CP_HardSurface(kk,1),a.FM{1}.BasedApp{kk},'b');
-%         plot(a.FM{1}.THRet{kk}-a.FM{1}.CP_HardSurface(kk,1),a.FM{1}.BasedRet{kk},'r');
+        close all
+        % Define variables       
+        x100=-100e-9; % Defines 100nm
+        x500=-500e-9; % Defines 500nm
+        for kk=1:obj.NCurves
+        % Allocate data
+        xApp=obj.HHApp{kk}-obj.CP_HardSurface(kk);
+        xRet=obj.HHRet{kk}-obj.CP_HardSurface(kk);
+        yApp=obj.BasedApp{kk};
+        yRet=obj.BasedRet{kk};
+        % Graphical preview
+        fig=gcf;
+        fig.Units='normalized'; % changes to normalized unit settings, necessary to receive the full screen size in the next line
+        fig.Color='white'; % changes the background color of the figure
+        fig.OuterPosition=[0.5 0 0.5 1];% changes the size of the figure to half screen
+        fig.PaperOrientation='landscape';
+        grid on
+        hold on
+        % "Original" data
+        plot(xApp,yApp,'b');
+        plot(xRet,yRet,'r');   
+        % DataShare part of the data
+        plot(xApp(LimitIdxApp1:LimitIdxApp2,1),yApp(LimitIdxApp1:LimitIdxApp2,1),'m');
+        plot(xRet(DataPtsRet(1)-LimitIdxRet2:DataPtsRet(1)-LimitIdxRet1,1),yRet(DataPtsRet(1)-LimitIdxRet2:DataPtsRet(1)-LimitIdxRet1,1),'y');
 %         % Retention data corrected
-%         plot(a.FM{1}.THRet{kk}-a.FM{1}.CP_HardSurface(kk,1),a.FM{ii}.BasedRetCorr{kk},'g');
-%         % DataShare part of the data
-%         plot(a.FM{1}.THApp{kk}(LimitIdx1:LimitIdx2,1)-a.FM{1}.CP_HardSurface(kk,1),a.FM{1}.BasedApp{kk}(LimitIdx1:LimitIdx2,1),'y');
-%         plot(a.FM{1}.THRet{kk}(DataPts(1)-LimitIdx2:DataPts(1)-LimitIdx1,1)-a.FM{1}.CP_HardSurface(kk,1),a.FM{1}.BasedRet{kk}(DataPts(1)-LimitIdx2:DataPts(1)-LimitIdx1,1),'m');
-%         % Markers
-%         plot(a.FM{1}.THRet{kk}(ThreshIdx,1)-a.FM{1}.CP_HardSurface(kk,1),a.FM{1}.BasedRet{kk}(ThreshIdx,1),'kx','MarkerSize',20);
-%         plot(a.FM{1}.THApp{kk}(ThreshIdx,1)-a.FM{1}.CP_HardSurface(kk,1),a.FM{1}.BasedApp{kk}(ThreshIdx,1),'mx','MarkerSize',20);
-%         Distances lines
-%         line([x100 x100], ylim,'Color','k'); % Draws a vertical line
-%         line([x500 x500], ylim,'Color','k'); % Draws a vertical line
+%         plot(xRet,obj.BasedRetCorr{kk},'g');
+%         plot(xRet,obj.BasedRetCorr2{kk},'m');
+        % Markers
+        plot(obj.HHRet{kk}(ThreshIdx,1)-obj.CP_HardSurface(kk,1),obj.BasedRet{kk}(ThreshIdx,1),'kx','MarkerSize',20);
+        plot(obj.HHApp{kk}(ThreshIdx,1)-obj.CP_HardSurface(kk,1),obj.BasedApp{kk}(ThreshIdx,1),'mx','MarkerSize',20);
+        Distances lines
+        line([x100 x100], ylim,'Color','k'); % Draws a vertical line
+        line([x500 x500], ylim,'Color','k'); % Draws a vertical line
+        end
         end
                        
         function fc_pulling_length_sigma(obj)
@@ -2494,18 +2504,22 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
              yLimit1=0.045; 
              
              for jj=1:obj.NCurves
+              %% Debugging
+            % for jj=2 % for debugging
+            % sprintf('Force curve No. %d',ii) % Gives current Force curve
+            % for debugging
                 if ~obj.SMFSFlag.Uncorrupt(jj) || ~obj.SMFSFlag.RetMinCrit(jj)     % Exclude corrupted force curves from the analysis     
                 continue
                 end
                 % Allocate data
-                xRet{jj}=obj.HHRet{jj}-obj.CP_HardSurface(jj);
-                yRet{jj}=obj.BasedRet{jj};
+                xRet=obj.HHRet{jj}-obj.CP_HardSurface(jj);
+                yRet=obj.BasedRet{jj};
                 % Determine the pulling length index 
-                normRet{jj}=normalize(flip(yRet{jj}));  % Normalize and flip the data             
-                normRetMAD{jj} = movmad(normRet{jj},movWindow); % Apply the moving median absolute deviation                 
-                Peak1{jj}=find(normRetMAD{jj}>yLimit1,1,'first'); % Find the index in the data fulfilling the condition
-                obj.PullingLengthIdx(jj)=length(yRet{jj})-Peak1{jj}; % Correct for the flipped data the peak index is based on by substracting from the number of data points
-                obj.PullingLength(jj)=abs(xRet{jj}(obj.PullingLengthIdx(jj))); % Corresponding x-value of the index
+                normRet=normalize(flip(yRet));  % Normalize and flip the data             
+                normRetMAD= movmad(normRet,movWindow); % Apply the moving median absolute deviation                 
+                Peak1=find(normRetMAD>yLimit1,1,'first'); % Find the index in the data fulfilling the condition
+                obj.PullingLengthIdx(jj)=length(yRet)-Peak1; % Correct for the flipped data the peak index is based on by substracting from the number of data points
+                obj.PullingLength(jj)=abs(xRet(obj.PullingLengthIdx(jj))); % Corresponding x-value of the index
                 % Flag 
                 if obj.RetIdx1(jj)>obj.PullingLengthIdx(jj)
                     obj.SMFSFlag.LengthRequisite(jj)=0;
@@ -2535,7 +2549,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
 %                 hold on
 %                 plot(flip(yRet))
 %                 plot(obj.PullingLengthIdx(ii),flip(yRet(obj.PullingLengthIdx(ii))),'kx','MarkerSize',20)
-%                 plot(Peak1{ii},flip(yRet(Peak1{ii})),'r*','MarkerSize',20)
+%                 plot(Peak1,flip(yRet(Peak1)),'r*','MarkerSize',20)
 %                 hold off
 %                 ax21=gca;
 %                 ax21.XLim = [100 inf];
@@ -2551,8 +2565,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
 %                 ax22.YLim = [-inf inf];
 %                 subplot(3,1,3)
 %                 hold on
-%                 plot(normRetMAD{jj})
-%                 plot(Peak1{ii},normRetMAD{ii}(Peak1{ii}),'kx','MarkerSize',20)
+%                 plot(normRetMAD)
+%                 plot(Peak1,normRetMAD{ii}(Peak1),'kx','MarkerSize',20)
 %                 hold off
 %                 ax23=gca;
 %                 ax23.XLim = [100 inf];
@@ -2593,10 +2607,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             xUnbdingBoundary=obj.PullingLength(kk)-xDistance;
             [~,obj.UnbindingBoundaryIdx(kk)]=min(abs(abs(xRet)-xUnbdingBoundary));     
             %% Determine the maximum adhesion force
-            if obj.SMFSFlag.SnapIn(kk)==1
+            if obj.SMFSFlag.SnapIn(kk)==1 % Select only force curves that show a snap-in behavior
                 obj.AdhForceMaxApp(kk)=min(yApp(1:end)); % Determine maximum adhesion forces from the pulling length index to the last data point
-            %else 
-                
             end            
             obj.AdhForceMaxRet(kk)=min(yRet(obj.RetIdx1(kk):obj.PullingLengthIdx(kk))); % Determine maximum adhesion forces from the 50nm index to the pulling length index
             obj.AdhForceUnbinding(kk)=min(yRet(obj.UnbindingBoundaryIdx(kk):obj.PullingLengthIdx(kk))); % Determine maximum adhesion forces close to the pulling length
@@ -2778,8 +2790,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 % Define variables
                 limit1=0;   % Define the limit
                 % Apply the limit                
-                    if obj.SMFSFlag.SnapIn(kk)==0                        
-                    else
+                    if obj.SMFSFlag.SnapIn(kk)==1                                    
                     % Approach
                     yApp(yApp>limit1)=0; % Set all data points representing surface contact (set point related, above the y-axis 0 line) to 0
                     yApp(1:obj.SnapInIdx(kk))=0; % Set all data points with a higher index (surface distance is higher) than the snap-in index to 0
@@ -2790,8 +2801,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                     obj.AppAdhEnergy_IdxMethod(kk)=IntApp(kk);
                     end
                     % Retention 
-                    if obj.SMFSFlag.PullingLength(kk)==0                       
-                    else
+                    if obj.SMFSFlag.PullingLength(kk)==1                       
                     yRet(yRet>limit1)=0;  % Set all data points representing surface contact (set point related, above the y-axis 0 line) to 0
                     yRet(obj.PullingLengthIdx(kk):end)=0; % Set all data points with a higher index (surface distance is higher) than the pulling length index to 0
                     % Allocate data
@@ -4140,8 +4150,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             x=obj.xDataToFit  
             y=obj.yDataToFit
             
-           x=a.FM{5, 1}.xDataToFit  
-         y=a.FM{5, 1}.yDataToFit
+      %     x=b.FM{1}.xDataToFit  
+       %  y=b.FM{1}.yDataToFit
             
             
             
