@@ -9,10 +9,17 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
         BigDataFlag         % Determines how Experiment loads ForceMap objects. If true, 
                             % force voluime data are not loaded into RAM
                             % but read from unpacked jpk data container
+        PythonLoaderFlag    % All ForceMap objects raw data are loaded by the 
+                            % Python.zipfile module. This avoids the giant
+                            % folder structures that get built in
+                            % BigData-mode, while keeping load on memory
+                            % AND disk relatively low and the programm
+                            % almost as quick as in original
+                            % 'all-data-to-memory'-mode
         CurrentLogFile
         FM                  % Cellarray containing Force/QI Maps
         NumForceMaps
-        ForceMapNames       
+        ForceMapNames      
         ForceMapFolders
         RefFM               % Cellarray containing reference Force/QI Maps
         NumReferenceForceMaps
@@ -72,7 +79,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             obj.ExperimentFolder = fullfile(ParentFolder,obj.ExperimentName,filesep);
             
             % get Experiment filenames and paths from user input
-            [FileTypes, FullFileStruct, IsValid, BigData] = obj.constructor_user_input_parser(obj.ExperimentName,obj.HostOS);
+            [FileTypes, FullFileStruct, IsValid, BigData,PythonLoaderFlag] = obj.constructor_user_input_parser(obj.ExperimentName,obj.HostOS);
             
             if ~IsValid
                 obj = [];
@@ -80,7 +87,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             end
             
             % get paths of requested files and load them in
-            obj.take_paths_and_load_files(FileTypes,FullFileStruct,true,BigData)
+            obj.take_paths_and_load_files(FileTypes,FullFileStruct,true,BigData,PythonLoaderFlag)
             
             obj.initialize_flags
             
@@ -92,7 +99,10 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             obj.save_experiment();
         end
         
-        function take_paths_and_load_files(obj,FileTypes,FullFileStruct,isNew,BigData)
+        function take_paths_and_load_files(obj,FileTypes,FullFileStruct,isNew,BigData,PythonLoaderFlag)
+            
+            obj.BigDataFlag = BigData;
+            obj.PythonLoaderFlag = PythonLoaderFlag;
             
             if nargin<4
                 isNew = false;
@@ -159,10 +169,10 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                             TempID{j,i} = sprintf('%s-%i',obj.ExperimentName,IDs(j+sum(NumFiles(1:i))-NumFiles(i)));
                         end
                         if i == 1 && FileTypes(i) && (j<=NumFiles(i))
-                            TempCell{j,i} = ForceMap(FMFullFile{j},obj.ExperimentFolder,TempID{j,i},obj.BigDataFlag);
+                            TempCell{j,i} = ForceMap(FMFullFile{j},obj.ExperimentFolder,TempID{j,i},obj.BigDataFlag,obj.PythonLoaderFlag);
                         end
                         if i == 2 && FileTypes(i) && (j<=NumFiles(i))
-                            TempCell{j,i} = ForceMap(RefFMFullFile{j},obj.ExperimentFolder,TempID{j,i},obj.BigDataFlag);
+                            TempCell{j,i} = ForceMap(RefFMFullFile{j},obj.ExperimentFolder,TempID{j,i},obj.BigDataFlag,obj.PythonLoaderFlag);
                         end
                         if i == 3 && FileTypes(i) && (j<=NumFiles(i))
                             TempCell{j,i} = AFMImage(IFullFile{j},obj.ExperimentFolder,TempID{j,i});
@@ -180,10 +190,10 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                     for j=1:NumFiles(i)
                         TempID{j,i} = sprintf('%s-%i',obj.ExperimentName,IDs(j+sum(NumFiles(1:i))-NumFiles(i)));
                         if i == 1 && FileTypes(i)
-                            TempCell{j,i} = ForceMap(FMFullFile{j},obj.ExperimentFolder,TempID{j,i},obj.BigDataFlag);
+                            TempCell{j,i} = ForceMap(FMFullFile{j},obj.ExperimentFolder,TempID{j,i},obj.BigDataFlag,obj.PythonLoaderFlag);
                         end
                         if i == 2 && FileTypes(i)
-                            TempCell{j,i} = ForceMap(RefFMFullFile{j},obj.ExperimentFolder,TempID{j,i},obj.BigDataFlag);
+                            TempCell{j,i} = ForceMap(RefFMFullFile{j},obj.ExperimentFolder,TempID{j,i},obj.BigDataFlag,obj.PythonLoaderFlag);
                         end
                         if i == 3 && FileTypes(i)
                             TempCell{j,i} = AFMImage(IFullFile{j},obj.ExperimentFolder,TempID{j,i});
@@ -718,7 +728,11 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                         CorrectSens = false;
                     end
                     AllowXShift = true;
-                    obj.FM{i}.calculate_e_mod_hertz(CPOption,'parabolic',1,AllowXShift,CorrectSens,UseTipInHertzBool,0,obj.CantileverTips{obj.WhichTip(i)});
+                    if UseTipInHertzBool
+                        obj.FM{i}.calculate_e_mod_hertz(CPOption,'parabolic',1,AllowXShift,CorrectSens,UseTipInHertzBool,0,obj.CantileverTips{obj.WhichTip(i)});
+                    else
+                        obj.FM{i}.calculate_e_mod_hertz(CPOption,'parabolic',1,AllowXShift,CorrectSens,UseTipInHertzBool,0);
+                    end
                     if i == 1
                         obj.write_to_log_file('Hertzian Tip-Shape','parabolic')
                         obj.write_to_log_file('Hertzian CurvePercent','1')
@@ -4351,7 +4365,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             uiwait(h.f)
         end
         
-        function [FileTypes,OutStruct,IsValid,BigData] = constructor_user_input_parser(ExperimentName,OS)
+        function [FileTypes,OutStruct,IsValid,BigData,PythonLoaderFlag] = constructor_user_input_parser(ExperimentName,OS)
             
             IsValid = false;
             OutStruct = struct('FullFile',{cell(1,1),cell(1,1),cell(1,1),cell(1,1),cell(1,1)});
@@ -4417,8 +4431,12 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 'position',[.15 .16 .1 .05],'string','Delete Selected',...
                 'Callback',@delete_selected);
             c(16) = uicontrol(h.f,'style','checkbox','units','normalized',...
-                'position',[.3 .025 .2 .05],'string','Big Data mode',...
+                'position',[.3 .025 .2 .085],'string','Big Data mode',...
                 'tooltip','Recomme2nded when processing >~100000 force curves',...
+                'FontSize',18);
+            c(17) = uicontrol(h.f,'style','checkbox','units','normalized',...
+                'position',[.3 .025 .2 .025],'string','Python Loader Mode',...
+                'tooltip','Recommended Mode: Avoids unpacking large folder structures',...
                 'FontSize',18);
             
             HeightPos = [.82 .64 .46 .28 .1];
@@ -4474,6 +4492,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 end
                 IsValid = true;
                 BigData = c(16).Value;
+                PythonLoaderFlag = c(17).Value;
                 close(h.f)
             end
             

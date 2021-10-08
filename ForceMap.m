@@ -28,8 +28,11 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
         FileVersion     % Version of jpk-force-map file
         Folder          % location of the .csv files of the force map
         DataStoreFolder % 
+        RawDataFilePath
+        OpenZipFile
         BigDataFlag     % If true, unpack data container into Experiment subfolder
                         % and always load force volume data from there
+        PythonLoaderFlag
         FractionOfMaxRAM = 1/5 % Specifies how much of MaxRAM space can be taken for certain partitioned calculations 
         NCurves         % number of curves on the force map
         MaxPointsPerCurve
@@ -45,6 +48,12 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
         RefSlopeCorrectedSensitivity
         SpringConstant
         Setpoint
+        HHMult1
+        HHOff1
+        HHMult2
+        HHOff2
+        vDefMult
+        vDefOff
         DBanding        % Fourieranalysis-based estimate of DBanding perdiod (only available with sufficient resolution)
         RefSlope        % Refernce slope as determined from the upper curve slope from data from very hard      
         % surfaces (mica,glass), either from glass parts beneath the specimen or from
@@ -226,7 +235,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
     methods
         % Main methods of the class
         
-        function obj = ForceMap(MapFullFile,DataFolder,TempID,BigData,FakeOpt,NSynthCurves)
+        function obj = ForceMap(MapFullFile,DataFolder,TempID,BigData,PythonLoaderFlag,FakeOpt,NSynthCurves)
             %%% Constructor of the class
             
             % Specify the folder where the files live. And import them.
@@ -235,12 +244,11 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             % Assigns the properties that can be found in the jpk-file
             % already
             
-            current = what();
-            
             obj.ID = TempID;
             obj.BigDataFlag = BigData;
+            obj.PythonLoaderFlag = PythonLoaderFlag;
             
-            if nargin >= 5 && isequal(FakeOpt,'Dummy')
+            if nargin >= 6 && isequal(FakeOpt,'Dummy')
                 obj.create_dummy_force_map(NSynthCurves);
             end
             
@@ -281,6 +289,19 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             obj.set_channel_positions(obj.OriginX,obj.OriginY,obj.ScanAngle);
             
             obj.initialize_flags();
+        end
+        
+        function load_zipped_files_with_python(obj)
+            % loads ForceMap source file (*.jpk-forrce-map,*.jpk-qi-data)
+            % into memory and keeps it, open for the session
+            current = what;
+            Split = split(obj.RawDataFilePath,filesep);
+            Folder = fullfile(Split{1:end-1});
+            File = Split{end};
+            cd(Folder)
+            obj.OpenZipFile = py.zipfile.ZipFile(File);
+            
+            cd(current.path)
         end
         
         function choose_curves(obj)
@@ -3780,7 +3801,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
         function [HeadHeight ,Force,spring_constant,sensitivity]=...
                 writedata(HeaderFileDirectory,SegmentHeaderFileDirectory,...
                 HeighDataDirectory,vDelfDataDirectory,HHType)
-            % Author: Orestis Andriotis (slightly changed and adapted by Manuel Rufin)
+            % Author: Orestis Andriotis (changed and adapted by Manuel Rufin)
             % HeaderFileDirectory: file directory of the main header properties. There
             % is the information about the scaling factors to convert the raw data.
             % SegmentHeaderFileDirectory: file directory of the header of each segment.
@@ -3849,8 +3870,6 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             
             fclose(FileID);
         end
-        
-       
         
         function [mult_height_meters1, offset_height_meters1,...
                 mult_height_meters2, offset_height_meters2,...
@@ -4466,127 +4485,89 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
         function unpack_jpk_force_map(obj,MapFullFile,DataFolder)
             
             if obj.BigDataFlag
-                TempFolderName = sprintf('FM_DataStore_%s',obj.ID);
+                if obj.PythonLoaderFlag
+                    TempFolderName = 'DataStore';
+                    mkdir(DataFolder,TempFolderName);
+                    TempFolder = fullfile(DataFolder,TempFolderName);
+                else
+                    TempFolderName = sprintf('FM_DataStore_%s',obj.ID);
+                end
             else
                 TempFolderName = sprintf('Temp%s',obj.ID);
             end
             
-            if isequal('PCW',obj.HostOS)
-                % unpack jpk-file into temporary folder to read out data
-                cmd1 = '"C:\Program Files\7-Zip\7z.exe" x ';
-                cmd2 = '"';
-                cmd3 = MapFullFile;
-                cmd4 = '"';
-                cmd5 = ' -o';
-                mkdir(DataFolder,TempFolderName)
-                cmd6 = '"';
-                TempFolder = fullfile(DataFolder,TempFolderName,filesep);
-                cmd8 = '"';
-                CMD = append(cmd1,cmd2,cmd3,cmd4,cmd5,cmd6,TempFolder,cmd8);
-                disp('extracting file...')
-                h = system(CMD);
+            if (obj.BigDataFlag && ~obj.PythonLoaderFlag) || ~obj.BigDataFlag
+                if isequal('PCW',obj.HostOS)
+                    % unpack jpk-file into temporary folder to read out data
+                    cmd1 = '"C:\Program Files\7-Zip\7z.exe" x ';
+                    cmd2 = '"';
+                    cmd3 = MapFullFile;
+                    cmd4 = '"';
+                    cmd5 = ' -o';
+                    mkdir(DataFolder,TempFolderName)
+                    cmd6 = '"';
+                    TempFolder = fullfile(DataFolder,TempFolderName,filesep);
+                    cmd8 = '"';
+                    CMD = append(cmd1,cmd2,cmd3,cmd4,cmd5,cmd6,TempFolder,cmd8);
+                    disp('extracting file...')
+                    h = system(CMD);
+                elseif isequal('GLN',obj.HostOS)
+                    % unpack jpk-file into temporary folder to read out data
+                    cmd1 = 'unzip -o ';
+                    cmd2 = MapFullFile;
+                    cmd3 = ' -d ';
+                    mkdir(DataFolder,TempFolderName)
+                    TempFolder = fullfile(DataFolder,TempFolderName,filesep);
+                    CMD = append(cmd1,cmd2,cmd3,TempFolder);
+                    h = system(CMD);
+                    disp('extracting file...')
+                elseif isequal('MAC',obj.HostOS)
+                    % unpack jpk-file into temporary folder to read out data
+                    cmd1 = 'unzip -o ';
+                    cmd2 = MapFullFile;
+                    cmd3 = ' -d ';
+                    mkdir(DataFolder,TempFolderName)
+                    TempFolder = fullfile(DataFolder,TempFolderName,filesep);
+                    CMD = append(cmd1,cmd2,cmd3,TempFolder);
+                    h = system(CMD);
+                    disp('extracting file...')
+                end
                 if h==0
                     disp('unzipping successfull')
                 elseif h==1
                     disp('unzipping failed')
                 end
-                Strings = split(MapFullFile,filesep);
-                %%% Define the search expressions
-                % Comment: JPK includes a few attributes of a measurement into the name:
-                % The name attachement is the same for all experiments:
-                % 'Typedname'+'-'+'data'+'-'+'year'+'.'+'months'+'.'+'day'+'-hour'+'.'+'minute'+'.'+'second'+'.'+'thousandths'+'.'+'jpk file extension'
-                exp1 = '.*(?=\-data)'; % Finds the typed-in name of the user during the AFM experiment
-                exp2 = '\d{4}\.\d{2}\.\d{2}'; % Finds the date
-                exp3 = '\d{2}\.\d{2}\.\d{2}\.\d{3}'; % Finds the time
-                obj.Name = regexp(Strings(end,1), exp1, 'match');
-                obj.Name = char(obj.Name{1});
-                if isequal(obj.Name,'')
-                    exp4 = '.*(?=.jpk)';
-                    obj.Name = regexp(Strings(end,1), exp4, 'match');
-                    obj.Name = char(obj.Name{1});
-                end
-                obj.Date = regexp(Strings(end,1), exp2, 'match');
-                obj.Date = char(obj.Date{1});
-                obj.Time = regexp(Strings(end,1), exp3, 'match');
-                obj.Time = char(obj.Time{1});
-                obj.Date=strrep(obj.Date,'.','-'); % Remove dots in obj.Date
-                obj.Time=strrep(obj.Time,'.','-'); % Remove dots in obj.Time
-                %%% Create a data folder to store the force data
-                mkdir(DataFolder,'ForceData')
-                obj.Folder = fullfile(DataFolder,'ForceData',filesep);
-                
-                %             system(['unzip -o ', fullfile(datadir,fnamemap), ' ''*shared-data/header.properties'' -d ', tempdir{fib,1}]);
-                %
-            elseif isequal('GLN',obj.HostOS)
-                % unpack jpk-file into temporary folder to read out data
-                cmd1 = 'unzip -o ';
-                cmd2 = MapFullFile;
-                cmd3 = ' -d ';
-                mkdir(DataFolder,TempFolderName)
-                TempFolder = fullfile(DataFolder,TempFolderName,filesep);
-                CMD = append(cmd1,cmd2,cmd3,TempFolder);
-                system(CMD);
-                disp('extracting file...')
-                Strings = split(MapFullFile,filesep);
-                %%% Define the search expressions
-                % Comment: JPK includes a few attributes of a measurement into the name:
-                % The name attachement is the same for all experiments:
-                % 'Typedname'+'-'+'data'+'-'+'year'+'.'+'months'+'.'+'day'+'-hour'+'.'+'minute'+'.'+'second'+'.'+'thousandths'+'.'+'jpk file extension'
-                exp1 = '.*(?=\-data)'; % Finds the typed-in name of the user during the AFM experiment
-                exp2 = '\d{4}\.\d{2}\.\d{2}'; % Finds the date
-                exp3 = '\d{2}\.\d{2}\.\d{2}\.\d{3}'; % Finds the time
-                obj.Name = regexp(Strings(end,1), exp1, 'match');
-                obj.Name = char(obj.Name{1});
-                if isequal(obj.Name,'')
-                    exp4 = '.*(?=.jpk)';
-                    obj.Name = regexp(Strings(end,1), exp4, 'match');
-                    obj.Name = char(obj.Name{1});
-                end
-                obj.Date = regexp(Strings(end,1), exp2, 'match');
-                obj.Date = char(obj.Date{1});
-                obj.Time = regexp(Strings(end,1), exp3, 'match');
-                obj.Time = char(obj.Time{1});
-                obj.Date=strrep(obj.Date,'.','-'); % Remove dots in obj.Date
-                obj.Time=strrep(obj.Time,'.','-'); % Remove dots in obj.Time
-                %%% Create a data folder to store the force data
-                mkdir(DataFolder,'ForceData')
-                obj.Folder = fullfile(DataFolder,'ForceData',filesep);
-                
-            elseif isequal('MAC',obj.HostOS)
-                % unpack jpk-file into temporary folder to read out data
-                cmd1 = 'unzip -o ';
-                cmd2 = MapFullFile;
-                cmd3 = ' -d ';
-                mkdir(DataFolder,TempFolderName)
-                TempFolder = fullfile(DataFolder,TempFolderName,filesep);
-                CMD = append(cmd1,cmd2,cmd3,TempFolder);
-                system(CMD);
-                disp('extracting file...')
-                Strings = split(MapFullFile,filesep);
-                %%% Define the search expressions
-                % Comment: JPK includes a few attributes of a measurement into the name:
-                % The name attachement is the same for all experiments:
-                % 'Typedname'+'-'+'data'+'-'+'year'+'.'+'months'+'.'+'day'+'-hour'+'.'+'minute'+'.'+'second'+'.'+'thousandths'+'.'+'jpk file extension'
-                exp1 = '.*(?=\-data)'; % Finds the typed-in name of the user during the AFM experiment
-                exp2 = '\d{4}\.\d{2}\.\d{2}'; % Finds the date
-                exp3 = '\d{2}\.\d{2}\.\d{2}\.\d{3}'; % Finds the time
-                obj.Name = regexp(Strings(end,1), exp1, 'match');
-                obj.Name = char(obj.Name{1});
-                if isequal(obj.Name,'')
-                    exp4 = '.*(?=.jpk)';
-                    obj.Name = regexp(Strings(end,1), exp4, 'match');
-                    obj.Name = char(obj.Name{1});
-                end
-                obj.Date = regexp(Strings(end,1), exp2, 'match');
-                obj.Date = char(obj.Date{1});
-                obj.Time = regexp(Strings(end,1), exp3, 'match');
-                obj.Time = char(obj.Time{1});
-                obj.Date=strrep(obj.Date,'.','-'); % Remove dots in obj.Date
-                obj.Time=strrep(obj.Time,'.','-'); % Remove dots in obj.Time
-                %%% Create a data folder to store the force data
-                mkdir(DataFolder,'ForceData')
-                obj.Folder = fullfile(DataFolder,'ForceData',filesep);
+            elseif obj.BigDataFlag && obj.PythonLoaderFlag
+                % Copy the jpk file to the DataStore folder and open it
+                % with the python loader.
+                copyfile(MapFullFile,TempFolder)
+                Split = split(MapFullFile,filesep);
+                obj.RawDataFilePath = fullfile(TempFolder,Split(end));
+                obj.load_zipped_files_with_python
             end
+            
+            
+            Strings = split(MapFullFile,filesep);
+            %%% Define the search expressions
+            % Comment: JPK includes a few attributes of a measurement into the name:
+            % The name attachement is the same for all experiments:
+            % 'Typedname'+'-'+'data'+'-'+'year'+'.'+'months'+'.'+'day'+'-hour'+'.'+'minute'+'.'+'second'+'.'+'thousandths'+'.'+'jpk file extension'
+            exp1 = '.*(?=\-data)'; % Finds the typed-in name of the user during the AFM experiment
+            exp2 = '\d{4}\.\d{2}\.\d{2}'; % Finds the date
+            exp3 = '\d{2}\.\d{2}\.\d{2}\.\d{3}'; % Finds the time
+            obj.Name = regexp(Strings(end,1), exp1, 'match');
+            obj.Name = char(obj.Name{1});
+            if isequal(obj.Name,'')
+                exp4 = '.*(?=.jpk)';
+                obj.Name = regexp(Strings(end,1), exp4, 'match');
+                obj.Name = char(obj.Name{1});
+            end
+            obj.Date = regexp(Strings(end,1), exp2, 'match');
+            obj.Date = char(obj.Date{1});
+            obj.Time = regexp(Strings(end,1), exp3, 'match');
+            obj.Time = char(obj.Time{1});
+            obj.Date=strrep(obj.Date,'.','-'); % Remove dots in obj.Date
+            obj.Time=strrep(obj.Time,'.','-'); % Remove dots in obj.Time
             
             obj.DataStoreFolder = TempFolder;
             
@@ -4595,14 +4576,31 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
         function read_in_header_properties(obj)
             % Check for jpk-software version and get important ForceMap
             % properties
-            filedirectory = fullfile(obj.DataStoreFolder,'header.properties');
+            
+            if obj.PythonLoaderFlag
+                current = what;
+                TempFolder = fullfile(obj.DataStoreFolder,obj.ID);
+                TempSharedFolder = fullfile(obj.DataStoreFolder,obj.ID,'shared');
+                mkdir(TempSharedFolder)
+                cd(TempFolder)
+                obj.OpenZipFile('header.properties');
+                cd(TempSharedFolder)
+                SharedLocation = fullfile('shared-data','header.properties');
+                obj.OpenZipFile(SharedLocation);
+                cd(current.path)
+                
+                filedirectory = fullfile(TempFolder,'header.properties');
+                FileDirectoryShared = fullfile(TempSharedFolder,'header.properties');
+            else
+                filedirectory = fullfile(obj.DataStoreFolder,'header.properties');
+                FileDirectoryShared = fullfile(obj.DataStoreFolder,'shared-data','header.properties');
+            end
+            
             FileID=fopen(filedirectory,'rt','n','UTF-8'); % FileID = fopen(filename,permission,machinefmt,encodingIn)
             FileCont=fileread(filedirectory);
-            % Shared-data file directory 
-            FileDirectoryShared = fullfile(obj.DataStoreFolder,'shared-data','header.properties');
+            % Shared-data file directory
             FileIDShared=fopen(FileDirectoryShared,'rt','n','UTF-8'); % FileID = fopen(filename,permission,machinefmt,encodingIn)
             FileContShared=fileread(FileDirectoryShared);
-            
             % Height: 1. CONVERSION raw-meters & 2. SCALE meters
             % Conversion RAW -> VOLTS
             fseek(FileID,1,'cof'); % goes at the first position in the file
@@ -4896,8 +4894,27 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 end                
             end                        
             obj.HHType = 'capacitiveSensorHeight';           
+            
+            [mult_height_meters1, offset_height_meters1,...
+                mult_height_meters2, offset_height_meters2,...
+                mult_vDefl_volts, offset_vDefl_volts,...
+                sensitivity, spring_constant] = getheaderinfo(FileDirectoryShared,obj.HHType);
+            
+            obj.HHMult1 = mult_height_meters1;
+            obj.HHOff1 = offset_height_meters1;
+            obj.HHMult2 = mult_height_meters2;
+            obj.HHOff2 = offset_height_meters2;
+            obj.vDefMult = mult_vDefl_volts;
+            obj.vDefOff = offset_vDefl_volts;
+            obj.SpringConstant = spring_constant;
+            obj.Sensitivity = sensitivity;
+            
             fclose(FileID);
             fclose(FileIDShared);
+            
+            if obj.PythonLoaderFlag
+                rmdir(TempFolder);
+            end
         end
         
         function load_force_curves(obj)
@@ -4923,7 +4940,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                     [TempHHApp,obj.App{i},obj.SpringConstant,obj.Sensitivity]=...
                         obj.writedata(HeaderFileDirectory,SegmentHeaderFileDirectory,...
                         HeightDataDirectory,vDefDataDirectory,obj.HHType);
-                
+                    
                     obj.HHApp{i} = -TempHHApp;
                     obj.App{i} = obj.App{i}.*obj.SpringConstant;
                     clear TempHHApp
@@ -4949,7 +4966,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 if ~isfile(HeightDataDirectory) || isequal(obj.HHType,'measuredHeight')
                     HeightDataDirectory = fullfile(TempFolder,'index',string((i-1)),'segments',string(obj.NumSegments-1),'channels','measuredHeight.dat');
                 end
-                 if ~isfile(HeightDataDirectory) || isequal(obj.HHType,'Height')
+                if ~isfile(HeightDataDirectory) || isequal(obj.HHType,'Height')
                     HeightDataDirectory = fullfile(TempFolder,'index',string((i-1)),'segments',string(obj.NumSegments-1),'channels','Height.dat');
                     obj.HHType = 'Height';
                 end
@@ -4958,7 +4975,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                     [TempHHRet,obj.Ret{i}]=...
                         obj.writedata(HeaderFileDirectory,SegmentHeaderFileDirectory,...
                         HeightDataDirectory,vDefDataDirectory,obj.HHType);
-                
+                    
                     obj.HHRet{i} = -TempHHRet;
                     obj.Ret{i} = obj.Ret{i}.*obj.SpringConstant;
                 catch
@@ -5062,10 +5079,14 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 if obj.CorruptedCurves(CurveNumber)
                     error('skip this one')
                 end
-                [TempHeight,OutForce,SC,Sens]=...
-                    obj.writedata(HeaderFileDirectory,SegmentHeaderFileDirectory,...
-                    HeightDataDirectory,vDefDataDirectory,obj.HHType);
-                
+                if obj.PythonLoaderFlag
+                    TempHeight = obj.load_single_curve_channel_data_with_python(string(CurveNumber-1),string(AppRetSwitch),obj.HHType);
+                    OutForce = obj.load_single_curve_channel_data_with_python(string(CurveNumber-1),string(AppRetSwitch),'vDeflection');
+                else
+                    [TempHeight,OutForce,SC,Sens]=...
+                        obj.writedata(HeaderFileDirectory,SegmentHeaderFileDirectory,...
+                        HeightDataDirectory,vDefDataDirectory,obj.HHType);
+                end
                 if isempty(obj.Sensitivity)
                     obj.Sensitivity = Sens;
                 end
@@ -5115,6 +5136,20 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 end
                 [OutForce,OutHeight] = obj.get_force_curve_data(mod(CurveNumber+k-1,obj.NCurves)+1,AppRetSwitch,isBased,isTipHeightCorrected);
             end
+        end
+        
+        function OutVector = load_single_curve_channel_data_with_python(obj,Index,Segment,FileName)
+            
+            TargetFile = fullfile('index',Index,'segments',Segment,'channels',strcat(FileName,'.dat'));
+            
+            File = obj.OpenZipFile.open(TargetFile);
+            
+            Data = uint8(File.read(-1));
+            OutVector = swapbytes(typecast(Data,'int32'));
+            File.close()
+            
+            % Rescale stored data to real world units
+            
         end
         
         function initialize_flags(obj)

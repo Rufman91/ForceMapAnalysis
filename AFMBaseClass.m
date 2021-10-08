@@ -18,7 +18,6 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle
         List2Map        % An R->RxR ((k)->(i,j)) mapping of indices to switch between the two representations
         Map2List        % An RxR->R ((i,j)->(k))mapping of indices to switch between the two representations
     end
-        
     properties
         % All possible image channels. The Channels are all part of the
         % struct Channel and should each contain the properties Image,
@@ -299,6 +298,11 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle
                 OutChannel.NumPixelsY = size(OutChannel.Image,2);
             end
         end
+        
+    end
+    methods (Static)
+        % Static auxiliary methods
+        
         
     end
     
