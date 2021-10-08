@@ -4895,19 +4895,19 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             end                        
             obj.HHType = 'capacitiveSensorHeight';           
             
-            [mult_height_meters1, offset_height_meters1,...
-                mult_height_meters2, offset_height_meters2,...
-                mult_vDefl_volts, offset_vDefl_volts,...
-                sensitivity, spring_constant] = ForceMap.getheaderinfo(FileDirectoryShared,obj.HHType);
-            
-            obj.HHMult1 = mult_height_meters1;
-            obj.HHOff1 = offset_height_meters1;
-            obj.HHMult2 = mult_height_meters2;
-            obj.HHOff2 = offset_height_meters2;
-            obj.vDefMult = mult_vDefl_volts;
-            obj.vDefOff = offset_vDefl_volts;
-            obj.SpringConstant = spring_constant;
-            obj.Sensitivity = sensitivity;
+%             [mult_height_meters1, offset_height_meters1,...
+%                 mult_height_meters2, offset_height_meters2,...
+%                 mult_vDefl_volts, offset_vDefl_volts,...
+%                 sensitivity, spring_constant] = ForceMap.getheaderinfo(FileDirectoryShared,obj.HHType);
+%             
+%             obj.HHMult1 = mult_height_meters1;
+%             obj.HHOff1 = offset_height_meters1;
+%             obj.HHMult2 = mult_height_meters2;
+%             obj.HHOff2 = offset_height_meters2;
+%             obj.vDefMult = mult_vDefl_volts;
+%             obj.vDefOff = offset_vDefl_volts;
+%             obj.SpringConstant = spring_constant;
+%             obj.Sensitivity = sensitivity;
             
             fclose(FileID);
             fclose(FileIDShared);
