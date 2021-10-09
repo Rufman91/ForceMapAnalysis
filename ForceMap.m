@@ -48,12 +48,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
         RefSlopeCorrectedSensitivity
         SpringConstant
         Setpoint
-        HHMult1
-        HHOff1
-        HHMult2
-        HHOff2
-        vDefMult
-        vDefOff
+        RescalingConstants
         DBanding        % Fourieranalysis-based estimate of DBanding perdiod (only available with sufficient resolution)
         RefSlope        % Refernce slope as determined from the upper curve slope from data from very hard      
         % surfaces (mica,glass), either from glass parts beneath the specimen or from
@@ -4204,10 +4199,26 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
         
         function read_jpk_images_from_files(obj)
             
+            if obj.PythonLoaderFlag
+                current = what;
+                TempFolder = fullfile(obj.DataStoreFolder,obj.ID);
+                mkdir(TempFolder)
+                cd(TempFolder)
+                if isequal(obj.FileType,'quantitative-imaging-map')
+                    obj.OpenZipFile.extract('data-image.jpk-qi-image');
+                elseif isequal(obj.FileType,'force-scan-map')
+                    obj.OpenZipFile.extract('data-image.force');
+                end
+                cd(current.path)
+                Folder = TempFolder;
+            else
+                Folder = obj.DataStoreFolder;
+            end
+            
             if isequal(obj.FileType,'quantitative-imaging-map')
-                I = AFMImage(fullfile(obj.DataStoreFolder,'data-image.jpk-qi-image'));
+                I = AFMImage(fullfile(Folder,'data-image.jpk-qi-image'));
             elseif isequal(obj.FileType,'force-scan-map')
-                I = AFMImage(fullfile(obj.DataStoreFolder,'data-image.force'));
+                I = AFMImage(fullfile(Folder,'data-image.force'));
                 for i=1:length(I.Channel)
                     I.Channel(i).Image = fliplr(I.Channel(i).Image);
                 end
@@ -4249,6 +4260,10 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             end
             
             obj.HeightMap = Processed.Image;
+            
+            if obj.PythonLoaderFlag
+                rmdir(Folder,'s');
+            end
             
         end
         
@@ -4580,13 +4595,11 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             if obj.PythonLoaderFlag
                 current = what;
                 TempFolder = fullfile(obj.DataStoreFolder,obj.ID);
-                TempSharedFolder = fullfile(obj.DataStoreFolder,obj.ID,'shared');
-                mkdir(TempSharedFolder)
+                TempSharedFolder = fullfile(obj.DataStoreFolder,obj.ID,'shared-data');
+                mkdir(TempFolder)
                 cd(TempFolder)
-                obj.OpenZipFile('header.properties');
-                cd(TempSharedFolder)
-                SharedLocation = fullfile('shared-data','header.properties');
-                obj.OpenZipFile(SharedLocation);
+                obj.OpenZipFile.extract('header.properties');
+                obj.OpenZipFile.extract('shared-data/header.properties');
                 cd(current.path)
                 
                 filedirectory = fullfile(TempFolder,'header.properties');
@@ -4895,26 +4908,51 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             end                        
             obj.HHType = 'capacitiveSensorHeight';           
             
-%             [mult_height_meters1, offset_height_meters1,...
-%                 mult_height_meters2, offset_height_meters2,...
-%                 mult_vDefl_volts, offset_vDefl_volts,...
-%                 sensitivity, spring_constant] = ForceMap.getheaderinfo(FileDirectoryShared,obj.HHType);
-%             
-%             obj.HHMult1 = mult_height_meters1;
-%             obj.HHOff1 = offset_height_meters1;
-%             obj.HHMult2 = mult_height_meters2;
-%             obj.HHOff2 = offset_height_meters2;
-%             obj.vDefMult = mult_vDefl_volts;
-%             obj.vDefOff = offset_vDefl_volts;
-%             obj.SpringConstant = spring_constant;
-%             obj.Sensitivity = sensitivity;
-            
-            fclose(FileID);
             fclose(FileIDShared);
+            fclose(FileID);
+            
+            obj.read_in_rescaling_constants(FileDirectoryShared)
             
             if obj.PythonLoaderFlag
-                rmdir(TempFolder);
+                rmdir(TempFolder,'s');
             end
+        end
+        
+        function read_in_rescaling_constants(obj,SharedPropertiesFullFile)
+            
+            obj.RescalingConstants = struct();
+            
+            ChannelNames = {'capacitiveSensorHeight',...
+                                'measuredHeight',...
+                                'head-height',...
+                                'height'};
+            for i=1:4
+                obj.RescalingConstants(i).ChannelName = ChannelNames{i};
+                obj.RescalingConstants(i).exists = false;
+                try
+                    [mult_height_meters1, offset_height_meters1,...
+                        mult_height_meters2, offset_height_meters2,...
+                        mult_vDefl_volts, offset_vDefl_volts,...
+                        sensitivity, spring_constant] = ForceMap.getheaderinfo(SharedPropertiesFullFile,ChannelNames{i});
+                    
+                    obj.RescalingConstants(i).Mult1 = mult_height_meters1;
+                    obj.RescalingConstants(i).Off1 = offset_height_meters1;
+                    obj.RescalingConstants(i).Mult2 = mult_height_meters2;
+                    obj.RescalingConstants(i).Off2 = offset_height_meters2;
+                    obj.RescalingConstants(i).exists = true;
+                catch
+                end
+            end
+            
+            % Special case vDef
+            obj.RescalingConstants(5).ChannelName = 'vDeflection';
+            obj.RescalingConstants(5).Mult1 = mult_vDefl_volts;
+            obj.RescalingConstants(5).Off1 = offset_vDefl_volts;
+            obj.RescalingConstants(5).Mult2 = 1;
+            obj.RescalingConstants(5).Off2 = 0;
+            obj.RescalingConstants(5).exists = true;
+            obj.SpringConstant = spring_constant;
+            obj.Sensitivity = sensitivity;
         end
         
         function load_force_curves(obj)
@@ -5061,18 +5099,20 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 AppRetSwitch=obj.NumSegments-1;
             end
             
-            HeaderFileDirectory = fullfile(TempFolder,'shared-data','header.properties');
-            SegmentHeaderFileDirectory = fullfile(TempFolder,'index',string((CurveNumber-1)),'segments',string(AppRetSwitch),'segment-header.properties');
-            HeightDataDirectory = fullfile(TempFolder,'index',string((CurveNumber-1)),'segments',string(AppRetSwitch),'channels','capacitiveSensorHeight.dat');
-            vDefDataDirectory = fullfile(TempFolder,'index',string((CurveNumber-1)),'segments',string(AppRetSwitch),'channels','vDeflection.dat');
-            
-            if ~isfile(HeightDataDirectory) || isequal(obj.HHType,'measuredHeight')
-                HeightDataDirectory = fullfile(TempFolder,'index',string((CurveNumber-1)),'segments',string(AppRetSwitch),'channels','measuredHeight.dat');
-                obj.HHType = 'measuredHeight';
-            end
-            if ~isfile(HeightDataDirectory) || isequal(obj.HHType,'Height')
-                HeightDataDirectory = fullfile(TempFolder,'index',string((CurveNumber-1)),'segments',string(AppRetSwitch),'channels','Height.dat');
-                obj.HHType = 'Height';
+            if ~obj.PythonLoaderFlag
+                HeaderFileDirectory = fullfile(TempFolder,'shared-data','header.properties');
+                SegmentHeaderFileDirectory = fullfile(TempFolder,'index',string((CurveNumber-1)),'segments',string(AppRetSwitch),'segment-header.properties');
+                HeightDataDirectory = fullfile(TempFolder,'index',string((CurveNumber-1)),'segments',string(AppRetSwitch),'channels','capacitiveSensorHeight.dat');
+                vDefDataDirectory = fullfile(TempFolder,'index',string((CurveNumber-1)),'segments',string(AppRetSwitch),'channels','vDeflection.dat');
+                
+                if ~isfile(HeightDataDirectory) || isequal(obj.HHType,'measuredHeight')
+                    HeightDataDirectory = fullfile(TempFolder,'index',string((CurveNumber-1)),'segments',string(AppRetSwitch),'channels','measuredHeight.dat');
+                    obj.HHType = 'measuredHeight';
+                end
+                if ~isfile(HeightDataDirectory) || isequal(obj.HHType,'Height')
+                    HeightDataDirectory = fullfile(TempFolder,'index',string((CurveNumber-1)),'segments',string(AppRetSwitch),'channels','height.dat');
+                    obj.HHType = 'height';
+                end
             end
             
             try
@@ -5133,23 +5173,40 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 k = 1;
                 while obj.CorruptedCurves(mod(CurveNumber+k-1,obj.NCurves)+1)
                     k = k + 1;
+                    if k > obj.NCurves
+                        error('All force curves seem to be corrupted');
+                    end
                 end
                 [OutForce,OutHeight] = obj.get_force_curve_data(mod(CurveNumber+k-1,obj.NCurves)+1,AppRetSwitch,isBased,isTipHeightCorrected);
             end
         end
         
-        function OutVector = load_single_curve_channel_data_with_python(obj,Index,Segment,FileName)
+        function OutVector = load_single_curve_channel_data_with_python(obj,Index,Segment,ChannelName)
             
-            TargetFile = fullfile('index',Index,'segments',Segment,'channels',strcat(FileName,'.dat'));
+            TargetFile = strcat('index/',Index,'/segments/',Segment,'/channels/',strcat(ChannelName,'.dat'));
             
             File = obj.OpenZipFile.open(TargetFile);
             
             Data = uint8(File.read(-1));
-            OutVector = swapbytes(typecast(Data,'int32'));
+            OutVector = double(swapbytes(typecast(Data,'int32')));
             File.close()
             
             % Rescale stored data to real world units
+            OutVector = obj.rescale_channel_data(OutVector,ChannelName);
             
+        end
+        
+        function OutVector = rescale_channel_data(obj,InVector,ChannelName)
+            
+            for i=1:5
+                if isequal(ChannelName,obj.RescalingConstants(i).ChannelName)
+                    TempVector = InVector.*obj.RescalingConstants(i).Mult1 + obj.RescalingConstants(i).Off1;
+                    OutVector = TempVector.*obj.RescalingConstants(i).Mult2 + obj.RescalingConstants(i).Off2;
+                    if isequal(ChannelName,'vDeflection')
+                        OutVector = OutVector.*obj.Sensitivity;
+                    end
+                end
+            end
         end
         
         function initialize_flags(obj)
