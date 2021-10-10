@@ -436,7 +436,13 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                     E.FM{i}.check_for_new_host();
                     OldDataStore = E.FM{i}.DataStoreFolder;
                     Split = strsplit(OldDataStore,filesep);
-                    E.FM{i}.DataStoreFolder = fullfile(Path,Split{end-1});
+                    if E.BigDataFlag && ~E.PythonLoaderFlag
+                        E.FM{i}.DataStoreFolder = fullfile(Path,Split{end-1});
+                    elseif E.BigDataFlag && E.PythonLoaderFlag
+                        E.FM{i}.DataStoreFolder = fullfile(Path,Split{end});
+                        OldFilePath = split(E.FM{i}.RawDataFilePath,filesep);
+                        E.FM{i}.RawDataFilePath = fullfile(E.FM{i}.DataStoreFolder,OldFilePath{end});
+                    end
                     E.FM{i}.Folder = FMFolder;
                     E.ForceMapFolders{i} = FMFolder;
                 end
@@ -449,11 +455,32 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             for i=1:E.NumReferenceForceMaps
                 if ~isempty(E.RefFM{i})
                     E.RefFM{i}.check_for_new_host();
+                    E.RefFM{i}.check_for_new_host();
+                    OldDataStore = E.RefFM{i}.DataStoreFolder;
+                    Split = strsplit(OldDataStore,filesep);
+                    if E.BigDataFlag && ~E.PythonLoaderFlag
+                        E.RefFM{i}.DataStoreFolder = fullfile(Path,Split{end-1});
+                    elseif E.BigDataFlag && E.PythonLoaderFlag
+                        E.RefFM{i}.DataStoreFolder = fullfile(Path,Split{end});
+                        OldFilePath = split(E.RefFM{i}.RawDataFilePath,filesep);
+                        E.RefFM{i}.RawDataFilePath = fullfile(E.RefFM{i}.DataStoreFolder,OldFilePath{end});
+                    end
+                    E.RefFM{i}.Folder = FMFolder;
+                    E.ForceMapFolders{i} = FMFolder;
                 end
             end
             for i=1:E.NumCantileverTips
                 if ~isempty(E.CantileverTips{i})
                     E.CantileverTips{i}.check_for_new_host();
+                end
+            end
+            
+            if E.PythonLoaderFlag
+                for i=1:E.NumForceMaps
+                    E.FM{i}.load_zipped_files_with_python
+                end
+                for i=1:E.NumReferenceForceMaps
+                    E.RefFM{i}.load_zipped_files_with_python
                 end
             end
             
