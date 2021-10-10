@@ -274,7 +274,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 end
                 
                 % get paths of requested files and load them in
-                SaveCopy.take_paths_and_load_files(FileTypes,FullFileStruct,isNew)
+                SaveCopy.take_paths_and_load_files(FileTypes,FullFileStruct,isNew,SaveCopy.BigDataFlag,SaveCopy.PythonLoaderFlag)
                 
                 % SaveCopy.initialize_flags % What to do with this?
                 
@@ -428,6 +428,13 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             
             E = obj;
             clear obj
+            
+            if isempty(E.PythonLoaderFlag)
+                E.PythonLoaderFlag = false;
+            end
+            if isempty(E.BigDataFlag)
+                E.BigDataFlag = false;
+            end
             
             E.check_for_new_host();
             FMFolder = fullfile(Path,filesep,'ForceData');
@@ -2738,6 +2745,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                             Class{h.MainIndex}.OverlayGroup.hasOverlayGroup &&...
                             Class{h.ChildIndex}.OverlayGroup.hasOverlayGroup &&...
                             isequal(Class{h.MainIndex}.OverlayGroup.Names,Class{h.ChildIndex}.OverlayGroup.Names)
+                        
                         XDiff = Class{h.MainIndex}.Channel(1).OriginX - Class{h.ChildIndex}.Channel(1).OriginX;
                         SizePerPixelX = Class{h.ChildIndex}.Channel(1).ScanSizeX./Class{h.ChildIndex}.Channel(1).NumPixelsX;
                         XDiff = XDiff/SizePerPixelX;
@@ -2993,6 +3001,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                     end
                 catch
                 end
+                check_for_overlay_group
             end
             
             function changed_slider(varargin)
@@ -3090,6 +3099,22 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             function statistical_cmapping(varargin)
                 draw_channel_1
                 draw_channel_2
+            end
+            
+            function check_for_overlay_group(varargin)
+                
+                
+                if h.hasChannel2 &&...
+                            ~isempty(Class{1}.OverlayGroup) &&...
+                            ~isempty(Class{2}.OverlayGroup) &&...
+                            Class{1}.OverlayGroup.hasOverlayGroup &&...
+                            Class{2}.OverlayGroup.hasOverlayGroup &&...
+                            isequal(Class{1}.OverlayGroup.Names,Class{2}.OverlayGroup.Names)
+                    h.B(31).BackgroundColor = 'g';
+                else
+                    h.B(31).BackgroundColor = 'r';
+                end
+                
             end
             
             uiwait(h.Fig)
