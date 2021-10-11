@@ -162,7 +162,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             TempID = cell(max(NumFiles),5);
             L = max(NumFiles);
             
-            if contains(struct2array(ver), 'Parallel Computing Toolbox') && ((sum(NumFiles(1:2)) > 1) || (sum(NumFiles) > 20))
+            if contains(struct2array(ver), 'Parallel Computing Toolbox') && ((sum(NumFiles(1:2)) > 1) || (sum(NumFiles) > 20)) && ~obj.PythonLoaderFlag
                 for i=1:5
                     parfor j=1:L
                         if (j+sum(NumFiles(1:i))-NumFiles(i)) <= length(IDs)

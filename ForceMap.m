@@ -4130,9 +4130,9 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             % Calculate the DZslopes
             k = 1;
             for i=Range'
-                [Force,Height] = obj.get_force_curve_data(i,AppRetSwitch,1,0);
                 if (Mask(obj.List2Map(i,1),obj.List2Map(i,2)) == 1) &&...
                         (obj.ExclMask(obj.List2Map(i,1),obj.List2Map(i,2)) == 1)
+                    [Force,Height] = obj.get_force_curve_data(i,AppRetSwitch,1,0);
                     Z = Height - obj.CP(i,1);
                     D = (Force - obj.CP(i,2))/obj.SpringConstant;
                     Dmax = max(D);
@@ -4143,12 +4143,18 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                     ZCurvePercent = Z(1:length(DCurvePercent));    
                     LineFit = polyfit(ZCurvePercent,DCurvePercent,1);
                     DZslope(k) = LineFit(1);
+%                     % Debug
+%                     plot(Z,D,Z,polyval(LineFit,Z))
                     k = k + 1;
                 end
             end
-            % Fit the Gaussian
-            Gaussian = fitdist(DZslope','Normal');
-            obj.RefSlope = Gaussian.mean;
+            % Fit the log-Gaussian
+            DZslopeCleaned = DZslope;
+            DZslopeCleaned(DZslopeCleaned <= 0) = [];
+            DZslopeCleaned = exp(rmoutliers(log(DZslopeCleaned),'quartiles'));
+            Gaussian = fitdist(DZslopeCleaned','Lognormal');
+            % Expected value of a lognormal is exp(mu + sigma^2/2)
+            obj.RefSlope = exp(Gaussian.mu+Gaussian.sigma^2/2);
             obj.RefSlopeCorrectedSensitivity = obj.Sensitivity/obj.RefSlope;
             obj.HasRefSlope = true;
         end
@@ -4913,9 +4919,9 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             
             obj.read_in_rescaling_constants(FileDirectoryShared)
             
-            if obj.PythonLoaderFlag
-                rmdir(TempFolder,'s');
-            end
+%             if obj.PythonLoaderFlag
+%                 rmdir(TempFolder,'s');
+%             end
         end
         
         function read_in_rescaling_constants(obj,SharedPropertiesFullFile)
@@ -5188,7 +5194,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             File = obj.OpenZipFile.open(TargetFile);
             
             Data = uint8(File.read(-1));
-            OutVector = double(swapbytes(typecast(Data,'int32')));
+            OutVector = double(swapbytes(typecast(Data,'int32')))';
             File.close()
             
             % Rescale stored data to real world units
