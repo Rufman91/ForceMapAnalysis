@@ -1485,8 +1485,8 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
           
             
             %% loop
-            for hh=1:obj.NumForceMaps
-            %for hh=2 % Debugging     
+            %for hh=1:obj.NumForceMaps
+            for hh=17:obj.NumForceMaps % Debugging     
                sprintf('Force Map No. %d of %d',hh,obj.NumForceMaps) % Gives current Force Map Position   
                % Print force curves containing label for the pulling length
                % and colored area for the adhesion energy                              
@@ -1522,7 +1522,9 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 YMin= -inf;     % Limit of the Y-axis in Newtons (N)
                 YMax= inf;      % Limit of the Y-axis in Newtons (N)
             end
-            
+            % Figure visibility
+            set(groot,'defaultFigureVisible','off')
+        %    set(groot,'defaultFigureVisible','on')
             cd(obj.ExperimentFolder) % Move into the folder
             % Create folders for saving the produced figures
             %foldername='FM_fcAnalysis';    % for debugging
@@ -1532,7 +1534,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             cd(currpath);
             %% loop
             %for hh=1:obj.NumForceMaps
-            for hh=1:14 % Debugging
+            for hh=34:obj.NumForceMaps % Debugging
             sprintf('Force Map No. %d of %d',hh,obj.NumForceMaps) % Gives current Force Map Position   
             % Determine needed input variable
                NumFcUncorrupt(hh)=nnz(obj.FM{hh}.SMFSFlag.Uncorrupt); % Determine the number of uncorrupted force curves     
@@ -1540,6 +1542,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             end
             obj.NumFcUncorrupt=NumFcUncorrupt;
         end
+        
         
         function SMFS_print_raw(obj,XMin,XMax,YMin,YMax)
             % SMFS_print: A function to simply plot all force curves of all
@@ -1573,6 +1576,42 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                obj.FM{ii}.fc_print_raw(XMin,XMax,YMin,YMax);     
             end    
         end
+               
+        function SMFS_print_fitted(obj,XMin,XMax,YMin,YMax)
+            % SMFS_print: A function to simply plot all force curves of all
+            % force maps loaded and calssified based on the SMFS Flag
+            % Needed function: obj.presorting
+            
+            if nargin<2
+                XMin= -inf;     % Limit of the X-axis in meters (m)
+                XMax= 10e-9;      % Limit of the X-axis in meters (m)
+                YMin= -inf;     % Limit of the Y-axis in Newtons (N)
+                YMax= 50e-12;      % Limit of the Y-axis in Newtons (N)
+            else
+                
+            end
+            % Figure visibility
+            %set(groot,'defaultFigureVisible','off')      
+            set(groot,'defaultFigureVisible','on')           
+            % Change into the Folder of Interest
+            cd(obj.ExperimentFolder) % Move into the folder 
+            % Create folders for saving the produced figures
+            %foldername='FM_test';    % for debugging
+            foldername='FM_fittted';    % Defines the folder name
+            mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
+            currpath=fullfile(obj.ExperimentFolder,foldername);
+            cd(currpath); 
+            
+            % Loop over the imported force maps
+            for ii=1:obj.NumForceMaps
+            %for ii=70 % Debugging
+               % Command window output
+               sprintf('Force Map No. %d of %d',ii,obj.NumForceMaps) % Gives current Force Map Position
+               % Run the chosen functions
+               obj.FM{ii}.fc_print_fitted(XMin,XMax,YMin,YMax);     
+            end    
+        end
+        
         
         function SMFS_print_sort(obj,StartDate,EndDate,XMin,XMax,YMin,YMax)
             % SMFS_print_sort: A function to plot all force curves of all
@@ -2772,13 +2811,13 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
         function SMFS_testing_function(obj)
             % Function to quickly loop over all force maps for testing and
             % debugging
-             for ii=1:obj.NumForceMaps
-            %for ii=1
+            % for ii=1:obj.NumForceMaps
+            for ii=66
             ii
             %    obj.FM{ii}.fc_test
-             obj.FM{ii}.fc_linear_fit
+           %  obj.FM{ii}.fc_linear_fit
            %    obj.FM{ii}.fc_sinoidal_fit
-                % obj.FM{ii}.fc_pulling_length_MAD
+                 obj.FM{ii}.fc_pulling_length_MAD
             %     obj.FM{ii}.fc_fit_based_yRetData
                  %obj.FM{ii}.fc_fit_based_yData
                   
