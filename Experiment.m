@@ -2278,6 +2278,10 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             h.ReferenceFontSize = 24;
             h.ProfileLineWidth = 3;
             
+            current = what();
+            DefaultPath = current.path;
+            DefType = '*.png';
+            
             h.Fig = figure('Name',sprintf('%s',obj.ExperimentName),...
                 'Units','pixels',...
                 'Position',[200 200 1024 512],...
@@ -3032,10 +3036,21 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             
             function save_figure_to_file(varargin)
                 
-                filter = {'*.png';'*.tif'};
-                [file, path] = uiputfile(filter);
+                filter = {DefType;'*.eps';'*.emf';'*.png';'*.tif';'*.jpg'};
+                Name = split(Class{1}.Name,'.');
+                DefName = Name{1};
+                DefFull = fullfile(DefaultPath,DefName);
+                [file, path] = uiputfile(filter,'Select Format, Name and Location of your figure',DefFull);
+                DefaultPath = path;
                 FullFile = fullfile(path,file);
-                exportgraphics(h.Fig,FullFile,'Resolution',300,'BackgroundColor','current')
+                Split = split(FullFile,'.');
+                DefType = strcat('*.',Split{end});
+                if isequal(Split{end},'eps') || isequal(Split{end},'emf')
+                    exportgraphics(h.Fig,FullFile,'ContentType','vector','Resolution',300,'BackgroundColor','current')
+                else
+                    exportgraphics(h.Fig,FullFile,'Resolution',300,'BackgroundColor','current')
+                end
+                    
             end
             
             function changed_color(varargin)
