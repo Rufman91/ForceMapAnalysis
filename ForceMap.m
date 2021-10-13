@@ -4979,6 +4979,23 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             obj.RescalingConstants(5).exists = true;
             obj.SpringConstant = spring_constant;
             obj.Sensitivity = sensitivity;
+            
+            if obj.RescalingConstants(...
+                    reshape(strcmp({obj.RescalingConstants.ChannelName}, obj.HHType),...
+                    size(obj.RescalingConstants))).exists
+            elseif obj.RescalingConstants(...
+                    reshape(strcmp({obj.RescalingConstants.ChannelName}, 'measuredHeight'),...
+                    size(obj.RescalingConstants))).exists
+                obj.HHType = 'measuredHeight';
+            elseif obj.RescalingConstants(...
+                    reshape(strcmp({obj.RescalingConstants.ChannelName}, 'head-height'),...
+                    size(obj.RescalingConstants))).exists
+                obj.HHType = 'head-height';
+            elseif obj.RescalingConstants(...
+                    reshape(strcmp({obj.RescalingConstants.ChannelName}, 'height'),...
+                    size(obj.RescalingConstants))).exists
+                obj.HHType = 'height';
+            end
         end
         
         function load_force_curves(obj)
@@ -5135,7 +5152,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                     HeightDataDirectory = fullfile(TempFolder,'index',string((CurveNumber-1)),'segments',string(AppRetSwitch),'channels','measuredHeight.dat');
                     obj.HHType = 'measuredHeight';
                 end
-                if ~isfile(HeightDataDirectory) || isequal(obj.HHType,'Height')
+                if ~isfile(HeightDataDirectory) || isequal(obj.HHType,'height')
                     HeightDataDirectory = fullfile(TempFolder,'index',string((CurveNumber-1)),'segments',string(AppRetSwitch),'channels','height.dat');
                     obj.HHType = 'height';
                 end
@@ -5317,6 +5334,13 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             catch ME
                 obj.NeuralNetAccelerator = 'cpu'; % YIKES, get a new system
             end
+            
+        end
+        
+        function reset_selected_and_corrupted_flags(obj)
+            
+            obj.SelectedCurves(:) = 1;
+            obj.CorruptedCurves(:) = 0;
             
         end
         
