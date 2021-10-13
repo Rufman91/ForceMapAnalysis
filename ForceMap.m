@@ -155,6 +155,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
     properties
         % auxiliary properties to facilitate comparing different methods of
         % CP estimation
+        NeuralNetAccelerator
         EModOliverPharr_CNN
         EModOliverPharr_Old
         EModOliverPharr_RoV
@@ -665,6 +666,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             % Default NumPasses = 100
             % NumPasses >= 30 is recommended
             
+            obj.check_for_cuda_capable_gpu_device()
+            
             if nargin < 2
                 runmode = 0;
             elseif isequal(lower(RunMode),'fast')
@@ -735,7 +738,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                             waitbar(1/2,h,'Predicting CP');
                             while CantHandle == true
                                 try
-                                    Ypredicted = predict(NeuralNet,X,'MiniBatchSize',obj.MiniBatchSize,'Acceleration','auto');
+                                    Ypredicted = predict(NeuralNet,X,'MiniBatchSize',obj.MiniBatchSize,'Acceleration','auto',...
+                                        'ExecutionEnvironment',obj.NeuralNetAccelerator);
                                     CantHandle = false;
                                 catch
                                     obj.CPFlag.CNNopt = 0;
@@ -763,7 +767,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                                 waitbar(j/NumPasses,h,sprintf('Predicting CP for %i curves. %i/%i passes done',len,j,NumPasses));
                                 while CantHandle == true
                                     try
-                                        Temp = predict(NeuralNet,X,'MiniBatchSize',obj.MiniBatchSize,'Acceleration','auto');
+                                        Temp = predict(NeuralNet,X,'MiniBatchSize',obj.MiniBatchSize,'Acceleration','auto',...
+                                        'ExecutionEnvironment',obj.NeuralNetAccelerator);
                                         CantHandle = false;
                                     catch
                                         CantHandle = true;
@@ -797,7 +802,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                             waitbar(1/3,h,'Predicting CP, first guess...');
                             while CantHandle == true
                                 try
-                                    Ypredicted = predict(NeuralNet,X,'MiniBatchSize',obj.MiniBatchSize,'Acceleration','auto');
+                                    Ypredicted = predict(NeuralNet,X,'MiniBatchSize',obj.MiniBatchSize,'Acceleration','auto',...
+                                        'ExecutionEnvironment',obj.NeuralNetAccelerator);
                                     CantHandle = false;
                                 catch
                                     obj.CPFlag.CNNopt = 0;
@@ -823,7 +829,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                             CantHandle = true;
                             while CantHandle == true
                                 try
-                                    Ypredicted = predict(NeuralNet,X,'MiniBatchSize',obj.MiniBatchSize,'Acceleration','auto');
+                                    Ypredicted = predict(NeuralNet,X,'MiniBatchSize',obj.MiniBatchSize,'Acceleration','auto',...
+                                        'ExecutionEnvironment',obj.NeuralNetAccelerator);
                                     CantHandle = false;
                                 catch
                                     obj.CPFlag.CNNopt = 0;
@@ -850,7 +857,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                             waitbar(1/3,h,'Predicting CP, first guess...');
                             while CantHandle == true
                                 try
-                                    Ypredicted = predict(NeuralNet,X,'MiniBatchSize',obj.MiniBatchSize,'Acceleration','auto');
+                                    Ypredicted = predict(NeuralNet,X,'MiniBatchSize',obj.MiniBatchSize,'Acceleration','auto',...
+                                        'ExecutionEnvironment',obj.NeuralNetAccelerator);
                                     CantHandle = false;
                                 catch
                                     obj.CPFlag.CNNopt = 0;
@@ -876,7 +884,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                             CantHandle = true;
                             while CantHandle == true
                                 try
-                                    Ypredicted = predict(NeuralNet,X,'MiniBatchSize',obj.MiniBatchSize,'Acceleration','auto');
+                                    Ypredicted = predict(NeuralNet,X,'MiniBatchSize',obj.MiniBatchSize,'Acceleration','auto',...
+                                        'ExecutionEnvironment',obj.NeuralNetAccelerator);
                                     CantHandle = false;
                                 catch
                                     obj.CPFlag.CNNopt = 0;
@@ -902,7 +911,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                             waitbar(1/3,h,sprintf('Predicting CP, first guess...(Partition %i/%i)',BigLoop,NumPartitions));
                             while CantHandle == true
                                 try
-                                    Ypredicted = predict(NeuralNet,X,'MiniBatchSize',obj.MiniBatchSize,'Acceleration','auto');
+                                    Ypredicted = predict(NeuralNet,X,'MiniBatchSize',obj.MiniBatchSize,'Acceleration','auto',...
+                                        'ExecutionEnvironment',obj.NeuralNetAccelerator);
                                     CantHandle = false;
                                 catch
                                     obj.CPFlag.CNNopt = 0;
@@ -932,7 +942,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                             CantHandle = true;
                             while CantHandle == true
                                 try
-                                    Ypredicted = predict(NeuralNet,X,'MiniBatchSize',obj.MiniBatchSize,'Acceleration','auto');
+                                    Ypredicted = predict(NeuralNet,X,'MiniBatchSize',obj.MiniBatchSize,'Acceleration','auto',...
+                                        'ExecutionEnvironment',obj.NeuralNetAccelerator);
                                     CantHandle = false;
                                 catch
                                     obj.CPFlag.CNNopt = 0;
@@ -4452,7 +4463,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 HasFailed = false;
                 while CantHandle == true
                     try
-                        predict(NeuralNet,X,'MiniBatchSize',obj.MiniBatchSize,'Acceleration','auto');
+                        predict(NeuralNet,X,'MiniBatchSize',obj.MiniBatchSize,'Acceleration','auto',...
+                                        'ExecutionEnvironment',obj.NeuralNetAccelerator);
                         CantHandle = false;
                         if DynMBSdone == false
                             if HasFailed == true
@@ -5282,6 +5294,21 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 obj.HHApp = cell(0,0);
                 obj.Ret = cell(0,0);
                 obj.HHRet = cell(0,0);
+            end
+        end
+        
+        function check_for_cuda_capable_gpu_device(obj)
+            % Check if current machine is capable of gpu CUDA accel.
+            try
+                GPU = gpuDevice;
+            catch ME
+                obj.NeuralNetAccelerator = 'cpu'; % YIKES, get a new system
+            end
+            
+            if GPU.DeviceAvailable && GPU.DeviceSupported
+                obj.NeuralNetAccelerator = 'gpu'; % Drake approves
+            else
+                obj.NeuralNetAccelerator = 'cpu'; % YIKES, get a new system
             end
         end
         
