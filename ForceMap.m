@@ -294,6 +294,10 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             Split = split(obj.RawDataFilePath,filesep);
             Folder = fullfile(Split{1:end-1});
             File = Split{end};
+            % If file path had a leading filesep, add it back in
+            if isequal(obj.RawDataFilePath(1),filesep)
+                Folder = strcat(filesep,Folder);
+            end
             cd(Folder)
             obj.OpenZipFile = py.zipfile.ZipFile(File);
             
