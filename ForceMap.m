@@ -5309,15 +5309,15 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             % Check if current machine is capable of gpu CUDA accel.
             try
                 GPU = gpuDevice;
+                if GPU.DeviceAvailable && GPU.DeviceSupported
+                    obj.NeuralNetAccelerator = 'gpu'; % Drake approves
+                else
+                    obj.NeuralNetAccelerator = 'cpu'; % YIKES, get a new system
+                end
             catch ME
                 obj.NeuralNetAccelerator = 'cpu'; % YIKES, get a new system
             end
             
-            if GPU.DeviceAvailable && GPU.DeviceSupported
-                obj.NeuralNetAccelerator = 'gpu'; % Drake approves
-            else
-                obj.NeuralNetAccelerator = 'cpu'; % YIKES, get a new system
-            end
         end
         
     end
