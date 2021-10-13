@@ -448,7 +448,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                     elseif E.BigDataFlag && E.PythonLoaderFlag
                         E.FM{i}.DataStoreFolder = fullfile(Path,Split{end});
                         OldFilePath = split(E.FM{i}.RawDataFilePath,filesep);
-                        E.FM{i}.RawDataFilePath = fullfile(E.FM{i}.DataStoreFolder,OldFilePath{end});
+                        E.FM{i}.RawDataFilePath = {fullfile(E.FM{i}.DataStoreFolder,OldFilePath{end})};
                     end
                     E.FM{i}.Folder = FMFolder;
                     E.ForceMapFolders{i} = FMFolder;
