@@ -712,11 +712,15 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                     Mem = memory;
                     MaxArraySize = Mem.MaxPossibleArrayBytes;
                 else
-                    [r,w] = unix('free | grep Mem');
-                    stats = str2double(regexp(w, '[0-9]*', 'match'));
-                    memsize = stats(1)/1e6;
-                    freemem = (stats(3)+stats(end))/1e6;
-                    MaxArraySize = freemem*10^9;
+                    try
+                        [r,w] = unix('free | grep Mem');
+                        stats = str2double(regexp(w, '[0-9]*', 'match'));
+                        memsize = stats(1)/1e6;
+                        freemem = (stats(3)+stats(end))/1e6;
+                        MaxArraySize = freemem*10^9;
+                    catch
+                        MaxArraySize = 1e9;
+                    end
                 end
                 if sum(runmode==[1 3 4],'all') >= 1
                     MaxPartitionSize = round(MaxArraySize/(ImgSize(1)*ImgSize(2)*ImgSize(3)*NumPasses));
