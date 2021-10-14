@@ -2476,298 +2476,197 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
 %         end
         end
                        
-        function fc_pulling_length_sigma(obj)
-            sigma=1;
-            for kk=1:obj.NCurves
-            %for ii=55 % debugging
-                if ~obj.SMFSFlag.Uncorrupt(jj) || ~obj.SMFSFlag.RetMinCrit(jj)     % Exclude corrupted force curves from the analysis     
-                continue
+        function fc_snap_in_length_MAD(obj)
+            % Fct determines the snap-in length using a moving median absolute deviation
+            % Define variables
+            BeforePercentage=0.1;
+            AfterPercentage=0.1;
+            yLimit1=0.075;
+            % For loop
+            for jj=1:obj.NCurves
+                %% Debugging
+                %for jj=40 % for debugging
+                %sprintf('Force curve No. %d',jj) % Gives current
+                % Force curve for debugging
+                if ~obj.SMFSFlag.Uncorrupt(jj) || ~obj.SMFSFlag.AppMinCrit(jj)     % Exclude corrupted force curves or force curves showing no snap-in from the analysis
+                    continue
                 end
                 % Allocate data
-                xApp=obj.HHApp{kk}-obj.CP_HardSurface(kk);
-                xRet=obj.HHRet{kk}-obj.CP_HardSurface(kk);
-                if obj.SMFSFlag.Fit(kk)==1
-                yApp=obj.BasedApp{kk};
-                yRet=obj.BasedRet{kk};
-                else
-                yApp=obj.BasedApp{kk};
-                yRet=obj.BasedRetCorr2{kk};
-                end
-
-                % Find the index and determine the pulling length
-                if obj.SMFSFlag.Fit(kk)==1
-                obj.PullingLengthIdx(kk)=find(yRet<obj.yRetFitMean(kk)-obj.yRetFitStd(kk)*sigma,1,'last'); % Finds the index of the value that fulfils the condition         
-                obj.PullingLength(kk)=abs(xRet(obj.PullingLengthIdx(kk))); % Corresponding x-value of the index
-                else
-                obj.PullingLengthIdx(kk)=find(yRet<obj.CorrMeanRet(kk)-obj.CorrStdApp(kk)*sigma,1,'last'); % Finds the index of the value that fulfils the condition         
-                obj.PullingLength(kk)=abs(xRet(obj.PullingLengthIdx(kk))); % Corresponding x-value of the index
-                end                 
-            end           
-            obj.FMPullingLengthMean=mean(obj.PullingLength);
-            obj.FMPullingLengthMin=min(obj.PullingLength);
-            obj.FMPullingLengthMax=max(obj.PullingLength);
-            
-%             %% Appendix
-%             close all
-%             % Define variables
-%             qq=1;
-%             % Allocate data
-%             xApp=obj.THApp{qq}-obj.CP_HardSurface(qq);
-%             xRet=obj.THRet{qq}-obj.CP_HardSurface(qq);
-%             yApp=obj.BasedApp{qq};
-%             yRet=obj.BasedRetCorr2{qq};    
-%             % Graphical preview
-%             h_fig=figure(1);
-%             h_fig.Color='white'; % changes the background color of the figure
-%             h_fig.Units='normalized'; % Defines the units
-%             h_fig.OuterPosition=[0 0 1 1];% changes the size of the to the whole screen
-%             h_fig.PaperOrientation='landscape';
-%             %% Plotting the tiles
-%             t = tiledlayout(2,2);
-%             %t.TileSpacing = 'compact';
-%             %t.Padding = 'compact';
-%             t.TileSpacing = 'none'; % To reduce the spacing between the tiles
-%             t.Padding = 'none'; % To reduce the padding of perimeter of a tile
-%             nexttile
-%             hold on
-%             grid on
-%             plot(xApp,yApp,'b');
-%             plot(xRet,yRet,'r');
-%             nexttile
-%             hold on
-%             grid on
-%             plot(xApp,yApp,'b');
-%             plot(xRet,yRet,'r');
-%             plot(obj.THRet{qq}(obj.PullingLengthIdx(qq))-obj.CP_HardSurface(qq),obj.BasedRetCorr2{qq}(obj.PullingLengthIdx(qq)),'*','MarkerSize',10,'MarkerEdgeColor','g')              
-        end
-        
-        function fc_snap_in_length_MAD(obj)
-             % Fct determines the snap-in length using a moving median absolute deviation         
-             % Define variables
-             beforePts=75;
-             afterPts=75;
-             movWindow=[beforePts afterPts]; % moving data point window for the moving median absolute deviation        
-             yLimit1=0.075; 
-             
-             for jj=1:obj.NCurves
-             %% Debugging
-             %for jj=40 % for debugging
-             %sprintf('Force curve No. %d',jj) % Gives current Force curve
-            % for debugging
-                if ~obj.SMFSFlag.Uncorrupt(jj) || ~obj.SMFSFlag.AppMinCrit(jj)     % Exclude corrupted force curves or force curves showing no snap-in from the analysis     
-                continue
-                end
-                % Allocate data               
-                xApp=obj.HHApp{jj}-obj.CP_HardSurface(jj); 
+                xApp=obj.HHApp{jj}-obj.CP_HardSurface(jj);
                 yApp=obj.BasedApp{jj};
-                % Determine the pulling length index 
-                normApp=normalize(flip(yApp));  % Normalize and flip the data             
-                normAppMAD = movmad(normApp,movWindow); % Apply the moving median absolute deviation                           
-                Peak1=find(normAppMAD>yLimit1,1,'last'); % Find the index in the data fulfilling the condition
-                if isempty(Peak1)  % If condition is fulfilled stop function and return to calling function 
+                % Determine the snap-in index
+                BeforePts=round(length(yApp)*BeforePercentage);
+                AfterPts=round(length(yApp)*AfterPercentage);
+                MovWindow=[BeforePts AfterPts]; % moving data point window for the moving median absolute deviation
+                NormApp=normalize(flip(yApp));  % Normalize and flip the data
+                NormAppMAD = movmad(NormApp,MovWindow); % Apply the moving median absolute deviation
+                PeakIdx=find(NormAppMAD>yLimit1,1,'last'); % Find the index in the data fulfilling the condition
+                if isempty(PeakIdx)  % If condition is fulfilled stop function and return to calling function
                     return
                 end
-                obj.SnapInIdx(jj)=length(yApp)-Peak1; % Correct for the data the peak index is based on by substracting from the number of data points               
+                obj.SnapInIdx(jj)=length(yApp)-PeakIdx; % Correct for the data the peak index is based on by substracting from the number of data points
                 obj.SnapInLength(jj)=abs(xApp(obj.SnapInIdx(jj))); % Corresponding x-value of the index
+                %                         %% Debbuging figure
+                %                         % Define variables for the figure name
+                %                         ExtendVelocityConvert=num2str(obj.ExtendVelocity*1e9);
+                %                         RetractVelocityConvert=num2str(obj.RetractVelocity*1e9);
+                %                         HoldingTime=num2str(obj.HoldingTime);
+                %                         % Classification criteria
+                %                         figname=strcat(obj.Date,{'_'},obj.Time,{'_'},obj.ID,{'_'},obj.Substrate,{'_'},obj.EnvCond,{'_'},obj.Linker,{'_'},obj.Chipbox,{'_'},obj.ChipCant,{'_'},ExtendVelocityConvert,{'_'},RetractVelocityConvert,{'_'},HoldingTime);
+                %                         figname=char(figname);
+                %                         % Figure
+                %                         h_fig=figure(jj);
+                %                         h_fig.Color='white'; % changes the background color of the figure
+                %                         h_fig.Units='normalized'; % Defines the units
+                %                         h_fig.OuterPosition=[0 0 1 1];% changes the size of the to the whole screen
+                %                         h_fig.PaperOrientation='landscape';
+                %                         subplot(3,1,1)
+                %                         hold on
+                %                         plot(xApp,yApp)
+                %                         plot(xApp(obj.SnapInIdx(jj)),yApp(obj.SnapInIdx(jj)),'rx','MarkerSize',20)
+                %                         hold off
+                %                         title('Force-distance curve')
+                %                         ax1=gca;
+                %                         ax1.XLim = [-inf inf];
+                %                         ax1.YLim = [-inf inf];
+                %                         ax1.XLabel.String = 'Tip-sample seperation  (m)';
+                %                         ax1.YLabel.String = 'Force (N)';
+                %                         subplot(3,1,2)
+                %                         hold on
+                %                         plot(NormApp)
+                %                         plot(PeakIdx,NormApp(PeakIdx),'rx','MarkerSize',20)
+                %                         hold off
+                %                         title('flipped normalized approach data')
+                %                         ax2=gca;
+                %                         ax2.XLim = [0 inf];
+                %                         ax2.YLim = [-inf 1];
+                %                         ax2.XLabel.String = 'Index (1)';
+                %                         ax2.YLabel.String = '';
+                %                         subplot(3,1,3)
+                %                         hold on
+                %                         plot(NormAppMAD)
+                %                         plot(PeakIdx,NormAppMAD(PeakIdx),'rx','MarkerSize',20)
+                %                         hold off
+                %                         title('MAD data')
+                %                         ax3=gca;
+                %                         ax3.XLim = [0 inf];
+                %                         ax3.YLim = [0 0.15];
+                %                         ax3.XLabel.String = 'Index (1)';
+                %                         ax3.YLabel.String = '';
+                %                         %% Save figures
+                %                         %%% Define the name for the figure title
+                %                         partname=sprintf('-Fc %d',jj);
+                %                         % fullname=sprintf('%s%s',figname,partname);
+                %                         fullname=sprintf('%s%s',figname,partname);
+                %                         %%% Save the current figure in the current folder
+                %                         print(gcf,fullname,'-dpng');
                 % Flag
                 obj.SMFSFlag.SnapIn(jj)=1;
-             end
-            % Allocate data  
+            end
+            close all
+            % Allocate data
             obj.FMSnapInMean=mean(obj.PullingLength);
             obj.FMSnapInMin=min(obj.PullingLength);
             obj.FMSnapInMax=max(obj.PullingLength);
-        
-             %% Appendix
-%            close all
-%             % Graphical preview
-%             % Figure 1
-%              for ii=1:obj.NCurves
-%                 h_fig=figure(1);
-%                 h_fig.Color='white'; % changes the background color of the figure
-%                 h_fig.Units='normalized'; % Defines the units
-%                 h_fig.OuterPosition=[0 0 1 1];% changes the size of the to the whole screen
-%                 h_fig.PaperOrientation='landscape';
-%                 subplot(3,1,1)
-%                 hold on
-%                 plot(flip(yApp))
-%                 plot(obj.SnapInIdx(ii),yApp(obj.SnapInIdx(ii)),'kx','MarkerSize',20)
-%                 plot(Peak1,yApp(Peak1),'r*','MarkerSize',20)
-%                 hold off
-%                 ax21=gca;
-%              %   ax21.XLim = [100 inf];
-%              %   ax21.YLim = [-inf inf];
-%                 subplot(3,1,2)
-%                 hold on
-%                 plot(xApp,flip(yApp))
-%                 plot(xApp(obj.SnapInIdx(ii)),yApp(obj.SnapInIdx(ii)),'kx','MarkerSize',20)
-%                 plot(xApp(Peak1),yApp(Peak1),'r*','MarkerSize',20)
-%                 hold off
-%                 ax22=gca;
-%                % ax22.XLim = [-inf inf];
-%                % ax22.YLim = [0 2];
-%                 subplot(3,1,3)
-%                 hold on
-%                 plot(normAppMAD)
-%                 plot(Peak1,normAppMAD(Peak1),'r*','MarkerSize',20)
-%                 hold off
-%                 ax23=gca;
-%                % ax23.XLim = [-inf inf];
-%                % ax23.YLim = [0 2];
-%                 drawnow     
-%                 pause(3)
-%                 close figure 1
-%              end
-%           %  Figure 2
-%            %  Test different windows
-%                for jj=1:obj.NCurves
-%                   movWindow1=[50 50]; % moving data point window for the moving median absolute deviation      
-%                   normAppMAD1{jj} = movmad(normApp{jj},movWindow1); % Apply the moving median absolute deviation   
-%                   Peak2{jj}=find(normAppMAD1{jj}>yLimit1,1,'last'); % Find the index in the data fulfilling the condition
-%                   SnapInIdx(jj)=length(yApp{jj})-Peak2{jj}; % Correct for the data the peak index is based on by substracting from the number of data points                  
-%                end
-%               for ii=1:obj.NCurves
-%                 h_fig=figure(2);
-%                 h_fig.Color='white'; % changes the background color of the figure
-%                 h_fig.Units='normalized'; % Defines the units
-%                 h_fig.OuterPosition=[0 0 1 1];% changes the size of the to the whole screen
-%                 h_fig.PaperOrientation='landscape';
-%                 subplot(3,1,1)
-%                 hold on
-%                 plot(flip(yApp{ii}))              
-%              %   plot(obj.SnapInIdx(ii),flip(yApp{ii}(obj.SnapInIdx(ii))),'kx','MarkerSize',20)
-%              %   plot(SnapInIdx(ii),flip(yApp{ii}(SnapInIdx(ii))),'r*','MarkerSize',20)
-%                 hold off
-%                 ax21=gca;
-%                 ax21.XLim = [-inf inf];
-%                 ax21.YLim = [-inf inf];
-%                 subplot(3,1,2)
-%                 hold on
-%                 plot(normAppMAD{ii})
-%                 plot(Peak1{ii},normAppMAD{ii}(Peak1{ii}),'kx','MarkerSize',20)
-%                 hold off
-%                 ax22=gca;
-%                 ax22.XLim = [-inf inf];
-%                 ax22.YLim = [0 0.7];
-%                 subplot(3,1,3)
-%                 hold on
-%                 plot(normAppMAD1{ii})
-%                 plot(Peak2{ii},normAppMAD1{ii}(Peak2{ii}),'kx','MarkerSize',20)
-%                 hold off
-%                 ax23=gca;
-%                 ax23.XLim = [-inf inf];
-%                 ax23.YLim = [0 0.7];
-%                 drawnow     
-%                 pause(3)
-%                 close figure 2
-%              end
-            
         end
-       
+        
         function fc_pulling_length_MAD(obj)
-                      
-             % Define variables
-             beforePts=75;
-             afterPts=75;
-             movWindow=[beforePts afterPts]; % moving data point window for the moving median absolute deviation         
-             yLimit1=0.05; 
-             xRange=50e-9; % 50 nm
-             % For loop
-             for jj=1:obj.NCurves
-              %% Debugging
-             %for jj=21 % for debugging
-             % sprintf('Force curve No. %d',ii) % Gives current Force curve
-             % for debugging
-                if ~obj.SMFSFlag.Uncorrupt(jj) || ~obj.SMFSFlag.RetMinCrit(jj)     % Exclude corrupted force curves from the analysis     
-                continue
+            
+            % Define variables
+            BeforePercentage=0.01;
+            AfterPercentage=0.01;
+            yLimit1=0.05;
+            % For loop
+            for jj=1:obj.NCurves
+                %% Debugging
+                %for jj=6 % for debugging
+                % sprintf('Force curve No. %d',ii) % Gives current Force curve
+                % for debugging
+                if ~obj.SMFSFlag.Uncorrupt(jj) || ~obj.SMFSFlag.RetMinCrit(jj)     % Exclude corrupted force curves from the analysis
+                    continue
                 end
                 % Allocate data
                 xRet=obj.HHRet{jj}-obj.CP_HardSurface(jj);
                 yRet=obj.BasedRet{jj};
-                % Determine the pulling length index 
-                normRet=normalize(flip(yRet));  % Normalize and flip the data             
-                normRetMAD= movmad(normRet,movWindow); % Apply the moving median absolute deviation                 
-                PeakIdx=find(normRetMAD>yLimit1,1,'first'); % Find the pulling length index
-                % Before pulling length range
-                xBeforePt=abs(xRet(PeakIdx))-xRange; % Define the end data point of the search range 
-                BeforeIdx=find(abs(xRet)>abs(xBeforePt),1,'first'); %  Find the corresponging index to the end data point
-                BeforeSelLogical=normRetMAD(BeforeIdx:PeakIdx)>yLimit1;
-                    % While loop to optimize the pulling length search
-                    while nnz(BeforeSelLogical)~=0
-                    BeforeIdxSel=find(flip(BeforeSelLogical)==1,1,'first'); % Find the index in the data fulfilling the condition 
-                    PeakIdx=PeakIdx-BeforeIdxSel;
-                    xBeforePt=abs(xRet(PeakIdx))-xRange; % Define the end data point of the search range 
-                    BeforeIdx=find(abs(xRet)>abs(xBeforePt),1,'first'); %  Find the corresponging index to the end data point
-                    BeforeSelLogical=normRetMAD(BeforeIdx:PeakIdx)>yLimit1;    
-                    end 
+                % Determine the pulling length index
+                BeforePts=round(length(yRet)*BeforePercentage);
+                AfterPts=round(length(yRet)*AfterPercentage);
+                MovWindow=[BeforePts AfterPts]; % moving data point window for the moving median absolute deviation
+                NormRet=normalize(flip(yRet));  % Normalize and flip the data
+                NormRetMAD= movmad(NormRet,MovWindow); % Apply the moving median absolute deviation
+                PeakIdx=find(NormRetMAD>yLimit1,1,'first'); % Find the pulling length index
+                % Allocate data
                 obj.PullingLengthIdx(jj)=length(yRet)-PeakIdx; % Correct for the flipped data the peak index is based on by substracting from the number of data points
                 obj.PullingLength(jj)=abs(xRet(obj.PullingLengthIdx(jj))); % Corresponding x-value of the index
-                % Flag 
+                %% Debugging figure
+                %                 % Define variables for the figure name
+                %                 ExtendVelocityConvert=num2str(obj.ExtendVelocity*1e9);
+                %                 RetractVelocityConvert=num2str(obj.RetractVelocity*1e9);
+                %                 HoldingTime=num2str(obj.HoldingTime);
+                %                 % Classification criteria
+                %                 figname=strcat(obj.Date,{'_'},obj.Time,{'_'},obj.ID,{'_'},obj.Substrate,{'_'},obj.EnvCond,{'_'},obj.Linker,{'_'},obj.Chipbox,{'_'},obj.ChipCant,{'_'},ExtendVelocityConvert,{'_'},RetractVelocityConvert,{'_'},HoldingTime);
+                %                 figname=char(figname);
+                %                 % Figure
+                %                 h_fig=figure(jj);
+                %                 h_fig.Color='white'; % changes the background color of the figure
+                %                 h_fig.Units='normalized'; % Defines the units
+                %                 h_fig.OuterPosition=[0 0 1 1];% changes the size of the to the whole screen
+                %                 h_fig.PaperOrientation='landscape';
+                %                 subplot(3,1,1)
+                %                 hold on
+                %                 plot(xRet,yRet)
+                %                 plot(xRet(obj.PullingLengthIdx(jj)),yRet(obj.PullingLengthIdx(jj)),'rx','MarkerSize',20)
+                %                 hold off
+                %                 title('Force-distance curve')
+                %                 ax1=gca;
+                %                 ax1.XLim = [-inf inf];
+                %                 ax1.YLim = [-inf inf];
+                %                 ax1.XLabel.String = 'Tip-sample seperation  (m)';
+                %                 ax1.YLabel.String = 'Force (N)';
+                %                 subplot(3,1,2)
+                %                 hold on
+                %                 plot(NormRet)
+                %                 plot(PeakIdx,NormRet(PeakIdx),'rx','MarkerSize',20)
+                %                 hold off
+                %                 title('flipped normalized retention data')
+                %                 ax2=gca;
+                %                 ax2.XLim = [100 inf];
+                %                 ax2.YLim = [-inf 1];
+                %                 ax2.XLabel.String = 'Index (1)';
+                %                 ax2.YLabel.String = '';
+                %                 subplot(3,1,3)
+                %                 hold on
+                %                 plot(NormRetMAD)
+                %                 plot(PeakIdx,NormRetMAD(PeakIdx),'rx','MarkerSize',20)
+                %                 hold off
+                %                 title('MAD data')
+                %                 ax3=gca;
+                %                 ax3.XLim = [100 inf];
+                %                 ax3.YLim = [0 0.15];
+                %                 ax3.XLabel.String = 'Index (1)';
+                %                 ax3.YLabel.String = '';
+                %                 %% Save figures
+                %                 %%% Define the name for the figure title
+                %                 partname=sprintf('-Fc %d',jj);
+                %                 % fullname=sprintf('%s%s',figname,partname);
+                %                 fullname=sprintf('%s%s',figname,partname);
+                %                 %%% Save the current figure in the current folder
+                %                 print(gcf,fullname,'-dpng');
+                % Flag
                 if obj.RetIdx1(jj)>obj.PullingLengthIdx(jj)
                     obj.SMFSFlag.LengthRequisite(jj)=0;
                 else
                     obj.SMFSFlag.LengthRequisite(jj)=1;
                 end
                 obj.SMFSFlag.PullingLength(jj)=1;
-             end           
-            % Allocate data  
+            end
+            close all
+            % Allocate data
             obj.FMPullingLengthMean=mean(obj.PullingLength);
             obj.FMPullingLengthMin=min(obj.PullingLength);
             obj.FMPullingLengthMax=max(obj.PullingLength);
-        
-%              %% Appendix
-%             close all
-%              % Graphical preview
-%              for jj=1:obj.NCurves
-%                 %for jj=12 % for debugging
-%                 sprintf('Force curve No. %d',jj) % Gives current Force curve for debugging
-%                  % Allocate data
-%                 xRet=obj.HHRet{jj}-obj.CP_HardSurface(jj);
-%                 yRet=obj.BasedRet{jj};
-%                 h_fig=figure(1);
-%                 h_fig.Color='white'; % changes the background color of the figure
-%                 h_fig.Units='normalized'; % Defines the units
-%                 h_fig.OuterPosition=[0 0 1 1];% changes the size of the to the whole screen
-%                 h_fig.PaperOrientation='landscape';
-%                 subplot(3,1,1)  
-%                 hold on
-%                 plot(xRet,yRet)
-%                 plot(xRet(obj.PullingLengthIdx(jj)),yRet(obj.PullingLengthIdx(jj)),'rx','MarkerSize',20)
-%                 hold off
-%                 title('Force-distance curve')
-%                 ax1=gca;
-%                 ax1.XLim = [-inf inf];
-%                 ax1.YLim = [-inf inf];
-%                 ax1.XLabel.String = 'Tip-sample seperation  (m)';
-%                 ax1.YLabel.String = 'Force (N)';                
-%                 subplot(3,1,2)
-%                 hold on
-%                 plot(normRet)
-%                 plot(PeakIdx,normRet(PeakIdx),'rx','MarkerSize',20)
-%                 hold off              
-%                 title('flipped normalized retention data')
-%                 ax2=gca;
-%                 ax2.XLim = [100 inf];
-%                 ax2.YLim = [-inf 0.5];
-%                 ax2.XLabel.String = 'Index (1)';
-%                 ax2.YLabel.String = 'Force (N)';
-%                 subplot(3,1,3)
-%                 hold on
-%                 plot(normRetMAD)
-%                 plot(PeakIdx,normRetMAD(PeakIdx),'rx','MarkerSize',20)
-%                 hold off
-%                 title('MAD data')
-%                 ax2=gca;
-%                 ax2.XLim = [100 inf];
-%                 ax2.YLim = [0 0.15];
-%                 ax2.XLabel.String = 'Index (1)';
-%                 ax2.YLabel.String = 'Force (N)';           
-%                 drawnow     
-%                 pause(3)
-%                 close figure 1
-%               end
         end
-          
-            
+        
         function fc_adh_force_max(obj)
             % Function to find the maximum adhesion force value in the
             % approach and retraction data of a force curve
@@ -2853,111 +2752,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
 %             plot(xApp(obj.AdhForceMaxAppIdx(qq)),yApp(obj.AdhForceMaxAppIdx(qq)),'*','MarkerSize',10,'MarkerEdgeColor','m')              
        
         end
-        
-        function fc_adhesion_energy_threshold(obj)
-            % Determine the adhesion energy using a predefined force
-            % threshold to distinguish interactions from background noise
-            
-            %% Loop over all force curves
-            for kk=1:obj.NCurves
-            %for ii=97 % For debugging and testing 
-                if ~obj.SMFSFlag.Uncorrupt(kk) || ~obj.SMFSFlag.RetMinCrit(kk) || ~obj.SMFSFlag.LengthRequisite(kk)    % Exclude corrupted force curves from the analysis     
-                continue
-                end            
-                % Allocate data
-                xRet=obj.HHRet{kk}-obj.CP_HardSurface(kk); % Retraction x-data (m): Vertical tip height data corrected by the determined contact point using the hard surface method 
-                xApp=obj.HHApp{kk}-obj.CP_HardSurface(kk); % Retraction x-data (m): Vertical tip height data corrected by the determined contact point using the hard surface method 
-                if obj.SMFSFlag.Fit(kk)==1
-                yApp=obj.BasedApp{kk};
-                yRet=obj.BasedRet{kk};
-                else
-                yApp=obj.BasedApp{kk};
-                yRet=obj.BasedRetCorr2{kk};
-                end
-                % Define variables
-                limit1=0;   % Define the limit
-                % Apply the limit
-                % Approach
-                yApp(yApp>Limit1)=0;
-                yApp(obj.PullingLengthIdx(kk):end)=0; % Set all data points with a higher index (surface distance is higher) than the pulling length index to 0
-                % Retention 
-                yRet(yRet>limit1)=0;  % Set all values above the zero line of the x-axis 0
-                yRet(obj.PullingLengthIdx(kk):end)=0; % Set all data points with a higher index (surface distance is higher) than the pulling length index to 0
-                % Allocate data
-                obj.yRetLim{kk}=yRet; 
-                obj.yAppLim{kk}=yApp; 
-                % Determine the adhesion energy
-                IntApp(kk)=trapz(yApp,xApp); % Integrates over the modified y-retraction data with respect to the corresponding x-retraction data 
-                obj.AppAdhEnergy_IdxMethod(kk)=IntApp(kk);
-                IntRet(kk)=trapz(yRet,xRet); % Integrates over the modified y-retraction data with respect to the corresponding x-retraction data 
-                obj.RetAdhEnergy_IdxMethod(kk)=IntRet(kk);
-            end
-                obj.FMAppAdhEnergyMean=mean(obj.AppAdhEnergy_IdxMethod);
-                obj.FMAppAdhEnergyStd=std(obj.AppAdhEnergy_IdxMethod); 
-                obj.FMRetAdhEnergyMean=mean(obj.RetAdhEnergy_IdxMethod);
-                obj.FMRetAdhEnergyStd=std(obj.RetAdhEnergy_IdxMethod);      
-                      
-%             % %% Appendix
-%             close all
-%             % Testing
-%             % Allocate data
-%             xApp=obj.THApp{ii}-obj.CP_HardSurface(ii); % Approach x-data (m): Vertical tip height data corrected by the determined contact point using the hard surface method 
-%             yApp=obj.BasedApp{ii};             
-%             % Define variables
-%             limit2=-20e-12;  % Define the limit
-%             yRetLimTest=obj.yRetLim{ii};           
-%             yRetLimTest(yRetLimTest>limit2)=0;
-%             yRetLimTest(1:obj.PullingLengthIdx(ii))=-100e-12; % Set all data points with a lower index (surface distance is lower and lies within origin and pulling length) than the pulling length index to a constant value
-%             % Determine the adhesion energy
-%             AdhEne2=trapz(yRetLimTest,xRet); % Integrate the modified retraction data
-%             AdhEneCum2=cumtrapz(yRetLimTest,xRet);
-%             % Graphical preview
-%             h_fig=figure(1);
-%             h_fig.Color='white'; % changes the background color of the figure
-%             h_fig.Units='normalized'; % Defines the units
-%             h_fig.OuterPosition=[0 0 1 1];% changes the size of the to the whole screen
-%             h_fig.PaperOrientation='landscape';
-%             %% Plotting the tiles
-%             t = tiledlayout(2,2);
-%             %t.TileSpacing = 'compact';
-%             %t.Padding = 'compact';
-%             t.TileSpacing = 'none'; % To reduce the spacing between the tiles
-%             t.Padding = 'none'; % To reduce the padding of perimeter of a tile
-%             % Tile 1
-%             nexttile
-%             hold on
-%             grid on
-%             plot(xApp,yApp,'g')
-%             plot(xRet,obj.BasedRet{ii},'m')
-%             plot(xRet,yRetLim,'b')
-%             plot(xRet,yRetLimTest,'k')
-%             plot(xRet(obj.PullingLengthIdx(ii)),yRetLim(obj.PullingLengthIdx(ii)),'*','MarkerSize',10,'MarkerEdgeColor','r')
-%             legend('Approach data','Retraction data, y-data corrected','Retraction data, y-data corrected, limits included','Test Retraction data, y-data corrected, limits included, levelled','Pulling length position')
-%             % Tile 2
-%             nexttile;
-%             plot(AdhEneCum2)
-%             title('Cumulative adhesion energy of "yRetLimTest"')
-%             % Tile 3
-%             nexttile;
-%             hold on
-%             plot(xApp,yApp,'g');
-%             plot(xRet,yRetLimTest,'k');
-%             plot(xRet(obj.PullingLengthIdx(ii)),yRetLim(obj.PullingLengthIdx(ii)),'*','MarkerSize',10,'MarkerEdgeColor','r') 
-%             legend('Approach x-data','Test Retraction x-data corrected, limits included, levelled','Pulling length position')     
-%             % Tile 4
-%             nexttile
-%             hold on
-%             grid on
-%             xlim([-inf 10e-9]) % Define the x axes limits [min max]
-%             ylim([-inf 200e-12]) % Define the y axes limits [min max]
-%             plot(xApp,yApp,'g');
-%             plot(xRet,yRetLim,'b');
-%             area(xRet,obj.BasedRetCorr2{ii},'FaceColor','y')
-%             plot(xRet(obj.PullingLengthIdx(ii)),yRetLim(obj.PullingLengthIdx(ii)),'*','MarkerSize',10,'MarkerEdgeColor','r')
-%             area(xRet(1:obj.PullingLengthIdx(ii)),yRetLim(1:obj.PullingLengthIdx(ii)),'FaceColor','c') % Highlights the area with starting and end points: Pulling length and origin
-%             legend('Approach data','Retraction data, y-data corrected, limits included','Adhesion force based on Retraction data, y-data corrected','Pulling length position','Adhesion force based on Retraction data, y-data corrected, limits included')    
-           end
-        
+       
         function fc_adhesion_energy_idxlength(obj)
             % Determine the adhesion energy using the previous defined pulling length index
             
@@ -3965,13 +3760,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                     ti.Position=[0.5,0.95]; % Position the subplot title within the subplot                                    
                 end
 
-            %% Save figures
-            %%% Define the name for the figure title    
-            partname=sprintf('-p%d',kk);        
-            % fullname=sprintf('%s%s',figname,partname);
-            fullname=sprintf('%s%s',figname,partname);
-            %%% Save the current figure in the current folder
-            print(gcf,fullname,'-dpng'); 
+           
             end
         close Figure 1 Figure 2 Figure 3 Figure 4
         end
@@ -4160,8 +3949,352 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             %%% Save the current figure in the current folder
             print(gcf,fullname,'-dpng');
         end
+        
+       %% SMFS Old functions 
+        function fc_pulling_length_minmax(obj)
             
-                 
+            % Define variables
+            yLimit1=0.05;
+            xRange=50e-9; % 50 nm
+            DataPercentage=0.01;
+            % For loop
+            %for jj=1:obj.NCurves
+            %% Debugging
+            for jj=54 % for debugging
+                % sprintf('Force curve No. %d',ii) % Gives current Force curve
+                % for debugging
+                if ~obj.SMFSFlag.Uncorrupt(jj) || ~obj.SMFSFlag.RetMinCrit(jj)     % Exclude corrupted force curves from the analysis
+                    continue
+                end
+                % Allocate data
+                xRet=obj.HHRet{jj}-obj.CP_HardSurface(jj);
+                yRet=obj.BasedRet{jj};
+                yRetSel=flip(obj.BasedRet{jj});
+                NumPtsSel=round(length(yRetSel)*DataPercentage);
+                Boundary1=NumPtsSel; 
+                yMax1=max(yRetSel(1:Boundary1));
+                yMin1=min(yRetSel(1:Boundary1));
+                Range1=abs(abs(yMax1)-abs(yMin1));
+                Boundary2=Boundary1+NumPtsSel;
+                yMax2=max(yRetSel(Boundary1:Boundary2));
+                yMin2=min(yRetSel(Boundary1:Boundary2));
+                Range2=abs(abs(yMax2)-abs(yMin2));
+                Ratio=Range2/Range1;                
+                while Ratio<3
+                Boundary1=Boundary2;
+                Boundary2=Boundary1+NumPtsSel;
+                yMax1=max(yRetSel(Boundary1:Boundary2));
+                yMin1=min(yRetSel(Boundary1:Boundary2));
+                Range1=abs(abs(yMax1)-abs(yMin1));
+                Boundary1=Boundary2;
+                Boundary2=Boundary1+NumPtsSel;
+                yMax2=max(yRetSel(Boundary1:Boundary2));
+                yMin2=min(yRetSel(Boundary1:Boundary2));
+                Range2=abs(abs(yMax2)-abs(yMin2));
+                Ratio=Range2/Range1;      
+                end
+                yRetWindow=yRetSel(Boundary1:Boundary2);               
+                PeakIdx=find(yRetWindow==yMin2);
+                PeakIdx=Boundary1+PeakIdx-1;
+                
+                obj.PullingLengthIdx(jj)=length(yRetSel)-PeakIdx; % Correct for the flipped data the peak index is based on by substracting from the number of data points
+                obj.PullingLength(jj)=abs(xRet(obj.PullingLengthIdx(jj))); % Corresponding x-value of the index
+               
+                % Define variables for the figure name
+                ExtendVelocityConvert=num2str(obj.ExtendVelocity*1e9);
+                RetractVelocityConvert=num2str(obj.RetractVelocity*1e9);
+                HoldingTime=num2str(obj.HoldingTime);
+                % Classification criteria
+                figname=strcat(obj.Date,{'_'},obj.Time,{'_'},obj.ID,{'_'},obj.Substrate,{'_'},obj.EnvCond,{'_'},obj.Linker,{'_'},obj.Chipbox,{'_'},obj.ChipCant,{'_'},ExtendVelocityConvert,{'_'},RetractVelocityConvert,{'_'},HoldingTime);
+                figname=char(figname);
+                % Figure
+                h_fig=figure(jj);
+                h_fig.Color='white'; % changes the background color of the figure
+                h_fig.Units='normalized'; % Defines the units
+                h_fig.OuterPosition=[0 0 1 1];% changes the size of the to the whole screen
+                h_fig.PaperOrientation='landscape';
+                subplot(2,1,1)
+                hold on
+                plot(xRet,yRetSel)
+                plot(xRet(Boundary1:Boundary2),yRetSel((Boundary1:Boundary2)))
+                plot(xRet(PeakIdx),yRetSel(PeakIdx),'rx','MarkerSize',20)
+                hold off
+                title('Retention data force-distance curve')
+                ax1=gca;
+                ax1.XLim = [-inf inf];
+                ax1.YLim = [-inf inf];
+                ax1.XLabel.String = 'Tip-sample seperation  (m)';
+                ax1.YLabel.String = 'Force (N)';
+                subplot(2,1,2)
+                hold on
+                plot(yRetSel)
+                plot(PeakIdx,yRetSel(PeakIdx),'rx','MarkerSize',20)
+                hold off
+                title('flipped retention data')
+                ax2=gca;
+                ax2.XLim = [0 inf];
+                ax2.YLim = [-inf inf];
+                ax2.XLabel.String = 'Index (1)';
+                ax2.YLabel.String = 'Force (N)';      
+                   
+                %% Save figures
+                %%% Define the name for the figure title    
+                partname=sprintf('-Fc %d',jj);        
+                % fullname=sprintf('%s%s',figname,partname);
+                fullname=sprintf('%s%s',figname,partname);
+                %%% Save the current figure in the current folder
+                print(gcf,fullname,'-dpng'); 
+                
+                % Flag
+                if obj.RetIdx1(jj)>obj.PullingLengthIdx(jj)
+                    obj.SMFSFlag.LengthRequisite(jj)=0;
+                else
+                    obj.SMFSFlag.LengthRequisite(jj)=1;
+                end
+                obj.SMFSFlag.PullingLength(jj)=1;
+            end
+            close all
+            % Allocate data
+            obj.FMPullingLengthMean=mean(obj.PullingLength);
+            obj.FMPullingLengthMin=min(obj.PullingLength);
+            obj.FMPullingLengthMax=max(obj.PullingLength);
+            
+            %% Appendix
+%             close all
+%             % Graphical preview
+%           %  for jj=1:obj.NCurves
+%                 for jj=6% for debugging
+%                 sprintf('Force curve No. %d',jj) % Gives current Force curve for debugging
+%                 % Allocate data
+%                 xRet=obj.HHRet{jj}-obj.CP_HardSurface(jj);
+%                 yRet=obj.BasedRet{jj};
+%                 h_fig=figure(jj);
+%                 h_fig.Color='white'; % changes the background color of the figure
+%                 h_fig.Units='normalized'; % Defines the units
+%                 h_fig.OuterPosition=[0 0 1 1];% changes the size of the to the whole screen
+%                 h_fig.PaperOrientation='landscape';
+%                 subplot(4,1,1)
+%                 hold on
+%                 plot(xRet,yRet)
+%                 plot(xRet(obj.PullingLengthIdx(jj)),yRet(obj.PullingLengthIdx(jj)),'rx','MarkerSize',20)
+%                 hold off
+%                 title('Force-distance curve')
+%                 ax1=gca;
+%                 ax1.XLim = [-inf inf];
+%                 ax1.YLim = [-inf inf];
+%                 ax1.XLabel.String = 'Tip-sample seperation  (m)';
+%                 ax1.YLabel.String = 'Force (N)';
+%                 subplot(4,1,2)
+%                 hold on
+%                 plot(NormRet)
+%                 plot(PeakIdx,NormRet(PeakIdx),'rx','MarkerSize',20)
+%                 hold off
+%                 title('flipped normalized retention data')
+%                 ax2=gca;
+%                 ax2.XLim = [100 inf];
+%                 ax2.YLim = [-inf 1];
+%                 ax2.XLabel.String = 'Index (1)';
+%                 ax2.YLabel.String = 'Force (N)';
+%                 subplot(4,1,3)
+%                 hold on
+%                 plot(NormRetMAD)
+%                 plot(PeakIdx,NormRetMAD(PeakIdx),'rx','MarkerSize',20)
+%                 hold off
+%                 title('MAD data')
+%                 ax3=gca;
+%                 ax3.XLim = [100 inf];
+%                 ax3.YLim = [0 0.15];
+%                 ax3.XLabel.String = 'Index (1)';
+%                 ax3.YLabel.String = 'Force (N)';
+%                 subplot(4,1,4)
+%                 hold on
+%                 plot(DifferentNormRetMAD)
+%                 plot(PeakIdx,DifferentNormRetMAD(PeakIdx),'rx','MarkerSize',20)
+%                 hold off
+%                 title('Differentiated MAD data')
+%                 ax4=gca;
+%                 ax4.XLim = [100 inf];
+%                 ax4.YLim = [-0.1 0.1];
+%                 ax4.XLabel.String = 'Index (1)';
+%                 ax4.YLabel.String = 'Force (N)';
+%                 drawnow
+%                 pause(3)
+%                 close figure 1
+%                 end
+        
+        end
+        
+        function fc_pulling_length_sigma(obj)
+            sigma=1;
+            for kk=1:obj.NCurves
+            %for ii=55 % debugging
+                if ~obj.SMFSFlag.Uncorrupt(jj) || ~obj.SMFSFlag.RetMinCrit(jj)     % Exclude corrupted force curves from the analysis     
+                continue
+                end
+                % Allocate data
+                xApp=obj.HHApp{kk}-obj.CP_HardSurface(kk);
+                xRet=obj.HHRet{kk}-obj.CP_HardSurface(kk);
+                if obj.SMFSFlag.Fit(kk)==1
+                yApp=obj.BasedApp{kk};
+                yRet=obj.BasedRet{kk};
+                else
+                yApp=obj.BasedApp{kk};
+                yRet=obj.BasedRetCorr2{kk};
+                end
+
+                % Find the index and determine the pulling length
+                if obj.SMFSFlag.Fit(kk)==1
+                obj.PullingLengthIdx(kk)=find(yRet<obj.yRetFitMean(kk)-obj.yRetFitStd(kk)*sigma,1,'last'); % Finds the index of the value that fulfils the condition         
+                obj.PullingLength(kk)=abs(xRet(obj.PullingLengthIdx(kk))); % Corresponding x-value of the index
+                else
+                obj.PullingLengthIdx(kk)=find(yRet<obj.CorrMeanRet(kk)-obj.CorrStdApp(kk)*sigma,1,'last'); % Finds the index of the value that fulfils the condition         
+                obj.PullingLength(kk)=abs(xRet(obj.PullingLengthIdx(kk))); % Corresponding x-value of the index
+                end                 
+            end           
+            obj.FMPullingLengthMean=mean(obj.PullingLength);
+            obj.FMPullingLengthMin=min(obj.PullingLength);
+            obj.FMPullingLengthMax=max(obj.PullingLength);
+            
+%             %% Appendix
+%             close all
+%             % Define variables
+%             qq=1;
+%             % Allocate data
+%             xApp=obj.THApp{qq}-obj.CP_HardSurface(qq);
+%             xRet=obj.THRet{qq}-obj.CP_HardSurface(qq);
+%             yApp=obj.BasedApp{qq};
+%             yRet=obj.BasedRetCorr2{qq};    
+%             % Graphical preview
+%             h_fig=figure(1);
+%             h_fig.Color='white'; % changes the background color of the figure
+%             h_fig.Units='normalized'; % Defines the units
+%             h_fig.OuterPosition=[0 0 1 1];% changes the size of the to the whole screen
+%             h_fig.PaperOrientation='landscape';
+%             %% Plotting the tiles
+%             t = tiledlayout(2,2);
+%             %t.TileSpacing = 'compact';
+%             %t.Padding = 'compact';
+%             t.TileSpacing = 'none'; % To reduce the spacing between the tiles
+%             t.Padding = 'none'; % To reduce the padding of perimeter of a tile
+%             nexttile
+%             hold on
+%             grid on
+%             plot(xApp,yApp,'b');
+%             plot(xRet,yRet,'r');
+%             nexttile
+%             hold on
+%             grid on
+%             plot(xApp,yApp,'b');
+%             plot(xRet,yRet,'r');
+%             plot(obj.THRet{qq}(obj.PullingLengthIdx(qq))-obj.CP_HardSurface(qq),obj.BasedRetCorr2{qq}(obj.PullingLengthIdx(qq)),'*','MarkerSize',10,'MarkerEdgeColor','g')              
+        end
+        
+        
+            
+        function fc_adhesion_energy_threshold(obj)
+            % Determine the adhesion energy using a predefined force
+            % threshold to distinguish interactions from background noise
+            
+            %% Loop over all force curves
+            for kk=1:obj.NCurves
+            %for ii=97 % For debugging and testing 
+                if ~obj.SMFSFlag.Uncorrupt(kk) || ~obj.SMFSFlag.RetMinCrit(kk) || ~obj.SMFSFlag.LengthRequisite(kk)    % Exclude corrupted force curves from the analysis     
+                continue
+                end            
+                % Allocate data
+                xRet=obj.HHRet{kk}-obj.CP_HardSurface(kk); % Retraction x-data (m): Vertical tip height data corrected by the determined contact point using the hard surface method 
+                xApp=obj.HHApp{kk}-obj.CP_HardSurface(kk); % Retraction x-data (m): Vertical tip height data corrected by the determined contact point using the hard surface method 
+                if obj.SMFSFlag.Fit(kk)==1
+                yApp=obj.BasedApp{kk};
+                yRet=obj.BasedRet{kk};
+                else
+                yApp=obj.BasedApp{kk};
+                yRet=obj.BasedRetCorr2{kk};
+                end
+                % Define variables
+                limit1=0;   % Define the limit
+                % Apply the limit
+                % Approach
+                yApp(yApp>Limit1)=0;
+                yApp(obj.PullingLengthIdx(kk):end)=0; % Set all data points with a higher index (surface distance is higher) than the pulling length index to 0
+                % Retention 
+                yRet(yRet>limit1)=0;  % Set all values above the zero line of the x-axis 0
+                yRet(obj.PullingLengthIdx(kk):end)=0; % Set all data points with a higher index (surface distance is higher) than the pulling length index to 0
+                % Allocate data
+                obj.yRetLim{kk}=yRet; 
+                obj.yAppLim{kk}=yApp; 
+                % Determine the adhesion energy
+                IntApp(kk)=trapz(yApp,xApp); % Integrates over the modified y-retraction data with respect to the corresponding x-retraction data 
+                obj.AppAdhEnergy_IdxMethod(kk)=IntApp(kk);
+                IntRet(kk)=trapz(yRet,xRet); % Integrates over the modified y-retraction data with respect to the corresponding x-retraction data 
+                obj.RetAdhEnergy_IdxMethod(kk)=IntRet(kk);
+            end
+                obj.FMAppAdhEnergyMean=mean(obj.AppAdhEnergy_IdxMethod);
+                obj.FMAppAdhEnergyStd=std(obj.AppAdhEnergy_IdxMethod); 
+                obj.FMRetAdhEnergyMean=mean(obj.RetAdhEnergy_IdxMethod);
+                obj.FMRetAdhEnergyStd=std(obj.RetAdhEnergy_IdxMethod);      
+                      
+%             % %% Appendix
+%             close all
+%             % Testing
+%             % Allocate data
+%             xApp=obj.THApp{ii}-obj.CP_HardSurface(ii); % Approach x-data (m): Vertical tip height data corrected by the determined contact point using the hard surface method 
+%             yApp=obj.BasedApp{ii};             
+%             % Define variables
+%             limit2=-20e-12;  % Define the limit
+%             yRetLimTest=obj.yRetLim{ii};           
+%             yRetLimTest(yRetLimTest>limit2)=0;
+%             yRetLimTest(1:obj.PullingLengthIdx(ii))=-100e-12; % Set all data points with a lower index (surface distance is lower and lies within origin and pulling length) than the pulling length index to a constant value
+%             % Determine the adhesion energy
+%             AdhEne2=trapz(yRetLimTest,xRet); % Integrate the modified retraction data
+%             AdhEneCum2=cumtrapz(yRetLimTest,xRet);
+%             % Graphical preview
+%             h_fig=figure(1);
+%             h_fig.Color='white'; % changes the background color of the figure
+%             h_fig.Units='normalized'; % Defines the units
+%             h_fig.OuterPosition=[0 0 1 1];% changes the size of the to the whole screen
+%             h_fig.PaperOrientation='landscape';
+%             %% Plotting the tiles
+%             t = tiledlayout(2,2);
+%             %t.TileSpacing = 'compact';
+%             %t.Padding = 'compact';
+%             t.TileSpacing = 'none'; % To reduce the spacing between the tiles
+%             t.Padding = 'none'; % To reduce the padding of perimeter of a tile
+%             % Tile 1
+%             nexttile
+%             hold on
+%             grid on
+%             plot(xApp,yApp,'g')
+%             plot(xRet,obj.BasedRet{ii},'m')
+%             plot(xRet,yRetLim,'b')
+%             plot(xRet,yRetLimTest,'k')
+%             plot(xRet(obj.PullingLengthIdx(ii)),yRetLim(obj.PullingLengthIdx(ii)),'*','MarkerSize',10,'MarkerEdgeColor','r')
+%             legend('Approach data','Retraction data, y-data corrected','Retraction data, y-data corrected, limits included','Test Retraction data, y-data corrected, limits included, levelled','Pulling length position')
+%             % Tile 2
+%             nexttile;
+%             plot(AdhEneCum2)
+%             title('Cumulative adhesion energy of "yRetLimTest"')
+%             % Tile 3
+%             nexttile;
+%             hold on
+%             plot(xApp,yApp,'g');
+%             plot(xRet,yRetLimTest,'k');
+%             plot(xRet(obj.PullingLengthIdx(ii)),yRetLim(obj.PullingLengthIdx(ii)),'*','MarkerSize',10,'MarkerEdgeColor','r') 
+%             legend('Approach x-data','Test Retraction x-data corrected, limits included, levelled','Pulling length position')     
+%             % Tile 4
+%             nexttile
+%             hold on
+%             grid on
+%             xlim([-inf 10e-9]) % Define the x axes limits [min max]
+%             ylim([-inf 200e-12]) % Define the y axes limits [min max]
+%             plot(xApp,yApp,'g');
+%             plot(xRet,yRetLim,'b');
+%             area(xRet,obj.BasedRetCorr2{ii},'FaceColor','y')
+%             plot(xRet(obj.PullingLengthIdx(ii)),yRetLim(obj.PullingLengthIdx(ii)),'*','MarkerSize',10,'MarkerEdgeColor','r')
+%             area(xRet(1:obj.PullingLengthIdx(ii)),yRetLim(1:obj.PullingLengthIdx(ii)),'FaceColor','c') % Highlights the area with starting and end points: Pulling length and origin
+%             legend('Approach data','Retraction data, y-data corrected, limits included','Adhesion force based on Retraction data, y-data corrected','Pulling length position','Adhesion force based on Retraction data, y-data corrected, limits included')    
+           end
+             
         function fc_TipHeight_calculation(obj)
             % Function to determine the TipHeight based on the Head Height
             % and the fit based y data

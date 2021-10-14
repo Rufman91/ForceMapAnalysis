@@ -1613,6 +1613,78 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
         end
         
         
+           function SMFS_print_pulllength(obj)
+            % SMFS_print: A function to simply plot all force curves of all
+            % force maps loaded and calssified based on the SMFS Flag
+            % Needed function: obj.presorting
+            
+            if nargin<2
+                XMin= -inf;     % Limit of the X-axis in meters (m)
+                XMax= 10e-9;      % Limit of the X-axis in meters (m)
+                YMin= -inf;     % Limit of the Y-axis in Newtons (N)
+                YMax= 50e-12;      % Limit of the Y-axis in Newtons (N)
+            else
+                
+            end
+            % Figure visibility
+            set(groot,'defaultFigureVisible','off')      
+            %set(groot,'defaultFigureVisible','on')           
+            % Change into the Folder of Interest
+            cd(obj.ExperimentFolder) % Move into the folder 
+            % Create folders for saving the produced figures
+            %foldername='FM_test';    % for debugging
+            foldername='FM_Pulllength_MAD2';    % Defines the folder name
+            mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
+            currpath=fullfile(obj.ExperimentFolder,foldername);
+            cd(currpath); 
+            
+            % Loop over the imported force maps
+            %for ii=1:obj.NumForceMaps
+            for ii=57:67 % Debugging
+               % Command window output
+               sprintf('Force Map No. %d of %d',ii,obj.NumForceMaps) % Gives current Force Map Position
+               % Run the chosen functions
+               obj.FM{ii}.fc_pulling_length_MAD;     
+            end    
+           end
+       
+        
+           function SMFS_snap_in_length_MAD(obj)
+            % SMFS_print: A function to simply plot all force curves of all
+            % force maps loaded and calssified based on the SMFS Flag
+            % Needed function: obj.presorting
+            
+            if nargin<2
+                XMin= -inf;     % Limit of the X-axis in meters (m)
+                XMax= 10e-9;      % Limit of the X-axis in meters (m)
+                YMin= -inf;     % Limit of the Y-axis in Newtons (N)
+                YMax= 50e-12;      % Limit of the Y-axis in Newtons (N)
+            else
+                
+            end
+            % Figure visibility
+            set(groot,'defaultFigureVisible','off')      
+            %set(groot,'defaultFigureVisible','on')           
+            % Change into the Folder of Interest
+            cd(obj.ExperimentFolder) % Move into the folder 
+            % Create folders for saving the produced figures
+            %foldername='FM_test';    % for debugging
+            foldername='FM_SnapIn_MAD';    % Defines the folder name
+            mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
+            currpath=fullfile(obj.ExperimentFolder,foldername);
+            cd(currpath); 
+            
+            % Loop over the imported force maps
+            for ii=1:obj.NumForceMaps
+            %for ii=57 % Debugging
+               % Command window output
+               sprintf('Force Map No. %d of %d',ii,obj.NumForceMaps) % Gives current Force Map Position
+               % Run the chosen functions
+               obj.FM{ii}.fc_snap_in_length_MAD;
+            end    
+        end
+       
+        
         function SMFS_print_sort(obj,StartDate,EndDate,XMin,XMax,YMin,YMax)
             % SMFS_print_sort: A function to plot all force curves of all
             % force maps sorted by different properties 
@@ -2812,14 +2884,12 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             % Function to quickly loop over all force maps for testing and
             % debugging
             % for ii=1:obj.NumForceMaps
-            for ii=66
+            for ii=57
             ii
             %    obj.FM{ii}.fc_test
-           %  obj.FM{ii}.fc_linear_fit
-           %    obj.FM{ii}.fc_sinoidal_fit
-                 obj.FM{ii}.fc_pulling_length_MAD
-            %     obj.FM{ii}.fc_fit_based_yRetData
-                 %obj.FM{ii}.fc_fit_based_yData
+                 obj.FM{ii}.fc_pulling_length_minmax
+            %     obj.FM{ii}.fc_pulling_length_MAD
+                    
                   
             end                    
             
