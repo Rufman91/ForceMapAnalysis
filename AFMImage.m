@@ -931,16 +931,21 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             end
             
             if isequal(lower(AutoMode),'on')
-                VecImage = reshape(Image,1,[]);
-                Sorted = sort(VecImage,'descend');
-                InvSampleRate = ceil(length(VecImage)/32^2);
-                k = 1;
-                for i=1:InvSampleRate:length(VecImage)
-                    STDLine(k) =  std(Sorted(1:i));
-                    k = k + 1;
+                try
+                    VecImage = reshape(Image,1,[]);
+                    Sorted = sort(VecImage,'descend');
+                    InvSampleRate = ceil(length(VecImage)/32^2);
+                    k = 1;
+                    for i=1:InvSampleRate:length(VecImage)
+                        STDLine(k) =  std(Sorted(1:i));
+                        k = k + 1;
+                    end
+                    Peaks = findpeaks(STDLine);
+                    Thresh = Peaks(end);
+                catch
+                    PercentOfRange = 5;
+                    Thresh = range(Image,'all')*PercentOfRange/100;
                 end
-                Peaks = findpeaks(STDLine);
-                Thresh = Peaks(end);
             else
                 Thresh = range(Image,'all')*PercentOfRange/100;
             end
