@@ -1381,7 +1381,9 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             else
                 KeepFlagged = 'No';
             end
-            
+            % Figure visibility
+            set(groot,'defaultFigureVisible','off')      
+            %set(groot,'defaultFigureVisible','on')  
             % Change into the Folder of Interest
             cd(obj.ExperimentFolder) % Move into the folder
             % Create folders for saving the produced figures
@@ -1485,8 +1487,8 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
           
             
             %% loop
-            %for hh=1:obj.NumForceMaps
-            for hh=17:obj.NumForceMaps % Debugging     
+            for hh=1:obj.NumForceMaps
+            %for hh=17:obj.NumForceMaps % Debugging     
                sprintf('Force Map No. %d of %d',hh,obj.NumForceMaps) % Gives current Force Map Position   
                % Print force curves containing label for the pulling length
                % and colored area for the adhesion energy                              
@@ -1534,7 +1536,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             cd(currpath);
             %% loop
             %for hh=1:obj.NumForceMaps
-            for hh=34:obj.NumForceMaps % Debugging
+            for hh=18:62 % Debugging
             sprintf('Force Map No. %d of %d',hh,obj.NumForceMaps) % Gives current Force Map Position   
             % Determine needed input variable
                NumFcUncorrupt(hh)=nnz(obj.FM{hh}.SMFSFlag.Uncorrupt); % Determine the number of uncorrupted force curves     
@@ -1591,20 +1593,20 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 
             end
             % Figure visibility
-            %set(groot,'defaultFigureVisible','off')      
-            set(groot,'defaultFigureVisible','on')           
+            set(groot,'defaultFigureVisible','off')      
+            %set(groot,'defaultFigureVisible','on')           
             % Change into the Folder of Interest
             cd(obj.ExperimentFolder) % Move into the folder 
             % Create folders for saving the produced figures
-            %foldername='FM_test';    % for debugging
-            foldername='FM_fittted';    % Defines the folder name
+            foldername='FM_test';    % for debugging
+            %foldername='FM_fittted';    % Defines the folder name
             mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
             currpath=fullfile(obj.ExperimentFolder,foldername);
             cd(currpath); 
             
             % Loop over the imported force maps
-            for ii=1:obj.NumForceMaps
-            %for ii=70 % Debugging
+            %for ii=1:obj.NumForceMaps
+            for ii=1 % Debugging
                % Command window output
                sprintf('Force Map No. %d of %d',ii,obj.NumForceMaps) % Gives current Force Map Position
                % Run the chosen functions
@@ -1613,76 +1615,6 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
         end
         
         
-           function SMFS_print_pulllength(obj)
-            % SMFS_print: A function to simply plot all force curves of all
-            % force maps loaded and calssified based on the SMFS Flag
-            % Needed function: obj.presorting
-            
-            if nargin<2
-                XMin= -inf;     % Limit of the X-axis in meters (m)
-                XMax= 10e-9;      % Limit of the X-axis in meters (m)
-                YMin= -inf;     % Limit of the Y-axis in Newtons (N)
-                YMax= 50e-12;      % Limit of the Y-axis in Newtons (N)
-            else
-                
-            end
-            % Figure visibility
-            set(groot,'defaultFigureVisible','off')      
-            %set(groot,'defaultFigureVisible','on')           
-            % Change into the Folder of Interest
-            cd(obj.ExperimentFolder) % Move into the folder 
-            % Create folders for saving the produced figures
-            %foldername='FM_test';    % for debugging
-            foldername='FM_Pulllength_MAD2';    % Defines the folder name
-            mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
-            currpath=fullfile(obj.ExperimentFolder,foldername);
-            cd(currpath); 
-            
-            % Loop over the imported force maps
-            %for ii=1:obj.NumForceMaps
-            for ii=57:67 % Debugging
-               % Command window output
-               sprintf('Force Map No. %d of %d',ii,obj.NumForceMaps) % Gives current Force Map Position
-               % Run the chosen functions
-               obj.FM{ii}.fc_pulling_length_MAD;     
-            end    
-           end
-       
-        
-           function SMFS_snap_in_length_MAD(obj)
-            % SMFS_print: A function to simply plot all force curves of all
-            % force maps loaded and calssified based on the SMFS Flag
-            % Needed function: obj.presorting
-            
-            if nargin<2
-                XMin= -inf;     % Limit of the X-axis in meters (m)
-                XMax= 10e-9;      % Limit of the X-axis in meters (m)
-                YMin= -inf;     % Limit of the Y-axis in Newtons (N)
-                YMax= 50e-12;      % Limit of the Y-axis in Newtons (N)
-            else
-                
-            end
-            % Figure visibility
-            set(groot,'defaultFigureVisible','off')      
-            %set(groot,'defaultFigureVisible','on')           
-            % Change into the Folder of Interest
-            cd(obj.ExperimentFolder) % Move into the folder 
-            % Create folders for saving the produced figures
-            %foldername='FM_test';    % for debugging
-            foldername='FM_SnapIn_MAD';    % Defines the folder name
-            mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
-            currpath=fullfile(obj.ExperimentFolder,foldername);
-            cd(currpath); 
-            
-            % Loop over the imported force maps
-            for ii=1:obj.NumForceMaps
-            %for ii=57 % Debugging
-               % Command window output
-               sprintf('Force Map No. %d of %d',ii,obj.NumForceMaps) % Gives current Force Map Position
-               % Run the chosen functions
-               obj.FM{ii}.fc_snap_in_length_MAD;
-            end    
-        end
        
         
         function SMFS_print_sort(obj,StartDate,EndDate,XMin,XMax,YMin,YMax)
@@ -2838,6 +2770,85 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             PercentCorrupt=100-PercentUncorrupt;
         end
         
+        
+        function SMFS_print_pulllength(obj)
+            % SMFS_print: A function to simply plot all force curves of all
+            % force maps loaded and calssified based on the SMFS Flag
+            % Needed function: obj.presorting
+
+            
+            % Figure visibility
+            %set(groot,'defaultFigureVisible','off')      
+            %set(groot,'defaultFigureVisible','on')           
+            % Change into the Folder of Interest
+            cd(obj.ExperimentFolder) % Move into the folder 
+            % Create folders for saving the produced figures
+            %foldername='FM_test';    % for debugging
+            foldername='FM_Pulllength_MAD2';    % Defines the folder name
+            mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
+            currpath=fullfile(obj.ExperimentFolder,foldername);
+            cd(currpath); 
+            
+            % Loop over the imported force maps
+            %for ii=1:obj.NumForceMaps
+            for ii=57:67 % Debugging
+               % Command window output
+               sprintf('Force Map No. %d of %d',ii,obj.NumForceMaps) % Gives current Force Map Position
+               % Run the chosen functions
+               obj.FM{ii}.fc_pulling_length_MAD;     
+            end    
+           end
+               
+        function SMFS_snap_in_length_MAD(obj)            
+            
+            % Figure visibility
+            set(groot,'defaultFigureVisible','off')      
+            % set(groot,'defaultFigureVisible','on')           
+            % Change into the Folder of Interest
+            cd(obj.ExperimentFolder) % Move into the folder 
+            % Create folders for saving the produced figures
+            %foldername='FM_test';    % for debugging
+            foldername='FM_SnapIn_MAD2';    % Defines the folder name
+            mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
+            currpath=fullfile(obj.ExperimentFolder,foldername);
+            cd(currpath); 
+            
+            % Loop over the imported force maps
+            for ii=1:obj.NumForceMaps
+            %for ii=73:83 % Debugging
+               % Command window output
+               sprintf('Force Map No. %d of %d',ii,obj.NumForceMaps) % Gives current Force Map Position
+               % Run the chosen functions
+               obj.FM{ii}.fc_snap_in_length_MAD;
+            end 
+        end
+    
+        function SMFS_adh_force_max(obj)            
+            
+            % Figure visibility
+            set(groot,'defaultFigureVisible','off')      
+            %set(groot,'defaultFigureVisible','on')           
+            % Change into the Folder of Interest
+            cd(obj.ExperimentFolder) % Move into the folder 
+            % Create folders for saving the produced figures
+            %foldername='FM_test';    % for debugging
+            foldername='FM_Adh_Force';    % Defines the folder name
+            mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
+            currpath=fullfile(obj.ExperimentFolder,foldername);
+            cd(currpath); 
+            
+            % Loop over the imported force maps
+            %for ii=1:obj.NumForceMaps
+            for ii=11:13 % Debugging
+               % Command window output
+               sprintf('Force Map No. %d of %d',ii,obj.NumForceMaps) % Gives current Force Map Position
+               % Run the chosen functions
+               obj.FM{ii}.fc_adh_force_max;
+            end 
+        end
+    
+     
+        
         function SMFS_min_max(obj)
             
 
@@ -2886,8 +2897,8 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             % for ii=1:obj.NumForceMaps
             for ii=57
             ii
-            %    obj.FM{ii}.fc_test
-                 obj.FM{ii}.fc_pulling_length_minmax
+                obj.FM{ii}.fc_test
+             %    obj.FM{ii}.fc_pulling_length_minmax
             %     obj.FM{ii}.fc_pulling_length_MAD
                     
                   
