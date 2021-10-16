@@ -173,6 +173,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
         BasedAppAlign={}   % capacitive-sensor-height approach data in meters with aligned datapoints to the corresponding retraction data
         BasedRetAlign={}   % capacitive-sensor-height retraction data in meters with aligned datapoints to the corresponding approach data
         xAppRetSubstracted={} 
+        xOriRet         % x Origin data
+        yOriRet         % y Origin data
         BasedRetCorr    % BasedRet data corrected based on a selection of the approach data
         BasedRetCorr2   % BasedRet data corrected based on a selection of the retraction data     
         CorrBasedRet    % BasedRet data corrected based on a selection of the approach data
@@ -2205,11 +2207,11 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 % Find retention index corresponding to the approach baseline
                 yAppMean=mean(yApp(LimitIdxApp1:LimitIdxApp2,1)); % Calculate the mean of the difference data
                 RetIdx1=find(yRet<yAppMean,1,'first');
-                xPos1Value=mean(xRet(RetIdx1-1:RetIdx1));
-                yPos1Value=mean(yRet(RetIdx1-1:RetIdx1));
+                obj.xOriRet=mean(xRet(RetIdx1-1:RetIdx1));
+                obj.yOriRet=mean(yRet(RetIdx1-1:RetIdx1));
                 % Concanate generated data with zero as first data value
-                xCat=cat(1,xPos1Value,xRetSel);
-                yCat=cat(1,yPos1Value,yRetSel);
+                xCat=cat(1,xOriRet,xRetSel);
+                yCat=cat(1,yOriRet,yRetSel);
                 % Prepare data
                 [xData, yData] = prepareCurveData(xCat,yCat);
                 % Set up fittype and options.
@@ -2224,11 +2226,10 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 obj.LinFitSSE(kk)=gof.sse;
                 obj.BasedRet{kk}=(yRet-feval(fitresult,xRet))/giga;  % Determine the corresponding y-data of the x retraction data by using the determined fitting coefficients
             end
-
             % Figure loop
             for jj=1:NFigures
-                if  ~obj.DebugFlag.Plot % Suppress plotting
-                    % if  obj.DebugFlag.Plot % Allow plotting
+               % if  ~obj.DebugFlag.Plot % Suppress plotting
+                if  obj.DebugFlag.Plot % Allow plotting
                     continue
                 end
                 % Figure properties
@@ -2253,8 +2254,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                     yRet=obj.BasedRet{oo}*giga;
                     xRetSel=obj.HHRet{oo}*mega;
                     yRetSel=obj.BasedRet{oo}*giga;
-                    xData=obj.LinFitxData(oo);
-                    yData=obj.LinFityData(oo);
+                    xData=obj.LinFitxData{oo};
+                    yData=obj.LinFityData{oo};
                     %% Plot condition
                     %if  ~obj.DebugFlag.Plot % Suppress plotting
                     if  obj.DebugFlag.Plot % Allow plotting
@@ -2296,7 +2297,6 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
            close all
         end
 
-              
         function fc_estimate_cp_hardsurface(obj)
             % contact point estimation for force curves detected on hard
             % surfaces
@@ -2571,17 +2571,20 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             obj.FMSnapInMin=min(obj.SnapInLength);
             obj.FMSnapInMax=max(obj.SnapInLength);
         end
-        
+      
+
         function fc_pulling_length_MAD(obj)
             
             % Define variables
+            DataShareStartRet=0.02; %
+            DataShareEndRet=0.12; %
             BeforePercentage=0.01;
             AfterPercentage=0.01;
-            yLimit1=0.05;
+            LimitFactor=2;
             % For loop
             for jj=1:obj.NCurves
-                %% Debugging
-                %for jj=6 % for debugging
+            %% Debugging
+            %for jj=81 % for debugging
                 % sprintf('Force curve No. %d',ii) % Gives current Force curve
                 % for debugging
                 if ~obj.SMFSFlag.Uncorrupt(jj) || ~obj.SMFSFlag.RetMinCrit(jj)     % Exclude corrupted force curves from the analysis
@@ -2590,13 +2593,24 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 % Allocate data
                 xRet=obj.HHRet{jj}-obj.CP_HardSurface(jj);
                 yRet=obj.BasedRet{jj};
-                % Determine the pulling length index
-                BeforePts=round(length(yRet)*BeforePercentage);
-                AfterPts=round(length(yRet)*AfterPercentage);
+                
+                % Determine the pulling length index                
+                DataPtsRet=size(yRet); % Determine the amount of data points in the force curve
+                LimitIdxRet1=round(DataPtsRet(1)*DataShareStartRet); % Determine the corresponding index
+                LimitIdxRet2=round(DataPtsRet(1)*DataShareEndRet); % Determine the corresponding index
+                BeforePts=round(length(yRet)*BeforePercentage); % Before data points of the moving window
+                AfterPts=round(length(yRet)*AfterPercentage); % After data points of the moving window
                 MovWindow=[BeforePts AfterPts]; % moving data point window for the moving median absolute deviation
                 NormRet=normalize(flip(yRet));  % Normalize and flip the data
-                NormRetMAD= movmad(NormRet,MovWindow); % Apply the moving median absolute deviation
-                PeakIdx=find(NormRetMAD>yLimit1,1,'first'); % Find the pulling length index
+                NormRetMAD=movmad(NormRet,MovWindow); % Apply the moving median absolute deviation
+                NormRetSelMAD=NormRetMAD;                
+                NormRetSelMAD(1:LimitIdxRet1)=[]; % Select defined range of data points
+                NormRetSelMAD(LimitIdxRet2:end)=[]; % Select defined range of data points
+                MaxSelMAD=max(NormRetSelMAD);  % Find the maximun value of the selection
+                PeakSelIdx=find(NormRetSelMAD==MaxSelMAD,1,'first'); % Find the index of the maximum value in the selection
+                PeakSelIdx=PeakSelIdx+LimitIdxRet1; % Correct for the selection to determine the corresponding index in the whole data set
+                yLimit=MaxSelMAD*LimitFactor; % Define selection limit based on the maximum peak of the selection - representing the background
+                PeakIdx=find(NormRetMAD>yLimit,1,'first'); % Find the pulling length index
                 % Flag
                 if obj.RetIdx1(jj)>obj.PullingLengthIdx(jj)
                     obj.SMFSFlag.LengthRequisite(jj)=0;
@@ -2608,8 +2622,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 obj.PullingLengthIdx(jj)=length(yRet)-PeakIdx; % Correct for the flipped data the peak index is based on by substracting from the number of data points
                 obj.PullingLength(jj)=abs(xRet(obj.PullingLengthIdx(jj))); % Corresponding x-value of the index
                 %% Plot condition
-                if  ~obj.DebugFlag.Plot % Suppress plotting
-                    %if  obj.DebugFlag.Plot % Allow plotting
+                %if  ~obj.DebugFlag.Plot % Suppress plotting
+                if  obj.DebugFlag.Plot % Allow plotting
                     continue
                 end
                 % Define variables for the figure name
@@ -2640,10 +2654,11 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 hold on
                 plot(NormRet)
                 plot(PeakIdx,NormRet(PeakIdx),'rx','MarkerSize',20)
+                plot(PeakSelIdx,NormRet(PeakSelIdx),'g*','MarkerSize',20)
                 hold off
                 title('flipped normalized retention data')
                 ax2=gca;
-                ax2.XLim = [100 inf];
+                ax2.XLim = [0 inf];
                 ax2.YLim = [-inf 1];
                 ax2.XLabel.String = 'Index (1)';
                 ax2.YLabel.String = '';
@@ -2651,10 +2666,11 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 hold on
                 plot(NormRetMAD)
                 plot(PeakIdx,NormRetMAD(PeakIdx),'rx','MarkerSize',20)
+                plot(PeakSelIdx,NormRetMAD(PeakSelIdx),'g*','MarkerSize',20)
                 hold off
                 title('MAD data')
                 ax3=gca;
-                ax3.XLim = [100 inf];
+                ax3.XLim = [0 inf];
                 ax3.YLim = [0 0.15];
                 ax3.XLabel.String = 'Index (1)';
                 ax3.YLabel.String = '';
@@ -2672,7 +2688,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             obj.FMPullingLengthMin=min(obj.PullingLength);
             obj.FMPullingLengthMax=max(obj.PullingLength);
         end
-        
+                
+
         function fc_adh_force_max(obj)
             % Function to find the maximum adhesion force value in the
             % approach and retraction data of a force curve
@@ -2892,9 +2909,9 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             % Define variables for the figure name
             ExtendVelocityConvert=num2str(obj.ExtendVelocity*1e9);
             RetractVelocityConvert=num2str(obj.RetractVelocity*1e9);
-            HoldingTime=num2str(obj.HoldingTime);
+            HoldingTimeConvert=num2str(obj.HoldingTime);
             % Classification criteria
-            figname=strcat(obj.Date,{'_'},obj.Time,{'_'},obj.ID,{'_'},obj.Substrate,{'_'},obj.EnvCond,{'_'},obj.Linker,{'_'},obj.Chipbox,{'_'},obj.ChipCant,{'_'},ExtendVelocityConvert,{'_'},RetractVelocityConvert,{'_'},HoldingTime);
+            figname=strcat(obj.Date,{'_'},obj.Time,{'_'},obj.ID,{'_'},obj.Substrate,{'_'},obj.EnvCond,{'_'},obj.Linker,{'_'},obj.Chipbox,{'_'},obj.ChipCant,{'_'},ExtendVelocityConvert,{'_'},RetractVelocityConvert,{'_'},HoldingTimeConvert);
             figname=char(figname);
             %% Define variables for the plot loop
             mm=ceil(sqrt(NumFcMax)); % Variable defines the tiledlayout and thereby the tile arrangement
@@ -2907,7 +2924,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 return
             end
             RemainderMax=mod(NumFcUncorrupt,NumFcMax); % Check for remainder
-            if RemainderMax ~= 0 
+            if RemainderMax ~= 0
                 % Additional variables if there is a remainder
                 oo=round(sqrt(RemainderMax)); % Determine the number of rows in the figure
                 pp=ceil(sqrt(RemainderMax)); % Determine the number of columns in the figure
@@ -2915,8 +2932,6 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             end
             %% figure loop
             for kk=1:NumFigures
-                % Define variables
-                jj=1; % "force curve plotted per figure" variable
                 % Figure
                 h_fig=figure(kk);
                 h_fig.Color='white'; % changes the background color of the figure
@@ -2938,12 +2953,12 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                     end
                     
                     if kk==1
-                        kk=jj;
+                        qq=1;
                     else
-                        kk=jj+mm*nn*(kk-1); % Determines the index of the next force curve to be plotted on the next figure
+                        qq=(kk-1)*mm*nn+1; % Determines the index of the next force curve to be plotted on the next figure
                     end
                     %% Plot loop
-                    for qq=kk:obj.NCurves % Loop over all force curves in the force map
+                    for qq=qq:obj.NCurves % Loop over all force curves in the force map
                         if ww<qq+DiffFc
                             ww=qq+DiffFc;
                         end
@@ -3008,7 +3023,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                             ti=title(sprintf('%i',qq+DiffFc),'Color','k');
                             ti.Units='normalized'; % Set units to 'normalized'
                             ti.Position=[0.5,0.95]; % Position the subplot title within the subplot
-                        else 
+                        else
                             ax=nexttile;
                             ax.XLim = [XMin XMax];
                             ax.YLim = [YMin YMax];
@@ -3058,10 +3073,10 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                             ti.Units='normalized'; % Set units to 'normalized'
                             ti.Position=[0.5,0.95]; % Position the subplot title within the subplot
                         end
-                        if jj == NumFcMax
+                        if qq == NumFcMax*kk
                             break
                         end
-                        jj=jj+1;
+                        %     jj=jj+1;
                     end
                     
                 else % Remainder exisiting
@@ -3079,12 +3094,12 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                         end
                         
                         if kk==1
-                            kk=jj;
+                            qq=1;
                         else
-                            kk=jj+mm*nn*(kk-1);
+                            qq=(kk-1)*mm*nn+1; % Determines the index of the next force curve to be plotted on the next figure
                         end
                         %% Plot loop
-                        for qq=kk:obj.NCurves % Loop over all force curves in the force map
+                        for qq=qq:obj.NCurves % Loop over all force curves in the force map
                             if ww<qq+DiffFc
                                 ww=qq+DiffFc;
                             end
@@ -3118,7 +3133,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                                         plot(obj.HHApp{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc),obj.BasedApp{qq+DiffFc},'Color',RGB1);
                                         plot(obj.HHRet{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc),obj.BasedRet{qq+DiffFc},'Color',RGB2);
                                         plot(obj.HHRet{qq+DiffFc}(obj.PullingLengthIdx(qq+DiffFc))-obj.CP_HardSurface(qq+DiffFc),obj.BasedRet{qq+DiffFc}(obj.PullingLengthIdx(qq+DiffFc)),'d','MarkerSize',14,'MarkerFaceColor',RGB8,'MarkerEdgeColor',RGB8)
-                                          plot(obj.HHRet{qq+DiffFc}(obj.AdhForceMaxRetIdx(qq+DiffFc))-obj.CP_HardSurface(qq+DiffFc),obj.BasedRet{qq+DiffFc}(obj.AdhForceMaxRetIdx(qq+DiffFc)),'h','MarkerSize',10,'MarkerFaceColor',RGB2,'MarkerEdgeColor',RGB2)
+                                        plot(obj.HHRet{qq+DiffFc}(obj.AdhForceMaxRetIdx(qq+DiffFc))-obj.CP_HardSurface(qq+DiffFc),obj.BasedRet{qq+DiffFc}(obj.AdhForceMaxRetIdx(qq+DiffFc)),'h','MarkerSize',10,'MarkerFaceColor',RGB2,'MarkerEdgeColor',RGB2)
                                         plot(obj.HHRet{qq+DiffFc}(obj.AdhForceUnbindingIdx(qq+DiffFc))-obj.CP_HardSurface(qq+DiffFc),obj.BasedRet{qq+DiffFc}(obj.AdhForceUnbindingIdx(qq+DiffFc)),'p','MarkerSize',12,'MarkerFaceColor',RGB13,'MarkerEdgeColor',RGB13)
                                     elseif obj.SMFSFlag.PullingLength(qq+DiffFc)==0 && obj.SMFSFlag.SnapIn(qq+DiffFc)==0 % Force curve posses neither pulling length variables nor snap-in variables
                                         grid on
@@ -3191,10 +3206,10 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                                 ti.Units='normalized'; % Set units to 'normalized'
                                 ti.Position=[0.5,0.95]; % Position the subplot title within the subplot
                             end
-                            if jj == NumFcMax
+                            if qq == NumFcMax*kk
                                 break
                             end
-                            jj=jj+1;
+                            %      jj=jj+1;
                         end
                     else % kk==NumFigures % corresponds to the last figure plotted
                         t = tiledlayout(oo,pp);
@@ -3210,12 +3225,12 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                         end
                         
                         if kk==1
-                            kk=jj;
+                            qq=1;
                         else
-                            kk=jj+mm*nn*(kk-1);
+                            qq=(kk-1)*mm*nn+1; % Determines the index of the next force curve to be plotted on the next figure
                         end
                         %% Plot loop
-                        for qq=kk:obj.NCurves % Loop over all force curves in the force map
+                        for qq=qq:obj.NCurves % Loop over all force curves in the force map
                             if ww<qq+DiffFc
                                 ww=qq+DiffFc;
                             end
@@ -3224,10 +3239,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                                 if ww>qq
                                     DiffFc=ww-qq;
                                 end
-                            end
-                            if qq>NumFcPlot % Stop iteration when all plotable force curves are plotted
-                                break
-                            elseif ww>qq
+                            end                          
+                            if ww>qq
                                 ax=nexttile;
                                 ax.XLim = [XMin XMax];
                                 ax.YLim = [YMin YMax];
@@ -3326,10 +3339,10 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                                 ti.Units='normalized'; % Set units to 'normalized'
                                 ti.Position=[0.5,0.95]; % Position the subplot title within the subplot
                             end
-                            if jj == RemainderReal
+                            if qq == NumFcUncorrupt
                                 break
                             end
-                            jj=jj+1;
+                            %           jj=jj+1;
                         end
                     end
                 end

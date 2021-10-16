@@ -1481,14 +1481,10 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
         function SMFS_analysis(obj)
             % This function allows to analyse different force curve
             % criteria, i.e. pulling length, adhesion energy. 
-            %% Folder
-            % Change into the Folder of Interest
-            
-          
-            
-            %% loop
-            for hh=1:obj.NumForceMaps
-            %for hh=17:obj.NumForceMaps % Debugging     
+           
+            %% Loop
+            %for hh=1:obj.NumForceMaps
+            for hh=40 % Debugging     
                sprintf('Force Map No. %d of %d',hh,obj.NumForceMaps) % Gives current Force Map Position   
                % Print force curves containing label for the pulling length
                % and colored area for the adhesion energy                              
@@ -1529,14 +1525,14 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
         %    set(groot,'defaultFigureVisible','on')
             cd(obj.ExperimentFolder) % Move into the folder
             % Create folders for saving the produced figures
-            %foldername='FM_fcAnalysis';    % for debugging
-            foldername='FM_analysed';    % Defines the folder name
+            foldername='FM_Stress';    % for debugging
+            %foldername='FM_analysed';    % Defines the folder name
             mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
             currpath=fullfile(obj.ExperimentFolder,foldername);
             cd(currpath);
             %% loop
             %for hh=1:obj.NumForceMaps
-            for hh=18:62 % Debugging
+            for hh=41 % Debugging
             sprintf('Force Map No. %d of %d',hh,obj.NumForceMaps) % Gives current Force Map Position   
             % Determine needed input variable
                NumFcUncorrupt(hh)=nnz(obj.FM{hh}.SMFSFlag.Uncorrupt); % Determine the number of uncorrupted force curves     
@@ -2778,20 +2774,20 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
 
             
             % Figure visibility
-            %set(groot,'defaultFigureVisible','off')      
+            set(groot,'defaultFigureVisible','off')      
             %set(groot,'defaultFigureVisible','on')           
             % Change into the Folder of Interest
             cd(obj.ExperimentFolder) % Move into the folder 
             % Create folders for saving the produced figures
             %foldername='FM_test';    % for debugging
-            foldername='FM_Pulllength_MAD2';    % Defines the folder name
+            foldername='FM_Pulllength_MAD3';    % Defines the folder name
             mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
             currpath=fullfile(obj.ExperimentFolder,foldername);
             cd(currpath); 
             
             % Loop over the imported force maps
             %for ii=1:obj.NumForceMaps
-            for ii=57:67 % Debugging
+            for ii=39:43 % Debugging
                % Command window output
                sprintf('Force Map No. %d of %d',ii,obj.NumForceMaps) % Gives current Force Map Position
                % Run the chosen functions
@@ -2846,9 +2842,8 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                obj.FM{ii}.fc_adh_force_max;
             end 
         end
-    
-     
-        
+   
+
         function SMFS_min_max(obj)
             
 
@@ -2895,11 +2890,11 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             % Function to quickly loop over all force maps for testing and
             % debugging
             % for ii=1:obj.NumForceMaps
-            for ii=57
+            for ii=43
             ii
-                obj.FM{ii}.fc_test
+             %   obj.FM{ii}.fc_linear_fit
              %    obj.FM{ii}.fc_pulling_length_minmax
-            %     obj.FM{ii}.fc_pulling_length_MAD
+                 obj.FM{ii}.fc_pulling_length_MAD
                     
                   
             end                    
