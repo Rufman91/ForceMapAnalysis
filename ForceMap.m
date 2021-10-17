@@ -2472,17 +2472,19 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
 %         plot(xRet,obj.BasedRetCorr2{kk},'m');
 %         end
         end
-                       
+        
         function fc_snap_in_length_MAD(obj)
             % Fct determines the snap-in length using a moving median absolute deviation
             % Define variables
-            BeforePercentage=0.1;
-            AfterPercentage=0.1;
-            yLimit1=0.075;
+            WindowBeforePercentage=0.1;
+            WindowAfterPercentage=0.1;
+            DataShareStartApp=0.55; 
+            DataShareEndApp=0.05;
+            LimitFactor=1.5;
             % For loop
-            for jj=1:obj.NCurves
-                %% Debugging
-                %for jj=40 % for debugging
+            %for jj=1:obj.NCurves
+            %% Debugging
+            for jj=9 % for debugging
                 %sprintf('Force curve No. %d',jj) % Gives current
                 % Force curve for debugging
                 if ~obj.SMFSFlag.Uncorrupt(jj) || ~obj.SMFSFlag.AppMinCrit(jj)     % Exclude corrupted force curves or force curves showing no snap-in from the analysis
@@ -2492,12 +2494,22 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 xApp=obj.HHApp{jj}-obj.CP_HardSurface(jj);
                 yApp=obj.BasedApp{jj};
                 % Determine the snap-in index
-                BeforePts=round(length(yApp)*BeforePercentage);
-                AfterPts=round(length(yApp)*AfterPercentage);
+                DataPtsApp=size(yApp); % Determine the amount of data points in the force curve
+                LimitIdxApp1=round(DataPtsApp(1)-DataPtsApp(1)*DataShareStartApp); % Determine the corresponding index
+                LimitIdxApp2=round(DataPtsApp(1)-DataPtsApp(1)*DataShareEndApp); % Determine the corresponding index
+                BeforePts=round(length(yApp)*WindowBeforePercentage);
+                AfterPts=round(length(yApp)*WindowAfterPercentage);
                 MovWindow=[BeforePts AfterPts]; % moving data point window for the moving median absolute deviation
                 NormApp=normalize(flip(yApp));  % Normalize and flip the data
                 NormAppMAD = movmad(NormApp,MovWindow); % Apply the moving median absolute deviation
-                PeakIdx=find(NormAppMAD>yLimit1,1,'last'); % Find the index in the data fulfilling the condition
+                NormAppSelMAD=NormAppMAD;
+                NormAppSelMAD(1:LimitIdxApp1)=[]; % Select defined range of data points
+                NormAppSelMAD(LimitIdxApp2:end)=[]; % Select defined range of data points
+                MaxSelMAD=max(NormAppSelMAD);  % Find the maximun value of the selection
+                PeakSelIdx=find(NormAppSelMAD==MaxSelMAD,1,'first'); % Find the index of the maximum value in the selection
+                PeakSelIdx=PeakSelIdx+LimitIdxApp1; % Correct for the selection to determine the corresponding index in the whole data set
+                yLimit=MaxSelMAD*LimitFactor; % Define selection limit based on the maximum peak of the selection - representing the background
+                PeakIdx=find(NormAppMAD>yLimit,1,'last'); % Find the index in the data fulfilling the condition
                 if isempty(PeakIdx)  % If condition is fulfilled stop function and return to calling function
                     return
                 end
@@ -2507,8 +2519,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 obj.SnapInIdx(jj)=length(yApp)-PeakIdx; % Correct for the data the peak index is based on by substracting from the number of data points
                 obj.SnapInLength(jj)=abs(xApp(obj.SnapInIdx(jj))); % Corresponding x-value of the index
                 %% Plot condition
-                if  ~obj.DebugFlag.Plot % Suppress plotting
-                %if  obj.DebugFlag.Plot % Allow plotting
+                %if  ~obj.DebugFlag.Plot % Suppress plotting
+                if  obj.DebugFlag.Plot % Allow plotting
                         continue
                 end              
                 % Define variables for the figure name
@@ -2539,6 +2551,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 hold on
                 plot(NormApp)
                 plot(PeakIdx,NormApp(PeakIdx),'rx','MarkerSize',20)
+                plot(PeakSelIdx,NormApp(PeakSelIdx),'g*','MarkerSize',20)
                 hold off
                 title('flipped normalized approach data')
                 ax2=gca;
@@ -2550,11 +2563,12 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 hold on
                 plot(NormAppMAD)
                 plot(PeakIdx,NormAppMAD(PeakIdx),'rx','MarkerSize',20)
+                plot(PeakSelIdx,NormAppMAD(PeakSelIdx),'g*','MarkerSize',20)
                 hold off
                 title('MAD data')
                 ax3=gca;
                 ax3.XLim = [0 inf];
-                ax3.YLim = [0 0.15];
+                ax3.YLim = [0 0.5];
                 ax3.XLabel.String = 'Index (1)';
                 ax3.YLabel.String = '';
                 %% Save figures
@@ -2578,8 +2592,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             % Define variables
             DataShareStartRet=0.02; %
             DataShareEndRet=0.12; %
-            BeforePercentage=0.01;
-            AfterPercentage=0.01;
+            WindowBeforePercentage=0.01;
+            WindowAfterPercentage=0.01;
             LimitFactor=2;
             % For loop
             for jj=1:obj.NCurves
@@ -2598,8 +2612,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 DataPtsRet=size(yRet); % Determine the amount of data points in the force curve
                 LimitIdxRet1=round(DataPtsRet(1)*DataShareStartRet); % Determine the corresponding index
                 LimitIdxRet2=round(DataPtsRet(1)*DataShareEndRet); % Determine the corresponding index
-                BeforePts=round(length(yRet)*BeforePercentage); % Before data points of the moving window
-                AfterPts=round(length(yRet)*AfterPercentage); % After data points of the moving window
+                BeforePts=round(length(yRet)*WindowBeforePercentage); % Before data points of the moving window
+                AfterPts=round(length(yRet)*WindowAfterPercentage); % After data points of the moving window
                 MovWindow=[BeforePts AfterPts]; % moving data point window for the moving median absolute deviation
                 NormRet=normalize(flip(yRet));  % Normalize and flip the data
                 NormRetMAD=movmad(NormRet,MovWindow); % Apply the moving median absolute deviation

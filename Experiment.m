@@ -2798,8 +2798,8 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
         function SMFS_snap_in_length_MAD(obj)            
             
             % Figure visibility
-            set(groot,'defaultFigureVisible','off')      
-            % set(groot,'defaultFigureVisible','on')           
+            %set(groot,'defaultFigureVisible','off')      
+             set(groot,'defaultFigureVisible','on')           
             % Change into the Folder of Interest
             cd(obj.ExperimentFolder) % Move into the folder 
             % Create folders for saving the produced figures
@@ -2810,8 +2810,8 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             cd(currpath); 
             
             % Loop over the imported force maps
-            for ii=1:obj.NumForceMaps
-            %for ii=73:83 % Debugging
+            %for ii=1:obj.NumForceMaps
+            for ii=41 % Debugging
                % Command window output
                sprintf('Force Map No. %d of %d',ii,obj.NumForceMaps) % Gives current Force Map Position
                % Run the chosen functions
