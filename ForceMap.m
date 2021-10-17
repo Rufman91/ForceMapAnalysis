@@ -202,8 +202,6 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
         FMSnapInMax         % Max snap-in length of a force map in meters (m)        
         PullingLengthIdx % Index of the data point identified as pulling length value
         PullingLength   % Pulling length in meters (m)
-        PullingLengthIdx2 % Index of the data point identified as pulling length value
-        PullingLength2   % Pulling length in meters (m)
         FMPullingLengthMean  % Mean pulling length of a force map in meters (m)   
         FMPullingLengthMin   % Min pulling length of a force map in meters (m) 
         FMPullingLengthMax   % Max pulling length of a force map in meters (m)
@@ -2064,7 +2062,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 opts2= fitoptions( 'Method', 'NonlinearLeastSquares' );
                 opts2.Display = 'Off';
                 opts2.StartPoint = [fitresult1.a1 fitresult1.b1 fitresult1.c1 fitresult1.d1 0];
-                [fitresult2, gof2] = fit( xData, yData, ft2, opts2 ); % Fit
+                [fitresult2, gof2] = fit( xData, yData, ft2, opts2 ); % Fit                
                 % Allocate variables
                 obj.SinFit2xData{kk}=xData;
                 obj.SinFit2yData{kk}=yData;
@@ -2076,7 +2074,9 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 obj.SinFit2RSquare(kk)=gof2.rsquare;
                 obj.SinFit2SSE(kk)=gof2.sse;
                 obj.BasedApp{kk}=(yApp-feval(fitresult2,xApp))/giga; % Determine the corresponding y-data of the x retraction data by using the determined fitting coefficients
-                obj.BasedRet{kk}=(yRet-feval(fitresult2,xRet))/giga; % Determine the corresponding y-data of the x retraction data by using the determined fitting coefficients
+                obj.BasedRet{kk}=(yRet-feval(fitresult2,xRet))/giga; % Determine the corresponding y-data of the x retraction data by using the determined fitting coefficients               
+                % Flag
+                obj.SMFSFlag.FitSinoidal(kk)=1;
             end
             % Figure loop
             for jj=1:NFigures
@@ -2228,6 +2228,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 obj.LinFitRSquare(kk)=gof.rsquare;
                 obj.LinFitSSE(kk)=gof.sse;
                 obj.BasedRet{kk}=(yRet-feval(fitresult,xRet))/giga;  % Determine the corresponding y-data of the x retraction data by using the determined fitting coefficients
+                % Flag
+                obj.SMFSFlag.FitLinear(kk)=1;
             end
             % Figure loop
             for jj=1:NFigures
@@ -2389,8 +2391,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 % Determine the minimum value within the selected range
                 AppMin=abs(min(yApp(obj.AppIdx1(kk):end))); % Finds the max adhesion value within the defined range
                 RetMin=abs(min(yRet(obj.RetIdx1(kk):obj.RetIdx2(kk)))); % Finds the max adhesion value within the defined range
-                % Determine if the logical conditiion is fulfilled and flag
-                % the force curve
+                % Flags
                 if AppMin>AppThreshValue
                     obj.SMFSFlag.AppMinCrit(kk)=1; % Flags that force curves show snap-in interaction
                 else
@@ -2405,80 +2406,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
          
         end
         
-        
-        function fc_based_ret_correction(obj,DataShareStartApp,DataShareEndApp,DataShareStartRet,DataShareEndRet)
-            % fc_based_ret_correction: A function to correct for an AFM
-            % based baseline deviation between the approach and retraction
-            % data
-        if nargin <2
-            DataShareStartApp=0.05; % 5%
-            DataShareEndApp=0.15; % 15%
-            DataShareStartRet=0.01; % 1%
-            DataShareEndRet=0.06; % 6%
-        end
-        % Loop over all force curves  
-        for kk=1:obj.NCurves
-            % Allocate data
-            yApp=obj.BasedApp{kk};
-            yRet=obj.BasedRet{kk};
-            % Define limits
-            DataPtsApp=size(yApp); % Determine the amount of data points in the force curve 
-            LimitIdxApp1=round(DataPtsApp(1)*DataShareStartApp); % Determine the corresponidng index
-            LimitIdxApp2=round(DataPtsApp(1)*DataShareEndApp); % Determine the corresponidng index
-            DataPtsRet=size(yRet); % Determine the amount of data points in the force curve 
-            LimitIdxRet1=round(DataPtsRet(1)*DataShareStartRet); % Determine the corresponidng index
-            LimitIdxRet2=round(DataPtsRet(1)*DataShareEndRet); % Determine the corresponidng index
-            if obj.SMFSFlag.Fit(kk)==1
-            % Mean and standard deviation of a selection of the fitted y retention data   
-            obj.yAppFitMean(kk)=mean(yApp(LimitIdxApp1:LimitIdxApp2,1)); % Calculate the mean of the difference data
-            obj.yRetFitMean(kk)=mean(yRet(DataPtsRet(1)-LimitIdxRet2:DataPtsRet(1)-LimitIdxRet1,1)); % Calculate the mean of the difference data
-       %obj.yRet2FitMean(kk)=mean(yRet2(DataPtsRet(1)-LimitIdxRet2:DataPtsRet(1)-LimitIdxRet1,1)); % Calculate the mean of the difference data
-            obj.yRetFitStd(kk)=std(yRet(DataPtsRet(1)-LimitIdxRet2:DataPtsRet(1)-LimitIdxRet1,1));   % Calculate the standard deviation of the difference data
-            DiffAppRet=abs(obj.yAppFitMean(kk)-obj.yRetFitMean(kk));
-       %DiffAppRet2=abs(obj.yAppFitMean(kk)-obj.yRet2FitMean(kk));
-            obj.CorrBasedRet{kk}=yRet+DiffAppRet; % Correct the BasedRet data with the mean of the correction data
-       %obj.CorrBasedRet2{kk}=yRet+DiffAppRet2; % Correct the BasedRet data with the mean of the correction data
-            else
-            %% Non fitted section
-            % Correction based on the approach data            
-            obj.CorrMeanApp(kk)=mean(abs(yApp(LimitIdxApp1:LimitIdxApp2,1))-abs(obj.BasedRet{kk}(DataPtsApp(1)-LimitIdxApp2:DataPtsApp(1)-LimitIdxApp1,1))); % Calculate the mean of the difference data
-            obj.CorrStdApp(kk)=std(yApp(DataPtsApp(1)-LimitIdxApp2:DataPtsApp(1)-LimitIdxApp1,1));             
-            obj.BasedRetCorr{kk}=yRet-obj.CorrMeanApp(kk); % Correct the BasedRet data with the mean of the correction data
-            % Correction based on the retraction data                     
-            obj.CorrMeanRet(kk)=mean(yRet(DataPtsRet(1)-LimitIdxRet2:DataPtsRet(1)-LimitIdxRet1,1)); % Calculate the mean of the difference data
-            obj.CorrStdRet(kk)=std(yRet(DataPtsRet(1)-LimitIdxRet2:DataPtsRet(1)-LimitIdxRet1,1));   % Calculate the standard deviation of the difference data            
-            obj.BasedRetCorr2{kk}=yRet-obj.CorrMeanRet(kk); % Correct the BasedRet data with the mean of the correction data          
-            end
-        end   
-              
-        %% Appendix
-%         close all
-%         for kk=1:obj.NCurves
-%         % Allocate data
-%         xApp=obj.HHApp{kk}-obj.CP_HardSurface(kk);
-%         xRet=obj.HHRet{kk}-obj.CP_HardSurface(kk);
-%         yApp=obj.BasedApp{kk};
-%         yRet=obj.BasedRet{kk};
-%         % Graphical preview
-%         fig=gcf;
-%         fig.Units='normalized'; % changes to normalized unit settings, necessary to receive the full screen size in the next line
-%         fig.Color='white'; % changes the background color of the figure
-%         fig.OuterPosition=[0.5 0 0.5 1];% changes the size of the figure to half screen
-%         fig.PaperOrientation='landscape';
-%         grid on
-%         hold on
-%         % "Original" data
-%         plot(xApp,yApp,'b');
-%         plot(xRet,yRet,'r');   
-%         % DataShare part of the data
-%         plot(xApp(LimitIdxApp1:LimitIdxApp2,1),yApp(LimitIdxApp1:LimitIdxApp2,1),'m');
-%         plot(xRet(DataPtsRet(1)-LimitIdxRet2:DataPtsRet(1)-LimitIdxRet1,1),yRet(DataPtsRet(1)-LimitIdxRet2:DataPtsRet(1)-LimitIdxRet1,1),'y');
-% %       % Retention data corrected
-%         plot(xRet,obj.CorrBasedRet{kk},'g');
-%         plot(xRet,obj.BasedRetCorr2{kk},'m');
-%         end
-        end
-        
+     
         function fc_snap_in_length_MAD(obj)
             % Fct determines the snap-in length using a moving median absolute deviation
             % Define variables
@@ -2628,7 +2556,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 PeakSelIdx=PeakSelIdx+LimitIdxRet1; % Correct for the selection to determine the corresponding index in the whole data set
                 yLimit=MaxSelMAD*LimitFactor; % Define selection limit based on the maximum peak of the selection - representing the background
                 PeakIdx=find(NormRetMAD>yLimit,1,'first'); % Find the pulling length index
-                % Flag
+                % Flags
                 if obj.RetIdx1(jj)>obj.PullingLengthIdx(jj)
                     obj.SMFSFlag.LengthRequisite(jj)=0;
                 else
@@ -2728,13 +2656,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             %% Allocate data
             xApp=obj.HHApp{kk}-obj.CP_HardSurface(kk);
             xRet=obj.HHRet{kk}-obj.CP_HardSurface(kk);            
-            if obj.SMFSFlag.Fit(kk)==1
             yApp=obj.BasedApp{kk};
-            yRet=obj.BasedRet{kk};
-            else
-            yApp=obj.BasedApp{kk};
-            yRet=obj.BasedRetCorr2{kk};
-            end
+            yRet=obj.BasedRet{kk};         
             % Define start index for the unbinding event 
             xUnbdingBoundary=obj.PullingLength(kk)-xDistance;
             [~,obj.UnbindingBoundaryIdx(kk)]=min(abs(abs(xRet)-xUnbdingBoundary));     
@@ -2805,13 +2728,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 % Allocate data
                 xRet=obj.HHRet{kk}-obj.CP_HardSurface(kk); % Retraction x-data (m): Vertical tip height data corrected by the determined contact point using the hard surface method 
                 xApp=obj.HHApp{kk}-obj.CP_HardSurface(kk); % Retraction x-data (m): Vertical tip height data corrected by the determined contact point using the hard surface method 
-                if obj.SMFSFlag.Fit(kk)==1
                 yApp=obj.BasedApp{kk};
                 yRet=obj.BasedRet{kk};
-                else
-                yApp=obj.BasedApp{kk};
-                yRet=obj.BasedRetCorr2{kk};
-                end
                 % Define variables
                 limit1=0;   % Define the limit
                 % Apply the limit                
@@ -2947,6 +2865,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             end
             %% figure loop
             for kk=1:NumFigures
+                % Flag
+                obj.SMFSFlag.Fit(kk)=obj.SMFSFlag.FitSinoidal(kk)*obj.SMFSFlag.FitLinear(kk);
                 % Figure
                 h_fig=figure(kk);
                 h_fig.Color='white'; % changes the background color of the figure
@@ -3032,8 +2952,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                                 plot(obj.HHRet{qq+DiffFc}(obj.PullingLengthIdx(qq+DiffFc))-obj.CP_HardSurface(qq+DiffFc),obj.BasedRetCorr2{qq+DiffFc}(obj.PullingLengthIdx(qq+DiffFc)),'d','MarkerSize',10,'MarkerFaceColor','b','MarkerEdgeColor','b')
                                 plot(obj.HHRet{qq+DiffFc}(obj.AdhForceMaxRetIdx(qq+DiffFc))-obj.CP_HardSurface(qq+DiffFc),obj.BasedRetCorr2{qq+DiffFc}(obj.AdhForceMaxRetIdx(qq+DiffFc)),'p','MarkerSize',10,'MarkerFaceColor','g','MarkerEdgeColor','g')
                                 plot(obj.HHApp{qq+DiffFc}(obj.AdhForceMaxAppIdx(qq+DiffFc))-obj.CP_HardSurface(qq+DiffFc),obj.BasedApp{qq+DiffFc}(obj.AdhForceMaxAppIdx(qq+DiffFc)),'h','MarkerSize',10,'MarkerFaceColor',RGB7,'MarkerEdgeColor',RGB7)
-                            end
-                            
+                            end                            
                             % Title for each Subplot
                             ti=title(sprintf('%i',qq+DiffFc),'Color','k');
                             ti.Units='normalized'; % Set units to 'normalized'
@@ -3091,7 +3010,6 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                         if qq == NumFcMax*kk
                             break
                         end
-                        %     jj=jj+1;
                     end
                     
                 else % Remainder exisiting
@@ -3224,7 +3142,6 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                             if qq == NumFcMax*kk
                                 break
                             end
-                            %      jj=jj+1;
                         end
                     else % kk==NumFigures % corresponds to the last figure plotted
                         t = tiledlayout(oo,pp);
@@ -3357,7 +3274,6 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                             if qq == NumFcUncorrupt
                                 break
                             end
-                            %           jj=jj+1;
                         end
                     end
                 end
@@ -3987,6 +3903,80 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
         end
         
        %% SMFS Old functions 
+          
+        function fc_based_ret_correction(obj,DataShareStartApp,DataShareEndApp,DataShareStartRet,DataShareEndRet)
+            % fc_based_ret_correction: A function to correct for an AFM
+            % based baseline deviation between the approach and retraction
+            % data
+        if nargin <2
+            DataShareStartApp=0.05; % 5%
+            DataShareEndApp=0.15; % 15%
+            DataShareStartRet=0.01; % 1%
+            DataShareEndRet=0.06; % 6%
+        end
+        % Loop over all force curves  
+        for kk=1:obj.NCurves
+            % Allocate data
+            yApp=obj.BasedApp{kk};
+            yRet=obj.BasedRet{kk};
+            % Define limits
+            DataPtsApp=size(yApp); % Determine the amount of data points in the force curve 
+            LimitIdxApp1=round(DataPtsApp(1)*DataShareStartApp); % Determine the corresponidng index
+            LimitIdxApp2=round(DataPtsApp(1)*DataShareEndApp); % Determine the corresponidng index
+            DataPtsRet=size(yRet); % Determine the amount of data points in the force curve 
+            LimitIdxRet1=round(DataPtsRet(1)*DataShareStartRet); % Determine the corresponidng index
+            LimitIdxRet2=round(DataPtsRet(1)*DataShareEndRet); % Determine the corresponidng index
+            if obj.SMFSFlag.Fit(kk)==1
+            % Mean and standard deviation of a selection of the fitted y retention data   
+            obj.yAppFitMean(kk)=mean(yApp(LimitIdxApp1:LimitIdxApp2,1)); % Calculate the mean of the difference data
+            obj.yRetFitMean(kk)=mean(yRet(DataPtsRet(1)-LimitIdxRet2:DataPtsRet(1)-LimitIdxRet1,1)); % Calculate the mean of the difference data
+       %obj.yRet2FitMean(kk)=mean(yRet2(DataPtsRet(1)-LimitIdxRet2:DataPtsRet(1)-LimitIdxRet1,1)); % Calculate the mean of the difference data
+            obj.yRetFitStd(kk)=std(yRet(DataPtsRet(1)-LimitIdxRet2:DataPtsRet(1)-LimitIdxRet1,1));   % Calculate the standard deviation of the difference data
+            DiffAppRet=abs(obj.yAppFitMean(kk)-obj.yRetFitMean(kk));
+       %DiffAppRet2=abs(obj.yAppFitMean(kk)-obj.yRet2FitMean(kk));
+            obj.CorrBasedRet{kk}=yRet+DiffAppRet; % Correct the BasedRet data with the mean of the correction data
+       %obj.CorrBasedRet2{kk}=yRet+DiffAppRet2; % Correct the BasedRet data with the mean of the correction data
+            else
+            %% Non fitted section
+            % Correction based on the approach data            
+            obj.CorrMeanApp(kk)=mean(abs(yApp(LimitIdxApp1:LimitIdxApp2,1))-abs(obj.BasedRet{kk}(DataPtsApp(1)-LimitIdxApp2:DataPtsApp(1)-LimitIdxApp1,1))); % Calculate the mean of the difference data
+            obj.CorrStdApp(kk)=std(yApp(DataPtsApp(1)-LimitIdxApp2:DataPtsApp(1)-LimitIdxApp1,1));             
+            obj.BasedRetCorr{kk}=yRet-obj.CorrMeanApp(kk); % Correct the BasedRet data with the mean of the correction data
+            % Correction based on the retraction data                     
+            obj.CorrMeanRet(kk)=mean(yRet(DataPtsRet(1)-LimitIdxRet2:DataPtsRet(1)-LimitIdxRet1,1)); % Calculate the mean of the difference data
+            obj.CorrStdRet(kk)=std(yRet(DataPtsRet(1)-LimitIdxRet2:DataPtsRet(1)-LimitIdxRet1,1));   % Calculate the standard deviation of the difference data            
+            obj.BasedRetCorr2{kk}=yRet-obj.CorrMeanRet(kk); % Correct the BasedRet data with the mean of the correction data          
+            end
+        end   
+              
+        %% Appendix
+%         close all
+%         for kk=1:obj.NCurves
+%         % Allocate data
+%         xApp=obj.HHApp{kk}-obj.CP_HardSurface(kk);
+%         xRet=obj.HHRet{kk}-obj.CP_HardSurface(kk);
+%         yApp=obj.BasedApp{kk};
+%         yRet=obj.BasedRet{kk};
+%         % Graphical preview
+%         fig=gcf;
+%         fig.Units='normalized'; % changes to normalized unit settings, necessary to receive the full screen size in the next line
+%         fig.Color='white'; % changes the background color of the figure
+%         fig.OuterPosition=[0.5 0 0.5 1];% changes the size of the figure to half screen
+%         fig.PaperOrientation='landscape';
+%         grid on
+%         hold on
+%         % "Original" data
+%         plot(xApp,yApp,'b');
+%         plot(xRet,yRet,'r');   
+%         % DataShare part of the data
+%         plot(xApp(LimitIdxApp1:LimitIdxApp2,1),yApp(LimitIdxApp1:LimitIdxApp2,1),'m');
+%         plot(xRet(DataPtsRet(1)-LimitIdxRet2:DataPtsRet(1)-LimitIdxRet1,1),yRet(DataPtsRet(1)-LimitIdxRet2:DataPtsRet(1)-LimitIdxRet1,1),'y');
+% %       % Retention data corrected
+%         plot(xRet,obj.CorrBasedRet{kk},'g');
+%         plot(xRet,obj.BasedRetCorr2{kk},'m');
+%         end
+        end
+                
         function fc_pulling_length_minmax(obj)
             
             % Define variables
@@ -4338,8 +4328,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 obj.THRet{jj} = obj.HHRet{jj} - obj.BasedRet{jj}/obj.SpringConstant;
             end
         end
-               
-                 
+                                
         function fc_print_scatter(obj,XMin,XMax,YMin,YMax,NumFcMax,hh) % fc ... force curve
             % fc_print_adhenergy_pulllength: A function to plot all selected force curves of a
             % force map including adhesion energy and pulling length in
@@ -4564,8 +4553,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             end
             close all
         end
-         
-        
+                 
         function [x,y]=test(obj) 
             % TEST FUNCTION
             mega=10e6;
@@ -4601,19 +4589,6 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             
         end
 
-        
-          
-        function fc_test(obj)
-         for kk=1:100
-         if  ~obj.DebugFlag.Plot % Suppress plotting
-         %if  obj.DebugFlag.Plot % Allow plotting
-                   sprintf('Inside if condition, Force curve No. %d',kk) % Gives current Force curve
-                        continue
-         end
-                    sprintf('AFter if condition, Force curve No. %d',kk) % Gives current Force curve
-         end
-    end
-      
     end    
     methods (Static)
         % Auxiliary methods
@@ -6082,6 +6057,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             obj.SMFSFlag.RetMinCrit=zeros(1,obj.NCurves);
             obj.SMFSFlag.LengthRequisite=zeros(1,obj.NCurves);
             obj.SMFSFlag.Fit=zeros(1,obj.NCurves);
+            obj.SMFSFlag.FitLinear=zeros(1,obj.NCurves);
+            obj.SMFSFlag.FitSinoidal=zeros(1,obj.NCurves);
             obj.SMFSFlag.SnapIn=zeros(1,obj.NCurves);
             obj.SMFSFlag.PullingLength=zeros(1,obj.NCurves);
             % Debugging
