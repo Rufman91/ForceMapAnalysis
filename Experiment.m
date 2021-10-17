@@ -1393,8 +1393,8 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             cd(currpath);
             
             % Loop over the imported force maps
-            for ii=1:obj.NumForceMaps
-            %for ii=2 % Debugging
+            %for ii=1:obj.NumForceMaps
+            for ii=1:43 % Debugging
            
                 waitbar(ii/NLoop,h,sprintf('Preprocessing ForceMap %i/%i\nProcessing force curves',ii,NLoop));
                 obj.FM{ii}.fc_sinoidal_fit
@@ -1426,7 +1426,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             
             % Loop over the imported force maps
             for ii=1:obj.NumForceMaps
-             %for ii=2 % Debugging
+             %for ii=1:43 % Debugging
                 if isequal(KeepFlagged,'Yes') && obj.SMFSFlag.Preprocessed(ii) == 1
                     continue
                 end   
@@ -1567,7 +1567,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             
             % Loop over the imported force maps
             %for ii=1:obj.NumForceMaps
-            for ii=70 % Debugging
+            for ii=22:31 % Debugging
                % Command window output
                sprintf('Force Map No. %d of %d',ii,obj.NumForceMaps) % Gives current Force Map Position
                % Run the chosen functions
@@ -1602,7 +1602,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             
             % Loop over the imported force maps
             %for ii=1:obj.NumForceMaps
-            for ii=1 % Debugging
+            for ii=1:43 % Debugging
                % Command window output
                sprintf('Force Map No. %d of %d',ii,obj.NumForceMaps) % Gives current Force Map Position
                % Run the chosen functions
@@ -1635,7 +1635,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             end
             % Loop over the imported force maps
              for ii=1:obj.NumForceMaps
-             %for ii=3
+             % for ii=1:43
                  % Needed function               
                 %if ~obj.SMFSFlag(ii)     % Selects all flagged 1 force maps
                 %if obj.SMFSFlag(ii)     % Selects all flagged 0 force maps
@@ -2890,11 +2890,11 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             % Function to quickly loop over all force maps for testing and
             % debugging
             % for ii=1:obj.NumForceMaps
-            for ii=43
+            for ii=41
             ii
-             %   obj.FM{ii}.fc_linear_fit
-             %    obj.FM{ii}.fc_pulling_length_minmax
-                 obj.FM{ii}.fc_pulling_length_MAD
+               obj.FM{ii}.fc_linear_fit
+              obj.FM{ii}.fc_estimate_cp_hardsurface
+          %       obj.FM{ii}.fc_pulling_length_MAD
                     
                   
             end                    

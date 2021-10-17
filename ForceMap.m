@@ -2007,7 +2007,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             RGB10=[200 0 255]./255; % Violet
             mega=10e6;
             giga=10e9;
-            SelectedPercentage=0.7;
+            DataShareStartApp=0.15; % 15% 
+            DataShareEndApp=0.65; % 65%
             NFigures=4;
             NLoop=25;
             ExtendVelocityConvert=num2str(obj.ExtendVelocity*1e9);
@@ -2016,7 +2017,6 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             % Classification criteria
             figname=strcat(obj.Date,{'_'},obj.Time,{'_'},obj.ID,{'_'},obj.Substrate,{'_'},obj.EnvCond,{'_'},obj.Linker,{'_'},obj.Chipbox,{'_'},obj.ChipCant,{'_'},ExtendVelocityConvert,{'_'},RetractVelocityConvert,{'_'},HoldingTimeConvert);
             figname=char(figname);
-
             % Fit loop
             for kk=1:NLoop
                 %% Debugging
@@ -2032,8 +2032,13 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 yAppSel=obj.App{kk}*giga;
                 % Select only a percentage of the data so that a potential
                 % snap-in is excluded from the fit
-                xAppSel(ceil(end*SelectedPercentage):end)=[];
-                yAppSel(ceil(end*SelectedPercentage):end)=[];
+                % Define limits
+                DataPtsApp=size(yAppSel); % Determine the amount of data points in the force curve
+                LimitIdxApp1=round(DataPtsApp(1)*DataShareStartApp); % Determine the corresponding index
+                LimitIdxApp2=round(DataPtsApp(1)*DataShareEndApp); % Determine the corresponding index
+                % Select data points for the fit
+                xAppSel([1:LimitIdxApp1, LimitIdxApp2:end])=[]; % Remove all entries except of the selections made using the limits
+                yAppSel([1:LimitIdxApp1, LimitIdxApp2:end])=[]; % Remove all entries except of the selections made using the limits 
                 % Prepare data
                 [xData, yData] = prepareCurveData( xAppSel, yAppSel );
                 % Set up fittype and options.
@@ -2167,10 +2172,10 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             RGB3=[80 220 100]./255; % Emerald
             RGB4=[200 81 160]./255; % Compl to RGB3
             RGB7=[255 230 0]./255; % Yellow
-            DataShareStartApp=0.05; % 5%
-            DataShareEndApp=0.55; % 55%
-            DataShareStartRet=0.12; %
-            DataShareEndRet=0.02; %
+            DataShareStartApp=0.15; % 15% 
+            DataShareEndApp=0.65; % 65%
+            DataShareStartRet=0.07; % 7 % 
+            DataShareEndRet=0.02; % 2 %
             NFigures=4;
             NLoop=25;
             ExtendVelocityConvert=num2str(obj.ExtendVelocity*1e9);
@@ -2193,13 +2198,11 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 yRetSel=obj.BasedRet{kk}*giga;
                 % Define limits
                 DataPtsRet=size(yRetSel); % Determine the amount of data points in the force curve
-                LimitIdxRet1=round(DataPtsRet(1)*DataShareStartRet); % Determine the corresponding index
-                LimitIdxRet2=round(DataPtsRet(1)*DataShareEndRet); % Determine the corresponding index
+                LimitIdxRet1=round(DataPtsRet(1)-DataPtsRet(1)*DataShareStartRet); % Determine the corresponding index
+                LimitIdxRet2=round(DataPtsRet(1)-DataPtsRet(1)*DataShareEndRet); % Determine the corresponding index
                 % Select data points for the fit
-                xRetSel(1:DataPtsRet(1)-LimitIdxRet1)=[]; % Remove all entries except of the selections made using the limits
-                yRetSel(1:DataPtsRet(1)-LimitIdxRet1)=[]; % Remove all entries except of the selections made using the limits
-                xRetSel(end-LimitIdxRet2:end)=[]; % Remove all entries except of the selections made using the limits
-                yRetSel(end-LimitIdxRet2:end)=[]; % Remove all entries except of the selections made using the limits
+                xRetSel([1:LimitIdxRet1, LimitIdxRet2:end])=[]; % Remove all entries except of the selections made using the limits
+                yRetSel([1:LimitIdxRet1, LimitIdxRet2:end])=[]; % Remove all entries except of the selections made using the limits 
                 % Define limits
                 DataPtsApp=size(yApp); % Determine the amount of data points in the force curve
                 LimitIdxApp1=round(DataPtsApp(1)*DataShareStartApp); % Determine the corresponidng index
@@ -2207,11 +2210,11 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 % Find retention index corresponding to the approach baseline
                 yAppMean=mean(yApp(LimitIdxApp1:LimitIdxApp2,1)); % Calculate the mean of the difference data
                 RetIdx1=find(yRet<yAppMean,1,'first');
-                obj.xOriRet=mean(xRet(RetIdx1-1:RetIdx1));
-                obj.yOriRet=mean(yRet(RetIdx1-1:RetIdx1));
+                obj.xOriRet(kk)=mean(xRet(RetIdx1-1:RetIdx1));
+                obj.yOriRet(kk)=mean(yRet(RetIdx1-1:RetIdx1));
                 % Concanate generated data with zero as first data value
-                xCat=cat(1,xOriRet,xRetSel);
-                yCat=cat(1,yOriRet,yRetSel);
+                xCat=cat(1,obj.xOriRet(kk),xRetSel);
+                yCat=cat(1,obj.yOriRet(kk),yRetSel);
                 % Prepare data
                 [xData, yData] = prepareCurveData(xCat,yCat);
                 % Set up fittype and options.
@@ -2302,11 +2305,14 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             % surfaces
             
             for ii=1:obj.NCurves 
-                obj.CP_HardSurface(ii,1) = obj.HHApp{ii}(end) - obj.App{ii}(end)/obj.SpringConstant; % Determine the contact point by simply substracting the last entries of height and force and correct with the spring constant
+              %  obj.CP_HardSurface(ii,1) = obj.HHApp{ii}(end) - obj.App{ii}(end)/obj.SpringConstant; % Determine the contact point by simply substracting the last entries of height and force and correct with the spring constant
+                obj.CP_HardSurface(ii,1) = obj.HHApp{ii}(end);
                 obj.CP_HardSurface(ii,2) = 0;
                 %% Debugging
-                % plot(HHApp,App);
-                % drawpoint('Position',[obj.CP_HardSurface(i,1) obj.CP_HardSurface(i,2)]);
+%                 hold on
+%                  plot(obj.HHApp{ii},obj.App{ii});
+%                  plot(obj.HHApp{ii}-obj.CP_HardSurface(ii,1),obj.App{ii});
+%                  drawpoint('Position',[obj.CP_HardSurface(ii,1) obj.CP_HardSurface(ii,2)]);
             end
             obj.CPFlag.HardSurface = 1;
         end
@@ -2482,9 +2488,9 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             DataShareEndApp=0.05;
             LimitFactor=1.5;
             % For loop
-            %for jj=1:obj.NCurves
+            for jj=1:obj.NCurves
             %% Debugging
-            for jj=9 % for debugging
+            %for jj=9 % for debugging
                 %sprintf('Force curve No. %d',jj) % Gives current
                 % Force curve for debugging
                 if ~obj.SMFSFlag.Uncorrupt(jj) || ~obj.SMFSFlag.AppMinCrit(jj)     % Exclude corrupted force curves or force curves showing no snap-in from the analysis
@@ -2497,14 +2503,13 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 DataPtsApp=size(yApp); % Determine the amount of data points in the force curve
                 LimitIdxApp1=round(DataPtsApp(1)-DataPtsApp(1)*DataShareStartApp); % Determine the corresponding index
                 LimitIdxApp2=round(DataPtsApp(1)-DataPtsApp(1)*DataShareEndApp); % Determine the corresponding index
-                BeforePts=round(length(yApp)*WindowBeforePercentage);
-                AfterPts=round(length(yApp)*WindowAfterPercentage);
-                MovWindow=[BeforePts AfterPts]; % moving data point window for the moving median absolute deviation
+                WindowBeforePts=round(length(yApp)*WindowBeforePercentage);
+                WindowAfterPts=round(length(yApp)*WindowAfterPercentage);
+                MovWindow=[WindowBeforePts WindowAfterPts]; % moving data point window for the moving median absolute deviation
                 NormApp=normalize(flip(yApp));  % Normalize and flip the data
                 NormAppMAD = movmad(NormApp,MovWindow); % Apply the moving median absolute deviation
                 NormAppSelMAD=NormAppMAD;
-                NormAppSelMAD(1:LimitIdxApp1)=[]; % Select defined range of data points
-                NormAppSelMAD(LimitIdxApp2:end)=[]; % Select defined range of data points
+                NormAppSelMAD([1:LimitIdxApp1, LimitIdxApp2:end])=[]; % Select defined range of data points
                 MaxSelMAD=max(NormAppSelMAD);  % Find the maximun value of the selection
                 PeakSelIdx=find(NormAppSelMAD==MaxSelMAD,1,'first'); % Find the index of the maximum value in the selection
                 PeakSelIdx=PeakSelIdx+LimitIdxApp1; % Correct for the selection to determine the corresponding index in the whole data set
@@ -2519,8 +2524,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 obj.SnapInIdx(jj)=length(yApp)-PeakIdx; % Correct for the data the peak index is based on by substracting from the number of data points
                 obj.SnapInLength(jj)=abs(xApp(obj.SnapInIdx(jj))); % Corresponding x-value of the index
                 %% Plot condition
-                %if  ~obj.DebugFlag.Plot % Suppress plotting
-                if  obj.DebugFlag.Plot % Allow plotting
+                if  ~obj.DebugFlag.Plot % Suppress plotting
+                %if  obj.DebugFlag.Plot % Allow plotting
                         continue
                 end              
                 % Define variables for the figure name
@@ -2586,7 +2591,6 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             obj.FMSnapInMax=max(obj.SnapInLength);
         end
       
-
         function fc_pulling_length_MAD(obj)
             
             % Define variables
@@ -2617,9 +2621,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 MovWindow=[BeforePts AfterPts]; % moving data point window for the moving median absolute deviation
                 NormRet=normalize(flip(yRet));  % Normalize and flip the data
                 NormRetMAD=movmad(NormRet,MovWindow); % Apply the moving median absolute deviation
-                NormRetSelMAD=NormRetMAD;                
-                NormRetSelMAD(1:LimitIdxRet1)=[]; % Select defined range of data points
-                NormRetSelMAD(LimitIdxRet2:end)=[]; % Select defined range of data points
+                NormRetSelMAD=NormRetMAD;      
+                NormRetSelMAD([1:LimitIdxRet1, LimitIdxRet2:end])=[]; % Select defined range of data points
                 MaxSelMAD=max(NormRetSelMAD);  % Find the maximun value of the selection
                 PeakSelIdx=find(NormRetSelMAD==MaxSelMAD,1,'first'); % Find the index of the maximum value in the selection
                 PeakSelIdx=PeakSelIdx+LimitIdxRet1; % Correct for the selection to determine the corresponding index in the whole data set
@@ -2703,7 +2706,6 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             obj.FMPullingLengthMax=max(obj.PullingLength);
         end
                 
-
         function fc_adh_force_max(obj)
             % Function to find the maximum adhesion force value in the
             % approach and retraction data of a force curve
@@ -2733,7 +2735,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             yApp=obj.BasedApp{kk};
             yRet=obj.BasedRetCorr2{kk};
             end
-            % 10 nm before pulling length index
+            % Define start index for the unbinding event 
             xUnbdingBoundary=obj.PullingLength(kk)-xDistance;
             [~,obj.UnbindingBoundaryIdx(kk)]=min(abs(abs(xRet)-xUnbdingBoundary));     
             %% Determine the maximum adhesion force
@@ -2744,8 +2746,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             end 
             % Retract
             obj.AdhForceMaxRet(kk)=min(yRet(obj.RetIdx1(kk):obj.PullingLengthIdx(kk))); % Determine maximum adhesion forces from the 50nm index to the pulling length index
-            obj.AdhForceMaxRetIdx(kk)=find(yRet==obj.AdhForceMaxRet(kk)); % Finds the index of the value that fulfils the condition   
-            
+            obj.AdhForceMaxRetIdx(kk)=find(yRet==obj.AdhForceMaxRet(kk)); % Finds the index of the value that fulfils the condition               
             % Last unbinding event on the retract curve
             obj.AdhForceUnbinding(kk)=min(yRet(obj.UnbindingBoundaryIdx(kk):obj.PullingLengthIdx(kk))); % Determine maximum adhesion forces close to the pulling length                         
             AdhForceUnbindingSelIdx=find(yRet(obj.UnbindingBoundaryIdx(kk):obj.PullingLengthIdx(kk))==obj.AdhForceUnbinding(kk)); % Finds the index of the value that fulfils the condition
@@ -3820,10 +3821,10 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             RGB9=[0 181 26]./255; % RAL6038 Green
             RGB10=[69 22 113]./255; % Violet
             RGB13=[200 8 0]./255; % Red
-            DataShareStartApp=0.05; % 5%
-            DataShareEndApp=0.55; % 55%
-            DataShareStartRet=0.12; %
-            DataShareEndRet=0.02; %
+            DataShareStartApp=0.15; % 15% 
+            DataShareEndApp=0.65; % 65%
+            DataShareStartRet=0.07; % 7 % 
+            DataShareEndRet=0.02; % 2 %
             % Define variables for the figure name
             ExtendVelocityConvert=num2str(obj.ExtendVelocity*1e9);
             RetractVelocityConvert=num2str(obj.RetractVelocity*1e9);
