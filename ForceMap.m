@@ -1871,12 +1871,15 @@ classdef ForceMap < matlab.mixin.Copyable
                          xpF = linspace(min(obj.InterpTimeF{j}),max(obj.InterpTimeF{j}),100000);
                          
                          % Function to fit indentation data 
+                         n = 7;
+                         p = polyfit(x,obj.Indentation{i,j},n);
+                         
                          %b(1) (max-min)/2 b(2) FFT b(3) first sign change b(4) mean
-                         fit = @(a,x)  a(1).*(sin(2*pi*x./a(2) + 2*pi/a(3)));    
+                         fit = @(a,x)  polyval(p,x) + a(1).*(sin(2*pi*x*obj.SegFrequency{j} + 2*pi/a(2)));    
                          % Least-Squares cost function:
                          fcn = @(a) sum((fit(a,x) - obj.FilterH{i,j}).^2);       
                          % Minimise Least-Squares with estimated start values:
-                         obj.SineVarsH{i,j} = fminsearch(fcn, [AmplitudeH;  PeriodH;  firstsignchangeH]); 
+                         obj.SineVarsH{i,j} = fminsearch(fcn, [AmplitudeH;  firstsignchangeH]); 
                          % Spacing of time vector:
                          xpH = linspace(min(obj.InterpTimeH{j}),max(obj.InterpTimeH{j}),100000);
                         
