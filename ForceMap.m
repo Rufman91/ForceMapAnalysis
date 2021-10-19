@@ -1892,10 +1892,10 @@ classdef ForceMap < matlab.mixin.Copyable
                         %obj.phaseH = obj.phaseHrad*180/pi;
                         
                         % phase shift between indentation and force in degrees:
-                        obj.DeltaPhi{i,j} = ((2*pi)./obj.SineVarsF{i,j}(3)- (2*pi)./obj.SineVarsH{i,j}(3)))*180/pi;
+                        obj.DeltaPhi{i,j} = ((2*pi)./obj.SineVarsF{i,j}(3)- (2*pi)./obj.SineVarsH{i,j}(3))*180/pi;
                         
                         % loss tangent:
-                        obj.LossTangent{i,j} = tan(obj.DeltaPhi{i,j});
+                        obj.LossTangent{i,j} = tand(obj.DeltaPhi{i,j});
                         
                         % turn range back to normal
                         obj.Force{i,j} = obj.Force{i,j}*rangeF;
@@ -3811,7 +3811,7 @@ classdef ForceMap < matlab.mixin.Copyable
                         
                         k = k + 1;
                          % time indentation
-                        figure('Name',sprintf('Force Curve %i Segment %i x',i,j))
+                        figure('Name',sprintf('Force Curve %i Segment %i',i,j))
                         subplot(3,1,1)
                         plot(x,obj.FZShift{i,j},x,obj.FilterF{i,j},xpF,ypF)
                         legend({'shifted force data to zero line','filtered force data','fitted force data 1'},'Location','southoutside')
