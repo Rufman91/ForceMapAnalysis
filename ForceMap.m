@@ -6,7 +6,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
     % words
     % -class methods are in lowercase letters and get underscores between
     % words
-    %%%%%%%%%%%%%%%%%%%%%%%%%%DISCLAIMER%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %%%%%%%%%%%%%%%%%%%%%%%%%%DISCLAIMER%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % This is a handle-class and as such the associated class methods
     % should be  called by using the class-INSTANCE and not the classname
     % 'ForceMap'.
