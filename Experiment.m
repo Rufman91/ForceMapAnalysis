@@ -441,9 +441,9 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             for i=1:E.NumForceMaps
                 if ~isempty(E.FM{i})
                     E.FM{i}.check_for_new_host();
-                    OldDataStore = E.FM{i}.DataStoreFolder;
-                    Split = strsplit(OldDataStore,filesep);
                     if E.BigDataFlag && ~E.PythonLoaderFlag
+                        OldDataStore = E.FM{i}.DataStoreFolder;
+                        Split = strsplit(OldDataStore,filesep);
                         E.FM{i}.DataStoreFolder = fullfile(Path,Split{end-1});
                     elseif E.BigDataFlag && E.PythonLoaderFlag
                         E.FM{i}.DataStoreFolder = fullfile(Path,Split{end});
@@ -462,11 +462,10 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             for i=1:E.NumReferenceForceMaps
                 if ~isempty(E.RefFM{i})
                     E.RefFM{i}.check_for_new_host();
-                    E.RefFM{i}.check_for_new_host();
-                    OldDataStore = E.RefFM{i}.DataStoreFolder;
-                    Split = strsplit(OldDataStore,filesep);
                     if E.BigDataFlag && ~E.PythonLoaderFlag
                         E.RefFM{i}.DataStoreFolder = fullfile(Path,Split{end-1});
+                    OldDataStore = E.RefFM{i}.DataStoreFolder;
+                    Split = strsplit(OldDataStore,filesep);
                     elseif E.BigDataFlag && E.PythonLoaderFlag
                         E.RefFM{i}.DataStoreFolder = fullfile(Path,Split{end});
                         OldFilePath = split(E.RefFM{i}.RawDataFilePath,filesep);
