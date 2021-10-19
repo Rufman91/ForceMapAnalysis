@@ -51,6 +51,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
         FMFlag
         SPMFlag
         SMFSFlag
+        SMFSFlagDown
         DebugFlag
         ReferenceSlopeFlag
         AssignedReferenceMaps
@@ -1400,7 +1401,8 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 obj.FM{ii}.fc_sinoidal_fit
                 obj.FM{ii}.fc_linear_fit
                 waitbar(ii/NLoop,h,sprintf('Preprocessing ForceMap %i/%i\nWrapping Up And Saving',ii,NLoop));
-                sprintf('Force Map No. %d of %d',ii,obj.NumForceMaps) % Gives current Force Map Position             
+                sprintf('Force Map No. %d of %d',ii,obj.NumForceMaps) % Gives current Force Map Position 
+                obj.SMFSFlag.Fit(ii) = 1;
             end
             close(h);
         end
@@ -1469,11 +1471,11 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             
             % Loop over the imported force maps
             %for ii=1:obj.NumForceMaps
-            for ii=1 % Debugging
+            for ii=4 % Debugging
                % Command window output
                sprintf('Force Map No. %d of %d',ii,obj.NumForceMaps) % Gives current Force Map Position
                % Run the chosen functions
-               obj.FM{ii}.fc_visual_selection(XMin,XMax,YMin,YMax);     
+               obj.FM{ii}.fc_visual_selection_all(XMin,XMax,YMin,YMax);     
                %obj.save_experiment;        % Save immediately after each force curve
             end    
         end
@@ -1540,8 +1542,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             end
             obj.NumFcUncorrupt=NumFcUncorrupt;
         end
-        
-        
+                
         function SMFS_print_raw(obj,XMin,XMax,YMin,YMax)
             % SMFS_print: A function to simply plot all force curves of all
             % force maps loaded and calssified based on the SMFS Flag
@@ -1567,7 +1568,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             
             % Loop over the imported force maps
             %for ii=1:obj.NumForceMaps
-            for ii=22:31 % Debugging
+            for ii=463 % Debugging
                % Command window output
                sprintf('Force Map No. %d of %d',ii,obj.NumForceMaps) % Gives current Force Map Position
                % Run the chosen functions
@@ -1589,8 +1590,8 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 
             end
             % Figure visibility
-            %set(groot,'defaultFigureVisible','off')      
-            set(groot,'defaultFigureVisible','on')           
+            set(groot,'defaultFigureVisible','off')      
+            %set(groot,'defaultFigureVisible','on')           
             % Change into the Folder of Interest
             cd(obj.ExperimentFolder) % Move into the folder 
             % Create folders for saving the produced figures
@@ -1602,7 +1603,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             
             % Loop over the imported force maps
             %for ii=1:obj.NumForceMaps
-            for ii=3:4 % Debugging
+            for ii=1 % Debugging
                % Command window output
                sprintf('Force Map No. %d of %d',ii,obj.NumForceMaps) % Gives current Force Map Position
                % Run the chosen functions
@@ -1610,9 +1611,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             end    
         end
         
-        
        
-        
         function SMFS_print_sort(obj,StartDate,EndDate,XMin,XMax,YMin,YMax)
             % SMFS_print_sort: A function to plot all force curves of all
             % force maps sorted by different properties 
@@ -1676,7 +1675,30 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             end 
             %obj.save_experiment        % Save immediately after each force curve
         end
-                 
+        
+        
+        function SMFS_analysis_flag_status(obj)
+            % SMFS_sinoidal_fit: This function allows to conduct an automated presorting of the force curves 
+            % The function flags force curves and whole force maps that are
+            % non-functionalize
+            % Needed function: obj.preprocessing
+         
+            % Loop over the imported force maps
+            
+            %for ii=464:obj.NumForceMaps % Debugging
+            
+            % Find not processed force maps
+            obj.SMFSFlagDown.Fit=find(~obj.SMFSFlag.Fit);
+            obj.SMFSFlagDown.Preprocessed=find(~obj.SMFSFlag.Preprocessed);
+            obj.SMFSFlagDown.Presorted=find(~obj.SMFSFlag.Presorted);
+            obj.SMFSFlagDown.SelectFM=find(~obj.SMFSFlag.SelectFM);
+          
+            for ii=1:obj.NumForceMaps
+            obj.FM{ii}.fc_flag_status          
+            end
+        end
+                       
+        
         function SMFS_analysis_dashboard(obj,ExtVelocityValue,RetVelocityValue,HoldingTimeValue,SubstrateValue,EnvCondValue,ChipCantValue,ChipboxValue,LinkerValue)
             % I all velocities should be selected use input variable: 0
             
@@ -2889,17 +2911,17 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
         function SMFS_testing_function(obj)
             % Function to quickly loop over all force maps for testing and
             % debugging
-            % for ii=1:obj.NumForceMaps
-            for ii=41
+            for ii=1:obj.NumForceMaps
+            %for ii=41
             ii
-        %       obj.FM{ii}.fc_linear_fit
+               obj.FM{ii}.initialize_flags
          %     obj.FM{ii}.fc_estimate_cp_hardsurface
           %       obj.FM{ii}.fc_pulling_length_MAD
                     
-                  obj.write_to_log_file('Test','variable ii','start')
-                  aa=33;
+                 % obj.write_to_log_file('Test','variable ii','start')
+                 % aa=33;
                   
-                  obj.write_to_log_file('','','end')
+                 % obj.write_to_log_file('','','end')
             end                    
             
         end
@@ -4751,7 +4773,13 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
         end
         
         function initialize_flags(obj)
-            
+                
+            NFM = obj.NumForceMaps;
+                obj.SMFSFlagDown.SelectFM = false(NFM,1);
+                obj.SMFSFlagDown.Preprocessed = false(NFM,1);
+                obj.SMFSFlagDown.Presorted = false(NFM,1);
+                obj.SMFSFlagDown.Fit= false(NFM,1);
+                
             if isempty(obj.FMFlag)
                 NFM = obj.NumForceMaps;
                 obj.FMFlag.FibrilAnalysis = false(NFM,1);
@@ -4771,6 +4799,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 obj.SMFSFlag.Fit= false(NFM,1);
                 obj.SMFSFlag.SnapIn= false(NFM,1);
                 obj.SMFSFlag.PullingLength= false(NFM,1);
+                
                 obj.DebugFlag.Plot= false(NFM,1);
                 obj.CantileverTipFlag = false;
                 if obj.NumCantileverTips > 0
