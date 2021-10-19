@@ -1387,14 +1387,14 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             % Change into the Folder of Interest
             cd(obj.ExperimentFolder) % Move into the folder
             % Create folders for saving the produced figures
-            foldername='FM_sinoidal_fits';    % for debugging                
+            foldername='FM_fits';    % for debugging                
             mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
             currpath=fullfile(obj.ExperimentFolder,foldername);
             cd(currpath);
             
             % Loop over the imported force maps
-            %for ii=1:obj.NumForceMaps
-            for ii=1:43 % Debugging
+             for ii=1:obj.NumForceMaps
+            %for ii=464:obj.NumForceMaps % Debugging
            
                 waitbar(ii/NLoop,h,sprintf('Preprocessing ForceMap %i/%i\nProcessing force curves',ii,NLoop));
                 obj.FM{ii}.fc_sinoidal_fit
@@ -1483,13 +1483,13 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             % criteria, i.e. pulling length, adhesion energy. 
            
             %% Loop
-            %for hh=1:obj.NumForceMaps
-            for hh=40 % Debugging     
+            for hh=1:obj.NumForceMaps
+            %for hh=544:obj.NumForceMaps % Debugging     
                sprintf('Force Map No. %d of %d',hh,obj.NumForceMaps) % Gives current Force Map Position   
                % Print force curves containing label for the pulling length
                % and colored area for the adhesion energy                              
                % Baseline correction
-               obj.FM{hh}.fc_based_ret_correction
+             %  obj.FM{hh}.fc_based_ret_correction
                % Snap-in
                obj.FM{hh}.fc_snap_in_length_MAD
                % Pulling length
@@ -1525,15 +1525,15 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
         %    set(groot,'defaultFigureVisible','on')
             cd(obj.ExperimentFolder) % Move into the folder
             % Create folders for saving the produced figures
-            foldername='FM_Stress';    % for debugging
-            %foldername='FM_analysed';    % Defines the folder name
+            %foldername='FM_Test';    % for debugging
+            foldername='FM_analysed';    % Defines the folder name
             mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
             currpath=fullfile(obj.ExperimentFolder,foldername);
             cd(currpath);
             %% loop
-            %for hh=1:obj.NumForceMaps
-            for hh=41 % Debugging
-            sprintf('Force Map No. %d of %d',hh,obj.NumForceMaps) % Gives current Force Map Position   
+            for hh=1:obj.NumForceMaps
+            %for hh=31 % Debugging
+            %sprintf('Force Map No. %d of %d',hh,obj.NumForceMaps) % Gives current Force Map Position   
             % Determine needed input variable
                NumFcUncorrupt(hh)=nnz(obj.FM{hh}.SMFSFlag.Uncorrupt); % Determine the number of uncorrupted force curves     
                obj.FM{hh}.fc_print_properties(XMin,XMax,YMin,YMax,NumFcMax,NumFcUncorrupt,hh)         
@@ -1589,20 +1589,20 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 
             end
             % Figure visibility
-            set(groot,'defaultFigureVisible','off')      
-            %set(groot,'defaultFigureVisible','on')           
+            %set(groot,'defaultFigureVisible','off')      
+            set(groot,'defaultFigureVisible','on')           
             % Change into the Folder of Interest
             cd(obj.ExperimentFolder) % Move into the folder 
             % Create folders for saving the produced figures
-            foldername='FM_test';    % for debugging
-            %foldername='FM_fittted';    % Defines the folder name
+            %foldername='FM_test';    % for debugging
+            foldername='FM_fc_fitted';    % Defines the folder name
             mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
             currpath=fullfile(obj.ExperimentFolder,foldername);
             cd(currpath); 
             
             % Loop over the imported force maps
             %for ii=1:obj.NumForceMaps
-            for ii=1:43 % Debugging
+            for ii=3:4 % Debugging
                % Command window output
                sprintf('Force Map No. %d of %d',ii,obj.NumForceMaps) % Gives current Force Map Position
                % Run the chosen functions
@@ -2892,11 +2892,14 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             % for ii=1:obj.NumForceMaps
             for ii=41
             ii
-               obj.FM{ii}.fc_linear_fit
-              obj.FM{ii}.fc_estimate_cp_hardsurface
+        %       obj.FM{ii}.fc_linear_fit
+         %     obj.FM{ii}.fc_estimate_cp_hardsurface
           %       obj.FM{ii}.fc_pulling_length_MAD
                     
+                  obj.write_to_log_file('Test','variable ii','start')
+                  aa=33;
                   
+                  obj.write_to_log_file('','','end')
             end                    
             
         end
