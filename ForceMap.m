@@ -74,6 +74,8 @@ classdef ForceMap < matlab.mixin.Copyable
         FilterH         % filtered height data
         FZShift         % original force data shifted to the zero line
         HZShift         % original height data shifted to the zero line
+        psF
+        psH
 
     end
     properties
@@ -1884,18 +1886,17 @@ classdef ForceMap < matlab.mixin.Copyable
                          % Spacing of time vector:
                          xpH = linspace(min(obj.InterpTimeH{j}),max(obj.InterpTimeH{j}),100000);
                         
-                         %obj.SineVarsF{i,j}(2) = (2*pi)./obj.SegFrequency{j};
-                         %obj.SineVarsH{i,j}(2) = (2*pi)./obj.SegFrequency{j};
-                        % phase shift in radians of force and height sine
-                        %obj.phaseFrad = obj.SineVarsF{i,j}(2)/obj.SineVarsF{i,j}(3);
-                        %obj.phaseHrad = obj.SineVarsH{i,j}(2)/obj.SineVarsH{i,j}(3);
+
+                        % phase shift of force and indentation
+                         obj.psF{i,j} = (2*pi)/obj.SineVarsF{i,j}(3);
+                         obj.psH{i,j} = (2*pi)/obj.SineVarsH{i,j}(3);
                         
                         % phase shift in degree of force and height sine
                         %obj.phaseF = obj.phaseFrad*180/pi;
                         %obj.phaseH = obj.phaseHrad*180/pi;
                         
                         % phase shift between indentation and force in degrees:
-                        obj.DeltaPhi{i,j} = (2*pi)./obj.SineVarsF{i,j}(3)- (2*pi)./obj.SineVarsH{i,j}(3);
+                        obj.DeltaPhi{i,j} = (obj.psF{i,j} - obj.psH{i,j})*(180/pi);
                         
                         % loss tangent:
                         obj.LossTangent{i,j} = tand(obj.DeltaPhi{i,j});
@@ -3723,6 +3724,11 @@ classdef ForceMap < matlab.mixin.Copyable
                        obj.TEnd{obj.NumSegments} = obj.SeriesTime{obj.NumSegments};
                        obj.SegTime{obj.NumSegments} = obj.TStart{obj.NumSegments}:obj.SecPerPoint{obj.NumSegments}:obj.TEnd{obj.NumSegments};
                        obj.SegTime{obj.NumSegments} = obj.SegTime{obj.NumSegments}.';
+                       
+                       ylimHmin = 0.8*min(obj.Indentation{i,j});
+                       ylimHmax = 1.2*max(obj.Indentation{i,j});
+                       ylimFmin = 0.8*min(obj.Force{i,j});
+                       ylimFmax = 1.2*max(obj.Force{i,j});
 
                        hold on
 
@@ -3730,12 +3736,12 @@ classdef ForceMap < matlab.mixin.Copyable
                        plot(obj.SegTime{j},obj.Indentation{i,j})
                        xlabel('time in s')
                        ylabel('indentation in m')
-                       ylim([0.8*max(obj.Indentation{i,j}) 1.2*max(obj.Indentation{i,j})])
+                       ylim([ylimHmin ylimHmax])
 
                        yyaxis right
                        plot(obj.SegTime{j},obj.Force{i,j})
                        ylabel('force in N')
-                       ylim([0.8*max(obj.Force{i,j}) 1.2*max(obj.Force{i,j})])
+                       ylim([ylimFmin ylimFmax])
 
                 end
 
