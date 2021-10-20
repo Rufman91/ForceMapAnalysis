@@ -3741,7 +3741,7 @@ classdef ForceMap < matlab.mixin.Copyable
                        yyaxis right
                        plot(obj.SegTime{j},obj.Force{i,j})
                        ylabel('force in N')
-                       ylim([yFmin yFmax])
+                       %ylim([yFmin yFmax])
 
                 end
 
