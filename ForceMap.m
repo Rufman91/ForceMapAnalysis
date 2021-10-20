@@ -1894,7 +1894,7 @@ classdef ForceMap < matlab.mixin.Copyable
                         %obj.phaseH = obj.phaseHrad*180/pi;
                         
                         % phase shift between indentation and force in degrees:
-                        obj.DeltaPhi{i,j} = ((2*pi)./obj.SineVarsF{i,j}(3)- (2*pi)./obj.SineVarsH{i,j}(3))*180/pi;
+                        obj.DeltaPhi{i,j} = ((2*pi)./obj.SineVarsF{i,j}(2)- (2*pi)./obj.SineVarsH{i,j}(2))*180/pi;
                         
                         % loss tangent:
                         obj.LossTangent{i,j} = tand(obj.DeltaPhi{i,j});
