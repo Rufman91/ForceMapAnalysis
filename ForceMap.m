@@ -3740,6 +3740,7 @@ classdef ForceMap < matlab.mixin.Copyable
 
                        yyaxis right
                        plot(obj.SegTime{j},obj.Force{i,j},'-')
+                       title(sprintf('Force and Indentation over Time Curve %i',i))
                        ylabel('force in N')
                        %ylim([yFmin yFmax])
 
@@ -3783,7 +3784,7 @@ classdef ForceMap < matlab.mixin.Copyable
                         
                         figure(s)
                         plot(obj.Indentation{i,j},obj.Force{i,j},'--b')
-                        title(sprintf('Force Indentation Curve %i Segment %j x',i,j))
+                        title(sprintf('Force Indentation Curve %i Segment %i',i,j))
                         xlabel('Indentation in m')
                         ylabel('Force in N')
                        
