@@ -3736,7 +3736,7 @@ classdef ForceMap < matlab.mixin.Copyable
                        plot(obj.SegTime{j},obj.Indentation{i,j})
                        xlabel('time in s')
                        ylabel('indentation in m')
-                       ylim([yFmin yFmax])
+                       %ylim([yFmin yFmax])
 
                        yyaxis right
                        plot(obj.SegTime{j},obj.Force{i,j})
