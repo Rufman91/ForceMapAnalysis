@@ -3767,8 +3767,8 @@ classdef ForceMap < matlab.mixin.Copyable
                        obj.SegTime{obj.NumSegments} = obj.SegTime{obj.NumSegments}.';
 
                        plot(obj.Indentation{i,j},obj.Force{i,j},'b')
-                       hold on
-                       plot(obj.Height{i,j},obj.Force{i,j},'r')
+                       %hold on
+                       %plot(obj.Height{i,j},obj.Force{i,j},'r')
                        title(sprintf('Force Indentation Curve %i',i))
                        xlabel('Indentation in m')
                        ylabel('Force in N')
