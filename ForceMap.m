@@ -3725,10 +3725,10 @@ classdef ForceMap < matlab.mixin.Copyable
                        obj.SegTime{obj.NumSegments} = obj.TStart{obj.NumSegments}:obj.SecPerPoint{obj.NumSegments}:obj.TEnd{obj.NumSegments};
                        obj.SegTime{obj.NumSegments} = obj.SegTime{obj.NumSegments}.';
                        
-                       ylimHmin = 0.8*min(obj.Indentation{i,j});
-                       ylimHmax = 1.2*max(obj.Indentation{i,j});
-                       ylimFmin = 0.8*min(obj.Force{i,j});
-                       ylimFmax = 1.2*max(obj.Force{i,j});
+                       yHmin = 0.8*min(obj.Indentation{i,j});
+                       yHmax = 1.2*max(obj.Indentation{i,j});
+                       yFmin = 0.8*min(obj.Force{i,j});
+                       yFmax = 1.2*max(obj.Force{i,j});
 
                        hold on
 
@@ -3736,12 +3736,12 @@ classdef ForceMap < matlab.mixin.Copyable
                        plot(obj.SegTime{j},obj.Indentation{i,j})
                        xlabel('time in s')
                        ylabel('indentation in m')
-                       ylim([ylimHmin ylimHmax])
+                       ylim([yHmin yHmax])
 
                        yyaxis right
                        plot(obj.SegTime{j},obj.Force{i,j})
                        ylabel('force in N')
-                       ylim([ylimFmin ylimFmax])
+                       ylim([yFmin yFmax])
 
                 end
 
