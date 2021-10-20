@@ -1866,7 +1866,7 @@ classdef ForceMap < matlab.mixin.Copyable
                          fcn = @(b) sum((fit(b,x) - obj.FilterF{i,j}).^2);       
                          % Minimise Least-Squares with estimated start values:
                          options = optimset('MaxFunEvals',10000);
-                         obj.SineVarsF{i,j} = fminsearch(fcn, [AmplitudeF;  obj.SegFrequency{j};  firstsignchangeF],options); 
+                         obj.SineVarsF{i,j} = fminsearch(fcn, [AmplitudeF; firstsignchangeF],options); 
                          % Spacing of time vector:
                          xpF = linspace(min(obj.InterpTimeF{j}),max(obj.InterpTimeF{j}),100000);
                          
@@ -1879,7 +1879,7 @@ classdef ForceMap < matlab.mixin.Copyable
                          % Least-Squares cost function:
                          fcn = @(a) sum((fit(a,x) - obj.FilterH{i,j}).^2);       
                          % Minimise Least-Squares with estimated start values:
-                         obj.SineVarsH{i,j} = fminsearch(fcn, [AmplitudeH;  obj.SegFrequency{j}; firstsignchangeH]); 
+                         obj.SineVarsH{i,j} = fminsearch(fcn, [AmplitudeH; firstsignchangeH]); 
                          % Spacing of time vector:
                          xpH = linspace(min(obj.InterpTimeH{j}),max(obj.InterpTimeH{j}),100000);
                         
