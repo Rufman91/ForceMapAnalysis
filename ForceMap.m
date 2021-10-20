@@ -3808,8 +3808,8 @@ classdef ForceMap < matlab.mixin.Copyable
                         xpH = linspace(min(obj.InterpTimeH{j}),max(obj.InterpTimeH{j}),100000);
                         
                         %Y-values fitted sine of indentation and force:
-                        ypF = obj.SineVarsF{i,j}(1)*(sin((2*pi*xpF)/obj.SineVarsF{i,j}(2) + 2*pi/obj.SineVarsF{i,j}(3)));
-                        ypH = obj.SineVarsH{i,j}(1)*(sin((2*pi*xpH)/obj.SineVarsH{i,j}(2) + 2*pi/obj.SineVarsH{i,j}(3)));
+                        ypF = obj.SineVarsF{i,j}(1)*(sin(xpF*obj.SineVarsF{i,j}(2) + 2*pi/obj.SineVarsF{i,j}(3)));
+                        ypH = obj.SineVarsH{i,j}(1)*(sin(xpH*obj.SineVarsH{i,j}(2) + 2*pi/obj.SineVarsH{i,j}(3)));
                         
                         k = k + 1;
                          % time indentation
