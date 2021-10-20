@@ -1173,7 +1173,11 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             if nargin < 2
                 RangePercent = 100;
             end
-            MinIdx = 2;
+            k = 2;
+            while ProjectedTipArea(1) == ProjectedTipArea(k)
+                k=k+1;
+            end
+            MinIdx = k;
             MaxIdx = floor(RangePercent/100*length(ProjectedTipArea));
             DepthDependendTipRadius = zeros(MaxIdx,1);
             
