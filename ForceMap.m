@@ -1918,9 +1918,9 @@ classdef ForceMap < matlab.mixin.Copyable
             for i=1:obj.NCurves
                 %lastseg = obj.NumSegments-1;
                 for j=1:obj.NumSegments
-                    Z{i,j} = obj.Height{i,j} - obj.CP(i,1);
-                    D{i,j} = (obj.Force{i,j} - obj.CP(i,2))./obj.SpringConstant;
-                    obj.Indentation{i,j} = Z{i,j} - D{i,j};
+                    obj.Height{i,j} = obj.Height{i,j} - obj.CP(i,1);
+                    obj.Force{i,j} = (obj.Force{i,j} - obj.CP(i,2))./obj.SpringConstant;
+                    obj.Indentation{i,j} = obj.Height{i,j} - obj.Force{i,j};
                 end
                 
             end
