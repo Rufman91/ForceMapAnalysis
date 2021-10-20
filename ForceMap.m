@@ -1857,11 +1857,11 @@ classdef ForceMap < matlab.mixin.Copyable
                          meanF = mean(FInterp{i,j});
                          meanH = mean(HInterp{i,j});
 
-                         x = obj.SegTime{j};
+                         x = obj.InterpTimeF{j};
 
                          % Function to fit force data 
                          %b(1) (max-min)/2 b(2) FFT b(3) first sign change b(4) mean
-                         fit = @(b,x)  b(1).*(sin((2*pi*x)/b(2) + 2*pi/b(3)));    
+                         fit = @(b,x)  b(1).*(sin(2*pi*x./b(2) + 2*pi/b(3)));    
                          % Least-Squares cost function:
                          fcn = @(b) sum((fit(b,x) - obj.FilterF{i,j}).^2);       
                          % Minimise Least-Squares with estimated start values:
@@ -1873,9 +1873,10 @@ classdef ForceMap < matlab.mixin.Copyable
                          % Function to fit indentation data 
                          %n = 7;
                          %p = polyfit(x,obj.Indentation{i,j},n);
+                         x = obj.InterpTimeH{j};
                          
                          %b(1) (max-min)/2 b(2) FFT b(3) first sign change b(4) mean
-                         fit = @(a,x)  a(1).*(sin((2*pi*x)/a(2) + 2*pi/a(3)));    
+                         fit = @(a,x)  a(1).*(sin(2*pi*x./a(2) + 2*pi/a(3)));    
                          % Least-Squares cost function:
                          fcn = @(a) sum((fit(a,x) - obj.FilterH{i,j}).^2);       
                          % Minimise Least-Squares with estimated start values:
@@ -1894,7 +1895,7 @@ classdef ForceMap < matlab.mixin.Copyable
                         %obj.phaseH = obj.phaseHrad*180/pi;
                         
                         % phase shift between indentation and force in degrees:
-                        obj.DeltaPhi{i,j} = ((2*pi)./obj.SineVarsF{i,j}(3)- (2*pi)./obj.SineVarsH{i,j}(3))*180/pi;
+                        obj.DeltaPhi{i,j} = (2*pi)./obj.SineVarsF{i,j}(3)- (2*pi)./obj.SineVarsH{i,j}(3);
                         
                         % loss tangent:
                         obj.LossTangent{i,j} = tand(obj.DeltaPhi{i,j});
@@ -1918,9 +1919,9 @@ classdef ForceMap < matlab.mixin.Copyable
             for i=1:obj.NCurves
                 %lastseg = obj.NumSegments-1;
                 for j=1:obj.NumSegments
-                    obj.Height{i,j} = obj.Height{i,j} - obj.CP(i,1);
-                    obj.Force{i,j} = (obj.Force{i,j} - obj.CP(i,2))./obj.SpringConstant;
-                    obj.Indentation{i,j} = obj.Height{i,j} - obj.Force{i,j};
+                    Z{i,j} = obj.Height{i,j} - obj.CP(i,1);
+                    D{i,j} = (obj.Force{i,j} - obj.CP(i,2))./obj.SpringConstant;
+                    obj.Indentation{i,j} = Z{i,j} - D{i,j};
                 end
                 
             end
@@ -3729,11 +3730,12 @@ classdef ForceMap < matlab.mixin.Copyable
                        plot(obj.SegTime{j},obj.Indentation{i,j})
                        xlabel('time in s')
                        ylabel('indentation in m')
-                       %xlim([1.4 2.4])
+                       ylim([0.8*max(obj.Indentation{i,j}) 1.2*max(obj.Indentation{i,j})])
 
                        yyaxis right
                        plot(obj.SegTime{j},obj.Force{i,j})
                        ylabel('force in N')
+                       ylim([0.8*max(obj.Force{i,j}) 1.2*max(obj.Force{i,j})])
 
                 end
 
@@ -3757,7 +3759,7 @@ classdef ForceMap < matlab.mixin.Copyable
                        obj.SegTime{obj.NumSegments} = obj.TStart{obj.NumSegments}:obj.SecPerPoint{obj.NumSegments}:obj.TEnd{obj.NumSegments};
                        obj.SegTime{obj.NumSegments} = obj.SegTime{obj.NumSegments}.';
 
-                       plot(obj.Indentation{i,j},obj.Force{i,j},'b')
+                       plot(obj.Indentation{i,j},obj.Force{i,j},'b',obj.CP(i,1),obj.CP(i,1),'xr')
                        title(sprintf('Force Indentation Curve %i',i))
                        xlabel('Indentation in m')
                        ylabel('Force in N')
