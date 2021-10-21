@@ -73,7 +73,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
         THRet = {}      % vertical tip height retract data in meters
         BasedApp = {}   % approach force data with subtracted base line and tilt in Newton
         BasedRet = {}   % retraction force data with subtracted base line and tilt in Newton
-        BasedRet2 = {}  % retraction force data with subtracted base line and tilt in Newton
+        BasedRetFit = {}  
         BaseAndTiltFlag
     end
     properties
@@ -177,7 +177,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
         BasedRetCorr    % BasedRet data corrected based on a selection of the approach data
         BasedRetCorr2   % BasedRet data corrected based on a selection of the retraction data     
         CorrBasedRet    % BasedRet data corrected based on a selection of the approach data
-        CorrBasedRet2    % BasedRet data corrected based on a selection of the approach data
+        CorrBasedRetFit    % BasedRet data corrected based on a selection of the approach data
         CorrMeanApp     % Mean of a selection of the approach data for baseline correction
         CorrStdApp      % Corresponding standard deviation of the selection of the approach data for baseline correction
         CorrMeanRet     % Mean of a selection of the retraction data for baseline correction
@@ -219,8 +219,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
         SinFit1Coeffd         % Sinus fit coefficient d derived from the first sinoidal fit
         SinFit1RSquare          % R sqare of the first sinoidal fit
         SinFit1SSE              % SSE of the first sinoidal fit
-        SinFit2xData        % x data used in the sinoidal fit
-        SinFit2yData        % y data used in the sinoidal fit
+        FitxData        % x data used in the sinoidal fit
+        FityData        % y data used in the sinoidal fit
         SinFit2Coeffa         % Sinus fit coefficient a derived from the second sinoidal fit
         SinFit2Coeffb         % Sinus fit coefficient b derived from the second sinoidal fit
         SinFit2Coeffc         % Sinus fit coefficient c derived from the second sinoidal fit
@@ -234,6 +234,14 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
         LinFitCoeffb        % Linear fit coefficient b derived from the linear fit
         LinFitRSquare       % R sqare of the linear fit
         LinFitSSE           % SSE of the linear fit
+        RMSSin              % Root mean square of the data based on the 2nd sinoidal fit
+        RMSLin              % Root mean square of the data based on the linear fit
+        LinFitRetxData         % x data used in the linear fit
+        LinFitRetyData         % y data used in the linear fit
+        LinFitRetCoeffa        % Linear fit coefficient a derived from the linear fit
+        LinFitRetCoeffb        % Linear fit coefficient b derived from the linear fit
+        LinFitRetRSquare       % R sqare of the linear fit
+        LinFitRetSSE           % SSE of the linear fit
         yRetFitCorr
         yAppFitMean
         yRetFitMean
@@ -1889,8 +1897,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
     %% SMFS related
 
         function fc_measurement_prop(obj)
-            % A fct to read out properties about the SMFS measurements from the name of the jpk data file (i.e. "JPK-FORCE-MAP").
-            % Chip number and Cantilever
+            % A fct to read out measurement properties written in the name of the jpk data file (i.e. "JPK-FORCE-MAP").
+            
             exp15='(\d+\D{1}\>)'; % Finds the chip number and the cantilever
             obj.ChipCant = regexp(obj.Name, exp15, 'match','once');
             % Chip box
@@ -1950,6 +1958,10 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             exp35='DPBS';
             pat=regexpPattern(exp35,"IgnoreCase",true);
             ext35=extract(obj.Name,pat);
+            % HOH
+            exp36='HOH';
+            pat=regexpPattern(exp36,"IgnoreCase",true);
+            ext36=extract(obj.Name,pat);
             % Environmental conditions
             if isempty(ext31)==0
                 obj.EnvCond='Water'; % Milli-Q water
@@ -1961,6 +1973,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 obj.EnvCond='PBS'; % Phospate buffered saline
             elseif isempty(ext35)==0
                 obj.EnvCond='DPBS'; % Dulbecco's phospate buffered saline
+            elseif isempty(ext36)==0
+                obj.EnvCond='Water'; % Dulbecco's phospate buffered saline
             else
                 obj.EnvCond='';
             end
@@ -1984,6 +1998,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
 
         end
 
+        
+        
         function fc_sinoidal_fit(obj)
             %CREATEFIT1(X,Y)
             %  Create a fit.
@@ -2017,9 +2033,9 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             figname=strcat(obj.Date,{'_'},obj.Time,{'_'},obj.ID,{'_'},obj.Substrate,{'_'},obj.EnvCond,{'_'},obj.Linker,{'_'},obj.Chipbox,{'_'},obj.ChipCant,{'_'},ExtendVelocityConvert,{'_'},RetractVelocityConvert,{'_'},HoldingTimeConvert);
             figname=char(figname);
             % Fit loop
-            for kk=1:obj.NCurves
+            % for kk=1:obj.NCurves
                 %% Debugging
-                % for kk=45 % for debugging
+             for kk=88 % for debugging
                 % sprintf('Force curve No. %d',kk) % Gives current Force curve
                 % for debugging
                 % Allocate data
@@ -2051,6 +2067,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 opts1.StartPoint = [-0.2 -1.8 xAppSel(1,1) yAppSel(1,1)];
                 [fitresult1, gof1] = fit( xData, yData, ft1, opts1 ); % Fit
                 % Allocate variables
+                obj.FitxData{kk}=xData;
+                obj.FityData{kk}=yData;
                 obj.SinFit1Coeffa(kk)=fitresult1.a1;
                 obj.SinFit1Coeffb(kk)=fitresult1.b1;
                 obj.SinFit1Coeffc(kk)=fitresult1.c1;
@@ -2064,9 +2082,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 opts2.Display = 'Off';
                 opts2.StartPoint = [fitresult1.a1 fitresult1.b1 fitresult1.c1 fitresult1.d1 0];
                 [fitresult2, gof2] = fit( xData, yData, ft2, opts2 ); % Fit                
-                % Allocate variables
-                obj.SinFit2xData{kk}=xData;
-                obj.SinFit2yData{kk}=yData;
+                % Allocate variables                
                 obj.SinFit2Coeffa(kk)=fitresult2.a1;
                 obj.SinFit2Coeffb(kk)=fitresult2.b1;
                 obj.SinFit2Coeffc(kk)=fitresult2.c1;
@@ -2074,16 +2090,44 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 obj.SinFit2Coeffe(kk)=fitresult2.e1;
                 obj.SinFit2RSquare(kk)=gof2.rsquare;
                 obj.SinFit2SSE(kk)=gof2.sse;
+                % Fit 3
+                % Allocate data
+                % Set up fittype and options.
+                ft3 = fittype( {'x', '1'}, 'independent', 'x', 'dependent', 'y', 'coefficients', {'a', 'b'} );
+                [fitresult3, gof3] = fit( xData, yData, ft3 );          
+                % Allocate variables
+                obj.LinFitCoeffa(kk)=fitresult2.a1;
+                obj.LinFitCoeffb(kk)=fitresult2.b1;
+                obj.LinFitRSquare(kk)=gof3.rsquare;
+                obj.LinFitSSE(kk)=gof3.sse;
+                %% Compare fits
+                % Fit data with fit 2 and fit 3
+                yAppFit2=yApp-feval(fitresult2,xApp);
+                yAppFit3=yApp-feval(fitresult3,xApp);              
+                % Select data points for the fit
+                yAppFit2(LimitIdxApp1:LimitIdxApp2)=[]; % Remove all entries except of the selections made using the limits
+                yAppFit3(LimitIdxApp1:LimitIdxApp2)=[]; % Remove all entries except of the selections made using the limits                             
+                % Compute the rms
+                obj.RMSSin=rms(yAppFit2);
+                obj.RMSLin=rms(yAppFit3);
+                % Choose better fit
+                if obj.RMSSin<obj.RMSLin % Apply sinoidal fit
                 obj.BasedApp{kk}=(yApp-feval(fitresult2,xApp))/giga; % Determine the corresponding y-data of the x retraction data by using the determined fitting coefficients
-                obj.BasedRet{kk}=(yRet-feval(fitresult2,xRet))/giga; % Determine the corresponding y-data of the x retraction data by using the determined fitting coefficients               
-                % Flag
+                obj.BasedRet{kk}=(yRet-feval(fitresult2,xRet))/giga; % Determine the corresponding y-data of the x retraction data by using the determined fitting coefficients    
+                obj.BasedRetFit{kk}=(yRet-feval(fitresult2,xRet))/giga; % Determine the corresponding y-data of the x retraction data by using the determined fitting coefficients      
                 obj.SMFSFlag.FitSinoidal(kk)=1;
+                else % Apply linear fit
+                obj.BasedApp{kk}=(yApp-feval(fitresult3,xApp))/giga; % Determine the corresponding y-data of the x retraction data by using the determined fitting coefficients
+                obj.BasedRet{kk}=(yRet-feval(fitresult3,xRet))/giga; % Determine the corresponding y-data of the x retraction data by using the determined fitting coefficients    
+                obj.BasedRetFit{kk}=(yRet-feval(fitresult3,xRet))/giga; % Determine the corresponding y-data of the x retraction data by using the determined fitting coefficients            
+                obj.SMFSFlag.FitLinear(kk)=1;
+                end                
             end
             % Figure loop
             for jj=1:NFigures
                 %% Plot condition                
-                if  ~obj.DebugFlag.Plot % Suppress plotting
-                %if  obj.DebugFlag.Plot % Allow plotting
+                %if  ~obj.DebugFlag.Plot % Suppress plotting
+                if  obj.DebugFlag.Plot % Allow plotting
                     continue
                 end
                 % Figure properties
@@ -2105,24 +2149,29 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                     % sprintf('Force curve No. %d',oo) % Gives current Force curve
                     % for debugging
                     % Allocate data
-                    xData=obj.SinFit2xData{oo};
-                    yData=obj.SinFit2yData{oo};
+                    xData=obj.FitxData{oo};
+                    yData=obj.FityData{oo};
                     %% Plotting the tiles
                     nexttile;
                     hold on
                     grid on
                     plot(xData,yData,'.','Color',RGB4)
                     % plot(xData,obj.SinFit1Coeffa(oo)*sin(obj.SinFit1Coeffb(oo)*xData+obj.SinFit1Coeffc(oo))+obj.SinFit1Coeffd(oo),'LineWidth',2,'Color',RGB10)
-                    plot(xData,obj.SinFit2Coeffa(oo)*sin(obj.SinFit2Coeffb(oo)*xData+obj.SinFit2Coeffc(oo))+obj.SinFit2Coeffd(oo)+obj.SinFit2Coeffe(oo)*xData,'LineWidth',2,'Color',RGB3) % The plot shows the second sinoidal fit including a linear fit element
+                    if obj.SMFSFlag.FitSinoidal(oo)
+                    plot(xData,obj.SinFit2Coeffa(oo)*sin(obj.SinFit2Coeffb(oo)*xData+obj.SinFit2Coeffc(oo))+obj.SinFit2Coeffd(oo)+obj.SinFit2Coeffe(oo)*xData,'LineWidth',2,'Color',RGB3) % The plot shows the second sinoidal fit including a linear fit element        
+                    elseif  obj.SMFSFlag.FitLinear(oo)
+                    plot(xData,obj.LinFitCoeffa(oo)*xData+obj.LinFitCoeffb(oo),'LineWidth',2,'Color',RGB3) % The plot shows the linear fit
+                    end
                     % Plotted Text
                     NE = [max(xlim) max(ylim)]-[diff(xlim) diff(ylim)]*0.01; % Define the position in the plot
                     partstrA1='R^2=';
-                    partstrA2=num2str(round(gof2.rsquare,2));
+                    if obj.SMFSFlag.FitSinoidal(oo)
+                    partstrA2=num2str(round(gof2.rsquare,2));                    
+                    elseif obj.SMFSFlag.FitLinear(oo)
+                    partstrA2=num2str(round(gof3.rsquare,2));     
+                    end
                     fullstrA=strcat(partstrA1,partstrA2); % Define the string that shall be shown in the plot
-                    partstrB1='SSE=';
-                    partstrB2=num2str(round(gof2.sse,2));
-                    fullstrB=strcat(partstrB1,partstrB2); % Define the string that shall be shown in the plot
-                    te1=text(NE(1), NE(2),{fullstrA, fullstrB}, 'VerticalAlignment','top', 'HorizontalAlignment','right');
+                    te1=text(NE(1), NE(2),fullstrA, 'VerticalAlignment','top', 'HorizontalAlignment','right');
                     te1.FontSize = 14;
                     % Title for each Subplot
                     ti=title(sprintf('%i',oo),'Color','k');
@@ -2131,15 +2180,15 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 end
                 %% Save figures
                 %%% Define the name for the figure title
-                partname=sprintf('-sinoidal-part%d',jj);
+                partname=sprintf('-fitfct1-part%d',jj);
                 fullname=sprintf('%s%s',figname,partname);
                 %%% Save the current figure in the current folder
                 print(gcf,fullname,'-dpng');
             end           
-           % close Figure 1 Figure 2 Figure 3 Figure 4
             close all
         end
 
+        
         function fc_linear_fit(obj)
             %CREATEFIT1(XCAT,YCAT)
             %  Create a fit.
@@ -2196,7 +2245,9 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 LimitIdxRet2=round(DataPtsRet(1)-DataPtsRet(1)*DataShareEndRet); % Determine the corresponding index
                 % Select data points for the fit
                 xRetSel([1:LimitIdxRet1, LimitIdxRet2:end])=[]; % Remove all entries except of the selections made using the limits
+                xRetSelMean=mean(xRetSel);
                 yRetSel([1:LimitIdxRet1, LimitIdxRet2:end])=[]; % Remove all entries except of the selections made using the limits 
+                yRetSelMean=mean(yRetSel);
                 % Define limits
                 DataPtsApp=size(yApp); % Determine the amount of data points in the force curve
                 LimitIdxApp1=round(DataPtsApp(1)*DataShareStartApp); % Determine the corresponidng index
@@ -2207,24 +2258,28 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 obj.xOriRet(kk)=mean(xRet(RetIdx1-1:RetIdx1));
                 obj.yOriRet(kk)=mean(yRet(RetIdx1-1:RetIdx1));
                 % Concanate generated data with zero as first data value
-                xCat=cat(1,obj.xOriRet(kk),xRetSel);
-                yCat=cat(1,obj.yOriRet(kk),yRetSel);
+                xCat=cat(1,obj.xOriRet(kk),xRetSelMean);
+                yCat=cat(1,obj.yOriRet(kk),yRetSelMean);
                 % Prepare data
                 [xData, yData] = prepareCurveData(xCat,yCat);
                 % Set up fittype and options.
                 ft = fittype( {'x', '1'}, 'independent', 'x', 'dependent', 'y', 'coefficients', {'a', 'b'} );
                 [fitresult, gof] = fit( xData, yData, ft );
                 % Allocate variables
-                obj.LinFitxData{kk}=xData;
-                obj.LinFityData{kk}=yData;
-                obj.LinFitCoeffa(kk)=fitresult.a;
-                obj.LinFitCoeffb(kk)=fitresult.b;
-                obj.LinFitRSquare(kk)=gof.rsquare;
-                obj.LinFitSSE(kk)=gof.sse;
-                obj.BasedRet{kk}=(yRet-feval(fitresult,xRet))/giga;  % Determine the corresponding y-data of the x retraction data by using the determined fitting coefficients
+                obj.LinFitRetxData{kk}=xData;
+                obj.LinFitRetyData{kk}=yData;
+                obj.LinFitRetCoeffa(kk)=fitresult.a;
+                obj.LinFitRetCoeffb(kk)=fitresult.b;
+                obj.LinFitRetRSquare(kk)=gof.rsquare;
+                obj.LinFitRetSSE(kk)=gof.sse;
+                obj.BasedRet{kk}=(yRet-feval(fitresult,xRet))/giga;  % Determine the corresponding y-data of the x retraction data by using the determined fitting coefficients               
                 % Flag
-                obj.SMFSFlag.FitLinear(kk)=1;
-                obj.SMFSFlag.Fit(kk)=obj.SMFSFlag.FitSinoidal(kk)*obj.SMFSFlag.FitLinear(kk);
+                obj.SMFSFlag.FitLinearRet(kk)=1;
+                if obj.SMFSFlag.FitSinoidal(kk)
+                obj.SMFSFlag.Fit(kk)=obj.SMFSFlag.FitSinoidal(kk)*obj.SMFSFlag.FitLinearRet(kk);
+                elseif obj.SMFSFlag.FitLinear(kk)
+                obj.SMFSFlag.Fit(kk)=obj.SMFSFlag.FitLinear(kk)*obj.SMFSFlag.FitLinearRet(kk);
+                end
             end
             % Figure loop
             for jj=1:NFigures
@@ -2251,14 +2306,12 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                     xApp=obj.HHApp{oo}*mega;
                     yApp=obj.BasedApp{oo}*giga;
                     xRet=obj.HHRet{oo}*mega;
-                    yRet=obj.BasedRet{oo}*giga;
-                    xRetSel=obj.HHRet{oo}*mega;
-                    yRetSel=obj.BasedRet{oo}*giga;
-                    xData=obj.LinFitxData{oo};
-                    yData=obj.LinFityData{oo};
-                    %% Plot condition
-                    if  ~obj.DebugFlag.Plot % Suppress plotting
-                    %if  obj.DebugFlag.Plot % Allow plotting
+                    yRet=obj.BasedRetFit{oo}*giga; % Allocate the fit function 1 fitted y data
+                    xData=obj.LinFitRetxData{oo};
+                    yData=obj.LinFitRetyData{oo};
+                    %% Plot condition                   
+                    %if  ~obj.DebugFlag.Plot % Suppress plotting
+                    if  obj.DebugFlag.Plot % Allow plotting
                         continue
                     end
                     % Preparation for the plot
@@ -2274,26 +2327,25 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                     plot(xApp,yApp,'Color',RGB1)
                     plot(xRet,yRet,'Color',RGB2)
                     plot(xData,yData,'*','MarkerSize',4,'Color',RGB4)
-                    plot(xData,obj.LinFitCoeffa(oo)*xData+obj.LinFitCoeffb(oo),'LineWidth',2,'Color',RGB3)
+                    plot(xData,obj.LinFitRetCoeffa(oo)*xData+obj.LinFitRetCoeffb(oo),'LineWidth',2,'Color',RGB3)
                     % Plotted Text
                     SW = [min(xlim) min(ylim)]+[diff(xlim)*2 diff(ylim)*2]*0.1;
-                    partstrA1='R^2=';
-                    partstrA2=num2str(round(gof.rsquare,2));
-                    fullstrA=strcat(partstrA1,partstrA2); % Define the string that shall be shown in the plot
-                    te1=text(SW(1),SW(2),fullstrA, 'VerticalAlignment','top', 'HorizontalAlignment','right');
+                    partstr1='slope=';
+                    partstr2=num2str(round(obj.LinFitRetCoeffa(kk),2));                 
+                    fullstr=strcat(partstr1,partstr2); % Define the string that shall be shown in the plot     
+                    te1=text(SW(1),SW(2),fullstr, 'VerticalAlignment','top', 'HorizontalAlignment','right');
                     te1.FontSize = 14;
                     % Title for each Subplot
                     ti=title(sprintf('%i',oo),'Color','k');
                     ti.Units='normalized'; % Set units to 'normalized'
                     %% Save figures
                     %%% Define the name for the figure title
-                    partname=sprintf('-linear-part%d',jj);
+                    partname=sprintf('-fitfct2-part%d',jj);
                     fullname=sprintf('%s%s',figname,partname);
                     %%% Save the current figure in the current folder
                     print(gcf,fullname,'-dpng');
                 end
             end
-           % close Figure 1 Figure 2 Figure 3 Figure 4
            close all
         end
 
@@ -2302,9 +2354,9 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             % surfaces
             
             for ii=1:obj.NCurves 
-              %  obj.CP_HardSurface(ii,1) = obj.HHApp{ii}(end) - obj.App{ii}(end)/obj.SpringConstant; % Determine the contact point by simply substracting the last entries of height and force and correct with the spring constant
-                obj.CP_HardSurface(ii,1) = obj.HHApp{ii}(end);
-                obj.CP_HardSurface(ii,2) = 0;
+               obj.CP_HardSurface(ii,1) = obj.HHApp{ii}(end) - obj.BasedApp{ii}(end)/obj.SpringConstant; % = THApp
+           %   obj.CP_HardSurface(ii,1) = obj.HHApp{ii}(end);
+               obj.CP_HardSurface(ii,2) = 0;
                 %% Debugging
 %                 hold on
 %                  plot(obj.HHApp{ii},obj.App{ii});
@@ -2341,7 +2393,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 RetCond2=abs(xRet)>xLimit3; % Determine the elements that fulfil the logical argument           
                 RetIdx2=find(RetCond2,1,'first'); % Read out the index of the first cell that fulfil the argument
                 % Allocate data
-                obj.AppIdx1(ii)=AppIdx1;    % 200 nm index of retraction data
+                obj.AppIdx1(ii)=AppIdx1;    % 200 nm index of approach data
                 obj.RetIdx1(ii)=RetIdx1;    % 50 nm index of retraction data
                 obj.RetIdx2(ii)=RetIdx2;    % 300 nm index of retraction data
             end     
@@ -2407,13 +2459,13 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             % Define variables
             WindowBeforePercentage=0.1;
             WindowAfterPercentage=0.1;
-            DataShareStartApp=0.55; 
-            DataShareEndApp=0.05;
+            DataShareStartApp=0.65; 
+            DataShareEndApp=0.15;
             LimitFactor=1.5;
             % For loop
-            for jj=1:obj.NCurves
+            %for jj=1:obj.NCurves
             %% Debugging
-            %for jj=9 % for debugging
+            for jj=7 % for debugging
                 %sprintf('Force curve No. %d',jj) % Gives current
                 % Force curve for debugging
                 if ~obj.SMFSFlag.Uncorrupt(jj) || ~obj.SMFSFlag.AppMinCrit(jj)     % Exclude corrupted force curves or force curves showing no snap-in from the analysis
@@ -2447,8 +2499,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 obj.SnapInIdx(jj)=length(yApp)-PeakIdx; % Correct for the data the peak index is based on by substracting from the number of data points
                 obj.SnapInLength(jj)=abs(xApp(obj.SnapInIdx(jj))); % Corresponding x-value of the index
                 %% Plot condition
-                if  ~obj.DebugFlag.Plot % Suppress plotting
-                %if  obj.DebugFlag.Plot % Allow plotting
+                %if  ~obj.DebugFlag.Plot % Suppress plotting
+                if  obj.DebugFlag.Plot % Allow plotting
                         continue
                 end              
                 % Define variables for the figure name
@@ -2498,7 +2550,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 ax3.XLim = [0 inf];
                 ax3.YLim = [0 0.5];
                 ax3.XLabel.String = 'Index (1)';
-                ax3.YLabel.String = '';
+                ax3.YLabel.String = 'Median deviation';
                 %% Save figures
                 %%% Define the name for the figure title
                 partname=sprintf('-Fc %d',jj);
@@ -2518,14 +2570,14 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             
             % Define variables
             DataShareStartRet=0.02; %
-            DataShareEndRet=0.12; %
+            DataShareEndRet=0.07; %
             WindowBeforePercentage=0.01;
             WindowAfterPercentage=0.01;
             LimitFactor=2;
             % For loop
-            for jj=1:obj.NCurves
+            %for jj=1:obj.NCurves
             %% Debugging
-            %for jj=81 % for debugging
+            for jj=7 % for debugging
                 % sprintf('Force curve No. %d',jj) % Gives current Force curve
                 % for debugging
                 if ~obj.SMFSFlag.Uncorrupt(jj) || ~obj.SMFSFlag.RetMinCrit(jj)     % Exclude corrupted force curves from the analysis
@@ -2562,8 +2614,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 end
                 obj.SMFSFlag.PullingLength(jj)=1;                
                 %% Plot condition
-                if  ~obj.DebugFlag.Plot % Suppress plotting
-                %if  obj.DebugFlag.Plot % Allow plotting
+                %if  ~obj.DebugFlag.Plot % Suppress plotting
+                if  obj.DebugFlag.Plot % Allow plotting
                     continue
                 end
                 % Define variables for the figure name
@@ -2613,7 +2665,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 ax3.XLim = [0 inf];
                 ax3.YLim = [0 0.15];
                 ax3.XLabel.String = 'Index (1)';
-                ax3.YLabel.String = '';
+                ax3.YLabel.String = 'Median deviation';
                 %% Save figures
                 %%% Define the name for the figure title
                 partname=sprintf('-Fc %d',jj);
@@ -2659,7 +2711,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             %% Determine the maximum adhesion force
             % Approach
             if obj.SMFSFlag.SnapIn(kk)==1 % Select only force curves that show a snap-in behavior
-                obj.AdhForceMaxApp(kk)=min(yApp(1:end)); % Determine maximum adhesion forces from the pulling length index to the last data point
+                obj.AdhForceMaxApp(kk)=min(yApp(obj.SnapInLength:end)); % Determine maximum adhesion forces from the pulling length index to the last data point
                 obj.AdhForceMaxAppIdx(kk)=find(yApp==obj.AdhForceMaxApp(kk)); % Finds the corresponding index of the value
             end 
             % Retract
@@ -3493,6 +3545,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             % fc_print_raw: A function to simply plot all force curves of a
             % force map without any selection taking place
             
+            
             % Define remainder situation
             Remainder=mod(obj.NCurves,25);
             NFigures=floor(obj.NCurves./25);
@@ -3544,7 +3597,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                     x150=-150e-9; % Defines 150nm
                     x500=-500e-9; % Defines 500nm
                     % Plot tile
-                    ax=nexttile;
+                    ax=nexttile;                 
                     hold on
                     grid on
                     plot(obj.HHApp{qq},obj.App{qq},'Color',RGB1);
@@ -3809,31 +3862,41 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             end
             
             % Define RGB colours
-            RGB1=[0 26 255]./255;  % Blue 
+            % Define variables
+            RGB1=[0 26 255]./255;  % Blue
             RGB2=[255 119 0]./255; % Orange
-            RGB3=[80 220 100]./255; % Emerald
-            RGB10=[205 207 208]./255; % Grey
+            RGB7=[255 230 0]./255; % Yellow
+            RGB8=[80 200 204]./255; % Turquoise
+            RGB10=[200 0 255]./255; % Violet
+            RGB11=[200 255 150]./255; % Light Green
+            RGB12=[185 230 254]./255; % Light Blue
+            RGB13=[200 0 0]./255; % Red
               
             [Xmultiplier,Xunit,~] = AFMImage.parse_unit_scale(1e+9,'nm',1);
             [Ymultiplier,Yunit,~] = AFMImage.parse_unit_scale(1e+9,'nN',1);
             
-            % Define some variables
-            kk=21;
-            VelocityConvert=num2str(obj.Velocity/Xmultiplier); % Convert into nm
-            figname=strcat(obj.Date,{'_'},obj.Time,{'_'},obj.ID,{'_'},obj.Substrate,{'_'},obj.EnvCond,{'_'},VelocityConvert,{'_'},obj.Chipbox,{'_'},obj.ChipCant);
+            kk=25;
+            % Define variables for the figure name
+            ExtendVelocityConvert=num2str(obj.ExtendVelocity*1e9);
+            RetractVelocityConvert=num2str(obj.RetractVelocity*1e9);
+            HoldingTimeConvert=num2str(obj.HoldingTime);
+            % Classification criteria
+            figname=strcat(obj.Date,{'_'},obj.Time,{'_'},obj.ID,{'_'},obj.Substrate,{'_'},obj.EnvCond,{'_'},obj.Linker,{'_'},obj.Chipbox,{'_'},obj.ChipCant,{'_'},ExtendVelocityConvert,{'_'},RetractVelocityConvert,{'_'},HoldingTimeConvert);
             figname=char(figname);
           
             % Allocate data
-           xApp1=(obj.THApp{kk}-obj.CP_HardSurface(kk))/-Xmultiplier;
-          %  xApp1b=(obj.THApp{kk})*-1e9;
-            yApp1=(obj.BasedApp{kk})/Ymultiplier;
-            xRet1=(obj.THRet{kk}-obj.CP_HardSurface(kk))/-Xmultiplier;
-            xRet1b=(obj.THRet{kk})/-Xmultiplier;
-            yRet1=(obj.BasedRetCorr2{kk})/Ymultiplier;
-            
-            yRet_2=(obj.yRetLim2{kk})*1e9;
-            yRet_1=(obj.yRetLim{kk})*1e9;
-        
+            % Allocate data
+                        xApp=(obj.HHApp{kk}-obj.CP_HardSurface(kk))/-Xmultiplier; % Retraction x-data (m): Vertical tip height data corrected by the determined contact point using the hard surface method
+                        xRet=(obj.HHRet{kk}-obj.CP_HardSurface(kk))/-Xmultiplier; % Retraction x-data (m): Vertical tip height data corrected by the determined contact point using the hard surface method
+                        yApp=obj.BasedApp{kk}/Ymultiplier;
+                        yRet=obj.BasedRet{kk}/Ymultiplier;
+                %        yAppLim=(obj.yAppLim{kk})*1e9;
+                        yRetLim=(obj.yRetLim{kk})*1e9;
+%                         xApp=flip(obj.HHApp{kk})% Retraction x-data (m): Vertical tip height data corrected by the determined contact point using the hard surface method
+%                         xRet=flip(obj.HHRet{kk}) % Retraction x-data (m): Vertical tip height data corrected by the determined contact point using the hard surface method
+%                         yApp=obj.App{kk}
+%                         yRet=obj.Ret{kk}
+%                                      
             % Figure
             h_fig=figure(ii);
             h_fig.Color='white'; % changes the background color of the figure
@@ -3844,10 +3907,10 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             % Plot
             hold on
             grid on
-           % area(xRet1,yRet_1,'FaceColor',RGB10);
-            area(xRet1,yRet1,'FaceColor',RGB10);
-            plot(xApp1,yApp1,'Color',RGB1,'LineWidth',6);
-            plot(xRet1,yRet1,'Color',RGB2,'LineWidth',6);
+               area(xRet(1:obj.PullingLengthIdx(kk)),yRetLim(1:obj.PullingLengthIdx(kk)),'FaceColor',RGB11)
+%                                         area(xApp(obj.SnapInIdx(kk):end),yAppLim(obj.SnapInIdx(kk):end),'FaceColor',RGB7)  
+           plot(xApp,yApp,'Color',RGB1,'LineWidth',6);
+             plot(xRet,yRet,'Color',RGB2,'LineWidth',6);
           %  plot(xApp1,yApp1,'Color',RGB1,'LineWidth',4);
         %    plot(xRet1(obj.PullingLengthIdx:end),yRet1(obj.PullingLengthIdx:end),'Color',RGB3,'LineWidth',4);
             % Title for each Subplot
@@ -3855,26 +3918,31 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
            % ti.Units='normalized'; % Set units to 'normalized'
            % ti.Position=[0.5,0.95]; % Position the subplot title within the subplot
             % Legend
-            le=legend(' Adhesion energy',' Approach data',' Retraction data','Location','best');
-            le.FontSize = 48;      
-            le.EdgeColor='w';
+           % le=legend(' Adhesion energy',' Approach data',' Retraction data','Location','best');
+           % le.FontSize = 48;      
+           % le.EdgeColor='w';
             %le.Box = 'off';
             %%% Axes
             ax = gca; % current axes
             ax.FontSize = 48;
             ax.LineWidth = 5;
-            ax.XTick=0:100:400;
+         %   ax.XTick=0:100:400;
            % ax.XTickLabel=[];
-            ax.YTick=-0.3:0.1:0.2;
+        %    ax.YTick=-0.3:0.1:0.2;
            % ax.YTickLabel=[];
             %ax.XLabel.String = sprintf('Tip-Substrate separation (%s)',Xunit);
-            ax.XLabel.String = 'Tip-Substrate separation (nm)';
+          % ax.XLabel.String = 'Tip-Substrate separation (nm)';
+          ax.XLabel.String = 'Tip-Substrate separation (m)';
             ax.XLabel.FontSize = 52;
             %ax.YLabel.String = sprintf('Force (%s)',Yunit);
-            ax.YLabel.String = 'Force (nN)';
+         %   ax.YLabel.String = 'Force (nN)';
+            ax.YLabel.String = 'Force (N)';
             ax.YLabel.FontSize = 52;
             ax.XLim = [XMin XMax];
-            ax.YLim = [YMin YMax];
+      %     ax.YLim = [-inf 0.3e-9];
+           ax.YLim = [-inf 0.1];
+           % ax.XLim = [XMin XMax];
+        %    ax.YLim = [YMin YMax];
             %% Save figures
             %%% Define the name for the figure title
             partname=sprintf('-ForceCurve%d',kk);
@@ -4535,13 +4603,29 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             end
             close all
         end
-                 
-        function [x,y]=test(obj) 
+        
+        
+        function fc_testing(obj)
+                           
+            % For loop
+            for jj=1:obj.NCurves
+            %% Debugging
+            %for jj=54 % for debugging
+              e.FM{463, 1}
+              obj.LinFitCoeffa
+            
+            end
+            
+        end
+        
+      
+        
+        function [x,y]=test(obj)
             % TEST FUNCTION
             mega=10e6;
                 giga=10e9;
                 tera=10e12;
-            jj=10;
+            jj=37;
            % App
         %   obj.xDataToFit=obj.HHApp{jj}*mega
          %  obj.yDataToFit=obj.App{jj}*giga
@@ -4553,15 +4637,15 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
           %  obj.yDataToFit(ceil(end*0.7):end)=[]
           %  obj.xDataToFit(ceil(end*0.7):end)=[]
            % Ret
-            obj.yDataToFit(1:ceil(end*0.25))=[]
-            obj.xDataToFit(1:ceil(end*0.25))=[]
+            obj.yDataToFit(1:ceil(end*0.35))=[]
+            obj.xDataToFit(1:ceil(end*0.35))=[]
             
             
-            x=obj.xDataToFit  
-            y=obj.yDataToFit
+    %        x=obj.xDataToFit  
+    %        y=obj.yDataToFit
             
-      %     x=b.FM{1}.xDataToFit  
-       %  y=b.FM{1}.yDataToFit
+        x=e.FM{135}.xDataToFit  
+       y=e.FM{135}.yDataToFit
             
             
             
@@ -6039,8 +6123,9 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             obj.SMFSFlag.RetMinCrit=zeros(1,obj.NCurves);
             obj.SMFSFlag.LengthRequisite=zeros(1,obj.NCurves);
             obj.SMFSFlag.Fit=zeros(1,obj.NCurves);
-            obj.SMFSFlag.FitLinear=zeros(1,obj.NCurves);
             obj.SMFSFlag.FitSinoidal=zeros(1,obj.NCurves);
+            obj.SMFSFlag.FitLinear=zeros(1,obj.NCurves);            
+            obj.SMFSFlag.FitLinearRet=zeros(1,obj.NCurves);
             obj.SMFSFlag.SnapIn=zeros(1,obj.NCurves);
             obj.SMFSFlag.PullingLength=zeros(1,obj.NCurves);
             obj.SMFSFlagDown.Uncorrupt=ones(1,obj.NCurves);

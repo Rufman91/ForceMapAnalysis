@@ -1336,7 +1336,10 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             % SMFS_preprocessing: A function to run a bundle of other 
             % typically required functions for further analysis
             % obj.preprocessing
-                       
+            
+            % Output time and date for the dairy
+            datetime('now')
+            
             h = waitbar(0,'setting up','Units','normalized','Position',[0.4 0.3 0.2 0.1]);
             NLoop = length(obj.ForceMapNames);
             if sum(obj.SMFSFlag.Preprocessed) >= 1
@@ -1370,7 +1373,10 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             % The function flags force curves and whole force maps that are
             % non-functionalize
             % Needed function: obj.preprocessing
-         
+            
+            % Output time and date for the dairy
+            datetime('now')
+            
              h = waitbar(0,'setting up','Units','normalized','Position',[0.4 0.3 0.2 0.1]);
             NLoop = length(obj.ForceMapNames);
             if sum(obj.SMFSFlag.Fit) >= 1
@@ -1384,7 +1390,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             end
             % Figure visibility
             set(groot,'defaultFigureVisible','off')      
-            %set(groot,'defaultFigureVisible','on')  
+            % set(groot,'defaultFigureVisible','on')  
             % Change into the Folder of Interest
             cd(obj.ExperimentFolder) % Move into the folder
             % Create folders for saving the produced figures
@@ -1394,8 +1400,8 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             cd(currpath);
             
             % Loop over the imported force maps
-             for ii=1:obj.NumForceMaps
-            %for ii=464:obj.NumForceMaps % Debugging
+            %for ii=1:obj.NumForceMaps
+            for ii=135 % Debugging
            
                 waitbar(ii/NLoop,h,sprintf('Preprocessing ForceMap %i/%i\nProcessing force curves',ii,NLoop));
                 obj.FM{ii}.fc_sinoidal_fit
@@ -1412,6 +1418,9 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             % The function flags force curves and whole force maps that are
             % non-functionalize
             % Needed function: obj.preprocessing
+            
+            % Output time and date for the dairy
+            datetime('now')
             
              h = waitbar(0,'setting up','Units','normalized','Position',[0.4 0.3 0.2 0.1]);
             NLoop = length(obj.ForceMapNames);
@@ -1461,17 +1470,21 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 YMin= -inf;     % Limit of the Y-axis in Newtons (N)
                 YMax= inf;      % Limit of the Y-axis in Newtons (N)
             end
+            
+            % Output time and date for the dairy
+            datetime('now')
+            
             % Change into the Folder of Interest
             cd(obj.ExperimentFolder) % Move into the folder 
             % Create folders for saving the produced figures
-            foldername='FM_Fig';    % Defines the folder name
+            foldername='FM_Visual_Selected';    % Defines the folder name
             mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
             currpath=fullfile(obj.ExperimentFolder,foldername);
             cd(currpath); 
             
             % Loop over the imported force maps
-            %for ii=1:obj.NumForceMaps
-            for ii=4 % Debugging
+            for ii=1:obj.NumForceMaps
+            %for ii=543 % Debugging
                % Command window output
                sprintf('Force Map No. %d of %d',ii,obj.NumForceMaps) % Gives current Force Map Position
                % Run the chosen functions
@@ -1484,9 +1497,12 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             % This function allows to analyse different force curve
             % criteria, i.e. pulling length, adhesion energy. 
            
+            % Output time and date for the dairy
+            datetime('now')
+            
             %% Loop
             for hh=1:obj.NumForceMaps
-            %for hh=544:obj.NumForceMaps % Debugging     
+            %for hh=39 % Debugging     
                sprintf('Force Map No. %d of %d',hh,obj.NumForceMaps) % Gives current Force Map Position   
                % Print force curves containing label for the pulling length
                % and colored area for the adhesion energy                              
@@ -1522,6 +1538,9 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 YMin= -inf;     % Limit of the Y-axis in Newtons (N)
                 YMax= inf;      % Limit of the Y-axis in Newtons (N)
             end
+            % Output time and date for the dairy
+            datetime('now')
+            
             % Figure visibility
             set(groot,'defaultFigureVisible','off')
         %    set(groot,'defaultFigureVisible','on')
@@ -1533,8 +1552,8 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             currpath=fullfile(obj.ExperimentFolder,foldername);
             cd(currpath);
             %% loop
-            for hh=1:obj.NumForceMaps
-            %for hh=31 % Debugging
+            %for hh=1:obj.NumForceMaps
+            for hh=544:obj.NumForceMaps % Debugging
             %sprintf('Force Map No. %d of %d',hh,obj.NumForceMaps) % Gives current Force Map Position   
             % Determine needed input variable
                NumFcUncorrupt(hh)=nnz(obj.FM{hh}.SMFSFlag.Uncorrupt); % Determine the number of uncorrupted force curves     
@@ -1547,6 +1566,9 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             % SMFS_print: A function to simply plot all force curves of all
             % force maps loaded and calssified based on the SMFS Flag
             % Needed function: obj.presorting
+            
+            % Show time and date for the dairy
+            datetime('now')
             
             if nargin<2
                 XMin= -inf;     % Limit of the X-axis in meters (m)  
@@ -1587,6 +1609,9 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 YMin= -inf;     % Limit of the Y-axis in Newtons (N)
                 YMax= 50e-12;      % Limit of the Y-axis in Newtons (N)
             else
+            
+            % Output time and date for the dairy
+            datetime('now')
                 
             end
             % Figure visibility
@@ -1602,8 +1627,8 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             cd(currpath); 
             
             % Loop over the imported force maps
-            %for ii=1:obj.NumForceMaps
-            for ii=1 % Debugging
+            for ii=1:obj.NumForceMaps
+            %for ii=1 % Debugging
                % Command window output
                sprintf('Force Map No. %d of %d',ii,obj.NumForceMaps) % Gives current Force Map Position
                % Run the chosen functions
@@ -1632,6 +1657,10 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 StartDate='0000.00.00';
                 EndDate='2999.00.00';
             end
+            
+            % Output time and date for the dairy
+            datetime('now')
+            
             % Loop over the imported force maps
              for ii=1:obj.NumForceMaps
              % for ii=1:43
@@ -1702,12 +1731,15 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
         function SMFS_analysis_dashboard(obj,ExtVelocityValue,RetVelocityValue,HoldingTimeValue,SubstrateValue,EnvCondValue,ChipCantValue,ChipboxValue,LinkerValue)
             % I all velocities should be selected use input variable: 0
             
+            % Output time and date for the dairy
+            datetime('now')
+            
             % Define variables
-            j=1;
+            jj=1;
             IdxArray=[];
-            %for ii=1:obj.NumForceMaps
+            for ii=1:obj.NumForceMaps
             %% Debugging
-            for ii=1:10 % for debugging
+            %for ii=1:10 % for debugging
                 % sprintf('Force curve No. %d',ii) % Gives current Force curve
                 % for debugging
                 if ((obj.FM{ii}.ExtendVelocity==ExtVelocityValue || ExtVelocityValue==0) ...
@@ -1719,9 +1751,9 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                         && (strcmpi(obj.FM{ii}.Chipbox,ChipboxValue) || strcmpi(ChipboxValue,'All')) ...
                         && (strcmpi(obj.FM{ii}.Linker,LinkerValue) || strcmpi(LinkerValue,'All')))
                     % Define variables for the if condition
-                    IdxArray(j,1)=ii;
+                    IdxArray(jj,1)=ii;
                     % Adjust variable
-                    j=j+1;
+                    jj=jj+1;
                 end     
             end
             % If condition to handle an empty index array
@@ -1738,7 +1770,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             cd(obj.ExperimentFolder) % Move into the folder
             % Create folders for saving the produced figures
             %foldername='FM_test';    % for debugging
-            foldername='FM_analysis';    % Defines the folder name
+            foldername='FM_analysis_dashboard';    % Defines the folder name
             mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
             currpath=fullfile(obj.ExperimentFolder,foldername);
             cd(currpath);
@@ -1770,27 +1802,31 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             ConcateArray7=zeros(1,1);
                        
             % for loop
-            for ff=1:length(IdxArray)
+            %for ff=1:length(IdxArray)
+            %% Debugging
+            for ff=6 % for debugging
+             sprintf('Force curve No. %d',ff) % Gives current Force curve
+            % for debugging
                 % Allocate data
-                yAdhMaxRet=obj.FM{IdxArray(ff)}.AdhForceMaxApp;
                 yAdhMaxApp=obj.FM{IdxArray(ff)}.AdhForceMaxRet;
+                yAdhMaxRet=obj.FM{IdxArray(ff)}.AdhForceMaxApp;
                 yAdhUnbinding=obj.FM{IdxArray(ff)}.AdhForceUnbinding;
                 yAdhEneApp=obj.FM{IdxArray(ff)}.AppAdhEnergy_IdxMethod;
                 yAdhEneRet=obj.FM{IdxArray(ff)}.RetAdhEnergy_IdxMethod;
                 yPullingLength=obj.FM{IdxArray(ff)}.PullingLength;
                 ySnapInLength=obj.FM{IdxArray(ff)}.SnapInLength;
                 % Determine the number of rows per force map
-                ArrayLength=length(yAdhMaxRet); % Define the length of the array
+                ArrayLength=length(yPullingLength); % Define the length of the array
                 row_start = ((ff-1) * ArrayLength) + 1; % Define the appropriate row start to append the new data
                 row_end   = ff * ArrayLength; % Define the appropriate row end to append the new data
                 % Concatenated data
-                ConcateArray1(row_start:row_end,:)=yAdhMaxApp; % Append the new data into the concatenated vector
-                ConcateArray2(row_start:row_end,:)=yAdhMaxRet; % Append the new data into the concatenated vector
-                ConcateArray3(row_start:row_end,:)=yAdhUnbinding; % Append the new data into the concatenated vector
-                ConcateArray4(row_start:row_end,:)=yAdhEneApp; % Append the new data into the concatenated vector
-                ConcateArray5(row_start:row_end,:)=yAdhEneRet; % Append the new data into the concatenated vector
-                ConcateArray6(row_start:row_end,:)=yPullingLength; % Append the new data into the concatenated vector
-                ConcateArray7(row_start:row_end,:)=ySnapInLength; % Append the new data into the concatenated vector
+                ConcateArray1(row_start:row_end,:)=yAdhMaxApp'; % Append the new data into the concatenated vector
+                ConcateArray2(row_start:row_end,:)=yAdhMaxRet'; % Append the new data into the concatenated vector
+                ConcateArray3(row_start:row_end,:)=yAdhUnbinding'; % Append the new data into the concatenated vector
+                ConcateArray4(row_start:row_end,:)=yAdhEneApp'; % Append the new data into the concatenated vector
+                ConcateArray5(row_start:row_end,:)=yAdhEneRet'; % Append the new data into the concatenated vector
+                ConcateArray6(row_start:row_end,:)=yPullingLength'; % Append the new data into the concatenated vector
+                ConcateArray7(row_start:row_end,:)=ySnapInLength'; % Append the new data into the concatenated vector
                       
                 % Statistics
                 AdhMaxAppSelMean=mean(ConcateArray1);
@@ -2089,6 +2125,9 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
       
         function SMFS_analysis_dashboard2(obj,ExtVelocityValue,RetVelocityValue,HoldingTimeValue,SubstrateValue,EnvCondValue,ChipCantValue,ChipboxValue,LinkerValue)
             % I all velocities should be selected use input variable: 0
+            
+            % Output time and date for the dairy
+            datetime('now')
             
             % Define variables
             j=1;
@@ -2461,6 +2500,8 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
         
         function SMFS_analysis_selction_fit(obj,VelocityValue,SubstrateValue,EnvCondValue,ChipCantValue,ChipboxValue,LinkerValue)
                 
+            % Output time and date for the dairy
+            datetime('now')
             
                 % Define colors
                 RGB8=[80 200 204]./255; % Turquoise
@@ -2700,6 +2741,9 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
         
         function SMFS_boxplot_pulllength(obj,XMin,XMax,YMin,YMax) % fc ... force curve
             %
+            % Output time and date for the dairy
+            datetime('now')
+            
             if nargin < 2
                 XMin= -inf;
                 XMax= inf;
@@ -2767,7 +2811,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 YMin= -inf;
                 YMax= inf;
             end
-            
+            ii=65
             % Change into the Folder of Interest
             cd(obj.ExperimentFolder) % Move into the folder
             % Create folders for saving the produced figures
@@ -2802,14 +2846,14 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             cd(obj.ExperimentFolder) % Move into the folder 
             % Create folders for saving the produced figures
             %foldername='FM_test';    % for debugging
-            foldername='FM_Pulllength_MAD3';    % Defines the folder name
+            foldername='FM_Pulllength_MAD';    % Defines the folder name
             mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
             currpath=fullfile(obj.ExperimentFolder,foldername);
             cd(currpath); 
             
             % Loop over the imported force maps
             %for ii=1:obj.NumForceMaps
-            for ii=39:43 % Debugging
+            for ii=2 % Debugging
                % Command window output
                sprintf('Force Map No. %d of %d',ii,obj.NumForceMaps) % Gives current Force Map Position
                % Run the chosen functions
@@ -2826,14 +2870,14 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             cd(obj.ExperimentFolder) % Move into the folder 
             % Create folders for saving the produced figures
             %foldername='FM_test';    % for debugging
-            foldername='FM_SnapIn_MAD2';    % Defines the folder name
+            foldername='FM_SnapIn_MAD';    % Defines the folder name
             mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
             currpath=fullfile(obj.ExperimentFolder,foldername);
             cd(currpath); 
             
             % Loop over the imported force maps
             %for ii=1:obj.NumForceMaps
-            for ii=41 % Debugging
+            for ii=2 % Debugging
                % Command window output
                sprintf('Force Map No. %d of %d',ii,obj.NumForceMaps) % Gives current Force Map Position
                % Run the chosen functions
@@ -2912,12 +2956,14 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             % Function to quickly loop over all force maps for testing and
             % debugging
             for ii=1:obj.NumForceMaps
-            %for ii=41
-            ii
-               obj.FM{ii}.initialize_flags
-         %     obj.FM{ii}.fc_estimate_cp_hardsurface
+          %  for ii=135
+           % aa{ii}=find(obj.FM{ii}.LinFitCoeffa)
+        %    obj.SMFSFlag.Fit(1:obj.NumForceMaps)=1
+            
+           %    obj.FM{ii}.test
+          %    obj.FM{ii}.initialize_flags
           %       obj.FM{ii}.fc_pulling_length_MAD
-                    
+            %        obj.FM{ii}.fc_sinoidal_fit2
                  % obj.write_to_log_file('Test','variable ii','start')
                  % aa=33;
                   
