@@ -1620,15 +1620,15 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             % Change into the Folder of Interest
             cd(obj.ExperimentFolder) % Move into the folder 
             % Create folders for saving the produced figures
-            %foldername='FM_test';    % for debugging
-            foldername='FM_fc_fitted';    % Defines the folder name
+            foldername='FM_test';    % for debugging
+            %foldername='FM_fc_fitted';    % Defines the folder name
             mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
             currpath=fullfile(obj.ExperimentFolder,foldername);
             cd(currpath); 
             
             % Loop over the imported force maps
-            for ii=1:obj.NumForceMaps
-            %for ii=1 % Debugging
+            %for ii=1:obj.NumForceMaps
+            for ii=135 % Debugging
                % Command window output
                sprintf('Force Map No. %d of %d',ii,obj.NumForceMaps) % Gives current Force Map Position
                % Run the chosen functions

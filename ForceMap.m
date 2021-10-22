@@ -2033,9 +2033,9 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             figname=strcat(obj.Date,{'_'},obj.Time,{'_'},obj.ID,{'_'},obj.Substrate,{'_'},obj.EnvCond,{'_'},obj.Linker,{'_'},obj.Chipbox,{'_'},obj.ChipCant,{'_'},ExtendVelocityConvert,{'_'},RetractVelocityConvert,{'_'},HoldingTimeConvert);
             figname=char(figname);
             % Fit loop
-            % for kk=1:obj.NCurves
+             for kk=1:obj.NCurves
                 %% Debugging
-             for kk=88 % for debugging
+             %for kk=88 % for debugging
                 % sprintf('Force curve No. %d',kk) % Gives current Force curve
                 % for debugging
                 % Allocate data
@@ -2096,8 +2096,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 ft3 = fittype( {'x', '1'}, 'independent', 'x', 'dependent', 'y', 'coefficients', {'a', 'b'} );
                 [fitresult3, gof3] = fit( xData, yData, ft3 );          
                 % Allocate variables
-                obj.LinFitCoeffa(kk)=fitresult2.a1;
-                obj.LinFitCoeffb(kk)=fitresult2.b1;
+                obj.LinFitCoeffa(kk)=fitresult3.a;
+                obj.LinFitCoeffb(kk)=fitresult3.b;
                 obj.LinFitRSquare(kk)=gof3.rsquare;
                 obj.LinFitSSE(kk)=gof3.sse;
                 %% Compare fits
@@ -2254,9 +2254,9 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 LimitIdxApp2=round(DataPtsApp(1)*DataShareEndApp); % Determine the corresponidng index
                 % Find retention index corresponding to the approach baseline
                 yAppMean=mean(yApp(LimitIdxApp1:LimitIdxApp2,1)); % Calculate the mean of the difference data
-                RetIdx1=find(yRet<yAppMean,1,'first');
-                obj.xOriRet(kk)=mean(xRet(RetIdx1-1:RetIdx1));
-                obj.yOriRet(kk)=mean(yRet(RetIdx1-1:RetIdx1));
+                RetIdx=find(yRet<yAppMean,1,'first'); % Find the closest data point smaller than the computed mean
+                obj.xOriRet(kk)=mean(xRet(RetIdx-1:RetIdx)); % Approximate corresponding x-value to the computed mean
+                obj.yOriRet(kk)=yAppMean;
                 % Concanate generated data with zero as first data value
                 xCat=cat(1,obj.xOriRet(kk),xRetSelMean);
                 yCat=cat(1,obj.yOriRet(kk),yRetSelMean);
@@ -2315,11 +2315,11 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                         continue
                     end
                     % Preparation for the plot
-                    AppIdx1=find(yApp<yAppMean,1,'last');
-                    yApp(AppIdx1:end)=[]; % Remove "high" values
-                    xApp(AppIdx1:end)=[]; % Remove "high" values
-                    xRet(1:RetIdx1)=[]; % Remove "high" values
-                    yRet(1:RetIdx1)=[]; % Remove "high" values
+                    AppIdx=find(yApp<obj.yOriRet(oo),1,'last');
+                    yApp(AppIdx:end)=[]; % Remove "high" values
+                    xApp(AppIdx:end)=[]; % Remove "high" values
+                    xRet(1:RetIdx)=[]; % Remove "high" values
+                    yRet(1:RetIdx)=[]; % Remove "high" values
                     % Tiles
                     nexttile;
                     hold on
