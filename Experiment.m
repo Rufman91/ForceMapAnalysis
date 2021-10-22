@@ -16,6 +16,8 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                             % AND disk relatively low and the programm
                             % almost as quick as in original
                             % 'all-data-to-memory'-mode
+        KeepPythonFilesOpen % Decides whether to preload all PythonLoader Files into memory
+                            % all the time
         CurrentLogFile
         FM                  % Cellarray containing Force/QI Maps
         NumForceMaps
@@ -79,7 +81,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             obj.ExperimentFolder = fullfile(ParentFolder,obj.ExperimentName,filesep);
             
             % get Experiment filenames and paths from user input
-            [FileTypes, FullFileStruct, IsValid, BigData,PythonLoaderFlag] = obj.constructor_user_input_parser(obj.ExperimentName,obj.HostOS);
+            [FileTypes, FullFileStruct, IsValid, BigData,PythonLoaderFlag,KeepPythonFilesOpen] = obj.constructor_user_input_parser(obj.ExperimentName,obj.HostOS);
             
             if ~IsValid
                 obj = [];
@@ -87,7 +89,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             end
             
             % get paths of requested files and load them in
-            obj.take_paths_and_load_files(FileTypes,FullFileStruct,true,BigData,PythonLoaderFlag)
+            obj.take_paths_and_load_files(FileTypes,FullFileStruct,true,BigData,PythonLoaderFlag,KeepPythonFilesOpen)
             
             obj.initialize_flags
             
@@ -99,10 +101,11 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             obj.save_experiment();
         end
         
-        function take_paths_and_load_files(obj,FileTypes,FullFileStruct,isNew,BigData,PythonLoaderFlag)
+        function take_paths_and_load_files(obj,FileTypes,FullFileStruct,isNew,BigData,PythonLoaderFlag,KeepPythonFilesOpen)
             
             obj.BigDataFlag = BigData;
             obj.PythonLoaderFlag = PythonLoaderFlag;
+            obj.KeepPythonFilesOpen = KeepPythonFilesOpen;
             
             if nargin<4
                 isNew = false;
@@ -169,10 +172,10 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                             TempID{j,i} = sprintf('%s-%i',obj.ExperimentName,IDs(j+sum(NumFiles(1:i))-NumFiles(i)));
                         end
                         if i == 1 && FileTypes(i) && (j<=NumFiles(i))
-                            TempCell{j,i} = ForceMap(FMFullFile{j},obj.ExperimentFolder,TempID{j,i},obj.BigDataFlag,obj.PythonLoaderFlag);
+                            TempCell{j,i} = ForceMap(FMFullFile{j},obj.ExperimentFolder,TempID{j,i},obj.BigDataFlag,obj.PythonLoaderFlag,obj.KeepPythonFilesOpen);
                         end
                         if i == 2 && FileTypes(i) && (j<=NumFiles(i))
-                            TempCell{j,i} = ForceMap(RefFMFullFile{j},obj.ExperimentFolder,TempID{j,i},obj.BigDataFlag,obj.PythonLoaderFlag);
+                            TempCell{j,i} = ForceMap(RefFMFullFile{j},obj.ExperimentFolder,TempID{j,i},obj.BigDataFlag,obj.PythonLoaderFlag,obj.KeepPythonFilesOpen);
                         end
                         if i == 3 && FileTypes(i) && (j<=NumFiles(i))
                             TempCell{j,i} = AFMImage(IFullFile{j},obj.ExperimentFolder,TempID{j,i});
@@ -190,10 +193,10 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                     for j=1:NumFiles(i)
                         TempID{j,i} = sprintf('%s-%i',obj.ExperimentName,IDs(j+sum(NumFiles(1:i))-NumFiles(i)));
                         if i == 1 && FileTypes(i)
-                            TempCell{j,i} = ForceMap(FMFullFile{j},obj.ExperimentFolder,TempID{j,i},obj.BigDataFlag,obj.PythonLoaderFlag);
+                            TempCell{j,i} = ForceMap(FMFullFile{j},obj.ExperimentFolder,TempID{j,i},obj.BigDataFlag,obj.PythonLoaderFlag,obj.KeepPythonFilesOpen);
                         end
                         if i == 2 && FileTypes(i)
-                            TempCell{j,i} = ForceMap(RefFMFullFile{j},obj.ExperimentFolder,TempID{j,i},obj.BigDataFlag,obj.PythonLoaderFlag);
+                            TempCell{j,i} = ForceMap(RefFMFullFile{j},obj.ExperimentFolder,TempID{j,i},obj.BigDataFlag,obj.PythonLoaderFlag,obj.KeepPythonFilesOpen);
                         end
                         if i == 3 && FileTypes(i)
                             TempCell{j,i} = AFMImage(IFullFile{j},obj.ExperimentFolder,TempID{j,i});
@@ -274,7 +277,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 end
                 
                 % get paths of requested files and load them in
-                SaveCopy.take_paths_and_load_files(FileTypes,FullFileStruct,isNew,SaveCopy.BigDataFlag,SaveCopy.PythonLoaderFlag)
+                SaveCopy.take_paths_and_load_files(FileTypes,FullFileStruct,isNew,SaveCopy.BigDataFlag,SaveCopy.PythonLoaderFlag,obj.KeepPythonFilesOpen)
                 
                 % SaveCopy.initialize_flags % What to do with this?
                 
@@ -431,6 +434,9 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             
             if isempty(E.PythonLoaderFlag)
                 E.PythonLoaderFlag = false;
+            end
+            if isempty(E.KeepPythonFilesOpen)
+                E.KeepPythonFilesOpen = false;
             end
             if isempty(E.BigDataFlag)
                 E.BigDataFlag = false;
@@ -4334,6 +4340,40 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             end
         end
         
+        function load_python_files_to_memory(obj,IndexVector,RefIndexVector)
+            
+            if nargin < 2
+                IndexVector = 1:obj.NumForceMaps;
+            end
+            for i=IndexVector
+                obj.FM{i}.load_zipped_files_with_python;
+            end
+            
+            if nargin < 3
+                RefIndexVector = 1:obj.NumReferenceForceMaps;
+            end
+            for i=RefIndexVector
+                obj.RefFM{i}.load_zipped_files_with_python;
+            end
+        end
+        
+        function clear_python_files_from_memory(obj,IndexVector,RefIndexVector)
+            
+            if nargin < 2
+                IndexVector = 1:obj.NumForceMaps;
+            end
+            for i=IndexVector
+                obj.FM{i}.clear_zipped_files_from_memory;
+            end
+            
+            if nargin < 3
+                RefIndexVector = 1:obj.NumReferenceForceMaps;
+            end
+            for i=RefIndexVector
+                obj.RefFM{i}.clear_zipped_files_from_memory;
+            end
+        end
+        
     end
     methods(Static)
         % Static auxilary methods mainly for tip deconvolution (code by Orestis Andriotis)
@@ -4431,7 +4471,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             uiwait(h.f)
         end
         
-        function [FileTypes,OutStruct,IsValid,BigData,PythonLoaderFlag] = constructor_user_input_parser(ExperimentName,OS)
+        function [FileTypes,OutStruct,IsValid,BigData,PythonLoaderFlag,KeepPythonFilesOpen] = constructor_user_input_parser(ExperimentName,OS)
             
             IsValid = false;
             OutStruct = struct('FullFile',{cell(1,1),cell(1,1),cell(1,1),cell(1,1),cell(1,1)});
@@ -4497,12 +4537,18 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 'position',[.15 .16 .1 .05],'string','Delete Selected',...
                 'Callback',@delete_selected);
             c(16) = uicontrol(h.f,'style','checkbox','units','normalized',...
-                'position',[.3 .025 .2 .085],'string','Big Data mode',...
-                'tooltip','Recomme2nded when processing >~100000 force curves',...
-                'FontSize',18);
+                'position',[.3 .025 .3 .085],'string','Big Data mode',...
+                'tooltip','Recommended when processing >~100000 force curves',...
+                'FontSize',18,'Callback',@pushed_big_data);
             c(17) = uicontrol(h.f,'style','checkbox','units','normalized',...
-                'position',[.3 .025 .2 .025],'string','Python Loader Mode',...
+                'position',[.3 .025 .3 .025],'string','Python Loader Mode',...
                 'tooltip','Recommended Mode: Avoids unpacking large folder structures',...
+                'FontSize',18,'Callback',@pushed_python_loader,'enable','off');
+            c(18) = uicontrol(h.f,'style','checkbox','units','normalized',...
+                'position',[.6 .025 .3 .025],'string','Keep Files open in RAM',...
+                'tooltip','Trades off burst execution speed for RAM. Recommended when running long analysis scripts. Not Recommended for data/results review',...
+                'Enable','off',...
+                'Value',true,...
                 'FontSize',18);
             
             HeightPos = [.82 .64 .46 .28 .1];
@@ -4526,10 +4572,10 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 % Add listener for drop operations
                 DropListener(jAxis, ... % The component to be observed
                     'DropFcn', @(s, e)onDrop(h.f, s, e)); % Function to call on drop operation
-                h.DragNDrop = uicontrol(h.f,'style','text','units','normalized',...
-                    'position',[.5 .025 .5 .05],...
-                    'string',sprintf('Drag and Drop files into boxes\n (excl. to Windows and Linux) or load from browser'),...
-                    'FontSize',16);
+%                 h.DragNDrop = uicontrol(h.f,'style','text','units','normalized',...
+%                     'position',[.5 .025 .5 .05],...
+%                     'string',sprintf('Drag and Drop files into boxes\n (excl. to Windows and Linux) or load from browser'),...
+%                     'FontSize',16);
 %             end
             
             % Create OK pushbutton
@@ -4548,6 +4594,26 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 close(h.f)
             end
             
+            function pushed_big_data(varargin)
+                
+                if c(16).Value
+                    set(c(17),'Enable','on');
+                else
+                    set(c(17),'Enable','off');
+                end
+                
+            end
+            
+            function pushed_python_loader(varargin)
+                
+                if c(17).Value
+                    set(c(18),'Enable','on');
+                else
+                    set(c(18),'Enable','off');
+                end
+                
+            end
+            
             function p_close(varargin)
                 for i=1:5
                     if isempty(OutStruct(i).FullFile{1})
@@ -4559,6 +4625,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 IsValid = true;
                 BigData = c(16).Value;
                 PythonLoaderFlag = c(17).Value;
+                KeepPythonFilesOpen = c(18).Value;
                 close(h.f)
             end
             

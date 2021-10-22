@@ -33,6 +33,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
         BigDataFlag     % If true, unpack data container into Experiment subfolder
                         % and always load force volume data from there
         PythonLoaderFlag
+        KeepPythonFilesOpen % Decides whether to preload all PythonLoader Files into memory
+                            % all the time
         FractionOfMaxRAM = 1/5 % Specifies how much of MaxRAM space can be taken for certain partitioned calculations 
         NCurves         % number of curves on the force map
         MaxPointsPerCurve
@@ -231,7 +233,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
     methods
         % Main methods of the class
         
-        function obj = ForceMap(MapFullFile,DataFolder,TempID,BigData,PythonLoaderFlag,FakeOpt,NSynthCurves)
+        function obj = ForceMap(MapFullFile,DataFolder,TempID,BigData,PythonLoaderFlag,KeepPythonFilesOpen,FakeOpt,NSynthCurves)
             %%% Constructor of the class
             
             % Specify the folder where the files live. And import them.
@@ -243,15 +245,16 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             obj.ID = TempID;
             obj.BigDataFlag = BigData;
             obj.PythonLoaderFlag = PythonLoaderFlag;
+            obj.KeepPythonFilesOpen = KeepPythonFilesOpen;
             
-            if nargin >= 6 && isequal(FakeOpt,'Dummy')
+            if nargin >= 7 && isequal(FakeOpt,'Dummy')
                 obj.create_dummy_force_map(NSynthCurves);
             end
             
             % get OS and use appropriate fitting system command
             obj.check_for_new_host
             
-            % Unpack jpk-force-map with 7zip call to the terminal
+            % Unpack jpk-force-map with according to data loader choice
             obj.unpack_jpk_force_map(MapFullFile,DataFolder);
             
             Index = regexp(obj.ID,'(?<=\-).','all');
@@ -290,6 +293,12 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
         function load_zipped_files_with_python(obj)
             % loads ForceMap source file (*.jpk-forrce-map,*.jpk-qi-data)
             % into memory and keeps it, open for the session
+            
+            if ~isempty(obj.OpenZipFile) && isequal(class(obj.OpenZipFile),'py.zipfile.ZipFile')
+                disp(sprintf('File %s already loaded in',obj.Name))
+                return
+            end
+            
             current = what;
             Split = split(obj.RawDataFilePath,filesep);
             Folder = fullfile(Split{1:end-1});
@@ -305,6 +314,13 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
         end
         
         function clear_zipped_files_from_memory(obj)
+            
+            if isempty(obj.OpenZipFile)
+                return;
+            end
+            
+            obj.OpenZipFile.close();
+            obj.OpenZipFile = [];
             
         end
         
@@ -1347,6 +1363,29 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 obj.CPFlag.HertzFitted = 1;
             end
             
+        end
+        
+        function calculate_indentation_depth_from_chosen_cp(obj,CPVector)
+            
+            
+            iRange = find(obj.SelectedCurves);
+            IndentationDepth = zeros(obj.NCurves,1);
+            for i=iRange'
+                [App{i},HHApp{i}] = obj.get_force_curve_data(iRange(i),0,1,0);
+                force{i} = App{i} - CP(i,2);
+                if CorrectSensitivity
+                    force{i} = force{i}.*obj.RefSlopeCorrectedSensitivity/obj.Sensitivity;
+                end
+                tip_h{i} = (HHApp{i} - CP(i,1)) - force{i}/obj.SpringConstant;
+                tip_h{i}(tip_h{i} < 0) = [];
+                if length(tip_h{i}) < 2
+                    continue
+                end
+                Max{i} = max(tip_h{i});
+                IndentationDepth(iRange(i)) = Max{i}(1);
+            end
+                    
+            obj.IndentationDepth = IndentationDepth;
         end
         
         function EMod = calculate_e_mod_oliverpharr(obj,TipProjArea,CurvePercent)
