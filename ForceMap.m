@@ -288,6 +288,9 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             obj.set_channel_positions(obj.OriginX,obj.OriginY,obj.ScanAngle);
             
             obj.initialize_flags();
+            if ~obj.KeepPythonFilesOpen && obj.PythonLoaderFlag && obj.BigDataFlag
+                obj.clear_zipped_files_from_memory
+            end
         end
         
         function load_zipped_files_with_python(obj)

@@ -718,6 +718,9 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 end
                 
                 waitbar(i/NLoop,h,sprintf('Processing Fibril %i/%i\nReading out data...',i,NLoop));
+                if ~obj.KeepPythonFilesOpen && obj.PythonLoaderFlag && obj.BigDataFlag
+                    obj.load_python_files_to_memory(i,[])
+                end
                 if TemporaryLoadInBool && obj.BigDataFlag
                     obj.FM{i}.temporary_data_load_in(true);
                 end
@@ -819,6 +822,10 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 
                 Fig{i} = obj.FM{i}.show_analyzed_fibril();
                 obj.FMFlag.FibrilAnalysis(i) = 1;
+                
+                if ~obj.KeepPythonFilesOpen && obj.PythonLoaderFlag && obj.BigDataFlag
+                    obj.clear_python_files_from_memory(i,[])
+                end
             end
             
             % Assign the Apex curves EMod and exclude +-2.5*IQR and curves
@@ -967,6 +974,10 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 end
                 
                 waitbar(i/NLoop,h,sprintf('Processing Fibril %i/%i\nReading out data...',i,NLoop));
+                
+                if ~obj.KeepPythonFilesOpen && obj.PythonLoaderFlag && obj.BigDataFlag
+                    obj.load_python_files_to_memory(i,[])
+                end
                 if TemporaryLoadInBool && obj.BigDataFlag
                     obj.FM{i}.temporary_data_load_in(true);
                 end
@@ -1054,6 +1065,9 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                         obj.FM{k}.CPFlag.CNNOpt = 1;
                         obj.FM{k}.MiniBatchSize = obj.FM{1}.MiniBatchSize;
                     end
+                end
+                if ~obj.KeepPythonFilesOpen && obj.PythonLoaderFlag && obj.BigDataFlag
+                    obj.clear_python_files_from_memory(i,[])
                 end
             end
             
