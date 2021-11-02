@@ -94,6 +94,8 @@ classdef ForceMap < matlab.mixin.Copyable
         BasedApp = {}   % approach force data with subtracted base line and tilt in Newton
         BasedRet = {}   % retraction force data with subtracted base line and tilt in Newton
         BaseAndTiltFlag
+        BasedForce = {}
+        THeight = {}
     end
     properties
         % Properties related to Contact Point (CP) estimation
@@ -340,12 +342,28 @@ classdef ForceMap < matlab.mixin.Copyable
                 %                 end
                 obj.BasedApp{i} = (obj.App{i}-feval(obj.Basefit{i},obj.HHApp{i}));
                 obj.BasedRet{i} = (obj.Ret{i}-feval(obj.Basefit{i},obj.HHRet{i}));
+                
+                if ~isempty(obj.NumSegments)  && (obj.NumSegments > 2)
+                    
+                    %for i=1:obj.NCurves
+                        for j=1:obj.NumSegments
+                            obj.BasedForce{i,j} = (obj.Force{i,j}-feval(obj.Basefit{i},obj.Height{i,j}));
+                        end
+                    %end
+                end
             end
             % calculate vertical tip position by subtracting vertical tip deflection from head height
             iRange = find(obj.SelectedCurves);
             for i=iRange'
                 obj.THApp{i} = obj.HHApp{i} - obj.BasedApp{i}/obj.SpringConstant;
                 obj.THRet{i} = obj.HHRet{i} - obj.BasedRet{i}/obj.SpringConstant;
+                
+                if ~isempty(obj.NumSegments)  && (obj.NumSegments > 2)
+                    
+                    for j=1:obj.NumSegments
+                        obj.THeight{i,j} = obj.Height{i,j} - obj.BasedForce{i,j}./obj.SpringConstant;
+                    end
+                end
             end
             close(h);
             obj.BaseAndTiltFlag = true;
@@ -1891,10 +1909,6 @@ classdef ForceMap < matlab.mixin.Copyable
                          obj.psF{i,j} = (2*pi)/obj.SineVarsF{i,j}(3);
                          obj.psH{i,j} = (2*pi)/obj.SineVarsH{i,j}(3);
                         
-                        % phase shift in degree of force and height sine
-                        %obj.phaseF = obj.phaseFrad*180/pi;
-                        %obj.phaseH = obj.phaseHrad*180/pi;
-                        
                         % phase shift between indentation and force in degrees:
                         obj.DeltaPhi{i,j} = (obj.psF{i,j} - obj.psH{i,j})*(180/pi);
                         
@@ -1921,7 +1935,7 @@ classdef ForceMap < matlab.mixin.Copyable
                 %lastseg = obj.NumSegments-1;
                 for j=1:obj.NumSegments
                     Z{i,j} = obj.Height{i,j} - obj.CP(i,1);
-                    D{i,j} = (obj.Force{i,j} - obj.CP(i,2))./obj.SpringConstant;
+                    D{i,j} = (obj.BasedForce{i,j} - obj.CP(i,2))./obj.SpringConstant;
                     obj.Indentation{i,j} = Z{i,j} - D{i,j};
                 end
                 
@@ -3231,12 +3245,12 @@ classdef ForceMap < matlab.mixin.Copyable
                 end
                     
                  obj.HHApp{i} = obj.Height{i,1};
-                 obj.App{i} = obj.Force{i,1}.*obj.SpringConstant;
+                 obj.App{i} = obj.Force{i,1};
                  
  
                  %lastseg = obj.NumSegments - 1;
                  obj.HHRet{i} = obj.Height{i,obj.NumSegments};
-                 obj.Ret{i} = obj.Force{i,obj.NumSegments}.*obj.SpringConstant;
+                 obj.Ret{i} = obj.Force{i,obj.NumSegments};
 
             end
          
@@ -3739,7 +3753,7 @@ classdef ForceMap < matlab.mixin.Copyable
                        %ylim([yFmin yFmax])
 
                        yyaxis right
-                       plot(obj.SegTime{j},obj.Force{i,j},'-')
+                       plot(obj.SegTime{j},obj.BasedForce{i,j},'-')
                        title(sprintf('Force and Indentation over Time Curve %i',i))
                        ylabel('force in N')
                        %ylim([yFmin yFmax])
@@ -3752,21 +3766,8 @@ classdef ForceMap < matlab.mixin.Copyable
                 hold on
                 for j=1:obj.NumSegments
                     
-                       lengthHHApp = length(obj.HHApp{i});
-                       obj.SecPerPoint{1} = obj.SegDuration{1}/lengthHHApp;
-                       obj.TStart{1} = obj.SecPerPoint{1}/2;
-                       obj.TEnd{1} = obj.SeriesTime{1};
-                       obj.SegTime{1} = obj.TStart{1}:obj.SecPerPoint{1}:obj.TEnd{1};
-                       obj.SegTime{1} = obj.SegTime{1}.';
-                       
-                       lengthHHRet = length(obj.HHRet{i});
-                       obj.SecPerPoint{obj.NumSegments} = obj.SegDuration{obj.NumSegments}/lengthHHRet;
-                       obj.TStart{obj.NumSegments} = obj.SeriesTime{obj.NumSegments - 1}+(obj.SecPerPoint{obj.NumSegments}/2);
-                       obj.TEnd{obj.NumSegments} = obj.SeriesTime{obj.NumSegments};
-                       obj.SegTime{obj.NumSegments} = obj.TStart{obj.NumSegments}:obj.SecPerPoint{obj.NumSegments}:obj.TEnd{obj.NumSegments};
-                       obj.SegTime{obj.NumSegments} = obj.SegTime{obj.NumSegments}.';
 
-                       plot(obj.Indentation{i,j},obj.Force{i,j},'b')
+                       plot(obj.Indentation{i,j},obj.BasedForce{i,j},'b')
                        %hold on
                        %plot(obj.Height{i,j},obj.Force{i,j},'r')
                        title(sprintf('Force Indentation Curve %i',i))
@@ -3783,7 +3784,7 @@ classdef ForceMap < matlab.mixin.Copyable
                     if obj.SegFrequency{j} > 0
                         
                         figure(s)
-                        plot(obj.Indentation{i,j},obj.Force{i,j},'--b')
+                        plot(obj.Indentation{i,j},obj.BasedForce{i,j},'--b')
                         title(sprintf('Force Indentation Curve %i Segment %i',i,j))
                         xlabel('Indentation in m')
                         ylabel('Force in N')
