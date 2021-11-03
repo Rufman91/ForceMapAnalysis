@@ -121,6 +121,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
         FibDiamSTD      % Estimated fibril diameter std
         FibMask         % Logical mask marking the whole fibril
         BackgroundMask  % Logical mask marking the glass/mica/even-substrate background
+        RefSlopeMask    % Logical mask marking the areas to consider for reference slope calculation
         ExclMask        % Manually chosen areas that are to be excluded for calculations of fibril EMod, FibDiam, DBanding etc.
         Apex            % Value of highest pixel in each profile
         RectApex        % Value of rectified apex location in each profile
