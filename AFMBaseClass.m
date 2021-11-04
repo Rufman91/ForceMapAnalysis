@@ -33,7 +33,7 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle
         % segmentation, specifically
         Segment = struct('Name',[],...
                             'Type',[],...
-                            'SubsegmentName',[],...
+                            'SubSegmentName',[],...
                             'ROIObject',[])
         OverlayGroup
     end
@@ -218,6 +218,49 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle
             for i=1:length(obj.Channel)
                 PopUp{i+1} = obj.Channel(i).Name;
             end
+        end
+        
+        function apply_segmentation_to_other_baseclass(DonorClass,AcceptorClass)
+            
+            AcceptorClass.Segment = DonorClass.Segment;
+            
+            % Loop over Segments
+            for i=1:length(DonorClass.Segment)
+                for j=1:size(DonorClass.Segment(i).ROIObject.Position,1)
+                    [Xout,Yout] = DonorClass.transform_pixels_to_other_coordinate_basis(AcceptorClass,...
+                        DonorClass.Segment(i).ROIObject.Position(j,1),...
+                        DonorClass.Segment(i).ROIObject.Position(j,2));
+                    AcceptorClass.Segment(i).ROIObject.Position(j,1) = Xout;
+                    AcceptorClass.Segment(i).ROIObject.Position(j,2) = Yout;
+                end
+            end
+            
+        end
+        
+        function [Xout,Yout] = transform_pixels_to_other_coordinate_basis(DonorClass,AcceptorClass,X,Y)
+            
+            XDiff = DonorClass.Channel(1).OriginX - AcceptorClass.Channel(1).OriginX;
+            SizePerPixelX = AcceptorClass.Channel(1).ScanSizeX./AcceptorClass.Channel(1).NumPixelsX;
+            XDiff = XDiff/SizePerPixelX;
+            YDiff = DonorClass.Channel(1).OriginY - AcceptorClass.Channel(1).OriginY;
+            SizePerPixelY = AcceptorClass.Channel(1).ScanSizeY./AcceptorClass.Channel(1).NumPixelsY;
+            YDiff = YDiff/SizePerPixelY;
+            AngleDiff = DonorClass.Channel(1).ScanAngle - AcceptorClass.Channel(1).ScanAngle;
+            AngleDiff = deg2rad(-AngleDiff);
+            
+            Vector = [X Y];
+            
+            ImCenter = [AcceptorClass.Channel(1).NumPixelsX/2 AcceptorClass.Channel(1).NumPixelsY/2];
+            
+            TempVector = Vector - ImCenter;
+            
+            RotationMatrix = [cos(AngleDiff) -sin(AngleDiff);sin(AngleDiff) cos(AngleDiff)];
+            
+            Vector = [RotationMatrix*TempVector']' + ImCenter + [XDiff -YDiff];
+            
+            Xout = Vector(1);
+            Yout = Vector(2);
+            
         end
         
     end

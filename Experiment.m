@@ -1295,6 +1295,29 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             end
                 
         end
+        
+        function apply_segmentation_to_overlay_group(obj,GroupMemberInstance)
+            
+            if ~GroupMemberInstance.OverlayGroup.hasOverlayGroup
+                warning('The class instance you input has no overlay group')
+                return
+            end
+            
+            for i=1:GroupMemberInstance.OverlayGroup.Size
+                if strcmp(GroupMemberInstance.OverlayGroup.Names{i},GroupMemberInstance.Name)
+                    continue
+                end
+                Index = find(strcmp({GroupMemberInstance.OverlayGroup.Names{i}},obj.ForceMapNames));
+                if ~isempty(Index)
+                    GroupMemberInstance.apply_segmentation_to_other_baseclass(obj.FM{Index})
+                end
+                Index = find(strcmp({GroupMemberInstance.OverlayGroup.Names{i}},obj.AFMImageNames));
+                if ~isempty(Index)
+                    GroupMemberInstance.apply_segmentation_to_other_baseclass(obj.I{Index})
+                end
+            end
+            
+        end
             
         function Results = results_readout(obj)
             % result_readout(obj)
@@ -3908,6 +3931,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 ROIObject = drawpolyline;
                 Class{1}.Segment(end).ROIObject.Position = ROIObject.Position;
                 Class{1}.Segment(end).ROIObject.LineWidth = ROIObject.LineWidth;
+                Class{1}.Segment(end).Type = 'polyline';
                 
                 h.EnableEditing = 1;
                 draw_channel_1
@@ -3939,6 +3963,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 ROIObject = drawpolyline;
                 Class{1}.Segment(end).ROIObject.Position = ROIObject.Position;
                 Class{1}.Segment(end).ROIObject.LineWidth = ROIObject.LineWidth;
+                Class{1}.Segment(end).Type = 'polyline';
                 
                 if length(Class{1}.Segment) == 1
                     set(h.SegmentBox,'String',{SegmentName})
