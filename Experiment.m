@@ -3158,56 +3158,853 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
         
         function choose_segments_manually(obj,SegmentType)
             
-            if nargin < 2
-                SegmentType = 'Apexline';
-            end
+            h.ColorMode(1).Background = 'k';
+            h.ColorMode(1).Profile1 = [219 21 223]./255; %[189 0 96]./255; % 'b';
+            h.ColorMode(1).Profile2 = 'c';
+            h.ColorMode(1).Text = 'w';
             
-            h.Fig = figure('Color','w');
-            h.Fig.WindowState = 'fullscreen';
             
-            h.c(1) = uicontrol(h.Fig,'style','pushbutton','units','normalized',...
-                'position',[.8 .25 .14 .05],'string','Accept Current Segment', 'FontSize',22,...
-                'Callback',@accept_current_segment);
+            h.ColorMode(2).Background = 'w';
+            h.ColorMode(2).Profile1 = [219 21 223]./255; %[94 170 170]./255; % [189 0 96]./255; %'b';
+            h.ColorMode(2).Profile2 = [0 181 26]./255; % alternatives %[80 200 204]./255;%[0,0.870588235294118,0.407843137254902];
+            h.ColorMode(2).Text = 'k';
             
-            h.c(2) = uicontrol(h.Fig,'style','pushbutton','units','normalized',...
-                'position',[.8 .2 .14 .05],'string','Delete Selected Segment', 'FontSize',22,...
-                'Callback',@delete_selected);
+            h.ColorIndex = 1;
+            h.ReferenceFontSize = 24;
+            h.ProfileLineWidth = 3;
             
-            h.c(3) = uicontrol(h.Fig,'style','text','units','normalized',...
-                'position',[.8 .9 .15 .05],'string','List of Segments',...
-                'FontSize',22);
+            current = what();
+            DefaultPath = current.path;
+            DefType = '*.png';
             
-            h.c(4) = uicontrol(h.Fig,'style','pushbutton','units','normalized',...
-                'position',[.8 .2 .14 .05],'string','New Segment', 'FontSize',22,...
-                'Callback',@delete_selected);
+            h.Fig = figure('Name',sprintf('%s',obj.ExperimentName),...
+                'Units','pixels',...
+                'Position',[200 200 1024 512],...
+                'Color',h.ColorMode(h.ColorIndex).Background);
             
-            h.ListBox = uicontrol(h.Fig,...
+            h.B(1) = uicontrol('style','togglebutton',...
+                'String','Cross Section',...
+                'units','normalized',...
+                'position',[.85 .45 .1 .05],...
+                'Callback',@cross_section_toggle,...
+                'Visible','off');
+            
+            [ClassPopUp,ClassIndex] = obj.string_of_existing_class_instances();
+            h.NumClasses = length(ClassPopUp);
+            Class{1} = obj.get_class_instance(ClassIndex(1,:));
+            Class{2} = obj.get_class_instance(ClassIndex(1,:));
+            PopUp = Class{1}.string_of_existing();
+            
+            h.B(4) = uicontrol('style','text',...
+                'String','Channel 1',...
+                'units','normalized',...
+                'position',[.85 .95 .15 .04]);
+            
+            h.B(16) = uicontrol('style','popupmenu',...
+                'String',ClassPopUp,...
+                'units','normalized',...
+                'position',[.85 .9 .15 .05],...
+                'Callback',@draw_channel_1);
+            
+            h.B(2) = uicontrol('style','popupmenu',...
+                'String',PopUp,...
+                'units','normalized',...
+                'position',[.85 .85 .15 .05],...
+                'Callback',@draw_channel_1);
+            
+            h.B(5) = uicontrol('style','text',...
+                'String','Channel 2',...
+                'units','normalized',...
+                'position',[.85 .7 .15 .04],...
+                'Visible','off');
+            
+            h.B(17) = uicontrol('style','popupmenu',...
+                'String',ClassPopUp,...
+                'units','normalized',...
+                'position',[.85 .65 .15 .05],...
+                'Callback',@draw_channel_2,...
+                'Visible','off');
+            
+            h.B(3) = uicontrol('style','popupmenu',...
+                'String',PopUp,...
+                'units','normalized',...
+                'position',[.85 .6 .15 .05],...
+                'Callback',@draw_channel_2,...
+                'Visible','off');
+            
+            h.B(6) = uicontrol('style','pushbutton',...
+                'String','Save Figure',...
+                'units','normalized',...
+                'position',[.85 .1 .1 .04],...
+                'Callback',@save_figure_to_file);
+            
+            h.B(7) = uicontrol('style','checkbox',...
+                'String','...with white background',...
+                'units','normalized',...
+                'position',[.85 .05 .1 .04],...
+                'Callback',@changed_color);
+            
+            h.B(8) = uicontrol('style','slider',...
+                'Value',1,...
+                'Units','normalized',...
+                'Position',[.85 .83 .1 .02],...
+                'Callback',@changed_slider);
+            
+            h.B(9) = uicontrol('style','slider',...
+                'Value',0,...
+                'Units','normalized',...
+                'Position',[.85 .81 .1 .02],...
+                'Callback',@changed_slider);
+            
+            h.B(10) = uicontrol('style','slider',...
+                'Value',1,...
+                'Units','normalized',...
+                'Position',[.85 .58 .1 .02],...
+                'Callback',@changed_slider,...
+                'Visible','off');
+            
+            h.B(11) = uicontrol('style','slider',...
+                'Value',0,...
+                'Units','normalized',...
+                'Position',[.85 .56 .1 .02],...
+                'Callback',@changed_slider,...
+                'Visible','off');
+            
+            h.B(12) = uicontrol('style','text',...
+                'String','Max',...
+                'Units','normalized',...
+                'Position',[.95 .83 .03 .02]);
+            
+            h.B(13) = uicontrol('style','text',...
+                'String','Min',...
+                'Units','normalized',...
+                'Position',[.95 .81 .03 .02]);
+            
+            h.B(14) = uicontrol('style','text',...
+                'String','Max',...
+                'Units','normalized',...
+                'Position',[.95 .58 .03 .02],...
+                'Visible','off');
+            
+            h.B(15) = uicontrol('style','text',...
+                'String','Min',...
+                'Units','normalized',...
+                'Position',[.95 .56 .03 .02],...
+                'Visible','off');
+            
+            h.B(18) = uicontrol('Style','checkbox',...
+                'String','Both Channels',...
+                'Value',0,...
+                'Tooltip','Green, if both Channels have the same size scaling',...
+                'Units','normalized',...
+                'Position',[.85 .42 .1 .03],...
+                'Callback',@checked_both_cross_sections,...
+                'Visible','off');
+            
+            h.B(19) = uicontrol('style','checkbox',...
+                'String','Upscale Images',...
+                'units','normalized',...
+                'position',[.85 .15 .1 .04],...
+                'Callback',@upscale_images,...
+                'Visible','off');
+            
+            h.B(20) = uicontrol('style','checkbox',...
+                'String','Lock Channels',...
+                'units','normalized',...
+                'position',[.85 .3   .1 .04],...
+                'Callback',@lock_channels,...
+                'Visible','off');
+            
+            h.B(21) = uicontrol('style','checkbox',...
+                'String','Lock Scalebars',...
+                'units','normalized',...
+                'position',[.85 .20 .1 .04],...
+                'Callback',@lock_scalebars,...
+                'Visible','off');
+            
+            h.B(22) = uicontrol('style','checkbox',...
+                'String','Statistical CMapping',...
+                'units','normalized',...
+                'position',[.85 .25 .1 .04],...
+                'Callback',@statistical_cmapping,...
+                'Visible','off');
+            
+            h.B(23) = uicontrol('style','edit',...
+                'String','',...
+                'units','normalized',...
+                'position',[.85 .75 .035 .05],...
+                'Callback',@set_scale);
+            
+            h.B(24) = uicontrol('style','edit',...
+                'String','',...
+                'units','normalized',...
+                'position',[.925 .75 .035 .05],...
+                'Callback',@set_scale);
+            
+            h.B(25) = uicontrol('style','edit',...
+                'String','',...
+                'units','normalized',...
+                'position',[.85 .5 .035 .05],...
+                'Callback',@set_scale,...
+                'Visible','off');
+            
+            h.B(26) = uicontrol('style','edit',...
+                'String','',...
+                'units','normalized',...
+                'position',[.925 .5 .035 .05],...
+                'Callback',@set_scale,...
+                'Visible','off');
+            
+            h.B(27) = uicontrol('style','text',...
+                'String',{'Min','[]'},...
+                'Units','normalized',...
+                'Position',[.885 .75 .04 .05]);
+            
+            h.B(28) = uicontrol('style','text',...
+                'String',{'Max','[]'},...
+                'Units','normalized',...
+                'Position',[.96 .75 .04 .05]);
+            
+            h.B(29) = uicontrol('style','text',...
+                'String',{'Min','[]'},...
+                'Units','normalized',...
+                'Position',[.885 .5 .04 .05],...
+                'Visible','off');
+            
+            h.B(30) = uicontrol('style','text',...
+                'String',{'Max','[]'},...
+                'Units','normalized',...
+                'Position',[.96 .5 .04 .05],...
+                'Visible','off');
+            
+            h.B(31) = uicontrol('Style','checkbox',...
+                'String','Use Overlay',...
+                'Value',0,...
+                'Tooltip','Green, if both Channels share an overlay',...
+                'Units','normalized',...
+                'Position',[.85 .39 .1 .03],...
+                'Visible','off');
+            
+            h.c(32) = uicontrol(h.Fig,'style','pushbutton','units','normalized',...
+                'position',[.85 .15 .07 .04],'string','Delete Segment',...
+                'Callback',@delete_selected_segment);
+            
+            h.c(33) = uicontrol(h.Fig,'style','pushbutton','units','normalized',...
+                'position',[.925 .15 .07 .04],'string','Delete Subsegment',...
+                'Callback',@delete_selected_subsegment);
+            
+            h.c(34) = uicontrol(h.Fig,'style','text','units','normalized',...
+                'position',[.85 .7 .15 .04],'string','List of Segments');
+            
+            h.c(35) = uicontrol(h.Fig,'style','text','units','normalized',...
+                'position',[.85 .45 .15 .04],'string','List of Subsegments');
+            
+            h.c(36) = uicontrol(h.Fig,'style','pushbutton','units','normalized',...
+                'position',[.85 .2 .07 .05],'string','New Segment',...
+                'Callback',@create_new_segment);
+            
+            h.c(37) = uicontrol(h.Fig,'style','pushbutton','units','normalized',...
+                'position',[.925 .2 .07 .05],'string','New Subsegment',...
+                'Callback',@create_new_subsegment);
+            
+            h.SegmentBox = uicontrol(h.Fig,...
                 'Style','listbox',...
                 'Max',1000000,'Min',1,...
                 'Units','normalized',...
-                'Position',[.8  .5 .15 .4]);
+                'Position',[.85  .5 .15 .2],...
+                'Callback',@segment_changed);
             
-            Channel = obj.get_channel('Processed');
-            axes(h.Fig,'Position',[0.1 0.1 .6 .8]);
-            [h.Multiplier,h.Unit,~] = AFMImage.parse_unit_scale(range(Channel.Image,'all'),Channel.Unit,1);
-            h.I = imshow(Channel.Image*h.Multiplier,[],'Colormap',obj.CMap);
-            h.I.ButtonDownFcn = @get_and_draw_profile;
-            hold on
-            c = colorbar;
-            c.FontSize = round(24);
-            c.Label.String = sprintf('%s [%s]',Channel.Name,h.Unit);
-            c.Label.FontSize = round(24);
+            h.SubsegmentBox = uicontrol(h.Fig,...
+                'Style','listbox',...
+                'Max',1000000,'Min',1,...
+                'Units','normalized',...
+                'Position',[.85  .25 .15 .2],...
+                'Callback',@subsegment_changed);
             
+            h.Channel1Max = 1;
+            h.Channel1Min = 0;
+            h.Channel2Max = 1;
+            h.Channel2Min = 0;
             
-            function delete_selected(varargin)
+            h.CurChannel1Idx = h.B(2).Value;
+            h.CurChannel2Idx = h.B(3).Value;
+            h.RelativeChannelIndex = 0;
+            
+            h.MainLine = [];
+            h.ChildLine = [];
+            h.hasCrossSection = 0;
+            h.hasBothCrossSections = 0;
+            h.hasChannel2 = 0;
+            h.isUpscaled = false;
+            h.lockedChannels = h.B(20).Value;
+            [~,DefIndex] = Class{1}.get_channel('Processed');
+            
+            % set initial listbox items
+            if isempty(Class{1}.Segment(1).Name)
+                set(h.SegmentBox,'String',[]);
+                set(h.SubsegmentBox,'String',[]);
+            else
+                InitialNames = {Class{1}.Segment.Name};
+                InitialSubSegmentNames = {Class{1}.Segment.SubSegmentName};
+                InitialUniqueNames = unique(InitialNames);
+                set(h.SegmentBox,'String',InitialUniqueNames);
+                set(h.SubsegmentBox,'String',{InitialSubSegmentNames{strcmp({h.SegmentBox.String{h.SegmentBox.Value}},InitialNames)}});
+            end
+            h.EnableEditing = 1;
+            
+            if isempty(DefIndex)
+                DefIndex = 2;
+            else
+                DefIndex = DefIndex + 1;
+            end
+            h.B(2).Value = DefIndex;
+            draw_channel_1
+            
+            function draw_channel_1(varargin)
+                LeftRight = 'Left';
+                if h.hasChannel2 && h.hasCrossSection
+                    FullPart = 'PartTwo';
+                elseif h.hasChannel2 && ~h.hasCrossSection
+                    FullPart = 'FullTwo';
+                elseif ~h.hasChannel2 && h.hasCrossSection
+                    FullPart = 'PartOne';
+                elseif ~h.hasChannel2 && ~h.hasCrossSection
+                    FullPart = 'FullOne';
+                end
+                h.hasChannel1 = true;
+                draw_image(LeftRight,FullPart)
+                if isequal(h.Channel{1},'none')
+                    h.hasChannel1 = false;
+                end
+                if h.hasChannel2 && ~h.OnePass
+                    h.OnePass = true;
+                    draw_channel_2
+                end
+                h.OnePass = false;
+            end
+            
+            function draw_channel_2(varargin)
+                LeftRight = 'Right';
+                if h.hasChannel1 && h.hasCrossSection
+                    FullPart = 'PartTwo';
+                elseif h.hasChannel1 && ~h.hasCrossSection
+                    FullPart = 'FullTwo';
+                elseif ~h.hasChannel1 && h.hasCrossSection
+                    FullPart = 'PartOne';
+                elseif ~h.hasChannel1 && ~h.hasCrossSection
+                    FullPart = 'FullOne';
+                end
+                h.hasChannel2 = true;
+                draw_image(LeftRight,FullPart)
+                if isequal(h.Channel{2},'none')
+                    h.hasChannel2 = false;
+                end
+                if h.hasChannel1 && ~h.OnePass
+                    h.OnePass = true;
+                    draw_channel_1
+                end
+                h.OnePass = false;
+            end
+            
+            function draw_image(LeftRight,FullPart)
+                if isequal(LeftRight,'Left')
+                    Index = 1;
+                elseif isequal(LeftRight,'Right')
+                    Index = 2;
+                end
+                BarToImageRatio = 1/5;
+                try
+                    delete(h.ImAx(Index));
+                    delete(h.I(Index));
+                catch
+                end
+                if isequal(FullPart,'FullOne')
+                    h.ImAx(Index) = axes(h.Fig,'Position',[0.1 0.1 .6 .8]);
+                elseif isequal(FullPart,'FullTwo')
+                    if isequal(LeftRight,'Left')
+                    h.ImAx(Index) = axes(h.Fig,'Position',[0.12 0.1 .3 .8]);
+                    else
+                    h.ImAx(Index) = axes(h.Fig,'Position',[.47 0.1 .3 .8]);
+                    end
+                elseif isequal(FullPart,'PartOne')
+                    h.ImAx(Index) = axes(h.Fig,'Position',[0.1 .35 .6 .6]);
+                elseif isequal(FullPart,'PartTwo')
+                    if isequal(LeftRight,'Left')
+                    h.ImAx(Index) = axes(h.Fig,'Position',[0.12 .35 .3 .6]);
+                    else
+                    h.ImAx(Index) = axes(h.Fig,'Position',[0.47 .35 .3 .6]);
+                    end
+                end
                 
-                OldString = get(h.ListBox,'String');
-                DeleteIdx = get(h.ListBox,'Value');
-                OldString(DeleteIdx) = [];
-                OutStruct(Index).FullFile(DeleteIdx) = [];
                 
-                set(h.ListBox,'Value',1); 
-                set(h.ListBox,'String',OldString);
+                if h.lockedChannels && Index==1
+                    h.CurChannel1Idx = h.B(16).Value;
+                    h.B(17).Value = mod(h.CurChannel1Idx + h.RelativeChannelIndex,h.NumClasses+1);
+                    h.CurChannel2Idx = h.B(17).Value;
+                    CurIndex = h.CurChannel1Idx;
+                elseif h.lockedChannels && Index==2
+                    h.CurChannel2Idx = h.B(17).Value;
+                    h.B(16).Value = mod(h.CurChannel2Idx - h.RelativeChannelIndex,h.NumClasses+1);
+                    h.CurChannel1Idx = h.B(16).Value;
+                    CurIndex = h.CurChannel2Idx;
+                else
+                    CurIndex = h.B(15+Index).Value;
+                    h.CurChannel2Idx = h.B(17).Value;
+                    h.CurChannel1Idx = h.B(16).Value;
+                end
+                
+                h.RelativeChannelIndex = h.CurChannel2Idx - h.CurChannel1Idx;
+                
+                Class{Index} = obj.get_class_instance(ClassIndex(CurIndex,:));
+                CurrentChannelName = h.B(1+Index).String{h.B(1+Index).Value};
+                PopUp = Class{Index}.string_of_existing();
+                set(h.B(1+Index),'String',PopUp)
+                
+                IdxOfSameChannel = find(strcmp(PopUp,CurrentChannelName));
+                
+                if isempty(IdxOfSameChannel)
+                    set(h.B(1+Index),'Value',2);
+                elseif sum(IdxOfSameChannel == h.B(1+Index).Value)
+                    set(h.B(1+Index),'Value',IdxOfSameChannel(find(IdxOfSameChannel == h.B(1+Index).Value)));
+                else
+                    set(h.B(1+Index),'Value',IdxOfSameChannel(1));
+                end
+                
+                h.Channel{Index} = h.B(1+Index).String{h.B(1+Index).Value};
+                if isequal(h.Channel{Index},'none')
+                    try
+                        delete(h.ImAx(Index));
+                        delete(h.I(Index));
+                    catch
+                    end
+                    if Index == 1
+                        h.hasChannel1 = 0;
+                    elseif Index == 2
+                        h.hasChannel2 = 0;
+                    end
+                    return
+                else
+                    [Channel,ChannelIndex] = Class{Index}.get_channel(h.Channel{Index});
+                    if h.isUpscaled
+                        Channel.Image = fillmissing(Channel.Image,'linear','EndValues','nearest');
+                        Channel = AFMImage.resize_channel(Channel,1,1920,true);
+                    end
+                    h.Image{Index} = fillmissing(Channel.Image,'linear','EndValues','nearest');
+                    h.BaseUnit{Index} = Channel.Unit;
+                    h.ScanSizeX(Index) = Channel.ScanSizeX;
+                    h.ScanSizeY(Index) = Channel.ScanSizeY;
+                    h.NumPixelsX(Index) = Channel.NumPixelsX;
+                    h.NumPixelsY(Index) = Channel.NumPixelsY;
+                    ColorPattern = Class{Index}.CMap;
+                end
+                
+                if h.B(21).Value && h.hasChannel2 && h.hasChannel1 && isequal(h.BaseUnit{1},h.BaseUnit{2})
+                    CurImage = h.Image{Index};
+                    Range = range(CurImage,'all');
+                    OtherImage = h.Image{mod(Index,2)+1};
+                    OtherRange = range(OtherImage,'all');
+                    
+                    [FinalRange,FinalIndex] = max([Range OtherRange]);
+                    
+                    if FinalIndex==1
+                        Min = min(CurImage,[],'all');
+                    else
+                        Min = min(OtherImage,[],'all');
+                    end
+                    
+                    if ~h.B(22).Value
+                        CutMax = FinalRange*h.Channel1Max + Min;
+                        CutMin = FinalRange*h.Channel1Min + Min;
+                    else
+                        CutMax = quantile(h.Image{FinalIndex},h.Channel1Max,'all') + Min;
+                        CutMin = quantile(h.Image{FinalIndex},h.Channel1Min,'all') + Min;
+                    end
+                else
+                    CurImage = h.Image{Index};
+                    FinalRange = range(CurImage,'all');
+                    if Index==1
+                        if ~h.B(22).Value
+                            CutMax = FinalRange*h.Channel1Max + min(CurImage,[],'all');
+                            CutMin = FinalRange*h.Channel1Min + min(CurImage,[],'all');
+                        else
+                            CutMax = quantile(CurImage,h.Channel1Max,'all') + min(CurImage,[],'all');
+                            CutMin = quantile(CurImage,h.Channel1Min,'all') + min(CurImage,[],'all');
+                        end
+                    elseif Index==2
+                        if ~h.B(22).Value
+                            CutMax = FinalRange*h.Channel2Max + min(CurImage,[],'all');
+                            CutMin = FinalRange*h.Channel2Min + min(CurImage,[],'all');
+                        else
+                            CutMax = quantile(CurImage,h.Channel2Max,'all') + min(CurImage,[],'all');
+                            CutMin = quantile(CurImage,h.Channel2Min,'all') + min(CurImage,[],'all');
+                        end
+                    end
+                end
+                
+                MinIndex = 21+2*Index;
+                MaxIndex = 22+2*Index;
+                
+                [h.Multiplier{Index},h.Unit{Index},~] = AFMImage.parse_unit_scale(FinalRange,h.BaseUnit{Index},1);
+                
+                if ~isempty(get(h.B(MinIndex),'String')) && ~isempty(get(h.B(MaxIndex),'String'))
+                    MinValue = str2double(get(h.B(MinIndex),'String'))/h.Multiplier{Index};
+                    MaxValue = str2double(get(h.B(MaxIndex),'String'))/h.Multiplier{Index};
+                    if isnan(MinValue) || isnan(MaxValue)
+                    else
+                        CutMin = MinValue;
+                        CutMax = MaxValue;
+                    end
+                end
+                
+                CurImage(CurImage>CutMax) = CutMax;
+                CurImage(CurImage<CutMin) = CutMin;
+                
+                if isempty(CurImage(CurImage>=CutMax))
+                    CurImage(1,1) = CutMax;
+                end
+                if isempty(CurImage(CurImage<=CutMin))
+                    CurImage(end,end) = CutMin;
+                end
+                
+                FinalRange = abs(CutMax - CutMin);
+                
+                [h.Multiplier{Index},h.Unit{Index},~] = AFMImage.parse_unit_scale(FinalRange,h.BaseUnit{Index},1);
+                h.I(Index) = imshow(CurImage*h.Multiplier{Index},[],'Colormap',ColorPattern);
+                h.I(Index).ButtonDownFcn = @create_new_subsegment;
+                hold on
+                CurrentAxHeight = round(h.Fig.Position(4)*h.ImAx(Index).Position(4));
+                CurrentAxWidth = round(h.Fig.Position(3)*h.ImAx(Index).Position(3));
+                %AFMImage.draw_scalebar_into_current_image(Channel.NumPixelsX,Channel.NumPixelsY,Channel.ScanSizeX,BarToImageRatio,CurrentAxHeight,CurrentAxWidth);
+                c = colorbar('northoutside');
+                c.FontSize = round(h.ReferenceFontSize*(CurrentAxHeight/756));
+                c.Color = h.ColorMode(h.ColorIndex).Text;
+                c.Label.String = sprintf('%s [%s]',h.Channel{Index},h.Unit{Index});
+                c.Label.FontSize = round(h.ReferenceFontSize*(CurrentAxHeight/756));
+                c.Label.Color = h.ColorMode(h.ColorIndex).Text;
+                
+                set(h.B(MinIndex+4),'String',{'Min',sprintf('[%s]',h.Unit{Index})});
+                set(h.B(MaxIndex+4),'String',{'Max',sprintf('[%s]',h.Unit{Index})});
+                
+                try
+                    if (h.ScanSizeX(1) == h.ScanSizeX(2)) &&...
+                            (h.ScanSizeY(1) == h.ScanSizeY(2))
+                        h.B(18).BackgroundColor = 'g';
+                    else
+                        h.B(18).BackgroundColor = 'r';
+                    end
+                catch
+                end
+                check_for_overlay_group
+                
+                % Segmentation related
+                draw_existing_segments
+                if isempty(Class{1}.Segment(1).Name)
+                    set(h.SegmentBox,'String',[]);
+                    set(h.SubsegmentBox,'String',[]);
+                else
+                    Names = {Class{1}.Segment.Name};
+                    SubSegmentNames = {Class{1}.Segment.SubSegmentName};
+                    UniqueNames = unique(Names);
+                    set(h.SegmentBox,'String',UniqueNames);
+                    set(h.SubsegmentBox,'String',{SubSegmentNames{strcmp({h.SegmentBox.String{h.SegmentBox.Value}},Names)}});
+                end
+            end
+            
+            function changed_slider(varargin)
+                C1Max = get(h.B(8),'value');
+                C1Min = get(h.B(9),'value');
+                C2Max = get(h.B(10),'value');
+                C2Min = get(h.B(11),'value');
+                
+                if C1Max <= C1Min
+                    C1Min = C1Max*0.9;
+                    set(h.B(8),'value',C1Max);
+                    set(h.B(9),'value',C1Min);
+                end
+                if C2Max <= C2Min
+                    C2Min = C2Max*0.9;
+                    set(h.B(10),'value',C2Max);
+                    set(h.B(11),'value',C2Min);
+                end
+                
+                h.Channel1Max = C1Max;
+                h.Channel1Min = C1Min;
+                h.Channel2Max = C2Max;
+                h.Channel2Min = C2Min;
+                
+                draw_channel_1
+                draw_channel_2
+            end
+            
+            function save_figure_to_file(varargin)
+                
+                filter = {DefType;'*.eps';'*.emf';'*.png';'*.tif';'*.jpg'};
+                Name = split(Class{1}.Name,'.');
+                DefName = Name{1};
+                DefFull = fullfile(DefaultPath,DefName);
+                [file, path] = uiputfile(filter,'Select Format, Name and Location of your figure',DefFull);
+                DefaultPath = path;
+                FullFile = fullfile(path,file);
+                Split = split(FullFile,'.');
+                DefType = strcat('*.',Split{end});
+                if isequal(Split{end},'eps') || isequal(Split{end},'emf')
+                    exportgraphics(h.Fig,FullFile,'ContentType','vector','Resolution',300,'BackgroundColor','current')
+                else
+                    exportgraphics(h.Fig,FullFile,'Resolution',300,'BackgroundColor','current')
+                end
+                    
+            end
+            
+            function changed_color(varargin)
+                
+                if ~h.B(7).Value
+                    h.ColorIndex = 1;
+                else
+                    h.ColorIndex = 2;
+                end
+                
+                h.Fig.Color = h.ColorMode(h.ColorIndex).Background;
+                
+                draw_channel_1
+                draw_channel_2
+                
+            end
+            
+            function upscale_images(varargin)
+                
+                h.isUpscaled = h.B(19).Value;
+                
+                draw_channel_1
+                draw_channel_2
+                
+            end
+            
+            function lock_channels(varargin)
+                
+                h.lockedChannels = h.B(20).Value;
+                
+                h.RelativeChannelIndex = h.CurChannel2Idx - h.CurChannel1Idx;
+                draw_channel_1
+                draw_channel_2
+                
+            end
+            
+            function lock_scalebars(varargin)
+                
+                if h.B(21).Value
+                    h.B(10).Visible = 'off';
+                    h.B(11).Visible = 'off';
+                    h.B(14).Visible = 'off';
+                    h.B(15).Visible = 'off';
+                else
+                    h.B(10).Visible = 'on';
+                    h.B(11).Visible = 'on';
+                    h.B(14).Visible = 'on';
+                    h.B(15).Visible = 'on';
+                end
+                
+                draw_channel_1
+                draw_channel_2
+            end
+            
+            function set_scale(varargin)
+                
+                draw_channel_1
+                draw_channel_2
+            end
+            
+            function statistical_cmapping(varargin)
+                draw_channel_1
+                draw_channel_2
+            end
+            
+            function check_for_overlay_group(varargin)
+                
+                
+                if h.hasChannel2 &&...
+                            ~isempty(Class{1}.OverlayGroup) &&...
+                            ~isempty(Class{2}.OverlayGroup) &&...
+                            Class{1}.OverlayGroup.hasOverlayGroup &&...
+                            Class{2}.OverlayGroup.hasOverlayGroup &&...
+                            isequal(Class{1}.OverlayGroup.Names,Class{2}.OverlayGroup.Names)
+                    h.B(31).BackgroundColor = 'g';
+                else
+                    h.B(31).BackgroundColor = 'r';
+                end
+                
+            end
+            
+            function draw_existing_segments(varargin)
+                
+                if isempty(Class{1}.Segment)
+                    return
+                end
+                if isempty(Class{1}.Segment(1).Name)
+                    return
+                end
+                
+                Names = {Class{1}.Segment.Name};
+                UniqueNames = unique(Names);
+                NumSegments = length(UniqueNames);
+                
+                % This guy figured out one simple trick to get all
+                % the colors. Painters hate him
+                FakePlots = zeros(2,NumSegments*2);
+                FakeAx = plot(FakePlots);
+                SegmentColors = get(FakeAx,'Color');
+                delete(FakeAx)
+                clear FakeAx FakePlots
+                
+                NumSubSegments = length(Names);
+                
+                for i=1:NumSubSegments
+                    SegmentIndex = find(strcmp(UniqueNames,Class{1}.Segment(i).Name));
+                    if isequal(Class{1}.Segment(i).Name,h.SegmentBox.String{h.SegmentBox.Value}) &&...
+                            isequal(Class{1}.Segment(i).SubSegmentName,h.SubsegmentBox.String{h.SubsegmentBox.Value}) &&...
+                            h.EnableEditing
+                        h.CurrentIndex = i;
+                        h.CurrentROIObject = drawpolyline('Position',Class{1}.Segment(i).ROIObject.Position,...
+                            'Deletable',0,...
+                            'InteractionsAllowed','all',...
+                            'LineWidth',Class{1}.Segment(i).ROIObject.LineWidth,...
+                            'Label',sprintf('%s || %s',Class{1}.Segment(i).Name,Class{1}.Segment(i).SubSegmentName),...
+                            'LabelAlpha',0.3);
+                        addlistener(h.CurrentROIObject,'ROIMoved',@moved_roi);
+                    else
+                        drawpolyline('Position',Class{1}.Segment(i).ROIObject.Position,...
+                            'Deletable',0,...
+                            'InteractionsAllowed','none',...
+                            'LineWidth',Class{1}.Segment(i).ROIObject.LineWidth,...
+                            'Label',sprintf('%s || %s',Class{1}.Segment(i).Name,Class{1}.Segment(i).SubSegmentName),...
+                            'LabelAlpha',0.3,...
+                            'Color',SegmentColors{2*SegmentIndex-1},...
+                            'StripeColor',SegmentColors{2*SegmentIndex});
+                    end
+                end
+                
+            end
+            
+            function moved_roi(varargin)
+                
+                Class{1}.Segment(h.CurrentIndex).ROIObject.Position = h.CurrentROIObject.Position;
+                
+            end
+            
+            function create_new_subsegment(varargin)
+                
+                h.EnableEditing = 0;
+                draw_channel_1
+                
+                Class{1}.Segment(end+1).Name = h.SegmentBox.String{h.SegmentBox.Value};
+                
+                k = 1;
+                SubSegmentName = sprintf('SubS-%02d',k);
+                while sum(strcmp({SubSegmentName},h.SubsegmentBox.String))
+                    k = k + 1;
+                    SubSegmentName = sprintf('SubS-%02d',k);
+                end
+                Class{1}.Segment(end).SubSegmentName = SubSegmentName;
+                
+                ROIObject = drawpolyline;
+                Class{1}.Segment(end).ROIObject.Position = ROIObject.Position;
+                Class{1}.Segment(end).ROIObject.LineWidth = ROIObject.LineWidth;
+                
+                h.EnableEditing = 1;
+                draw_channel_1
+                h.SubsegmentBox.Value = length(h.SubsegmentBox.String);
+                draw_channel_1
+            end
+            
+            function create_new_segment(varargin)
+                
+                h.EnableEditing = 0;
+                draw_channel_1
+                
+                k = 1;
+                SegmentName = sprintf('Seg-%02d',k);
+                while sum(strcmp({SegmentName},h.SegmentBox.String))
+                    k = k + 1;
+                    SegmentName = sprintf('Seg-%02d',k);
+                end
+                
+                if isempty(Class{1}.Segment(1).Name)
+                    Class{1}.Segment(1).Name = SegmentName;
+                else
+                    Class{1}.Segment(end+1).Name = SegmentName;
+                end
+                
+                SubSegmentName = sprintf('SubS-%02d',1);
+                Class{1}.Segment(end).SubSegmentName = SubSegmentName;
+                
+                ROIObject = drawpolyline;
+                Class{1}.Segment(end).ROIObject.Position = ROIObject.Position;
+                Class{1}.Segment(end).ROIObject.LineWidth = ROIObject.LineWidth;
+                
+                if length(Class{1}.Segment) == 1
+                    set(h.SegmentBox,'String',{SegmentName})
+                    set(h.SubsegmentBox,'String',{SubSegmentName})
+                end
+                
+                h.EnableEditing = 1;
+                draw_channel_1
+                h.SegmentBox.Value = length(h.SegmentBox.String);
+                segment_changed
+                h.SubsegmentBox.Value = length(h.SubsegmentBox.String);
+                draw_channel_1
+            end
+            
+            function segment_changed(varargin)
+                % set initial listbox items
+                Names = {Class{1}.Segment.Name};
+                SubSegmentNames = {Class{1}.Segment.SubSegmentName};
+                UniqueNames = unique(Names);
+                set(h.SegmentBox,'String',UniqueNames);
+                h.SubsegmentBox.Value = 1;
+                set(h.SubsegmentBox,'String',{SubSegmentNames{strcmp({h.SegmentBox.String{h.SegmentBox.Value}},Names)}});
+                draw_channel_1
+            end
+            
+            function subsegment_changed(varargin)
+                draw_channel_1
+            end
+            
+            function delete_selected_segment(varargin)
+                
+                OldString = get(h.SegmentBox,'String');
+                DeleteIdx = get(h.SegmentBox,'Value');
+                
+                Class{1}.Segment(strcmp({OldString{DeleteIdx}},{Class{1}.Segment.Name})) = [];
+                
+                if length(Class{1}.Segment) == 0
+                    Class{1}.Segment = struct('Name',[],...
+                            'Type',[],...
+                            'SubsegmentName',[],...
+                            'ROIObject',[]);
+                end
+                
+                set(h.SegmentBox,'Value',1);
+                draw_channel_1
+            end
+            
+            function delete_selected_subsegment(varargin)
+                
+                OldString = get(h.SegmentBox,'String');
+                DeleteIdx = get(h.SegmentBox,'Value');
+                SubOldString = get(h.SubsegmentBox,'String');
+                SubDeleteIdx = get(h.SubsegmentBox,'Value');
+                
+                Class{1}.Segment(strcmp({OldString{DeleteIdx}},{Class{1}.Segment.Name})&...
+                    strcmp({SubOldString{SubDeleteIdx}},{Class{1}.Segment.SubSegmentName})) = [];
+                
+                if length(Class{1}.Segment) == 0
+                    Class{1}.Segment = struct('Name',[],...
+                            'Type',[],...
+                            'SubsegmentName',[],...
+                            'ROIObject',[]);
+                end
+                
+                set(h.SubsegmentBox,'Value',1);
+                draw_channel_1
             end
             
             uiwait(h.Fig)
@@ -3876,6 +4673,23 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
     end
     methods
         % auxiliary methods
+        
+        function reset_segmentations(obj)
+            
+            for i=1:obj.NumAFMImages
+                obj.I{i}.Segment = struct('Name',[],...
+                            'Type',[],...
+                            'SubsegmentName',[],...
+                            'ROIObject',[]);
+            end
+            for i=1:obj.NumForceMaps
+                obj.FM{i}.Segment = struct('Name',[],...
+                            'Type',[],...
+                            'SubsegmentName',[],...
+                            'ROIObject',[]);
+            end
+            
+        end
         
         function RadiusNM = calculate_tip_radius(obj,TipDepthNM,TipIndex)
             if nargin < 2
