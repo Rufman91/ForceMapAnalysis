@@ -3697,7 +3697,6 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 check_for_overlay_group
                 
                 % Segmentation related
-                draw_existing_segments
                 if isempty(Class{1}.Segment(1).Name)
                     set(h.SegmentBox,'String',[]);
                     set(h.SubsegmentBox,'String',[]);
@@ -3708,6 +3707,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                     set(h.SegmentBox,'String',UniqueNames);
                     set(h.SubsegmentBox,'String',{SubSegmentNames{strcmp({h.SegmentBox.String{h.SegmentBox.Value}},Names)}});
                 end
+                draw_existing_segments
             end
             
             function changed_slider(varargin)
