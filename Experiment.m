@@ -1335,7 +1335,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
         function SMFS_preprocessing(obj)
             % SMFS_preprocessing: A function to run a bundle of other 
             % typically required functions for further analysis
-            % obj.preprocessing
+            
             
             % Output time and date for the dairy
             datetime('now')
@@ -1351,6 +1351,16 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             else
                 KeepFlagged = 'No';
             end
+            % Figure visibility
+            set(groot,'defaultFigureVisible','off')      
+            % set(groot,'defaultFigureVisible','on')  
+            % Change into the Folder of Interest
+            cd(obj.ExperimentFolder) % Move into the folder
+            % Create folders for saving the produced figures
+            foldername='SMFS_preprocessing';    % for debugging                
+            mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
+            currpath=fullfile(obj.ExperimentFolder,foldername);
+            cd(currpath);
             
             % force map loop
             for ii=1:obj.NumForceMaps
@@ -1359,7 +1369,11 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                     continue
                 end
                 waitbar(ii/NLoop,h,sprintf('Preprocessing ForceMap %i/%i\nProcessing force curves',ii,NLoop));            
-                obj.FM{ii}.fc_measurement_prop             
+                obj.FM{ii}.fc_measurement_prop
+                obj.FM{ii}.fc_sinoidal_fit
+                obj.FM{ii}.fc_linear_fit
+                obj.FM{ii}.fc_TipHeight_calculation
+                obj.FM{ii}.fc_estimate_cp_hardsurface
                 waitbar(ii/NLoop,h,sprintf('Preprocessing ForceMap %i/%i\nWrapping Up And Saving',ii,NLoop));
                                 
                 
@@ -1368,52 +1382,8 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             close(h);
         end
                   
-        function SMFS_fitting(obj)
-            % SMFS_sinoidal_fit: This function allows to conduct an automated presorting of the force curves 
-            % The function flags force curves and whole force maps that are
-            % non-functionalize
-            % Needed function: obj.preprocessing
-            
-            % Output time and date for the dairy
-            datetime('now')
-            
-             h = waitbar(0,'setting up','Units','normalized','Position',[0.4 0.3 0.2 0.1]);
-            NLoop = length(obj.ForceMapNames);
-            if sum(obj.SMFSFlag.Fit) >= 1
-                KeepFlagged = questdlg(sprintf('Some maps have been processed already.\nDo you want to skip them and keep old results?'),...
-                    'Processing Options',...
-                    'Yes',...
-                    'No',...
-                    'No');
-            else
-                KeepFlagged = 'No';
-            end
-            % Figure visibility
-            set(groot,'defaultFigureVisible','off')      
-            % set(groot,'defaultFigureVisible','on')  
-            % Change into the Folder of Interest
-            cd(obj.ExperimentFolder) % Move into the folder
-            % Create folders for saving the produced figures
-            foldername='FM_fits';    % for debugging                
-            mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
-            currpath=fullfile(obj.ExperimentFolder,foldername);
-            cd(currpath);
-            
-            % Loop over the imported force maps
-            for ii=1:obj.NumForceMaps
-            %for ii=3 % Debugging
-           
-                waitbar(ii/NLoop,h,sprintf('Preprocessing ForceMap %i/%i\nProcessing force curves',ii,NLoop));
-                obj.FM{ii}.fc_sinoidal_fit
-                obj.FM{ii}.fc_linear_fit
-                waitbar(ii/NLoop,h,sprintf('Preprocessing ForceMap %i/%i\nWrapping Up And Saving',ii,NLoop));
-                sprintf('Force Map No. %d of %d',ii,obj.NumForceMaps) % Gives current Force Map Position 
-                obj.SMFSFlag.Fit(ii) = 1;
-            end
-            close(h);
-        end
-                       
-        function SMFS_presorting(obj)
+      
+        function SMFS_preparation(obj)
             % SMFS_presorting: This function allows to conduct an automated presorting of the force curves 
             % The function flags force curves and whole force maps that are
             % non-functionalize
@@ -1444,8 +1414,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 waitbar(ii/NLoop,h,sprintf('Preprocessing ForceMap %i/%i\nProcessing force curves',ii,NLoop));
                 waitbar(ii/NLoop,h,sprintf('Preprocessing ForceMap %i/%i\nWrapping Up And Saving',ii,NLoop));
                 sprintf('Force Map No. %d of %d',ii,obj.NumForceMaps) % Gives current Force Map Position               
-                obj.FM{ii}.fc_estimate_cp_hardsurface
-                obj.FM{ii}.fc_find_idx
+                obj.FM{ii}.fc_xLimit_idx
                 obj.FM{ii}.fc_selection_threshold
                     if nnz(obj.FM{ii}.SMFSFlag.RetMinCrit)<20 % Only if more than 20 force curves fulfil the citeria the whole force map is considered successfully functionalized
                         obj.SMFSFlag.SelectFM(ii)=0;
@@ -1480,7 +1449,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             % Change into the Folder of Interest
             cd(obj.ExperimentFolder) % Move into the folder 
             % Create folders for saving the produced figures
-            foldername='FM_Visual_Selected';    % Defines the folder name
+            foldername='SMFS_visual_selection';    % Defines the folder name
             mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
             currpath=fullfile(obj.ExperimentFolder,foldername);
             cd(currpath); 
@@ -1512,8 +1481,6 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                sprintf('Force Map No. %d of %d',hh,obj.NumForceMaps) % Gives current Force Map Position   
                % Print force curves containing label for the pulling length
                % and colored area for the adhesion energy                              
-               % Baseline correction
-             %  obj.FM{hh}.fc_based_ret_correction
                % Snap-in
                obj.FM{hh}.fc_snap_in_length_MAD
                % Pulling length
@@ -1584,73 +1551,45 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             else
                 
             end
-            
+            % Figure visibility
+            set(groot,'defaultFigureVisible','off')      
+            % set(groot,'defaultFigureVisible','on')  
+            % Change into the Folder of Interest
             % Change into the Folder of Interest
             cd(obj.ExperimentFolder) % Move into the folder 
             % Create folders for saving the produced figures
             %foldername='FM_test';    % for debugging
-            foldername='FM_raw';    % Defines the folder name
+            foldername='SMFS_print_raw';    % Defines the folder name
             mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
             currpath=fullfile(obj.ExperimentFolder,foldername);
             cd(currpath); 
             
             % Loop over the imported force maps
-            %for ii=1:obj.NumForceMaps
-            for ii=463 % Debugging
+            for ii=1:obj.NumForceMaps
+            %for ii=463 % Debugging
                % Command window output
                sprintf('Force Map No. %d of %d',ii,obj.NumForceMaps) % Gives current Force Map Position
                % Run the chosen functions
                obj.FM{ii}.fc_print_raw(XMin,XMax,YMin,YMax);     
             end    
         end
-               
-        function SMFS_print_fitted(obj,XMin,XMax,YMin,YMax)
-            % SMFS_print: A function to simply plot all force curves of all
-            % force maps loaded and calssified based on the SMFS Flag
-            % Needed function: obj.presorting
-            
-            if nargin<2
-                XMin= -inf;     % Limit of the X-axis in meters (m)
-                XMax= 10e-9;      % Limit of the X-axis in meters (m)
-                YMin= -inf;     % Limit of the Y-axis in Newtons (N)
-                YMax= 50e-12;      % Limit of the Y-axis in Newtons (N)
-            else
-            
-            % Output time and date for the dairy
-            datetime('now')
-                
-            end
-            % Figure visibility
-            set(groot,'defaultFigureVisible','off')      
-            %set(groot,'defaultFigureVisible','on')           
-            % Change into the Folder of Interest
-            cd(obj.ExperimentFolder) % Move into the folder 
-            % Create folders for saving the produced figures
-            foldername='FM_test';    % for debugging
-            %foldername='FM_fc_fitted';    % Defines the folder name
-            mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
-            currpath=fullfile(obj.ExperimentFolder,foldername);
-            cd(currpath); 
-            
-            % Loop over the imported force maps
-            %for ii=1:obj.NumForceMaps
-            for ii=135 % Debugging
-               % Command window output
-               sprintf('Force Map No. %d of %d',ii,obj.NumForceMaps) % Gives current Force Map Position
-               % Run the chosen functions
-               obj.FM{ii}.fc_print_fitted(XMin,XMax,YMin,YMax);     
-            end    
-        end
-        
-       
+                         
         function SMFS_print_sort(obj,StartDate,EndDate,XMin,XMax,YMin,YMax)
             % SMFS_print_sort: A function to plot all force curves of all
             % force maps sorted by different properties 
             % Comment: Date format is: 'YYYY.MM.DD'
-            % Required function: obj.FM{ii}.fc_measurement_prop, obj.FM{ii}.estimate_cp_hardsurface
-         
+            
+            % Figure visibility
+            set(groot,'defaultFigureVisible','off')      
+            % set(groot,'defaultFigureVisible','on')  
+            % Change into the Folder of Interest
             % Change into the Folder of Interest
             cd(obj.ExperimentFolder) % Move into the folder 
+            % Create folders for saving the produced figures
+            foldername='SMFS_print_sort';    % Defines the folder name
+            mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
+            currpath=fullfile(obj.ExperimentFolder,foldername);
+            cd(currpath); 
             % Input variable adaptation
             if nargin<2
                 StartDate='0000.00.00';
@@ -1965,6 +1904,15 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 ax8.XTickLabel=[];
                 ax8.YTick=[];
                 ax8.YTickLabel=[];
+                % Tile 9
+                ax9=nexttile(9);
+                ax9.Color=RGB11;
+                ax9.Box='on';
+                ax9.LineWidth = 10;
+                ax9.XTick=[];
+                ax9.XTickLabel=[];
+                ax9.YTick=[];
+                ax9.YTickLabel=[];
             end
             % Axes
             ax1.FontSize = 12;
@@ -2118,15 +2066,55 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             partstr81h='Linker: ';
             partstr82h=num2str(ChipboxValue);
             fullstr8h=strcat(partstr81h,partstr82h); % Define the string that shall be shown in the plot   
-            partstr81i='Number of force curves analysed: ';
-            partstr82i=num2str(length(ConcateArray1));
-            fullstr8i=strcat(partstr81i,partstr82i); % Define the string that shall be shown in the plot
-            partstr81j='Number of force maps analysed: ';
-            partstr82j=num2str(length(IdxArray));
-            fullstr8j=strcat(partstr81j,partstr82j); % Define the string that shall be shown in the plot
-            te8=text(ax8,ax8TextPos(1), ax8TextPos(2),{fullstr8a, fullstr8b, fullstr8c, fullstr8d, fullstr8e, fullstr8f, fullstr8g, fullstr8h, fullstr8i, fullstr8j}, 'VerticalAlignment','middle', 'HorizontalAlignment','center');
+            te8=text(ax8,ax8TextPos(1), ax8TextPos(2),{fullstr8a, fullstr8b, fullstr8c, fullstr8d, fullstr8e, fullstr8f, fullstr8g, fullstr8h}, 'VerticalAlignment','middle', 'HorizontalAlignment','center');
             te8.FontSize = 18;
-    
+            % Tile 9     
+            ax9TextPos = [max(ax9.XLim)*0.5 max(ax9.YLim)*0.5];  % Define the position in the plot
+            fullstr9a='Number of force curves analysed: ';
+            if ~isempty(yAdhMaxApp)
+                 partstr91b='Max. Adhesion Force Approach: ';
+                 partstr92b=num2str(length(yAdhMaxApp));
+                 fullstr9b=strcat(partstr91b,partstr92b); % Define the string that shall be shown in the plot
+                else                   
+            end             
+            if ~isempty(yAdhMaxRet)
+                 partstr91c='Max. Adhesion Force Retraction:';
+                 partstr92c=num2str(length(yAdhMaxRet));
+                 fullstr9c=strcat(partstr91c,partstr92c); % Define the string that shall be shown in the plot
+                else                   
+            end 
+            if ~isempty(yAdhUnbinding)
+                 partstr91d='Unbinding Adhesion Force (Retraction): ';
+                 partstr92d=num2str(length(yAdhUnbinding));
+                 fullstr9d=strcat(partstr91d,partstr92d); % Define the string that shall be shown in the plot
+                else                   
+            end 
+            if ~isempty(yAdhEneApp)
+                 partstr91e='Adhesion Energy Approach: ';
+                 partstr92e=num2str(length(yAdhEneApp));
+                 fullstr9e=strcat(partstr91e,partstr92e); % Define the string that shall be shown in the plot
+                else                   
+            end 
+            if ~isempty(yAdhEneRet)
+                 partstr91d='Adhesion Energy Retraction: ';
+                 partstr92d=num2str(length(yAdhEneRet));
+                 fullstr9d=strcat(partstr91d,partstr92d); % Define the string that shall be shown in the plot
+                else                   
+            end 
+            if ~isempty(yPullingLength)
+                 partstr91e='Pulling Length: ';
+                 partstr92e=num2str(length(yPullingLength));
+                 fullstr9e=strcat(partstr91e,partstr92e); % Define the string that shall be shown in the plot
+                else                   
+            end 
+             if ~isempty(ySnapInLength)
+                 partstr91f='Snap-In Length: ';
+                 partstr92f=num2str(length(ySnapInLength));
+                 fullstr9f=strcat(partstr91f,partstr92f); % Define the string that shall be shown in the plot
+                else                   
+            end 
+            te9=text(ax9,ax9TextPos(1), ax9TextPos(2),{fullstr9a, fullstr9b, fullstr9c, fullstr9d, fullstr9e, fullstr9f},'VerticalAlignment','middle', 'HorizontalAlignment','center');
+            te9.FontSize = 18;            
             % Save figure
             %%% Define the name for the figure title
             partname='Dashboard';
@@ -2138,7 +2126,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             
             %% SMFS Results structure 
             % Check entry
-            if length(obj.SMFSResults)>0
+            if ~isempty(obj.SMFSResults)
                 jj=length(obj.SMFSResults)+1;
             else
                 jj=1;
@@ -2891,6 +2879,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             PercentCorrupt=100-PercentUncorrupt;
         end
         
+        % Individual ForceMap function related
         
         function SMFS_print_pulllength(obj)
             % SMFS_print: A function to simply plot all force curves of all
@@ -3010,19 +2999,27 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 end
             end
         end
-                    
+        
+        
+        
         function SMFS_testing_function(obj)
             % Function to quickly loop over all force maps for testing and
             % debugging
-            for ii=1:obj.NumForceMaps
-          %  for ii=135
-           % aa{ii}=find(obj.FM{ii}.LinFitCoeffa)
-        %    obj.SMFSFlag.Fit(1:obj.NumForceMaps)=1
             
-           %    obj.FM{ii}.test
+            % Figure visibility
+            %set(groot,'defaultFigureVisible','off')      
+             set(groot,'defaultFigureVisible','on')  
+            
+             
+             for ii=1:obj.NumForceMaps
+          %  for ii=135
+
+          
+               obj.FM{ii}.fc_TipHeight_calculation
           %    obj.FM{ii}.initialize_flags
-          %       obj.FM{ii}.fc_pulling_length_MAD
-            %        obj.FM{ii}.fc_sinoidal_fit2
+          %
+          
+            
                  % obj.write_to_log_file('Test','variable ii','start')
                  % aa=33;
                   
