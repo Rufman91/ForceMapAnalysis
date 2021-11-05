@@ -1400,8 +1400,8 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             cd(currpath);
             
             % Loop over the imported force maps
-            %for ii=1:obj.NumForceMaps
-            for ii=135 % Debugging
+            for ii=1:obj.NumForceMaps
+            %for ii=3 % Debugging
            
                 waitbar(ii/NLoop,h,sprintf('Preprocessing ForceMap %i/%i\nProcessing force curves',ii,NLoop));
                 obj.FM{ii}.fc_sinoidal_fit
@@ -1474,6 +1474,9 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             % Output time and date for the dairy
             datetime('now')
             
+            % Figure visibility
+            % set(groot,'defaultFigureVisible','off')      
+            set(groot,'defaultFigureVisible','on')  
             % Change into the Folder of Interest
             cd(obj.ExperimentFolder) % Move into the folder 
             % Create folders for saving the produced figures
@@ -1500,9 +1503,12 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             % Output time and date for the dairy
             datetime('now')
             
+            % Figure visibility
+            set(groot,'defaultFigureVisible','off')      
+            % set(groot,'defaultFigureVisible','on') 
             %% Loop
             for hh=1:obj.NumForceMaps
-            %for hh=39 % Debugging     
+            %for hh=4 % Debugging     
                sprintf('Force Map No. %d of %d',hh,obj.NumForceMaps) % Gives current Force Map Position   
                % Print force curves containing label for the pulling length
                % and colored area for the adhesion energy                              
@@ -1552,8 +1558,8 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             currpath=fullfile(obj.ExperimentFolder,foldername);
             cd(currpath);
             %% loop
-            %for hh=1:obj.NumForceMaps
-            for hh=544:obj.NumForceMaps % Debugging
+            for hh=1:obj.NumForceMaps
+            %for hh=544:obj.NumForceMaps % Debugging
             %sprintf('Force Map No. %d of %d',hh,obj.NumForceMaps) % Gives current Force Map Position   
             % Determine needed input variable
                NumFcUncorrupt(hh)=nnz(obj.FM{hh}.SMFSFlag.Uncorrupt); % Determine the number of uncorrupted force curves     
@@ -1802,9 +1808,9 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             ConcateArray7=zeros(1,1);
                        
             % for loop
-            %for ff=1:length(IdxArray)
+            for ff=1:length(IdxArray)
             %% Debugging
-            for ff=6 % for debugging
+            %for ff=6 % for debugging
              sprintf('Force curve No. %d',ff) % Gives current Force curve
             % for debugging
                 % Allocate data
@@ -1815,18 +1821,71 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 yAdhEneRet=obj.FM{IdxArray(ff)}.RetAdhEnergy_IdxMethod;
                 yPullingLength=obj.FM{IdxArray(ff)}.PullingLength;
                 ySnapInLength=obj.FM{IdxArray(ff)}.SnapInLength;
-                % Determine the number of rows per force map
-                ArrayLength=length(yPullingLength); % Define the length of the array
-                row_start = ((ff-1) * ArrayLength) + 1; % Define the appropriate row start to append the new data
-                row_end   = ff * ArrayLength; % Define the appropriate row end to append the new data
-                % Concatenated data
-                ConcateArray1(row_start:row_end,:)=yAdhMaxApp'; % Append the new data into the concatenated vector
-                ConcateArray2(row_start:row_end,:)=yAdhMaxRet'; % Append the new data into the concatenated vector
-                ConcateArray3(row_start:row_end,:)=yAdhUnbinding'; % Append the new data into the concatenated vector
-                ConcateArray4(row_start:row_end,:)=yAdhEneApp'; % Append the new data into the concatenated vector
-                ConcateArray5(row_start:row_end,:)=yAdhEneRet'; % Append the new data into the concatenated vector
-                ConcateArray6(row_start:row_end,:)=yPullingLength'; % Append the new data into the concatenated vector
-                ConcateArray7(row_start:row_end,:)=ySnapInLength'; % Append the new data into the concatenated vector
+                % Concatenate condition
+                if ~isempty(yAdhMaxApp)
+                    % Determine the number of rows per force map
+                    ArrayLength=length(yAdhMaxApp); % Define the length of the array
+                    row_start = ((ff-1) * ArrayLength) + 1; % Define the appropriate row start to append the new data
+                    row_end   = ff * ArrayLength; % Define the appropriate row end to append the new data
+                    % Concatenated data
+                    ConcateArray1(row_start:row_end,:)=yAdhMaxApp'; % Append the new data into the concatenated vector
+                else                   
+                end                
+                if ~isempty(yAdhMaxRet)
+                    % Determine the number of rows per force map
+                    ArrayLength=length(yAdhMaxRet); % Define the length of the array
+                    row_start = ((ff-1) * ArrayLength) + 1; % Define the appropriate row start to append the new data
+                    row_end   = ff * ArrayLength; % Define the appropriate row end to append the new data
+                    % Concatenated data
+                    ConcateArray2(row_start:row_end,:)=yAdhMaxRet'; % Append the new data into the concatenated vector
+                else                  
+                end
+                if ~isempty(yAdhUnbinding)
+                    % Determine the number of rows per force map
+                    ArrayLength=length(yAdhUnbinding); % Define the length of the array
+                    row_start = ((ff-1) * ArrayLength) + 1; % Define the appropriate row start to append the new data
+                    row_end   = ff * ArrayLength; % Define the appropriate row end to append the new data
+                    % Concatenated data
+                    ConcateArray3(row_start:row_end,:)=yAdhUnbinding'; % Append the new data into the concatenated vector
+                else                  
+                end
+                if ~isempty(yAdhEneApp)
+                    % Determine the number of rows per force map
+                    ArrayLength=length(yAdhEneApp); % Define the length of the array
+                    row_start = ((ff-1) * ArrayLength) + 1; % Define the appropriate row start to append the new data
+                    row_end   = ff * ArrayLength; % Define the appropriate row end to append the new data
+                    % Concatenated data
+                    ConcateArray4(row_start:row_end,:)=yAdhEneApp'; % Append the new data into the concatenated vector
+                else                  
+                end
+                if ~isempty(yAdhEneRet)
+                    % Determine the number of rows per force map
+                    ArrayLength=length(yAdhEneRet); % Define the length of the array
+                    row_start = ((ff-1) * ArrayLength) + 1; % Define the appropriate row start to append the new data
+                    row_end   = ff * ArrayLength; % Define the appropriate row end to append the new data
+                    % Concatenated data
+                    ConcateArray5(row_start:row_end,:)=yAdhEneRet'; % Append the new data into the concatenated vector
+                else                  
+                end
+                if ~isempty(yPullingLength)
+                    % Determine the number of rows per force map
+                    ArrayLength=length(yPullingLength); % Define the length of the array
+                    row_start = ((ff-1) * ArrayLength) + 1; % Define the appropriate row start to append the new data
+                    row_end   = ff * ArrayLength; % Define the appropriate row end to append the new data
+                    % Concatenated data
+                     ConcateArray6(row_start:row_end,:)=yPullingLength'; % Append the new data into the concatenated vector
+                else                  
+                end
+                if ~isempty(ySnapInLength)
+                    % Determine the number of rows per force map
+                    ArrayLength=length(ySnapInLength); % Define the length of the array
+                    row_start = ((ff-1) * ArrayLength) + 1; % Define the appropriate row start to append the new data
+                    row_end   = ff * ArrayLength; % Define the appropriate row end to append the new data
+                    % Concatenated data
+                     ConcateArray7(row_start:row_end,:)=ySnapInLength'; % Append the new data into the concatenated vector
+                else                  
+                end  
+                
                       
                 % Statistics
                 AdhMaxAppSelMean=mean(ConcateArray1);
