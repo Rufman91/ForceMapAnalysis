@@ -263,6 +263,60 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle
             
         end
         
+        function [OutMat,OutConcatCell,OutCell,OutMask] = get_segment_data_from_channel(obj,ChannelName,PixelDilation)
+            
+            if isempty(obj.Segment) || isempty(obj.Segment(1).Name)
+                warning(sprintf('%s has no segementation data',obj.Name))
+            end
+            if nargin < 3
+                PixelDilation = 0;
+            end
+            
+            Channel = obj.get_channel(ChannelName);
+            Data = Channel.Image;
+            OutMask = zeros(size(Data));
+            
+            SegmentNames = unique({obj.Segment.Name});
+            set(0,'DefaultFigureVisible','off');
+            
+            for i=1:length(SegmentNames)
+                k = 1;
+                for j=1:length(obj.Segment)
+                    if isequal(SegmentNames{i},obj.Segment(j).Name)
+                        imshow(Data)
+                        Line = drawpolyline('Position',obj.Segment(j).ROIObject.Position);
+                        Mask = Line.createMask;
+                        if PixelDilation
+                            StrEl = strel('Disk',PixelDilation,0);
+                            Mask = imdilate(Mask,StrEl);
+                        end
+                        OutMask = OutMask | Mask;
+                        SubSegmentPoints = Data(Mask == 1);
+                        OutCell{i}{k} = SubSegmentPoints;
+                        k = k + 1;
+                    end
+                end
+            end
+            close gcf
+            set(0,'DefaultFigureVisible','on');
+            
+            for i=1:length(OutCell)
+                ConcVec = [];
+                for j=1:length(OutCell{i})
+                    Temp = cell2mat(OutCell{i}(j));
+                    ConcVec = cat(1,reshape(Temp,[],1),reshape(ConcVec,[],1));
+                end
+                OutConcatCell{i} = ConcVec;
+                SegmentLength(i) = length(ConcVec);
+            end
+            
+            OutMat = nan(max(SegmentLength),length(OutCell));
+            for i=1:length(OutCell)
+                OutMat(1:SegmentLength(i),i) = OutConcatCell{i};
+            end
+            
+        end
+        
     end
     methods (Static)
         % Static main methods
