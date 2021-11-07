@@ -3763,6 +3763,9 @@ classdef ForceMap < matlab.mixin.Copyable
                 
                 %force indentation all segments
                 figure(m)
+                
+                xHmin = 0.5*min(obj.Indentation{i,j});
+                       
                 hold on
                 for j=1:obj.NumSegments
                     
@@ -3773,6 +3776,7 @@ classdef ForceMap < matlab.mixin.Copyable
                        title(sprintf('Force Indentation Curve %i',i))
                        xlabel('Indentation in m')
                        ylabel('Force in N')
+                       xlim([xHmin 0.5])
                 end
                 
                 
@@ -3784,7 +3788,7 @@ classdef ForceMap < matlab.mixin.Copyable
                     if obj.SegFrequency{j} > 0
                         
                         figure(s)
-                        plot(obj.Indentation{i,j},obj.BasedForce{i,j},'--b')
+                        plot(obj.Indentation{i,j},obj.BasedForce{i,j},'-b')
                         title(sprintf('Force Indentation Curve %i Segment %i',i,j))
                         xlabel('Indentation in m')
                         ylabel('Force in N')
