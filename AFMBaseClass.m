@@ -220,6 +220,94 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle
             end
         end
         
+        function snap_line_segments_to_local_perpendicular_maximum(obj,SampleDistanceMeters,WidthLocalWindowMeters)
+            
+            if nargin < 3
+                SampleDistanceMeters = 50*1e-9;
+            end
+            if nargin < 2
+                SampleDistanceMeters = 50*1e-9;
+                WidthLocalWindowMeters = 300*1e-9;
+            end
+            
+            for i=length(obj.Segment):-1:1
+                if ~isempty(strfind(obj.Segment(i).Name,'Snapped'))
+                    obj.Segment(i) = [];
+                end
+            end
+            
+            Channel = obj.get_channel('Processed');
+            if isempty(Channel)
+                warning('No Channel "Processed" found. Need flattened height channel for snap to local maximum')
+                return
+            end
+            
+            % If Channel has an unequal SizePerPixel, resize it for
+            % following operations
+            [Channel,XMult,YMult] = obj.resize_channel_to_same_size_per_pixel(Channel);
+            
+            % Convert inputs from meters to pixels
+            SizePerPixel = Channel.ScanSizeX/Channel.NumPixelsX;
+            WidthLocalWindowPixels = WidthLocalWindowMeters/SizePerPixel;
+            SampleDistancePixels = SampleDistanceMeters/SizePerPixel;
+            
+            % Loop over all Segments and create 'Snapped' segments for all
+            % Polylines
+            k = 1;
+            for i=1:length(obj.Segment)
+                if isequal(obj.Segment(i).Type,'polyline') && isempty(strfind(obj.Segment(i).Name,'Snapped'))
+                    Snapped(k) = obj.Segment(i);
+                    Snapped(k).Name = ['Snapped - ' obj.Segment(i).Name];
+                    NewVertices = [];
+                    OriginalVertices = obj.Segment(i).ROIObject.Position;
+                    OriginalVertices = [OriginalVertices(:,1).*XMult OriginalVertices(:,2).*YMult];
+                    while size(OriginalVertices,1) > 1
+                        Length = norm(OriginalVertices(1,:) - OriginalVertices(2,:));
+                        N = round(Length/SampleDistancePixels);
+                        if N <= 2 
+                            N = 2;
+                        end
+                        t = linspace(0,1,N)';
+                        TempNewVertices = (1-t)*OriginalVertices(1,:) + t*OriginalVertices(2,:);
+                        NewVertices = [NewVertices; TempNewVertices];
+                        OriginalVertices(1,:) = [];
+                    end
+                    Snapped(k).ROIObject.Position = NewVertices;
+                    k = k + 1;
+                end
+            end
+            if k == 1
+                disp('No polyline segments found')
+                return
+            end
+            
+            for i=1:length(Snapped)
+                SnappedPos = [];
+                for j=1:size(Snapped(i).ROIObject.Position,1)
+                    if j == 1
+                        LocalDirectionVector = Snapped(i).ROIObject.Position(j,:) - Snapped(i).ROIObject.Position(j+1,:);
+                    elseif j == size(Snapped(i).ROIObject.Position,1)
+                        LocalDirectionVector = Snapped(i).ROIObject.Position(j-1,:) - Snapped(i).ROIObject.Position(j,:);
+                    else
+                        LocalDirectionVector = Snapped(i).ROIObject.Position(j-1,:) - Snapped(i).ROIObject.Position(j+1,:);
+                    end
+                    PerpendicularVector = [LocalDirectionVector(2) -LocalDirectionVector(1)]/norm(LocalDirectionVector);
+                    WindowStart = Snapped(i).ROIObject.Position(j,:) + PerpendicularVector.*WidthLocalWindowPixels/2;
+                    WindowEnd = Snapped(i).ROIObject.Position(j,:) - PerpendicularVector.*WidthLocalWindowPixels/2;
+                    [LocalX,LocalY,LocalProfile] = improfile(Channel.Image,[WindowStart(1) WindowEnd(1)],[WindowStart(2) WindowEnd(2)]);
+                    [~,MaxIndex] = max(LocalProfile);
+                    SnappedPos(j,:) = [LocalX(MaxIndex) LocalY(MaxIndex)];
+%                     % Debug
+%                     imshow(Channel.Image,[])
+%                     drawpolyline('Position',Snapped)
+                end
+                Snapped(i).ROIObject.Position = SnappedPos;
+            end
+            
+            obj.Segment(end+1:end+length(Snapped)) = Snapped;
+            
+        end
+        
         function apply_segmentation_to_other_baseclass(DonorClass,AcceptorClass)
             
             AcceptorClass.Segment = DonorClass.Segment;
@@ -339,6 +427,38 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle
                 OutChannel.Image = imresize(InChannel.Image,[TargetRes TargetRes]);
                 OutChannel.NumPixelsX = size(OutChannel.Image,1);
                 OutChannel.NumPixelsY = size(OutChannel.Image,2);
+            end
+        end
+        
+        function [OutChannel,XMultiplier,YMultiplier] = resize_channel_to_same_size_per_pixel(InChannel)
+            % OutChannel = resize_channel_to_same_size_per_pixel(InChannel)
+            % 
+            % Resizes the image dimension with bigger size per pixel so
+            % the OutChannel always has more pixels.
+            % New Image will have aspect ratio according to the ratio of
+            % ScanSizeX and ScanSizeY
+            
+            SizePerPixelX = InChannel.ScanSizeX./InChannel.NumPixelsX;
+            SizePerPixelY = InChannel.ScanSizeY./InChannel.NumPixelsY;
+            
+            OutChannel = InChannel;
+            
+            if SizePerPixelX == SizePerPixelY
+                XMultiplier = 1;
+                YMultiplier = 1;
+                return
+            elseif SizePerPixelX > SizePerPixelY
+                NewNumPixels = round(InChannel.ScanSizeX*InChannel.NumPixelsY/InChannel.ScanSizeY);
+                OutChannel.Image = imresize(InChannel.Image,[InChannel.NumPixelsY NewNumPixels]);
+                OutChannel.NumPixelsX = NewNumPixels;
+                XMultiplier = OutChannel.NumPixelsX/InChannel.NumPixelsX;
+                YMultiplier = 1;
+            elseif SizePerPixelY > SizePerPixelX
+                NewNumPixels = round(InChannel.ScanSizeY*InChannel.NumPixelsX/InChannel.ScanSizeX);
+                OutChannel.Image = imresize(InChannel.Image,[NewNumPixels InChannel.NumPixelsX]);
+                OutChannel.NumPixelsY = NewNumPixels;
+                YMultiplier = OutChannel.NumPixelsY/InChannel.NumPixelsY;
+                XMultiplier = 1;
             end
         end
         
