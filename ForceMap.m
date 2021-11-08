@@ -3866,7 +3866,7 @@ classdef ForceMap < matlab.mixin.Copyable
                          % time indentation
                         figure('Name',sprintf('Force Curve %i Segment %i',i,j))
                         subplot(3,1,1)
-                        plot(x,obj.FZShift{i,j},x,obj.FilterF{i,j},xpF,ypF)
+                        plot(x,obj.FZShift{i,j},x,obj.FilterF{i,j},x,ypF)
                         legend({'shifted force data to zero line','filtered force data','fitted force data 1'},'Location','southoutside')
                         subplot(3,1,2)
                         plot(x,obj.HZShift{i,j},x,obj.FilterH{i,j},xpH,ypH)
