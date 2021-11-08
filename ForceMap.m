@@ -1886,7 +1886,7 @@ classdef ForceMap < matlab.mixin.Copyable
                          fcn = @(b) sum((fit(b,x) - FInterp{i,j}).^2);       
                          % Minimise Least-Squares with estimated start values:
                          options = optimset('MaxFunEvals',10000);
-                         obj.SineVarsF{i,j} = fminsearch(fcn, [AmplitudeF; firstsignchangeF],options); 
+                         obj.SineVarsF{i,j} = fminsearch(fcn, [AmplitudeF; PeriodF; firstsignchangeF],options); 
                          % Spacing of time vector:
                          %xpF = linspace(min(obj.InterpTimeF{j}),max(obj.InterpTimeF{j}),100000);
                          obj.SineVarsF{i,j}(1)= AmplitudeF;
