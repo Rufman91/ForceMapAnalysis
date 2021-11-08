@@ -1890,7 +1890,7 @@ classdef ForceMap < matlab.mixin.Copyable
                          % Spacing of time vector:
                          xpF = linspace(min(obj.InterpTimeF{j}),max(obj.InterpTimeF{j}),100000);
                          obj.SineVarsF{i,j}(1)= AmplitudeF;
-                         obj.SineVarsF{i,j}(2)= obj.SegFrequency{j};
+                         obj.SineVarsF{i,j}(2)= (2*pi)/obj.SegFrequency{j};
                          obj.SineVarsF{i,j}(3)= firstsignchangeF;
                          
                          % Function to fit indentation data 
@@ -1907,7 +1907,7 @@ classdef ForceMap < matlab.mixin.Copyable
                          % Spacing of time vector:
                          xpH = linspace(min(obj.InterpTimeH{j}),max(obj.InterpTimeH{j}),100000);
                          obj.SineVarsH{i,j}(1)= AmplitudeH;
-                         obj.SineVarsH{i,j}(2)= obj.SegFrequency{j};
+                         obj.SineVarsH{i,j}(2)= (2*pi)/obj.SegFrequency{j};
                          obj.SineVarsH{i,j}(3)= firstsignchangeH;
                         
 
@@ -3800,7 +3800,7 @@ classdef ForceMap < matlab.mixin.Copyable
                        title(sprintf('Force Indentation Curve %i',i))
                        xlabel('Indentation in m')
                        ylabel('Force in N')
-                       xlim([-1 0.5])
+                       %xlim([-1 0.5])
                        
                        hold on
                         if DirectoryPath~=0
