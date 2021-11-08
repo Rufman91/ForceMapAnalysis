@@ -1462,7 +1462,8 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                sprintf('Force Map No. %d of %d',ii,obj.NumForceMaps) % Gives current Force Map Position
                % Run the chosen functions
             %   obj.FM{ii}.fc_visual_selection_all(XMin,XMax,YMin,YMax);  
-               obj.FM{ii}.fc_visual_selection_flagged(XMin,XMax,YMin,YMax,NumFcMax);
+               obj.FM{ii}.fc_visual_selection_flag_Selected(XMin,XMax,YMin,YMax,NumFcMax);
+            %    obj.FM{ii}.fc_visual_selection_flag_Uncorrupt(obj,XMin,XMax,YMin,YMax,NumFcMax)
                %obj.save_experiment;        % Save immediately after each force curve
             end    
         end

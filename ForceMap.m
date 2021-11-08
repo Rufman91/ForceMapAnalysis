@@ -3279,7 +3279,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
         end
         
         function fc_visual_selection_all(obj,XMin,XMax,YMin,YMax) % fc ... force curve
-            % fc_visual_selection: function plots all force curves of a force map                       
+            % fc_visual_selection: function plots all force curves of a force map
             if nargin < 2
                 XMin= -inf;
                 XMax= inf;
@@ -3287,14 +3287,14 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 YMax= inf;
             end
             %% Define variables
-            RGB1=[0 26 255]./255;  % Blue 
+            RGB1=[0 26 255]./255;  % Blue
             RGB2=[255 119 0]./255; % Orange
             RGB10=[69 22 113]./255; % Violet
-             RGB13=[200 8 0]./255; % Red
-                    x50=-50e-9; % Defines 50nm
-                    x150=-150e-9; % Defines 150nm
-                    x500=-500e-9; % Defines 500nm
-                    DataShareStartApp=0.15; % 15%
+            RGB13=[200 8 0]./255; % Red
+            x50=-50e-9; % Defines 50nm
+            x150=-150e-9; % Defines 150nm
+            x500=-500e-9; % Defines 500nm
+            DataShareStartApp=0.15; % 15%
             DataShareEndApp=0.65; % 65%
             DataShareStartRet=0.07; % 7 %
             DataShareEndRet=0.02; % 2 %
@@ -3306,51 +3306,51 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             % Classification criteria
             figname=strcat(obj.Date,{'_'},obj.Time,{'_'},obj.ID,{'_'},obj.Substrate,{'_'},obj.EnvCond,{'_'},obj.Linker,{'_'},obj.Chipbox,{'_'},obj.ChipCant,{'_'},ExtendVelocityConvert,{'_'},RetractVelocityConvert,{'_'},HoldingTimeConvert);
             figname=char(figname);
-             % Define remainder situation
+            % Define remainder situation
             Remainder=mod(obj.NCurves,NumFcMax);
             NFigures=floor(obj.NCurves./NumFcMax);
             if Remainder ~= 0
                 NFigures=NFigures+1;
-            end    
+            end
             %% Define variables for the plot loop
             mm=ceil(sqrt(NumFcMax)); % Variable defines the tiledlayout and thereby the tile arrangement
             nn=mm; % Variable defines the tiledlayout and thereby the tile arrangement
-            %% Figure loop   
-            for kk=1:NFigures           
-            % Figure    
-            h_fig=figure(kk);
-            h_fig.Color='white'; % changes the background color of the figure
-            h_fig.Units='normalized'; % Defines the units 
-            h_fig.OuterPosition=[0 0 1 1];% changes the size of the to the whole screen
-            h_fig.PaperOrientation='landscape';
-            h_fig.Name=figname;         
-            % Plotting the tiles
-            t = tiledlayout(mm,nn);
-            %t.TileSpacing = 'compact';
-            %t.Padding = 'compact';
-            t.TileSpacing = 'none'; % To reduce the spacing between the tiles
-            t.Padding = 'none'; % To reduce the padding of perimeter of a tile           
-            % Defining variables
-            if kk==NFigures && Remainder~=0
-                NLoop=Remainder;
-            else
-                NLoop=NumFcMax;
-            end
-                %% Plot loop    
+            %% Figure loop
+            for kk=1:NFigures
+                % Figure
+                h_fig=figure(kk);
+                h_fig.Color='white'; % changes the background color of the figure
+                h_fig.Units='normalized'; % Defines the units
+                h_fig.OuterPosition=[0 0 1 1];% changes the size of the to the whole screen
+                h_fig.PaperOrientation='landscape';
+                h_fig.Name=figname;
+                % Plotting the tiles
+                t = tiledlayout(mm,nn);
+                %t.TileSpacing = 'compact';
+                %t.Padding = 'compact';
+                t.TileSpacing = 'none'; % To reduce the spacing between the tiles
+                t.Padding = 'none'; % To reduce the padding of perimeter of a tile
+                % Defining variables
+                if kk==NFigures && Remainder~=0
+                    NLoop=Remainder;
+                else
+                    NLoop=NumFcMax;
+                end
+                %% Plot loop
                 for jj=1:NLoop
                     qq=jj+NumFcMax*(kk-1);
-                     % Allocate data
-                        xApp=obj.THApp{qq}-obj.CP_HardSurface(qq); % Retraction x-data (m): Vertical tip height data corrected by the determined contact point using the hard surface method
-                        xRet=obj.THRet{qq}-obj.CP_HardSurface(qq); % Retraction x-data (m): Vertical tip height data corrected by the determined contact point using the hard surface method
-                        yApp=obj.BasedApp{qq};
-                        yRet=obj.BasedRet{qq};  
-                         % Determine indices
-                        IdxStartApp=round(length(yApp)*DataShareStartApp);
-                        IdxEndApp=round(length(yApp)*DataShareEndApp);
-                        IdxStartRet=round(length(yRet)-length(yRet)*DataShareStartRet);
-                        IdxEndRet=round(length(yRet)-length(yRet)*DataShareEndRet);
+                    % Allocate data
+                    xApp=obj.THApp{qq}-obj.CP_HardSurface(qq); % Retraction x-data (m): Vertical tip height data corrected by the determined contact point using the hard surface method
+                    xRet=obj.THRet{qq}-obj.CP_HardSurface(qq); % Retraction x-data (m): Vertical tip height data corrected by the determined contact point using the hard surface method
+                    yApp=obj.BasedApp{qq};
+                    yRet=obj.BasedRet{qq};
+                    % Determine indices
+                    IdxStartApp=round(length(yApp)*DataShareStartApp);
+                    IdxEndApp=round(length(yApp)*DataShareEndApp);
+                    IdxStartRet=round(length(yRet)-length(yRet)*DataShareStartRet);
+                    IdxEndRet=round(length(yRet)-length(yRet)*DataShareEndRet);
                     % Plot tile
-                    ax=nexttile;      
+                    ax=nexttile;
                     ax.XLim = [XMin XMax];
                     ax.YLim = [YMin YMax];
                     hold on
@@ -3360,7 +3360,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                     plot(xApp(IdxStartApp:IdxEndApp),yApp(IdxStartApp:IdxEndApp),'Color',RGB13);
                     plot(xRet(IdxStartRet:IdxEndRet),yRet(IdxStartRet:IdxEndRet),'Color','k');
                     xline(x50,'Color',RGB10); % Draws a vertical line
-                    xline(x150,'Color',RGB10); % Draws a vertical line   
+                    xline(x150,'Color',RGB10); % Draws a vertical line
                     xline(x500,'Color',RGB10); % Draws a vertical line
                     % Title for each Subplot
                     if obj.SMFSFlag.Uncorrupt(qq)*obj.SMFSFlag.RetMinCrit(qq)*obj.SMFSFlag.LengthRequisite(qq)==0
@@ -3368,12 +3368,12 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                     elseif obj.SMFSFlag.Uncorrupt(qq)*obj.SMFSFlag.RetMinCrit(qq)*obj.SMFSFlag.LengthRequisite(qq)==1
                         ti=title(sprintf('%i',qq),'Color','b');
                     end
-                    ti.Units='normalized'; % Set units to 'normalized'  
-                    ti.Position=[0.5,0.95]; % Position the subplot title within the subplot                 
+                    ti.Units='normalized'; % Set units to 'normalized'
+                    ti.Position=[0.5,0.95]; % Position the subplot title within the subplot
                 end
                 
                 %% Dialog boxes
-                % Function 'bttnChoiseDialog.m' is needed to excute this section               
+                % Function 'bttnChoiseDialog.m' is needed to excute this section
                 inputOptions={'Select all', 'Select none', 'Select all - except of', 'Select none - except of'}; % Define the input arguments
                 % 'Select all' = 1
                 % 'Select none' = 2
@@ -3381,7 +3381,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 % 'Select none - except of' = 4
                 defSelection=inputOptions{1}; % Default selection; Defined selection if the window is closed without choosing a selection possibility
                 SelectBttns=bttnChoiseDialog(inputOptions, 'Force curve selection', defSelection,...
-                'Please choose the appropriate button ...'); % Stores the selected button number per figure
+                    'Please choose the appropriate button ...'); % Stores the selected button number per figure
                 % Case 1: Select all
                 if SelectBttns == 1
                     obj.SMFSFlag.Uncorrupt(qq-NumFcMax+1:qq)=1;
@@ -3396,37 +3396,37 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                     prompt = {'Enter the force curve number you do not want to keep for analysis (For multiple selections just use the space key to separeat entries)'};
                     definput = {''};
                     opts.Interpreter = 'tex';
-                    IdxExc=inputdlg(prompt,'Select all - except of ...',[1 150],definput,opts); % Stores the individual selected fc as a cell array of character vectors 
+                    IdxExc=inputdlg(prompt,'Select all - except of ...',[1 150],definput,opts); % Stores the individual selected fc as a cell array of character vectors
                     IdxExc=str2num(IdxExc{1}); % Convert the cell array to numerals
                     obj.SMFSFlag.Uncorrupt(IdxExc)=0;
                 end
                 if obj.SMFSFlag.Uncorrupt(qq-NumFcMax+1:qq)==0
                     title(sprintf('%i',qq),'Color','r');
-                elseif obj.SMFSFlag.Uncorrupt(qq-NumFcMax+1:qq)==1    
+                elseif obj.SMFSFlag.Uncorrupt(qq-NumFcMax+1:qq)==1
                     title(sprintf('%i',qq),'Color','b');
-                end        
+                end
                 % Case 4: Select none - except of
                 if SelectBttns == 4
                     obj.SMFSFlag.Uncorrupt(qq-NumFcMax+1:qq)=0;
                     prompt = {'Enter the force curve number you want want to keep for analysis (For multiple selections just use the space key to separeat entries)'};
                     definput = {''};
                     opts.Interpreter = 'tex';
-                    IdxExc=inputdlg(prompt,'Select none - except of ...',[1 150],definput,opts); % Stores the individual selected fc as a cell array of character vectors 
+                    IdxExc=inputdlg(prompt,'Select none - except of ...',[1 150],definput,opts); % Stores the individual selected fc as a cell array of character vectors
                     IdxExc=str2num(IdxExc{1}); % Convert the cell array to numerals
                     obj.SMFSFlag.Uncorrupt(IdxExc)=1;
                 end
             end
             close all
-                
+            
             %%% Colour highlighting of the force curves regarding the choosen answer and storage in a structure
             %% Figure loop
-            for kk=1:NFigures  
-            h_fig=figure(kk);
-            h_fig.Color='white'; % changes the background color of the figure
-            h_fig.Units='normalized'; % Defines the units 
-            h_fig.OuterPosition=[0 0 1 1];% changes the size of the to the whole screen
-            h_fig.PaperOrientation='landscape';
-            h_fig.Name=figname; 
+            for kk=1:NFigures
+                h_fig=figure(kk);
+                h_fig.Color='white'; % changes the background color of the figure
+                h_fig.Units='normalized'; % Defines the units
+                h_fig.OuterPosition=[0 0 1 1];% changes the size of the to the whole screen
+                h_fig.PaperOrientation='landscape';
+                h_fig.Name=figname;
                 %% Plotting the tiles
                 t = tiledlayout(mm,nn);
                 %t.TileSpacing = 'compact';
@@ -3438,22 +3438,22 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                     NLoop=Remainder;
                 else
                     NLoop=NumFcMax;
-                end               
+                end
                 %% Title loop
                 for jj=1:NLoop
-                   qq=jj+NumFcMax*(kk-1);
-                     % Allocate data
-                        xApp=obj.THApp{qq}-obj.CP_HardSurface(qq); % Retraction x-data (m): Vertical tip height data corrected by the determined contact point using the hard surface method
-                        xRet=obj.THRet{qq}-obj.CP_HardSurface(qq); % Retraction x-data (m): Vertical tip height data corrected by the determined contact point using the hard surface method
-                        yApp=obj.BasedApp{qq};
-                        yRet=obj.BasedRet{qq};  
-                         % Determine indices
-                        IdxStartApp=round(length(yApp)*DataShareStartApp);
-                        IdxEndApp=round(length(yApp)*DataShareEndApp);
-                        IdxStartRet=round(length(yRet)-length(yRet)*DataShareStartRet);
-                        IdxEndRet=round(length(yRet)-length(yRet)*DataShareEndRet);
+                    qq=jj+NumFcMax*(kk-1);
+                    % Allocate data
+                    xApp=obj.THApp{qq}-obj.CP_HardSurface(qq); % Retraction x-data (m): Vertical tip height data corrected by the determined contact point using the hard surface method
+                    xRet=obj.THRet{qq}-obj.CP_HardSurface(qq); % Retraction x-data (m): Vertical tip height data corrected by the determined contact point using the hard surface method
+                    yApp=obj.BasedApp{qq};
+                    yRet=obj.BasedRet{qq};
+                    % Determine indices
+                    IdxStartApp=round(length(yApp)*DataShareStartApp);
+                    IdxEndApp=round(length(yApp)*DataShareEndApp);
+                    IdxStartRet=round(length(yRet)-length(yRet)*DataShareStartRet);
+                    IdxEndRet=round(length(yRet)-length(yRet)*DataShareEndRet);
                     % Plot tile
-                    ax=nexttile;      
+                    ax=nexttile;
                     ax.XLim = [XMin XMax];
                     ax.YLim = [YMin YMax];
                     hold on
@@ -3463,7 +3463,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                     plot(xApp(IdxStartApp:IdxEndApp),yApp(IdxStartApp:IdxEndApp),'Color',RGB13);
                     plot(xRet(IdxStartRet:IdxEndRet),yRet(IdxStartRet:IdxEndRet),'Color','k');
                     xline(x50,'Color',RGB10); % Draws a vertical line
-                    xline(x150,'Color',RGB10); % Draws a vertical line   
+                    xline(x150,'Color',RGB10); % Draws a vertical line
                     xline(x500,'Color',RGB10); % Draws a vertical line
                     % Title for each Subplot
                     if obj.SMFSFlag.Uncorrupt(qq)==0
@@ -3471,21 +3471,21 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                     elseif obj.SMFSFlag.Uncorrupt(qq)==1
                         ti=title(sprintf('%i',qq),'Color','b');
                     end
-                    ti.Units='normalized'; % Set units to 'normalized'  
-                    ti.Position=[0.5,0.95]; % Position the subplot title within the subplot                                  
+                    ti.Units='normalized'; % Set units to 'normalized'
+                    ti.Position=[0.5,0.95]; % Position the subplot title within the subplot
                 end
-
-            %% Save figures
-            %%% Define the name for the figure title    
-            partname=sprintf('-p%d',kk);        
-            fullname=sprintf('%s%s',figname,partname);
-            %%% Save the current figure in the current folder
-            print(gcf,fullname,'-dpng'); 
+                
+                %% Save figures
+                %%% Define the name for the figure title
+                partname=sprintf('-p%d',kk);
+                fullname=sprintf('%s%s',figname,partname);
+                %%% Save the current figure in the current folder
+                print(gcf,fullname,'-dpng');
             end
-        close Figure 1 Figure 2 Figure 3 Figure 4
+            close Figure 1 Figure 2 Figure 3 Figure 4
         end
         
-        function fc_visual_selection_flagged(obj,XMin,XMax,YMin,YMax,NumFcMax) % fc ... force curve
+        function fc_visual_selection_flag_Selected(obj,XMin,XMax,YMin,YMax,NumFcMax) % fc ... force curve
             % fc_print_adhenergy_pulllength: A function to plot all selected force curves of a
             % force map including adhesion energy and pulling length in
             % each force curve
@@ -3495,7 +3495,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 YMin= -inf;
                 YMax= inf;
             end
-            % Define variables
+            %% Define variables
             RGB1=[0 26 255]./255;  % Blue
             RGB2=[255 119 0]./255; % Orange
             RGB7=[255 230 0]./255; % Yellow
@@ -3504,6 +3504,14 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             RGB11=[200 255 150]./255; % Light Green
             RGB12=[185 230 254]./255; % Light Blue
             RGB13=[200 0 0]./255; % Red
+            x50=-50e-9; % Defines 50nm
+            x150=-150e-9; % Defines 150nm
+            x500=-500e-9; % Defines 500nm
+            DataShareStartApp=0.15; % 15%
+            DataShareEndApp=0.65; % 65%
+            DataShareStartRet=0.07; % 7 %
+            DataShareEndRet=0.02; % 2 %
+            NumFcMax=25;
             % Define variables for the figure name
             ExtendVelocityConvert=num2str(obj.ExtendVelocity*1e9);
             RetractVelocityConvert=num2str(obj.RetractVelocity*1e9);
@@ -3549,7 +3557,6 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                     else
                         NumFcCorSelec(kk)=nnz(obj.SMFSFlag.Uncorrupt((NumFcMax*(kk-1)+1):(NumFcMax*(kk))));
                     end
-                    
                     if kk==1
                         qq=1;
                     else
@@ -3574,41 +3581,26 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                         xRet=obj.THRet{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc);
                         yApp=obj.BasedApp{qq+DiffFc};
                         yRet=obj.BasedRet{qq+DiffFc};
+                        % Determine indices
+                        IdxStartApp=round(length(yApp)*DataShareStartApp);
+                        IdxEndApp=round(length(yApp)*DataShareEndApp);
+                        IdxStartRet=round(length(yRet)-length(yRet)*DataShareStartRet);
+                        IdxEndRet=round(length(yRet)-length(yRet)*DataShareEndRet);
                         % if condition with flag based while loop variable
                         % ww > plot loop variable qq
                         if ww>qq
                             ax=nexttile;
                             ax.XLim = [XMin XMax];
                             ax.YLim = [YMin YMax];
-                            if obj.SMFSFlag.PullingLength(qq+DiffFc)==1 && obj.SMFSFlag.SnapIn(qq+DiffFc)==1 % Force curve posses pulling length and snap-in variables
-                                grid on
-                                hold on
-                                area(xRet(1:obj.PullingLengthIdx(qq+DiffFc)),obj.yRetLim{qq+DiffFc}(1:obj.PullingLengthIdx(qq+DiffFc)),'FaceColor',RGB11)
-                                area(xApp(obj.SnapInIdx(qq+DiffFc):end),obj.yAppLim{qq+DiffFc}(obj.SnapInIdx(qq+DiffFc):end),'FaceColor',RGB7)
-                                plot(xApp,yApp,'Color',RGB1);
-                                plot(xRet,yRet,'Color',RGB2);
-                                plot(xRet(obj.PullingLengthIdx(qq+DiffFc)),yRet(obj.PullingLengthIdx(qq+DiffFc)),'d','MarkerSize',14,'MarkerFaceColor',RGB8,'MarkerEdgeColor',RGB8)
-                                plot(xApp(obj.SnapInIdx(qq+DiffFc)),yApp(obj.SnapInIdx(qq+DiffFc)),'d','MarkerSize',14,'MarkerFaceColor',RGB10,'MarkerEdgeColor',RGB10)
-                                plot(xRet(obj.AdhForceMaxRetIdx(qq+DiffFc)),yRet(obj.AdhForceMaxRetIdx(qq+DiffFc)),'h','MarkerSize',10,'MarkerFaceColor',RGB2,'MarkerEdgeColor',RGB2)
-                                plot(xApp(obj.AdhForceMaxAppIdx(qq+DiffFc)),yApp(obj.AdhForceMaxAppIdx(qq+DiffFc)),'h','MarkerSize',10,'MarkerFaceColor',RGB1,'MarkerEdgeColor',RGB1)
-                                plot(xRet(obj.AdhForceUnbindingIdx(qq+DiffFc)),yRet(obj.AdhForceUnbindingIdx(qq+DiffFc)),'p','MarkerSize',12,'MarkerFaceColor',RGB13,'MarkerEdgeColor',RGB13)
-                            elseif obj.SMFSFlag.PullingLength(qq+DiffFc)==1 && obj.SMFSFlag.SnapIn(qq+DiffFc)==0 % Force curve posses pulling length variables but no snap-in variables
-                                grid on
-                                hold on
-                                area(xRet(1:obj.PullingLengthIdx(qq+DiffFc)),obj.yRetLim{qq+DiffFc}(1:obj.PullingLengthIdx(qq+DiffFc)),'FaceColor',RGB11)
-                                plot(xApp,yApp,'Color',RGB1);
-                                plot(xRet,yRet,'Color',RGB2);
-                                plot(xRet(obj.PullingLengthIdx(qq+DiffFc)),yRet(obj.PullingLengthIdx(qq+DiffFc)),'d','MarkerSize',14,'MarkerFaceColor',RGB8,'MarkerEdgeColor',RGB8)
-                                plot(xRet(obj.AdhForceMaxRetIdx(qq+DiffFc)),yRet(obj.AdhForceMaxRetIdx(qq+DiffFc)),'h','MarkerSize',10,'MarkerFaceColor',RGB2,'MarkerEdgeColor',RGB2)
-                                plot(xRet(obj.AdhForceUnbindingIdx(qq+DiffFc)),yRet(obj.AdhForceUnbindingIdx(qq+DiffFc)),'p','MarkerSize',12,'MarkerFaceColor',RGB13,'MarkerEdgeColor',RGB13)
-                            elseif obj.SMFSFlag.PullingLength(qq+DiffFc)==0 && obj.SMFSFlag.SnapIn(qq+DiffFc)==0 % Force curve posses neither pulling length variables nor snap-in variables
-                                grid on
-                                hold on
-                                plot(xApp,yApp,'Color',RGB1);
-                                plot(xRet,yRet,'Color',RGB2);
-                                plot(xRet(obj.AdhForceMaxRetIdx(qq+DiffFc)),yRet(obj.AdhForceMaxRetIdx(qq+DiffFc)),'h','MarkerSize',10,'MarkerFaceColor',RGB2,'MarkerEdgeColor',RGB2)
-                                plot(xApp(obj.AdhForceMaxAppIdx(qq+DiffFc)),yApp(obj.AdhForceMaxAppIdx(qq+DiffFc)),'h','MarkerSize',10,'MarkerFaceColor',RGB1,'MarkerEdgeColor',RGB1)
-                            end
+                            grid on
+                            hold on
+                            plot(xApp,yApp,'Color',RGB1);
+                            plot(xRet,yRet,'Color',RGB2);
+                            plot(xApp(IdxStartApp:IdxEndApp),yApp(IdxStartApp:IdxEndApp),'Color',RGB13);
+                            plot(xRet(IdxStartRet:IdxEndRet),yRet(IdxStartRet:IdxEndRet),'Color','k');
+                            xline(x50,'Color',RGB10); % Draws a vertical line
+                            xline(x150,'Color',RGB10); % Draws a vertical line
+                            xline(x500,'Color',RGB10); % Draws a vertical line
                             % Title for each Subplot
                             ti=title(sprintf('%i',qq+DiffFc),'Color','k');
                             ti.Units='normalized'; % Set units to 'normalized'
@@ -3617,35 +3609,15 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                             ax=nexttile;
                             ax.XLim = [XMin XMax];
                             ax.YLim = [YMin YMax];
-                            if obj.SMFSFlag.PullingLength(qq+DiffFc)==1 && obj.SMFSFlag.SnapIn(qq+DiffFc)==1 % Force curve posses pulling length and snap-in variables
-                                grid on
-                                hold on
-                                area(xRet(1:obj.PullingLengthIdx(qq+DiffFc)),obj.yRetLim{qq+DiffFc}(1:obj.PullingLengthIdx(qq+DiffFc)),'FaceColor',RGB11)
-                                area(xApp(obj.SnapInIdx(qq+DiffFc):end),obj.yAppLim{qq+DiffFc}(obj.SnapInIdx(qq+DiffFc):end),'FaceColor',RGB7)
-                                plot(xApp,yApp,'Color',RGB1);
-                                plot(xRet,yRet,'Color',RGB2);
-                                plot(xRet(obj.PullingLengthIdx(qq+DiffFc)),yRet(obj.PullingLengthIdx(qq+DiffFc)),'d','MarkerSize',14,'MarkerFaceColor',RGB8,'MarkerEdgeColor',RGB8)
-                                plot(xApp(obj.SnapInIdx(qq+DiffFc)),yApp(obj.SnapInIdx(qq+DiffFc)),'d','MarkerSize',14,'MarkerFaceColor',RGB10,'MarkerEdgeColor',RGB10)
-                                plot(xRet(obj.AdhForceMaxRetIdx(qq+DiffFc)),yRet(obj.AdhForceMaxRetIdx(qq+DiffFc)),'h','MarkerSize',10,'MarkerFaceColor',RGB2,'MarkerEdgeColor',RGB2)
-                                plot(xApp(obj.AdhForceMaxAppIdx(qq+DiffFc)),yApp(obj.AdhForceMaxAppIdx(qq+DiffFc)),'h','MarkerSize',10,'MarkerFaceColor',RGB1,'MarkerEdgeColor',RGB1)
-                                plot(xRet(obj.AdhForceUnbindingIdx(qq+DiffFc)),yRet(obj.AdhForceUnbindingIdx(qq+DiffFc)),'p','MarkerSize',12,'MarkerFaceColor',RGB13,'MarkerEdgeColor',RGB13)
-                            elseif obj.SMFSFlag.PullingLength(qq+DiffFc)==1 && obj.SMFSFlag.SnapIn(qq+DiffFc)==0 % Force curve posses pulling length variables but no snap-in variables
-                                grid on
-                                hold on
-                                area(xRet(1:obj.PullingLengthIdx(qq+DiffFc)),obj.yRetLim{qq+DiffFc}(1:obj.PullingLengthIdx(qq+DiffFc)),'FaceColor',RGB11)
-                                plot(xApp,yApp,'Color',RGB1);
-                                plot(xRet,yRet,'Color',RGB2);
-                                plot(xRet(obj.PullingLengthIdx(qq+DiffFc)),yRet(obj.PullingLengthIdx(qq+DiffFc)),'d','MarkerSize',14,'MarkerFaceColor',RGB8,'MarkerEdgeColor',RGB8)
-                                plot(xRet(obj.AdhForceMaxRetIdx(qq+DiffFc)),yRet(obj.AdhForceMaxRetIdx(qq+DiffFc)),'h','MarkerSize',10,'MarkerFaceColor',RGB2,'MarkerEdgeColor',RGB2)
-                                plot(xRet(obj.AdhForceUnbindingIdx(qq+DiffFc)),yRet(obj.AdhForceUnbindingIdx(qq+DiffFc)),'p','MarkerSize',12,'MarkerFaceColor',RGB13,'MarkerEdgeColor',RGB13)
-                            elseif obj.SMFSFlag.PullingLength(qq+DiffFc)==0 && obj.SMFSFlag.SnapIn(qq+DiffFc)==0 % Force curve posses neither pulling length variables nor snap-in variables
-                                grid on
-                                hold on
-                                plot(xApp,yApp,'Color',RGB1);
-                                plot(xRet,yRet,'Color',RGB2);
-                                plot(xRet(obj.AdhForceMaxRetIdx(qq+DiffFc)),yRet(obj.AdhForceMaxRetIdx(qq+DiffFc)),'h','MarkerSize',10,'MarkerFaceColor',RGB2,'MarkerEdgeColor',RGB2)
-                                plot(xApp(obj.AdhForceMaxAppIdx(qq+DiffFc)),yApp(obj.AdhForceMaxAppIdx(qq+DiffFc)),'h','MarkerSize',10,'MarkerFaceColor',RGB1,'MarkerEdgeColor',RGB1)
-                            end
+                            grid on
+                            hold on
+                            plot(xApp,yApp,'Color',RGB1);
+                            plot(xRet,yRet,'Color',RGB2);
+                            plot(xApp(IdxStartApp:IdxEndApp),yApp(IdxStartApp:IdxEndApp),'Color',RGB13);
+                            plot(xRet(IdxStartRet:IdxEndRet),yRet(IdxStartRet:IdxEndRet),'Color','k');
+                            xline(x50,'Color',RGB10); % Draws a vertical line
+                            xline(x150,'Color',RGB10); % Draws a vertical line
+                            xline(x500,'Color',RGB10); % Draws a vertical line
                             % Title for each Subplot
                             ti=title(sprintf('%i',qq+DiffFc),'Color','k');
                             ti.Units='normalized'; % Set units to 'normalized'
@@ -3693,39 +3665,24 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                             xRet=obj.THRet{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc);
                             yApp=obj.BasedApp{qq+DiffFc};
                             yRet=obj.BasedRet{qq+DiffFc};
+                            % Determine indices
+                            IdxStartApp=round(length(yApp)*DataShareStartApp);
+                            IdxEndApp=round(length(yApp)*DataShareEndApp);
+                            IdxStartRet=round(length(yRet)-length(yRet)*DataShareStartRet);
+                            IdxEndRet=round(length(yRet)-length(yRet)*DataShareEndRet);
                             if ww>qq
                                 ax=nexttile;
                                 ax.XLim = [XMin XMax];
                                 ax.YLim = [YMin YMax];
-                                if obj.SMFSFlag.PullingLength(qq+DiffFc)==1 && obj.SMFSFlag.SnapIn(qq+DiffFc)==1 % Force curve posses pulling length and snap-in variables
-                                    grid on
-                                    hold on
-                                    area(xRet(1:obj.PullingLengthIdx(qq+DiffFc)),obj.yRetLim{qq+DiffFc}(1:obj.PullingLengthIdx(qq+DiffFc)),'FaceColor',RGB11)
-                                    area(xApp(obj.SnapInIdx(qq+DiffFc):end),obj.yAppLim{qq+DiffFc}(obj.SnapInIdx(qq+DiffFc):end),'FaceColor',RGB7)
-                                    plot(xApp,yApp,'Color',RGB1);
-                                    plot(xRet,yRet,'Color',RGB2);
-                                    plot(xRet(obj.PullingLengthIdx(qq+DiffFc)),yRet(obj.PullingLengthIdx(qq+DiffFc)),'d','MarkerSize',14,'MarkerFaceColor',RGB8,'MarkerEdgeColor',RGB8)
-                                    plot(xApp(obj.SnapInIdx(qq+DiffFc)),yApp(obj.SnapInIdx(qq+DiffFc)),'d','MarkerSize',14,'MarkerFaceColor',RGB10,'MarkerEdgeColor',RGB10)
-                                    plot(xRet(obj.AdhForceMaxRetIdx(qq+DiffFc)),yRet(obj.AdhForceMaxRetIdx(qq+DiffFc)),'h','MarkerSize',10,'MarkerFaceColor',RGB2,'MarkerEdgeColor',RGB2)
-                                    plot(xApp(obj.AdhForceMaxAppIdx(qq+DiffFc)),yApp(obj.AdhForceMaxAppIdx(qq+DiffFc)),'h','MarkerSize',10,'MarkerFaceColor',RGB1,'MarkerEdgeColor',RGB1)
-                                    plot(xRet(obj.AdhForceUnbindingIdx(qq+DiffFc)),yRet(obj.AdhForceUnbindingIdx(qq+DiffFc)),'p','MarkerSize',12,'MarkerFaceColor',RGB13,'MarkerEdgeColor',RGB13)
-                                elseif obj.SMFSFlag.PullingLength(qq+DiffFc)==1 && obj.SMFSFlag.SnapIn(qq+DiffFc)==0 % Force curve posses pulling length variables but no snap-in variables
-                                    grid on
-                                    hold on
-                                    area(xRet(1:obj.PullingLengthIdx(qq+DiffFc)),obj.yRetLim{qq+DiffFc}(1:obj.PullingLengthIdx(qq+DiffFc)),'FaceColor',RGB11)
-                                    plot(xApp,yApp,'Color',RGB1);
-                                    plot(xRet,yRet,'Color',RGB2);
-                                    plot(xRet(obj.PullingLengthIdx(qq+DiffFc)),yRet(obj.PullingLengthIdx(qq+DiffFc)),'d','MarkerSize',14,'MarkerFaceColor',RGB8,'MarkerEdgeColor',RGB8)
-                                    plot(xRet(obj.AdhForceMaxRetIdx(qq+DiffFc)),yRet(obj.AdhForceMaxRetIdx(qq+DiffFc)),'h','MarkerSize',10,'MarkerFaceColor',RGB2,'MarkerEdgeColor',RGB2)
-                                    plot(xRet(obj.AdhForceUnbindingIdx(qq+DiffFc)),yRet(obj.AdhForceUnbindingIdx(qq+DiffFc)),'p','MarkerSize',12,'MarkerFaceColor',RGB13,'MarkerEdgeColor',RGB13)
-                                elseif obj.SMFSFlag.PullingLength(qq+DiffFc)==0 && obj.SMFSFlag.SnapIn(qq+DiffFc)==0 % Force curve posses neither pulling length variables nor snap-in variables
-                                    grid on
-                                    hold on
-                                    plot(xApp,yApp,'Color',RGB1);
-                                    plot(xRet,yRet,'Color',RGB2);
-                                    plot(xRet(obj.AdhForceMaxRetIdx(qq+DiffFc)),yRet(obj.AdhForceMaxRetIdx(qq+DiffFc)),'h','MarkerSize',10,'MarkerFaceColor',RGB2,'MarkerEdgeColor',RGB2)
-                                    plot(xApp(obj.AdhForceMaxAppIdx(qq+DiffFc)),yApp(obj.AdhForceMaxAppIdx(qq+DiffFc)),'h','MarkerSize',10,'MarkerFaceColor',RGB1,'MarkerEdgeColor',RGB1)
-                                end
+                                grid on
+                                hold on
+                                plot(xApp,yApp,'Color',RGB1);
+                                plot(xRet,yRet,'Color',RGB2);
+                                plot(xApp(IdxStartApp:IdxEndApp),yApp(IdxStartApp:IdxEndApp),'Color',RGB13);
+                                plot(xRet(IdxStartRet:IdxEndRet),yRet(IdxStartRet:IdxEndRet),'Color','k');
+                                xline(x50,'Color',RGB10); % Draws a vertical line
+                                xline(x150,'Color',RGB10); % Draws a vertical line
+                                xline(x500,'Color',RGB10); % Draws a vertical line
                                 % Title for each Subplot
                                 ti=title(sprintf('%i',qq+DiffFc),'Color','k');
                                 ti.Units='normalized'; % Set units to 'normalized'
@@ -3734,35 +3691,15 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                                 ax=nexttile;
                                 ax.XLim = [XMin XMax];
                                 ax.YLim = [YMin YMax];
-                                if obj.SMFSFlag.PullingLength(qq+DiffFc)==1 && obj.SMFSFlag.SnapIn(qq+DiffFc)==1 % Force curve posses pulling length and snap-in variables
-                                    grid on
-                                    hold on
-                                    area(xRet(1:obj.PullingLengthIdx(qq+DiffFc)),obj.yRetLim{qq+DiffFc}(1:obj.PullingLengthIdx(qq+DiffFc)),'FaceColor',RGB11)
-                                    area(xApp(obj.SnapInIdx(qq+DiffFc):end),obj.yAppLim{qq+DiffFc}(obj.SnapInIdx(qq+DiffFc):end),'FaceColor',RGB7)
-                                    plot(xApp,yApp,'Color',RGB1);
-                                    plot(xRet,yRet,'Color',RGB2);
-                                    plot(xRet(obj.PullingLengthIdx(qq+DiffFc)),yRet(obj.PullingLengthIdx(qq+DiffFc)),'d','MarkerSize',14,'MarkerFaceColor',RGB8,'MarkerEdgeColor',RGB8)
-                                    plot(xApp(obj.SnapInIdx(qq+DiffFc)),yApp(obj.SnapInIdx(qq+DiffFc)),'d','MarkerSize',14,'MarkerFaceColor',RGB10,'MarkerEdgeColor',RGB10)
-                                    plot(xRet(obj.AdhForceMaxRetIdx(qq+DiffFc)),yRet(obj.AdhForceMaxRetIdx(qq+DiffFc)),'h','MarkerSize',10,'MarkerFaceColor',RGB2,'MarkerEdgeColor',RGB2)
-                                    plot(xApp(obj.AdhForceMaxAppIdx(qq+DiffFc)),yApp(obj.AdhForceMaxAppIdx(qq+DiffFc)),'h','MarkerSize',10,'MarkerFaceColor',RGB1,'MarkerEdgeColor',RGB1)
-                                    plot(xRet(obj.AdhForceUnbindingIdx(qq+DiffFc)),yRet(obj.AdhForceUnbindingIdx(qq+DiffFc)),'p','MarkerSize',12,'MarkerFaceColor',RGB13,'MarkerEdgeColor',RGB13)
-                                elseif obj.SMFSFlag.PullingLength(qq+DiffFc)==1 && obj.SMFSFlag.SnapIn(qq+DiffFc)==0 % Force curve posses pulling length variables but no snap-in variables
-                                    grid on
-                                    hold on
-                                    area(xRet(1:obj.PullingLengthIdx(qq+DiffFc)),obj.yRetLim{qq+DiffFc}(1:obj.PullingLengthIdx(qq+DiffFc)),'FaceColor',RGB11)
-                                    plot(xApp,yApp,'Color',RGB1);
-                                    plot(xRet,yRet,'Color',RGB2);
-                                    plot(xRet(obj.PullingLengthIdx(qq+DiffFc)),yRet(obj.PullingLengthIdx(qq+DiffFc)),'d','MarkerSize',14,'MarkerFaceColor',RGB8,'MarkerEdgeColor',RGB8)
-                                    plot(xRet(obj.AdhForceMaxRetIdx(qq+DiffFc)),yRet(obj.AdhForceMaxRetIdx(qq+DiffFc)),'h','MarkerSize',10,'MarkerFaceColor',RGB2,'MarkerEdgeColor',RGB2)
-                                    plot(xRet(obj.AdhForceUnbindingIdx(qq+DiffFc)),yRet(obj.AdhForceUnbindingIdx(qq+DiffFc)),'p','MarkerSize',12,'MarkerFaceColor',RGB13,'MarkerEdgeColor',RGB13)
-                                elseif obj.SMFSFlag.PullingLength(qq+DiffFc)==0 && obj.SMFSFlag.SnapIn(qq+DiffFc)==0 % Force curve posses neither pulling length variables nor snap-in variables
-                                    grid on
-                                    hold on
-                                    plot(xApp,yApp,'Color',RGB1);
-                                    plot(xRet,yRet,'Color',RGB2);
-                                    plot(xRet(obj.AdhForceMaxRetIdx(qq+DiffFc)),yRet(obj.AdhForceMaxRetIdx(qq+DiffFc)),'h','MarkerSize',10,'MarkerFaceColor',RGB2,'MarkerEdgeColor',RGB2)
-                                    plot(xApp(obj.AdhForceMaxAppIdx(qq+DiffFc)),yApp(obj.AdhForceMaxAppIdx(qq+DiffFc)),'h','MarkerSize',10,'MarkerFaceColor',RGB1,'MarkerEdgeColor',RGB1)
-                                end
+                                grid on
+                                hold on
+                                plot(xApp,yApp,'Color',RGB1);
+                                plot(xRet,yRet,'Color',RGB2);
+                                plot(xApp(IdxStartApp:IdxEndApp),yApp(IdxStartApp:IdxEndApp),'Color',RGB13);
+                                plot(xRet(IdxStartRet:IdxEndRet),yRet(IdxStartRet:IdxEndRet),'Color','k');
+                                xline(x50,'Color',RGB10); % Draws a vertical line
+                                xline(x150,'Color',RGB10); % Draws a vertical line
+                                xline(x500,'Color',RGB10); % Draws a vertical line
                                 % Title for each Subplot
                                 ti=title(sprintf('%i',qq+DiffFc),'Color','k');
                                 ti.Units='normalized'; % Set units to 'normalized'
@@ -3808,39 +3745,24 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                             xRet=obj.THRet{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc);
                             yApp=obj.BasedApp{qq+DiffFc};
                             yRet=obj.BasedRet{qq+DiffFc};
+                            % Determine indices
+                            IdxStartApp=round(length(yApp)*DataShareStartApp);
+                            IdxEndApp=round(length(yApp)*DataShareEndApp);
+                            IdxStartRet=round(length(yRet)-length(yRet)*DataShareStartRet);
+                            IdxEndRet=round(length(yRet)-length(yRet)*DataShareEndRet);
                             if ww>qq
                                 ax=nexttile;
                                 ax.XLim = [XMin XMax];
                                 ax.YLim = [YMin YMax];
-                                if obj.SMFSFlag.PullingLength(qq+DiffFc)==1 && obj.SMFSFlag.SnapIn(qq+DiffFc)==1 % Force curve posses pulling length and snap-in variables
-                                    grid on
-                                    hold on
-                                    area(xRet(1:obj.PullingLengthIdx(qq+DiffFc)),obj.yRetLim{qq+DiffFc}(1:obj.PullingLengthIdx(qq+DiffFc)),'FaceColor',RGB11)
-                                    area(xApp(obj.SnapInIdx(qq+DiffFc):end),obj.yAppLim{qq+DiffFc}(obj.SnapInIdx(qq+DiffFc):end),'FaceColor',RGB7)
-                                    plot(xApp,yApp,'Color',RGB1);
-                                    plot(xRet,yRet,'Color',RGB2);
-                                    plot(xRet(obj.PullingLengthIdx(qq+DiffFc)),yRet(obj.PullingLengthIdx(qq+DiffFc)),'d','MarkerSize',14,'MarkerFaceColor',RGB8,'MarkerEdgeColor',RGB8)
-                                    plot(xApp(obj.SnapInIdx(qq+DiffFc)),yApp(obj.SnapInIdx(qq+DiffFc)),'d','MarkerSize',14,'MarkerFaceColor',RGB10,'MarkerEdgeColor',RGB10)
-                                    plot(xRet(obj.AdhForceMaxRetIdx(qq+DiffFc)),yRet(obj.AdhForceMaxRetIdx(qq+DiffFc)),'h','MarkerSize',10,'MarkerFaceColor',RGB2,'MarkerEdgeColor',RGB2)
-                                    plot(xApp(obj.AdhForceMaxAppIdx(qq+DiffFc)),yApp(obj.AdhForceMaxAppIdx(qq+DiffFc)),'h','MarkerSize',10,'MarkerFaceColor',RGB1,'MarkerEdgeColor',RGB1)
-                                    plot(xRet(obj.AdhForceUnbindingIdx(qq+DiffFc)),yRet(obj.AdhForceUnbindingIdx(qq+DiffFc)),'p','MarkerSize',12,'MarkerFaceColor',RGB13,'MarkerEdgeColor',RGB13)
-                                elseif obj.SMFSFlag.PullingLength(qq+DiffFc)==1 && obj.SMFSFlag.SnapIn(qq+DiffFc)==0 % Force curve posses pulling length variables but no snap-in variables
-                                    grid on
-                                    hold on
-                                    area(xRet(1:obj.PullingLengthIdx(qq+DiffFc)),obj.yRetLim{qq+DiffFc}(1:obj.PullingLengthIdx(qq+DiffFc)),'FaceColor',RGB11)
-                                    plot(xApp,yApp,'Color',RGB1);
-                                    plot(xRet,yRet,'Color',RGB2);
-                                    plot(xRet(obj.PullingLengthIdx(qq+DiffFc)),yRet(obj.PullingLengthIdx(qq+DiffFc)),'d','MarkerSize',14,'MarkerFaceColor',RGB8,'MarkerEdgeColor',RGB8)
-                                    plot(xRet(obj.AdhForceMaxRetIdx(qq+DiffFc)),yRet(obj.AdhForceMaxRetIdx(qq+DiffFc)),'h','MarkerSize',10,'MarkerFaceColor',RGB2,'MarkerEdgeColor',RGB2)
-                                    plot(xRet(obj.AdhForceUnbindingIdx(qq+DiffFc)),yRet(obj.AdhForceUnbindingIdx(qq+DiffFc)),'p','MarkerSize',12,'MarkerFaceColor',RGB13,'MarkerEdgeColor',RGB13)
-                                elseif obj.SMFSFlag.PullingLength(qq+DiffFc)==0 && obj.SMFSFlag.SnapIn(qq+DiffFc)==0 % Force curve posses neither pulling length variables nor snap-in variables
-                                    grid on
-                                    hold on
-                                    plot(xApp,yApp,'Color',RGB1);
-                                    plot(xRet,yRet,'Color',RGB2);
-                                    plot(xRet(obj.AdhForceMaxRetIdx(qq+DiffFc)),yRet(obj.AdhForceMaxRetIdx(qq+DiffFc)),'h','MarkerSize',10,'MarkerFaceColor',RGB2,'MarkerEdgeColor',RGB2)
-                                    plot(xApp(obj.AdhForceMaxAppIdx(qq+DiffFc)),yApp(obj.AdhForceMaxAppIdx(qq+DiffFc)),'h','MarkerSize',10,'MarkerFaceColor',RGB1,'MarkerEdgeColor',RGB1)
-                                end
+                                grid on
+                                hold on
+                                plot(xApp,yApp,'Color',RGB1);
+                                plot(xRet,yRet,'Color',RGB2);
+                                plot(xApp(IdxStartApp:IdxEndApp),yApp(IdxStartApp:IdxEndApp),'Color',RGB13);
+                                plot(xRet(IdxStartRet:IdxEndRet),yRet(IdxStartRet:IdxEndRet),'Color','k');
+                                xline(x50,'Color',RGB10); % Draws a vertical line
+                                xline(x150,'Color',RGB10); % Draws a vertical line
+                                xline(x500,'Color',RGB10); % Draws a vertical line
                                 % Title for each Subplot
                                 ti=title(sprintf('%i',qq+DiffFc),'Color','k');
                                 %ti=title(sprintf('%i',(kk+ww)/2),'Color','k');
@@ -3850,35 +3772,15 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                                 ax=nexttile;
                                 ax.XLim = [XMin XMax];
                                 ax.YLim = [YMin YMax];
-                                if obj.SMFSFlag.PullingLength(qq+DiffFc)==1 && obj.SMFSFlag.SnapIn(qq+DiffFc)==1 % Force curve posses pulling length and snap-in variables
-                                    grid on
-                                    hold on
-                                    area(xRet(1:obj.PullingLengthIdx(qq+DiffFc)),obj.yRetLim{qq+DiffFc}(1:obj.PullingLengthIdx(qq+DiffFc)),'FaceColor',RGB11)
-                                    area(xApp(obj.SnapInIdx(qq+DiffFc):end),obj.yAppLim{qq+DiffFc}(obj.SnapInIdx(qq+DiffFc):end),'FaceColor',RGB7)
-                                    plot(xApp,yApp,'Color',RGB1);
-                                    plot(xRet,yRet,'Color',RGB2);
-                                    plot(xRet(obj.PullingLengthIdx(qq+DiffFc)),yRet(obj.PullingLengthIdx(qq+DiffFc)),'d','MarkerSize',14,'MarkerFaceColor',RGB8,'MarkerEdgeColor',RGB8)
-                                    plot(xApp(obj.SnapInIdx(qq+DiffFc)),yApp(obj.SnapInIdx(qq+DiffFc)),'d','MarkerSize',14,'MarkerFaceColor',RGB10,'MarkerEdgeColor',RGB10)
-                                    plot(xRet(obj.AdhForceMaxRetIdx(qq+DiffFc)),yRet(obj.AdhForceMaxRetIdx(qq+DiffFc)),'h','MarkerSize',10,'MarkerFaceColor',RGB2,'MarkerEdgeColor',RGB2)
-                                    plot(xApp(obj.AdhForceMaxAppIdx(qq+DiffFc)),yApp(obj.AdhForceMaxAppIdx(qq+DiffFc)),'h','MarkerSize',10,'MarkerFaceColor',RGB1,'MarkerEdgeColor',RGB1)
-                                    plot(xRet(obj.AdhForceUnbindingIdx(qq+DiffFc)),yRet(obj.AdhForceUnbindingIdx(qq+DiffFc)),'p','MarkerSize',12,'MarkerFaceColor',RGB13,'MarkerEdgeColor',RGB13)
-                                elseif obj.SMFSFlag.PullingLength(qq+DiffFc)==1 && obj.SMFSFlag.SnapIn(qq+DiffFc)==0 % Force curve posses pulling length variables but no snap-in variables
-                                    grid on
-                                    hold on
-                                    area(xRet(1:obj.PullingLengthIdx(qq+DiffFc)),obj.yRetLim{qq+DiffFc}(1:obj.PullingLengthIdx(qq+DiffFc)),'FaceColor',RGB11)
-                                    plot(xApp,yApp,'Color',RGB1);
-                                    plot(xRet,yRet,'Color',RGB2);
-                                    plot(xRet(obj.PullingLengthIdx(qq+DiffFc)),yRet(obj.PullingLengthIdx(qq+DiffFc)),'d','MarkerSize',14,'MarkerFaceColor',RGB8,'MarkerEdgeColor',RGB8)
-                                    plot(xRet(obj.AdhForceMaxRetIdx(qq+DiffFc)),yRet(obj.AdhForceMaxRetIdx(qq+DiffFc)),'h','MarkerSize',10,'MarkerFaceColor',RGB2,'MarkerEdgeColor',RGB2)
-                                    plot(xRet(obj.AdhForceUnbindingIdx(qq+DiffFc)),yRet(obj.AdhForceUnbindingIdx(qq+DiffFc)),'p','MarkerSize',12,'MarkerFaceColor',RGB13,'MarkerEdgeColor',RGB13)
-                                elseif obj.SMFSFlag.PullingLength(qq+DiffFc)==0 && obj.SMFSFlag.SnapIn(qq+DiffFc)==0 % Force curve posses neither pulling length variables nor snap-in variables
-                                    grid on
-                                    hold on
-                                    plot(xApp,yApp,'Color',RGB1);
-                                    plot(xRet,yRet,'Color',RGB2);
-                                    plot(xRet(obj.AdhForceMaxRetIdx(qq+DiffFc)),yRet(obj.AdhForceMaxRetIdx(qq+DiffFc)),'h','MarkerSize',10,'MarkerFaceColor',RGB2,'MarkerEdgeColor',RGB2)
-                                    plot(xApp(obj.AdhForceMaxAppIdx(qq+DiffFc)),yApp(obj.AdhForceMaxAppIdx(qq+DiffFc)),'h','MarkerSize',10,'MarkerFaceColor',RGB1,'MarkerEdgeColor',RGB1)
-                                end
+                                grid on
+                                hold on
+                                plot(xApp,yApp,'Color',RGB1);
+                                plot(xRet,yRet,'Color',RGB2);
+                                plot(xApp(IdxStartApp:IdxEndApp),yApp(IdxStartApp:IdxEndApp),'Color',RGB13);
+                                plot(xRet(IdxStartRet:IdxEndRet),yRet(IdxStartRet:IdxEndRet),'Color','k');
+                                xline(x50,'Color',RGB10); % Draws a vertical line
+                                xline(x150,'Color',RGB10); % Draws a vertical line
+                                xline(x500,'Color',RGB10); % Draws a vertical line
                                 % Title for each Subplot
                                 ti=title(sprintf('%i',qq+DiffFc),'Color','k');
                                 %ti=title(sprintf('%i',(kk+ww)/2),'Color','k');
@@ -3905,7 +3807,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                     'Please choose the appropriate button ...'); % Stores the selected button number per figure
                 % Case 1: Select all
                 if SelectBttns == 1
-                   % obj.SMFSFlag.Selected(qq-NumFcMax+1:qq)=1;
+                    % obj.SMFSFlag.Selected(qq-NumFcMax+1:qq)=1;
                     obj.SMFSFlag.Selected(IdxFcPlot)=1;
                 end
                 % Case 2: Select none
@@ -3931,6 +3833,359 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                     Idx=inputdlg(prompt,'Select none - except of ...',[1 150],definput,opts); % Stores the individual selected fc as a cell array of character vectors
                     Idx=str2num(Idx{1}); % Convert the cell array to numerals
                     obj.SMFSFlag.Selected(Idx)=1;
+                end
+            end
+            close all
+        end
+        
+        function fc_visual_selection_flag_Uncorrupt(obj,XMin,XMax,YMin,YMax,NumFcMax) % fc ... force curve
+            % fc_print_adhenergy_pulllength: A function to plot all selected force curves of a
+            % force map including adhesion energy and pulling length in
+            % each force curve
+            if nargin < 2
+                XMin= -inf;
+                XMax= inf;
+                YMin= -inf;
+                YMax= inf;
+            end
+            %% Define variables
+            RGB1=[0 26 255]./255;  % Blue
+            RGB2=[255 119 0]./255; % Orange
+            RGB7=[255 230 0]./255; % Yellow
+            RGB8=[80 200 204]./255; % Turquoise
+            RGB10=[200 0 255]./255; % Violet
+            RGB11=[200 255 150]./255; % Light Green
+            RGB12=[185 230 254]./255; % Light Blue
+            RGB13=[200 0 0]./255; % Red
+            x50=-50e-9; % Defines 50nm
+            x150=-150e-9; % Defines 150nm
+            x500=-500e-9; % Defines 500nm
+            DataShareStartApp=0.15; % 15%
+            DataShareEndApp=0.65; % 65%
+            DataShareStartRet=0.07; % 7 %
+            DataShareEndRet=0.02; % 2 %
+            NumFcMax=25;
+            % Define variables for the figure name
+            ExtendVelocityConvert=num2str(obj.ExtendVelocity*1e9);
+            RetractVelocityConvert=num2str(obj.RetractVelocity*1e9);
+            HoldingTimeConvert=num2str(obj.HoldingTime);
+            % Classification criteria
+            figname=strcat(obj.Date,{'_'},obj.Time,{'_'},obj.ID,{'_'},obj.Substrate,{'_'},obj.EnvCond,{'_'},obj.Linker,{'_'},obj.Chipbox,{'_'},obj.ChipCant,{'_'},ExtendVelocityConvert,{'_'},RetractVelocityConvert,{'_'},HoldingTimeConvert);
+            figname=char(figname);
+            %% Define variables for the plot loop
+            mm=ceil(sqrt(NumFcMax)); % Variable defines the tiledlayout and thereby the tile arrangement
+            nn=mm; % Variable defines the tiledlayout and thereby the tile arrangement
+            ww=1; % Variable used to loop through the flag based while loop
+            DiffFc=0; % Variable to correct for differences of the variables between the plot loop and flag based while loop
+            NumFcUncorrupt=nnz(obj.SMFSFlag.Uncorrupt.*obj.SMFSFlag.RetMinCrit.*obj.SMFSFlag.LengthRequisite); % Determine the number of force curves that could been analysed
+            NumFigures=ceil(NumFcUncorrupt/NumFcMax);
+            if NumFigures==0     % If condition is fulfilled stop function and return to calling function
+                return
+            end
+            RemainderMax=mod(NumFcUncorrupt,NumFcMax); % Check for remainder
+            if RemainderMax ~= 0
+                % Additional variables if there is a remainder
+                oo=round(sqrt(RemainderMax)); % Determine the number of rows in the figure
+                pp=ceil(sqrt(RemainderMax)); % Determine the number of columns in the figure
+                RemainderReal=mod(NumFcUncorrupt,oo*pp); % Correct the remainder based on the determined rows times columns
+            end
+            %% figure loop
+            for kk=1:NumFigures
+                % Figure
+                h_fig=figure(kk);
+                h_fig.Color='white'; % changes the background color of the figure
+                h_fig.Units='normalized'; % Defines the units
+                h_fig.OuterPosition=[0 0 1 1];% changes the size of the to the whole screen
+                h_fig.PaperOrientation='landscape';
+                h_fig.Name=figname;
+                %% Verify the remainder condition
+                if RemainderMax == 0 % No remainder existing
+                    t = tiledlayout(mm,nn);
+                    t.TileSpacing = 'none'; % To reduce the spacing between the tiles
+                    t.Padding = 'none'; % To reduce the padding of perimeter of a tile
+                    if kk==1
+                        NumFcCorSelec(kk)=nnz(~obj.SMFSFlag.Uncorrupt(1:NumFcMax));
+                    elseif kk==2
+                        NumFcCorSelec(kk)=nnz(obj.SMFSFlag.Uncorrupt((NumFcMax+1):(NumFcMax*(kk))));
+                    else
+                        NumFcCorSelec(kk)=nnz(obj.SMFSFlag.Uncorrupt((NumFcMax*(kk-1)+1):(NumFcMax*(kk))));
+                    end
+                    if kk==1
+                        qq=1;
+                    else
+                        qq=(kk-1)*mm*nn+1; % Determines the index of the next force curve to be plotted on the next figure
+                    end
+                    %% Plot loop
+                    for qq=qq:obj.NCurves % Loop over all force curves in the force map
+                        if ww<qq+DiffFc
+                            ww=qq+DiffFc;
+                        end
+                        % Flag based while loop
+                        while ~obj.SMFSFlag.Uncorrupt(ww) || ~obj.SMFSFlag.RetMinCrit(ww) || ~obj.SMFSFlag.LengthRequisite(ww)   % Stay in the while loop as long as the entry is zero
+                            ww=ww+1;
+                            if ww>qq
+                                DiffFc=ww-qq;
+                            end
+                        end
+                        % Save the indeces of plotted force curves
+                        IdxFcPlot(ww)=ww;
+                        %% Allocate data
+                        xApp=obj.THApp{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc);
+                        xRet=obj.THRet{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc);
+                        yApp=obj.BasedApp{qq+DiffFc};
+                        yRet=obj.BasedRet{qq+DiffFc};
+                        % Determine indices
+                        IdxStartApp=round(length(yApp)*DataShareStartApp);
+                        IdxEndApp=round(length(yApp)*DataShareEndApp);
+                        IdxStartRet=round(length(yRet)-length(yRet)*DataShareStartRet);
+                        IdxEndRet=round(length(yRet)-length(yRet)*DataShareEndRet);
+                        % if condition with flag based while loop variable
+                        % ww > plot loop variable qq
+                        if ww>qq
+                            ax=nexttile;
+                            ax.XLim = [XMin XMax];
+                            ax.YLim = [YMin YMax];
+                            grid on
+                            hold on
+                            plot(xApp,yApp,'Color',RGB1);
+                            plot(xRet,yRet,'Color',RGB2);
+                            plot(xApp(IdxStartApp:IdxEndApp),yApp(IdxStartApp:IdxEndApp),'Color',RGB13);
+                            plot(xRet(IdxStartRet:IdxEndRet),yRet(IdxStartRet:IdxEndRet),'Color','k');
+                            xline(x50,'Color',RGB10); % Draws a vertical line
+                            xline(x150,'Color',RGB10); % Draws a vertical line
+                            xline(x500,'Color',RGB10); % Draws a vertical line
+                            % Title for each Subplot
+                            ti=title(sprintf('%i',qq+DiffFc),'Color','k');
+                            ti.Units='normalized'; % Set units to 'normalized'
+                            ti.Position=[0.5,0.95]; % Position the subplot title within the subplot
+                        else
+                            ax=nexttile;
+                            ax.XLim = [XMin XMax];
+                            ax.YLim = [YMin YMax];
+                            grid on
+                            hold on
+                            plot(xApp,yApp,'Color',RGB1);
+                            plot(xRet,yRet,'Color',RGB2);
+                            plot(xApp(IdxStartApp:IdxEndApp),yApp(IdxStartApp:IdxEndApp),'Color',RGB13);
+                            plot(xRet(IdxStartRet:IdxEndRet),yRet(IdxStartRet:IdxEndRet),'Color','k');
+                            xline(x50,'Color',RGB10); % Draws a vertical line
+                            xline(x150,'Color',RGB10); % Draws a vertical line
+                            xline(x500,'Color',RGB10); % Draws a vertical line
+                            % Title for each Subplot
+                            ti=title(sprintf('%i',qq+DiffFc),'Color','k');
+                            ti.Units='normalized'; % Set units to 'normalized'
+                            ti.Position=[0.5,0.95]; % Position the subplot title within the subplot
+                        end
+                        if qq == NumFcMax*kk
+                            break
+                        end
+                    end
+                    
+                else % Remainder exisiting
+                    %% Last figure conditions
+                    if kk~=NumFigures
+                        t = tiledlayout(mm,nn);
+                        t.TileSpacing = 'none'; % To reduce the spacing between the tiles
+                        t.Padding = 'none'; % To reduce the padding of perimeter of a tile
+                        if kk==1
+                            NumFcCorSelec(kk)=nnz(~obj.SMFSFlag.Uncorrupt(1:NumFcMax));
+                        elseif kk==2
+                            NumFcCorSelec(kk)=nnz(obj.SMFSFlag.Uncorrupt((NumFcMax+1):(NumFcMax*(kk))));
+                        else
+                            NumFcCorSelec(kk)=nnz(obj.SMFSFlag.Uncorrupt((NumFcMax*(kk-1)+1):(NumFcMax*(kk))));
+                        end
+                        
+                        if kk==1
+                            qq=1;
+                        else
+                            qq=(kk-1)*mm*nn+1; % Determines the index of the next force curve to be plotted on the next figure
+                        end
+                        %% Plot loop
+                        for qq=qq:obj.NCurves % Loop over all force curves in the force map
+                            if ww<qq+DiffFc
+                                ww=qq+DiffFc;
+                            end
+                            while ~obj.SMFSFlag.Uncorrupt(ww) || ~obj.SMFSFlag.RetMinCrit(ww) || ~obj.SMFSFlag.LengthRequisite(ww)    % Stay in the while loop as long as the entry is zero
+                                ww=ww+1;
+                                if ww>qq
+                                    DiffFc=ww-qq;
+                                end
+                            end
+                            % Save the indeces of plotted force curves
+                            IdxFcPlot(ww)=ww;
+                            %% Allocate data
+                            xApp=obj.THApp{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc);
+                            xRet=obj.THRet{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc);
+                            yApp=obj.BasedApp{qq+DiffFc};
+                            yRet=obj.BasedRet{qq+DiffFc};
+                            % Determine indices
+                            IdxStartApp=round(length(yApp)*DataShareStartApp);
+                            IdxEndApp=round(length(yApp)*DataShareEndApp);
+                            IdxStartRet=round(length(yRet)-length(yRet)*DataShareStartRet);
+                            IdxEndRet=round(length(yRet)-length(yRet)*DataShareEndRet);
+                            if ww>qq
+                                ax=nexttile;
+                                ax.XLim = [XMin XMax];
+                                ax.YLim = [YMin YMax];
+                                grid on
+                                hold on
+                                plot(xApp,yApp,'Color',RGB1);
+                                plot(xRet,yRet,'Color',RGB2);
+                                plot(xApp(IdxStartApp:IdxEndApp),yApp(IdxStartApp:IdxEndApp),'Color',RGB13);
+                                plot(xRet(IdxStartRet:IdxEndRet),yRet(IdxStartRet:IdxEndRet),'Color','k');
+                                xline(x50,'Color',RGB10); % Draws a vertical line
+                                xline(x150,'Color',RGB10); % Draws a vertical line
+                                xline(x500,'Color',RGB10); % Draws a vertical line
+                                % Title for each Subplot
+                                ti=title(sprintf('%i',qq+DiffFc),'Color','k');
+                                ti.Units='normalized'; % Set units to 'normalized'
+                                ti.Position=[0.5,0.95]; % Position the subplot title within the subplot
+                            else
+                                ax=nexttile;
+                                ax.XLim = [XMin XMax];
+                                ax.YLim = [YMin YMax];
+                                grid on
+                                hold on
+                                plot(xApp,yApp,'Color',RGB1);
+                                plot(xRet,yRet,'Color',RGB2);
+                                plot(xApp(IdxStartApp:IdxEndApp),yApp(IdxStartApp:IdxEndApp),'Color',RGB13);
+                                plot(xRet(IdxStartRet:IdxEndRet),yRet(IdxStartRet:IdxEndRet),'Color','k');
+                                xline(x50,'Color',RGB10); % Draws a vertical line
+                                xline(x150,'Color',RGB10); % Draws a vertical line
+                                xline(x500,'Color',RGB10); % Draws a vertical line
+                                % Title for each Subplot
+                                ti=title(sprintf('%i',qq+DiffFc),'Color','k');
+                                ti.Units='normalized'; % Set units to 'normalized'
+                                ti.Position=[0.5,0.95]; % Position the subplot title within the subplot
+                            end
+                            if qq == NumFcMax*kk
+                                break
+                            end
+                        end
+                    else % kk==NumFigures % corresponds to the last figure plotted
+                        t = tiledlayout(oo,pp);
+                        t.TileSpacing = 'none'; % To reduce the spacing between the tiles
+                        t.Padding = 'none'; % To reduce the padding of perimeter of a tile
+                        NumFcPlot=oo*pp;
+                        if kk==1
+                            NumFcCorSelec(kk)=nnz(~obj.SMFSFlag.Uncorrupt(1:NumFcPlot));
+                        elseif kk==2
+                            NumFcCorSelec(kk)=nnz(obj.SMFSFlag.Uncorrupt((NumFcPlot+1):(NumFcPlot*(kk))));
+                        else
+                            NumFcCorSelec(kk)=nnz(obj.SMFSFlag.Uncorrupt((NumFcPlot*(kk-1)+1):(NumFcPlot*(kk))));
+                        end
+                        
+                        if kk==1
+                            qq=1;
+                        else
+                            qq=(kk-1)*mm*nn+1; % Determines the index of the next force curve to be plotted on the next figure
+                        end
+                        %% Plot loop
+                        for qq=qq:obj.NCurves % Loop over all force curves in the force map
+                            if ww<qq+DiffFc
+                                ww=qq+DiffFc;
+                            end
+                            while ~obj.SMFSFlag.Uncorrupt(ww) || ~obj.SMFSFlag.RetMinCrit(ww) || ~obj.SMFSFlag.LengthRequisite(ww)    % Stay in the while loop as long as the entry is zero
+                                ww=ww+1;
+                                if ww>qq
+                                    DiffFc=ww-qq;
+                                end
+                            end
+                            % Save the indeces of plotted force curves
+                            IdxFcPlot(ww)=ww;
+                            %% Allocate data
+                            xApp=obj.THApp{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc);
+                            xRet=obj.THRet{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc);
+                            yApp=obj.BasedApp{qq+DiffFc};
+                            yRet=obj.BasedRet{qq+DiffFc};
+                            % Determine indices
+                            IdxStartApp=round(length(yApp)*DataShareStartApp);
+                            IdxEndApp=round(length(yApp)*DataShareEndApp);
+                            IdxStartRet=round(length(yRet)-length(yRet)*DataShareStartRet);
+                            IdxEndRet=round(length(yRet)-length(yRet)*DataShareEndRet);
+                            if ww>qq
+                                ax=nexttile;
+                                ax.XLim = [XMin XMax];
+                                ax.YLim = [YMin YMax];
+                                grid on
+                                hold on
+                                plot(xApp,yApp,'Color',RGB1);
+                                plot(xRet,yRet,'Color',RGB2);
+                                plot(xApp(IdxStartApp:IdxEndApp),yApp(IdxStartApp:IdxEndApp),'Color',RGB13);
+                                plot(xRet(IdxStartRet:IdxEndRet),yRet(IdxStartRet:IdxEndRet),'Color','k');
+                                xline(x50,'Color',RGB10); % Draws a vertical line
+                                xline(x150,'Color',RGB10); % Draws a vertical line
+                                xline(x500,'Color',RGB10); % Draws a vertical line
+                                % Title for each Subplot
+                                ti=title(sprintf('%i',qq+DiffFc),'Color','k');
+                                %ti=title(sprintf('%i',(kk+ww)/2),'Color','k');
+                                ti.Units='normalized'; % Set units to 'normalized'
+                                ti.Position=[0.5,0.95]; % Position the subplot title within the subplot
+                            else
+                                ax=nexttile;
+                                ax.XLim = [XMin XMax];
+                                ax.YLim = [YMin YMax];
+                                grid on
+                                hold on
+                                plot(xApp,yApp,'Color',RGB1);
+                                plot(xRet,yRet,'Color',RGB2);
+                                plot(xApp(IdxStartApp:IdxEndApp),yApp(IdxStartApp:IdxEndApp),'Color',RGB13);
+                                plot(xRet(IdxStartRet:IdxEndRet),yRet(IdxStartRet:IdxEndRet),'Color','k');
+                                xline(x50,'Color',RGB10); % Draws a vertical line
+                                xline(x150,'Color',RGB10); % Draws a vertical line
+                                xline(x500,'Color',RGB10); % Draws a vertical line
+                                % Title for each Subplot
+                                ti=title(sprintf('%i',qq+DiffFc),'Color','k');
+                                %ti=title(sprintf('%i',(kk+ww)/2),'Color','k');
+                                ti.Units='normalized'; % Set units to 'normalized'
+                                ti.Position=[0.5,0.95]; % Position the subplot title within the subplot
+                            end
+                            if qq == NumFcUncorrupt
+                                break
+                            end
+                        end
+                    end
+                end
+                % Remove zeros from the plotted force curves index array
+                IdxFcPlot=nonzeros(IdxFcPlot);
+                %% Dialog boxes
+                % Function 'bttnChoiseDialog.m' is needed to excute this section
+                inputOptions={'Select all', 'Select none', 'Select all - except of', 'Select none - except of'}; % Define the input arguments
+                % 'Select all' = 1
+                % 'Select none' = 2
+                % 'Select all - except of' = 3
+                % 'Select none - except of' = 4
+                defSelection=inputOptions{1}; % Default selection; Defined selection if the window is closed without choosing a selection possibility
+                SelectBttns=bttnChoiseDialog(inputOptions, 'Force curve selection', defSelection,...
+                    'Please choose the appropriate button ...'); % Stores the selected button number per figure
+                % Case 1: Select all
+                if SelectBttns == 1
+                    % obj.SMFSFlag.Selected(qq-NumFcMax+1:qq)=1;
+                    obj.SMFSFlag.Uncorrupt(IdxFcPlot)=1;
+                end
+                % Case 2: Select none
+                if SelectBttns == 2
+                    obj.SMFSFlag.Uncorrupt(IdxFcPlot)=0;
+                end
+                % Case 3: Select all - except of
+                if SelectBttns == 3
+                    obj.SMFSFlag.Uncorrupt(IdxFcPlot)=1;
+                    prompt = {'Enter the force curve number you do not want to keep for analysis (For multiple selections just use the space key to separeat entries)'};
+                    definput = {''};
+                    opts.Interpreter = 'tex';
+                    Idx=inputdlg(prompt,'Select all - except of ...',[1 150],definput,opts); % Stores the individual selected fc as a cell array of character vectors
+                    Idx=str2num(Idx{1}); % Convert the cell array to numerals
+                    obj.SMFSFlag.Uncorrupt(Idx)=0;
+                end
+                % Case 4: Select none - except of
+                if SelectBttns == 4
+                    obj.SMFSFlag.Uncorrupt(IdxFcPlot)=0;
+                    prompt = {'Enter the force curve number you want want to keep for analysis (For multiple selections just use the space key to separeat entries)'};
+                    definput = {''};
+                    opts.Interpreter = 'tex';
+                    Idx=inputdlg(prompt,'Select none - except of ...',[1 150],definput,opts); % Stores the individual selected fc as a cell array of character vectors
+                    Idx=str2num(Idx{1}); % Convert the cell array to numerals
+                    obj.SMFSFlag.Uncorrupt(Idx)=1;
                 end
             end
             close all
@@ -6516,6 +6771,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             obj.SMFSFlag.SnapIn=zeros(1,obj.NCurves);
             obj.SMFSFlag.PullingLength=zeros(1,obj.NCurves);
             obj.SMFSFlagDown.Uncorrupt=ones(1,obj.NCurves);
+            obj.SMFSFlagDown.Selected=zeros(1,obj.NCurves);
             obj.SMFSFlagDown.AppMinCrit=zeros(1,obj.NCurves);
             obj.SMFSFlagDown.RetMinCrit=zeros(1,obj.NCurves);
             obj.SMFSFlagDown.LengthRequisite=zeros(1,obj.NCurves);
