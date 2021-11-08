@@ -3859,7 +3859,7 @@ classdef ForceMap < matlab.mixin.Copyable
                         xpH = linspace(min(obj.InterpTimeH{j}),max(obj.InterpTimeH{j}),100000);
                         
                         %Y-values fitted sine of indentation and force:
-                        ypF = obj.SineVarsF{i,j}(1)*(sin(xpF*obj.SineVarsF{i,j}(2) + 2*pi/obj.SineVarsF{i,j}(3)));
+                        ypF = obj.SineVarsF{i,j}(1)*(sin(x*obj.SineVarsF{i,j}(2) + 2*pi/obj.SineVarsF{i,j}(3)));
                         ypH = obj.SineVarsH{i,j}(1)*(sin(xpH*obj.SineVarsH{i,j}(2) + 2*pi/obj.SineVarsH{i,j}(3)));
                         
                         k = k + 1;
@@ -3872,10 +3872,11 @@ classdef ForceMap < matlab.mixin.Copyable
                         plot(x,obj.HZShift{i,j},x,obj.FilterH{i,j},xpH,ypH)
                         legend({'shifted indentation data to zero line','filtered indentation data','fitted indentation data 1'},'Location','southoutside')
                         subplot(3,1,3)
-                        findpeaks(ypF)
-                        hold on
+                        plot(x,ypF)
+                        %findpeaks(ypF)
+                        %hold on
                         %findpeaks(-obj.SineFunctionF)
-                        findpeaks(ypH)
+                        %findpeaks(ypH)
                         %findpeaks(-obj.SineFunctionH)
                         legend({'force','force peak','indentation','indentation peak'},'Location','southoutside')
                         drawnow
