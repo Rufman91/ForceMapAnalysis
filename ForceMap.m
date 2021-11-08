@@ -1889,9 +1889,9 @@ classdef ForceMap < matlab.mixin.Copyable
                          obj.SineVarsF{i,j} = fminsearch(fcn, [AmplitudeF; PeriodF; firstsignchangeF],options); 
                          % Spacing of time vector:
                          %xpF = linspace(min(obj.InterpTimeF{j}),max(obj.InterpTimeF{j}),100000);
-                         obj.SineVarsF{i,j}(1)= AmplitudeF;
+                         %obj.SineVarsF{i,j}(1)= AmplitudeF;
                          obj.SineVarsF{i,j}(2)= (obj.SegFrequency{j})^(-1);
-                         obj.SineVarsF{i,j}(3)= firstsignchangeF;
+                         %obj.SineVarsF{i,j}(3)= firstsignchangeF;
                          
                          % Function to fit indentation data 
                          %n = 7;
@@ -1899,15 +1899,15 @@ classdef ForceMap < matlab.mixin.Copyable
                          x = obj.InterpTimeH{j};
                          
                          %b(1) (max-min)/2 b(2) FFT b(3) first sign change b(4) mean
-                         fit = @(a,x)  a(1).*(sin(2*pi*x*(obj.SegFrequency{j})^(-1) + 2*pi/a(2)));    
+                         fit = @(a,x)  a(1).*(sin(2*pi*x*(obj.SegFrequency{j})^(-1) + 2*pi/a(3)));    
                          % Least-Squares cost function:
                          fcn = @(a) sum((fit(a,x) - HInterp{i,j}).^2);       
                          % Minimise Least-Squares with estimated start values:
-                         obj.SineVarsH{i,j} = fminsearch(fcn, [AmplitudeH; firstsignchangeH]); 
+                         obj.SineVarsH{i,j} = fminsearch(fcn, [AmplitudeH; PeriodH; firstsignchangeH]); 
                          % Spacing of time vector:
                          xpH = linspace(min(obj.InterpTimeH{j}),max(obj.InterpTimeH{j}),100000);
                          %obj.SineVarsH{i,j}(1)= AmplitudeH;
-                         %obj.SineVarsH{i,j}(2)= obj.SegFrequency{j};
+                         obj.SineVarsH{i,j}(2)= (obj.SegFrequency{j})^(-1);
                          %obj.SineVarsH{i,j}(3)= firstsignchangeH;
                         
 
@@ -3860,7 +3860,7 @@ classdef ForceMap < matlab.mixin.Copyable
                         
                         %Y-values fitted sine of indentation and force:
                         ypF = obj.SineVarsF{i,j}(1)*(sin((2*pi*xpF)./obj.SineVarsF{i,j}(2) + 2*pi/obj.SineVarsF{i,j}(3)));
-                        ypH = obj.SineVarsH{i,j}(1)*(sin((2*pi*xpH*(obj.SegFrequency{j})^(-1)) + 2*pi/obj.SineVarsH{i,j}(2)));
+                        ypH = obj.SineVarsH{i,j}(1)*(sin((2*pi*xpH)./obj.SineVarsH{i,j}(2) + 2*pi/obj.SineVarsH{i,j}(3)));
                         
                         k = k + 1;
                          % time indentation
