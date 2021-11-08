@@ -1889,6 +1889,9 @@ classdef ForceMap < matlab.mixin.Copyable
                          obj.SineVarsF{i,j} = fminsearch(fcn, [AmplitudeF; PeriodF; firstsignchangeF],options); 
                          % Spacing of time vector:
                          xpF = linspace(min(obj.InterpTimeF{j}),max(obj.InterpTimeF{j}),100000);
+                         obj.SineVarsF{i,j}(1)= AmplitudeF;
+                         obj.SineVarsF{i,j}(2)= obj.SegFrequency{j}/(2*pi);
+                         obj.SineVarsF{i,j}(3)= firstsignchangeF;
                          
                          % Function to fit indentation data 
                          %n = 7;
@@ -1903,6 +1906,9 @@ classdef ForceMap < matlab.mixin.Copyable
                          obj.SineVarsH{i,j} = fminsearch(fcn, [AmplitudeH; PeriodH; firstsignchangeH]); 
                          % Spacing of time vector:
                          xpH = linspace(min(obj.InterpTimeH{j}),max(obj.InterpTimeH{j}),100000);
+                         obj.SineVarsH{i,j}(1)= AmplitudeH;
+                         obj.SineVarsH{i,j}(2)= obj.SegFrequency{j}/(2*pi);
+                         obj.SineVarsH{i,j}(3)= firstsignchangeH;
                         
 
                         % phase shift of force and indentation
@@ -3661,6 +3667,9 @@ classdef ForceMap < matlab.mixin.Copyable
         function show_modulation(obj)
             
             close all
+            
+            DirectoryPath = uigetdir();
+            
            %for k=1:obj.NCurves 
             k=1;
             g=obj.NCurves + 1;
@@ -3693,6 +3702,11 @@ classdef ForceMap < matlab.mixin.Copyable
                        xlabel('time in s')
                        ylabel('force in N')
                        
+                       if DirectoryPath~=0
+                           whereToStore=fullfile(DirectoryPath,['force_time_curve_' num2str(i) '.svg']);
+                           saveas(gcf, whereToStore);
+                       end
+                       
                 end
                        
                 %indentation time
@@ -3718,6 +3732,11 @@ classdef ForceMap < matlab.mixin.Copyable
                        title(sprintf('Indentation Time Curve %i',i))
                        xlabel('time in s')
                        ylabel('indentation in m')
+                       
+                        if DirectoryPath~=0
+                           whereToStore=fullfile(DirectoryPath,['indentation_time_curve_' num2str(i) '.svg']);
+                           saveas(gcf, whereToStore);
+                       end
                 end
                 
                 %force and indentation time
@@ -3757,6 +3776,11 @@ classdef ForceMap < matlab.mixin.Copyable
                        title(sprintf('Force and Indentation over Time Curve %i',i))
                        ylabel('force in N')
                        %ylim([yFmin yFmax])
+                       
+                        if DirectoryPath~=0
+                           whereToStore=fullfile(DirectoryPath,['force_indentation_time_curve_' num2str(i) '.svg']);
+                           saveas(gcf, whereToStore);
+                       end
 
                 end
 
@@ -3777,6 +3801,11 @@ classdef ForceMap < matlab.mixin.Copyable
                        xlabel('Indentation in m')
                        ylabel('Force in N')
                        xlim([xHmin 0.5])
+                       
+                        if DirectoryPath~=0
+                           whereToStore=fullfile(DirectoryPath,['force_indentation_curve_' num2str(i) '.svg']);
+                           saveas(gcf, whereToStore);
+                       end
                 end
                 
                 
@@ -3792,6 +3821,11 @@ classdef ForceMap < matlab.mixin.Copyable
                         title(sprintf('Force Indentation Curve %i Segment %i',i,j))
                         xlabel('Indentation in m')
                         ylabel('Force in N')
+                        
+                        if DirectoryPath~=0
+                           whereToStore=fullfile(DirectoryPath,['force_indentation_curve_' num2str(i) '_segment_' num2str(j) '.svg']);
+                           saveas(gcf, whereToStore);
+                        end
                        
                         
                         
