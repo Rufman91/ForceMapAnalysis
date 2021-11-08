@@ -1899,11 +1899,11 @@ classdef ForceMap < matlab.mixin.Copyable
                          x = obj.InterpTimeH{j};
                          
                          %b(1) (max-min)/2 b(2) FFT b(3) first sign change b(4) mean
-                         fit = @(a,x)  a(1).*(sin(2*pi*x./a(2) + 2*pi/a(3)));    
+                         fit = @(a,x)  a(1).*(sin(2*pi*x*(obj.SegFrequency{j})^(-1) + 2*pi/a(2)));    
                          % Least-Squares cost function:
                          fcn = @(a) sum((fit(a,x) - HInterp{i,j}).^2);       
                          % Minimise Least-Squares with estimated start values:
-                         obj.SineVarsH{i,j} = fminsearch(fcn, [AmplitudeH; PeriodH; firstsignchangeH]); 
+                         obj.SineVarsH{i,j} = fminsearch(fcn, [AmplitudeH; firstsignchangeH]); 
                          % Spacing of time vector:
                          xpH = linspace(min(obj.InterpTimeH{j}),max(obj.InterpTimeH{j}),100000);
                          %obj.SineVarsH{i,j}(1)= AmplitudeH;
@@ -1913,7 +1913,7 @@ classdef ForceMap < matlab.mixin.Copyable
 
                         % phase shift of force and indentation
                          obj.psF{i,j} = (2*pi)/obj.SineVarsF{i,j}(3);
-                         obj.psH{i,j} = (2*pi)/obj.SineVarsH{i,j}(3);
+                         obj.psH{i,j} = (2*pi)/obj.SineVarsH{i,j}(2);
                         
                         % phase shift between indentation and force in degrees:
                         obj.DeltaPhi{i,j} = (obj.psF{i,j} - obj.psH{i,j})*(180/pi);
@@ -3859,8 +3859,8 @@ classdef ForceMap < matlab.mixin.Copyable
                         xpH = linspace(min(obj.InterpTimeH{j}),max(obj.InterpTimeH{j}),100000);
                         
                         %Y-values fitted sine of indentation and force:
-                        ypF = obj.SineVarsF{i,j}(1)*(sin((2*pi*xpF)./obj.SineVarsF{i,j}(2) + 2*pi/obj.SineVarsF{i,j}(2)));
-                        ypH = obj.SineVarsH{i,j}(1)*(sin((2*pi*xpH)./obj.SineVarsH{i,j}(2) + 2*pi/obj.SineVarsH{i,j}(3)));
+                        ypF = obj.SineVarsF{i,j}(1)*(sin((2*pi*xpF)./obj.SineVarsF{i,j}(2) + 2*pi/obj.SineVarsF{i,j}(3)));
+                        ypH = obj.SineVarsH{i,j}(1)*(sin((2*pi*xpH*(obj.SegFrequency{j})^(-1)) + 2*pi/obj.SineVarsH{i,j}(2)));
                         
                         k = k + 1;
                          % time indentation
