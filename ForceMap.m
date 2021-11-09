@@ -323,8 +323,12 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 return;
             end
             
-            obj.OpenZipFile.close();
-            obj.OpenZipFile = [];
+            try
+                obj.OpenZipFile.close();
+                obj.OpenZipFile = [];
+            catch
+                obj.OpenZipFile = [];
+            end
             
         end
         

@@ -260,7 +260,7 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle
                     Snapped(k).Name = ['Snapped - ' obj.Segment(i).Name];
                     NewVertices = [];
                     OriginalVertices = obj.Segment(i).ROIObject.Position;
-                    OriginalVertices = [OriginalVertices(:,1).*XMult OriginalVertices(:,2).*YMult];
+                    OriginalVertices = [OriginalVertices(:,1).*YMult OriginalVertices(:,2).*XMult];
                     while size(OriginalVertices,1) > 1
                         Length = norm(OriginalVertices(1,:) - OriginalVertices(2,:));
                         N = round(Length/SampleDistancePixels);
@@ -294,15 +294,22 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle
                     PerpendicularVector = [LocalDirectionVector(2) -LocalDirectionVector(1)]/norm(LocalDirectionVector);
                     WindowStart = Snapped(i).ROIObject.Position(j,:) + PerpendicularVector.*WidthLocalWindowPixels/2;
                     WindowEnd = Snapped(i).ROIObject.Position(j,:) - PerpendicularVector.*WidthLocalWindowPixels/2;
-                    [LocalX,LocalY,LocalProfile] = improfile(Channel.Image,[WindowStart(1) WindowEnd(1)],[WindowStart(2) WindowEnd(2)]);
+                    [LocalX,LocalY,LocalProfile] = improfile(Channel.Image,[WindowStart(1) WindowEnd(1)],[WindowStart(2) WindowEnd(2)],'bilinear');
                     [~,MaxIndex] = max(LocalProfile);
                     SnappedPos(j,:) = [LocalX(MaxIndex) LocalY(MaxIndex)];
 %                     % Debug
 %                     imshow(Channel.Image,[])
 %                     drawpolyline('Position',Snapped)
                 end
+                SnappedPos(:,1) = SnappedPos(:,1)./YMult;
+                SnappedPos(:,2) = SnappedPos(:,2)./XMult;
                 Snapped(i).ROIObject.Position = SnappedPos;
             end
+            
+            %%%%% TODO %%%%%%
+            % Decide Maximum via sliding window
+            % of profiles from multiple dots together.
+            % Otherwise local direction is pretty unreliable
             
             obj.Segment(end+1:end+length(Snapped)) = Snapped;
             
