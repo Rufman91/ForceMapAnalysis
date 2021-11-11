@@ -231,7 +231,7 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle
             % SmoothingWindowSize ...(def=1) determines how many vertices
             %   are used for several smoothing steps during the process
             % SmoothingWindowWeighting ...(def='flat') determines smoothing
-            %   window weighting; possibler options:
+            %   window weighting; possible options:
             %         'flat','linear','gaussian'
             
             if nargin < 5
