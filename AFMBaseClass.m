@@ -220,14 +220,37 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle
             end
         end
         
-        function snap_line_segments_to_local_perpendicular_maximum(obj,SampleDistanceMeters,WidthLocalWindowMeters)
+        function snap_line_segments_to_local_perpendicular_maximum(obj,SampleDistanceMeters,WidthLocalWindowMeters,SmoothingWindowSize,SmoothingWindowWeighting)
+            % snap_line_segments_to_local_perpendicular_maximum(obj,SampleDistanceMeters,WidthLocalWindowMeters,SmoothingWindowSize,SmoothingWindowWeighting)
+            %
+            % SampleDistanceMeters ...(def=50e-9) determines the distance
+            %   between polyline vertices created for snap-in
+            % WidthLocalWindowMeters ...(def=300e-9) determines the full
+            %   Length of the perpendicular line from which the local
+            %   profile is drawn
+            % SmoothingWindowSize ...(def=1) determines how many vertices
+            %   are used for several smoothing steps during the process
+            % SmoothingWindowWeighting ...(def='flat') determines smoothing
+            %   window weighting; possibler options:
+            %         'flat','linear','gaussian'
             
+            if nargin < 5
+                SmoothingWindowWeighting = 'flat';
+            end
+            if nargin < 4
+                SmoothingWindowSize = 1;
+                SmoothingWindowWeighting = 'flat';
+            end
             if nargin < 3
                 SampleDistanceMeters = 50*1e-9;
+                SmoothingWindowSize = 1;
+                SmoothingWindowWeighting = 'flat';
             end
             if nargin < 2
                 SampleDistanceMeters = 50*1e-9;
                 WidthLocalWindowMeters = 300*1e-9;
+                SmoothingWindowSize = 1;
+                SmoothingWindowWeighting = 'flat';
             end
             
             for i=length(obj.Segment):-1:1
@@ -283,33 +306,71 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle
             
             for i=1:length(Snapped)
                 SnappedPos = [];
+                SmoothedSnappedPos = [];
+                SnappedToOriginalDistance = [];
+                PerpendicularVector = [];
+                OriginalPos = [];
+                FinalSnappedPos = [];
+                [LocalDirectionVector,WeightingVector] = AFMBaseClass.find_local_direction_vector_in_ordered_vector_list(Snapped(i).ROIObject.Position,SmoothingWindowSize,SmoothingWindowWeighting);
                 for j=1:size(Snapped(i).ROIObject.Position,1)
-                    if j == 1
-                        LocalDirectionVector = Snapped(i).ROIObject.Position(j,:) - Snapped(i).ROIObject.Position(j+1,:);
-                    elseif j == size(Snapped(i).ROIObject.Position,1)
-                        LocalDirectionVector = Snapped(i).ROIObject.Position(j-1,:) - Snapped(i).ROIObject.Position(j,:);
-                    else
-                        LocalDirectionVector = Snapped(i).ROIObject.Position(j-1,:) - Snapped(i).ROIObject.Position(j+1,:);
+                    OriginalPos(j,:) = Snapped(i).ROIObject.Position(j,:);
+                    PerpendicularVector(j,:) = [LocalDirectionVector(j,2) -LocalDirectionVector(j,1)]/norm(LocalDirectionVector(j,:));
+                    WindowStart = Snapped(i).ROIObject.Position(j,:) + PerpendicularVector(j,:).*WidthLocalWindowPixels/2;
+                    WindowEnd = Snapped(i).ROIObject.Position(j,:) - PerpendicularVector(j,:).*WidthLocalWindowPixels/2;
+                    %Debug
+%                     scatter([WindowStart(1) WindowEnd(1)],[WindowStart(2) WindowEnd(2)])
+%                     xlim([0 512])
+%                     ylim([0 512])
+%                     drawnow
+                    [LocalX,LocalY,LocalProfile] = improfile(Channel.Image,[WindowStart(1) WindowEnd(1)],[WindowStart(2) WindowEnd(2)]);
+                    if length(LocalProfile) >= 4 && ~sum(isnan(LocalProfile))
+                        LocalX = interp1(LocalX,linspace(0,1,100)'.*length(LocalX),'spline');
+                        LocalY = interp1(LocalY,linspace(0,1,100)'.*length(LocalY),'spline');
+                        LocalProfile = interp1(LocalProfile,linspace(0,1,100)'.*length(LocalProfile),'spline');
                     end
-                    PerpendicularVector = [LocalDirectionVector(2) -LocalDirectionVector(1)]/norm(LocalDirectionVector);
-                    WindowStart = Snapped(i).ROIObject.Position(j,:) + PerpendicularVector.*WidthLocalWindowPixels/2;
-                    WindowEnd = Snapped(i).ROIObject.Position(j,:) - PerpendicularVector.*WidthLocalWindowPixels/2;
-                    [LocalX,LocalY,LocalProfile] = improfile(Channel.Image,[WindowStart(1) WindowEnd(1)],[WindowStart(2) WindowEnd(2)],'bilinear');
                     [~,MaxIndex] = max(LocalProfile);
                     SnappedPos(j,:) = [LocalX(MaxIndex) LocalY(MaxIndex)];
-%                     % Debug
-%                     imshow(Channel.Image,[])
-%                     drawpolyline('Position',Snapped)
+                    DisplacementVector(j,:) = (SnappedPos(j,:) - OriginalPos(j,:));
+                    SnappedToOriginalDistance(j) = PerpendicularVector(j,:)*DisplacementVector(j,:)';
                 end
-                SnappedPos(:,1) = SnappedPos(:,1)./YMult;
-                SnappedPos(:,2) = SnappedPos(:,2)./XMult;
-                Snapped(i).ROIObject.Position = SnappedPos;
+                % Apply smoothing to SnappedPos
+                SnappedToOriginalDistance = SnappedToOriginalDistance';
+                SmoothedSnappedDistance = zeros(size(SnappedToOriginalDistance));
+                CenterIndex = floor(SmoothingWindowSize/2+1);
+                for j=1:size(SnappedToOriginalDistance,1)
+                    LowerIndex = max(j - (CenterIndex-1),1);
+                    UpperIndex = min(j + (CenterIndex-1),size(SnappedToOriginalDistance,1));
+                    SmoothedSnappedDistance(j) = sum(SnappedToOriginalDistance(LowerIndex:UpperIndex).*WeightingVector(CenterIndex - (j-LowerIndex):CenterIndex + (UpperIndex-j)),1);
+                    FinalSnappedPos(j,:) = OriginalPos(j,:) + PerpendicularVector(j,:).*SmoothedSnappedDistance(j);
+                end
+% 
+%                 SmoothedSnappedPos = zeros(size(SnappedPos));
+%                 CenterIndex = floor(SmoothingWindowSize/2+1);
+%                 for j=1:size(SnappedPos,1)
+%                     LowerIndex = max(j - (CenterIndex-1),1);
+%                     UpperIndex = min(j + (CenterIndex-1),size(SnappedPos,1));
+%                     if UpperIndex - LowerIndex < length(WeightingVector)
+%                         NormalizingFactor = sum(WeightingVector(CenterIndex - (j-LowerIndex):CenterIndex + (UpperIndex-j)));
+%                     else
+%                         NormalizingFactor = 1;
+%                     end
+%                     SegmentMean = mean(SnappedPos(LowerIndex:UpperIndex,:),1);
+%                     SmoothedSnappedPos(j,:) = sum((SnappedPos(LowerIndex:UpperIndex,:) - SegmentMean).*WeightingVector(CenterIndex - (j-LowerIndex):CenterIndex + (UpperIndex-j))./NormalizingFactor,1);
+%                     FinalSnappedPos(j,:) = SmoothedSnappedPos(j,:) + SegmentMean;
+%                 end
+% 
+%                 SmoothedSnappedPos = zeros(size(SnappedPos));
+%                 
+%                 SegmentMean = mean(SnappedPos,1);
+%                     
+%                 SmoothedSnappedPos(:,1) = conv(SnappedPos(:,1) - SegmentMean(1),WeightingVector,'same');
+%                 SmoothedSnappedPos(:,2) = conv(SnappedPos(:,2) - SegmentMean(2),WeightingVector,'same');
+%                 FinalSnappedPos = SmoothedSnappedPos + SegmentMean;
+                
+                FinalSnappedPos(:,1) = FinalSnappedPos(:,1)./YMult;
+                FinalSnappedPos(:,2) = FinalSnappedPos(:,2)./XMult;
+                Snapped(i).ROIObject.Position = FinalSnappedPos;
             end
-            
-            %%%%% TODO %%%%%%
-            % Decide Maximum via sliding window
-            % of profiles from multiple dots together.
-            % Otherwise local direction is pretty unreliable
             
             obj.Segment(end+1:end+length(Snapped)) = Snapped;
             
@@ -473,6 +534,49 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle
     methods (Static)
         % Static auxiliary methods
         
+        function [LocalDirectionVector,WeightingVector] = find_local_direction_vector_in_ordered_vector_list(VectorList,SmoothingWindowSize,SmoothingWindowWeighting)
+            
+            if ~mod(SmoothingWindowSize,2)
+                SmoothingWindowSize = SmoothingWindowSize + 1;
+            end
+            CenterIndex = SmoothingWindowSize/2 + .5;
+            WeightingVector = zeros(SmoothingWindowSize,1);
+            
+            if isequal(lower(SmoothingWindowWeighting),'flat')
+                WeightingVector = ones(SmoothingWindowSize,1).*1/SmoothingWindowSize;
+            end
+            if isequal(lower(SmoothingWindowWeighting),'linear')
+                Lin = linspace(0,1,CenterIndex)';
+                WeightingVector(1:CenterIndex) = Lin;
+                WeightingVector(CenterIndex:end) = Lin(end:-1:1);
+                WeightingVector = WeightingVector/sum(WeightingVector);
+            end
+            if isequal(lower(SmoothingWindowWeighting),'gaussian')
+                Gauss = makedist('Normal','mu',CenterIndex,'sigma',sqrt(SmoothingWindowSize));
+                WeightingVector = pdf(Gauss,linspace(1,SmoothingWindowSize,SmoothingWindowSize)');
+                WeightingVector = WeightingVector/sum(WeightingVector);
+            end
+            
+            LocalDirectionVector = zeros(size(VectorList));
+            DiffVectorList = zeros(size(VectorList));
+            
+            TempDiff = diff(VectorList,1);
+            DiffVectorList(2:end,:) = TempDiff;
+            DiffVectorList(1,:) = TempDiff(1,:);
+            
+            for i=1:size(DiffVectorList,1)
+                LowerIndex = max(i - (CenterIndex-1),1);
+                UpperIndex = min(i + (CenterIndex-1),size(DiffVectorList,1));
+                if UpperIndex - LowerIndex < length(WeightingVector)
+                    NormalizingFactor = sum(WeightingVector(CenterIndex - (i-LowerIndex):CenterIndex + (UpperIndex-i)));
+                else
+                    NormalizingFactor = 1;
+                end
+                SumVector = sum(DiffVectorList(LowerIndex:UpperIndex,:).*WeightingVector(CenterIndex - (i-LowerIndex):CenterIndex + (UpperIndex-i)),1)./NormalizingFactor;
+                LocalDirectionVector(i,:) = SumVector/norm(SumVector);
+            end
+            
+        end
         
     end
     
