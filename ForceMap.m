@@ -1140,9 +1140,6 @@ classdef ForceMap < matlab.mixin.Copyable
                         
                         x = obj.SegTime{j};
                         
-                        % phase shift between indentation and force:
-                        obj.DeltaPhi{i,j} = abs(2*pi/obj.SineVarsH{i,j}(3)-2*pi/obj.SineVarsF{i,j}(3));
-
                         %Y-values fitted sine of indentation and force:
                         %obj.SineFunctionF = obj.SineVarsF{i,j}(1)*(sin((2*pi*x)/obj.SineVarsF{i,j}(2) + 2*pi/obj.SineVarsF{i,j}(3)));
                         %obj.SineFunctionH = obj.SineVarsH{i,j}(1)*(sin((2*pi*x)/obj.SineVarsH{i,j}(2) + 2*pi/obj.SineVarsH{i,j}(3)));
@@ -1905,23 +1902,30 @@ classdef ForceMap < matlab.mixin.Copyable
                          % Least-Squares cost function:
                          fcn = @(a) sum((fit(a,x) - HInterp{i,j}).^2);       
                          % Minimise Least-Squares with estimated start values:
-                         obj.SineVarsH{i,j} = fminsearch(fcn, [AmplitudeH; PeriodH; firstsignchangeH]); 
+                         lb = [0,-Inf,-2];
+                         ub = [Inf,Inf,2];
+                         obj.SineVarsH{i,j} = fmincon(fcn, [AmplitudeH; PeriodH; firstsignchangeH],[],[],[],[],lb,ub); 
                          % Spacing of time vector:
                          xpH = linspace(min(obj.InterpTimeH{j}),max(obj.InterpTimeH{j}),100000);
-                         obj.SineVarsH{i,j}(1)= AmplitudeH;
+                         %obj.SineVarsH{i,j}(1)= AmplitudeH;
                          obj.SineVarsH{i,j}(2)= (obj.SegFrequency{j})^(-1);
                          %obj.SineVarsH{i,j}(3)= firstsignchangeH;
                         
 
                         % phase shift of force and indentation
                          obj.psF{i,j} = (2*pi)/obj.SineVarsF{i,j}(3);
-                         obj.psH{i,j} = (2*pi)/obj.SineVarsH{i,j}(2);
+                         obj.psH{i,j} = (2*pi)/obj.SineVarsH{i,j}(3);
                         
                         % phase shift between indentation and force in degrees:
                         obj.DeltaPhi{i,j} = (obj.psF{i,j} - obj.psH{i,j})*(180/pi);
                         
                         % loss tangent:
                         obj.LossTangent{i,j} = tand(obj.DeltaPhi{i,j});
+                        
+                        % approximated dynamic modulus:
+%                         EModMicro1(i,j) = sqrt(pi/obj.IndentArea(i))*1/2*...
+%                                 (1-obj.PoissonR^2)*cos(obj.DeltaPhi{i,j})*...
+%                                 (obj.SineVarsF{i,j}(1)/obj.SineVarsH{i,j}(1));
                         
                         % turn range back to normal
                         obj.Force{i,j} = obj.Force{i,j}*rangeF;
