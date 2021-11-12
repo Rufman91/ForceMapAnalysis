@@ -41,9 +41,9 @@ classdef ForceMap < matlab.mixin.Copyable
         SegFrequency    % frequency of one segment
         SegNumPoints    % number of points in every segment
         SecPerPoint     % seconds per point
-        TStart          % starting time for time vektor
-        TEnd            % ending time for time vektor
-        SegTime         % time vektor
+        TStart          % starting time for time vector
+        TEnd            % ending time for time vector
+        SegTime         % time vector
         InterpTimeF      % time vector for force data interpolation
         InterpTimeH      % time vector for height data interpolation
         MaxPointsPerCurve
@@ -77,7 +77,6 @@ classdef ForceMap < matlab.mixin.Copyable
         psF
         psH
         firstsignchangeF
-        FInterp
 
     end
     properties
@@ -1803,40 +1802,40 @@ classdef ForceMap < matlab.mixin.Copyable
                         
                         
                          % Time Vectors with more entries for interpolation
-                         obj.InterpTimeF{i} = obj.TStart{i}:0.1:obj.TEnd{i};
-                         obj.InterpTimeF{i} = obj.InterpTimeF{i}.';
+                         %obj.InterpTimeF{i} = obj.TStart{i}:0.1:obj.TEnd{i};
+                         %obj.InterpTimeF{i} = obj.InterpTimeF{i}.';
                          
-                         obj.InterpTimeH{i} = obj.TStart{i}:0.0001:obj.TEnd{i};
-                         obj.InterpTimeH{i} = obj.InterpTimeH{i}.';
+                         %obj.InterpTimeH{i} = obj.TStart{i}:0.0001:obj.TEnd{i};
+                         %obj.InterpTimeH{i} = obj.InterpTimeH{i}.';
                         
                          %INTERPOLATION with the purpose to add more points to indentation data
                          %at every newly added timestep
-                         obj.FInterp{i,j} = interp1(obj.SegTime{j},obj.FilterF{i,j},obj.InterpTimeF{j});
-                         HInterp{i,j} = interp1(obj.SegTime{j},obj.FilterH{i,j},obj.InterpTimeH{j});
+                         %obj.FInterp{i,j} = interp1(obj.SegTime{j},obj.FilterF{i,j},obj.InterpTimeF{j});
+                         %HInterp{i,j} = interp1(obj.SegTime{j},obj.FilterH{i,j},obj.InterpTimeH{j});
 
                          %Finding the rows where NaNs are located due to interpolation:
-                         row_F = find(isnan(obj.FInterp{i,j}));
-                         row_H = find(isnan(HInterp{i,j}));
+                         %row_F = find(isnan(obj.FInterp{i,j}));
+                         %row_H = find(isnan(HInterp{i,j}));
 
                          %also deleting those rows from the timestep vector:
-                         obj.InterpTimeF{j}(row_F,:)=[];
-                         obj.InterpTimeH{j}(row_H,:)=[];
+                         %obj.InterpTimeF{j}(row_F,:)=[];
+                         %obj.InterpTimeH{j}(row_H,:)=[];
 
                          %deleting NaN from interpolated indentation data:
-                         obj.FInterp{i,j} = rmmissing(obj.FInterp{i,j});
-                         HInterp{i,j} = rmmissing(HInterp{i,j});
+                         %obj.FInterp{i,j} = rmmissing(obj.FInterp{i,j});
+                         %HInterp{i,j} = rmmissing(HInterp{i,j});
                         
                         
                         %Finding changes in signs from positive to negative, inbetween the zero
                          %crossing must occur
-                         signchangeF{i,j} = find( diff( sign(obj.FInterp{i,j}) ) ~= 0 );
-                         signchangeH{i,j} = find( diff( sign(HInterp{i,j}) ) ~= 0 );
+                         signchangeF{i,j} = find( diff( sign(obj.FilterF{i,j}) ) ~= 0 );
+                         signchangeH{i,j} = find( diff( sign(obj.FilterH{i,j}) ) ~= 0 );
                         
                          %interpolation and time data where the sign changes
-                         ZeroCrossF{i,j} = obj.FInterp{i,j}(signchangeF{i,j});
-                         ZeroCrossTimeF{i,j} = obj.InterpTimeF{j}(signchangeF{i,j});
-                         ZeroCrossH{i,j} = HInterp{i,j}(signchangeH{i,j});
-                         ZeroCrossTimeH{i,j} = obj.InterpTimeH{j}(signchangeH{i,j});
+                         ZeroCrossF{i,j} = obj.FilterF{i,j}(signchangeF{i,j});
+                         ZeroCrossTimeF{i,j} = obj.SegTime{j}(signchangeF{i,j});
+                         ZeroCrossH{i,j} = obj.FilterH{i,j}(signchangeH{i,j});
+                         ZeroCrossTimeH{i,j} = obj.SegTime{j}(signchangeH{i,j});
                          
                          
                          %locate the first change of sign:
@@ -1845,8 +1844,8 @@ classdef ForceMap < matlab.mixin.Copyable
 
                          %define the time span between first time step and first change of sign
                          %which will be a parameter for the sine fit later:
-                         obj.firstsignchangeF = obj.InterpTimeF{j}(help_F) - obj.InterpTimeF{j}(1);
-                         firstsignchangeH = obj.InterpTimeH{j}(help_H)- obj.InterpTimeH{j}(1);
+                         obj.firstsignchangeF = obj.SegTime{j}(help_F) - obj.SegTime{j}(1);
+                         firstsignchangeH = obj.SegTime{j}(help_H)- obj.SegTime{j}(1);
 
                          % Max values of Force and Indentation
                          maxF = max(obj.FilterF{i,j});
@@ -1873,16 +1872,16 @@ classdef ForceMap < matlab.mixin.Copyable
                          PeriodH = 2*mean(diff(ZeroCrossTimeH{i,j}));
 
                          % Estimate offset
-                         meanF = mean(obj.FInterp{i,j});
-                         meanH = mean(HInterp{i,j});
+                         meanF = mean(obj.FilterF{i,j});
+                         meanH = mean(obj.FilterH{i,j});
 
-                         x = obj.InterpTimeF{j};
+                         x = obj.SegTime{j};
                          %try
                              % Function to fit force data 
                              %b(1) (max-min)/2 b(2) FFT b(3) first sign change b(4) mean
                              fit = @(b,x)  b(1).*(sin(2*pi*x*(obj.SegFrequency{j})^(-1) + 2*pi/b(3)));    
                              % Least-Squares cost function:
-                             fcn = @(b) sum((fit(b,x) - obj.FInterp{i,j}).^2);       
+                             fcn = @(b) sum((fit(b,x) - obj.FilterF{i,j}).^2);       
                              % Minimise Least-Squares with estimated start values:
                              options = optimset('FunValCheck','off');
                              lb = [0,-Inf,-2];
@@ -1902,19 +1901,19 @@ classdef ForceMap < matlab.mixin.Copyable
                          % Function to fit indentation data 
                          %n = 7;
                          %p = polyfit(x,obj.Indentation{i,j},n);
-                         x = obj.InterpTimeH{j};
+                         x = obj.SegTime{j};
                          
                          %b(1) (max-min)/2 b(2) FFT b(3) first sign change b(4) mean
                          fit = @(a,x)  a(1).*(sin(2*pi*x*(obj.SegFrequency{j})^(-1) + 2*pi/a(3)));    
                          % Least-Squares cost function:
-                         fcn = @(a) sum((fit(a,x) - HInterp{i,j}).^2);       
+                         fcn = @(a) sum((fit(a,x) - obj.FilterH{i,j}).^2);       
                          % Minimise Least-Squares with estimated start values:
                          options = optimset('FunValCheck','off');
                          lb = [0,-Inf,-2];
                          ub = [Inf,Inf,2];
                          obj.SineVarsH{i,j} = fmincon(fcn, [AmplitudeH; PeriodH; firstsignchangeH],[],[],[],[],lb,ub,[],options); 
                          % Spacing of time vector:
-                         xpH = linspace(min(obj.InterpTimeH{j}),max(obj.InterpTimeH{j}),100000);
+                         %xpH = linspace(min(obj.InterpTimeH{j}),max(obj.InterpTimeH{j}),100000);
                          %obj.SineVarsH{i,j}(1)= AmplitudeH;
                          obj.SineVarsH{i,j}(2)= (obj.SegFrequency{j})^(-1);
                          %obj.SineVarsH{i,j}(3)= firstsignchangeH;
@@ -3869,21 +3868,21 @@ classdef ForceMap < matlab.mixin.Copyable
                     if obj.SegFrequency{j} > 0
                         
                         x= obj.SegTime{j};
-                        xpF = linspace(min(obj.InterpTimeF{j}),max(obj.InterpTimeF{j}),100000);
-                        xpH = linspace(min(obj.InterpTimeH{j}),max(obj.InterpTimeH{j}),100000);
+                        %xpF = linspace(min(obj.InterpTimeF{j}),max(obj.InterpTimeF{j}),100000);
+                        %xpH = linspace(min(obj.InterpTimeH{j}),max(obj.InterpTimeH{j}),100000);
                         
                         %Y-values fitted sine of indentation and force:
-                        ypF = obj.SineVarsF{i,j}(1)*(sin((2*pi*xpF)./obj.SineVarsF{i,j}(2) + 2*pi/obj.SineVarsF{i,j}(3)));
-                        ypH = obj.SineVarsH{i,j}(1)*(sin((2*pi*xpH)./obj.SineVarsH{i,j}(2) + 2*pi/obj.SineVarsH{i,j}(3)));
+                        ypF = obj.SineVarsF{i,j}(1)*(sin((2*pi*x)./obj.SineVarsF{i,j}(2) + 2*pi/obj.SineVarsF{i,j}(3)));
+                        ypH = obj.SineVarsH{i,j}(1)*(sin((2*pi*x)./obj.SineVarsH{i,j}(2) + 2*pi/obj.SineVarsH{i,j}(3)));
                         
                         k = k + 1;
                          % time indentation
                         figure('Name',sprintf('Force Curve %i Segment %i',i,j))
                         subplot(3,1,1)
-                        plot(x,obj.FZShift{i,j},x,obj.FilterF{i,j},xpF,ypF)
+                        plot(x,obj.FZShift{i,j},x,obj.FilterF{i,j},x,ypF)
                         legend({'shifted force data to zero line','filtered force data','fitted force data 1'},'Location','southoutside')
                         subplot(3,1,2)
-                        plot(x,obj.HZShift{i,j},x,obj.FilterH{i,j},xpH,ypH)
+                        plot(x,obj.HZShift{i,j},x,obj.FilterH{i,j},x,ypH)
                         legend({'shifted indentation data to zero line','filtered indentation data','fitted indentation data 1'},'Location','southoutside')
                         subplot(3,1,3)
                         %plot(x,ypF)
