@@ -76,6 +76,7 @@ classdef ForceMap < matlab.mixin.Copyable
         HZShift         % original height data shifted to the zero line
         psF
         psH
+        firstsignchangeF
 
     end
     properties
@@ -1843,7 +1844,7 @@ classdef ForceMap < matlab.mixin.Copyable
 
                          %define the time span between first time step and first change of sign
                          %which will be a parameter for the sine fit later:
-                         firstsignchangeF = obj.InterpTimeF{j}(help_F) - obj.InterpTimeF{j}(1);
+                         obj.firstsignchangeF = obj.InterpTimeF{j}(help_F) - obj.InterpTimeF{j}(1);
                          firstsignchangeH = obj.InterpTimeH{j}(help_H)- obj.InterpTimeH{j}(1);
 
                          % Max values of Force and Indentation
@@ -1885,7 +1886,7 @@ classdef ForceMap < matlab.mixin.Copyable
                              options = optimset('FunValCheck','off');
                              lb = [0,-Inf,-2];
                              ub = [Inf,Inf,2];
-                             obj.SineVarsF{i,j} = fmincon(fcn, [AmplitudeF; PeriodF; firstsignchangeF],[],[],[],[],lb,ub,[],options); 
+                             obj.SineVarsF{i,j} = fmincon(fcn, [AmplitudeF; PeriodF; obj.firstsignchangeF],[],[],[],[],lb,ub,[],options); 
                              % Spacing of time vector:
                              %xpF = linspace(min(obj.InterpTimeF{j}),max(obj.InterpTimeF{j}),100000);
                              %obj.SineVarsF{i,j}(1)= AmplitudeF;
@@ -1894,7 +1895,7 @@ classdef ForceMap < matlab.mixin.Copyable
                          catch
                              obj.SineVarsF{i,j}(1)= AmplitudeF;
                              obj.SineVarsF{i,j}(2)= (obj.SegFrequency{j})^(-1);
-                             obj.SineVarsF{i,j}(3)= firstsignchangeF;
+                             obj.SineVarsF{i,j}(3)= obj.firstsignchangeF;
                          end
                          
                          % Function to fit indentation data 
