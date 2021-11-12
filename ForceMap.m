@@ -1866,6 +1866,8 @@ classdef ForceMap < matlab.mixin.Copyable
                          % Amplitude
                          AmplitudeF=(DiffF/2);
                          AmplitudeH=(DiffH/2);
+                         
+                         lowAmp = AmplitudeF/2;
  
                          % Estimate period
                          PeriodF = 2*mean(diff(ZeroCrossTimeF{i,j}));
@@ -1884,7 +1886,7 @@ classdef ForceMap < matlab.mixin.Copyable
                              fcn = @(b) sum((fit(b,x) - obj.FilterF{i,j}).^2);       
                              % Minimise Least-Squares with estimated start values:
                              options = optimset('FunValCheck','off');
-                             lb = [0,-Inf,-2];
+                             lb = [lowAmp,-Inf,-2];
                              ub = [Inf,Inf,2];
                              obj.SineVarsF{i,j} = fmincon(fcn, [AmplitudeF; PeriodF; obj.firstsignchangeF],[],[],[],[],lb,ub,[],options); 
                              % Spacing of time vector:
