@@ -44,8 +44,8 @@ classdef ForceMap < matlab.mixin.Copyable
         TStart          % starting time for time vector
         TEnd            % ending time for time vector
         SegTime         % time vector
-        InterpTimeF      % time vector for force data interpolation
-        InterpTimeH      % time vector for height data interpolation
+        %InterpTimeF      % time vector for force data interpolation
+        %InterpTimeH      % time vector for height data interpolation
         MaxPointsPerCurve
         XSize           % Size of imaged window in X-direction
         YSize           % Size of imaged window in Y-direction
@@ -76,7 +76,6 @@ classdef ForceMap < matlab.mixin.Copyable
         HZShift         % original height data shifted to the zero line
         psF
         psH
-        firstsignchangeF
 
     end
     properties
@@ -1844,7 +1843,7 @@ classdef ForceMap < matlab.mixin.Copyable
 
                          %define the time span between first time step and first change of sign
                          %which will be a parameter for the sine fit later:
-                         obj.firstsignchangeF = obj.SegTime{j}(help_F) - obj.SegTime{j}(1);
+                         firstsignchangeF = obj.SegTime{j}(help_F) - obj.SegTime{j}(1);
                          firstsignchangeH = obj.SegTime{j}(help_H)- obj.SegTime{j}(1);
 
                          % Max values of Force and Indentation
@@ -1866,8 +1865,7 @@ classdef ForceMap < matlab.mixin.Copyable
                          % Amplitude
                          AmplitudeF=(DiffF/2);
                          AmplitudeH=(DiffH/2);
-                         
-                         lowAmp = AmplitudeF/2;
+
  
                          % Estimate period
                          PeriodF = 2*mean(diff(ZeroCrossTimeF{i,j}));
@@ -1881,19 +1879,19 @@ classdef ForceMap < matlab.mixin.Copyable
                          %try
                              % Function to fit force data 
                              %b(1) (max-min)/2 b(2) FFT b(3) first sign change b(4) mean
-                             fit = @(b,x)  AmplitudeF.*(sin(2*pi*x*(obj.SegFrequency{j})^(-1) + 2*pi/b(3)));    
+                             fit = @(b,x)  b(1).*(sin(2*pi*x*(obj.SegFrequency{j})^(-1) + 2*pi/b(3)));    
                              % Least-Squares cost function:
                              fcn = @(b) sum((fit(b,x) - obj.FilterF{i,j}).^2);       
                              % Minimise Least-Squares with estimated start values:
                              options = optimset('FunValCheck','off');
-                             lb = [lowAmp,-Inf,-2];
-                             ub = [Inf,Inf,2];
-                             obj.SineVarsF{i,j} = fmincon(fcn, [AmplitudeF; PeriodF; obj.firstsignchangeF],[],[],[],[],lb,ub,[],options); 
+                             lb = [0,-Inf,-Inf];
+                             ub = [Inf,Inf,Inf];
+                             obj.SineVarsF{i,j} = fmincon(fcn, [AmplitudeF; PeriodF; firstsignchangeF],[],[],[],[],lb,ub,[],options); 
                              % Spacing of time vector:
                              %xpF = linspace(min(obj.InterpTimeF{j}),max(obj.InterpTimeF{j}),100000);
-                             obj.SineVarsF{i,j}(1)= AmplitudeF;
+                             %obj.SineVarsF{i,j}(1)= AmplitudeF;
                              obj.SineVarsF{i,j}(2)= (obj.SegFrequency{j})^(-1);
-                             obj.SineVarsF{i,j}(3)= obj.firstsignchangeF;
+                             %obj.SineVarsF{i,j}(3)= obj.firstsignchangeF;
                          %catch
                          %    obj.SineVarsF{i,j}(1)= AmplitudeF;
                          %    obj.SineVarsF{i,j}(2)= (obj.SegFrequency{j})^(-1);
@@ -1911,8 +1909,8 @@ classdef ForceMap < matlab.mixin.Copyable
                          fcn = @(a) sum((fit(a,x) - obj.FilterH{i,j}).^2);       
                          % Minimise Least-Squares with estimated start values:
                          options = optimset('FunValCheck','off');
-                         lb = [0,-Inf,-2];
-                         ub = [Inf,Inf,2];
+                         lb = [0,-Inf,-Inf];
+                         ub = [Inf,Inf,Inf];
                          obj.SineVarsH{i,j} = fmincon(fcn, [AmplitudeH; PeriodH; firstsignchangeH],[],[],[],[],lb,ub,[],options); 
                          % Spacing of time vector:
                          %xpH = linspace(min(obj.InterpTimeH{j}),max(obj.InterpTimeH{j}),100000);
