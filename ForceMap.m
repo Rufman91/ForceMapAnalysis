@@ -77,6 +77,7 @@ classdef ForceMap < matlab.mixin.Copyable
         psF
         psH
         firstsignchangeF
+        FInterp
 
     end
     properties
@@ -1810,11 +1811,11 @@ classdef ForceMap < matlab.mixin.Copyable
                         
                          %INTERPOLATION with the purpose to add more points to indentation data
                          %at every newly added timestep
-                         FInterp{i,j} = interp1(obj.SegTime{j},obj.FilterF{i,j},obj.InterpTimeF{j});
+                         obj.FInterp{i,j} = interp1(obj.SegTime{j},obj.FilterF{i,j},obj.InterpTimeF{j});
                          HInterp{i,j} = interp1(obj.SegTime{j},obj.FilterH{i,j},obj.InterpTimeH{j});
 
                          %Finding the rows where NaNs are located due to interpolation:
-                         row_F = find(isnan(FInterp{i,j}));
+                         row_F = find(isnan(obj.FInterp{i,j}));
                          row_H = find(isnan(HInterp{i,j}));
 
                          %also deleting those rows from the timestep vector:
@@ -1822,17 +1823,17 @@ classdef ForceMap < matlab.mixin.Copyable
                          obj.InterpTimeH{j}(row_H,:)=[];
 
                          %deleting NaN from interpolated indentation data:
-                         FInterp{i,j} = rmmissing(FInterp{i,j});
+                         obj.FInterp{i,j} = rmmissing(obj.FInterp{i,j});
                          HInterp{i,j} = rmmissing(HInterp{i,j});
                         
                         
                         %Finding changes in signs from positive to negative, inbetween the zero
                          %crossing must occur
-                         signchangeF{i,j} = find( diff( sign(FInterp{i,j}) ) ~= 0 );
+                         signchangeF{i,j} = find( diff( sign(obj.FInterp{i,j}) ) ~= 0 );
                          signchangeH{i,j} = find( diff( sign(HInterp{i,j}) ) ~= 0 );
                         
                          %interpolation and time data where the sign changes
-                         ZeroCrossF{i,j} = FInterp{i,j}(signchangeF{i,j});
+                         ZeroCrossF{i,j} = obj.FInterp{i,j}(signchangeF{i,j});
                          ZeroCrossTimeF{i,j} = obj.InterpTimeF{j}(signchangeF{i,j});
                          ZeroCrossH{i,j} = HInterp{i,j}(signchangeH{i,j});
                          ZeroCrossTimeH{i,j} = obj.InterpTimeH{j}(signchangeH{i,j});
