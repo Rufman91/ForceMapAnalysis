@@ -1876,7 +1876,7 @@ classdef ForceMap < matlab.mixin.Copyable
                          meanH = mean(HInterp{i,j});
 
                          x = obj.InterpTimeF{j};
-                         try
+                         %try
                              % Function to fit force data 
                              %b(1) (max-min)/2 b(2) FFT b(3) first sign change b(4) mean
                              fit = @(b,x)  b(1).*(sin(2*pi*x*(obj.SegFrequency{j})^(-1) + 2*pi/b(3)));    
@@ -1892,11 +1892,11 @@ classdef ForceMap < matlab.mixin.Copyable
                              %obj.SineVarsF{i,j}(1)= AmplitudeF;
                              obj.SineVarsF{i,j}(2)= (obj.SegFrequency{j})^(-1);
                              %obj.SineVarsF{i,j}(3)= firstsignchangeF;
-                         catch
-                             obj.SineVarsF{i,j}(1)= AmplitudeF;
-                             obj.SineVarsF{i,j}(2)= (obj.SegFrequency{j})^(-1);
-                             obj.SineVarsF{i,j}(3)= obj.firstsignchangeF;
-                         end
+                         %catch
+                         %    obj.SineVarsF{i,j}(1)= AmplitudeF;
+                         %    obj.SineVarsF{i,j}(2)= (obj.SegFrequency{j})^(-1);
+                         %    obj.SineVarsF{i,j}(3)= obj.firstsignchangeF;
+                         %end
                          
                          % Function to fit indentation data 
                          %n = 7;
