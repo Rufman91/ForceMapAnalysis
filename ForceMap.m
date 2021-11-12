@@ -1882,10 +1882,10 @@ classdef ForceMap < matlab.mixin.Copyable
                          % Least-Squares cost function:
                          fcn = @(b) sum((fit(b,x) - FInterp{i,j}).^2);       
                          % Minimise Least-Squares with estimated start values:
-                         %options = optimset('MaxFunEvals',10000);
+                         options = optimset('FunValCheck','on');
                          lb = [0,-Inf,-2];
                          ub = [Inf,Inf,2];
-                         obj.SineVarsF{i,j} = fmincon(fcn, [AmplitudeF; PeriodF; firstsignchangeF],[],[],[],[],lb,ub); 
+                         obj.SineVarsF{i,j} = fmincon(fcn, [AmplitudeF; PeriodF; firstsignchangeF],[],[],[],[],lb,ub,[],options); 
                          % Spacing of time vector:
                          %xpF = linspace(min(obj.InterpTimeF{j}),max(obj.InterpTimeF{j}),100000);
                          %obj.SineVarsF{i,j}(1)= AmplitudeF;
@@ -1902,9 +1902,10 @@ classdef ForceMap < matlab.mixin.Copyable
                          % Least-Squares cost function:
                          fcn = @(a) sum((fit(a,x) - HInterp{i,j}).^2);       
                          % Minimise Least-Squares with estimated start values:
+                         options = optimset('FunValCheck','on');
                          lb = [0,-Inf,-2];
                          ub = [Inf,Inf,2];
-                         obj.SineVarsH{i,j} = fmincon(fcn, [AmplitudeH; PeriodH; firstsignchangeH],[],[],[],[],lb,ub); 
+                         obj.SineVarsH{i,j} = fmincon(fcn, [AmplitudeH; PeriodH; firstsignchangeH],[],[],[],[],lb,ub,[],options); 
                          % Spacing of time vector:
                          xpH = linspace(min(obj.InterpTimeH{j}),max(obj.InterpTimeH{j}),100000);
                          %obj.SineVarsH{i,j}(1)= AmplitudeH;
