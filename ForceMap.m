@@ -1875,22 +1875,27 @@ classdef ForceMap < matlab.mixin.Copyable
                          meanH = mean(HInterp{i,j});
 
                          x = obj.InterpTimeF{j};
-
-                         % Function to fit force data 
-                         %b(1) (max-min)/2 b(2) FFT b(3) first sign change b(4) mean
-                         fit = @(b,x)  b(1).*(sin(2*pi*x*(obj.SegFrequency{j})^(-1) + 2*pi/b(2)));    
-                         % Least-Squares cost function:
-                         fcn = @(b) sum((fit(b,x) - FInterp{i,j}).^2);       
-                         % Minimise Least-Squares with estimated start values:
-                         options = optimset('FunValCheck','on');
-                         lb = [0,-2];
-                         ub = [Inf,2];
-                         obj.SineVarsF{i,j} = fmincon(fcn, [AmplitudeF; firstsignchangeF],[],[],[],[],lb,ub,[],options); 
-                         % Spacing of time vector:
-                         %xpF = linspace(min(obj.InterpTimeF{j}),max(obj.InterpTimeF{j}),100000);
-                         %obj.SineVarsF{i,j}(1)= AmplitudeF;
-                         %obj.SineVarsF{i,j}(2)= (obj.SegFrequency{j})^(-1);
-                         %obj.SineVarsF{i,j}(3)= firstsignchangeF;
+                         try
+                             % Function to fit force data 
+                             %b(1) (max-min)/2 b(2) FFT b(3) first sign change b(4) mean
+                             fit = @(b,x)  b(1).*(sin(2*pi*x*(obj.SegFrequency{j})^(-1) + 2*pi/b(3)));    
+                             % Least-Squares cost function:
+                             fcn = @(b) sum((fit(b,x) - FInterp{i,j}).^2);       
+                             % Minimise Least-Squares with estimated start values:
+                             options = optimset('FunValCheck','off');
+                             lb = [0,-2];
+                             ub = [Inf,2];
+                             obj.SineVarsF{i,j} = fmincon(fcn, [AmplitudeF; PeriodF; firstsignchangeF],[],[],[],[],lb,ub,[],options); 
+                             % Spacing of time vector:
+                             %xpF = linspace(min(obj.InterpTimeF{j}),max(obj.InterpTimeF{j}),100000);
+                             %obj.SineVarsF{i,j}(1)= AmplitudeF;
+                             obj.SineVarsF{i,j}(2)= (obj.SegFrequency{j})^(-1);
+                             %obj.SineVarsF{i,j}(3)= firstsignchangeF;
+                         catch
+                             obj.SineVarsF{i,j}(1)= AmplitudeF;
+                             obj.SineVarsF{i,j}(2)= (obj.SegFrequency{j})^(-1);
+                             obj.SineVarsF{i,j}(3)= firstsignchangeF;
+                         end
                          
                          % Function to fit indentation data 
                          %n = 7;
@@ -1902,7 +1907,7 @@ classdef ForceMap < matlab.mixin.Copyable
                          % Least-Squares cost function:
                          fcn = @(a) sum((fit(a,x) - HInterp{i,j}).^2);       
                          % Minimise Least-Squares with estimated start values:
-                         options = optimset('FunValCheck','on');
+                         options = optimset('FunValCheck','off');
                          lb = [0,-Inf,-2];
                          ub = [Inf,Inf,2];
                          obj.SineVarsH{i,j} = fmincon(fcn, [AmplitudeH; PeriodH; firstsignchangeH],[],[],[],[],lb,ub,[],options); 
@@ -1914,7 +1919,7 @@ classdef ForceMap < matlab.mixin.Copyable
                         
 
                         % phase shift of force and indentation
-                         obj.psF{i,j} = (2*pi)/obj.SineVarsF{i,j}(2);
+                         obj.psF{i,j} = (2*pi)/obj.SineVarsF{i,j}(3);
                          obj.psH{i,j} = (2*pi)/obj.SineVarsH{i,j}(3);
                         
                         % phase shift between indentation and force in degrees:
