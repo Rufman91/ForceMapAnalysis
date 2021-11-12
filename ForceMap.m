@@ -1880,7 +1880,7 @@ classdef ForceMap < matlab.mixin.Copyable
                          %b(1) (max-min)/2 b(2) FFT b(3) first sign change b(4) mean
                          fit = @(b,x)  b(1).*(sin(2*pi*x*(obj.SegFrequency{j})^(-1) + 2*pi/b(3)));    
                          % Least-Squares cost function:
-                         fcn = @(b) sum((fit(b,x) - FInterp{i,j}).^2);       
+                         fcn = @(b) sum(abs((fit(b,x) - FInterp{i,j})).^2);       
                          % Minimise Least-Squares with estimated start values:
                          options = optimset('FunValCheck','on');
                          lb = [0,-Inf,-2];
@@ -1900,7 +1900,7 @@ classdef ForceMap < matlab.mixin.Copyable
                          %b(1) (max-min)/2 b(2) FFT b(3) first sign change b(4) mean
                          fit = @(a,x)  a(1).*(sin(2*pi*x*(obj.SegFrequency{j})^(-1) + 2*pi/a(3)));    
                          % Least-Squares cost function:
-                         fcn = @(a) sum((fit(a,x) - HInterp{i,j}).^2);       
+                         fcn = @(a) sum(abs((fit(a,x) - HInterp{i,j})).^2);       
                          % Minimise Least-Squares with estimated start values:
                          options = optimset('FunValCheck','on');
                          lb = [0,-Inf,-2];
