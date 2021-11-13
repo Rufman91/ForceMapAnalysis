@@ -1879,19 +1879,19 @@ classdef ForceMap < matlab.mixin.Copyable
                          %try
                              % Function to fit force data 
                              %b(1) (max-min)/2 b(2) FFT b(3) first sign change b(4) mean
-                             fit = @(b,x)  AmplitudeF.*(sin(2*pi*x*(obj.SegFrequency{j})^(-1) + 2*pi/firstsignchangeF));    
+                             fit = @(b,x)  AmplitudeF.*(sin(2*pi*x*(obj.SegFrequency{j})^(-1) + 2*pi/b(3));    
                              % Least-Squares cost function:
                              fcn = @(b) sum((fit(b,x) - obj.FilterF{i,j}).^2);       
                              % Minimise Least-Squares with estimated start values:
                              options = optimset('FunValCheck','off');
-                             lb = [0,-Inf,-Inf];
-                             ub = [Inf,Inf,Inf];
+                             lb = [0,-Inf,-2];
+                             ub = [Inf,Inf,2];
                              obj.SineVarsF{i,j} = fmincon(fcn, [AmplitudeF; PeriodF; firstsignchangeF],[],[],[],[],lb,ub,[],options); 
                              % Spacing of time vector:
                              %xpF = linspace(min(obj.InterpTimeF{j}),max(obj.InterpTimeF{j}),100000);
                              obj.SineVarsF{i,j}(1)= AmplitudeF;
                              obj.SineVarsF{i,j}(2)= (obj.SegFrequency{j})^(-1);
-                             obj.SineVarsF{i,j}(3)= firstsignchangeF;
+                             %obj.SineVarsF{i,j}(3)= firstsignchangeF;
                          %catch
                          %    obj.SineVarsF{i,j}(1)= AmplitudeF;
                          %    obj.SineVarsF{i,j}(2)= (obj.SegFrequency{j})^(-1);
@@ -1904,7 +1904,7 @@ classdef ForceMap < matlab.mixin.Copyable
                          x = obj.SegTime{j};
                          
                          %b(1) (max-min)/2 b(2) FFT b(3) first sign change b(4) mean
-                         fit = @(a,x)  a(1).*(sin(2*pi*x*(obj.SegFrequency{j})^(-1) + 2*pi/a(3)));    
+                         fit = @(a,x)  AmplitudeH.*(sin(2*pi*x*(obj.SegFrequency{j})^(-1) + 2*pi/a(3)));    
                          % Least-Squares cost function:
                          fcn = @(a) sum((fit(a,x) - obj.FilterH{i,j}).^2);       
                          % Minimise Least-Squares with estimated start values:
@@ -1914,7 +1914,7 @@ classdef ForceMap < matlab.mixin.Copyable
                          obj.SineVarsH{i,j} = fmincon(fcn, [AmplitudeH; PeriodH; firstsignchangeH],[],[],[],[],lb,ub,[],options); 
                          % Spacing of time vector:
                          %xpH = linspace(min(obj.InterpTimeH{j}),max(obj.InterpTimeH{j}),100000);
-                         %obj.SineVarsH{i,j}(1)= AmplitudeH;
+                         obj.SineVarsH{i,j}(1)= AmplitudeH;
                          obj.SineVarsH{i,j}(2)= (obj.SegFrequency{j})^(-1);
                          %obj.SineVarsH{i,j}(3)= firstsignchangeH;
                         
