@@ -44,8 +44,8 @@ classdef ForceMap < matlab.mixin.Copyable
         TStart          % starting time for time vector
         TEnd            % ending time for time vector
         SegTime         % time vector
-        %InterpTimeF      % time vector for force data interpolation
-        %InterpTimeH      % time vector for height data interpolation
+        InterpTimeF      % time vector for force data interpolation
+        InterpTimeH      % time vector for height data interpolation
         MaxPointsPerCurve
         XSize           % Size of imaged window in X-direction
         YSize           % Size of imaged window in Y-direction
