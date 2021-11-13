@@ -1889,7 +1889,7 @@ classdef ForceMap < matlab.mixin.Copyable
                              obj.SineVarsF{i,j} = fmincon(fcn, [AmplitudeF; PeriodF; firstsignchangeF],[],[],[],[],lb,ub,[],options); 
                              % Spacing of time vector:
                              %xpF = linspace(min(obj.InterpTimeF{j}),max(obj.InterpTimeF{j}),100000);
-                             %obj.SineVarsF{i,j}(1)= AmplitudeF;
+                             obj.SineVarsF{i,j}(1)= AmplitudeF;
                              obj.SineVarsF{i,j}(2)= (obj.SegFrequency{j})^(-1);
                              %obj.SineVarsF{i,j}(3)= obj.firstsignchangeF;
                          %catch
