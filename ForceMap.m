@@ -1889,8 +1889,8 @@ classdef ForceMap < matlab.mixin.Copyable
                              x0 = [AmplitudeF,PeriodF,firstsignchangeF];
                              options = optimset('FunValCheck','off');
                              lb = [lowAmp,-Inf,2];
-                             ub = [highAmp,Inf,2*pi];
-                             obj.SineVarsF{i,j} = fmincon(fcn,x0,[],[]); 
+                             ub = [highAmp,Inf,6];
+                             obj.SineVarsF{i,j} = fmincon(fcn,x0,[],[],[],[],lb,ub); 
                              % Spacing of time vector:
                              %xpF = linspace(min(obj.InterpTimeF{j}),max(obj.InterpTimeF{j}),100000);
                              obj.SineVarsF{i,j}(1)= AmplitudeF;
