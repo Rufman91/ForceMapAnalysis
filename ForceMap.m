@@ -1879,7 +1879,7 @@ classdef ForceMap < matlab.mixin.Copyable
                          %try
                              % Function to fit force data 
                              %b(1) (max-min)/2 b(2) FFT b(3) first sign change b(4) mean
-                             fit = @(b,x)  AmplitudeF.*(sin(2*pi*x*(obj.SegFrequency{j})^(-1) + 2*pi/b(3));    
+                             fit = @(b,x)  AmplitudeF.*(sin(2*pi*x*(obj.SegFrequency{j})^(-1) + 2*pi/b(3)));    
                              % Least-Squares cost function:
                              fcn = @(b) sum((fit(b,x) - obj.FilterF{i,j}).^2);       
                              % Minimise Least-Squares with estimated start values:
