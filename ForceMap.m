@@ -1889,7 +1889,7 @@ classdef ForceMap < matlab.mixin.Copyable
                              
                              options = optimset('FunValCheck','off');
                              phase = mod(-(obj.SegFrequency{j}^(-1))/ZeroCrossTimeF{i,j}(1),(obj.SegFrequency{j}^(-1)));
-                             x0 = [AmplitudeF,PeriodF,phase];
+                             x0 = [AmplitudeF,PeriodF,-1];
                              %lb = [lowAmp,-Inf,2];
                              %ub = [highAmp,Inf,Inf];
                              obj.SineVarsF{i,j} = fmincon(fcn,x0,[],[],[],[],[],[]); 
