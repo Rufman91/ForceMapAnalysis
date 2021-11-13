@@ -1882,17 +1882,17 @@ classdef ForceMap < matlab.mixin.Copyable
                          %try
                              % Function to fit force data 
                              %b(1) (max-min)/2 b(2) FFT b(3) first sign change b(4) mean
-                             fit = @(b,x)  AmplitudeF.*(sin(2*pi*x*(obj.SegFrequency{j})^(-1) + 2*pi/b(3)));    
+                             fit = @(b,x)  AmplitudeF.*(sin(2*pi*x*(obj.SegFrequency{j})^(-1) + b(3)));    
                              % Least-Squares cost function:
                              fcn = @(b) sum((fit(b,x) - obj.FilterF{i,j}).^2);       
                              % Minimise Least-Squares with estimated start values:
                              
                              options = optimset('FunValCheck','off');
                              phase = mod(-(obj.SegFrequency{j}^(-1))/ZeroCrossTimeF{i,j}(1),(obj.SegFrequency{j}^(-1)));
-                             x0 = [AmplitudeF,PeriodF,-1];
-                             %lb = [lowAmp,-Inf,2];
-                             %ub = [highAmp,Inf,Inf];
-                             obj.SineVarsF{i,j} = fmincon(fcn,x0,[],[],[],[],[],[]); 
+                             x0 = [AmplitudeF,PeriodF,-pi/4];
+                             lb = [lowAmp,-Inf,-pi];
+                             ub = [highAmp,Inf,pi];
+                             obj.SineVarsF{i,j} = fmincon(fcn,x0,[],[],[],[],lb,ub); 
                              % Spacing of time vector:
                              %xpF = linspace(min(obj.InterpTimeF{j}),max(obj.InterpTimeF{j}),100000);
                              obj.SineVarsF{i,j}(1)= AmplitudeF;
