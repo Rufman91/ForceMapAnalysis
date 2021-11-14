@@ -1926,8 +1926,8 @@ classdef ForceMap < matlab.mixin.Copyable
                         
 
                         % phase shift of force and indentation
-                         obj.psF{i,j} = (2*pi)/obj.SineVarsF{i,j}(3);
-                         obj.psH{i,j} = (2*pi)/obj.SineVarsH{i,j}(3);
+                         obj.psF{i,j} = obj.SineVarsF{i,j}(3);
+                         obj.psH{i,j} = obj.SineVarsH{i,j}(3);
                         
                         % phase shift between indentation and force in degrees:
                         obj.DeltaPhi{i,j} = (obj.psF{i,j} - obj.psH{i,j})*(180/pi);
