@@ -232,7 +232,9 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle
             %   are used for several smoothing steps during the process
             % SmoothingWindowWeighting ...(def='flat') determines smoothing
             %   window weighting; possible options:
-            %         'flat','linear','gaussian'
+            %         'flat','linear','gaussian','localregN' with N being a
+            %         number between 1 and 9, representing an Nth grade
+            %         polynomial fit
             
             if nargin < 5
                 SmoothingWindowWeighting = 'flat';
@@ -268,6 +270,8 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle
             % If Channel has an unequal SizePerPixel, resize it for
             % following operations
             [Channel,XMult,YMult] = obj.resize_channel_to_same_size_per_pixel(Channel);
+            
+            CenterIndex = floor(SmoothingWindowSize/2+1);
             
             % Convert inputs from meters to pixels
             SizePerPixel = Channel.ScanSizeX/Channel.NumPixelsX;
@@ -311,7 +315,7 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle
                 PerpendicularVector = [];
                 OriginalPos = [];
                 FinalSnappedPos = [];
-                [LocalDirectionVector,WeightingVector] = AFMBaseClass.find_local_direction_vector_in_ordered_vector_list(Snapped(i).ROIObject.Position,SmoothingWindowSize,SmoothingWindowWeighting);
+                [LocalDirectionVector,WeightingVector] = AFMBaseClass.find_local_direction_vector_in_ordered_vector_list(Snapped(i).ROIObject.Position,SmoothingWindowSize,'gaussian');
                 for j=1:size(Snapped(i).ROIObject.Position,1)
                     OriginalPos(j,:) = Snapped(i).ROIObject.Position(j,:);
                     PerpendicularVector(j,:) = [LocalDirectionVector(j,2) -LocalDirectionVector(j,1)]/norm(LocalDirectionVector(j,:));
@@ -333,17 +337,35 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle
                     DisplacementVector(j,:) = (SnappedPos(j,:) - OriginalPos(j,:));
                     SnappedToOriginalDistance(j) = PerpendicularVector(j,:)*DisplacementVector(j,:)';
                 end
-                % Apply smoothing to SnappedPos
                 SnappedToOriginalDistance = SnappedToOriginalDistance';
-                SmoothedSnappedDistance = zeros(size(SnappedToOriginalDistance));
-                CenterIndex = floor(SmoothingWindowSize/2+1);
-                for j=1:size(SnappedToOriginalDistance,1)
-                    LowerIndex = max(j - (CenterIndex-1),1);
-                    UpperIndex = min(j + (CenterIndex-1),size(SnappedToOriginalDistance,1));
-                    SmoothedSnappedDistance(j) = sum(SnappedToOriginalDistance(LowerIndex:UpperIndex).*WeightingVector(CenterIndex - (j-LowerIndex):CenterIndex + (UpperIndex-j)),1);
-                    FinalSnappedPos(j,:) = OriginalPos(j,:) + PerpendicularVector(j,:).*SmoothedSnappedDistance(j);
+                % Apply smoothing to SnappedPos
+                if ~strfind(SmoothingWindowWeighting,'localreg')
+                    SmoothedSnappedDistance = zeros(size(SnappedToOriginalDistance));
+                    for j=1:size(SnappedToOriginalDistance,1)
+                        LowerIndex = max(j - (CenterIndex-1),1);
+                        UpperIndex = min(j + (CenterIndex-1),size(SnappedToOriginalDistance,1));
+                        SmoothedSnappedDistance(j) = sum(SnappedToOriginalDistance(LowerIndex:UpperIndex).*WeightingVector(CenterIndex - (j-LowerIndex):CenterIndex + (UpperIndex-j)),1);
+                        FinalSnappedPos(j,:) = OriginalPos(j,:) + PerpendicularVector(j,:).*SmoothedSnappedDistance(j);
+                    end
+                else
+                    for j=1:size(SnappedToOriginalDistance,1)
+                        LowerIndex = max(j - (CenterIndex-1),1);
+                        UpperIndex = min(j + (CenterIndex-1),size(SnappedToOriginalDistance,1));
+                        IndexOI = (j+1) - LowerIndex;
+                        LocalPoints = SnappedPos(LowerIndex:UpperIndex,:);
+                        Means = mean(LocalPoints,1);
+                        CenteredLP = LocalPoints - Means;
+                        [PCACoeff,TransformedSnappedPos,Latent] = pca(CenteredLP);
+                        DegreeOfPolyfit = str2num(SmoothingWindowWeighting(end));
+                        if isempty(DegreeOfPolyfit)
+                            DegreeOfPolyfit = 2;
+                        end
+                        LocalPFit = polyfit(TransformedSnappedPos(:,1),TransformedSnappedPos(:,2),DegreeOfPolyfit);
+                        SmoothedPos = [TransformedSnappedPos(IndexOI,1) polyval(LocalPFit,TransformedSnappedPos(IndexOI,1))];
+                        FinalSnappedPos(j,:) = ((PCACoeff')\SmoothedPos')' + Means;
+                    end
                 end
-% 
+                %
 %                 SmoothedSnappedPos = zeros(size(SnappedPos));
 %                 CenterIndex = floor(SmoothingWindowSize/2+1);
 %                 for j=1:size(SnappedPos,1)

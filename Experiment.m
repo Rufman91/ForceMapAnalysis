@@ -324,9 +324,25 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             cd(obj.ExperimentFolder)
             savename = sprintf('%s.mat',obj.ExperimentName);
             disp('saving...');
+            TempZipFiles = cell(obj.NumForceMaps,1);
+            TempRefZipFiles = cell(obj.NumReferenceForceMaps,1);
+            for i=1:obj.NumForceMaps
+                TempZipFiles{i} = obj.FM{i}.OpenZipFile;
+                obj.FM{i}.OpenZipFile = [];
+            end
+            for i=1:obj.NumReferenceForceMaps
+                TempRefZipFiles{i} = obj.RefFM{i}.OpenZipFile;
+                obj.RefFM{i}.OpenZipFile = [];
+            end
             save(savename,'obj','-v7.3')
             cd(current.path)
             savemsg = sprintf('Changes to Experiment %s saved to %s',obj.ExperimentName,obj.ExperimentFolder);
+            for i=1:obj.NumForceMaps
+                obj.FM{i}.OpenZipFile = TempZipFiles{i};
+            end
+            for i=1:obj.NumReferenceForceMaps
+                obj.RefFM{i}.OpenZipFile = TempRefZipFiles{i};
+            end
             disp(savemsg);
         end
         
@@ -490,11 +506,20 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             end
             
             if E.PythonLoaderFlag
-                for i=1:E.NumForceMaps
-                    E.FM{i}.load_zipped_files_with_python
-                end
-                for i=1:E.NumReferenceForceMaps
-                    E.RefFM{i}.load_zipped_files_with_python
+                if E.KeepPythonFilesOpen
+                    for i=1:E.NumForceMaps
+                        E.FM{i}.load_zipped_files_with_python
+                    end
+                    for i=1:E.NumReferenceForceMaps
+                        E.RefFM{i}.load_zipped_files_with_python
+                    end
+                else
+                    for i=1:E.NumForceMaps
+                        E.FM{i}.clear_zipped_files_from_memory
+                    end
+                    for i=1:E.NumReferenceForceMaps
+                        E.RefFM{i}.clear_zipped_files_from_memory
+                    end
                 end
             end
             
@@ -1027,7 +1052,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                         CorrectSens = false;
                     end
                     AllowXShift = true;
-                    obj.FM{i}.calculate_e_mod_hertz(CPOption,'parabolic',.9,AllowXShift,CorrectSens,UseTipInHertzBool,0,obj.CantileverTips{obj.WhichTip(i)});
+                    obj.FM{i}.calculate_e_mod_hertz(CPOption,'parabolic',.75,AllowXShift,CorrectSens,UseTipInHertzBool,0,obj.CantileverTips{obj.WhichTip(i)});
                     if i == 1
                         obj.write_to_log_file('Hertzian Tip-Shape','parabolic')
                         obj.write_to_log_file('Hertzian CurvePercent','1')

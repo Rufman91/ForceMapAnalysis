@@ -721,7 +721,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             elseif isequal(lower(RunMode),'zoomsweep')
                 runmode = 4;
                 if nargin < 3
-                    NumPasses = 20; % if not specified in arguments, NumPasses defaults to 20
+                    NumPasses = 5; % if not specified in arguments, NumPasses defaults to 20
                 end
             end
             ImgSize = NeuralNet.Layers(1).InputSize;
