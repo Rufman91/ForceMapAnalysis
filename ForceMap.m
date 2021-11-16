@@ -1888,7 +1888,7 @@ classdef ForceMap < matlab.mixin.Copyable
                          % Minimise Least-Squares with estimated start values:
 
                          options = optimset('FunValCheck','off');
-                         x0 = [AmplitudeF,PeriodF,0];
+                         x0 = [AmplitudeF,obj.SegFrequency{j},0];
                          lb = [0,-Inf,-pi];
                          ub = [Inf,Inf,pi];
                          obj.SineVarsF{i,j} = fmincon(fcn,x0,[],[],[],[],lb,ub); 
@@ -1912,7 +1912,7 @@ classdef ForceMap < matlab.mixin.Copyable
                          options = optimset('FunValCheck','off');
                          lb = [0,-Inf,-pi];
                          ub = [Inf,Inf,pi];
-                         obj.SineVarsH{i,j} = fmincon(fcn, [AmplitudeH; PeriodH; 0],[],[],[],[],lb,ub,[],options); 
+                         obj.SineVarsH{i,j} = fmincon(fcn, [AmplitudeH; obj.SegFrequency{j}; 0],[],[],[],[],lb,ub,[],options); 
                          % Spacing of time vector:
                          %xpH = linspace(min(obj.InterpTimeH{j}),max(obj.InterpTimeH{j}),100000);
                          obj.SineVarsH{i,j}(1)= AmplitudeH;
