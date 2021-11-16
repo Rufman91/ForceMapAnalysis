@@ -1363,8 +1363,8 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             cd(currpath);
             
             % force map loop
-            for ii=1:obj.NumForceMaps
-            % for ii=1:20 % debugging
+            for ii=1:obj.NumForceMaps   
+            %for ii=139:obj.NumForceMaps % debugging
                 if isequal(KeepFlagged,'Yes') && obj.SMFSFlag.Preprocessed(ii) == 1
                     continue
                 end
@@ -1681,7 +1681,17 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             
             % Output time and date for the dairy
             datetime('now')
-            
+            % Write to log file
+            obj.write_to_log_file('Function: SMFS_analysis_dashboard','Trial15','start')
+            obj.write_to_log_file('Extend Velocity',num2str(ExtVelocityValue))
+            obj.write_to_log_file('Retention Velocity',num2str(RetVelocityValue))
+            obj.write_to_log_file('Holding Time',num2str(HoldingTimeValue))
+            obj.write_to_log_file('Substrate',SubstrateValue)
+            obj.write_to_log_file('Linker',EnvCondValue)
+            obj.write_to_log_file('Chip',ChipCantValue)
+            obj.write_to_log_file('Chipbox',ChipboxValue)
+            obj.write_to_log_file('Linker',LinkerValue)
+            obj.write_to_log_file('','','end')
             % Define variables
             jj=1;
             IdxArray=[];
@@ -1692,7 +1702,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 % for debugging
                 if ((obj.FM{ii}.ExtendVelocity==ExtVelocityValue || ExtVelocityValue==0) ...
                         && (obj.FM{ii}.RetractVelocity==RetVelocityValue || RetVelocityValue==0) ...
-                        && (obj.FM{ii}.HoldingTime==HoldingTimeValue || HoldingTimeValue==0) ...
+                        && (obj.FM{ii}.HoldingTime==HoldingTimeValue || HoldingTimeValue==-1) ...
                         && (strcmpi(obj.FM{ii}.Substrate,SubstrateValue) || strcmpi(SubstrateValue,'All')) ...
                         && (strcmpi(obj.FM{ii}.EnvCond,EnvCondValue) || strcmpi(EnvCondValue,'All')) ...
                         && (strcmpi(obj.FM{ii}.ChipCant,ChipCantValue) || strcmpi(ChipCantValue,'All')) ...
@@ -3004,6 +3014,14 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
         end
         
         
+         function SMFS_initialize_flags(obj)
+             
+             obj.initialize_flags
+             for ii=1:obj.NumForceMaps
+                  obj.FM{ii}.initialize_flags
+             end
+         end
+         
         
         function SMFS_testing_function(obj)
             % Function to quickly loop over all force maps for testing and
