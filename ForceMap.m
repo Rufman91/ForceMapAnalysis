@@ -1888,7 +1888,6 @@ classdef ForceMap < matlab.mixin.Copyable
                          % Minimise Least-Squares with estimated start values:
 
                          options = optimset('FunValCheck','off');
-                         phase = mod(-(obj.SegFrequency{j}^(-1))/ZeroCrossTimeF{i,j}(1),(obj.SegFrequency{j}^(-1)));
                          x0 = [AmplitudeF,PeriodF,0];
                          lb = [0,-Inf,-pi];
                          ub = [Inf,Inf,pi];
