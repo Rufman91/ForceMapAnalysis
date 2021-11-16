@@ -220,7 +220,7 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle
             end
         end
         
-        function snap_line_segments_to_local_perpendicular_maximum(obj,SampleDistanceMeters,WidthLocalWindowMeters,SmoothingWindowSize,SmoothingWindowWeighting)
+        function snap_line_segments_to_local_perpendicular_maximum(obj,SampleDistanceMeters,WidthLocalWindowMeters,SmoothingWindowSize,SmoothingWindowWeighting,Indizes)
             % snap_line_segments_to_local_perpendicular_maximum(obj,SampleDistanceMeters,WidthLocalWindowMeters,SmoothingWindowSize,SmoothingWindowWeighting)
             %
             % SampleDistanceMeters ...(def=50e-9) determines the distance
@@ -235,31 +235,45 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle
             %         'flat','linear','gaussian','localregN' with N being a
             %         number between 1 and 9, representing an Nth grade
             %         polynomial fit
+            % Indizes ... Indizes of Segments to be snapped. Snap all if
+            %               empty
             
+            if nargin < 6
+                Indizes = [];
+            end
             if nargin < 5
+                Indizes = [];
                 SmoothingWindowWeighting = 'flat';
             end
             if nargin < 4
-                SmoothingWindowSize = 1;
+                Indizes = [];
+                SmoothingWindowSize = 21;
                 SmoothingWindowWeighting = 'flat';
             end
             if nargin < 3
+                Indizes = [];
                 SampleDistanceMeters = 50*1e-9;
-                SmoothingWindowSize = 1;
+                SmoothingWindowSize = 21;
                 SmoothingWindowWeighting = 'flat';
             end
             if nargin < 2
+                Indizes = [];
                 SampleDistanceMeters = 50*1e-9;
                 WidthLocalWindowMeters = 300*1e-9;
-                SmoothingWindowSize = 1;
+                SmoothingWindowSize = 21;
                 SmoothingWindowWeighting = 'flat';
             end
             
-            for i=length(obj.Segment):-1:1
-                if ~isempty(strfind(obj.Segment(i).Name,'Snapped'))
-                    obj.Segment(i) = [];
+            if isempty(Indizes)
+                for i=1:length(obj.Segment)
+                    if isempty(strfind(obj.Segment(i).Name,'Snapped'))
+                        Indizes(end+1) = i;
+                    end
                 end
             end
+            
+            NumSnaps = length(Indizes);
+            h = waitbar(0,sprintf('Preparing to snap %i Segments',NumSnaps));
             
             Channel = obj.get_channel('Processed');
             if isempty(Channel)
@@ -281,7 +295,7 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle
             % Loop over all Segments and create 'Snapped' segments for all
             % Polylines
             k = 1;
-            for i=1:length(obj.Segment)
+            for i=Indizes
                 if isequal(obj.Segment(i).Type,'polyline') && isempty(strfind(obj.Segment(i).Name,'Snapped'))
                     Snapped(k) = obj.Segment(i);
                     Snapped(k).Name = ['Snapped - ' obj.Segment(i).Name];
@@ -309,6 +323,7 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle
             end
             
             for i=1:length(Snapped)
+                waitbar(i/NumSnaps,h,sprintf('Snapping %s %s',obj.Segment(i).Name,obj.Segment(i).SubSegmentName))
                 SnappedPos = [];
                 SmoothedSnappedPos = [];
                 SnappedToOriginalDistance = [];
@@ -365,37 +380,22 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle
                         FinalSnappedPos(j,:) = ((PCACoeff')\SmoothedPos')' + Means;
                     end
                 end
-                %
-%                 SmoothedSnappedPos = zeros(size(SnappedPos));
-%                 CenterIndex = floor(SmoothingWindowSize/2+1);
-%                 for j=1:size(SnappedPos,1)
-%                     LowerIndex = max(j - (CenterIndex-1),1);
-%                     UpperIndex = min(j + (CenterIndex-1),size(SnappedPos,1));
-%                     if UpperIndex - LowerIndex < length(WeightingVector)
-%                         NormalizingFactor = sum(WeightingVector(CenterIndex - (j-LowerIndex):CenterIndex + (UpperIndex-j)));
-%                     else
-%                         NormalizingFactor = 1;
-%                     end
-%                     SegmentMean = mean(SnappedPos(LowerIndex:UpperIndex,:),1);
-%                     SmoothedSnappedPos(j,:) = sum((SnappedPos(LowerIndex:UpperIndex,:) - SegmentMean).*WeightingVector(CenterIndex - (j-LowerIndex):CenterIndex + (UpperIndex-j))./NormalizingFactor,1);
-%                     FinalSnappedPos(j,:) = SmoothedSnappedPos(j,:) + SegmentMean;
-%                 end
-% 
-%                 SmoothedSnappedPos = zeros(size(SnappedPos));
-%                 
-%                 SegmentMean = mean(SnappedPos,1);
-%                     
-%                 SmoothedSnappedPos(:,1) = conv(SnappedPos(:,1) - SegmentMean(1),WeightingVector,'same');
-%                 SmoothedSnappedPos(:,2) = conv(SnappedPos(:,2) - SegmentMean(2),WeightingVector,'same');
-%                 FinalSnappedPos = SmoothedSnappedPos + SegmentMean;
                 
                 FinalSnappedPos(:,1) = FinalSnappedPos(:,1)./YMult;
                 FinalSnappedPos(:,2) = FinalSnappedPos(:,2)./XMult;
                 Snapped(i).ROIObject.Position = FinalSnappedPos;
             end
             
-            obj.Segment(end+1:end+length(Snapped)) = Snapped;
+            for i=1:length(Snapped)
+                ToReplaceIndex = find(strcmp({Snapped(i).Name},{obj.Segment.Name}) & strcmp({Snapped(i).SubSegmentName},{obj.Segment.SubSegmentName}));
+                if ~isempty(ToReplaceIndex)
+                    obj.Segment(ToReplaceIndex) = Snapped(i);
+                else
+                    obj.Segment(end+1) = Snapped(i);
+                end
+            end
             
+            close(h)
         end
         
         function apply_segmentation_to_other_baseclass(DonorClass,AcceptorClass)
