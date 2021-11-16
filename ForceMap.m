@@ -3862,6 +3862,7 @@ classdef ForceMap < matlab.mixin.Copyable
         
         function show_sine(obj)
             close all
+            DirectoryPath = uigetdir();
             k=1;
             for i=1:obj.NCurves
                 for j=1:obj.NumSegments
@@ -3894,6 +3895,11 @@ classdef ForceMap < matlab.mixin.Copyable
                         %findpeaks(-obj.SineFunctionH)
                         legend({'force','force peak','indentation','indentation peak'},'Location','southoutside')
                         drawnow
+                        
+                        if DirectoryPath~=0
+                           whereToStore=fullfile(DirectoryPath,['fit_curve_' num2str(i) '_segment_' num2str(j) '.svg']);
+                           saveas(gcf, whereToStore);
+                        end
                     end
                         
                 end
