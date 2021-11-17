@@ -34,7 +34,8 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle
         Segment = struct('Name',[],...
                             'Type',[],...
                             'SubSegmentName',[],...
-                            'ROIObject',[])
+                            'ROIObject',[],...
+                            'ProximityMap',[])
         OverlayGroup
     end
     
@@ -495,6 +496,48 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle
             
         end
         
+        function create_proximity_mapping_for_segments(obj,TargetObject)
+            
+            NumSegments = length(obj.Segment);
+            
+            for i=1:NumSegments
+                OriginalSeg = obj.Segment(i);
+                [MatchedSeg,MatchedIndex] = AFMBaseClass.find_matching_segment(OriginalSeg,TargetObject.Segment);
+                if isempty(MatchedIndex)
+                    continue
+                end
+                % Coordinate Transform MatchedSeg
+                for j=1:length(MatchedSeg.ROIObject.Position(:,1))
+                    [MatchedSeg.ROIObject.Position(j,1),MatchedSeg.ROIObject.Position(j,2)] = ...
+                        TargetObject.transform_pixels_to_other_coordinate_basis(obj,...
+                        MatchedSeg.ROIObject.Position(j,1),MatchedSeg.ROIObject.Position(j,2));
+                end
+                [Seg1,Seg2] = AFMBaseClass.proximity_map_two_segmentation_elements(OriginalSeg,MatchedSeg);
+                Seg1.ProximityMap.Names = {obj.Name TargetObject.Name};
+                Seg2.ProximityMap.Names = {obj.Name TargetObject.Name};
+                if isstruct(obj.Segment(i).ProximityMap)
+                    obj.Segment(i).ProximityMap(end+1) = Seg1.ProximityMap;
+                else
+                    obj.Segment(i).ProximityMap = Seg1.ProximityMap;
+                end
+                
+                if isstruct(TargetObject.Segment(i).ProximityMap)
+                    TargetObject.Segment(MatchedIndex).ProximityMap(end+1) = Seg2.ProximityMap;
+                else
+                    TargetObject.Segment(MatchedIndex).ProximityMap = Seg2.ProximityMap;
+                end
+            end
+            
+        end
+        
+        function reset_proximity_mapping(obj)
+            
+            for i=1:length(obj.Segment)
+                obj.Segment(i).ProximityMap = [];
+            end
+            
+        end
+        
     end
     methods (Static)
         % Static main methods
@@ -598,6 +641,67 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle
                 LocalDirectionVector(i,:) = SumVector/norm(SumVector);
             end
             
+        end
+        
+        function [Seg1,Seg2] = proximity_map_two_segmentation_elements(Seg1,Seg2)
+            
+            Seg1.ProximityMap = [];
+            Seg2.ProximityMap = [];
+            
+            NumPointsSeg1 = length(Seg1.ROIObject.Position(:,1));
+            NumPointsSeg2 = length(Seg2.ROIObject.Position(:,1));
+            IndexListSeg1 = (1:NumPointsSeg1)';
+            IndexListSeg2 = (1:NumPointsSeg2)';
+            
+            NumMappings = min(NumPointsSeg1,NumPointsSeg2);
+            IndexPairs = zeros(NumMappings,2);
+            
+            k = 1;
+            while NumPointsSeg1 > 0 && NumPointsSeg2 > 0
+                SearchedPoints1 = Seg1.ROIObject.Position(IndexListSeg1,:);
+                SearchedPoints2 = Seg2.ROIObject.Position(IndexListSeg2,:);
+                DistanceMatrix = zeros(NumPointsSeg1,NumPointsSeg2);
+                for i=1:NumPointsSeg1
+                    for j=1:NumPointsSeg2
+                        DistanceMatrix(i,j) = norm(SearchedPoints1(i,:) - SearchedPoints2(j,:));
+                    end
+                end
+                [~,LinIdx] = min(DistanceMatrix,[],'all','linear');
+                [row,col] = ind2sub(size(DistanceMatrix),LinIdx);
+                IndexPairs(k,:) = [IndexListSeg1(row) ; IndexListSeg2(col)];
+                IndexListSeg1(row) = [];
+                IndexListSeg2(col) = [];
+                k= k + 1;
+                NumPointsSeg1 = NumPointsSeg1 - 1;
+                NumPointsSeg2 = NumPointsSeg2 - 1;
+%                 % Debug
+%                 plot(SearchedPoints1(:,1),SearchedPoints1(:,2),'bO',SearchedPoints2(:,1),SearchedPoints2(:,2),'rO',...
+%                     SearchedPoints1(row,1),SearchedPoints1(row,2),'bX',SearchedPoints2(col,1),SearchedPoints2(col,2),'rX')
+%                 drawnow
+            end
+            
+            Seg1.ProximityMap.IndexPairs = IndexPairs;
+            Seg2.ProximityMap.IndexPairs = IndexPairs;
+            
+        end
+        
+        function [OutSegment,Index] = find_matching_segment(SegmentElement,SegmentStruct)
+            
+            TargetName = SegmentElement.Name;
+            TargetSubName = SegmentElement.SubSegmentName;
+            
+            NameList = {SegmentStruct.Name};
+            SubNameList = {SegmentStruct.SubSegmentName};
+            
+            Index = find(strcmp({TargetName},NameList) & strcmp(TargetSubName,SubNameList));
+            
+            if isempty(Index)
+                Index = [];
+                OutSegment = [];
+                return
+            end
+            
+            OutSegment = SegmentStruct(Index);
         end
         
     end

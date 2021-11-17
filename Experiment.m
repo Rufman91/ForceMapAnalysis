@@ -1343,29 +1343,84 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             end
             
         end
-            
-        function Results = results_readout(obj)
-            % result_readout(obj)
+        
+        function create_proximity_mapping_for_overlay_group_segments(obj,GroupMemberInstance,AllToOneBool)
+            % create_proximity_mapping_for_overlay_group_segments(obj,GroupMemberInstance,AllToOneBool)
             %
-            % Interactive function to specify how and which results to
-            % return
-            %
-            % Under Development!!!!!
+            % Takes an Overlay Group an tries to map Segments with same
+            % Names and SubSectionNames onto each other. Mapping is done by
+            % least distance of polyline vertices to the vertices of the
+            % transformed segments. The mapping is injective but not
+            % bijective.
             
-            if obj.FMFlag.Grouping == 0
-                obj.grouping_force_map;
+            if ~GroupMemberInstance.OverlayGroup.hasOverlayGroup
+                warning('The class instance you input has no overlay group')
+                return
             end
             
-            N = length(obj.GroupFM);
-            
-            for i=1:N
-                Index = regexp(obj.GroupFM(i).Name,'\w');
-                FieldName = obj.GroupFM(i).Name(Index);
-                Results.(FieldName) = [];
-                
-                clear Index
+            if nargin < 3
+                AllToOneBool = 0;
             end
             
+            h = waitbar(0,'Proximity Mapping');
+            
+            if AllToOneBool
+                for i=1:GroupMemberInstance.OverlayGroup.Size
+                    waitbar(i/(GroupMemberInstance.OverlayGroup.Size - 1),h,sprintf('Mapping Group Member %i to %i',i,1));
+                    if strcmp(GroupMemberInstance.OverlayGroup.Names{i},GroupMemberInstance.Name)
+                        continue
+                    end
+                    Index = find(strcmp({GroupMemberInstance.OverlayGroup.Names{i}},obj.ForceMapNames));
+                    if ~isempty(Index)
+                        GroupMemberInstance.create_proximity_mapping_for_segments(obj.FM{Index})
+                    end
+                    Index = find(strcmp({GroupMemberInstance.OverlayGroup.Names{i}},obj.AFMImageNames));
+                    if ~isempty(Index)
+                        GroupMemberInstance.create_proximity_mapping_for_segments(obj.I{Index})
+                    end
+                end
+            else
+                for i=1:GroupMemberInstance.OverlayGroup.Size - 1
+                    waitbar(i/(GroupMemberInstance.OverlayGroup.Size - 1),h,sprintf('Mapping Group Member %i to %i',i+1,i));
+                    Index1 = find(strcmp({GroupMemberInstance.OverlayGroup.Names{i}},obj.ForceMapNames));
+                    Index2 = find(strcmp({GroupMemberInstance.OverlayGroup.Names{i+1}},obj.ForceMapNames));
+                    if ~isempty(Index1)
+                        ObjOne = obj.FM{Index1};
+                    end
+                    if ~isempty(Index2)
+                        ObjTwo = obj.FM{Index2};
+                    end
+                    Index1 = find(strcmp({GroupMemberInstance.OverlayGroup.Names{i}},obj.AFMImageNames));
+                    Index2 = find(strcmp({GroupMemberInstance.OverlayGroup.Names{i+1}},obj.AFMImageNames));
+                    if ~isempty(Index1)
+                        ObjOne = obj.I{Index1};
+                    end
+                    if ~isempty(Index2)
+                        ObjTwo = obj.I{Index2};
+                    end
+                    ObjOne.create_proximity_mapping_for_segments(ObjTwo)
+                end
+            end
+            close(h)
+        end
+        
+        function reset_proximity_mapping_for_overlay_group_segments(obj,GroupMemberInstance)
+            
+            if ~GroupMemberInstance.OverlayGroup.hasOverlayGroup
+                warning('The class instance you input has no overlay group')
+                return
+            end
+            
+            for i=1:GroupMemberInstance.OverlayGroup.Size
+                Index = find(strcmp({GroupMemberInstance.OverlayGroup.Names{i}},obj.ForceMapNames));
+                if ~isempty(Index)
+                    obj.FM{Index}.reset_proximity_mapping;
+                end
+                Index = find(strcmp({GroupMemberInstance.OverlayGroup.Names{i}},obj.AFMImageNames));
+                if ~isempty(Index)
+                    obj.I{Index}.reset_proximity_mapping;
+                end
+            end
         end
         
         function create_moving_dot_gif_emod_vs_surfpot(obj,NFrames,NStartFrames,NEndFrames)
