@@ -26,7 +26,6 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
         Date            % date when the force map was detected
         Time            % time when the force map was detected
         FileVersion     % Version of jpk-force-map file
-        Folder          % location of the .csv files of the force map
         DataStoreFolder % 
         RawDataFilePath
         OpenZipFile
@@ -140,6 +139,9 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
         FibrilEModOliverPharr
         FibrilEModHertz
         HertzFit        % HertzFit model generated in the calculate_e_mod_hertz method
+        HertzFitType
+        HertzFitCoeffNames
+        HertzFitValues
         SnapIn
         MaxAdhesionForce
         AdhesionEnergy
@@ -1168,7 +1170,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             obj.CPFlag.HardSurface = 1;
         end
         
-        function [E,HertzFit] = calculate_e_mod_hertz(obj,CPType,TipShape,curve_percent,AllowXShift,CorrectSensitivity,UseTipData,UseTopology,TipObject)
+        function E = calculate_e_mod_hertz(obj,CPType,TipShape,curve_percent,AllowXShift,CorrectSensitivity,UseTipData,UseTopology,TipObject)
             % [E,HertzFit] = calculate_e_mod_hertz(obj,CPType,TipShape,curve_percent)
             %
             % calculate the E modulus of the chosen curves using the CP
@@ -1317,7 +1319,13 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                             % obj.IndentationDepth(i) = obj.IndentationDepth(i) + Hertzfit.b;
                         end
                         warning('on','all');
-                        obj.HertzFit{iRange(i)} = Hertzfit{i};
+                        %                         obj.HertzFit{iRange(i)} = Hertzfit{i};
+                        try
+                            obj.HertzFitType = formula(Hertzfit{i});
+                            obj.HertzFitCoeffNames = coeffnames(Hertzfit{i});
+                        catch
+                        end
+                        obj.HertzFitValues{iRange(i)} = coeffvalues(Hertzfit{i});
                     catch
                         obj.SelectedCurves(iRange(i)) = 0;
                         warning('on','all');
@@ -1326,7 +1334,6 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 iRange(1:BatchSize) = [];
             end
             E = obj.EModHertz;
-            HertzFit = obj.HertzFit;
             if isequal(lower(CPType),'cnn')
                 obj.EModHertz_CNN = E;
             elseif isequal(lower(CPType),'old')
@@ -4576,6 +4583,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
         
         function unpack_jpk_force_map(obj,MapFullFile,DataFolder)
             
+            obj.Folder = [DataFolder filesep regexprep(obj.Name,'[.]','')];
+            
             if obj.BigDataFlag
                 if obj.PythonLoaderFlag
                     TempFolderName = 'DataStore';
@@ -5395,6 +5404,25 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             
         end
         
+        function convert_hertzfit_property_to_fractioned_properties(obj)
+            
+            for i=1:length(obj.HertzFit)
+                try
+                    Formula = formula(obj.HertzFit{i});
+                    Coeffnames = coeffnames(obj.HertzFit{i});
+                    Coeffs = coeffvalues(obj.HertzFit{i});
+                    
+                    obj.HertzFitType = Formula;
+                    obj.HertzFitCoeffNames = Coeffnames;
+                    obj.HertzFitValues{i} = Coeffs;
+                catch
+                end
+            end
+            
+            obj.HertzFit = [];
+            
+        end
+        
     end
     
     methods
@@ -5856,7 +5884,33 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 X = AppX - obj.CP(k,1);
                 X(X<0) = [];
                 HertzModelX = 0:range(X)/100:2*max(X);
-                HertzModelY = feval(obj.HertzFit{k},HertzModelX);
+                
+                try
+                    FitModel = obj.HertzFit{m};
+                catch
+                    ft = fittype(obj.HertzFitType);
+                    if length(obj.HertzFitValues{k}) == 1
+                        FitModel = cfit(ft,obj.HertzFitValues{k}(1));
+                    elseif length(obj.HertzFitValues{k}) == 2
+                        FitModel = cfit(ft,obj.HertzFitValues{k}(1),obj.HertzFitValues{k}(2));
+                    elseif length(obj.HertzFitValues{k}) == 3
+                        FitModel = cfit(ft,obj.HertzFitValues{k}(1),obj.HertzFitValues{k}(2),...
+                            obj.HertzFitValues{k}(3));
+                    elseif length(obj.HertzFitValues{k}) == 4
+                        FitModel = cfit(ft,obj.HertzFitValues{k}(1),obj.HertzFitValues{k}(2),...
+                            obj.HertzFitValues{k}(3),obj.HertzFitValues{k}(4));
+                    elseif length(obj.HertzFitValues{k}) == 5
+                        FitModel = cfit(ft,obj.HertzFitValues{k}(1),obj.HertzFitValues{k}(2),...
+                            obj.HertzFitValues{k}(3),obj.HertzFitValues{k}(4),...
+                            obj.HertzFitValues{k}(5));
+                    elseif length(obj.HertzFitValues{k}) == 6
+                        FitModel = cfit(ft,obj.HertzFitValues{k}(1),obj.HertzFitValues{k}(2),...
+                            obj.HertzFitValues{k}(3),obj.HertzFitValues{k}(4),...
+                            obj.HertzFitValues{k}(5),obj.HertzFitValues{k}(6));
+                    end
+                end
+                
+                HertzModelY = feval(FitModel,HertzModelX);
                 
                 
                 plot(HertzModelX(HertzModelY<=max(AppY - obj.CP(k,2))),HertzModelY(HertzModelY<=max(AppY - obj.CP(k,2))),...
@@ -6049,8 +6103,31 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 X = AppX - obj.CP(m,1);
                 X(X<0) = [];
                 HertzModelX = 0:range(X)/100:2*max(X);
-                FitModel = obj.HertzFit{m};
-                FitModel.b = 0;
+                try
+                    FitModel = obj.HertzFit{m};
+                catch
+                    ft = fittype(obj.HertzFitType);
+                    if length(obj.HertzFitValues{m}) == 1
+                        FitModel = cfit(ft,obj.HertzFitValues{m}(1));
+                    elseif length(obj.HertzFitValues{m}) == 2
+                        FitModel = cfit(ft,obj.HertzFitValues{m}(1),obj.HertzFitValues{m}(2));
+                    elseif length(obj.HertzFitValues{m}) == 3
+                        FitModel = cfit(ft,obj.HertzFitValues{m}(1),obj.HertzFitValues{m}(2),...
+                            obj.HertzFitValues{m}(3));
+                    elseif length(obj.HertzFitValues{m}) == 4
+                        FitModel = cfit(ft,obj.HertzFitValues{m}(1),obj.HertzFitValues{m}(2),...
+                            obj.HertzFitValues{m}(3),obj.HertzFitValues{m}(4));
+                    elseif length(obj.HertzFitValues{m}) == 5
+                        FitModel = cfit(ft,obj.HertzFitValues{m}(1),obj.HertzFitValues{m}(2),...
+                            obj.HertzFitValues{m}(3),obj.HertzFitValues{m}(4),...
+                            obj.HertzFitValues{m}(5));
+                    elseif length(obj.HertzFitValues{m}) == 6
+                        FitModel = cfit(ft,obj.HertzFitValues{m}(1),obj.HertzFitValues{m}(2),...
+                            obj.HertzFitValues{m}(3),obj.HertzFitValues{m}(4),...
+                            obj.HertzFitValues{m}(5),obj.HertzFitValues{m}(6));
+                    end
+                end
+                
                 HertzModelY = feval(FitModel,HertzModelX);
                 
                 plot(HertzModelX(HertzModelY<=max(AppY - obj.CP(m,2))),HertzModelY(HertzModelY<=max(AppY - obj.CP(m,2))),...

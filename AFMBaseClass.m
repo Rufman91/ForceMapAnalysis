@@ -4,6 +4,7 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle
     
     properties
         Name
+        Folder
         ID
         HostOS          % Operating System
         HostName        % Name of hosting system
@@ -45,6 +46,57 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle
         function obj = AFMBaseClass()
             
             obj.OverlayGroup.hasOverlayGroup = false;
+        end
+        
+        function save_afm_class(obj,DataFolder)
+            
+            current = what;
+            
+            if nargin > 1
+                obj.Folder = [DataFolder regexprep(obj.Name,'[.]','')];
+            end
+            
+            warning('off')
+            mkdir(obj.Folder);
+            warning('on')
+            cd(obj.Folder);
+            PropertyStruct = obj.get();
+            PropertyNames = fieldnames(PropertyStruct);
+            
+            for i=1:length(PropertyNames)
+                TempProp = getfield(PropertyStruct,PropertyNames{i});
+                save([PropertyNames{i} '.mat'],'TempProp','-v7');
+            end
+            
+            cd(current.path)
+        end
+        
+        function load_afm_class_properties(obj,Folder)
+            
+            
+            current = what;
+            
+            cd(Folder);
+            PropertyStruct = obj.get();
+            PropertyNames = fieldnames(PropertyStruct);
+            
+            for i=1:length(PropertyNames)
+                LoadStruct = load([PropertyNames{i} '.mat']);
+                set(obj,PropertyNames{i},LoadStruct.TempProp);
+            end
+            
+            cd(current.path)
+            
+        end
+        
+        function clear_all_properties(obj)
+            
+            PropertyStruct = obj.get();
+            PropertyNames = fieldnames(PropertyStruct);
+            
+            for i=1:length(PropertyNames)
+                set(obj,PropertyNames{i},[])
+            end
         end
         
         function construct_list_to_map_relations(obj)

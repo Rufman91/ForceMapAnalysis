@@ -18,6 +18,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                             % 'all-data-to-memory'-mode
         KeepPythonFilesOpen % Decides whether to preload all PythonLoader Files into memory
                             % all the time
+        FractionedSaveFiles = true
         CurrentLogFile
         FM                  % Cellarray containing Force/QI Maps
         NumForceMaps
@@ -334,7 +335,32 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 TempRefZipFiles{i} = obj.RefFM{i}.OpenZipFile;
                 obj.RefFM{i}.OpenZipFile = [];
             end
-            save(savename,'obj','-v7.3')
+            if isempty(obj.FractionedSaveFiles) || ~obj.FractionedSaveFiles
+                save(savename,'obj','-v7.3')
+            elseif obj.FractionedSaveFiles
+                for i=1:obj.NumAFMImages
+                    obj.I{i}.save_afm_class(obj.ExperimentFolder);
+                    obj.AFMImageFolders{i} = obj.I{i}.Folder;
+                    obj.I{i}.clear_all_properties;
+                end
+                for i=1:obj.NumCantileverTips
+                    obj.CantileverTips{i}.save_afm_class(obj.ExperimentFolder);
+                    obj.CantileverTipFolders{i} = obj.CantileverTips{i}.Folder;
+                    obj.CantileverTips{i}.clear_all_properties;
+                end
+                for i=1:obj.NumForceMaps
+                    obj.FM{i}.save_afm_class(obj.ExperimentFolder);
+                    obj.ForceMapFolders{i} = obj.FM{i}.Folder;
+                    obj.FM{i}.clear_all_properties;
+                end
+                for i=1:obj.NumReferenceForceMaps
+                    obj.RefFM{i}.save_afm_class(obj.ExperimentFolder);
+                    obj.ReferenceForceMapFolders{i} = obj.RefFM{i}.Folder;
+                    obj.RefFM{i}.clear_all_properties;
+                end
+                save(savename,'obj','-v7')
+                obj.load_fractioned_afm_classes
+            end
             cd(current.path)
             savemsg = sprintf('Changes to Experiment %s saved to %s',obj.ExperimentName,obj.ExperimentFolder);
             for i=1:obj.NumForceMaps
@@ -344,6 +370,23 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 obj.RefFM{i}.OpenZipFile = TempRefZipFiles{i};
             end
             disp(savemsg);
+        end
+        
+        function load_fractioned_afm_classes(obj)
+            
+            for i=1:obj.NumAFMImages
+                obj.I{i}.load_afm_class_properties(obj.AFMImageFolders{i});
+            end
+            for i=1:obj.NumCantileverTips
+                obj.CantileverTips{i}.load_afm_class_properties(obj.CantileverTipFolders{i});
+            end
+            for i=1:obj.NumForceMaps
+                obj.FM{i}.load_afm_class_properties(obj.ForceMapFolders{i});
+            end
+            for i=1:obj.NumReferenceForceMaps
+                obj.RefFM{i}.load_afm_class_properties(obj.ReferenceForceMapFolders{i});
+            end
+            
         end
         
         function ExperimentCopy = copy_experiment(obj)
@@ -425,6 +468,59 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             end
             
         end
+        
+        function update_absolute_paths(E,Path)
+            
+            for i=1:E.NumForceMaps
+                if ~isempty(E.FM{i})
+                    E.FM{i}.check_for_new_host();
+                    if E.BigDataFlag && ~E.PythonLoaderFlag
+                        OldDataStore = E.FM{i}.DataStoreFolder;
+                        Split = strsplit(OldDataStore,filesep);
+                        E.FM{i}.DataStoreFolder = fullfile(Path,Split{end-1});
+                    elseif E.BigDataFlag && E.PythonLoaderFlag
+                        OldDataStore = E.FM{i}.DataStoreFolder;
+                        Split = strsplit(OldDataStore,filesep);
+                        E.FM{i}.DataStoreFolder = fullfile(Path,Split{end});
+                        OldFilePath = split(E.FM{i}.RawDataFilePath,filesep);
+                        E.FM{i}.RawDataFilePath = {fullfile(E.FM{i}.DataStoreFolder,OldFilePath{end})};
+                    end
+                    E.FM{i}.Folder = E.switch_old_with_new_toplvl_path(E.FM{i}.Folder,E.ExperimentFolder,Path);
+                    E.ForceMapFolders{i} = E.switch_old_with_new_toplvl_path(E.ForceMapFolders{i},E.ExperimentFolder,Path);
+                end
+            end
+            for i=1:E.NumAFMImages
+                if ~isempty(E.I{i})
+                    E.I{i}.check_for_new_host();
+                    E.I{i}.Folder = E.switch_old_with_new_toplvl_path(E.I{i}.Folder,E.ExperimentFolder,Path);
+                    E.AFMImageFolders{i} = E.switch_old_with_new_toplvl_path(E.AFMImageFolders{i},E.ExperimentFolder,Path);
+                end
+            end
+            for i=1:E.NumReferenceForceMaps
+                if ~isempty(E.RefFM{i})
+                    E.RefFM{i}.check_for_new_host();
+                    if E.BigDataFlag && ~E.PythonLoaderFlag
+                        E.RefFM{i}.DataStoreFolder = fullfile(Path,Split{end-1});
+                    OldDataStore = E.RefFM{i}.DataStoreFolder;
+                    Split = strsplit(OldDataStore,filesep);
+                    elseif E.BigDataFlag && E.PythonLoaderFlag
+                        E.RefFM{i}.DataStoreFolder = fullfile(Path,Split{end});
+                        OldFilePath = split(E.RefFM{i}.RawDataFilePath,filesep);
+                        E.RefFM{i}.RawDataFilePath = fullfile(E.RefFM{i}.DataStoreFolder,OldFilePath{end});
+                    end
+                    E.RefFM{i}.Folder = E.switch_old_with_new_toplvl_path(E.RefFM{i}.Folder,E.ExperimentFolder,Path);
+                    E.ReferenceForceMapFolders{i} = E.switch_old_with_new_toplvl_path(E.ReferenceForceMapFolders{i},E.ExperimentFolder,Path);
+                end
+            end
+            for i=1:E.NumCantileverTips
+                if ~isempty(E.CantileverTips{i})
+                    E.CantileverTips{i}.check_for_new_host();
+                    E.CantileverTips{i}.Folder = E.switch_old_with_new_toplvl_path(E.CantileverTips{i}.Folder,E.ExperimentFolder,Path);
+                    E.CantileverTipFolders{i} = E.switch_old_with_new_toplvl_path(E.CantileverTipFolders{i},E.ExperimentFolder,Path);
+                end
+            end
+            
+        end
     end
     methods(Static)
         % Static methods related with Experiment-file handling
@@ -448,6 +544,11 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             E = obj;
             clear obj
             
+            if isempty(E.FractionedSaveFiles) || ~E.FractionedSaveFiles
+            elseif E.FractionedSaveFiles
+                E.load_fractioned_afm_classes
+            end
+            
             if isempty(E.PythonLoaderFlag)
                 E.PythonLoaderFlag = false;
             end
@@ -459,51 +560,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             end
             
             E.check_for_new_host();
-            FMFolder = fullfile(Path,filesep,'ForceData');
-            for i=1:E.NumForceMaps
-                if ~isempty(E.FM{i})
-                    E.FM{i}.check_for_new_host();
-                    if E.BigDataFlag && ~E.PythonLoaderFlag
-                        OldDataStore = E.FM{i}.DataStoreFolder;
-                        Split = strsplit(OldDataStore,filesep);
-                        E.FM{i}.DataStoreFolder = fullfile(Path,Split{end-1});
-                    elseif E.BigDataFlag && E.PythonLoaderFlag
-                        OldDataStore = E.FM{i}.DataStoreFolder;
-                        Split = strsplit(OldDataStore,filesep);
-                        E.FM{i}.DataStoreFolder = fullfile(Path,Split{end});
-                        OldFilePath = split(E.FM{i}.RawDataFilePath,filesep);
-                        E.FM{i}.RawDataFilePath = {fullfile(E.FM{i}.DataStoreFolder,OldFilePath{end})};
-                    end
-                    E.FM{i}.Folder = FMFolder;
-                    E.ForceMapFolders{i} = FMFolder;
-                end
-            end
-            for i=1:E.NumAFMImages
-                if ~isempty(E.I{i})
-                    E.I{i}.check_for_new_host();
-                end
-            end
-            for i=1:E.NumReferenceForceMaps
-                if ~isempty(E.RefFM{i})
-                    E.RefFM{i}.check_for_new_host();
-                    if E.BigDataFlag && ~E.PythonLoaderFlag
-                        E.RefFM{i}.DataStoreFolder = fullfile(Path,Split{end-1});
-                    OldDataStore = E.RefFM{i}.DataStoreFolder;
-                    Split = strsplit(OldDataStore,filesep);
-                    elseif E.BigDataFlag && E.PythonLoaderFlag
-                        E.RefFM{i}.DataStoreFolder = fullfile(Path,Split{end});
-                        OldFilePath = split(E.RefFM{i}.RawDataFilePath,filesep);
-                        E.RefFM{i}.RawDataFilePath = fullfile(E.RefFM{i}.DataStoreFolder,OldFilePath{end});
-                    end
-                    E.RefFM{i}.Folder = FMFolder;
-                    E.ForceMapFolders{i} = FMFolder;
-                end
-            end
-            for i=1:E.NumCantileverTips
-                if ~isempty(E.CantileverTips{i})
-                    E.CantileverTips{i}.check_for_new_host();
-                end
-            end
+            E.update_absolute_paths(Path);
             
             if E.PythonLoaderFlag
                 if E.KeepPythonFilesOpen
@@ -6005,6 +6062,12 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             end
             
             uiwait(h.f)
+        end
+        
+        function NewPath = switch_old_with_new_toplvl_path(OldPath,OldToplvl,NewToplvl)
+            
+            NewPath = replace(OldPath,OldToplvl,NewToplvl);
+            
         end
         
     end
