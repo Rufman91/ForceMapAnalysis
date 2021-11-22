@@ -18,7 +18,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                             % 'all-data-to-memory'-mode
         KeepPythonFilesOpen % Decides whether to preload all PythonLoader Files into memory
                             % all the time
-        FractionedSaveFiles = true
+        FractionedSaveFiles = false
         CurrentLogFile
         FM                  % Cellarray containing Force/QI Maps
         NumForceMaps
@@ -99,6 +99,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             Temp2 = load('CP_CNN_Final.mat');
             obj.CP_CNN = Temp2.CNN;
             
+            obj.FractionedSaveFiles = true;
             obj.save_experiment();
         end
         
