@@ -103,8 +103,6 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
         DeltaE = {}     %
         YDropPred       % Contains the Dropoutpredictions for every curve in the forcemap
         CP_Old          % contact point estimation from old script 'A_nIAFM_analysis_main'
-        LoadOld         % comes from same script as CP_old
-        UnloadOld       % comes from same script as CP_old
         Man_CP          % manually chosen contact point
         CP_HardSurface  % Detract cantilever deflection for CP estimation
         CPFlag          % Struct containing booleans to indicate if a certain CP-type has been estimated
@@ -1043,7 +1041,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                     unload(end-(j-1),1) = HHRet(j);
                     unload(j,2) = Ret(j);
                 end
-                [obj.LoadOld{i},obj.UnloadOld{i},Position,vDef] = ContactPoint_sort(load,unload);
+                [LoadOld{i},UnloadOld{i},Position,vDef] = ContactPoint_sort(load,unload);
                 obj.CP(i,2) = App(Position);
                 obj.CP(i,1) = HHApp(Position);
                 obj.CP_Old(i,1) =obj.CP(i,1);

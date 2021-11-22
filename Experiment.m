@@ -6067,6 +6067,11 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
         
         function NewPath = switch_old_with_new_toplvl_path(OldPath,OldToplvl,NewToplvl)
             
+            if isempty(OldPath)
+                NewPath = OldPath;
+                return
+            end
+            
             NewPath = replace(OldPath,OldToplvl,NewToplvl);
             
         end
