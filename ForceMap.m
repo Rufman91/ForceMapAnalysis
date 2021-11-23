@@ -269,7 +269,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             
             try
                 obj.read_jpk_images_from_files
-            catch
+            catch ME
+                warning(['Could not read standard Image Channels from file ' MapFullFile])
             end
             
             if ~obj.BigDataFlag
@@ -285,8 +286,12 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             obj.FibMask = logical(zeros(obj.NumPixelsX,obj.NumPixelsY));
             
             obj.construct_list_to_map_relations
-            obj.create_pixel_difference_channel
-            obj.set_channel_positions(obj.OriginX,obj.OriginY,obj.ScanAngle);
+            try
+                obj.create_pixel_difference_channel
+                obj.set_channel_positions(obj.OriginX,obj.OriginY,obj.ScanAngle);
+            catch
+                warning(['Could not create Pixel Difference Channel for ' MapFullFile])
+            end
             
             obj.initialize_flags();
             if ~obj.KeepPythonFilesOpen && obj.PythonLoaderFlag && obj.BigDataFlag
@@ -4581,8 +4586,6 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
         
         function unpack_jpk_force_map(obj,MapFullFile,DataFolder)
             
-            obj.Folder = [DataFolder filesep regexprep(obj.Name,'[.]','')];
-            
             if obj.BigDataFlag
                 if obj.PythonLoaderFlag
                     TempFolderName = 'DataStore';
@@ -4668,6 +4671,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             obj.Date=strrep(obj.Date,'.','-'); % Remove dots in obj.Date
             obj.Time=strrep(obj.Time,'.','-'); % Remove dots in obj.Time
             
+            obj.Folder = [DataFolder replace(obj.Name,'.','')];
             obj.DataStoreFolder = TempFolder;
             
         end

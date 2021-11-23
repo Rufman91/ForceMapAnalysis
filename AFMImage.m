@@ -77,6 +77,7 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             end
             if nargin == 1
                 TempID = 'AFMImage detached from Experiment-class 1';
+                DataFolder = 'ThisNeedsNoFolder';
             end
             
             obj. CMap = obj.define_afm_color_map(0);
@@ -86,7 +87,7 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             obj.Name = obj.parse_file_name(ImageFullFile);
             obj.ID = TempID;
             
-            obj.Folder = [DataFolder filesep regexprep(obj.Name,'[.]','')];
+            obj.Folder = [DataFolder replace(obj.Name,'.','')];
             
             % get OS and use appropriate fitting system command
             obj.check_for_new_host
@@ -895,7 +896,9 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             KernelLambda = 5000;
             KernelSigma = 1;
             GPNoise = 0;
+            warning('off')
             RectMaxIdx = round(predictGP_mean(1:NumProfiles,1:NumProfiles,KernelSigma,KernelLambda,MaxIdx,GPNoise));
+            warning('on')
             for i=1:NumProfiles
                 LineFit = polyfit(SortedIndex(i,RectMaxIdx(i)+round(.25*(NumPoints-RectMaxIdx(i))):end),...
                     Sorted(i,RectMaxIdx(i)+round(.25*(NumPoints-RectMaxIdx(i))):end),1);
