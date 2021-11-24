@@ -406,7 +406,7 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 Channel1.Image = imresize(Channel1.Image,ScaleMultiplier);
                 Channel1.NumPixelsX = size(Channel1.Image,1);
                 Channel1.NumPixelsY = size(Channel1.Image,2);
-            elseif SizePerPixel1 > SizePerPixel2
+            elseif SizePerPixel1 < SizePerPixel2
                 ScaleMultiplier = SizePerPixel2/SizePerPixel1;
                 Channel2.Image = imresize(Channel2.Image,ScaleMultiplier);
                 Channel2.NumPixelsX = size(Channel2.Image,1);
@@ -552,22 +552,22 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
         
         function [Overlay1,Overlay2,OverlayMask1,OverlayMask2] = overlay_two_images(Channel1,Channel2,ShiftPixX,ShiftPixY,Angle,Mask1,Mask2)
             
-            % Resize the bigger Channel (in ScanSize-per-Pixel) so
-            % imagesizes correspond to ScanSizes. Do nothing, if they are
-            % exactly the same
-            SizePerPixel1 = Channel1.ScanSizeX/Channel1.NumPixelsX;
-            SizePerPixel2 = Channel2.ScanSizeX/Channel2.NumPixelsX;
-            if SizePerPixel1 > SizePerPixel2
-                ScaleMultiplier = SizePerPixel1/SizePerPixel2;
-                Channel1.Image = imresize(Channel1.Image,ScaleMultiplier);
-                Channel1.NumPixelsX = size(Channel1.Image,1);
-                Channel1.NumPixelsY = size(Channel1.Image,2);
-            elseif SizePerPixel1 > SizePerPixel2
-                ScaleMultiplier = SizePerPixel2/SizePerPixel1;
-                Channel2.Image = imresize(Channel2.Image,ScaleMultiplier);
-                Channel2.NumPixelsX = size(Channel2.Image,1);
-                Channel2.NumPixelsY = size(Channel2.Image,2);
-            end
+%             % Resize the bigger Channel (in ScanSize-per-Pixel) so
+%             % imagesizes correspond to ScanSizes. Do nothing, if they are
+%             % exactly the same
+%             SizePerPixel1 = Channel1.ScanSizeX/Channel1.NumPixelsX;
+%             SizePerPixel2 = Channel2.ScanSizeX/Channel2.NumPixelsX;
+%             if SizePerPixel1 > SizePerPixel2
+%                 ScaleMultiplier = SizePerPixel1/SizePerPixel2;
+%                 Channel1.Image = imresize(Channel1.Image,ScaleMultiplier);
+%                 Channel1.NumPixelsX = size(Channel1.Image,1);
+%                 Channel1.NumPixelsY = size(Channel1.Image,2);
+%             elseif SizePerPixel1 < SizePerPixel2
+%                 ScaleMultiplier = SizePerPixel2/SizePerPixel1;
+%                 Channel2.Image = imresize(Channel2.Image,ScaleMultiplier);
+%                 Channel2.NumPixelsX = size(Channel2.Image,1);
+%                 Channel2.NumPixelsY = size(Channel2.Image,2);
+%             end
             
             % If no shifts and angles are provided, they will be calculated
             % from the positional data of the Channel-struct (Operation mode

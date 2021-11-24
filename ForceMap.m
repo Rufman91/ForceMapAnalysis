@@ -148,6 +148,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
         ElasticEnergy
         PeakIndentationAngle
         IndentationDepth
+        IndentationDepthHertz
         DZslope
         Stiffness
         IndentationDepthOliverPharr
@@ -1173,14 +1174,14 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             obj.CPFlag.HardSurface = 1;
         end
         
-        function E = calculate_e_mod_hertz(obj,CPType,TipShape,curve_percent,AllowXShift,CorrectSensitivity,UseTipData,UseTopology,TipObject)
-            % [E,HertzFit] = calculate_e_mod_hertz(obj,CPType,TipShape,curve_percent)
+        function E = calculate_e_mod_hertz(obj,CPType,TipShape,LowerCurvePercent,UpperCurvePercent,AllowXShift,CorrectSensitivity,UseTipData,UseTopology,TipObject)
+            % E = calculate_e_mod_hertz(obj,CPType,TipShape,LowerCurvePercent,UpperCurvePercent,AllowXShift,CorrectSensitivity,UseTipData,UseTopology,TipObject)
             %
             % calculate the E modulus of the chosen curves using the CP
             % type chosen in the arguments fitting the upper curve_percent
             % part of the curves
             if ~exist('curve_percent','var') && ischar('curve_percent')
-                curve_percent = 0.75;
+                LowerCurvePercent = 0.75;
             end
             if ~exist('TipShape','var') && ~ischar(TipShape)
                 TipShape = 'parabolic';
@@ -1229,7 +1230,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                     % delete everything below curve_percent of the maximum
                     % force
                     force{i}(1:(length(force{i})-length(tip_h{i}))) = [];
-                    force{i}(force{i}<(1-curve_percent)*max(force{i})) = [];
+                    force{i}(force{i}<(LowerCurvePercent)*max(force{i})) = [];
+                    force{i}(force{i}>(UpperCurvePercent)*max(force{i})) = [];
                     tip_h{i}(1:(length(tip_h{i})-length(force{i}))) = [];
                     RangeF{i} = range(force{i});
                     RangeTH{i} = range(tip_h{i});
@@ -1320,6 +1322,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                             obj.CP_HertzFitted(iRange(i),2) = CP(i,2);
                             % Not sure about this one
                             % obj.IndentationDepth(i) = obj.IndentationDepth(i) + Hertzfit.b;
+                            obj.IndentationDepthHertz(iRange(i)) = Max{i}(1)+Hertzfit{i}.b;
                         end
                         warning('on','all');
                         %                         obj.HertzFit{iRange(i)} = Hertzfit{i};
@@ -1348,6 +1351,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 for j=1:obj.NumPixelsY
                     obj.EModMapHertz(i,j,1) = obj.EModHertz(obj.Map2List(i,j));
                     IndDepMap(i,j) = obj.IndentationDepth(obj.Map2List(i,j));
+                    IndDepMapHertz(i,j) = obj.IndentationDepthHertz(obj.Map2List(i,j));
                 end
             end
             
@@ -1371,6 +1375,14 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             % Write to Channel
             Channel = obj.create_standard_channel(IndDepMap,'Indentation Depth','m');
             [~,Index] = obj.get_channel('Indentation Depth');
+            if isempty(Index)
+                obj.Channel(end+1) = Channel;
+            else
+                obj.Channel(Index) = Channel;
+            end
+            % Write to Channel
+            Channel = obj.create_standard_channel(IndDepMapHertz,'Indentation Depth Hertz','m');
+            [~,Index] = obj.get_channel('Indentation Depth Hertz');
             if isempty(Index)
                 obj.Channel(end+1) = Channel;
             else

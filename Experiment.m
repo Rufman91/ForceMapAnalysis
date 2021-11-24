@@ -856,9 +856,9 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                     end
                     AllowXShift = true;
                     if UseTipInHertzBool
-                        obj.FM{i}.calculate_e_mod_hertz(CPOption,'parabolic',1,AllowXShift,CorrectSens,UseTipInHertzBool,0,obj.CantileverTips{obj.WhichTip(i)});
+                        obj.FM{i}.calculate_e_mod_hertz(CPOption,'parabolic',0,1,AllowXShift,CorrectSens,UseTipInHertzBool,0,obj.CantileverTips{obj.WhichTip(i)});
                     else
-                        obj.FM{i}.calculate_e_mod_hertz(CPOption,'parabolic',1,AllowXShift,CorrectSens,UseTipInHertzBool,0);
+                        obj.FM{i}.calculate_e_mod_hertz(CPOption,'parabolic',0,1,AllowXShift,CorrectSens,UseTipInHertzBool,0);
                     end
                     if i == 1
                         obj.write_to_log_file('Hertzian Tip-Shape','parabolic')
@@ -1110,7 +1110,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                         CorrectSens = false;
                     end
                     AllowXShift = true;
-                    obj.FM{i}.calculate_e_mod_hertz(CPOption,'parabolic',.75,AllowXShift,CorrectSens,UseTipInHertzBool,0,obj.CantileverTips{obj.WhichTip(i)});
+                    obj.FM{i}.calculate_e_mod_hertz(CPOption,'parabolic',0,1,AllowXShift,CorrectSens,UseTipInHertzBool,0,obj.CantileverTips{obj.WhichTip(i)});
                     if i == 1
                         obj.write_to_log_file('Hertzian Tip-Shape','parabolic')
                         obj.write_to_log_file('Hertzian CurvePercent','1')
@@ -2781,7 +2781,27 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                             Class{h.ChildIndex}.OverlayGroup.hasOverlayGroup &&...
                             isequal(Class{h.MainIndex}.OverlayGroup.Names,Class{h.ChildIndex}.OverlayGroup.Names)
                         XDiff = Class{h.MainIndex}.Channel(1).OriginX - Class{h.ChildIndex}.Channel(1).OriginX;
-                        SizePerPixelX = Class{h.ChildIndex}.Channel(1).ScanSizeX./Class{h.ChildIndex}.Channel(1).NumPixelsX;
+                        SizePerPixelX = h.ScanSizeX(h.ChildIndex)./h.NumPixelsX(h.ChildIndex);
+                        XDiff = XDiff/SizePerPixelX;
+                        YDiff = Class{h.MainIndex}.Channel(1).OriginY - Class{h.ChildIndex}.Channel(1).OriginY;
+                        SizePerPixelY = Class{h.ChildIndex}.Channel(1).ScanSizeY./Class{h.ChildIndex}.Channel(1).NumPixelsY;
+                        YDiff = YDiff/SizePerPixelY;
+                        AngleDiff = Class{h.MainIndex}.Channel(1).ScanAngle - Class{h.ChildIndex}.Channel(1).ScanAngle;
+                        AngleDiff = deg2rad(-AngleDiff);
+                        
+                        % Resize the bigger Channel (in ScanSize-per-Pixel) so
+                        % imagesizes correspond to ScanSizes. Do nothing, if they are
+                        % exactly the same
+                        SizePerPixel1 = h.ScanSizeX(h.MainIndex)/h.NumPixelsX(h.MainIndex);
+                        SizePerPixel2 = h.ScanSizeX(h.ChildIndex)/h.NumPixelsX(h.ChildIndex);
+                        if SizePerPixel1 ~= SizePerPixel2
+                            ScaleMultiplier = SizePerPixel1/SizePerPixel2;
+                        else
+                            ScaleMultiplier = 1;
+                        end
+                        
+                        XDiff = Class{h.MainIndex}.Channel(1).OriginX - Class{h.ChildIndex}.Channel(1).OriginX;
+                        SizePerPixelX = h.ScanSizeX(h.ChildIndex)./h.NumPixelsX(h.ChildIndex);
                         XDiff = XDiff/SizePerPixelX;
                         YDiff = Class{h.MainIndex}.Channel(1).OriginY - Class{h.ChildIndex}.Channel(1).OriginY;
                         SizePerPixelY = Class{h.ChildIndex}.Channel(1).ScanSizeY./Class{h.ChildIndex}.Channel(1).NumPixelsY;
@@ -2791,10 +2811,10 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                         
                         InitPos = h.MainLine.Position;
                         
-                        CPos1 = [InitPos(1,1) InitPos(1,2)];
-                        CPos2 = [InitPos(2,1) InitPos(2,2)];
+                        CPos1 = ScaleMultiplier.*[InitPos(1,1) InitPos(1,2)];
+                        CPos2 = ScaleMultiplier.*[InitPos(2,1) InitPos(2,2)];
                         
-                        ImCenter = [Class{h.ChildIndex}.Channel(1).NumPixelsX/2 Class{h.ChildIndex}.Channel(1).NumPixelsY/2];
+                        ImCenter = [h.NumPixelsX(h.ChildIndex)/2 Class{h.ChildIndex}.Channel(1).NumPixelsY/2];
                         
                         TempCP1 = CPos1 - ImCenter;
                         TempCP2 = CPos2 - ImCenter;
@@ -2932,8 +2952,20 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                             Class{h.ChildIndex}.OverlayGroup.hasOverlayGroup &&...
                             isequal(Class{h.MainIndex}.OverlayGroup.Names,Class{h.ChildIndex}.OverlayGroup.Names)
                         
+                        
+                        % Resize the bigger Channel (in ScanSize-per-Pixel) so
+                        % imagesizes correspond to ScanSizes. Do nothing, if they are
+                        % exactly the same
+                        SizePerPixel1 = h.ScanSizeX(h.MainIndex)/h.NumPixelsX(h.MainIndex);
+                        SizePerPixel2 = h.ScanSizeX(h.ChildIndex)/h.NumPixelsX(h.ChildIndex);
+                        if SizePerPixel1 ~= SizePerPixel2
+                            ScaleMultiplier = SizePerPixel1/SizePerPixel2;
+                        else
+                            ScaleMultiplier = 1;
+                        end
+                        
                         XDiff = Class{h.MainIndex}.Channel(1).OriginX - Class{h.ChildIndex}.Channel(1).OriginX;
-                        SizePerPixelX = Class{h.ChildIndex}.Channel(1).ScanSizeX./Class{h.ChildIndex}.Channel(1).NumPixelsX;
+                        SizePerPixelX = h.ScanSizeX(h.ChildIndex)./h.NumPixelsX(h.ChildIndex);
                         XDiff = XDiff/SizePerPixelX;
                         YDiff = Class{h.MainIndex}.Channel(1).OriginY - Class{h.ChildIndex}.Channel(1).OriginY;
                         SizePerPixelY = Class{h.ChildIndex}.Channel(1).ScanSizeY./Class{h.ChildIndex}.Channel(1).NumPixelsY;
@@ -2943,10 +2975,10 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                         
                         InitPos = h.MainLine.Position;
                         
-                        CPos1 = [InitPos(1,1) InitPos(1,2)];
-                        CPos2 = [InitPos(2,1) InitPos(2,2)];
+                        CPos1 = ScaleMultiplier.*[InitPos(1,1) InitPos(1,2)];
+                        CPos2 = ScaleMultiplier.*[InitPos(2,1) InitPos(2,2)];
                         
-                        ImCenter = [Class{h.ChildIndex}.Channel(1).NumPixelsX/2 Class{h.ChildIndex}.Channel(1).NumPixelsY/2];
+                        ImCenter = [h.NumPixelsX(h.ChildIndex)/2 Class{h.ChildIndex}.Channel(1).NumPixelsY/2];
                         
                         TempCP1 = CPos1 - ImCenter;
                         TempCP2 = CPos2 - ImCenter;
