@@ -605,7 +605,7 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle
             OutChannel = InChannel;
             
             if ~TransformToSquare
-                OutChannel.Image = imresize(InChannel.Image,Multiplicator);
+                OutChannel.Image = imresize(InChannel.Image,TargetRes/InChannel.NumPixelsX);
                 OutChannel.NumPixelsX = size(OutChannel.Image,1);
                 OutChannel.NumPixelsY = size(OutChannel.Image,2);
             elseif TransformToSquare

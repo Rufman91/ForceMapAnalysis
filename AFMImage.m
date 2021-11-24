@@ -2035,8 +2035,8 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             
             if nargin < 4
                 BarToImageRatio = 1/5;
-                CurAxHeight = NumPixelsY;
-                CurAxWidth = NumPixelsX;
+                CurAxHeight = NumPixelsX;
+                CurAxWidth = NumPixelsY;
             end
             
             ImageRatio = NumPixelsY/NumPixelsX;
@@ -2060,18 +2060,18 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             BoxDeltaX = Width/4;
             BoxDeltaY = Height*3;
             
-            BackR = rectangle('Position',[Left-BoxDeltaX/2 Bottom-5*BoxDeltaY/6 Width+BoxDeltaX Height+BoxDeltaY].*NumPixelsX);
+            BackR = rectangle('Position',[(Left-BoxDeltaX/2).*NumPixelsY (Bottom-5*BoxDeltaY/6).*NumPixelsX (Width+BoxDeltaX).*NumPixelsY (Height+BoxDeltaY).*NumPixelsX]);
             BackR.FaceColor = 'k';
             BackR.EdgeColor = 'w';
             BackR.LineWidth = 1;
             
-            R = rectangle('Position',[Left Bottom Width Height].*NumPixelsX);
+            R = rectangle('Position',[Left.*NumPixelsY Bottom.*NumPixelsX Width.*NumPixelsY Height.*NumPixelsX]);
             R.FaceColor = 'w';
             R.EdgeColor = 'k';
             R.LineWidth = 2;
             
             FontSize = round(42*FontSizeMult);
-            A = text((Left*1.13)*NumPixelsX,(1.005*Bottom-3*BoxDeltaY/6)*NumPixelsY,sprintf('%i %s',SnapTo,Unit),'HorizontalAlignment','center');
+            A = text((Left*1.13)*NumPixelsY,(1.005*Bottom-3*BoxDeltaY/6)*NumPixelsX,sprintf('%i %s',SnapTo,Unit),'HorizontalAlignment','center');
             A.Color = 'w';
             A.FontSize = FontSize;
             A.FontWeight = 'bold';
