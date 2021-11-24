@@ -2022,9 +2022,9 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             DataShareEndApp=0.65; % 65%
             NFigures=4;
             NLoop=25;
-            ExtendVelocityConvert=num2str(obj.ExtendVelocity*1e9);
-            RetractVelocityConvert=num2str(obj.RetractVelocity*1e9);
-            HoldingTimeConvert=num2str(obj.HoldingTime);            
+            ExtendVelocityConvert=num2str(round(obj.ExtendVelocity*1e9));
+            RetractVelocityConvert=num2str(round(obj.RetractVelocity*1e9));
+            HoldingTimeConvert=num2str(round(obj.HoldingTime));        
             res=[1 1 2560 1440]; % Define the figure resolution
             % Classification criteria
             figname=strcat(obj.Date,{'_'},obj.Time,{'_'},obj.ID,{'_'},obj.Substrate,{'_'},obj.EnvCond,{'_'},obj.Linker,{'_'},obj.Chipbox,{'_'},obj.ChipCant,{'_'},ExtendVelocityConvert,{'_'},RetractVelocityConvert,{'_'},HoldingTimeConvert);
@@ -2209,9 +2209,9 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             NFigures=4;
             NLoop=25;
             res=[1 1 2560 1440]; % Define the figure resolution
-            ExtendVelocityConvert=num2str(obj.ExtendVelocity*1e9);
-            RetractVelocityConvert=num2str(obj.RetractVelocity*1e9);
-            HoldingTimeConvert=num2str(obj.HoldingTime);
+            ExtendVelocityConvert=num2str(round(obj.ExtendVelocity*1e9));
+            RetractVelocityConvert=num2str(round(obj.RetractVelocity*1e9));
+            HoldingTimeConvert=num2str(round(obj.HoldingTime));
             % Classification criteria
             figname=strcat(obj.Date,{'_'},obj.Time,{'_'},obj.ID,{'_'},obj.Substrate,{'_'},obj.EnvCond,{'_'},obj.Linker,{'_'},obj.Chipbox,{'_'},obj.ChipCant,{'_'},ExtendVelocityConvert,{'_'},RetractVelocityConvert,{'_'},HoldingTimeConvert);
             figname=char(figname);
@@ -3527,7 +3527,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             nn=mm; % Variable defines the tiledlayout and thereby the tile arrangement
             ww=1; % Variable used to loop through the flag based while loop
             DiffFc=0; % Variable to correct for differences of the variables between the plot loop and flag based while loop
-            NumFcUncorrupt=nnz(obj.SMFSFlag.Uncorrupt.*obj.SMFSFlag.RetMinCrit.*obj.SMFSFlag.LengthRequisite); % Determine the number of force curves that could been analysed
+            NumFcUncorrupt=nnz(obj.SMFSFlag.Uncorrupt.*obj.SMFSFlag.RetMinCrit); % Determine the number of force curves that could been analysed
             NumFigures=ceil(NumFcUncorrupt/NumFcMax);
             if NumFigures==0     % If condition is fulfilled stop function and return to calling function
                 return
@@ -3850,6 +3850,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 XMax= inf;
                 YMin= -inf;
                 YMax= inf;
+                NumFcMax=25;
             end
             %% Define variables
             RGB1=[0 26 255]./255;  % Blue
@@ -3867,7 +3868,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             DataShareEndApp=0.65; % 65%
             DataShareStartRet=0.07; % 7 %
             DataShareEndRet=0.02; % 2 %
-            NumFcMax=25;
+           % NumFcMax=25;
             % Define variables for the figure name
             ExtendVelocityConvert=num2str(obj.ExtendVelocity*1e9);
             RetractVelocityConvert=num2str(obj.RetractVelocity*1e9);
@@ -3880,7 +3881,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             nn=mm; % Variable defines the tiledlayout and thereby the tile arrangement
             ww=1; % Variable used to loop through the flag based while loop
             DiffFc=0; % Variable to correct for differences of the variables between the plot loop and flag based while loop
-            NumFcUncorrupt=nnz(obj.SMFSFlag.Uncorrupt.*obj.SMFSFlag.RetMinCrit.*obj.SMFSFlag.LengthRequisite); % Determine the number of force curves that could been analysed
+            NumFcUncorrupt=nnz(obj.SMFSFlag.Uncorrupt.*obj.SMFSFlag.RetMinCrit); % Determine the number of force curves that could been analysed
             NumFigures=ceil(NumFcUncorrupt/NumFcMax);
             if NumFigures==0     % If condition is fulfilled stop function and return to calling function
                 return
@@ -4248,8 +4249,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                     % Tile jj
                     qq=jj+25*(kk-1);
                     % Allocate data
-                    xApp=obj.THApp{qq}; % Retraction x-data (m): Vertical tip height data corrected by the determined contact point using the hard surface method
-                    xRet=obj.THRet{qq}; % Retraction x-data (m): Vertical tip height data corrected by the determined contact point using the hard surface method
+                    xApp=obj.HHApp{qq}; 
+                    xRet=obj.HHRet{qq}; 
                     yApp=obj.App{qq};
                     yRet=obj.Ret{qq}; 
                     % Plot tile

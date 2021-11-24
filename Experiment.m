@@ -1426,7 +1426,8 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             close(h);
         end
       
-        function SMFS_visual_selection(obj,XMin,XMax,YMin,YMax)
+        function SMFS_visual_selection(obj,XMin,XMax,YMin,YMax,NumFcMax)
+       
             % 
             if nargin<2
                 XMin= -inf;     % Limit of the X-axis in meters (m)
@@ -1434,11 +1435,6 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 YMin= -inf;     % Limit of the Y-axis in Newtons (N)
                 YMax= 100e-12;      % Limit of the Y-axis in Newtons (N)    
                 NumFcMax = 25;   % Maximum number of force curves per figure
-            elseif nargin<3
-                XMin= -inf;     % Limit of the X-axis in meters (m)
-                XMax= inf;      % Limit of the X-axis in meters (m)
-                YMin= -inf;     % Limit of the Y-axis in Newtons (N)
-                YMax= inf;      % Limit of the Y-axis in Newtons (N)
             end
             
             % Output time and date for the dairy
@@ -1462,8 +1458,8 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                sprintf('Force Map No. %d of %d',ii,obj.NumForceMaps) % Gives current Force Map Position
                % Run the chosen functions
             %   obj.FM{ii}.fc_visual_selection_all(XMin,XMax,YMin,YMax);  
-               obj.FM{ii}.fc_visual_selection_flag_Selected(XMin,XMax,YMin,YMax,NumFcMax);
-            %    obj.FM{ii}.fc_visual_selection_flag_Uncorrupt(obj,XMin,XMax,YMin,YMax,NumFcMax)
+            %   obj.FM{ii}.fc_visual_selection_flag_Selected(XMin,XMax,YMin,YMax,NumFcMax);
+                obj.FM{ii}.fc_visual_selection_flag_Uncorrupt(XMin,XMax,YMin,YMax,NumFcMax)      
                %obj.save_experiment;        % Save immediately after each force curve
             end    
         end
