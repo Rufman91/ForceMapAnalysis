@@ -579,13 +579,13 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle
                 [Seg1,Seg2] = AFMBaseClass.proximity_map_two_segmentation_elements(OriginalSeg,MatchedSeg);
                 Seg1.ProximityMap.Names = {obj.Name TargetObject.Name};
                 Seg2.ProximityMap.Names = {obj.Name TargetObject.Name};
-                if isstruct(obj.Segment(i).ProximityMap)
+                if isfield(obj.Segment(i),'ProximityMap')
                     obj.Segment(i).ProximityMap(end+1) = Seg1.ProximityMap;
                 else
                     obj.Segment(i).ProximityMap = Seg1.ProximityMap;
                 end
                 
-                if isstruct(TargetObject.Segment(i).ProximityMap)
+                if isfield(TargetObject.Segment(i),'ProximityMap')
                     TargetObject.Segment(MatchedIndex).ProximityMap(end+1) = Seg2.ProximityMap;
                 else
                     TargetObject.Segment(MatchedIndex).ProximityMap = Seg2.ProximityMap;
@@ -720,28 +720,34 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle
             NumMappings = min(NumPointsSeg1,NumPointsSeg2);
             IndexPairs = zeros(NumMappings,2);
             
-            k = 1;
-            while NumPointsSeg1 > 0 && NumPointsSeg2 > 0
-                SearchedPoints1 = Seg1.ROIObject.Position(IndexListSeg1,:);
-                SearchedPoints2 = Seg2.ROIObject.Position(IndexListSeg2,:);
-                DistanceMatrix = zeros(NumPointsSeg1,NumPointsSeg2);
-                for i=1:NumPointsSeg1
-                    for j=1:NumPointsSeg2
-                        DistanceMatrix(i,j) = norm(SearchedPoints1(i,:) - SearchedPoints2(j,:));
-                    end
+            SearchedPoints1 = Seg1.ROIObject.Position;
+            SearchedPoints2 = Seg2.ROIObject.Position;
+            
+            DistanceMatrix = zeros(NumPointsSeg1,NumPointsSeg2);
+            for i=1:NumPointsSeg1
+                for j=1:NumPointsSeg2
+                    DistanceMatrix(i,j) = norm(SearchedPoints1(i,:) - SearchedPoints2(j,:));
                 end
+            end
+                
+            k = 1;
+            while ~isempty(DistanceMatrix)
                 [~,LinIdx] = min(DistanceMatrix,[],'all','linear');
                 [row,col] = ind2sub(size(DistanceMatrix),LinIdx);
                 IndexPairs(k,:) = [IndexListSeg1(row) ; IndexListSeg2(col)];
-                IndexListSeg1(row) = [];
-                IndexListSeg2(col) = [];
-                k= k + 1;
-                NumPointsSeg1 = NumPointsSeg1 - 1;
-                NumPointsSeg2 = NumPointsSeg2 - 1;
 %                 % Debug
-%                 plot(SearchedPoints1(:,1),SearchedPoints1(:,2),'bO',SearchedPoints2(:,1),SearchedPoints2(:,2),'rO',...
+%                 plot(SearchedPoints1(IndexListSeg1,1),SearchedPoints1(IndexListSeg1,2),'bO',...
+%                     SearchedPoints2(IndexListSeg2,1),SearchedPoints2(IndexListSeg2,2),'rO',...
 %                     SearchedPoints1(row,1),SearchedPoints1(row,2),'bX',SearchedPoints2(col,1),SearchedPoints2(col,2),'rX')
 %                 drawnow
+                IndexListSeg1(row) = [];
+                IndexListSeg2(col) = [];
+                DistanceMatrix(row,:) = [];
+                if isempty(DistanceMatrix)
+                    break
+                end
+                DistanceMatrix(:,col) = [];
+                k= k + 1;
             end
             
             Seg1.ProximityMap.IndexPairs = IndexPairs;
