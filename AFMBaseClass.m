@@ -77,12 +77,24 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle
             current = what;
             
             cd(Folder);
+            
+            MetaClass = metaclass(obj);
+            MetaProperties = MetaClass.PropertyList;
+            
             PropertyStruct = obj.get();
             PropertyNames = fieldnames(PropertyStruct);
             
             for i=1:length(PropertyNames)
-                LoadStruct = load([PropertyNames{i} '.mat']);
-                set(obj,PropertyNames{i},LoadStruct.TempProp);
+                try
+                    LoadStruct = load([PropertyNames{i} '.mat']);
+                    set(obj,PropertyNames{i},LoadStruct.TempProp);
+                catch
+                    if MetaProperties(i).HasDefault
+                        set(obj,PropertyNames{i},MetaProperties.DefaultValue);
+                    else
+                        set(obj,PropertyNames{i},[]);
+                    end
+                end
             end
             
             cd(current.path)
