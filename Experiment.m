@@ -3031,7 +3031,6 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
              for ii=1:obj.NumForceMaps
           %  for ii=135
 
-          
                obj.FM{ii}.fc_TipHeight_calculation
           %    obj.FM{ii}.initialize_flags
           %

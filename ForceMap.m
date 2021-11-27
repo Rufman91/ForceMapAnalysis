@@ -3908,7 +3908,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                     t.TileSpacing = 'none'; % To reduce the spacing between the tiles
                     t.Padding = 'none'; % To reduce the padding of perimeter of a tile
                     if kk==1
-                        NumFcCorSelec(kk)=nnz(~obj.SMFSFlag.Uncorrupt(1:NumFcMax));
+                        NumFcCorSelec(kk)=nnz(obj.SMFSFlag.Uncorrupt(1:NumFcMax));
                     elseif kk==2
                         NumFcCorSelec(kk)=nnz(obj.SMFSFlag.Uncorrupt((NumFcMax+1):(NumFcMax*(kk))));
                     else
@@ -3992,7 +3992,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                         t.TileSpacing = 'none'; % To reduce the spacing between the tiles
                         t.Padding = 'none'; % To reduce the padding of perimeter of a tile
                         if kk==1
-                            NumFcCorSelec(kk)=nnz(~obj.SMFSFlag.Uncorrupt(1:NumFcMax));
+                            NumFcCorSelec(kk)=nnz(obj.SMFSFlag.Uncorrupt(1:NumFcMax));
                         elseif kk==2
                             NumFcCorSelec(kk)=nnz(obj.SMFSFlag.Uncorrupt((NumFcMax+1):(NumFcMax*(kk))));
                         else
@@ -4152,6 +4152,14 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 end
                 % Remove zeros from the plotted force curves index array
                 IdxFcPlot=nonzeros(IdxFcPlot);
+                FcPerFig(1)=1;
+                FcPerFig(kk+1)=length(IdxFcPlot);
+                IdxFcCorr=IdxFcPlot; % Allocate array which will correct the plotted fc array by the selected fc
+                if kk>1
+                IdxFcCorr(FcPerFig(1):FcPerFig(kk)) = []; % Remove force curves of previous figure
+                else
+                    
+                end
                 %% Dialog boxes
                 % Function 'bttnChoiseDialog.m' is needed to excute this section
                 inputOptions={'Select all', 'Select none', 'Select all - except of', 'Select none - except of'}; % Define the input arguments
@@ -4164,37 +4172,92 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                     'Please choose the appropriate button ...'); % Stores the selected button number per figure
                 % Case 1: Select all
                 if SelectBttns == 1
-                    % obj.SMFSFlag.Selected(qq-NumFcMax+1:qq)=1;
-                    obj.SMFSFlag.Uncorrupt(IdxFcPlot)=1;
+                    obj.SMFSFlag.Uncorrupt(IdxFcPlot(FcPerFig(kk):FcPerFig(kk+1)))=1;
+                    % 'Blue' loop - Repaint tile titles for force curves
+                    % kept for the analysis
+                    for ii=1:length(IdxFcCorr)
+                        nexttile(ii) % Access the tile corresponding to the selected force curve
+                        ti=title(sprintf('%i',IdxFcCorr(ii)),'Color','b'); % Change title color
+                        ti.Units='normalized'; % Set units to 'normalized'
+                        ti.Position=[0.5,0.95]; % Position the subplot title within the subplot
+                    end                    
                 end
                 % Case 2: Select none
-                if SelectBttns == 2
-                    obj.SMFSFlag.Uncorrupt(IdxFcPlot)=0;
-                end
+                 if SelectBttns == 2
+                    obj.SMFSFlag.Uncorrupt(IdxFcPlot(FcPerFig(kk):FcPerFig(kk+1)))=0;
+                    %'Red' loop - Repaint tile titles for force curves
+                    % removed from the analysis
+                    for jj=1:length(IdxFcCorr)
+                        nexttile(jj) % Access the tile corresponding to the selected force curve
+                        ti=title(sprintf('%i',IdxFcCorr(jj)),'Color','r'); % Change title color
+                        ti.Units='normalized'; % Set units to 'normalized'
+                        ti.Position=[0.5,0.95]; % Position the subplot title within the subplot
+                    end                    
+                 end                   
                 % Case 3: Select all - except of
                 if SelectBttns == 3
-                    obj.SMFSFlag.Uncorrupt(IdxFcPlot)=1;
-                    prompt = {'Enter the force curve number you do not want to keep for analysis (For multiple selections just use the space key to separeat entries)'};
+                    obj.SMFSFlag.Uncorrupt(IdxFcPlot(FcPerFig(kk):FcPerFig(kk+1)))=1;
+                    prompt = {'Enter the force curve number you do not want to keep for analysis (For multiple selections just use the space key to separate entries)'};
                     definput = {''};
                     opts.Interpreter = 'tex';
-                    Idx=inputdlg(prompt,'Select all - except of ...',[1 150],definput,opts); % Stores the individual selected fc as a cell array of character vectors
-                    Idx=str2num(Idx{1}); % Convert the cell array to numerals
-                    obj.SMFSFlag.Uncorrupt(Idx)=0;
+                    IdxFcSel=inputdlg(prompt,'Select all - except of ...',[1 150],definput,opts); % Stores the individual selected fc as a cell array of character vectors
+                    IdxFcSel=str2num(IdxFcSel{1}); % Convert the cell array to numerals
+                    obj.SMFSFlag.Uncorrupt(IdxFcSel)=0; % Set flag for the selected force curves                  
+                    % 'Blue' loop - Repaint tile titles for force curves
+                    % kept for the analysis
+                    for ii=1:length(IdxFcCorr)
+                        nexttile(ii); % Access the tile corresponding to the selected force curve
+                        ti=title(sprintf('%i',IdxFcCorr(ii)),'Color','b'); % Change title color
+                        ti.Units='normalized'; % Set units to 'normalized'
+                        ti.Position=[0.5,0.95]; % Position the subplot title within the subplot
+                    end                    
+                    % 'Red' loop - Repaint tile titles for force curves
+                    % removed from the analysis
+                    for jj=1:length(IdxFcSel)
+                        TileIdx(jj)=find(IdxFcCorr==IdxFcSel(jj));
+                        nexttile(TileIdx(jj)) % Access the tile corresponding to the selected force curve
+                        ti=title(sprintf('%i',IdxFcSel(jj)),'Color','r'); % Change title color
+                        ti.Units='normalized'; % Set units to 'normalized'
+                        ti.Position=[0.5,0.95]; % Position the subplot title within the subplot
+                    end
                 end
+                
                 % Case 4: Select none - except of
                 if SelectBttns == 4
-                    obj.SMFSFlag.Uncorrupt(IdxFcPlot)=0;
-                    prompt = {'Enter the force curve number you want want to keep for analysis (For multiple selections just use the space key to separeat entries)'};
+                    obj.SMFSFlag.Uncorrupt(IdxFcPlot(FcPerFig(kk):FcPerFig(kk+1)))=0;
+                    prompt = {'Enter the force curve number you want want to keep for analysis (For multiple selections just use the space key to separate entries)'};
                     definput = {''};
                     opts.Interpreter = 'tex';
-                    Idx=inputdlg(prompt,'Select none - except of ...',[1 150],definput,opts); % Stores the individual selected fc as a cell array of character vectors
-                    Idx=str2num(Idx{1}); % Convert the cell array to numerals
-                    obj.SMFSFlag.Uncorrupt(Idx)=1;
+                    IdxFcSel=inputdlg(prompt,'Select none - except of ...',[1 150],definput,opts); % Stores the individual selected fc as a cell array of character vectors
+                    IdxFcSel=str2num(IdxFcSel{1}); % Convert the cell array to numerals
+                    obj.SMFSFlag.Uncorrupt(IdxFcSel)=1; % Set flag for the selected force curves                    
+                    % 'Red' loop - Repaint tile titles for force curves
+                    % removed from the analysis
+                    for ii=1:length(IdxFcCorr)
+                        nexttile(ii) % Access the tile corresponding to the selected force curve
+                        ti=title(sprintf('%i',IdxFcCorr(ii)),'Color','r'); % Change title color
+                        ti.Units='normalized'; % Set units to 'normalized'
+                        ti.Position=[0.5,0.95]; % Position the subplot title within the subplot
+                    end                    
+                    % 'Blue' loop - Repaint tile titles for force curves
+                    % kept for the analysis                    
+                    for jj=1:length(IdxFcSel)
+                        TileIdx(jj)=find(IdxFcCorr==IdxFcSel(jj));
+                        nexttile(TileIdx(jj)) % Access the tile corresponding to the selected force curve
+                        ti=title(sprintf('%i',IdxFcSel(jj)),'Color','b'); % Change title color
+                        ti.Units='normalized'; % Set units to 'normalized'
+                        ti.Position=[0.5,0.95]; % Position the subplot title within the subplot
+                    end                    
                 end
-            end
-            close all
-        end
-        
+                %% Save figures
+                %%% Define the name for the figure title
+                partname=sprintf('-p%d',kk);
+                fullname=sprintf('%s%s',figname,partname);
+                %%% Save the current figure in the current folder
+                print(gcf,fullname,'-dpng');  
+                end                         
+            close all        
+        end       
         
         function fc_print_raw(obj,XMin,XMax,YMin,YMax) % fc ... force curve
             % fc_print_raw: A function to simply plot all force curves of a
@@ -5087,7 +5150,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                     t.TileSpacing = 'none'; % To reduce the spacing between the tiles
                     t.Padding = 'none'; % To reduce the padding of perimeter of a tile
                     if kk==1
-                        NumFcCorSelec(kk)=nnz(~obj.SMFSFlag.Uncorrupt(1:NumFcMax));
+                        NumFcCorSelec(kk)=nnz(obj.SMFSFlag.Uncorrupt(1:NumFcMax));
                     elseif kk==2
                         NumFcCorSelec(kk)=nnz(obj.SMFSFlag.Uncorrupt((NumFcMax+1):(NumFcMax*(kk))));
                     else
@@ -5142,7 +5205,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                         t.TileSpacing = 'none'; % To reduce the spacing between the tiles
                         t.Padding = 'none'; % To reduce the padding of perimeter of a tile
                         if kk==1
-                            NumFcCorSelec(kk)=nnz(~obj.SMFSFlag.Uncorrupt(1:NumFcMax));
+                            NumFcCorSelec(kk)=nnz(obj.SMFSFlag.Uncorrupt(1:NumFcMax));
                         elseif kk==2
                             NumFcCorSelec(kk)=nnz(obj.SMFSFlag.Uncorrupt((NumFcMax+1):(NumFcMax*(kk))));
                         else
@@ -5194,7 +5257,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                         t.Padding = 'none'; % To reduce the padding of perimeter of a tile
                         NumFcPlot=oo*pp;
                         if kk==1
-                            NumFcCorSelec(kk)=nnz(~obj.SMFSFlag.Uncorrupt(1:NumFcPlot));
+                            NumFcCorSelec(kk)=nnz(obj.SMFSFlag.Uncorrupt(1:NumFcPlot));
                         elseif kk==2
                             NumFcCorSelec(kk)=nnz(obj.SMFSFlag.Uncorrupt((NumFcPlot+1):(NumFcPlot*(kk))));
                         else
