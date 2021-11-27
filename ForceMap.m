@@ -2025,7 +2025,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             ExtendVelocityConvert=num2str(round(obj.ExtendVelocity*1e9));
             RetractVelocityConvert=num2str(round(obj.RetractVelocity*1e9));
             HoldingTimeConvert=num2str(round(obj.HoldingTime));        
-            res=[1 1 2560 1440]; % Define the figure resolution
+            Res=[1 1 2560 1440]; % Define the figure resolution
             % Classification criteria
             figname=strcat(obj.Date,{'_'},obj.Time,{'_'},obj.ID,{'_'},obj.Substrate,{'_'},obj.EnvCond,{'_'},obj.Linker,{'_'},obj.Chipbox,{'_'},obj.ChipCant,{'_'},ExtendVelocityConvert,{'_'},RetractVelocityConvert,{'_'},HoldingTimeConvert);
             figname=char(figname);
@@ -2122,7 +2122,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 h_fig=figure(jj);
                 h_fig.Color='white'; % changes the background color of the figure
                 h_fig.Units='pixel'; % Defines the units
-                h_fig.OuterPosition=res;
+                h_fig.OuterPosition=Res;
                 h_fig.PaperOrientation='landscape';
                 h_fig.Name=figname;
                 % Tile properties
@@ -2208,7 +2208,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             DataShareEndRet=0.02; % 2 %
             NFigures=4;
             NLoop=25;
-            res=[1 1 2560 1440]; % Define the figure resolution
+            Res=[1 1 2560 1440]; % Define the figure resolution
             ExtendVelocityConvert=num2str(round(obj.ExtendVelocity*1e9));
             RetractVelocityConvert=num2str(round(obj.RetractVelocity*1e9));
             HoldingTimeConvert=num2str(round(obj.HoldingTime));
@@ -2279,7 +2279,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 h_fig=figure(jj);
                 h_fig.Color='white'; % changes the background color of the figure h_fig.Units='pixel'; % Defines the units
                 h_fig.Units='pixel'; % Defines the units
-                h_fig.OuterPosition=res;
+                h_fig.OuterPosition=Res;
                 h_fig.PaperOrientation='landscape';
                 h_fig.Name=figname;
                 % Tile properties
@@ -3488,7 +3488,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             close Figure 1 Figure 2 Figure 3 Figure 4
         end
         
-        function fc_visual_selection_flag_Selected(obj,XMin,XMax,YMin,YMax,NumFcMax) % fc ... force curve
+        function fc_visual_selection_flag_Selected(obj,XMin,XMax,YMin,YMax,NumFcMax,Res) % fc ... force curve
             % fc_print_adhenergy_pulllength: A function to plot all selected force curves of a
             % force map including adhesion energy and pulling length in
             % each force curve
@@ -3497,6 +3497,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 XMax= inf;
                 YMin= -inf;
                 YMax= inf;
+                NumFcMax=25;
+                Res=[1 1 2560 1440]; % Define the figure resolution
             end
             %% Define variables
             RGB1=[0 26 255]./255;  % Blue
@@ -3545,7 +3547,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 h_fig=figure(kk);
                 h_fig.Color='white'; % changes the background color of the figure
                 h_fig.Units='normalized'; % Defines the units
-                h_fig.OuterPosition=[0 0 1 1];% changes the size of the to the whole screen
+                h_fig.OuterPosition=Res;% changes the size of the to the whole screen
                 h_fig.PaperOrientation='landscape';
                 h_fig.Name=figname;
                 %% Verify the remainder condition
@@ -3571,7 +3573,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                             ww=qq+DiffFc;
                         end
                         % Flag based while loop
-                        while ~obj.SMFSFlag.Uncorrupt(ww) || ~obj.SMFSFlag.RetMinCrit(ww) || ~obj.SMFSFlag.LengthRequisite(ww)   % Stay in the while loop as long as the entry is zero
+                        while ~obj.SMFSFlag.Uncorrupt(ww) || ~obj.SMFSFlag.RetMinCrit(ww)   % Stay in the while loop as long as the entry is zero
                             ww=ww+1;
                             if ww>qq
                                 DiffFc=ww-qq;
@@ -3655,7 +3657,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                             if ww<qq+DiffFc
                                 ww=qq+DiffFc;
                             end
-                            while ~obj.SMFSFlag.Uncorrupt(ww) || ~obj.SMFSFlag.RetMinCrit(ww) || ~obj.SMFSFlag.LengthRequisite(ww)    % Stay in the while loop as long as the entry is zero
+                            while ~obj.SMFSFlag.Uncorrupt(ww) || ~obj.SMFSFlag.RetMinCrit(ww)    % Stay in the while loop as long as the entry is zero
                                 ww=ww+1;
                                 if ww>qq
                                     DiffFc=ww-qq;
@@ -3735,7 +3737,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                             if ww<qq+DiffFc
                                 ww=qq+DiffFc;
                             end
-                            while ~obj.SMFSFlag.Uncorrupt(ww) || ~obj.SMFSFlag.RetMinCrit(ww) || ~obj.SMFSFlag.LengthRequisite(ww)    % Stay in the while loop as long as the entry is zero
+                            while ~obj.SMFSFlag.Uncorrupt(ww) || ~obj.SMFSFlag.RetMinCrit(ww)    % Stay in the while loop as long as the entry is zero
                                 ww=ww+1;
                                 if ww>qq
                                     DiffFc=ww-qq;
@@ -3837,11 +3839,17 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                     Idx=str2num(Idx{1}); % Convert the cell array to numerals
                     obj.SMFSFlag.Selected(Idx)=1;
                 end
+                %% Save figures
+                %%% Define the name for the figure title
+                partname=sprintf('-p%d',kk);
+                fullname=sprintf('%s%s',figname,partname);
+                %%% Save the current figure in the current folder
+                print(gcf,fullname,'-dpng');
             end
             close all
         end
         
-        function fc_visual_selection_flag_Uncorrupt(obj,XMin,XMax,YMin,YMax,NumFcMax) % fc ... force curve
+        function fc_visual_selection_flag_Uncorrupt(obj,XMin,XMax,YMin,YMax,NumFcMax,Res) % fc ... force curve
             % fc_print_adhenergy_pulllength: A function to plot all selected force curves of a
             % force map including adhesion energy and pulling length in
             % each force curve
@@ -3851,6 +3859,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 YMin= -inf;
                 YMax= inf;
                 NumFcMax=25;
+                Res=[1 1 2560 1440]; % Define the figure resolution
             end
             %% Define variables
             RGB1=[0 26 255]./255;  % Blue
@@ -3893,12 +3902,14 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 pp=ceil(sqrt(RemainderMax)); % Determine the number of columns in the figure
                 RemainderReal=mod(NumFcUncorrupt,oo*pp); % Correct the remainder based on the determined rows times columns
             end
-            %% figure loop
+            %% figure loop 
             for kk=1:NumFigures
                 % Figure
                 h_fig=figure(kk);
                 h_fig.Color='white'; % changes the background color of the figure
                 h_fig.Units='normalized'; % Defines the units
+                %h_fig.OuterPosition=Res;% changes the size to the defined
+                % resolution
                 h_fig.OuterPosition=[0 0 1 1];% changes the size of the to the whole screen
                 h_fig.PaperOrientation='landscape';
                 h_fig.Name=figname;
@@ -3925,11 +3936,12 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                             ww=qq+DiffFc;
                         end
                         % Flag based while loop
-                        while ~obj.SMFSFlag.Uncorrupt(ww) || ~obj.SMFSFlag.RetMinCrit(ww) || ~obj.SMFSFlag.LengthRequisite(ww)   % Stay in the while loop as long as the entry is zero
+                        while ~obj.SMFSFlag.Uncorrupt(ww) || ~obj.SMFSFlag.RetMinCrit(ww)   % Stay in the while loop as long as the entry is zero
                             ww=ww+1;
                             if ww>qq
                                 DiffFc=ww-qq;
                             end
+                            %NumFcStartIdx(kk)
                         end
                         % Save the indeces of plotted force curves
                         IdxFcPlot(ww)=ww;
@@ -4009,7 +4021,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                             if ww<qq+DiffFc
                                 ww=qq+DiffFc;
                             end
-                            while ~obj.SMFSFlag.Uncorrupt(ww) || ~obj.SMFSFlag.RetMinCrit(ww) || ~obj.SMFSFlag.LengthRequisite(ww)    % Stay in the while loop as long as the entry is zero
+                            while ~obj.SMFSFlag.Uncorrupt(ww) || ~obj.SMFSFlag.RetMinCrit(ww)    % Stay in the while loop as long as the entry is zero
                                 ww=ww+1;
                                 if ww>qq
                                     DiffFc=ww-qq;
@@ -4089,7 +4101,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                             if ww<qq+DiffFc
                                 ww=qq+DiffFc;
                             end
-                            while ~obj.SMFSFlag.Uncorrupt(ww) || ~obj.SMFSFlag.RetMinCrit(ww) || ~obj.SMFSFlag.LengthRequisite(ww)    % Stay in the while loop as long as the entry is zero
+                            while ~obj.SMFSFlag.Uncorrupt(ww) || ~obj.SMFSFlag.RetMinCrit(ww)   % Stay in the while loop as long as the entry is zero
                                 ww=ww+1;
                                 if ww>qq
                                     DiffFc=ww-qq;
@@ -4274,7 +4286,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             RGB1=[0 26 255]./255;  % Blue
             RGB2=[255 119 0]./255; % Orange
             RGB10=[69 22 113]./255; % Violet
-            res=[1 1 2560 1440]; % Define the figure resolution
+            Res=[1 1 2560 1440]; % Define the figure resolution
             % Define variables for the figure name
             ExtendVelocityConvert=num2str(obj.ExtendVelocity*1e9);
             RetractVelocityConvert=num2str(obj.RetractVelocity*1e9);
@@ -4591,7 +4603,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             RGB11=[200 255 150]./255; % Light Green
             RGB12=[185 230 254]./255; % Light Blue
             RGB13=[200 0 0]./255; % Red
-            res=[1 1 2560 1440]; % Define the figure resolution
+            Res=[1 1 2560 1440]; % Define the figure resolution
               
             [Xmultiplier,Xunit,~] = AFMImage.parse_unit_scale(1e+9,'nm',1);
             [Ymultiplier,Yunit,~] = AFMImage.parse_unit_scale(1e+9,'nN',1);

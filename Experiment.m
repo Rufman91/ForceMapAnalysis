@@ -1363,8 +1363,8 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             cd(currpath);
             
             % force map loop
-            for ii=1:obj.NumForceMaps   
-            %for ii=139:obj.NumForceMaps % debugging
+            %for ii=1:obj.NumForceMaps   
+            for ii=1:2 % debugging
                 if isequal(KeepFlagged,'Yes') && obj.SMFSFlag.Preprocessed(ii) == 1
                     continue
                 end
@@ -1426,7 +1426,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             close(h);
         end
       
-        function SMFS_visual_selection(obj,XMin,XMax,YMin,YMax,NumFcMax)
+        function SMFS_visual_selection(obj,XMin,XMax,YMin,YMax,NumFcMax,Res)
        
             % 
             if nargin<2
@@ -1435,6 +1435,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 YMin= -inf;     % Limit of the Y-axis in Newtons (N)
                 YMax= 100e-12;      % Limit of the Y-axis in Newtons (N)    
                 NumFcMax = 25;   % Maximum number of force curves per figure
+                Res=[1 1 2560 1440]; % Define the figure resolution
             end
             
             % Output time and date for the dairy
@@ -1459,7 +1460,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                % Run the chosen functions
             %   obj.FM{ii}.fc_visual_selection_all(XMin,XMax,YMin,YMax);  
             %   obj.FM{ii}.fc_visual_selection_flag_Selected(XMin,XMax,YMin,YMax,NumFcMax);
-                obj.FM{ii}.fc_visual_selection_flag_Uncorrupt(XMin,XMax,YMin,YMax,NumFcMax)      
+                obj.FM{ii}.fc_visual_selection_flag_Uncorrupt(XMin,XMax,YMin,YMax,NumFcMax,Res)      
                %obj.save_experiment;        % Save immediately after each force curve
             end    
         end
