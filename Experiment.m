@@ -447,23 +447,32 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             % Handle response
             switch answer
                 case 'Yes, delete all'
-                    disp(sprintf('Deleting %s. This may take from a few to tens of minutes',obj.ExperimentName))
-                    
-                    current = what();
-                    cd(Folder)
-                    cd ..
-                    
-                    cmd1_1 = string('DEL /F/Q/S ');
-                    cmd1_2 = string(' > nul');
-                    cmd2_1 = string('RMDIR /Q/S ');
-                    
-                    CMD1 = strcat(cmd1_1,Folder,cmd1_2);
-                    CMD2 = strcat(cmd2_1,Folder);
-                    
-                    system(CMD1);
-                    system(CMD2);
-                    
-                    cd(current.path)
+                    answer = questdlg('Are you REALLY sure?', ...
+                        sprintf('Deletion of %s',Folder),'YES, DO IT!', ...
+                        'Oh no, i changed my mind','Oh no, i changed my mind');
+                    switch answer
+                        case 'YES, DO IT!'
+                            
+                            disp(sprintf('Deleting %s. This may take from a few to tens of minutes',obj.ExperimentName))
+                            
+                            current = what();
+                            cd(Folder)
+                            cd ..
+                            
+                            cmd1_1 = string('DEL /F/Q/S ');
+                            cmd1_2 = string(' > nul');
+                            cmd2_1 = string('RMDIR /Q/S ');
+                            
+                            CMD1 = strcat(cmd1_1,Folder,cmd1_2);
+                            CMD2 = strcat(cmd2_1,Folder);
+                            
+                            system(CMD1);
+                            system(CMD2);
+                            
+                            cd(current.path)
+                        case 'Oh no, i changed my mind'
+                            return
+                    end
                 case 'Abort'
                     return
             end
