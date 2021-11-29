@@ -4203,7 +4203,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 for i=1:length(Class{1}.Segment)
                     if ~sum(strfind(Class{1}.Segment(i).Name,'Snapped'))
                         TempMask = h.ROIObjects{i}.createMask;
-                        TempMask = imdilate(TempMask,strel('diamond',Size(1)/128));
+                        TempMask = imdilate(TempMask,strel('diamond',ceil(Size(1)/128)));
                         h.ROIImage(TempMask) = i;
                     end
                 end
@@ -5626,6 +5626,30 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             end
             for i=RefIndexVector
                 obj.RefFM{i}.clear_zipped_files_from_memory;
+            end
+        end
+        
+        function automatic_segmentation_on_singular_vertical_fiber_batch(obj,IndexVectorFM,IndexVectorImage)
+            % automatic_segmentation_on_singular_vertical_fiber_batch(obj,IndexVectorFM,IndexVectorImage)
+            
+            if nargin < 2
+                for i=1:obj.NumForceMaps
+                    obj.FM{i}.automatic_segmentation_on_singular_vertical_fiber
+                end
+                for i=1:obj.NumAFMImages
+                    obj.I{i}.automatic_segmentation_on_singular_vertical_fiber
+                end
+            elseif nargin < 3
+                for i=IndexVectorFM
+                    obj.FM{i}.automatic_segmentation_on_singular_vertical_fiber
+                end
+            else
+                for i=IndexVectorFM
+                    obj.FM{i}.automatic_segmentation_on_singular_vertical_fiber
+                end
+                for i=IndexVectorImage
+                    obj.I{i}.automatic_segmentation_on_singular_vertical_fiber
+                end
             end
         end
         

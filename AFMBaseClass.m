@@ -395,7 +395,7 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle
                 PerpendicularVector = [];
                 OriginalPos = [];
                 FinalSnappedPos = [];
-                [LocalDirectionVector,WeightingVector] = AFMBaseClass.find_local_direction_vector_in_ordered_vector_list(Snapped(i).ROIObject.Position,SmoothingWindowSize,'gaussian');
+                [LocalDirectionVector,WeightingVector] = AFMBaseClass.find_local_direction_vector_in_ordered_vector_list(Snapped(i).ROIObject.Position,4*SmoothingWindowSize,'flat');
                 for j=1:size(Snapped(i).ROIObject.Position,1)
                     OriginalPos(j,:) = Snapped(i).ROIObject.Position(j,:);
                     PerpendicularVector(j,:) = [LocalDirectionVector(j,2) -LocalDirectionVector(j,1)]/norm(LocalDirectionVector(j,:));
@@ -435,6 +435,8 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle
                         LocalPoints = SnappedPos(LowerIndex:UpperIndex,:);
                         Means = mean(LocalPoints,1);
                         CenteredLP = LocalPoints - Means;
+                        % replace outliers for robustness
+                        CenteredLP = filloutliers(CenteredLP,'linear',1);
                         [PCACoeff,TransformedSnappedPos,Latent] = pca(CenteredLP);
                         DegreeOfPolyfit = str2num(SmoothingWindowWeighting(end));
                         if isempty(DegreeOfPolyfit)
@@ -599,6 +601,34 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle
             for i=1:length(obj.Segment)
                 obj.Segment(i).ProximityMap = [];
             end
+            
+        end
+        
+        function automatic_segmentation_on_singular_vertical_fiber(obj,SampleDistanceMeters,WidthLocalWindowMeters,SmoothingWindowSize,SmoothingWindowWeighting,Indizes)
+            
+            
+            HeightChannel = obj.get_unprocessed_height_channel('Processed');
+            
+            if nargin < 2
+                SampleDistanceMeters = 20e-9;
+                WidthLocalWindowMeters = 200e-9;
+                SmoothingWindowSize = 41;
+                SmoothingWindowWeighting = 'localreg1';
+            end
+            
+            HeightMap = HeightChannel.Image;
+            
+            [~,MaxIdx] = max(filloutliers(HeightMap,'linear','movmedian',ceil(HeightChannel.NumPixelsY/5),2),[],2);
+            Points = [MaxIdx [1:size(HeightMap,1)]'];
+            
+            
+            obj.Segment(1).Name = 'SingleFiber';
+            obj.Segment(1).SubSegmentName = 'SubS-01';
+            obj.Segment(1).Type = 'polyline';
+            obj.Segment(1).ROIObject.Position = Points;
+            obj.Segment(1).ROIObject.LineWidth = 2.25;
+            
+            obj.snap_line_segments_to_local_perpendicular_maximum(SampleDistanceMeters,WidthLocalWindowMeters,SmoothingWindowSize,SmoothingWindowWeighting)
             
         end
         
