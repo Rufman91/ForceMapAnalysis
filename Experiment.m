@@ -281,7 +281,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 % get paths of requested files and load them in
                 SaveCopy.take_paths_and_load_files(FileTypes,FullFileStruct,isNew,SaveCopy.BigDataFlag,SaveCopy.PythonLoaderFlag,obj.KeepPythonFilesOpen)
                 
-                % SaveCopy.initialize_flags % What to do with this?
+                SaveCopy.initialize_flags % What to do with this?
                 
                 Out = SaveCopy;
                 Out.save_experiment
