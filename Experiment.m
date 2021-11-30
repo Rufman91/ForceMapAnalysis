@@ -5186,7 +5186,6 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             elseif obj.ReferenceSlopeFlag.FromArea
                 for i=1:obj.NumForceMaps
                     Mask = obj.FM{i}.create_mask_general;
-                    obj.FM{i}.calculate_reference_slope_from_area(Mask,obj.ReferenceSlopeFlag.AppRetSwitch)
                     obj.FM{i}.RefSlopeMask = Mask;
                 end
             end
@@ -5237,7 +5236,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 Mask = obj.FM{i}.BackgroundMask;
                 obj.FM{i}.calculate_reference_slope_from_area(Mask,obj.ReferenceSlopeFlag.AppRetSwitch)
             elseif obj.ReferenceSlopeFlag.FromArea
-                % Already done
+                obj.FM{i}.calculate_reference_slope_from_area(obj.FM{i}.RefSlopeMask,obj.ReferenceSlopeFlag.AppRetSwitch)
             end
         end
         
