@@ -1,5 +1,4 @@
 classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
-    % Hallo Mathias!
     
     properties
         % Essential properties for File and subclass management
