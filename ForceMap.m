@@ -2869,7 +2869,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
 %             legend('Approach data','Retraction data, y-data corrected, limits included','Adhesion force based on Retraction data, y-data corrected','Pulling length position','Adhesion force based on Retraction data, y-data corrected, limits included')    
         end
         
-        function fc_print_properties(obj,XMin,XMax,YMin,YMax,NumFcMax,NumFcUncorrupt,hh) % fc ... force curve
+        function fc_print_properties(obj,XMin,XMax,YMin,YMax,NumFcMax,NumFcUncorrupt,Res) % fc ... force curve
             % fc_print_adhenergy_pulllength: A function to plot all selected force curves of a
             % force map including adhesion energy and pulling length in
             % each force curve
@@ -2878,6 +2878,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 XMax= inf;
                 YMin= -inf;
                 YMax= inf;
+                Res=[1 1 2560 1440]; % Define the figure resolution
             end
             % Define variables
             RGB1=[0 26 255]./255;  % Blue
@@ -2887,12 +2888,11 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             RGB10=[200 0 255]./255; % Violet
             RGB11=[200 255 150]./255; % Light Green
             RGB12=[185 230 254]./255; % Light Blue
-            RGB13=[200 0 0]./255; % Red
-            res=[1 1 2560 1440]; % Define the figure resolution
+            RGB13=[200 0 0]./255; % Red            
             % Define variables for the figure name
-            ExtendVelocityConvert=num2str(obj.ExtendVelocity*1e9);
-            RetractVelocityConvert=num2str(obj.RetractVelocity*1e9);
-            HoldingTimeConvert=num2str(obj.HoldingTime);
+            ExtendVelocityConvert=num2str(round(obj.ExtendVelocity*1e9));
+            RetractVelocityConvert=num2str(round(obj.RetractVelocity*1e9));
+            HoldingTimeConvert=num2str(round(obj.HoldingTime));        
             % Classification criteria
             figname=strcat(obj.Date,{'_'},obj.Time,{'_'},obj.ID,{'_'},obj.Substrate,{'_'},obj.EnvCond,{'_'},obj.Linker,{'_'},obj.Chipbox,{'_'},obj.ChipCant,{'_'},ExtendVelocityConvert,{'_'},RetractVelocityConvert,{'_'},HoldingTimeConvert);
             figname=char(figname);
@@ -3879,9 +3879,9 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             DataShareEndRet=0.02; % 2 %
            % NumFcMax=25;
             % Define variables for the figure name
-            ExtendVelocityConvert=num2str(obj.ExtendVelocity*1e9);
-            RetractVelocityConvert=num2str(obj.RetractVelocity*1e9);
-            HoldingTimeConvert=num2str(obj.HoldingTime);
+            ExtendVelocityConvert=num2str(round(obj.ExtendVelocity*1e9));
+            RetractVelocityConvert=num2str(round(obj.RetractVelocity*1e9));
+            HoldingTimeConvert=num2str(round(obj.HoldingTime));        
             % Classification criteria
             figname=strcat(obj.Date,{'_'},obj.Time,{'_'},obj.ID,{'_'},obj.Substrate,{'_'},obj.EnvCond,{'_'},obj.Linker,{'_'},obj.Chipbox,{'_'},obj.ChipCant,{'_'},ExtendVelocityConvert,{'_'},RetractVelocityConvert,{'_'},HoldingTimeConvert);
             figname=char(figname);

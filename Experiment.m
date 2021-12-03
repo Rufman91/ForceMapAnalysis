@@ -1493,7 +1493,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             
         end
                             
-        function SMFS_print_analysed_fc(obj,XMin,XMax,YMin,YMax,NumFcMax,NumFcUncorrupt,hh)
+        function SMFS_print_analysed_fc(obj,XMin,XMax,YMin,YMax,NumFcMax,NumFcUncorrupt,Res)
             %Furthermore, all analysed force curves are plotted and the determined
             % criteria are plotted for visual inspection
             % Input variable adaptation
@@ -1505,6 +1505,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 YMin= -inf;     % Limit of the Y-axis in Newtons (N)
                 YMax= 100e-12;      % Limit of the Y-axis in Newtons (N)
                 NumFcMax = 25;   % Maximum number of force curves per figure
+                Res=[1 1 2560 1440]; % Define the figure resolution
             elseif nargin<3
                 XMin= -inf;     % Limit of the X-axis in meters (m)
                 XMax= inf;      % Limit of the X-axis in meters (m)
@@ -1530,7 +1531,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             %sprintf('Force Map No. %d of %d',hh,obj.NumForceMaps) % Gives current Force Map Position   
             % Determine needed input variable
                NumFcUncorrupt(hh)=nnz(obj.FM{hh}.SMFSFlag.Uncorrupt); % Determine the number of uncorrupted force curves     
-               obj.FM{hh}.fc_print_properties(XMin,XMax,YMin,YMax,NumFcMax,NumFcUncorrupt,hh)         
+               obj.FM{hh}.fc_print_properties(XMin,XMax,YMin,YMax,NumFcMax,NumFcUncorrupt,Res)         
             end
             obj.NumFcUncorrupt=NumFcUncorrupt;
         end
