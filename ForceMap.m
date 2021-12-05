@@ -1794,10 +1794,15 @@ classdef ForceMap < matlab.mixin.Copyable
                          obj.FilterH{i,j} = filtfilt(d,1,IndentTrend{i,j});
                          
                          % Amplitude Correction
-                         AmplFilt = trapz(abs(obj.FilterF{i,j}));
-                         AmplOrig = trapz(abs(ForceTrend{i,j}));
-                         AmplCorrection = AmplFilt/AmplOrig;
-                         obj.FilterF{i,j} = obj.FilterF{i,j}*AmplCorrection;
+                         AmplFiltF = trapz(abs(obj.FilterF{i,j}));
+                         AmplOrigF = trapz(abs(ForceTrend{i,j}));
+                         AmplCorrectionF = AmplFiltF/AmplOrigF;
+                         obj.FilterF{i,j} = obj.FilterF{i,j}*AmplCorrectionF;
+                         
+                         AmplFiltH = trapz(abs(obj.FilterH{i,j}));
+                         AmplOrigH = trapz(abs(IndentTrend{i,j}));
+                         AmplCorrectionH = AmplFiltH/AmplOrigH;
+                         obj.FilterH{i,j} = obj.FilterH{i,j}*AmplCorrectionH;
                         
                         
                          % Time Vectors with more entries for interpolation
