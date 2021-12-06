@@ -1751,18 +1751,18 @@ classdef ForceMap < matlab.mixin.Copyable
 %                         drawnow
                         
                         % Divide data through their range
-                        rangeF = range(obj.Force{i,j});
+                        rangeF = range(obj.BasedForce{i,j});
                         rangeH = range(obj.Indentation{i,j});
                         
-                        obj.Force{i,j} = obj.Force{i,j}/rangeF;
+                        obj.BasedForce{i,j} = obj.BasedForce{i,j}/rangeF;
                         obj.Indentation{i,j} = obj.Indentation{i,j}/rangeH;
                         
                         % Max values of Force and Indentation
-                         maxF1 = max(obj.Force{i,j});
+                         maxF1 = max(obj.BasedForce{i,j});
                          maxH1 = max(obj.Indentation{i,j});
 
                          % Min values of Force and Indentation
-                         minF1 = min(obj.Force{i,j});
+                         minF1 = min(obj.BasedForce{i,j});
                          minH1 = min(obj.Indentation{i,j});
 
                          % Difference max min
@@ -1771,7 +1771,7 @@ classdef ForceMap < matlab.mixin.Copyable
 
 
                          % Shift to Zero Line
-                         obj.FZShift{i,j} = obj.Force{i,j}-maxF1+(DiffF1/2);
+                         obj.FZShift{i,j} = obj.BasedForce{i,j}-maxF1+(DiffF1/2);
                          obj.HZShift{i,j} = obj.Indentation{i,j}-maxH1+(DiffH1/2);
                          
                          % Calculation of Sampling rate and Invariance to
@@ -1941,7 +1941,7 @@ classdef ForceMap < matlab.mixin.Copyable
 %                                 (obj.SineVarsF{i,j}(1)/obj.SineVarsH{i,j}(1));
                         
                         % turn range back to normal
-                        obj.Force{i,j} = obj.Force{i,j}*rangeF;
+                        obj.BasedForce{i,j} = obj.BasedForce{i,j}*rangeF;
                         obj.Indentation{i,j} = obj.Indentation{i,j}*rangeH;
                         
                         
