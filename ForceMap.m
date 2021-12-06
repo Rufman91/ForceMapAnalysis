@@ -3956,6 +3956,7 @@ classdef ForceMap < matlab.mixin.Copyable
 
                        yyaxis left
                        plot(x,obj.Indentation{i,j},x,ypH)
+                       legend({'Original Indentation data','Indentation Fit data'},'Location','southoutside')
                        xlabel('time in s')
                        ylabel('indentation in m')
                        %ylim([yFmin yFmax])
