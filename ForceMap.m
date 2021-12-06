@@ -3928,29 +3928,32 @@ classdef ForceMap < matlab.mixin.Copyable
                         
                         x= obj.SegTime{j};
                         
-                        % Max values of Force and Indentation
-                        maxF = max(obj.BasedForce{i,j});
-                        maxH = max(obj.Indentation{i,j});
-
-                        % Min values of Force and Indentation
-                        minF = min(obj.BasedForce{i,j});
-                        minH = min(obj.Indentation{i,j});
-
-                        % Difference max min
-                        DiffF = maxF - minF;
-                        DiffH = maxH - minH;
-
-                        % Amplitude
-                        AmplitudeF=(DiffF/2);
-                        AmplitudeH=(DiffH/2);
+                        if obj.SegFrequency{j} > 0
                         
-                        obj.SineVarsF{i,j}(1) = AmplitudeF;
-                        obj.SineVarsH{i,j}(1) = AmplitudeH;
+                            % Max values of Force and Indentation
+                            maxF = max(obj.BasedForce{i,j});
+                            maxH = max(obj.Indentation{i,j});
+
+                            % Min values of Force and Indentation
+                            minF = min(obj.BasedForce{i,j});
+                            minH = min(obj.Indentation{i,j});
+
+                            % Difference max min
+                            DiffF = maxF - minF;
+                            DiffH = maxH - minH;
+
+                            % Amplitude
+                            AmplitudeF=(DiffF/2);
+                            AmplitudeH=(DiffH/2);
+
+                            obj.SineVarsF{i,j}(1) = AmplitudeF;
+                            obj.SineVarsH{i,j}(1) = AmplitudeH;
+                       
                         
-                        %Y-values fitted sine of indentation and force:
-                        ypF = obj.SineVarsF{i,j}(1)*(sin(2*pi*x.*obj.SineVarsF{i,j}(2) + obj.SineVarsF{i,j}(3)));
-                        ypH = obj.SineVarsH{i,j}(1)*(sin(2*pi*x.*obj.SineVarsH{i,j}(2) + obj.SineVarsH{i,j}(3)));
-                        
+                            %Y-values fitted sine of indentation and force:
+                            ypF = obj.SineVarsF{i,j}(1)*(sin(2*pi*x.*obj.SineVarsF{i,j}(2) + obj.SineVarsF{i,j}(3)));
+                            ypH = obj.SineVarsH{i,j}(1)*(sin(2*pi*x.*obj.SineVarsH{i,j}(2) + obj.SineVarsH{i,j}(3)));
+                        end
 
                          
                        hold on
