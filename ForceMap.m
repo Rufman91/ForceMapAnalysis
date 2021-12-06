@@ -1899,7 +1899,7 @@ classdef ForceMap < matlab.mixin.Copyable
                          obj.SineVarsF{i,j} = fmincon(fcn,x0,[],[],[],[],lb,ub); 
                          % Spacing of time vector:
                          %xpF = linspace(min(obj.InterpTimeF{j}),max(obj.InterpTimeF{j}),100000);
-                         obj.SineVarsF{i,j}(1)= obj.SineVarsF{i,j}(1)*rangeF;
+                         %obj.SineVarsF{i,j}(1)= obj.SineVarsF{i,j}(1)*rangeF;
                          obj.SineVarsF{i,j}(2)= obj.SegFrequency{j};
                          %obj.SineVarsF{i,j}(3)= firstsignchangeF;
 
@@ -1920,7 +1920,7 @@ classdef ForceMap < matlab.mixin.Copyable
                          obj.SineVarsH{i,j} = fmincon(fcn, [AmplitudeH; obj.SegFrequency{j}; 0],[],[],[],[],lb,ub,[],options); 
                          % Spacing of time vector:
                          %xpH = linspace(min(obj.InterpTimeH{j}),max(obj.InterpTimeH{j}),100000);
-                         obj.SineVarsH{i,j}(1)= obj.SineVarsH{i,j}(1)*rangeH;
+                         %obj.SineVarsH{i,j}(1)= obj.SineVarsH{i,j}(1)*rangeH;
                          obj.SineVarsH{i,j}(2)= obj.SegFrequency{j};
                          %obj.SineVarsH{i,j}(3)= firstsignchangeH;
                         
@@ -3905,6 +3905,33 @@ classdef ForceMap < matlab.mixin.Copyable
                            whereToStore=fullfile(DirectoryPath,['fit_curve_' num2str(i) '_segment_' num2str(j) '.svg']);
                            saveas(gcf, whereToStore);
                         end
+                        
+                        
+                         % Max values of Force and Indentation
+                         maxF = max(obj.BasedForce{i,j});
+                         maxH = max(obj.Indentation{i,j});
+
+                         % Min values of Force and Indentation
+                         minF = min(obj.BasedForce{i,j});
+                         minH = min(obj.Indentation{i,j});
+
+                         % Difference max min
+                         DiffF = maxF - minF;
+                         DiffH = maxH - minH;
+
+                         % Amplitude
+                         AmplitudeF=(DiffF/2);
+                         AmplitudeH=(DiffH/2);
+                        
+                         obj.SineVarsF{i,j}(1) = AmplitudeF;
+                         obj.SineVarsH{i,j}(1) = AmplitudeH;
+                         
+                         %Y-values fitted sine of indentation and force:
+                         ypF = obj.SineVarsF{i,j}(1)*(sin(2*pi*x.*obj.SineVarsF{i,j}(2) + obj.SineVarsF{i,j}(3)));
+                         ypH = obj.SineVarsH{i,j}(1)*(sin(2*pi*x.*obj.SineVarsH{i,j}(2) + obj.SineVarsH{i,j}(3)));
+                        
+                         
+                         plot(x,obj.BasedForce{i,j},x,obj.Indentation{i,j},x,ypF,x,ypH)
                     end
                         
                 end
