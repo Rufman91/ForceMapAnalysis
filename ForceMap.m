@@ -3869,6 +3869,54 @@ classdef ForceMap < matlab.mixin.Copyable
             close all
             DirectoryPath = uigetdir();
             k=1;
+            for i=1:obj.NCurves
+                for j=1:obj.NumSegments
+                    
+                    if obj.SegFrequency{j} > 0
+                        
+                        x= obj.SegTime{j};
+                        %xpF = linspace(min(obj.InterpTimeF{j}),max(obj.InterpTimeF{j}),100000);
+                        %xpH = linspace(min(obj.InterpTimeH{j}),max(obj.InterpTimeH{j}),100000);
+                        
+                        %Y-values fitted sine of indentation and force:
+                        ypF = obj.SineVarsF{i,j}(1)*(sin(2*pi*x.*obj.SineVarsF{i,j}(2) + obj.SineVarsF{i,j}(3)));
+                        ypH = obj.SineVarsH{i,j}(1)*(sin(2*pi*x.*obj.SineVarsH{i,j}(2) + obj.SineVarsH{i,j}(3)));
+                        
+                        k = k + 1;
+                         % time indentation
+                        figure('Name',sprintf('Force Curve %i Segment %i',i,j))
+                        subplot(3,1,1)
+                        plot(x,obj.FZShift{i,j},x,obj.FilterF{i,j},x,ypF)
+                        legend({'shifted force data to zero line','filtered force data','fitted force data 1'},'Location','southoutside')
+                        subplot(3,1,2)
+                        plot(x,obj.HZShift{i,j},x,obj.FilterH{i,j},x,ypH)
+                        legend({'shifted indentation data to zero line','filtered indentation data','fitted indentation data 1'},'Location','southoutside')
+                        subplot(3,1,3)
+                        %plot(x,ypF)
+                        findpeaks(ypF)
+                        hold on
+                        %findpeaks(-obj.SineFunctionF)
+                        findpeaks(ypH)
+                        %findpeaks(-obj.SineFunctionH)
+                        legend({'force','force peak','indentation','indentation peak'},'Location','southoutside')
+                        drawnow
+                        
+                        if DirectoryPath~=0
+                           whereToStore=fullfile(DirectoryPath,['fit_curve_' num2str(i) '_segment_' num2str(j) '.svg']);
+                           saveas(gcf, whereToStore);
+                        end
+                        
+                    end
+                        
+                end
+            end
+ 
+        end
+        
+        function show_sine_2(obj)
+            close all
+            DirectoryPath = uigetdir();
+            k=1;
             g=1;
             for i=1:obj.NCurves
                 for j=1:obj.NumSegments
