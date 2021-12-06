@@ -1766,13 +1766,13 @@ classdef ForceMap < matlab.mixin.Copyable
                          minH1 = min(obj.Indentation{i,j});
 
                          % Difference max min
-                         DiffF = maxF1 - minF1;
-                         DiffH = maxH1 - minH1;
+                         DiffF1 = maxF1 - minF1;
+                         DiffH1 = maxH1 - minH1;
 
 
                          % Shift to Zero Line
-                         obj.FZShift{i,j} = obj.Force{i,j}-maxF1+(DiffF/2);
-                         obj.HZShift{i,j} = obj.Indentation{i,j}-maxH1+(DiffH/2);
+                         obj.FZShift{i,j} = obj.Force{i,j}-maxF1+(DiffF1/2);
+                         obj.HZShift{i,j} = obj.Indentation{i,j}-maxH1+(DiffH1/2);
                          
                          % Calculation of Sampling rate and Invariance to
                          % be able to subsequently choose the right filter
