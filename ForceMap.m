@@ -3869,6 +3869,7 @@ classdef ForceMap < matlab.mixin.Copyable
             close all
             DirectoryPath = uigetdir();
             k=1;
+            g=1;
             for i=1:obj.NCurves
                 for j=1:obj.NumSegments
                     
@@ -3930,7 +3931,8 @@ classdef ForceMap < matlab.mixin.Copyable
                          ypF = obj.SineVarsF{i,j}(1)*(sin(2*pi*x.*obj.SineVarsF{i,j}(2) + obj.SineVarsF{i,j}(3)));
                          ypH = obj.SineVarsH{i,j}(1)*(sin(2*pi*x.*obj.SineVarsH{i,j}(2) + obj.SineVarsH{i,j}(3)));
                         
-                         
+                         g=2*k;
+                         figure(g)
                          plot(x,obj.BasedForce{i,j},x,obj.Indentation{i,j},x,ypF,x,ypH)
                     end
                         
