@@ -3921,9 +3921,10 @@ classdef ForceMap < matlab.mixin.Copyable
                
                 figure('Name',sprintf('Curves with Fit %i',i))
                 hold on
-                for j=1:obj.NumSegments
+                lastseg = obj.NumSegments - 1;
+                for j=2:lastseg
                     
-                    if obj.SegFrequency{j} > 0
+                    %if obj.SegFrequency{j} > 0
                         
                         x= obj.SegTime{j};
                         
@@ -3961,10 +3962,10 @@ classdef ForceMap < matlab.mixin.Copyable
                        ylabel('indentation in m')
                        %ylim([yFmin yFmax])
 
-                       yyaxis right
-                       plot(x,obj.BasedForce{i,j},x,ypF)
-                       title(sprintf('Force and Indentation over Time Curve %i',i))
-                       ylabel('force in N')
+                      % yyaxis right
+                      % plot(x,obj.BasedForce{i,j},x,ypF)
+                      % title(sprintf('Force and Indentation over Time Curve %i',i))
+                      % ylabel('force in N')
                        %ylim([yFmin yFmax])
                        
                         if DirectoryPath~=0
@@ -3974,7 +3975,7 @@ classdef ForceMap < matlab.mixin.Copyable
                         
                         
                        
-                    end
+                    %end
                         
                 end
             end
