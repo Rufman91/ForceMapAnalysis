@@ -1758,21 +1758,21 @@ classdef ForceMap < matlab.mixin.Copyable
                         obj.Indentation{i,j} = obj.Indentation{i,j}/rangeH;
                         
                         % Max values of Force and Indentation
-                         maxF = max(obj.Force{i,j});
-                         maxH = max(obj.Indentation{i,j});
+                         maxF1 = max(obj.Force{i,j});
+                         maxH1 = max(obj.Indentation{i,j});
 
                          % Min values of Force and Indentation
-                         minF = min(obj.Force{i,j});
-                         minH = min(obj.Indentation{i,j});
+                         minF1 = min(obj.Force{i,j});
+                         minH1 = min(obj.Indentation{i,j});
 
                          % Difference max min
-                         DiffF = maxF - minF;
-                         DiffH = maxH - minH;
+                         DiffF = maxF1 - minF1;
+                         DiffH = maxH1 - minH1;
 
 
                          % Shift to Zero Line
-                         obj.FZShift{i,j} = obj.Force{i,j}-maxF+(DiffF/2);
-                         obj.HZShift{i,j} = obj.Indentation{i,j}-maxH+(DiffH/2);
+                         obj.FZShift{i,j} = obj.Force{i,j}-maxF1+(DiffF/2);
+                         obj.HZShift{i,j} = obj.Indentation{i,j}-maxH1+(DiffH/2);
                          
                          % Calculation of Sampling rate and Invariance to
                          % be able to subsequently choose the right filter
