@@ -1460,8 +1460,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                % Run the chosen functions
             %   obj.FM{ii}.fc_visual_selection_all(XMin,XMax,YMin,YMax);  
             %   obj.FM{ii}.fc_visual_selection_flag_Selected(XMin,XMax,YMin,YMax,NumFcMax);
-              %  obj.FM{ii}.fc_visual_selection_flag_Uncorrupt(XMin,XMax,YMin,YMax,NumFcMax,Res)
-                obj.FM{ii}.fc_visual_selection_analysed(XMin,XMax,YMin,YMax,NumFcMax,Res)
+                obj.FM{ii}.fc_visual_selection_flag_Uncorrupt(XMin,XMax,YMin,YMax,NumFcMax,Res)
                %obj.save_experiment;        % Save immediately after each force curve
             end    
         end
@@ -1493,7 +1492,46 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             end
             
         end
-                            
+        
+         
+        function SMFS_visual_selection_analysed(obj,XMin,XMax,YMin,YMax,NumFcMax,Res)
+       
+            % 
+            if nargin<2
+                XMin= -inf;     % Limit of the X-axis in meters (m)
+                XMax= 50e-9;      % Limit of the X-axis in meters (m)
+                YMin= -inf;     % Limit of the Y-axis in Newtons (N)
+                YMax= 100e-12;      % Limit of the Y-axis in Newtons (N)    
+                NumFcMax = 25;   % Maximum number of force curves per figure
+                Res=[1 1 2560 1440]; % Define the figure resolution
+            end
+            
+            % Output time and date for the dairy
+            datetime('now')
+            
+            % Figure visibility
+            % set(groot,'defaultFigureVisible','off')      
+            set(groot,'defaultFigureVisible','on')  
+            % Change into the Folder of Interest
+            cd(obj.ExperimentFolder) % Move into the folder 
+            % Create folders for saving the produced figures
+            foldername='SMFS_visual_selection_analysed';    % Defines the folder name
+            mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
+            currpath=fullfile(obj.ExperimentFolder,foldername);
+            cd(currpath); 
+            
+            % Loop over the imported force maps
+            %for ii=1:obj.NumForceMaps
+            for ii=1:2 % Debugging
+               % Command window output
+               sprintf('Force Map No. %d of %d',ii,obj.NumForceMaps) % Gives current Force Map Position
+               % Run the chosen functions
+                obj.FM{ii}.fc_visual_selection_analysed(XMin,XMax,YMin,YMax,NumFcMax,Res)
+               %obj.save_experiment;        % Save immediately after each force curve
+            end    
+        end
+      
+        
         function SMFS_print_analysed_fc(obj,XMin,XMax,YMin,YMax,NumFcMax,NumFcUncorrupt,Res)
             %Furthermore, all analysed force curves are plotted and the determined
             % criteria are plotted for visual inspection
