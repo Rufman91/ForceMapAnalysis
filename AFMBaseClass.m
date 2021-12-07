@@ -632,6 +632,10 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle
             
         end
         
+        function characterize_fiber_like_polyline_segments(obj,SampleDistanceMeters,WidthLocalWindowMeters,SmoothingWindowSize,SmoothingWindowWeighting)
+            
+        end
+        
     end
     methods (Static)
         % Static main methods
