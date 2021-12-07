@@ -1460,7 +1460,8 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                % Run the chosen functions
             %   obj.FM{ii}.fc_visual_selection_all(XMin,XMax,YMin,YMax);  
             %   obj.FM{ii}.fc_visual_selection_flag_Selected(XMin,XMax,YMin,YMax,NumFcMax);
-                obj.FM{ii}.fc_visual_selection_flag_Uncorrupt(XMin,XMax,YMin,YMax,NumFcMax,Res)      
+              %  obj.FM{ii}.fc_visual_selection_flag_Uncorrupt(XMin,XMax,YMin,YMax,NumFcMax,Res)
+                obj.FM{ii}.fc_visual_selection_analysed(XMin,XMax,YMin,YMax,NumFcMax,Res)
                %obj.save_experiment;        % Save immediately after each force curve
             end    
         end
@@ -1531,7 +1532,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             %sprintf('Force Map No. %d of %d',hh,obj.NumForceMaps) % Gives current Force Map Position   
             % Determine needed input variable
                NumFcUncorrupt(hh)=nnz(obj.FM{hh}.SMFSFlag.Uncorrupt); % Determine the number of uncorrupted force curves     
-               obj.FM{hh}.fc_print_properties(XMin,XMax,YMin,YMax,NumFcMax,NumFcUncorrupt,Res)         
+               obj.FM{hh}.fc_print_analysed(XMin,XMax,YMin,YMax,NumFcMax,NumFcUncorrupt,Res)         
             end
             obj.NumFcUncorrupt=NumFcUncorrupt;
         end
