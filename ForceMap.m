@@ -2914,12 +2914,16 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 RemainderReal=mod(NumFcUncorrupt,oo*pp); % Correct the remainder based on the determined rows times columns
             end
             %% figure loop
-            for kk=1:NumFigures                
+            for kk=1:NumFigures
+                if  ~obj.DebugFlag.Plot % Suppress plotting
+                %if  obj.DebugFlag.Plot % Allow plotting
+                    continue
+                end
                 % Figure
                 h_fig=figure(kk);
                 h_fig.Color='white'; % changes the background color of the figure
                 h_fig.Units='pixel'; % Defines the units
-                h_fig.OuterPosition=res;
+                h_fig.OuterPosition=Res;
                 h_fig.PaperOrientation='landscape';
                 h_fig.Name=figname;
                 %% Verify the remainder condition
@@ -4184,7 +4188,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                     'Please choose the appropriate button ...'); % Stores the selected button number per figure
                 % Case 1: Select all
                 if SelectBttns == 1
-                    obj.SMFSFlag.Uncorrupt(IdxFcPlot(FcPerFig(kk):FcPerFig(kk+1)))=1;
+                    obj.SMFSFlag.Uncorrupt(IdxFcCorr)=1;
                     % 'Blue' loop - Repaint tile titles for force curves
                     % kept for the analysis
                     for ii=1:length(IdxFcCorr)
@@ -4196,7 +4200,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 end
                 % Case 2: Select none
                  if SelectBttns == 2
-                    obj.SMFSFlag.Uncorrupt(IdxFcPlot(FcPerFig(kk):FcPerFig(kk+1)))=0;
+                    obj.SMFSFlag.Uncorrupt(IdxFcCorr)=0;
                     %'Red' loop - Repaint tile titles for force curves
                     % removed from the analysis
                     for jj=1:length(IdxFcCorr)
@@ -4207,8 +4211,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                     end                    
                  end                   
                 % Case 3: Select all - except of
-                if SelectBttns == 3
-                    obj.SMFSFlag.Uncorrupt(IdxFcPlot(FcPerFig(kk):FcPerFig(kk+1)))=1;
+                if SelectBttns == 3                  
+                    obj.SMFSFlag.Uncorrupt(IdxFcCorr)=1;
                     prompt = {'Enter the force curve number you do not want to keep for analysis (For multiple selections just use the space key to separate entries)'};
                     definput = {''};
                     opts.Interpreter = 'tex';
@@ -4236,7 +4240,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 
                 % Case 4: Select none - except of
                 if SelectBttns == 4
-                    obj.SMFSFlag.Uncorrupt(IdxFcPlot(FcPerFig(kk):FcPerFig(kk+1)))=0;
+                    obj.SMFSFlag.Uncorrupt(IdxFcCorr)=0;
                     prompt = {'Enter the force curve number you want want to keep for analysis (For multiple selections just use the space key to separate entries)'};
                     definput = {''};
                     opts.Interpreter = 'tex';
