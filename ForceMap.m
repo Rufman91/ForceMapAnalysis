@@ -4010,7 +4010,7 @@ classdef ForceMap < matlab.mixin.Copyable
 
                         yyaxis left
                         plot(x,obj.BasedForce{i,j},'-r',x,ypF,':m')
-                        legend({'force data','force fit data','indentation data','indentation fit data'},'Location','southoutside')
+                        legend({'force data','force fit data'},{'indentation data','indentation fit data'},'Location','southoutside')
                         xlabel('time in s')
                         ylabel('force')
                         
