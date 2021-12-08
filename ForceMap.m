@@ -4017,7 +4017,7 @@ classdef ForceMap < matlab.mixin.Copyable
                         
                         yyaxis right
                         plot(x,obj.Indentation{i,j},'-c',x,ypH,':b')
-                        Legends{end+2} = {'indentation data','indentation fit data'};
+                        Legends{end+1} = 'indentation data';
                         set(gca, 'YColor', 'c')
                         title(sprintf('Force and Indentation over Time Curve %i',i))
                         legend(Legends,...
