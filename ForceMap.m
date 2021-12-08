@@ -3986,8 +3986,8 @@ classdef ForceMap < matlab.mixin.Copyable
                             ypF = obj.SineVarsF{i,j}(1)*(sin(2*pi*x.*obj.SineVarsF{i,j}(2) + obj.SineVarsF{i,j}(3))) + meanF;
                             ypH = obj.SineVarsH{i,j}(1)*(sin(2*pi*x.*obj.SineVarsH{i,j}(2) + obj.SineVarsH{i,j}(3))) + meanH;
                         catch
-                            ypF = 0;
-                            ypH = 0;
+                            ypF = zeros(x,1);
+                            ypH = zeros(x,1);
                         end
                         
                         hold on
