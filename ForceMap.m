@@ -4020,8 +4020,7 @@ classdef ForceMap < matlab.mixin.Copyable
                         %Legends{end+1} = 'indentation data';
                         set(gca, 'YColor', 'c')
                         title(sprintf('Force and Indentation over Time Curve %i',i))
-                        legend({'force data','force fit data','','','indentation data','indentation fit data'}...
-                            'Location','southoutside')
+                        legend({'force data','force fit data','','','indentation data','indentation fit data'},'Location','southoutside')
                         ylabel('indentation')
                         grid on
                         grid minor
