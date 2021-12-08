@@ -3972,6 +3972,10 @@ classdef ForceMap < matlab.mixin.Copyable
             for i=1:obj.NCurves
                
                 figure('Name',sprintf('Curves with Fit %i',i))
+                fig = figure;
+                left_color = [1 0 0];
+                right_color = [0 1 1];
+                set(fig,'defaultAxesColorOrder',[left_color; right_color]);
                 lastseg = obj.NumSegments - 2;
                 hold on
                 for j=3:lastseg
@@ -4013,10 +4017,7 @@ classdef ForceMap < matlab.mixin.Copyable
                         legend({'indentation data','indentation fit data'},'Location','southoutside')
                         grid on
                         grid minor
-                        fig = figure;
-                        left_color = [1 0 0];
-                        right_color = [0 1 1];
-                        set(fig,'defaultAxesColorOrder',[left_color; right_color]);
+
 
                          
                        
