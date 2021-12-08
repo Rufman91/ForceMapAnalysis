@@ -479,53 +479,65 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             
         end
         
-        function update_absolute_paths(E,Path)
+        function update_absolute_paths(E,Path,JustExperiment)
+            
+            if nargin < 3
+                JustExperiment = 0;
+            end
             
             for i=1:E.NumForceMaps
                 if ~isempty(E.FM{i})
-                    E.FM{i}.check_for_new_host();
-                    if E.BigDataFlag && ~E.PythonLoaderFlag
-                        OldDataStore = E.FM{i}.DataStoreFolder;
-                        Split = strsplit(OldDataStore,filesep);
-                        E.FM{i}.DataStoreFolder = fullfile(Path,Split{end-1});
-                    elseif E.BigDataFlag && E.PythonLoaderFlag
-                        OldDataStore = E.FM{i}.DataStoreFolder;
-                        Split = strsplit(OldDataStore,filesep);
-                        E.FM{i}.DataStoreFolder = fullfile(Path,Split{end});
-                        OldFilePath = split(E.FM{i}.RawDataFilePath,filesep);
-                        E.FM{i}.RawDataFilePath = {fullfile(E.FM{i}.DataStoreFolder,OldFilePath{end})};
+                    if ~JustExperiment
+                        E.FM{i}.check_for_new_host();
+                        if E.BigDataFlag && ~E.PythonLoaderFlag
+                            OldDataStore = E.FM{i}.DataStoreFolder;
+                            Split = strsplit(OldDataStore,filesep);
+                            E.FM{i}.DataStoreFolder = fullfile(Path,Split{end-1});
+                        elseif E.BigDataFlag && E.PythonLoaderFlag
+                            OldDataStore = E.FM{i}.DataStoreFolder;
+                            Split = strsplit(OldDataStore,filesep);
+                            E.FM{i}.DataStoreFolder = fullfile(Path,Split{end});
+                            OldFilePath = split(E.FM{i}.RawDataFilePath,filesep);
+                            E.FM{i}.RawDataFilePath = {fullfile(E.FM{i}.DataStoreFolder,OldFilePath{end})};
+                        end
+                        E.FM{i}.Folder = E.switch_old_with_new_toplvl_path(E.FM{i}.Folder,E.ExperimentFolder,Path);
                     end
-                    E.FM{i}.Folder = E.switch_old_with_new_toplvl_path(E.FM{i}.Folder,E.ExperimentFolder,Path);
                     E.ForceMapFolders{i} = E.switch_old_with_new_toplvl_path(E.ForceMapFolders{i},E.ExperimentFolder,Path);
                 end
             end
             for i=1:E.NumAFMImages
                 if ~isempty(E.I{i})
-                    E.I{i}.check_for_new_host();
-                    E.I{i}.Folder = E.switch_old_with_new_toplvl_path(E.I{i}.Folder,E.ExperimentFolder,Path);
+                    if ~JustExperiment
+                        E.I{i}.check_for_new_host();
+                        E.I{i}.Folder = E.switch_old_with_new_toplvl_path(E.I{i}.Folder,E.ExperimentFolder,Path);
+                    end
                     E.AFMImageFolders{i} = E.switch_old_with_new_toplvl_path(E.AFMImageFolders{i},E.ExperimentFolder,Path);
                 end
             end
             for i=1:E.NumReferenceForceMaps
                 if ~isempty(E.RefFM{i})
-                    E.RefFM{i}.check_for_new_host();
-                    if E.BigDataFlag && ~E.PythonLoaderFlag
-                        E.RefFM{i}.DataStoreFolder = fullfile(Path,Split{end-1});
-                    OldDataStore = E.RefFM{i}.DataStoreFolder;
-                    Split = strsplit(OldDataStore,filesep);
-                    elseif E.BigDataFlag && E.PythonLoaderFlag
-                        E.RefFM{i}.DataStoreFolder = fullfile(Path,Split{end});
-                        OldFilePath = split(E.RefFM{i}.RawDataFilePath,filesep);
-                        E.RefFM{i}.RawDataFilePath = fullfile(E.RefFM{i}.DataStoreFolder,OldFilePath{end});
+                    if ~JustExperiment
+                        E.RefFM{i}.check_for_new_host();
+                        if E.BigDataFlag && ~E.PythonLoaderFlag
+                            E.RefFM{i}.DataStoreFolder = fullfile(Path,Split{end-1});
+                            OldDataStore = E.RefFM{i}.DataStoreFolder;
+                            Split = strsplit(OldDataStore,filesep);
+                        elseif E.BigDataFlag && E.PythonLoaderFlag
+                            E.RefFM{i}.DataStoreFolder = fullfile(Path,Split{end});
+                            OldFilePath = split(E.RefFM{i}.RawDataFilePath,filesep);
+                            E.RefFM{i}.RawDataFilePath = fullfile(E.RefFM{i}.DataStoreFolder,OldFilePath{end});
+                        end
+                        E.RefFM{i}.Folder = E.switch_old_with_new_toplvl_path(E.RefFM{i}.Folder,E.ExperimentFolder,Path);
                     end
-                    E.RefFM{i}.Folder = E.switch_old_with_new_toplvl_path(E.RefFM{i}.Folder,E.ExperimentFolder,Path);
                     E.ReferenceForceMapFolders{i} = E.switch_old_with_new_toplvl_path(E.ReferenceForceMapFolders{i},E.ExperimentFolder,Path);
                 end
             end
             for i=1:E.NumCantileverTips
                 if ~isempty(E.CantileverTips{i})
-                    E.CantileverTips{i}.check_for_new_host();
-                    E.CantileverTips{i}.Folder = E.switch_old_with_new_toplvl_path(E.CantileverTips{i}.Folder,E.ExperimentFolder,Path);
+                    if ~JustExperiment
+                        E.CantileverTips{i}.check_for_new_host();
+                        E.CantileverTips{i}.Folder = E.switch_old_with_new_toplvl_path(E.CantileverTips{i}.Folder,E.ExperimentFolder,Path);
+                    end
                     E.CantileverTipFolders{i} = E.switch_old_with_new_toplvl_path(E.CantileverTipFolders{i},E.ExperimentFolder,Path);
                 end
             end
@@ -553,6 +565,9 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             
             E = obj;
             clear obj
+            
+            E.check_for_new_host();
+            E.update_absolute_paths(Path,true);
             
             if isempty(E.FractionedSaveFiles) || ~E.FractionedSaveFiles
             elseif E.FractionedSaveFiles
