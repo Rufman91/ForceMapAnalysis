@@ -1941,6 +1941,9 @@ classdef ForceMap < matlab.mixin.Copyable
                          obj.SineVarsH{i,j}(2)= obj.SegFrequency{j};
                          %obj.SineVarsH{i,j}(3)= firstsignchangeH;
                          
+                         %check relation
+                         RelationF1 = AmplitudeF/obj.SineVarsF{i,j}(1);
+                         RelationH1 = AmplitudeH/obj.SineVarsH{i,j}(1);
                          
                          % Rescaling Amplitude
                          %remove Amplitude Correction to get filtered data
@@ -1959,6 +1962,10 @@ classdef ForceMap < matlab.mixin.Copyable
                          %multiply range back 
                          obj.SineVarsF{i,j}(1) = obj.SineVarsF{i,j}(1)*rangeF;
                          obj.SineVarsH{i,j}(1) = obj.SineVarsH{i,j}(1)*rangeH;
+                         
+                         %check relation 
+                         RelationF2 = AmplitudeFOrig/obj.SineVarsF{i,j}(1);
+                         RelationH2 = AmplitudeHOrig/obj.SineVarsH{i,j}(1);
                         
 
                         % phase shift of force and indentation
@@ -3993,6 +4000,11 @@ classdef ForceMap < matlab.mixin.Copyable
                         
                         hold on
                         
+                        fig = figure;
+                        left_color = [1 0 0];
+                        right_color = [0 1 1];
+                        set(fig,'defaultAxesColorOrder',[left_color; right_color]);
+                        
 
                         yyaxis left
                         plot(x,obj.BasedForce{i,j},'-r',x,ypF,':m')
@@ -4001,7 +4013,8 @@ classdef ForceMap < matlab.mixin.Copyable
                         yyaxis right
                         plot(x,obj.Indentation{i,j},'-c',x,ypH,':b')
                         legend({'indentation data','indentation fit data'},'Location','southoutside')
-
+                        grid on
+                        grid minor
 
                          
                        
