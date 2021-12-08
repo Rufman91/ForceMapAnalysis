@@ -3969,6 +3969,8 @@ classdef ForceMap < matlab.mixin.Copyable
                 lastseg = obj.NumSegments - 1;
                 for j=1:obj.NumSegments
                     
+                    hold on
+                    
                     if obj.SegFrequency{j} > 0
                         
                         x= obj.SegTime{j};
@@ -3976,12 +3978,16 @@ classdef ForceMap < matlab.mixin.Copyable
                         if isempty(obj.SineVarsH{i,j})
                             obj.SineVarsH{i,j}=0;
                         end
-
+                        
+                        % Estimate offset
+                         meanF = mean(obj.BasedForce{i,j});
+                         meanH = mean(obj.Indentation{i,j});
                         
                         %Y-values fitted sine of indentation and force:
-                        ypF = obj.SineVarsF{i,j}(1)*(sin(2*pi*x.*obj.SineVarsF{i,j}(2) + obj.SineVarsF{i,j}(3)));
-                        ypH = obj.SineVarsH{i,j}(1)*(sin(2*pi*x.*obj.SineVarsH{i,j}(2) + obj.SineVarsH{i,j}(3)));
+                        ypF = obj.SineVarsF{i,j}(1)*(sin(2*pi*x.*obj.SineVarsF{i,j}(2) + obj.SineVarsF{i,j}(3))) + meanF;
+                        ypH = obj.SineVarsH{i,j}(1)*(sin(2*pi*x.*obj.SineVarsH{i,j}(2) + obj.SineVarsH{i,j}(3))) + meanH;
                         
+                        hold on
                         
                         %figure('Name',sprintf('Force Curve %i Segment %i',i,j))
                         subplot(3,1,1)
