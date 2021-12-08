@@ -3998,13 +3998,14 @@ classdef ForceMap < matlab.mixin.Copyable
                             ypH = zeros(length(x),1);
                         end
                         
-                        hold on
+                        %hold on
                         
                         fig = figure;
                         left_color = [1 0 0];
                         right_color = [0 1 1];
                         set(fig,'defaultAxesColorOrder',[left_color; right_color]);
                         
+                        hold on
 
                         yyaxis left
                         plot(x,obj.BasedForce{i,j},'-r',x,ypF,':m')
