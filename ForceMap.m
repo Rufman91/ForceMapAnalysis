@@ -1749,6 +1749,9 @@ classdef ForceMap < matlab.mixin.Copyable
 %                         findpeaks(HHGP)
 %                         findpeaks(-HHGP)
 %                         drawnow
+
+                        AmplitudeFOrig=((max(obj.BasedForce{i,j}) - min(obj.BasedForce{i,j}))/2);
+                        AmplitudeHOrig=((max(obj.Indentation{i,j}) - min(obj.Indentation{i,j}))/2);
                         
                         % Divide data through their range
                         rangeF = range(obj.BasedForce{i,j});
@@ -1768,11 +1771,18 @@ classdef ForceMap < matlab.mixin.Copyable
                          % Difference max min
                          DiffF1 = maxF1 - minF1;
                          DiffH1 = maxH1 - minH1;
-
+                         
+                         AmplitudeFRang=((max(obj.BasedForce{i,j}) - min(obj.BasedForce{i,j}))/2);
+                         AmplitudeHRang=((max(obj.Indentation{i,j}) - min(obj.Indentation{i,j}))/2);
+                        
 
                          % Shift to Zero Line
                          obj.FZShift{i,j} = obj.BasedForce{i,j}-maxF1+(DiffF1/2);
                          obj.HZShift{i,j} = obj.Indentation{i,j}-maxH1+(DiffH1/2);
+                         
+                         AmplitudeFShift=((max(obj.FZShift{i,j}) - min(obj.FZShift{i,j}))/2);
+                         AmplitudeHShift=((max(obj.HZShift{i,j}) - min(obj.HZShift{i,j}))/2);
+                        
                          
                          % Calculation of Sampling rate and Invariance to
                          % be able to subsequently choose the right filter
@@ -1782,6 +1792,7 @@ classdef ForceMap < matlab.mixin.Copyable
                          % Force-Data are only placed horizontally in 
                          % the zero line with detrend
                          ForceTrend{i,j} = detrend(obj.FZShift{i,j});
+                         AmplitudeFTrend=((max(ForceTrend{i,j}) - min(ForceTrend{i,j}))/2);
                          %1D-digital filter
                          iN = Invariance/100;
                          d = ones(1,fix(iN))/iN;
@@ -1789,9 +1800,14 @@ classdef ForceMap < matlab.mixin.Copyable
                          
                          % Modification of Indentation-Data
                          IndentTrend{i,j} = detrend(obj.HZShift{i,j});
+                         AmplitudeHTrend=((max(IndentTrend{i,j}) - min(IndentTrend{i,j}))/2);
                          iN = Invariance/100;
                          d = ones(1,fix(iN))/iN;
                          obj.FilterH{i,j} = filtfilt(d,1,IndentTrend{i,j});
+                         
+                         
+                         AmplitudeFFilter=((max(obj.FilterF{i,j}) - min(obj.FilterF{i,j}))/2);
+                         AmplitudeHFilter=((max(obj.FilterH{i,j}) - min(obj.FilterH{i,j}))/2);
                          
                          % Amplitude Correction
                          AmplFiltF = trapz(abs(obj.FilterF{i,j}));
@@ -1801,8 +1817,11 @@ classdef ForceMap < matlab.mixin.Copyable
                          
                          AmplFiltH = trapz(abs(obj.FilterH{i,j}));
                          AmplOrigH = trapz(abs(IndentTrend{i,j}));
-                         AmplCorrectionH = AmplFiltH/AmplOrigH;
+                         AmplCorrectionH = AmplOrigH/AmplFiltH;
                          obj.FilterH{i,j} = obj.FilterH{i,j}*AmplCorrectionH;
+                         
+                         %AmplitudeFCorr=((max(obj.FilterF{i,j}) - min(obj.FilterF{i,j}))/2);
+                         %AmplitudeHCorr=((max(obj.FilterH{i,j}) - min(obj.FilterH{i,j}))/2);
                         
                         
                          % Time Vectors with more entries for interpolation
@@ -1871,8 +1890,6 @@ classdef ForceMap < matlab.mixin.Copyable
                          AmplitudeF=(DiffF/2);
                          AmplitudeH=(DiffH/2);
                          
-                         %lowAmp = AmplitudeF/2;
-                         %highAmp = AmplitudeF*2;
 
  
                          % Estimate period
