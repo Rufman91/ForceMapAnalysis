@@ -3995,12 +3995,12 @@ classdef ForceMap < matlab.mixin.Copyable
                         
 
                         yyaxis left
-                        plot(x,obj.BasedForce{i,j},x,ypF)
-                        legend({'shifted force data to zero line','filtered force data','fitted force data 1'},'Location','southoutside')
+                        plot(x,obj.BasedForce{i,j},'-r',x,ypF,':m')
+                        legend({'force data','force fit data'},'Location','southoutside')
                         
                         yyaxis right
-                        plot(x,obj.Indentation{i,j},x,ypH)
-                        legend({'shifted indentation data to zero line','filtered indentation data','fitted indentation data 1'},'Location','southoutside')
+                        plot(x,obj.Indentation{i,j},'-c',x,ypH,':b')
+                        legend({'indentation data','indentation fit data'},'Location','southoutside')
 
 
                          
