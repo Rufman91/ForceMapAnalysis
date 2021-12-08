@@ -1796,7 +1796,7 @@ classdef ForceMap < matlab.mixin.Copyable
                          % Amplitude Correction
                          AmplFiltF = trapz(abs(obj.FilterF{i,j}));
                          AmplOrigF = trapz(abs(ForceTrend{i,j}));
-                         AmplCorrectionF = AmplFiltF/AmplOrigF;
+                         AmplCorrectionF = AmplOrigF/AmplFiltF;
                          obj.FilterF{i,j} = obj.FilterF{i,j}*AmplCorrectionF;
                          
                          AmplFiltH = trapz(abs(obj.FilterH{i,j}));
@@ -3699,8 +3699,8 @@ classdef ForceMap < matlab.mixin.Copyable
                 %force time
                 figure(k)
                 hold on
-                [MultiplierX,UnitX,~] = AFMImage.parse_unit_scale(range(obj.Indentation{i,j}),'m',10);
-                [MultiplierY,UnitY,~] = AFMImage.parse_unit_scale(range(obj.BasedForce{i,j}),'N',10);
+                %[MultiplierX,UnitX,~] = AFMImage.parse_unit_scale(range(obj.Indentation{i,j}),'m',10);
+                %[MultiplierY,UnitY,~] = AFMImage.parse_unit_scale(range(obj.BasedForce{i,j}),'N',10);
                 for j=1:obj.NumSegments
                     
                        lengthApp = length(obj.App{i});
@@ -3718,7 +3718,7 @@ classdef ForceMap < matlab.mixin.Copyable
                        obj.SegTime{obj.NumSegments} = obj.TStart{obj.NumSegments}:obj.SecPerPoint{obj.NumSegments}:obj.TEnd{obj.NumSegments};
                        obj.SegTime{obj.NumSegments} = obj.SegTime{obj.NumSegments}.';
 
-                       plot(obj.SegTime{j},obj.BasedForce{i,j}*MultiplierY,'b')
+                       plot(obj.SegTime{j},obj.BasedForce{i,j},'b')
                        title(sprintf('Force Time Curve %i',i))
                        xlabel('time in s')
                        ylabel('force in N')
@@ -3763,8 +3763,8 @@ classdef ForceMap < matlab.mixin.Copyable
                 %force and indentation time
                 figure(h)
                 hold on
-                [MultiplierX,UnitX,~] = AFMImage.parse_unit_scale(range(obj.Indentation{i,j}),'m',10);
-                [MultiplierY,UnitY,~] = AFMImage.parse_unit_scale(range(obj.BasedForce{i,j}),'N',10);
+                %[MultiplierX,UnitX,~] = AFMImage.parse_unit_scale(range(obj.Indentation{i,j}),'m',10);
+                %[MultiplierY,UnitY,~] = AFMImage.parse_unit_scale(range(obj.BasedForce{i,j}),'N',10);
                 for j=1:obj.NumSegments
                     
                        lengthHHApp = length(obj.HHApp{i});
@@ -3789,13 +3789,13 @@ classdef ForceMap < matlab.mixin.Copyable
                        hold on
 
                        yyaxis left
-                       plot(obj.SegTime{j},obj.Indentation{i,j}*MultiplierX,'-')
+                       plot(obj.SegTime{j},obj.Indentation{i,j},'-')
                        xlabel('time in s')
                        ylabel('indentation in m')
                        %ylim([yFmin yFmax])
 
                        yyaxis right
-                       plot(obj.SegTime{j},obj.BasedForce{i,j}*MultiplierY,'-')
+                       plot(obj.SegTime{j},obj.BasedForce{i,j},'-')
                        title(sprintf('Force and Indentation over Time Curve %i',i))
                        ylabel('force in N')
                        %ylim([yFmin yFmax])
@@ -3814,17 +3814,17 @@ classdef ForceMap < matlab.mixin.Copyable
                 xHmin = 0.5*min(obj.Indentation{i,j});
                        
                 hold on
-                [MultiplierX,UnitX,~] = AFMImage.parse_unit_scale(range(obj.Indentation{i,j}),'m',10);
-                [MultiplierY,UnitY,~] = AFMImage.parse_unit_scale(range(obj.BasedForce{i,j}),'N',10);
+                %[MultiplierX,UnitX,~] = AFMImage.parse_unit_scale(range(obj.Indentation{i,j}),'m',10);
+                %[MultiplierY,UnitY,~] = AFMImage.parse_unit_scale(range(obj.BasedForce{i,j}),'N',10);
                 for j=1:obj.NumSegments
                     
 
-                       plot(obj.Indentation{i,j}*MultiplierX,obj.BasedForce{i,j}*MultiplierY,'b')
+                       plot(obj.Indentation{i,j},obj.BasedForce{i,j},'b')
                        xlim([-1 0.5])
                        %plot(obj.Height{i,j},obj.Force{i,j},'r')
                        title(sprintf('Force Indentation Curve %i',i))
-                       xlabel(sprintf('Indentation [%i]',UnitX));
-                       ylabel(sprintf('vDeflection-Force [%i]',UnitY));
+                       %xlabel(sprintf('Indentation [%i]',UnitX));
+                       %ylabel(sprintf('vDeflection-Force [%i]',UnitY));
                        grid on
                        grid minor
                        
