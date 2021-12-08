@@ -1940,6 +1940,25 @@ classdef ForceMap < matlab.mixin.Copyable
                          %obj.SineVarsH{i,j}(1)= obj.SineVarsH{i,j}(1)*rangeH;
                          obj.SineVarsH{i,j}(2)= obj.SegFrequency{j};
                          %obj.SineVarsH{i,j}(3)= firstsignchangeH;
+                         
+                         
+                         % Rescaling Amplitude
+                         %remove Amplitude Correction to get filtered data
+                         %before correction
+                         obj.SineVarsF{i,j}(1) = obj.SineVarsF{i,j}(1)/AmplCorrectionF;
+                         obj.SineVarsH{i,j}(1) = obj.SineVarsH{i,j}(1)/AmplCorrectionH;
+                         
+                         %get back to trend data
+                         obj.SineVarsF{i,j}(1) = obj.SineVarsF{i,j}(1)*(AmplitudeFTrend/AmplitudeFFilter);
+                         obj.SineVarsH{i,j}(1) = obj.SineVarsH{i,j}(1)*(AmplitudeHTrend/AmplitudeHFilter);
+                         
+                         %get back to shifted data 
+                         obj.SineVarsF{i,j}(1) = obj.SineVarsF{i,j}(1)*(AmplitudeFShift/AmplitudeFTrend);
+                         obj.SineVarsH{i,j}(1) = obj.SineVarsH{i,j}(1)*(AmplitudeHShift/AmplitudeHTrend);
+                         
+                         %multiply range back 
+                         obj.SineVarsF{i,j}(1) = obj.SineVarsF{i,j}(1)*rangeF;
+                         obj.SineVarsH{i,j}(1) = obj.SineVarsH{i,j}(1)*rangeH;
                         
 
                         % phase shift of force and indentation
