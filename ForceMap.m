@@ -3973,9 +3973,9 @@ classdef ForceMap < matlab.mixin.Copyable
                
                 figure('Name',sprintf('Curves with Fit %i',i))
                 %fig = figure;
-                left_color = [1 0 0];
-                right_color = [0 1 1];
-                set(figure,'defaultAxesColorOrder',[left_color; right_color]);
+                %left_color = [1 0 0];
+                %right_color = [0 1 1];
+                %set(figure,'defaultAxesColorOrder',[left_color; right_color]);
                 lastseg = obj.NumSegments - 2;
                 hold on
                 for j=3:lastseg
@@ -4009,7 +4009,7 @@ classdef ForceMap < matlab.mixin.Copyable
                         hold on
 
                         yyaxis left
-                        plot(x,obj.BasedForce{i,j},'-r',x,ypF,':m','DisplayName',char({'force data','force fit data'}))
+                        plot(x,obj.BasedForce{i,j},'-r',x,ypF,':m')
                         set(gca, 'YColor', 'r')
                         legend('Location','southoutside')
                         xlabel('time in s')
