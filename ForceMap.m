@@ -3966,12 +3966,11 @@ classdef ForceMap < matlab.mixin.Copyable
                
                 figure('Name',sprintf('Curves with Fit %i',i))
                 hold on
-                lastseg = obj.NumSegments - 1;
                 for j=1:obj.NumSegments
                     
                     hold on
                     
-                    if obj.SegFrequency{j} > 0
+                    %if obj.SegFrequency{j} > 0
                         
                         x= obj.SegTime{j};
                         
@@ -3989,20 +3988,15 @@ classdef ForceMap < matlab.mixin.Copyable
                         
                         hold on
                         
-                        %figure('Name',sprintf('Force Curve %i Segment %i',i,j))
-                        subplot(3,1,1)
+
+                        yyaxis left
                         plot(x,obj.BasedForce{i,j},x,ypF)
                         legend({'shifted force data to zero line','filtered force data','fitted force data 1'},'Location','southoutside')
-                        subplot(3,1,2)
+                        
+                        yyaxis right
                         plot(x,obj.Indentation{i,j},x,ypH)
                         legend({'shifted indentation data to zero line','filtered indentation data','fitted indentation data 1'},'Location','southoutside')
-                        subplot(3,1,3)
-                        %plot(x,ypF)
-                        findpeaks(ypF)
-                        hold on
-                        findpeaks(ypH)
-                        legend({'force','force peak','indentation','indentation peak'},'Location','southoutside')
-                        drawnow
+
 
                          
                        
@@ -4014,7 +4008,7 @@ classdef ForceMap < matlab.mixin.Copyable
                         
                         
                        
-                    end
+                    %end
                         
                 end
             end
