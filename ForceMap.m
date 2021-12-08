@@ -4000,10 +4000,7 @@ classdef ForceMap < matlab.mixin.Copyable
                         
                         %hold on
                         
-%                         fig = figure;
-                        left_color = [1 0 0];
-                        right_color = [0 1 1];
-                        set(figure,'defaultAxesColorOrder',[left_color; right_color]);
+
                         
                         hold on
 
@@ -4016,6 +4013,10 @@ classdef ForceMap < matlab.mixin.Copyable
                         legend({'indentation data','indentation fit data'},'Location','southoutside')
                         grid on
                         grid minor
+                        fig = figure;
+                        left_color = [1 0 0];
+                        right_color = [0 1 1];
+                        set(fig,'defaultAxesColorOrder',[left_color; right_color]);
 
                          
                        
