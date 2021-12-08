@@ -3975,7 +3975,7 @@ classdef ForceMap < matlab.mixin.Copyable
                 %fig = figure;
                 left_color = [1 0 0];
                 right_color = [0 1 1];
-                set('Name','defaultAxesColorOrder',[left_color; right_color]);
+                set(figure,'defaultAxesColorOrder',[left_color; right_color]);
                 lastseg = obj.NumSegments - 2;
                 hold on
                 for j=3:lastseg
