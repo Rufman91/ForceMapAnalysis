@@ -3972,10 +3972,10 @@ classdef ForceMap < matlab.mixin.Copyable
             for i=1:obj.NCurves
                
                 figure('Name',sprintf('Curves with Fit %i',i))
-                fig = figure;
+                %fig = figure;
                 left_color = [1 0 0];
                 right_color = [0 1 1];
-                set(fig,'defaultAxesColorOrder',[left_color; right_color]);
+                set('Name','defaultAxesColorOrder',[left_color; right_color]);
                 lastseg = obj.NumSegments - 2;
                 hold on
                 for j=3:lastseg
@@ -4010,11 +4010,14 @@ classdef ForceMap < matlab.mixin.Copyable
 
                         yyaxis left
                         plot(x,obj.BasedForce{i,j},'-r',x,ypF,':m')
-                        legend({'force data','force fit data'},'Location','southoutside')
+                        legend({'force data','force fit data','indentation data','indentation fit data'},'Location','southoutside')
+                        xlabel('time in s')
+                        ylabel('force')
                         
                         yyaxis right
                         plot(x,obj.Indentation{i,j},'-c',x,ypH,':b')
-                        legend({'indentation data','indentation fit data'},'Location','southoutside')
+                        %legend({'indentation data','indentation fit data'},'Location','southoutside')
+                        ylabel('indentation')
                         grid on
                         grid minor
 
