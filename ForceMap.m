@@ -1975,6 +1975,7 @@ classdef ForceMap < matlab.mixin.Copyable
 %                         EModMicro1(i,j) = sqrt(pi/obj.IndentArea(i))*1/2*...
 %                                 (1-obj.PoissonR^2)*cos(obj.DeltaPhi{i,j})*...
 %                                 (obj.SineVarsF{i,j}(1)/obj.SineVarsH{i,j}(1));
+                       
                         
                         % turn range back to normal
                         obj.BasedForce{i,j} = obj.BasedForce{i,j}*rangeF;
@@ -3971,6 +3972,11 @@ classdef ForceMap < matlab.mixin.Copyable
                     %if obj.SegFrequency{j} > 0
                         
                         x= obj.SegTime{j};
+                        
+                        if isempty(obj.SineVarsH{i,j})
+                            obj.SineVarsH{i,j}=0;
+                        end
+
                         
                         %Y-values fitted sine of indentation and force:
                         ypF = obj.SineVarsF{i,j}(1)*(sin(2*pi*x.*obj.SineVarsF{i,j}(2) + obj.SineVarsF{i,j}(3)));
