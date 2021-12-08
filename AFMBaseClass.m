@@ -604,6 +604,29 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle
             
         end
         
+        function reset_property_to_default(obj,PropertyName)
+            
+            Meta = metaclass(obj);
+            Prop = Meta.PropertyList;
+            PropNames = {Prop.Name};
+            Index = 0;
+            for i=1:length(PropNames)
+                if isequal(PropNames{i},PropertyName)
+                    Index = i;
+                end
+            end
+            if ~Index
+                warning([PropertyName ' is not a Property'])
+                return
+            end
+            if Prop(Index).HasDefault
+                set(obj,PropertyName,Prop(Index).DefaultValue);
+            else
+                warning(['Property ' PropertyName ' does not have a default value!'])
+            end
+            
+        end
+        
         function automatic_segmentation_on_singular_vertical_fiber(obj,SampleDistanceMeters,WidthLocalWindowMeters,SmoothingWindowSize,SmoothingWindowWeighting,Indizes)
             
             
@@ -633,6 +656,8 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle
         end
         
         function characterize_fiber_like_polyline_segments(obj,SampleDistanceMeters,WidthLocalWindowMeters,SmoothingWindowSize,SmoothingWindowWeighting)
+            
+            
             
         end
         
