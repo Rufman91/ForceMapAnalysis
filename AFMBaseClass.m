@@ -655,10 +655,71 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle
             
         end
         
-        function characterize_fiber_like_polyline_segments(obj,SampleDistanceMeters,WidthLocalWindowMeters,SmoothingWindowSize,SmoothingWindowWeighting)
+        function [Height, WidthHalfHeight, Prominence, WidthHalfProminence, DirectionVector] = ...
+                characterize_fiber_like_polyline_segments(obj,...
+                WidthLocalWindowMeters,SmoothingWindowSize,DebugBool)
             
+            
+            Channel = obj.get_channel('Processed');
+            if isempty(Channel)
+                warning('No Channel "Processed" found. Need flattened height channel for snap to local maximum')
+                return
+            end
+            
+            % Convert inputs from meters to pixels
+            SizePerPixel = Channel.ScanSizeX/Channel.NumPixelsX;
+            WidthLocalWindowPixels = WidthLocalWindowMeters/SizePerPixel;
+            
+            h = waitbar(0,sprintf('Preparing to analyze %i Segments',length(obj.Segment)));
+            
+            k = 1;
             for i=1:length(obj.Segment)
-                TempSegName = obj.Segment(i);
+                waitbar(i/NumSnaps,h,sprintf('Analyzing %s %s',obj.Segment(i).Name,obj.Segment(i).SubSegmentName))
+                if ~isequal(obj.Segment(i).Type,'polyline') || isempty(strfind(obj.Segment(i).Name,'Snapped'))
+                    continue
+                end
+                SegmentPositions = obj.Segment(i).ROIObject.Position;
+                LocalDirectionVector = AFMBaseClass.find_local_direction_vector_in_ordered_vector_list(obj.Segment(i).ROIObject.Position,SmoothingWindowSize,'flat');
+                LocalHeight = zeros(length(SegmentPositions(:,1)),1);
+                LocalProminence = zeros(length(SegmentPositions(:,1)),1);
+                LocalWidthHalfHeight = zeros(length(SegmentPositions(:,1)),1);
+                LocalWidthHalfProminence = zeros(length(SegmentPositions(:,1)),1);
+                for j=1:length(SegmentPositions(:,1))
+                    PerpendicularVector(j,:) = [LocalDirectionVector(j,2) -LocalDirectionVector(j,1)]/norm(LocalDirectionVector(j,:));
+                    WindowStart =SegmentPositions(j,:) + PerpendicularVector(j,:).*WidthLocalWindowPixels/2;
+                    WindowEnd = SegmentPositions(j,:) - PerpendicularVector(j,:).*WidthLocalWindowPixels/2;
+                    [LocalX,LocalY,LocalProfile] = improfile(Channel.Image,[WindowStart(1) WindowEnd(1)],[WindowStart(2) WindowEnd(2)]);
+                    if length(LocalProfile) >= 4 && ~sum(isnan(LocalProfile))
+                        LocalX = interp1(LocalX,linspace(0,1,100)'.*length(LocalX),'spline');
+                        LocalY = interp1(LocalY,linspace(0,1,100)'.*length(LocalY),'spline');
+                        LocalProfile = interp1(LocalProfile,linspace(0,1,100)'.*length(LocalProfile),'spline');
+                    end
+                    LocalDistance = sign(LocalX - SegmentPositions(j,1)).*vecnorm([LocalX LocalY] - SegmentPositions(j,:),2,2);
+                    LocalDistance = sign(LocalDistance(end) - LocalDistance(1)).*LocalDistance;
+                    if DebugBool
+                        subplot('Position',[0.05 0.1 .5 .8])
+                        imshow(rescale(Channel.Image),'Colormap',obj.CMap);
+                        drawline('Position',[WindowStart; WindowEnd]);
+                        subplot('Position',[.6 .1 .3 .4])
+                        findpeaks(LocalProfile,LocalDistance,'Annotate','extents','WidthReference','halfheight');
+                        subplot('Position',[.6 .55 .3 .4])
+                        findpeaks(LocalProfile,LocalDistance,'Annotate','extents','WidthReference','halfprom');
+                        drawnow
+                    end
+                    [f] = findpeaks(LocalProfile,LocalDistance,'WidthReference','halfheight');
+                    
+                end
+                Height{k} = LocalHeight;
+                obj.Segment(i).Height = LocalHeight;
+                WidthHalfHeight{k} = LocalWidthHalfHeight;
+                obj.Segment(i).WidthHalfHeight = LocalWidthHalfHeight;
+                Prominence{k} = LocalProminence;
+                obj.Segment(i).Prominence = LocalProminence;
+                WidthHalfProminence{k} = LocalWidthHalfProminence;
+                obj.Segment(i).WidthHalfProminence = LocalWidthHalfProminence;
+                DirectionVector{k} = LocalDirectionVector;
+                obj.Segment(i).DirectionVector = LocalDirectionVector;
+                k = k + 1;
             end
             
         end
