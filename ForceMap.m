@@ -3967,9 +3967,9 @@ classdef ForceMap < matlab.mixin.Copyable
                 figure('Name',sprintf('Curves with Fit %i',i))
                 hold on
                 lastseg = obj.NumSegments - 1;
-                for j=2:lastseg
+                for j=1:obj.NumSegments
                     
-                    %if obj.SegFrequency{j} > 0
+                    if obj.SegFrequency{j} > 0
                         
                         x= obj.SegTime{j};
                         
@@ -4008,7 +4008,7 @@ classdef ForceMap < matlab.mixin.Copyable
                         
                         
                        
-                    %end
+                    end
                         
                 end
             end
