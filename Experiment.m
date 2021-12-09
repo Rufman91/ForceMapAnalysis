@@ -4172,6 +4172,10 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 
                 for i=1:NumSubSegments
                     SegmentIndex = find(strcmp(UniqueNames,Class{1}.Segment(i).Name));
+                    if isempty(Class{1}.Segment(i).ROIObject) || size(Class{1}.Segment(i).ROIObject.Position,1) < 2
+                        Class{1}.Segment(i) = [];
+                        draw_channel_1
+                    end
                     if isequal(Class{1}.Segment(i).Name,h.SegmentBox.String{h.SegmentBox.Value}) &&...
                             isequal(Class{1}.Segment(i).SubSegmentName,h.SubsegmentBox.String{h.SubsegmentBox.Value}) &&...
                             h.EnableEditing
@@ -6158,6 +6162,10 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             NewPath = replace(OldPath,OldToplvl,NewToplvl);
             
         end
+        
+    end
+    methods(Static)
+        % static methods for meta operations on multiple experiments
         
     end
 end

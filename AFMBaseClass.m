@@ -674,7 +674,7 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle
             
             k = 1;
             for i=1:length(obj.Segment)
-                waitbar(i/NumSnaps,h,sprintf('Analyzing %s %s',obj.Segment(i).Name,obj.Segment(i).SubSegmentName))
+                waitbar(i/length(obj.Segment),h,sprintf('Analyzing %s %s',obj.Segment(i).Name,obj.Segment(i).SubSegmentName))
                 if ~isequal(obj.Segment(i).Type,'polyline') || isempty(strfind(obj.Segment(i).Name,'Snapped'))
                     continue
                 end
@@ -706,7 +706,8 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle
                         findpeaks(LocalProfile,LocalDistance,'Annotate','extents','WidthReference','halfprom');
                         drawnow
                     end
-                    [f] = findpeaks(LocalProfile,LocalDistance,'WidthReference','halfheight');
+                    [Peaks,Locations,WidthHalfHeight] = findpeaks(LocalProfile,LocalDistance,'WidthReference','halfheight');
+                    [Peaks,Locations,WidthHalfProm] = findpeaks(LocalProfile,LocalDistance,'WidthReference','halfprom');
                     
                 end
                 Height{k} = LocalHeight;
