@@ -537,6 +537,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 if ~AboveZeroBool(end) || (sum(AboveZeroBool)==length(AboveZeroBool))
                     obj.SelectedCurves(i) = 0;
                     obj.CorruptedCurves(i) = 1;
+                    warning(['Curve Nr. ' num2str(i) ' is consistently above 0 force [N]'])
                     continue
                 end
                 while AboveZeroBool(end-k)
