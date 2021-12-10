@@ -534,6 +534,10 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 AboveZeroBool = zeros(length(App),1);
                 AboveZeroBool(find(App>0)) = 1;
                 k = 0;
+                if ~AboveZeroBool(end)
+                    obj.SelectedCurves(i) = 0;
+                    obj.CorruptedCurves(i) = 1;
+                end
                 while AboveZeroBool(end-k)
                     k = k + 1;
                 end
