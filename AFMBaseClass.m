@@ -378,6 +378,12 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle
                         NewVertices = [NewVertices; TempNewVertices];
                         OriginalVertices(1,:) = [];
                     end
+                    OutOfBounds = or(or(NewVertices(:,1) < 1,NewVertices(:,2) < 1),...
+                        or(NewVertices(:,1) > Channel.NumPixelsX,NewVertices(:,2) > Channel.NumPixelsX));
+                    NewVertices(OutOfBounds,:) = [];
+                    if size(NewVertices,1) < 3
+                        continue
+                    end
                     Snapped(k).ROIObject.Position = NewVertices;
                     k = k + 1;
                 end
@@ -655,10 +661,14 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle
             
         end
         
-        function [Height, WidthHalfHeight, Prominence, WidthHalfProminence, DirectionVector] = ...
-                characterize_fiber_like_polyline_segments(obj,...
-                WidthLocalWindowMeters,SmoothingWindowSize,DebugBool)
+        function [OutArrayStruct,OutStruct,OutStructAll] = characterize_fiber_like_polyline_segments(obj,...
+                WidthLocalWindowMeters,SmoothingWindowSize,MinPeakDistanceMeters,...
+                DebugBool,RecordMovieBool,NumFrameSkips)
             
+            OutArrayStruct = struct();
+            OutStruct = struct();
+            OutStructAll = struct();
+            Struct = struct([]);
             
             Channel = obj.get_channel('Processed');
             if isempty(Channel)
@@ -669,14 +679,64 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle
             % Convert inputs from meters to pixels
             SizePerPixel = Channel.ScanSizeX/Channel.NumPixelsX;
             WidthLocalWindowPixels = WidthLocalWindowMeters/SizePerPixel;
+            MinPeakDistancePixels = MinPeakDistanceMeters/SizePerPixel;
             
             h = waitbar(0,sprintf('Preparing to analyze %i Segments',length(obj.Segment)));
+            
+            Size = size(Channel.Image);
+            SegmentMasks = zeros(Size(1),Size(2),length(obj.Segment));
+            
+            f = figure('Color','w','Units','normalized','Position',[.2 .1 .6 .8]);
+            if RecordMovieBool
+                v = VideoWriter([obj.Folder,'FibrilCharacterization.avi'],'Motion JPEG AVI');
+                v.Quality = 95;
+                v.FrameRate = 60;
+                v.open
+            end
+            subplot(1,2,1)
+            Ax = imshow(Channel.Image,[]);
+            for i=1:length(obj.Segment)
+                if ~isequal(obj.Segment(i).Type,'polyline') || isempty(strfind(obj.Segment(i).Name,'Snapped'))
+                    continue
+                end
+                
+                Polyline = drawpolyline(Ax.Parent,'Position',obj.Segment(i).ROIObject.Position);
+                FirstMask = Polyline.createMask;
+                TempMask = FirstMask;
+                PixelDil = 1;
+                while PixelDil <= floor(WidthLocalWindowPixels)
+                    Dilated = imdilate(FirstMask,strel('disk',PixelDil));
+                    TempMask = TempMask + Dilated;
+                    PixelDil = PixelDil + 1;
+                end
+                SegmentMasks(:,:,i) = TempMask;
+                if DebugBool
+                    subplot(1,2,2)
+                    imshowpair(Channel.Image,max(SegmentMasks,[],3))
+                    drawnow
+                    if RecordMovieBool
+                        Frame = getframe(f);
+                        v.writeVideo(Frame)
+                    end
+                end
+            end
+            
+            if ~DebugBool
+                close(f)
+            end
             
             k = 1;
             for i=1:length(obj.Segment)
                 waitbar(i/length(obj.Segment),h,sprintf('Analyzing %s %s',obj.Segment(i).Name,obj.Segment(i).SubSegmentName))
                 if ~isequal(obj.Segment(i).Type,'polyline') || isempty(strfind(obj.Segment(i).Name,'Snapped'))
                     continue
+                end
+                IgnoreMask = zeros(Size);
+                for j=1:length(obj.Segment)
+                    if j==i
+                        continue
+                    end
+                    IgnoreMask = or(IgnoreMask,(SegmentMasks(:,:,j) > SegmentMasks(:,:,i)));
                 end
                 SegmentPositions = obj.Segment(i).ROIObject.Position;
                 LocalDirectionVector = AFMBaseClass.find_local_direction_vector_in_ordered_vector_list(obj.Segment(i).ROIObject.Position,SmoothingWindowSize,'flat');
@@ -696,33 +756,144 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle
                     end
                     LocalDistance = sign(LocalX - SegmentPositions(j,1)).*vecnorm([LocalX LocalY] - SegmentPositions(j,:),2,2);
                     LocalDistance = sign(LocalDistance(end) - LocalDistance(1)).*LocalDistance;
-                    if DebugBool
-                        subplot('Position',[0.05 0.1 .5 .8])
+                    LocalDistance = LocalDistance.*WidthLocalWindowMeters/range(LocalDistance);
+                    ForbiddenX = LocalX;
+                    ForbiddenY = LocalY;
+                    ForbiddenProfile = LocalProfile;
+                    ForbiddenLocalDistance = LocalDistance;
+                    isForbidden = true(size(LocalX));
+                    for jj=length(ForbiddenX):-1:1
+                        if (round(ForbiddenX(jj))<1 || round(ForbiddenX(jj))>Size(1)) ||...
+                                (round(ForbiddenY(jj))<1 || round(ForbiddenY(jj))>Size(2)) 
+                            continue
+                        end
+                        if ~IgnoreMask(round(ForbiddenY(jj)),round(ForbiddenX(jj)))
+                            ForbiddenX(jj) = [];
+                            ForbiddenY(jj) = [];
+                            ForbiddenProfile(jj) = [];
+                            ForbiddenLocalDistance(jj) = [];
+                            isForbidden(jj) = false;
+                        end
+                    end
+                    [Heights,Locations,TempWidthHalfHeight,Prom] = findpeaks(LocalProfile,LocalDistance,...
+                        'WidthReference','halfheight','MinPeakDistance',MinPeakDistanceMeters);
+                    [~,~,TempWidthHalfProm] = findpeaks(LocalProfile,LocalDistance,...
+                        'WidthReference','halfprom','MinPeakDistance',MinPeakDistanceMeters);
+                    % Assign a score to the quality of the peak and 
+                    TempScore = ~ismember(Locations,ForbiddenLocalDistance).*Heights.*Prom./abs(Locations).^2;
+                    [~,WinnerIndex] = max(TempScore);
+                    
+                    if DebugBool && mod(j,NumFrameSkips)==1
+                        subplot('Position',[0.05 0.05 .5 .25])
+                        imshow(IgnoreMask,[])
+                        title('Forbidden Areas')
+                        drawline('Position',[WindowStart; WindowEnd]);
+                        subplot('Position',[0.05 0.35 .5 .5])
                         imshow(rescale(Channel.Image),'Colormap',obj.CMap);
                         drawline('Position',[WindowStart; WindowEnd]);
-                        subplot('Position',[.6 .1 .3 .4])
-                        findpeaks(LocalProfile,LocalDistance,'Annotate','extents','WidthReference','halfheight');
-                        subplot('Position',[.6 .55 .3 .4])
-                        findpeaks(LocalProfile,LocalDistance,'Annotate','extents','WidthReference','halfprom');
+                        Ax1 = subplot('Position',[.6 .1 .3 .4]);
+                        findpeaks(LocalProfile,LocalDistance,'Annotate','extents',...
+                            'WidthReference','halfheight','MinPeakDistance',MinPeakDistanceMeters);
+                        hold on
+                        plot(ForbiddenLocalDistance,ForbiddenProfile,'rX',...
+                            Locations(WinnerIndex),1.05*Heights(WinnerIndex),'rv',...
+                            'MarkerSize',16,'MarkerFaceColor','g')
+                        hold off
+                        Ax1.Legend.String{end-1} = 'Forbidden Points';
+                        Ax1.Legend.String{end} = 'Chosen Point';
+                        Ax2 = subplot('Position',[.6 .55 .3 .4]);
+                        Ax1.Legend.Location = 'northeast';
+                        findpeaks(LocalProfile,LocalDistance,'Annotate','extents',...
+                            'WidthReference','halfprom','MinPeakDistance',MinPeakDistanceMeters);
+                        hold on
+                        plot(ForbiddenLocalDistance,ForbiddenProfile,'rX',...
+                            Locations(WinnerIndex),1.05*Heights(WinnerIndex),'rv',...
+                            'MarkerSize',16,'MarkerFaceColor','g')
+                        Ax2.Legend.String{end-1} = 'Forbidden Points';
+                        Ax2.Legend.String{end} = 'Chosen Point';
+                        Ax2.Legend.Location = 'northeast';
+                        hold off
                         drawnow
+                        if RecordMovieBool
+                            Frame = getframe(f);
+                            v.writeVideo(Frame)
+                        end
                     end
-                    [Peaks,Locations,WidthHalfHeight] = findpeaks(LocalProfile,LocalDistance,'WidthReference','halfheight');
-                    [Peaks,Locations,WidthHalfProm] = findpeaks(LocalProfile,LocalDistance,'WidthReference','halfprom');
-                    
+                    if isempty(Heights)
+                        LocalHeight(j) = nan;
+                        LocalProminence(j) = nan;
+                        LocalWidthHalfHeight(j) = nan;
+                        LocalWidthHalfProminence(j) = nan;
+                        continue
+                    end
+                    LocalHeight(j) = Heights(WinnerIndex);
+                    LocalProminence(j) = Prom(WinnerIndex);
+                    LocalWidthHalfHeight(j) = TempWidthHalfHeight(WinnerIndex);
+                    LocalWidthHalfProminence(j) = TempWidthHalfProm(WinnerIndex);
                 end
-                Height{k} = LocalHeight;
+                Struct(k).Name = obj.Segment(i).Name;
+                Struct(k).Height = LocalHeight;
                 obj.Segment(i).Height = LocalHeight;
-                WidthHalfHeight{k} = LocalWidthHalfHeight;
+                Struct(k).WidthHalfHeight = LocalWidthHalfHeight;
                 obj.Segment(i).WidthHalfHeight = LocalWidthHalfHeight;
-                Prominence{k} = LocalProminence;
+                Struct(k).Prominence = LocalProminence;
                 obj.Segment(i).Prominence = LocalProminence;
-                WidthHalfProminence{k} = LocalWidthHalfProminence;
+                Struct(k).WidthHalfProminence = LocalWidthHalfProminence;
                 obj.Segment(i).WidthHalfProminence = LocalWidthHalfProminence;
-                DirectionVector{k} = LocalDirectionVector;
+                Struct(k).DirectionVector = LocalDirectionVector;
                 obj.Segment(i).DirectionVector = LocalDirectionVector;
                 k = k + 1;
             end
             
+            % Now for some tedious data handling. Life is pain
+            
+            if isempty(Struct)
+                close(h)
+                return
+            end
+            
+            NameList = {Struct.Name};
+            Unique = unique(NameList);
+            
+            for i=1:length(Unique)
+                OutStruct(i).Name = Unique{i};
+                OutStruct(i).Height = [];
+                OutStruct(i).WidthHalfHeight = [];
+                OutStruct(i).Prominence = [];
+                OutStruct(i).WidthHalfProminence = [];
+                for j=1:length(Struct)
+                    if isequal(Unique{i},Struct(j).Name)
+                        OutStruct(i).Height = vertcat(OutStruct(i).Height,Struct(j).Height);
+                        OutStruct(i).WidthHalfHeight = vertcat(OutStruct(i).WidthHalfHeight,Struct(j).WidthHalfHeight);
+                        OutStruct(i).Prominence = vertcat(OutStruct(i).Prominence,Struct(j).Prominence);
+                        OutStruct(i).WidthHalfProminence = vertcat(OutStruct(i).WidthHalfProminence,Struct(j).WidthHalfProminence);
+                    end
+                end
+            end
+            
+            for i=1:length(OutStruct)
+                Lengths(i) = length(OutStruct(i).Height);
+            end
+            MaxLength = max(Lengths);
+            OutArrayStruct.Height = nan.*ones(MaxLength,length(OutStruct));
+            OutArrayStruct.WidthHalfHeight = nan.*ones(MaxLength,length(OutStruct));
+            OutArrayStruct.Prominence = nan.*ones(MaxLength,length(OutStruct));
+            OutArrayStruct.WidthHalfProminence = nan.*ones(MaxLength,length(OutStruct));
+            
+            for i=1:length(OutStruct)
+                OutArrayStruct.Height(1:length(OutStruct(i).Height),i) = OutStruct(i).Height;
+                OutArrayStruct.WidthHalfHeight(1:length(OutStruct(i).Height),i) = OutStruct(i).WidthHalfHeight;
+                OutArrayStruct.Prominence(1:length(OutStruct(i).Height),i) = OutStruct(i).Prominence;
+                OutArrayStruct.WidthHalfProminence(1:length(OutStruct(i).Height),i) = OutStruct(i).WidthHalfProminence;
+            end
+            
+            
+            if RecordMovieBool
+                v.close
+            end
+            
+            OutStructAll = Struct;
+            close(h)
         end
         
     end

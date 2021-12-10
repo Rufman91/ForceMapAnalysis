@@ -1190,6 +1190,29 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             obj.write_to_log_file('','','end')
         end
         
+        function OutStruct = characterize_fiber_like_polyline_segments(obj,...
+                WidthLocalWindowMeters,SmoothingWindowSize,MinPeakDistanceMeters,DebugBool)
+            
+            k = 1;
+            for i=1:obj.NumForceMaps
+                [OutStruct(k).Array,OutStruct(k).Struct,OutStruct(k).StructAll] = ...
+                    obj.FM{i}.characterize_fiber_like_polyline_segments(...
+                    WidthLocalWindowMeters,SmoothingWindowSize,MinPeakDistanceMeters,DebugBool,0,1);
+                if ~isempty(OutStruct(k).Array)
+                    k = k + 1;
+                end
+            end
+            for i=1:obj.NumAFMImages
+                [OutStruct(k).Array,OutStruct(k).Struct,...
+                    OutStruct(k).StructAll] = ...
+                    obj.I{i}.characterize_fiber_like_polyline_segments(...
+                    WidthLocalWindowMeters,SmoothingWindowSize,MinPeakDistanceMeters,DebugBool,0,1);
+                if ~isempty(OutStruct(k).Array)
+                    k = k + 1;
+                end
+            end
+        end
+        
         function image_analysis_base_on_even_background(obj,UpperLim,NIter)
             
             if nargin < 2
