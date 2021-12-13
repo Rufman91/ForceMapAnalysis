@@ -1500,7 +1500,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             if nargin<2
                 XMin= -inf;     % Limit of the X-axis in meters (m)
                 XMax= 50e-9;      % Limit of the X-axis in meters (m)
-                YMin= -inf;     % Limit of the Y-axis in Newtons (N)
+                YMin= -0.3e-9;     % Limit of the Y-axis in Newtons (N)
                 YMax= 100e-12;      % Limit of the Y-axis in Newtons (N)    
                 NumFcMax = 25;   % Maximum number of force curves per figure
                 Res=[1 1 2560 1440]; % Define the figure resolution
@@ -1522,7 +1522,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             
             % Loop over the imported force maps
             %for ii=1:obj.NumForceMaps
-            for ii=1:2 % Debugging
+            for ii=1:50 % Debugging
                % Command window output
                sprintf('Force Map No. %d of %d',ii,obj.NumForceMaps) % Gives current Force Map Position
                % Run the chosen functions
