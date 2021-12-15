@@ -3934,6 +3934,7 @@ classdef ForceMap < matlab.mixin.Copyable
                     
                     if obj.SegFrequency{j} > 0
                         
+                        
                         x= obj.SegTime{j};
                         %xpF = linspace(min(obj.InterpTimeF{j}),max(obj.InterpTimeF{j}),100000);
                         %xpH = linspace(min(obj.InterpTimeH{j}),max(obj.InterpTimeH{j}),100000);
@@ -4018,8 +4019,8 @@ classdef ForceMap < matlab.mixin.Copyable
 
                         yyaxis left
                         [MultiplierF,UnitF,~] = AFMImage.parse_unit_scale(range(obj.BasedForce{i,j}),'N',10);
-                        plot(x,obj.BasedForce{i,j}*MultiplierF,'-m',x,ypF*MultiplierF,':r')
-                        set(gca, 'YColor', 'm')
+                        plot(x,obj.BasedForce{i,j}*MultiplierF,'-r',x,ypF*MultiplierF,':m')
+                        set(gca, 'YColor', 'r')
                         %Legends = {'force data','force fit data'};
                         xlabel('time in s')
                         ylabel(sprintf('vDeflection-Force [%s]',UnitF))
@@ -4066,8 +4067,12 @@ classdef ForceMap < matlab.mixin.Copyable
                 hold on
                 for j=3:lastseg
                     
+                     if obj.SegFrequency{j} > 0
                         
-                        x= obj.SegTime{j};
+                        Period = 2*pi/obj.SegFrequency{j};
+                        End = obj.TStart{j} + Period/2;
+                        x = obj.TStart{j}:0,01:End;
+                        %x= obj.SegTime{j};
                        
                         
                         %Y-values fitted sine of indentation and force:
@@ -4109,7 +4114,7 @@ classdef ForceMap < matlab.mixin.Copyable
                            whereToStore=fullfile(DirectoryPath,['force_indentation_fit_curve_' num2str(i) '.svg']);
                            saveas(gcf, whereToStore);
                        end
-                        
+                     end
                         
                 end
             end
