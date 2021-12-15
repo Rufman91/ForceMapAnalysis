@@ -4047,7 +4047,7 @@ classdef ForceMap < matlab.mixin.Copyable
  
         end
         
-        function show_phaseshift
+        function show_phaseshift(obj)
             close all
             DirectoryPath = uigetdir();
             k=1;
