@@ -3869,7 +3869,8 @@ classdef ForceMap < matlab.mixin.Copyable
                     
                        [MultiplierI,UnitI,~] = AFMImage.parse_unit_scale(range(obj.Indentation{i,j}),'m',10);
                        [MultiplierF,UnitF,~] = AFMImage.parse_unit_scale(range(obj.BasedForce{i,j}),'N',10);
-                       plot(obj.Indentation{i,j}*MultiplierI,obj.BasedForce{i,j}*MultiplierF,':b',obj.HHApp{i}*MultiplierI,obj.BasedApp{i}*MultiplierF,'-r',obj.HHRet{i}*MultiplierI,obj.BasedRet{i}*MultiplierF,'-b')
+                       plot(obj.HHApp{i}*MultiplierI,obj.BasedApp{i}*MultiplierF,'-r',obj.HHRet{i}*MultiplierI,obj.BasedRet{i}*MultiplierF,'-b')
+                       %plot(obj.Indentation{i,j}*MultiplierI,obj.BasedForce{i,j}*MultiplierF,':b',obj.HHApp{i}*MultiplierI,obj.BasedApp{i}*MultiplierF,'-r',obj.HHRet{i}*MultiplierI,obj.BasedRet{i}*MultiplierF,'-b')
                        xlim([-0.5 0.5])
                        %plot(obj.Height{i,j},obj.Force{i,j},'r')
                        title(sprintf('Force Indentation Curve %i',i))
@@ -3894,9 +3895,11 @@ classdef ForceMap < matlab.mixin.Copyable
                     
                     if obj.SegFrequency{j} > 0
                         
+                        Freq = obj.SegFrequency{j};
+                        
                         figure(s)
                         plot(obj.Indentation{i,j}*MultiplierI,obj.BasedForce{i,j}*MultiplierF,'b')
-                        title(sprintf('Force Indentation Curve %i Segment %i',i,j))
+                        title(sprintf('Force Indentation Curve %i %.1f [Hz]',i,Freq))
                         xlabel(sprintf('Indentation [%s]',UnitI));
                         ylabel(sprintf('vDeflection-Force [%s]',UnitF));
                         grid on
