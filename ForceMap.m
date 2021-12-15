@@ -4047,6 +4047,66 @@ classdef ForceMap < matlab.mixin.Copyable
  
         end
         
+        function show_phaseshift
+            close all
+            DirectoryPath = uigetdir();
+            k=1;
+            for i=1:obj.NCurves
+               
+                figure('Name',sprintf('Phaseshift Curve %i',i))
+                lastseg = obj.NumSegments - 2;
+                hold on
+                for j=3:lastseg
+                    
+                        
+                        x= obj.SegTime{j};
+                       
+                        
+                        %Y-values fitted sine of indentation and force:
+                        try
+                            ypF = obj.SineVarsF{i,j}(1)*(sin(2*pi*x.*obj.SineVarsF{i,j}(2) + obj.SineVarsF{i,j}(3)));
+                            ypH = obj.SineVarsH{i,j}(1)*(sin(2*pi*x.*obj.SineVarsH{i,j}(2) + obj.SineVarsH{i,j}(3)));
+                        catch
+                            ypF = zeros(length(x),1);
+                            ypH = zeros(length(x),1);
+                        end
+                        
+                        
+                        hold on
+
+                        yyaxis left
+                        [MultiplierF,UnitF,~] = AFMImage.parse_unit_scale(range(obj.BasedForce{i,j}),'N',10);
+                        plot(x,ypF*MultiplierF,'-r')
+                        set(gca, 'YColor', 'r')
+                        %Legends = {'force data','force fit data'};
+                        xlabel('time in s')
+                        ylabel(sprintf('vDeflection-Force [%s]',UnitF))
+                        %ylabel('force')
+                        
+                        yyaxis right
+                        [MultiplierI,UnitI,~] = AFMImage.parse_unit_scale(range(obj.Indentation{i,j}),'m',10);
+                        plot(x,ypH*MultiplierI,'-b')
+                        %Legends{end+1} = 'indentation data';
+                        set(gca, 'YColor', 'c')
+                        title(sprintf('Phaseshift between Force and Indentation of Curve %i',i))
+                        %legend({'force data','force fit data','','','','','indentation data','indentation fit data'},'Location','southoutside')
+                        %ylabel('indentation')
+                        ylabel(sprintf('Indentation [%s]',UnitI));
+                        grid on
+                        grid minor
+
+
+                       
+                        if DirectoryPath~=0
+                           whereToStore=fullfile(DirectoryPath,['force_indentation_fit_curve_' num2str(i) '.svg']);
+                           saveas(gcf, whereToStore);
+                       end
+                        
+                        
+                end
+            end
+        end
+        
         function quality_control_oliver_pharr_fibril(obj,PauseTime)
             % shows some relevant plots for the E-Mod calculation
             % rectified apex force curves
