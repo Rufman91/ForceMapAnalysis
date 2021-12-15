@@ -4084,32 +4084,17 @@ classdef ForceMap < matlab.mixin.Copyable
                             ypH = zeros(length(x),1);
                         end
                         
-                        [pksF,locsF] = findpeaks(ypF);
-                        x_peaksF = x(locsF);
-                        [pksH,locsH] = findpeaks(ypH);
-                        x_peaksH = x(locsH);
 
-                        
                         hold on
-
-                        yyaxis left
-                        [MultiplierF,UnitF,~] = AFMImage.parse_unit_scale(range(obj.BasedForce{i,j}),'N',10);
-                        plot(x,ypF*MultiplierF,'-r',x_peaksF,pksF)
-                        set(gca, 'YColor', 'r')
-                        %Legends = {'force data','force fit data'};
-                        xlabel('time in s')
-                        ylabel(sprintf('vDeflection-Force [%s]',UnitF))
-                        %ylabel('force')
                         
-                        yyaxis right
-                        [MultiplierI,UnitI,~] = AFMImage.parse_unit_scale(range(obj.Indentation{i,j}),'m',10);
-                        plot(x,ypH*MultiplierI,'-b',x_peaksH,pksH)
-                        %Legends{end+1} = 'indentation data';
-                        set(gca, 'YColor', 'b')
-                        title(sprintf('Phaseshift between Force and Indentation of Curve %i',i))
-                        %legend({'force data','force fit data','','','','','indentation data','indentation fit data'},'Location','southoutside')
-                        %ylabel('indentation')
-                        ylabel(sprintf('Indentation [%s]',UnitI));
+                        subplot(1,3,j)
+                        yyaxis left
+                        findpeaks(ypF)
+                        hold on
+                        findpeaks(ypH)
+                        legend({'force','force peak','indentation','indentation peak'},'Location','southoutside')
+                        draw now
+                        set(gca, 'YColor', 'r')
                         grid on
                         grid minor
 
@@ -4118,7 +4103,8 @@ classdef ForceMap < matlab.mixin.Copyable
                         if DirectoryPath~=0
                            whereToStore=fullfile(DirectoryPath,['force_indentation_fit_curve_' num2str(i) '.svg']);
                            saveas(gcf, whereToStore);
-                       end
+                        end
+                       
                      end
                         
                 end
