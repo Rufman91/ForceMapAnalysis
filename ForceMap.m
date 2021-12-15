@@ -4084,12 +4084,17 @@ classdef ForceMap < matlab.mixin.Copyable
                             ypH = zeros(length(x),1);
                         end
                         
+                        [pksF,locsF] = findpeaks(ypF);
+                        x_peaksF = x(locsF);
+                        [pksH,locsH] = findpeaks(ypH);
+                        x_peaksH = x(locsH);
+
                         
                         hold on
 
                         yyaxis left
                         [MultiplierF,UnitF,~] = AFMImage.parse_unit_scale(range(obj.BasedForce{i,j}),'N',10);
-                        plot(x,findpeaks(ypF)*MultiplierF,'-r')
+                        plot(x,ypF*MultiplierF,'-r',x_peaksF,pksF)
                         set(gca, 'YColor', 'r')
                         %Legends = {'force data','force fit data'};
                         xlabel('time in s')
@@ -4098,7 +4103,7 @@ classdef ForceMap < matlab.mixin.Copyable
                         
                         yyaxis right
                         [MultiplierI,UnitI,~] = AFMImage.parse_unit_scale(range(obj.Indentation{i,j}),'m',10);
-                        plot(x,findpeaks(ypH)*MultiplierI,'-b')
+                        plot(x,ypH*MultiplierI,'-b',x_peaksH,pksH)
                         %Legends{end+1} = 'indentation data';
                         set(gca, 'YColor', 'b')
                         title(sprintf('Phaseshift between Force and Indentation of Curve %i',i))
