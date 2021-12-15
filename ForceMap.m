@@ -4095,8 +4095,9 @@ classdef ForceMap < matlab.mixin.Copyable
                         findpeaks(ypF*MultiplierF)
                         hold on
                         findpeaks(ypH*MultiplierI)
-                        xlabel(sprintf('Indentation [%s]',UnitI));
-                        ylabel(sprintf('vDeflection-Force [%s]',UnitF));
+                        title(sprintf('Phaseshift of Curve %i Segment %i',i,j))
+                        xlabel('time [s]')
+                        ylabel(sprintf('vDeflection-Force [%s], Indentation [%s]',UnitF, UnitI))
                         legend({'force','force peak','indentation','indentation peak'},'Location','southoutside')
                         drawnow
                         grid on
