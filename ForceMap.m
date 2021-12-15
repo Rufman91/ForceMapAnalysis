@@ -4088,13 +4088,11 @@ classdef ForceMap < matlab.mixin.Copyable
                         hold on
                         
                         subplot(1,3,j)
-                        yyaxis left
                         findpeaks(ypF)
                         hold on
                         findpeaks(ypH)
                         legend({'force','force peak','indentation','indentation peak'},'Location','southoutside')
-                        draw now
-                        set(gca, 'YColor', 'r')
+                        drawnow
                         grid on
                         grid minor
 
