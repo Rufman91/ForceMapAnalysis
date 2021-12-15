@@ -4009,19 +4009,23 @@ classdef ForceMap < matlab.mixin.Copyable
                         hold on
 
                         yyaxis left
-                        plot(x,obj.BasedForce{i,j},'-r',x,ypF,':m')
+                        [MultiplierF,UnitF,~] = AFMImage.parse_unit_scale(range(obj.BasedForce{i,j}),'N',10);
+                        plot(x,obj.BasedForce{i,j}*MultiplierF,'-r',x,ypF*MultiplierF,':m')
                         set(gca, 'YColor', 'r')
                         %Legends = {'force data','force fit data'};
                         xlabel('time in s')
-                        ylabel('force')
+                        ylabel(sprintf('vDeflection-Force [%s]',UnitF))
+                        %ylabel('force')
                         
                         yyaxis right
-                        plot(x,obj.Indentation{i,j},'-c',x,ypH,':b')
+                        [MultiplierI,UnitI,~] = AFMImage.parse_unit_scale(range(obj.Indentation{i,j}),'m',10);
+                        plot(x,obj.Indentation{i,j}*MultiplierI,'-c',x,ypH*MultiplierI,':b')
                         %Legends{end+1} = 'indentation data';
                         set(gca, 'YColor', 'c')
                         title(sprintf('Force and Indentation over Time incl. Fit Curve %i',i))
                         legend({'force data','force fit data','','','','','indentation data','indentation fit data'},'Location','southoutside')
-                        ylabel('indentation')
+                        %ylabel('indentation')
+                        ylabel(sprintf('Indentation [%s]',UnitI));
                         grid on
                         grid minor
 
