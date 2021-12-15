@@ -4089,7 +4089,7 @@ classdef ForceMap < matlab.mixin.Copyable
 
                         hold on
                         
-                        subplot(obj.NumSegments,1,j)
+                        subplot(1,obj.NumSegments,j)
                         findpeaks(ypF)
                         hold on
                         findpeaks(ypH)
