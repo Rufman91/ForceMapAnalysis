@@ -4070,7 +4070,7 @@ classdef ForceMap < matlab.mixin.Copyable
                      if obj.SegFrequency{j} > 0
                         
                         Period = 2*pi/obj.SegFrequency{j};
-                        End = obj.TStart{j} + 1/obj.SegFrequency{j};
+                        End = obj.TStart{j} + pi/obj.SegFrequency{j};
                         x = linspace(obj.TStart{j},End);
                         %x= obj.SegTime{j};
                        
@@ -4100,7 +4100,7 @@ classdef ForceMap < matlab.mixin.Copyable
                         [MultiplierI,UnitI,~] = AFMImage.parse_unit_scale(range(obj.Indentation{i,j}),'m',10);
                         plot(x,ypH*MultiplierI,'-b')
                         %Legends{end+1} = 'indentation data';
-                        set(gca, 'YColor', 'c')
+                        set(gca, 'YColor', 'b')
                         title(sprintf('Phaseshift between Force and Indentation of Curve %i',i))
                         %legend({'force data','force fit data','','','','','indentation data','indentation fit data'},'Location','southoutside')
                         %ylabel('indentation')
