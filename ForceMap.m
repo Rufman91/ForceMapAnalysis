@@ -3895,10 +3895,12 @@ classdef ForceMap < matlab.mixin.Copyable
                     if obj.SegFrequency{j} > 0
                         
                         figure(s)
-                        plot(obj.Indentation{i,j},obj.BasedForce{i,j},'b')
+                        plot(obj.Indentation{i,j}*MultiplierI,obj.BasedForce{i,j}*MultiplierF,'b')
                         title(sprintf('Force Indentation Curve %i Segment %i',i,j))
-                        xlabel('Indentation in m')
-                        ylabel('Force in N')
+                        xlabel(sprintf('Indentation [%s]',UnitI));
+                        ylabel(sprintf('vDeflection-Force [%s]',UnitF));
+                        grid on
+                        grid minor
                         
                         if DirectoryPath~=0
                            whereToStore=fullfile(DirectoryPath,['force_indentation_curve_' num2str(i) '_segment_' num2str(j) '.svg']);
