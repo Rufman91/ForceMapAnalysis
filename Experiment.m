@@ -3090,6 +3090,8 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 end
                 BarToImageRatio = 1/5;
                 try
+                    CurrentZoomX = h.ImAx(Index).XLim; 
+                    CurrentZoomY = h.ImAx(Index).YLim;
                     delete(h.ImAx(Index));
                     delete(h.I(Index));
                 catch
@@ -3257,6 +3259,14 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 c.Label.String = sprintf('%s [%s]',h.Channel{Index},h.Unit{Index});
                 c.Label.FontSize = round(h.ReferenceFontSize*(CurrentAxHeight/756));
                 c.Label.Color = h.ColorMode(h.ColorIndex).Text;
+                
+                try
+                    % Set Zoom region to previous
+                    zoom reset
+                    h.ImAx(Index).XLim = CurrentZoomX;
+                    h.ImAx(Index).YLim = CurrentZoomY;
+                catch
+                end
                 
                 set(h.B(MinIndex+4),'String',{'Min',sprintf('[%s]',h.Unit{Index})});
                 set(h.B(MaxIndex+4),'String',{'Max',sprintf('[%s]',h.Unit{Index})});
@@ -3818,6 +3828,8 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 end
                 BarToImageRatio = 1/5;
                 try
+                    CurrentZoomX = h.ImAx(Index).XLim; 
+                    CurrentZoomY = h.ImAx(Index).YLim;
                     delete(h.ImAx(Index));
                     delete(h.I(Index));
                 catch
@@ -3992,6 +4004,15 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 
                 set(h.B(MinIndex+4),'String',{'Min',sprintf('[%s]',h.Unit{Index})});
                 set(h.B(MaxIndex+4),'String',{'Max',sprintf('[%s]',h.Unit{Index})});
+                
+                
+                try
+                    % Set Zoom region to previous
+                    zoom reset
+                    h.ImAx(Index).XLim = CurrentZoomX;
+                    h.ImAx(Index).YLim = CurrentZoomY;
+                catch
+                end
                 
                 try
                     if (h.ScanSizeX(1) == h.ScanSizeX(2)) &&...
