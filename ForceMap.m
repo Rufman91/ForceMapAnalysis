@@ -4068,6 +4068,8 @@ classdef ForceMap < matlab.mixin.Copyable
                 for j=3:lastseg
                     
                      if obj.SegFrequency{j} > 0
+                         
+                         NumFreq = length(obj.SegFrequency{j});
                         
                         Period = 2*pi/obj.SegFrequency{j};
                         End = obj.TStart{j} + 2/obj.SegFrequency{j};
@@ -4087,7 +4089,7 @@ classdef ForceMap < matlab.mixin.Copyable
 
                         hold on
                         
-                        subplot(1,3,j)
+                        subplot(obj.NumSegments,1,j)
                         findpeaks(ypF)
                         hold on
                         findpeaks(ypH)
