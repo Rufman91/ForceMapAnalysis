@@ -4069,7 +4069,7 @@ classdef ForceMap < matlab.mixin.Copyable
                     
                      if obj.SegFrequency{j} > 0
                          
-                         NumFreq = length(obj.SegFrequency{j});
+                        NumFreq = length(obj.SegFrequency{j});
                         
                         Period = 2*pi/obj.SegFrequency{j};
                         End = obj.TStart{j} + 2/obj.SegFrequency{j};
@@ -4089,10 +4089,14 @@ classdef ForceMap < matlab.mixin.Copyable
 
                         hold on
                         
+                        [MultiplierI,UnitI,~] = AFMImage.parse_unit_scale(range(obj.Indentation{i,j}),'m',10);
+                        [MultiplierF,UnitF,~] = AFMImage.parse_unit_scale(range(obj.BasedForce{i,j}),'N',10);
                         subplot(1,obj.NumSegments,j)
-                        findpeaks(ypF)
+                        findpeaks(ypF*MultiplierF)
                         hold on
-                        findpeaks(ypH)
+                        findpeaks(ypH*MultiplierI)
+                        xlabel(sprintf('Indentation [%s]',UnitI));
+                        ylabel(sprintf('vDeflection-Force [%s]',UnitF));
                         legend({'force','force peak','indentation','indentation peak'},'Location','southoutside')
                         drawnow
                         grid on
