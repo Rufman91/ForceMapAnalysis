@@ -4010,8 +4010,8 @@ classdef ForceMap < matlab.mixin.Copyable
 
                         yyaxis left
                         [MultiplierF,UnitF,~] = AFMImage.parse_unit_scale(range(obj.BasedForce{i,j}),'N',10);
-                        plot(x,obj.BasedForce{i,j}*MultiplierF,'-r',x,ypF*MultiplierF,':m')
-                        set(gca, 'YColor', 'r')
+                        plot(x,obj.BasedForce{i,j}*MultiplierF,'-m',x,ypF*MultiplierF,'-r')
+                        set(gca, 'YColor', 'm')
                         %Legends = {'force data','force fit data'};
                         xlabel('time in s')
                         ylabel(sprintf('vDeflection-Force [%s]',UnitF))
@@ -4019,7 +4019,7 @@ classdef ForceMap < matlab.mixin.Copyable
                         
                         yyaxis right
                         [MultiplierI,UnitI,~] = AFMImage.parse_unit_scale(range(obj.Indentation{i,j}),'m',10);
-                        plot(x,obj.Indentation{i,j}*MultiplierI,'-c',x,ypH*MultiplierI,':b')
+                        plot(x,obj.Indentation{i,j}*MultiplierI,'-c',x,ypH*MultiplierI,'-b')
                         %Legends{end+1} = 'indentation data';
                         set(gca, 'YColor', 'c')
                         title(sprintf('Force and Indentation over Time incl. Fit Curve %i',i))
