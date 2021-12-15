@@ -3899,7 +3899,7 @@ classdef ForceMap < matlab.mixin.Copyable
                         
                         figure(s)
                         plot(obj.Indentation{i,j}*MultiplierI,obj.BasedForce{i,j}*MultiplierF,'b')
-                        title(sprintf('Force Indentation Curve %i %.1f [Hz]',i,Freq))
+                        title(sprintf('Force Indentation Curve %i, %.1f [Hz]',i,Freq))
                         xlabel(sprintf('Indentation [%s]',UnitI));
                         ylabel(sprintf('vDeflection-Force [%s]',UnitF));
                         grid on
@@ -4098,7 +4098,7 @@ classdef ForceMap < matlab.mixin.Copyable
                         findpeaks(ypF*MultiplierF)
                         hold on
                         findpeaks(ypH*MultiplierI)
-                        title(sprintf('Phaseshift of Curve %i, %.2f [Hz]',i,Freq))
+                        title(sprintf('Phaseshift of Curve %i, %.1f [Hz]',i,Freq))
                         xlabel('time [s]')
                         ylabel(sprintf('vDeflection-Force [%s], Indentation [%s]',UnitF, UnitI))
                         legend({'force','force peak','indentation','indentation peak'},'Location','southoutside')
