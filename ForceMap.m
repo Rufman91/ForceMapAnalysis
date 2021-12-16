@@ -4025,7 +4025,7 @@ classdef ForceMap < matlab.mixin.Copyable
                         plot(x,obj.BasedForce{i,j}*MultiplierF,'-r',x,ypF*MultiplierF,':m')
                         set(gca, 'YColor', 'r')
                         %Legends = {'force data','force fit data'};
-                        xlabel('time in s')
+                        xlabel('time [s]')
                         ylabel(sprintf('vDeflection-Force [%s]',UnitF))
                         %ylabel('force')
                         
