@@ -4078,7 +4078,7 @@ classdef ForceMap < matlab.mixin.Copyable
                         End = obj.TStart{j} + 2/obj.SegFrequency{j};
                         x = linspace(obj.TStart{j},End);
                         
-                        FreqIndex = find(~cellfun('isempty', obj.SegFrequency{j}));
+                        FreqIndex = find(obj.SegFrequency{j});
                         FirstFreq = FreqIndex(1);
                        
                         
