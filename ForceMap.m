@@ -4077,7 +4077,9 @@ classdef ForceMap < matlab.mixin.Copyable
                         Period = 2*pi/obj.SegFrequency{j};
                         End = obj.TStart{j} + 2/obj.SegFrequency{j};
                         x = linspace(obj.TStart{j},End);
-                        %x= obj.SegTime{j};
+                        
+                        FreqIndex = find(~cellfun('isempty', obj.SegFrequency{j}));
+                        FirstFreq = FreqIndex(1);
                        
                         
                         %Y-values fitted sine of indentation and force:
@@ -4092,16 +4094,16 @@ classdef ForceMap < matlab.mixin.Copyable
 
                         hold on
                         
-                        [MultiplierI,UnitI,~] = AFMImage.parse_unit_scale(range(obj.Indentation{i,j}),'m',10);
-                        [MultiplierF,UnitF,~] = AFMImage.parse_unit_scale(range(obj.BasedForce{i,j}),'N',10);
+                        [MultiplierI,UnitI,~] = AFMImage.parse_unit_scale(range(obj.Indentation{i,FirstFreq}),'m',10);
+                        [MultiplierF,UnitF,~] = AFMImage.parse_unit_scale(range(obj.BasedForce{i,FirstFreq}),'N',10);
                         subplot(1,obj.NumSegments,j)
-                        findpeaks(ypF*MultiplierF)
+                        findpeaks(ypF*MultiplierF,x)
                         hold on
-                        findpeaks(ypH*MultiplierI)
+                        findpeaks(ypH*MultiplierI,x)
                         title(sprintf('Phaseshift of Curve %i, %.1f [Hz]',i,Freq))
                         xlabel('time [s]')
-                        ylabel(sprintf('vDeflection-Force [%s], Indentation [%s]',UnitF, UnitI))
-                        legend({'force','force peak','indentation','indentation peak'},'Location','southoutside')
+                        ylabel(sprintf('fit of vDeflection-Force [%s] and Indentation [%s]',UnitF, UnitI))
+                        legend({'force fit','force fit peak','indentation fit','indentation fit peak'},'Location','southoutside')
                         drawnow
                         grid on
                         grid minor
