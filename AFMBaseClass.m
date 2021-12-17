@@ -375,6 +375,9 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle
                         end
                         t = linspace(0,1,N)';
                         TempNewVertices = (1-t)*OriginalVertices(1,:) + t*OriginalVertices(2,:);
+                        if length(OriginalVertices(:,1)) > 2
+                            TempNewVertices(end,:) = [];
+                        end
                         NewVertices = [NewVertices; TempNewVertices];
                         OriginalVertices(1,:) = [];
                     end
@@ -401,27 +404,49 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle
                 PerpendicularVector = [];
                 OriginalPos = [];
                 FinalSnappedPos = [];
-                [LocalDirectionVector,WeightingVector] = AFMBaseClass.find_local_direction_vector_in_ordered_vector_list(Snapped(i).ROIObject.Position,4*SmoothingWindowSize,'flat');
+                [LocalDirectionVector,WeightingVector] = AFMBaseClass.find_local_direction_vector_in_ordered_vector_list(...
+                    Snapped(i).ROIObject.Position,SmoothingWindowSize,'flat');
                 for j=1:size(Snapped(i).ROIObject.Position,1)
                     OriginalPos(j,:) = Snapped(i).ROIObject.Position(j,:);
                     PerpendicularVector(j,:) = [LocalDirectionVector(j,2) -LocalDirectionVector(j,1)]/norm(LocalDirectionVector(j,:));
                     WindowStart = Snapped(i).ROIObject.Position(j,:) + PerpendicularVector(j,:).*WidthLocalWindowPixels/2;
                     WindowEnd = Snapped(i).ROIObject.Position(j,:) - PerpendicularVector(j,:).*WidthLocalWindowPixels/2;
-                    %Debug
-%                     scatter([WindowStart(1) WindowEnd(1)],[WindowStart(2) WindowEnd(2)])
-%                     xlim([0 512])
-%                     ylim([0 512])
-%                     drawnow
                     [LocalX,LocalY,LocalProfile] = improfile(Channel.Image,[WindowStart(1) WindowEnd(1)],[WindowStart(2) WindowEnd(2)]);
                     if length(LocalProfile) >= 4 && ~sum(isnan(LocalProfile))
-                        LocalX = interp1(LocalX,linspace(0,1,100)'.*length(LocalX),'spline');
-                        LocalY = interp1(LocalY,linspace(0,1,100)'.*length(LocalY),'spline');
-                        LocalProfile = interp1(LocalProfile,linspace(0,1,100)'.*length(LocalProfile),'spline');
+                        LocalProfile(1) = min(LocalProfile);
+                        LocalProfile(end) = min(LocalProfile);
+                        LocalX = interp1(LocalX,linspace(1,length(LocalX),100)','spline');
+                        LocalY = interp1(LocalY,linspace(1,length(LocalY),100)','spline');
+                        LocalProfile = interp1(LocalProfile,linspace(1,length(LocalProfile),100)','spline');
                     end
                     [~,MaxIndex] = max(LocalProfile);
                     SnappedPos(j,:) = [LocalX(MaxIndex) LocalY(MaxIndex)];
                     DisplacementVector(j,:) = (SnappedPos(j,:) - OriginalPos(j,:));
                     SnappedToOriginalDistance(j) = PerpendicularVector(j,:)*DisplacementVector(j,:)';
+%                     %                     Debug Start
+%                     if j==1
+%                         f = figure;
+%                     end
+%                     if j>1
+%                         subplot(2,1,1)
+%                         scatter([WindowStart(1) WindowEnd(1)],[WindowStart(2) WindowEnd(2)])
+%                         Ax = gca;
+%                         hold on
+%                         plot(Snapped(i).ROIObject.Position(:,1),Snapped(i).ROIObject.Position(:,2))
+%                         AutoX = Ax.XLim;
+%                         AutoY = Ax.YLim;
+%                         MaxDiff = max(diff(AutoX),diff(AutoY));
+%                         xlim([AutoX(1) AutoX(1)+MaxDiff])
+%                         ylim([AutoY(1) AutoY(1)+MaxDiff])
+%                         plot(SnappedPos(:,1),SnappedPos(:,2))
+%                         subplot(2,1,2)
+%                         plot(LocalProfile)
+%                         hold on
+%                         plot(MaxIndex,LocalProfile(MaxIndex),'gv','MarkerEdgeColor','g','MarkerFaceColor','r','MarkerSize',12)
+%                         drawnow
+%                         hold off
+%                     end
+%                     %                     Debug end
                 end
                 SnappedToOriginalDistance = SnappedToOriginalDistance';
                 % Apply smoothing to SnappedPos
