@@ -4076,7 +4076,7 @@ classdef ForceMap < matlab.mixin.Copyable
                         
                         Period = 2*pi/obj.SegFrequency{j};
                         End = obj.TStart{j} + 2/obj.SegFrequency{j};
-                        x = linspace(0,pi/4);
+                        x = linspace(0,pi);
                         
                         FreqIndex = find(obj.SegFrequency{j});
                         FirstFreq = FreqIndex(1);
