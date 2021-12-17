@@ -4078,7 +4078,7 @@ classdef ForceMap < matlab.mixin.Copyable
                         
                         Period = 2*pi/obj.SegFrequency{j};
                         End = obj.TStart{j} + 2/obj.SegFrequency{j};
-                        x = linspace(0,pi);
+                        x = linspace(obj.TStart{j},End);
                         
                        
                         
@@ -4094,8 +4094,8 @@ classdef ForceMap < matlab.mixin.Copyable
 
                         hold on
                         
-                        [MultiplierI,UnitI,~] = AFMImage.parse_unit_scale(range(obj.Indentation{i,FirstFreq}),'m',10);
-                        [MultiplierF,UnitF,~] = AFMImage.parse_unit_scale(range(obj.BasedForce{i,FirstFreq}),'N',10);
+                        [MultiplierI,UnitI,~] = AFMImage.parse_unit_scale(range(obj.Indentation{i,3}),'m',10);
+                        [MultiplierF,UnitF,~] = AFMImage.parse_unit_scale(range(obj.BasedForce{i,3}),'N',10);
                         subplot(1,obj.NumSegments,j)
                         findpeaks(ypF*MultiplierF,x)
                         hold on
