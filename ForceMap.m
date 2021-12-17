@@ -4067,8 +4067,8 @@ classdef ForceMap < matlab.mixin.Copyable
                
                 figure('Name',sprintf('Phaseshift Curve %i',i))
                 lastseg = obj.NumSegments - 2;
-                FreqIndex = find(obj.SegFrequency{j});
-                FirstFreq = FreqIndex(1);
+                %FreqIndex = find(obj.SegFrequency{j});
+                %FirstFreq = FreqIndex(1);
                 hold on
                 for j=1:obj.NumSegments
                     
