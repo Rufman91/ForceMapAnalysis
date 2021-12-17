@@ -896,6 +896,21 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle
             close(h)
         end
         
+        function sort_segments_by_name_and_subsegmentname(obj)
+            
+            for i =1:length(obj.Segment)
+                NameList{i} = [obj.Segment(i).Name obj.Segment(i).SubSegmentName ];
+            end
+            [~,NewOrder] = sort(NameList);
+            
+            NewSegment = obj.Segment;
+            for i=1:length(obj.Segment)
+                NewSegment(i) = obj.Segment(NewOrder(i));
+            end
+            
+            obj.Segment = NewSegment;
+        end
+        
     end
     methods (Static)
         % Static main methods

@@ -4231,6 +4231,8 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                             'Label',sprintf('%s || %s',Class{1}.Segment(i).Name,Class{1}.Segment(i).SubSegmentName),...
                             'LabelAlpha',0.6);
                         addlistener(h.ROIObjects{i},'ROIMoved',@moved_roi);
+                        addlistener(h.ROIObjects{i},'VertexAdded',@moved_roi);
+                        addlistener(h.ROIObjects{i},'VertexDeleted',@moved_roi);
                     else
                         if h.c(38).Value
                             h.ROIObjects{i} = drawpolyline('Position',Class{1}.Segment(i).ROIObject.Position,...
@@ -4306,9 +4308,11 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 Class{1}.Segment(end).ROIObject.LineWidth = ROIObject.LineWidth;
                 Class{1}.Segment(end).Type = 'polyline';
                 
+                Class{1}.sort_segments_by_name_and_subsegmentname;
+                
                 h.EnableEditing = 1;
                 draw_channel_1
-                h.SubsegmentBox.Value = length(h.SubsegmentBox.String);
+                h.SubsegmentBox.Value = find(strcmp(h.SubsegmentBox.String,SubSegmentName));
                 draw_channel_1
             end
             
@@ -4338,6 +4342,8 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 Class{1}.Segment(end).ROIObject.LineWidth = ROIObject.LineWidth;
                 Class{1}.Segment(end).Type = 'polyline';
                 
+                Class{1}.sort_segments_by_name_and_subsegmentname;
+                
                 if length(Class{1}.Segment) == 1
                     set(h.SegmentBox,'String',{SegmentName})
                     set(h.SubsegmentBox,'String',{SubSegmentName})
@@ -4345,14 +4351,16 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 
                 h.EnableEditing = 1;
                 draw_channel_1
-                h.SegmentBox.Value = length(h.SegmentBox.String);
+                
+                h.SegmentBox.Value = find(strcmp(h.SegmentBox.String,SegmentName));
                 segment_changed
-                h.SubsegmentBox.Value = length(h.SubsegmentBox.String);
+                h.SubsegmentBox.Value = find(strcmp(h.SubsegmentBox.String,SubSegmentName));
                 draw_channel_1
             end
             
             function segment_changed(varargin)
                 % set initial listbox items
+                Class{1}.sort_segments_by_name_and_subsegmentname;
                 Names = {Class{1}.Segment.Name};
                 SubSegmentNames = {Class{1}.Segment.SubSegmentName};
                 UniqueNames = unique(Names);
@@ -4363,11 +4371,13 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             end
             
             function subsegment_changed(varargin)
+                Class{1}.sort_segments_by_name_and_subsegmentname;
                 draw_channel_1
             end
             
             function snap_segment(varargin)
                 
+                Class{1}.sort_segments_by_name_and_subsegmentname;
                 Indizes = find(strcmp({Class{1}.Segment.Name},{Class{1}.Segment(h.CurrentIndex).Name}));
                 
                 Method = ['localreg' num2str(round(str2num(h.c(44).String)))];
@@ -4382,6 +4392,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             
             function snap_all(varargin)
                 
+                Class{1}.sort_segments_by_name_and_subsegmentname;
                 Method = ['localreg' num2str(round(str2num(h.c(44).String)))];
                 
                 Class{1}.snap_line_segments_to_local_perpendicular_maximum(str2double(h.c(41).String),...
@@ -4394,6 +4405,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             
             function apply_segmentation_to_overlay_group(varargin)
                 
+                Class{1}.sort_segments_by_name_and_subsegmentname;
                 obj.apply_segmentation_to_overlay_group(Class{1});
                 
             end
@@ -4413,10 +4425,16 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 end
                 
                 set(h.SegmentBox,'Value',1);
+                Class{1}.sort_segments_by_name_and_subsegmentname;
                 draw_channel_1
             end
             
             function delete_selected_subsegment(varargin)
+                
+                if length(h.SubsegmentBox.String) == 1
+                    delete_selected_segment
+                    return
+                end
                 
                 OldString = get(h.SegmentBox,'String');
                 DeleteIdx = get(h.SegmentBox,'Value');
@@ -4433,7 +4451,8 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                             'ROIObject',[]);
                 end
                 
-                set(h.SubsegmentBox,'Value',1);
+                set(h.SubsegmentBox,'Value',length(h.SubsegmentBox.String)-1);
+                Class{1}.sort_segments_by_name_and_subsegmentname;
                 draw_channel_1
             end
             
