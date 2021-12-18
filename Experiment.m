@@ -3768,6 +3768,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 set(h.SegmentBox,'String',InitialUniqueNames);
                 set(h.SubsegmentBox,'String',{InitialSubSegmentNames{strcmp({h.SegmentBox.String{h.SegmentBox.Value}},InitialNames)}});
             end
+            h.CurrentClassName = Class{1}.Name;
             h.EnableEditing = 1;
             
             if isempty(DefIndex)
@@ -3876,6 +3877,11 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 h.RelativeChannelIndex = h.CurChannel2Idx - h.CurChannel1Idx;
                 
                 Class{Index} = obj.get_class_instance(ClassIndex(CurIndex,:));
+                if ~isequal(h.CurrentClassName,Class{1}.Name)
+                    h.SegmentBox.Value = 1;
+                    h.SubsegmentBox.Value = 1;
+                    h.CurrentClassName = Class{1}.Name;
+                end
                 CurrentChannelName = h.B(1+Index).String{h.B(1+Index).Value};
                 PopUp = Class{Index}.string_of_existing();
                 set(h.B(1+Index),'String',PopUp)
