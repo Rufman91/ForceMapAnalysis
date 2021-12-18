@@ -467,7 +467,7 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle
                         Means = mean(LocalPoints,1);
                         CenteredLP = LocalPoints - Means;
                         % replace outliers for robustness
-                        CenteredLP = filloutliers(CenteredLP,'linear',1);
+%                         CenteredLP = filloutliers(CenteredLP,'linear',1);
                         [PCACoeff,TransformedSnappedPos,Latent] = pca(CenteredLP);
                         DegreeOfPolyfit = str2num(SmoothingWindowWeighting(end));
                         if isempty(DegreeOfPolyfit)
