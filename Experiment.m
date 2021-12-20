@@ -2723,6 +2723,8 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             h.isUpscaled = false;
             h.lockedChannels = h.B(20).Value;
             [~,DefIndex] = Class{1}.get_channel('Processed');
+            h.CurrentClassName{1} = Class{1}.Name;
+            h.CurrentClassName{2} = Class{1}.Name;
             if isempty(DefIndex)
                 DefIndex = 2;
             else
@@ -3090,7 +3092,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 end
                 BarToImageRatio = 1/5;
                 try
-                    CurrentZoomX = h.ImAx(Index).XLim; 
+                    CurrentZoomX = h.ImAx(Index).XLim;
                     CurrentZoomY = h.ImAx(Index).YLim;
                     delete(h.ImAx(Index));
                     delete(h.I(Index));
@@ -3260,12 +3262,16 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 c.Label.FontSize = round(h.ReferenceFontSize*(CurrentAxHeight/756));
                 c.Label.Color = h.ColorMode(h.ColorIndex).Text;
                 
-                try
-                    % Set Zoom region to previous
-                    zoom reset
-                    h.ImAx(Index).XLim = CurrentZoomX;
-                    h.ImAx(Index).YLim = CurrentZoomY;
-                catch
+                if isequal(h.CurrentClassName{Index},Class{Index}.Name)
+                    try
+                        % Set Zoom region to previous
+                        zoom reset
+                        h.ImAx(Index).XLim = CurrentZoomX;
+                        h.ImAx(Index).YLim = CurrentZoomY;
+                    catch
+                    end
+                else
+                    h.CurrentClassName{Index} = Class{Index}.Name;
                 end
                 
                 set(h.B(MinIndex+4),'String',{'Min',sprintf('[%s]',h.Unit{Index})});
@@ -3880,7 +3886,6 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 if ~isequal(h.CurrentClassName,Class{1}.Name)
                     h.SegmentBox.Value = 1;
                     h.SubsegmentBox.Value = 1;
-                    h.CurrentClassName = Class{1}.Name;
                 end
                 CurrentChannelName = h.B(1+Index).String{h.B(1+Index).Value};
                 PopUp = Class{Index}.string_of_existing();
@@ -4016,12 +4021,16 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 set(h.B(MaxIndex+4),'String',{'Max',sprintf('[%s]',h.Unit{Index})});
                 
                 
-                try
-                    % Set Zoom region to previous
-                    zoom reset
-                    h.ImAx(Index).XLim = CurrentZoomX;
-                    h.ImAx(Index).YLim = CurrentZoomY;
-                catch
+                if isequal(h.CurrentClassName,Class{Index}.Name)
+                    try
+                        % Set Zoom region to previous
+                        zoom reset
+                        h.ImAx(Index).XLim = CurrentZoomX;
+                        h.ImAx(Index).YLim = CurrentZoomY;
+                    catch
+                    end
+                else
+                    h.CurrentClassName = Class{Index}.Name;
                 end
                 
                 try
