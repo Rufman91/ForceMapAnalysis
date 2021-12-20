@@ -4067,8 +4067,6 @@ classdef ForceMap < matlab.mixin.Copyable
                
                 figure('Name',sprintf('Phaseshift Curve %i',i))
                 lastseg = obj.NumSegments - 2;
-                %FreqIndex = find(obj.SegFrequency{j});
-                %FirstFreq = FreqIndex(1);
                 hold on
                 for j=1:obj.NumSegments
                     
@@ -4091,6 +4089,10 @@ classdef ForceMap < matlab.mixin.Copyable
                             ypH = zeros(length(x),1);
                         end
                         
+          
+                        FreqIndex = find(obj.SegFrequency{j});
+                        FirstFreq = FreqIndex(1);
+                        
 
                         hold on
                         
@@ -4100,7 +4102,7 @@ classdef ForceMap < matlab.mixin.Copyable
                         findpeaks(ypF*MultiplierF,x)
                         hold on
                         findpeaks(ypH*MultiplierI,x)
-                        title(sprintf('Phaseshift of Curve %i, %.1f [Hz]',i,Freq))
+                        title(sprintf('Phaseshift of Fits of Curve %i, %.1f [Hz]',i,Freq))
                         xlabel('time [s]')
                         ylabel(sprintf('fit of vDeflection-Force [%s] and Indentation [%s]',UnitF, UnitI))
                         legend({'force fit','force fit peak','indentation fit','indentation fit peak'},'Location','southoutside')
