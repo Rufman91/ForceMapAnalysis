@@ -1180,7 +1180,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             obj.CPFlag.HardSurface = 1;
         end
         
-        function E = calculate_e_mod_hertz(obj,CPType,TipShape,LowerCurvePercent,UpperCurvePercent,AllowXShift,CorrectSensitivity,UseTipData,UseTopology,TipObject)
+        function E = calculate_e_mod_hertz(obj,CPType,TipShape,LowerCurvePercent,UpperCurvePercent,AllowXShift,CorrectSensitivity,UseTipData,UseTopology,TipObject,DataWeightByDistanceBool)
             % E = calculate_e_mod_hertz(obj,CPType,TipShape,LowerCurvePercent,UpperCurvePercent,AllowXShift,CorrectSensitivity,UseTipData,UseTopology,TipObject)
             %
             % calculate the E modulus of the chosen curves using the CP
@@ -1221,7 +1221,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                     CP = obj.CP(iRange(1:BatchSize),:);
                 end
                 for i=1:BatchSize
-                    [App{i},HHApp{i}] = obj.get_force_curve_data(iRange(i),0,1,0);
+                    [App{i},HHApp{i}] = obj.get_force_curve_data(iRange(i),0,0,0);
                     force{i} = App{i} - CP(i,2);
                     if CorrectSensitivity
                         force{i} = force{i}.*obj.RefSlopeCorrectedSensitivity/obj.Sensitivity;
@@ -1243,6 +1243,13 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                     RangeTH{i} = range(tip_h{i});
                     force{i} = force{i}/RangeF{i};
                     tip_h{i} = tip_h{i}/RangeTH{i};
+                    if DataWeightByDistanceBool
+                        Distances = vecnorm([tip_h{i} force{i}],2,1);
+                        TempPointWeight = diff(Distances);
+                        PointWeight{i} = [TempPointWeight(1) TempPointWeight];
+                    else
+                        PointWeight{i} = ones(length(force{i}),1);
+                    end
                 end
                 parfor i=1:BatchSize
                     if AllowXShift
@@ -1250,13 +1257,15 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                             'Lower',[10^(-5) -min(tip_h{i})],...
                             'Upper',[inf min(tip_h{i})],...
                             'MaxIter',100,...
-                            'Startpoint',[1 0]);
+                            'Startpoint',[1 0],...
+                            'Weights',PointWeight{i});
                         f = fittype('a*(x+b)^(3/2)','options',s);
                     else
                         s = fitoptions('Method','NonlinearLeastSquares',...
                             'Lower',10^(-5),...
                             'Upper',inf,...
-                            'Startpoint',1);
+                            'Startpoint',1,...
+                            'Weights',PointWeight{i});
                         f = fittype('a*(x)^(3/2)','options',s);
                     end
                     try
