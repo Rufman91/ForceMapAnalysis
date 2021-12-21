@@ -20,6 +20,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                             % all the time
         FractionedSaveFiles = false
         CurrentLogFile
+        ForceMapAnalysisOptions = Experiment.set_default_fma_options()
         FM                  % Cellarray containing Force/QI Maps
         NumForceMaps
         ForceMapNames      
@@ -484,6 +485,9 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             if nargin < 3
                 JustExperiment = 0;
             end
+%             if isequal(E.HostOS,'GLN')
+%                 Path = [Path filesep];
+%             end
             
             for i=1:E.NumForceMaps
                 if ~isempty(E.FM{i})
@@ -559,8 +563,11 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             if nargin < 1
                 [File,Path] = uigetfile('*.mat','Choose Experiment .mat from folder');
                 Fullfile = fullfile(Path,File);
-                disp('Loading Experiment... this can take a while for larger Experiments')
+            else
+                [Path,FileName,Extension] = fileparts(Fullfile);
+                File = [FileName Extension];
             end
+            disp('Loading Experiment... this can take a while for larger Experiments')
             load(Fullfile);
             
             E = obj;
@@ -996,7 +1003,14 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             % EModOption = 'Oliver' ... E-Modulus calculation through
             % Oliver-Pharr-like method (O. Andriotis 2014)
             
-            if nargin < 4
+            if nargin < 2
+                CPOption = obj.ForceMapAnalysisOptions.ContactPointOption;
+                EModOption = obj.ForceMapAnalysisOptions.EModOption.Type;
+                BaseLineCorrectBool = obj.ForceMapAnalysisOptions.BaseLineCorrectBool;
+                TemporaryLoadInBool = obj.ForceMapAnalysisOptions.TemporaryLoadInBool;
+                UseTipInHertzBool = obj.ForceMapAnalysisOptions.EModOption.Hertz.UseTipInHertz;
+                TiltCorrectionBool = obj.ForceMapAnalysisOptions.TiltCorrectionBool;
+            elseif nargin < 4
                 BaseLineCorrectBool = false;
                 TemporaryLoadInBool = true;
                 UseTipInHertzBool = true;
@@ -1017,18 +1031,30 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             
             h = waitbar(0,'setting up','Units','normalized','Position',[0.4 0.3 0.2 0.1]);
             NLoop = obj.NumForceMaps;
-            if sum(obj.FMFlag.ForceMapAnalysis) >= 1
-                KeepFlagged = questdlg(sprintf('Some maps have been processed already.\nDo you want to skip them and keep old results?'),...
-                    'Processing Options',...
-                    'Yes',...
-                    'No',...
-                    'No');
+            if nargin < 2
+                if obj.ForceMapAnalysisOptions.KeepProcessedDataBool
+                    KeepFlagged = 'Yes';
+                else
+                    KeepFlagged = 'No';
+                end
             else
-                KeepFlagged = 'No';
+                if sum(obj.FMFlag.ForceMapAnalysis) >= 1
+                    KeepFlagged = questdlg(sprintf('Some maps have been processed already.\nDo you want to skip them and keep old results?'),...
+                        'Processing Options',...
+                        'Yes',...
+                        'No',...
+                        'No');
+                else
+                    KeepFlagged = 'No';
+                end
             end
             
             % Setting and calculating preferred method of reference slope
-            obj.reference_slope_parser(1)
+            if nargin < 2
+                obj.reference_slope_parser(1,true)
+            else
+                obj.reference_slope_parser(1,false)
+            end
             
             if obj.ReferenceSlopeFlag.SetAllToValue
                 RefSlopeOption = 'SetAllToValue';
@@ -1095,8 +1121,8 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 obj.FM{i}.create_and_level_height_map
                 obj.FM{i}.create_automatic_background_mask(1)
                 
-                Thresh = 1/2;
-                AppRetSwitch = 2;
+                Thresh = obj.ForceMapAnalysisOptions.UnselectCurveFragmentsThreshold;
+                AppRetSwitch = obj.ForceMapAnalysisOptions.UnselectCurveFragmentsAppRetSwitch;
                 obj.FM{i}.unselect_curves_by_fraction_of_max_data_points(Thresh,AppRetSwitch)
                 
                 waitbar(i/NLoop,h,sprintf('Processing ForceMap %i/%i\nFitting Base Line',i,NLoop));
@@ -1113,12 +1139,12 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                     if ~obj.FM{i}.CPFlag.CNN
                         obj.cp_option_converter('Fast',i);
                     end
-                    FractionBeforeCP = .7;
+                    FractionBeforeCP = obj.ForceMapAnalysisOptions.BaseLineCorrectFractionBeforeCP;
                     obj.FM{i}.base_and_tilt_using_cp(FractionBeforeCP)
                     obj.write_to_log_file('FractionBeforeCP',FractionBeforeCP);
                 end
                 
-                if ~obj.FM{i}.CPFlag.CNNZoomSweep
+                if ~obj.FM{i}.CPFlag.CNNZoomSweep || ~isequal(CPOption,'ZoomSweep')
                 obj.cp_option_converter(CPOption,i);
                 end
                 
@@ -1133,22 +1159,45 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                     else
                         CorrectSens = false;
                     end
-                    AllowXShift = true;
+                    AllowXShift = obj.ForceMapAnalysisOptions.EModOption.Hertz.AllowXShift;
                     if UseTipInHertzBool
-                        obj.FM{i}.calculate_e_mod_hertz(CPOption,'parabolic',0,1,AllowXShift,CorrectSens,UseTipInHertzBool,0,obj.CantileverTips{obj.WhichTip(i)});
+                        obj.FM{i}.calculate_e_mod_hertz(CPOption,...
+                            obj.ForceMapAnalysisOptions.EModOption.Hertz.TipShape,...
+                            obj.ForceMapAnalysisOptions.EModOption.Hertz.LowerCurvePercent,...
+                            obj.ForceMapAnalysisOptions.EModOption.Hertz.UpperCurvePercent,...
+                            AllowXShift,...
+                            obj.ForceMapAnalysisOptions.EModOption.Hertz.CorrectSensitivity,...
+                            UseTipInHertzBool,...
+                            obj.ForceMapAnalysisOptions.EModOption.Hertz.UseTopology,...
+                            obj.CantileverTips{obj.WhichTip(i)},...
+                            obj.ForceMapAnalysisOptions.EModOption.Hertz.WeighPointsByInverseDistance);
                     else
-                        obj.FM{i}.calculate_e_mod_hertz(CPOption,'parabolic',0,1,AllowXShift,CorrectSens,UseTipInHertzBool,0);
+                        obj.FM{i}.calculate_e_mod_hertz(CPOption,...
+                            obj.ForceMapAnalysisOptions.EModOption.Hertz.TipShape,...
+                            obj.ForceMapAnalysisOptions.EModOption.Hertz.LowerCurvePercent,...
+                            obj.ForceMapAnalysisOptions.EModOption.Hertz.UpperCurvePercent,...
+                            AllowXShift,...
+                            obj.ForceMapAnalysisOptions.EModOption.Hertz.CorrectSensitivity,...
+                            UseTipInHertzBool,...
+                            obj.ForceMapAnalysisOptions.EModOption.Hertz.UseTopology,...
+                            [],...
+                            obj.ForceMapAnalysisOptions.EModOption.Hertz.WeighPointsByInverseDistance);
                     end
                     if i == 1
-                        obj.write_to_log_file('Hertzian Tip-Shape','parabolic')
-                        obj.write_to_log_file('Hertzian CurvePercent','1')
+                        obj.write_to_log_file('Hertzian Tip-Shape',...
+                            obj.ForceMapAnalysisOptions.EModOption.Hertz.TipShape)
+                        obj.write_to_log_file('Hertzian UpperCurvePercent',...
+                            obj.ForceMapAnalysisOptions.EModOption.Hertz.UpperCurvePercent)
+                        obj.write_to_log_file('Hertzian LowerCurvePercent',...
+                            obj.ForceMapAnalysisOptions.EModOption.Hertz.LowerCurvePercent)
                         obj.write_to_log_file('Allow X-Shift',AllowXShift)
                     end
                 end
                 if isequal(lower(EModOption),'oliver') || isequal(lower(EModOption),'both')
                     obj.FM{i}.calculate_e_mod_oliverpharr(obj.CantileverTips{obj.WhichTip(i)}.ProjectedTipArea,0.75);
                     if i == 1
-                        obj.write_to_log_file('OliverPharr CurvePercent','0.75')
+                        obj.write_to_log_file('OliverPharr UpperCurvePercent for linear fit',...
+                            obj.ForceMapAnalysisOptions.EModOption.OliverPharr.CurvePercent)
                     end
                 end
                 
@@ -1167,8 +1216,11 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 
                 if TemporaryLoadInBool && obj.BigDataFlag
                     obj.FM{i}.temporary_data_load_in(false);
-                    if i < NLoop
-%                         obj.save_experiment;
+                    if (i < NLoop &&...
+                            obj.ForceMapAnalysisOptions.SaveAfterEachMap) ||...
+                            (obj.ForceMapAnalysisOptions.SaveAfterEachMap &&...
+                            ~obj.ForceMapAnalysisOptions.SaveWhenFinished)
+                        obj.save_experiment;
                     end
                 end
                 
@@ -1184,7 +1236,9 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 end
             end
             
-            obj.save_experiment;
+            if obj.ForceMapAnalysisOptions.SaveWhenFinished
+                obj.save_experiment;
+            end
             
             close(h);
             obj.write_to_log_file('','','end')
@@ -5253,17 +5307,23 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             obj.HostName = Host;
         end
         
-        function reference_slope_parser(obj,DefaultOption)
+        function reference_slope_parser(obj,DefaultOption,SkipGUIBool)
             
             if nargin < 2
                 DefaultOption = 1;
+                SkipGUIBool = false;
+            elseif nargin < 3
+                SkipGUIBool = false;
             end
             
             Methods = false(6,1);
-            Methods(DefaultOption) = true;
-            [ChosenMethod, AppRetSwitch] = obj.reference_slope_parser_gui(Methods);
-            Methods = false(6,1);
-            Methods(ChosenMethod) = true;
+            if ~SkipGUIBool
+                Methods(DefaultOption) = true;
+                [ChosenMethod, AppRetSwitch] = obj.reference_slope_parser_gui(Methods);
+                Methods = false(6,1);
+                Methods(ChosenMethod) = true;
+                obj.ReferenceSlopeFlag.AppRetSwitch = AppRetSwitch;
+            end
             
             obj.ReferenceSlopeFlag.SetAllToValue = Methods(1);
             obj.ReferenceSlopeFlag.UserInput = Methods(2);
@@ -5271,7 +5331,13 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             obj.ReferenceSlopeFlag.FromArea = Methods(4);
             obj.ReferenceSlopeFlag.AutomaticFibril = Methods(5);
             obj.ReferenceSlopeFlag.Automatic = Methods(6);
-            obj.ReferenceSlopeFlag.AppRetSwitch = AppRetSwitch;
+            
+            if SkipGUIBool
+                obj.ReferenceSlopeFlag.(...
+                    obj.ForceMapAnalysisOptions.SensitivityCorrectionMethod) = true;
+                obj.ReferenceSlopeFlag.AppRetSwitch = ...
+                    obj.ForceMapAnalysisOptions.ReferenceAppRetSwitch;
+            end
             
             % Process all the RefSlope-Methods that can be done frontloaded
             if obj.ReferenceSlopeFlag.SetAllToValue
@@ -6245,9 +6311,112 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             
         end
         
+        function FMAOptions = set_default_fma_options()
+            
+            OliverPharr = struct(...
+                'CurvePercent',0.75);
+            
+            Hertz = struct(...
+                'TipShape','parabolic',...
+                'CorrectSensitivity',true,...
+                'AllowXShift',true,...
+                'LowerCurvePercent',0,...
+                'UpperCurvePercent',1,...
+                'UseTipInHertz',true,...
+                'UseTopology',false,...
+                'WeighPointsByInverseDistance',false);
+            
+            EModOption = struct(...
+                'Type','Hertz',...
+                'OliverPharr',OliverPharr,...
+                'Hertz',Hertz);
+            
+            FMAOptions = struct('ContactPointOption','Old',...
+                'EModOption',EModOption,...
+                'BaseLineCorrectBool',false,...
+                'BaseLineCorrectFractionBeforeCP',.7,...
+                'TemporaryLoadInBool',true,...
+                'TiltCorrectionBool',true,...
+                'ReferenceAppRetSwitch',0,...
+                'SensitivityCorrectionMethod','Automatic',...
+                'SetAllToValue',1,...
+                'SetValue',[],...
+                'KeepProcessedDataBool',false,...
+                'SkipAreaExclusion',true,...
+                'UnselectCurveFragmentsThreshold',1/2,...
+                'UnselectCurveFragmentsAppRetSwitch',2,...
+                'SaveWhenFinished',true,...
+                'SaveAfterEachMap',false);
+            
+        end
+        
     end
     methods(Static)
         % static methods for meta operations on multiple experiments
+        
+        function SummaryStruct = multiexperiment_force_map_analysis(FMAOptions)
+            
+            if nargin < 1
+                FMAOptions = Experiment.set_default_fma_options();
+            end
+            
+            k = 1;
+            LoadMore = 'Yes';
+            while isequal(LoadMore,'Yes')
+                [File,Path] = uigetfile('*.mat','Choose Experiment .mat from folder');
+                FullFile{k} = fullfile(Path,File);
+                LoadMore = questdlg('Do you want to add more Experiments?',...
+                    'Multiexperiment loader',...
+                    'Yes',...
+                    'No',...
+                    'No');
+                if isfile(FullFile{k})
+                    k = k + 1;
+                else
+                    FullFile{k} = [];
+                end
+            end
+            
+            NumExperiments = length(FullFile);
+            
+            if isstruct(FMAOptions)
+                OptionCell = cell(NumExperiments,1);
+                for i=1:NumExperiments
+                    OptionCell{i} = FMAOptions;
+                end
+            elseif NumExperiments~=length(FMAOptions)
+                warning(['Number of given Force Map Analysis options ' ...
+                    'does not equal number of experiments to be ' ...
+                    'processed. Processing everything with first ' ...
+                    'given option instead!'])
+                OptionCell = cell(NumExperiments,1);
+                for i=1:NumExperiments
+                    OptionCell{i} = FMAOptions{i};
+                end
+            end
+            
+            SummaryStruct(1:NumExperiments) = struct(...
+                'AnalysisSuccessful',true,...
+                'ErrorStack',[]);
+            tic
+            h = waitbar(0,'Setting up...');
+            for i=1:NumExperiments
+                waitbar((i)/NumExperiments,h,...
+                    ['Loading Experiment ' num2str(i) ' of ' num2str(NumExperiments)])
+                try
+                    E = Experiment.load(FullFile{i});
+                    waitbar((i)/NumExperiments,h,...
+                        ['Processing Experiment ' num2str(i) ' of ' num2str(NumExperiments)])
+                    E.ForceMapAnalysisOptions = OptionCell{i};
+                    E.force_map_analysis_general()
+                catch ME
+                    SummaryStruct(i).ErrorStack = ME;
+                    SummaryStruct(i).AnalysisSuccessful = false;
+                end
+            end
+            close(h)
+            toc
+        end
         
     end
 end

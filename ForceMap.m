@@ -1221,7 +1221,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                     CP = obj.CP(iRange(1:BatchSize),:);
                 end
                 for i=1:BatchSize
-                    [App{i},HHApp{i}] = obj.get_force_curve_data(iRange(i),0,0,0);
+                    [App{i},HHApp{i}] = obj.get_force_curve_data(iRange(i),0,1,0);
                     force{i} = App{i} - CP(i,2);
                     if CorrectSensitivity
                         force{i} = force{i}.*obj.RefSlopeCorrectedSensitivity/obj.Sensitivity;
@@ -1244,11 +1244,12 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                     force{i} = force{i}/RangeF{i};
                     tip_h{i} = tip_h{i}/RangeTH{i};
                     if DataWeightByDistanceBool
-                        Distances = vecnorm([tip_h{i} force{i}],2,1);
-                        TempPointWeight = diff(Distances);
-                        PointWeight{i} = [TempPointWeight(1) TempPointWeight];
+                        Points = [tip_h{i}(1:end-1) force{i}(1:end-1)];
+                        ShiftedPoints = [tip_h{i}(2:end) force{i}(2:end)];
+                        TempPointWeight = vecnorm(Points-ShiftedPoints,2,1);
+                        PointWeights{i} = [TempPointWeight(1) TempPointWeight];
                     else
-                        PointWeight{i} = ones(length(force{i}),1);
+                        PointWeights{i} = ones(length(force{i}),1);
                     end
                 end
                 parfor i=1:BatchSize
@@ -1258,14 +1259,14 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                             'Upper',[inf min(tip_h{i})],...
                             'MaxIter',100,...
                             'Startpoint',[1 0],...
-                            'Weights',PointWeight{i});
+                            'Weights',PointWeights{i});
                         f = fittype('a*(x+b)^(3/2)','options',s);
                     else
                         s = fitoptions('Method','NonlinearLeastSquares',...
                             'Lower',10^(-5),...
                             'Upper',inf,...
                             'Startpoint',1,...
-                            'Weights',PointWeight{i});
+                            'Weights',PointWeights{i});
                         f = fittype('a*(x)^(3/2)','options',s);
                     end
                     try
@@ -4421,7 +4422,11 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             end
             Map = imresize(Map,[obj.NumPixelsX obj.NumPixelsY],'nearest');
             
-            Map = AFMImage.find_and_replace_outlier_lines(Map,10);
+            try
+                Map = AFMImage.find_and_replace_outlier_lines(Map,10);
+            catch
+                warning('Could not replace outlier lines')
+            end
             
             % write to Channel
             obj.delete_channel('Processed Indented Height')
