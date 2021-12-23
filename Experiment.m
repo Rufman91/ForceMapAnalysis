@@ -2849,12 +2849,25 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 if ~get(h.B(1),'Value')
                     return
                 end
+                if isempty(h.MainLine)
+                    return
+                end
+                if ~isvalid(h.MainLine)
+                    h.MainLine = [];
+                    h.MainLine = drawline('Position',h.MainProfilePosition,...
+                        'Color',h.ColorMode(h.ColorIndex).Profile1,...
+                        'Parent',h.ImAx(h.MainIndex),'LineWidth',h.ProfileLineWidth);
+                    addlistener(h.MainLine,'MovingROI',@moving_cross_section);
+                    addlistener(h.MainLine,'ROIMoved',@moving_cross_section);
+                end
                 delete(h.ImAx(3))
                 h.ImAx(3) = [];
+                h.MainProfilePosition = h.MainLine.Position;
                 Pos1 = [h.MainLine.Position(1,1) h.MainLine.Position(1,2)];
                 Pos2 = [h.MainLine.Position(2,1) h.MainLine.Position(2,2)];
                 MainProfile = improfile(h.Image{h.MainIndex},[Pos1(1) Pos2(1)],[Pos1(2) Pos2(2)],'bicubic');
-                Len = norm(Pos1-Pos2)/h.NumPixelsX(h.MainIndex)*h.ScanSizeX(h.MainIndex);
+                Len = sqrt(((Pos1(1)-Pos2(1))*h.ScanSizeX(h.MainIndex)/h.NumPixelsY(h.MainIndex))^2 + ...
+                ((Pos1(2)-Pos2(2))*h.ScanSizeY(h.MainIndex)/h.NumPixelsX(h.MainIndex))^2);
                 Points = [0:1/(length(MainProfile)-1):1].*Len;
                 [MainMultiplierY,UnitY,~] = AFMImage.parse_unit_scale(range(MainProfile),h.BaseUnit{h.MainIndex},1);
                 [MultiplierX,UnitX,~] = AFMImage.parse_unit_scale(range(Points),'m',1);
@@ -2879,8 +2892,10 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 h.P.Color = h.ColorMode(h.ColorIndex).Profile1;
                 if h.hasBothCrossSections && (h.hasChannel2 && h.hasChannel1)
                     if ~isempty(h.ChildLine)
-                        if ~isvalid(h.ChildLine)
-                            h.ChildLine = [];
+                        if ~isstruct(h.ChildLine)
+                            if ~isvalid(h.ChildLine)
+                                h.ChildLine = [];
+                            end
                         end
                     end
                     h.ChildLine.Visible = 'off';
@@ -3024,6 +3039,8 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                     'Parent',varargin{1}.Parent,'LineWidth',h.ProfileLineWidth);
                 addlistener(h.MainLine,'MovingROI',@moving_cross_section);
                 addlistener(h.MainLine,'ROIMoved',@moving_cross_section);
+                h.MainProfilePosition = h.MainLine.Position;
+                h.MainProfileParent = h.MainLine.Parent;
                 Pos1 = [h.MainLine.Position(1,1) h.MainLine.Position(1,2)];
                 Pos2 = [h.MainLine.Position(2,1) h.MainLine.Position(2,2)];
                 if norm(Pos1-Pos2)==0
@@ -3031,7 +3048,8 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                     return
                 end
                 MainProfile = improfile(h.Image{h.MainIndex},[Pos1(1) Pos2(1)],[Pos1(2) Pos2(2)],'bicubic');
-                Len = norm(Pos1-Pos2)/h.NumPixelsX(h.MainIndex)*h.ScanSizeX(h.MainIndex);
+                Len = sqrt(((Pos1(1)-Pos2(1))*h.ScanSizeX(h.MainIndex)/h.NumPixelsY(h.MainIndex))^2 + ...
+                ((Pos1(2)-Pos2(2))*h.ScanSizeY(h.MainIndex)/h.NumPixelsX(h.MainIndex))^2);
                 Points = [0:1/(length(MainProfile)-1):1].*Len;
                 [MainMultiplierY,UnitY,~] = AFMImage.parse_unit_scale(range(MainProfile),h.BaseUnit{h.MainIndex},1);
                 [MultiplierX,UnitX,~] = AFMImage.parse_unit_scale(range(Points),'m',1);
@@ -3333,6 +3351,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 set(h.B(MinIndex+4),'String',{'Min',sprintf('[%s]',h.Unit{Index})});
                 set(h.B(MaxIndex+4),'String',{'Max',sprintf('[%s]',h.Unit{Index})});
                 
+                moving_cross_section
                 try
                     if (h.ScanSizeX(1) == h.ScanSizeX(2)) &&...
                             (h.ScanSizeY(1) == h.ScanSizeY(2))

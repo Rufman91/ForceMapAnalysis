@@ -1184,19 +1184,22 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             % E = calculate_e_mod_hertz(obj,CPType,TipShape,LowerCurvePercent,UpperCurvePercent,AllowXShift,CorrectSensitivity,UseTipData,UseTopology,TipObject)
             %
             % calculate the E modulus of the chosen curves using the CP
-            % type chosen in the arguments fitting the upper curve_percent
+            % type chosen in the arguments fitting the lower to upper CurvePercent
             % part of the curves
-            if ~exist('curve_percent','var') && ischar('curve_percent')
-                LowerCurvePercent = 0.75;
-            end
-            if ~exist('TipShape','var') && ~ischar(TipShape)
-                TipShape = 'parabolic';
-            end
             if nargin < 5
                 AllowXShift = false;
                 CorrectSensitivity = false;
                 UseTipData = false;
             end
+            
+            if isequal(lower(TipShape),'parabolic')
+                if AllowXShift
+                    FitFunction = 'a*(x+b)^(3/2)';
+                else
+                    Fitfunction = 'a*(x)^(3/2)';
+                end
+            end
+            
             iRange = find(obj.SelectedCurves);
             obj.EModHertz = zeros(obj.NCurves,1);
             obj.IndentationDepth = zeros(obj.NCurves,1);
@@ -1246,8 +1249,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                     if DataWeightByDistanceBool
                         Points = [tip_h{i}(1:end-1) force{i}(1:end-1)];
                         ShiftedPoints = [tip_h{i}(2:end) force{i}(2:end)];
-                        TempPointWeight = vecnorm(Points-ShiftedPoints,2,1);
-                        PointWeights{i} = [TempPointWeight(1) TempPointWeight];
+                        TempPointWeight = vecnorm(Points-ShiftedPoints,2,2);
+                        PointWeights{i} = [TempPointWeight(1) ; TempPointWeight];
                     else
                         PointWeights{i} = ones(length(force{i}),1);
                     end
@@ -1260,14 +1263,14 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                             'MaxIter',100,...
                             'Startpoint',[1 0],...
                             'Weights',PointWeights{i});
-                        f = fittype('a*(x+b)^(3/2)','options',s);
+                        f = fittype(FitFunction,'options',s);
                     else
                         s = fitoptions('Method','NonlinearLeastSquares',...
                             'Lower',10^(-5),...
                             'Upper',inf,...
                             'Startpoint',1,...
                             'Weights',PointWeights{i});
-                        f = fittype('a*(x)^(3/2)','options',s);
+                        f = fittype(FitFunction,'options',s);
                     end
                     try
                         Hertzfit{i} = fit(tip_h{i},...
