@@ -6227,8 +6227,11 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 cd(h.LastFolder)
                 [TempTempFile,TempPath] = uigetfile(AllowedFiles,...
                     'MultiSelect','on');
-                if isempty(TempTempFile)
-                    return
+                try
+                    if TempTempFile == 0
+                        return
+                    end
+                catch
                 end
                 k = 1;
                 if  ~iscell(TempTempFile)
@@ -6269,7 +6272,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 
                 
                 set(h.ListBox(Index),'String',NewFiles)
-                OutStruct(Index).FullFile
+                OutStruct(Index).FullFile;
             end
             
             function delete_selected(varargin)
