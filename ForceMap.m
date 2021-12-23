@@ -5320,6 +5320,13 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
         
         function OutVector = load_single_curve_channel_data_with_python(obj,Index,Segment,ChannelName)
             
+            % First check if zip file is even loaded.If not, load it
+            Meta = metaclass(obj.OpenZipFile);
+            if ~isequal(Meta.Name,'py.zipfile.ZipFile')
+                warning('Zip file not loaded. Loading... You may clear the files again using .clear_zipped_files_from_memory')
+                obj.load_zipped_files_with_python;
+            end
+            
             TargetFile = strcat('index/',Index,'/segments/',Segment,'/channels/',strcat(ChannelName,'.dat'));
             
             File = obj.OpenZipFile.open(TargetFile);
