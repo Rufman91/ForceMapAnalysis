@@ -565,6 +565,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 Fullfile = fullfile(Path,File);
             else
                 [Path,FileName,Extension] = fileparts(Fullfile);
+                Path = [Path filesep];
                 File = [FileName Extension];
             end
             disp('Loading Experiment... this can take a while for larger Experiments')
@@ -2769,6 +2770,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             h.CurChannel2Idx = h.B(3).Value;
             h.RelativeChannelIndex = 0;
             
+            h.ResetOnNextZoom = false;
             h.MainLine = [];
             h.ChildLine = [];
             h.hasCrossSection = 0;
@@ -3316,7 +3318,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 c.Label.FontSize = round(h.ReferenceFontSize*(CurrentAxHeight/756));
                 c.Label.Color = h.ColorMode(h.ColorIndex).Text;
                 
-                if isequal(h.CurrentClassName{Index},Class{Index}.Name)
+                if isequal(h.CurrentClassName{Index},Class{Index}.Name) && ~h.ResetOnNextZoom
                     try
                         % Set Zoom region to previous
                         zoom reset
@@ -3406,9 +3408,12 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             function upscale_images(varargin)
                 
                 h.isUpscaled = h.B(19).Value;
+                h.ResetOnNextZoom = true;
                 
                 draw_channel_1
                 draw_channel_2
+                
+                h.ResetOnNextZoom = false;
                 
             end
             
@@ -6393,6 +6398,8 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 for i=1:NumExperiments
                     OptionCell{i} = FMAOptions{i};
                 end
+            else
+                OptionCell = FMAOptions;
             end
             
             SummaryStruct(1:NumExperiments) = struct(...
