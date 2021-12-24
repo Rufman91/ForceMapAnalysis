@@ -18,7 +18,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                             % 'all-data-to-memory'-mode
         KeepPythonFilesOpen % Decides whether to preload all PythonLoader Files into memory
                             % all the time
-        FractionedSaveFiles = false
+        FractionedSaveFiles = true
         CurrentLogFile
         ShowImageSettings = Experiment.set_default_show_image_settings()
         ForceMapAnalysisOptions = Experiment.set_default_fma_options()
