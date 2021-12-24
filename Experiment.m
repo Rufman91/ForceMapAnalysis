@@ -20,6 +20,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                             % all the time
         FractionedSaveFiles = false
         CurrentLogFile
+        ShowImageSettings = Experiment.set_default_show_image_settings()
         ForceMapAnalysisOptions = Experiment.set_default_fma_options()
         FM                  % Cellarray containing Force/QI Maps
         NumForceMaps
@@ -2562,18 +2563,10 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             h.ColorMode(2).Profile2 = [0 181 26]./255; % alternatives %[80 200 204]./255;%[0,0.870588235294118,0.407843137254902];
             h.ColorMode(2).Text = 'k';
             
-            h.ColorIndex = 1;
-            h.ReferenceFontSize = 24;
-            h.ProfileLineWidth = 3;
-            
-            current = what();
-            DefaultPath = current.path;
-            DefType = '*.png';
-            
             h.Fig = figure('Name',sprintf('%s',obj.ExperimentName),...
                 'Units','pixels',...
                 'Position',[200 200 1024 512],...
-                'Color',h.ColorMode(h.ColorIndex).Background);
+                'Color',h.ColorMode(obj.ShowImageSettings.ColorIndex).Background);
             
             h.B(1) = uicontrol('style','togglebutton',...
                 'String','Cross Section',...
@@ -2583,9 +2576,25 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             
             [ClassPopUp,ClassIndex] = obj.string_of_existing_class_instances();
             h.NumClasses = length(ClassPopUp);
-            Class{1} = obj.get_class_instance(ClassIndex(1,:));
-            Class{2} = obj.get_class_instance(ClassIndex(1,:));
-            PopUp = Class{1}.string_of_existing();
+            if h.NumClasses < obj.ShowImageSettings.DefaultChannel1Index
+                obj.ShowImageSettings.DefaultChannel1Index = 1;
+            end
+            if h.NumClasses < obj.ShowImageSettings.DefaultChannel2Index
+                obj.ShowImageSettings.DefaultChannel2Index = 1;
+            end
+            
+            Class{1} = obj.get_class_instance(...
+                ClassIndex(obj.ShowImageSettings.DefaultChannel1Index,:));
+            Class{2} = obj.get_class_instance(...
+                ClassIndex(obj.ShowImageSettings.DefaultChannel2Index,:));
+            PopUp1 = Class{1}.string_of_existing();
+            PopUp2 = Class{2}.string_of_existing();
+            if length(PopUp1) < obj.ShowImageSettings.DefaultChannel1SubIndex
+                obj.ShowImageSettings.DefaultChannel1SubIndex = 2;
+            end
+            if length(PopUp2) < obj.ShowImageSettings.DefaultChannel2SubIndex
+                obj.ShowImageSettings.DefaultChannel2SubIndex = 2;
+            end
             
             h.B(4) = uicontrol('style','text',...
                 'String','Channel 1',...
@@ -2595,12 +2604,14 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             
             h.B(16) = uicontrol('style','popupmenu',...
                 'String',ClassPopUp,...
+                'Value',obj.ShowImageSettings.DefaultChannel1Index,...
                 'units','normalized',...
                 'position',[.85 .9 .15 .05],...
                 'Callback',@draw_channel_1);
             
             h.B(2) = uicontrol('style','popupmenu',...
-                'String',PopUp,...
+                'String',PopUp1,...
+                'Value',obj.ShowImageSettings.DefaultChannel1SubIndex,...
                 'units','normalized',...
                 'position',[.85 .85 .15 .05],...
                 'Callback',@draw_channel_1);
@@ -2612,12 +2623,14 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             
             h.B(17) = uicontrol('style','popupmenu',...
                 'String',ClassPopUp,...
+                'Value',obj.ShowImageSettings.DefaultChannel2Index,...
                 'units','normalized',...
                 'position',[.85 .65 .15 .05],...
                 'Callback',@draw_channel_2);
             
             h.B(3) = uicontrol('style','popupmenu',...
-                'String',PopUp,...
+                'String',PopUp2,...
+                'Value',obj.ShowImageSettings.DefaultChannel2SubIndex,...
                 'units','normalized',...
                 'position',[.85 .6 .15 .05],...
                 'Callback',@draw_channel_2);
@@ -2630,6 +2643,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             
             h.B(7) = uicontrol('style','checkbox',...
                 'String','...with white background',...
+                'Value',mod(obj.ShowImageSettings.ColorIndex-1,2),...
                 'units','normalized',...
                 'position',[.85 .05 .1 .04],...
                 'Callback',@changed_color);
@@ -2680,7 +2694,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             
             h.B(18) = uicontrol('Style','checkbox',...
                 'String','Both Channels',...
-                'Value',0,...
+                'Value',obj.ShowImageSettings.BothCrossSections,...
                 'Tooltip','Green, if both Channels have the same size scaling',...
                 'Units','normalized',...
                 'Position',[.85 .42 .1 .03],...
@@ -2689,23 +2703,27 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             h.B(19) = uicontrol('style','checkbox',...
                 'String','Upscale Images',...
                 'units','normalized',...
+                'Value',obj.ShowImageSettings.IsUpscaled,...
                 'position',[.85 .15 .1 .04],...
                 'Callback',@upscale_images);
             
             h.B(20) = uicontrol('style','checkbox',...
                 'String','Lock Channels',...
                 'units','normalized',...
+                'Value',obj.ShowImageSettings.LockChannels,...
                 'position',[.85 .3   .1 .04],...
                 'Callback',@lock_channels);
             
             h.B(21) = uicontrol('style','checkbox',...
                 'String','Lock Scalebars',...
+                'Value',obj.ShowImageSettings.LockScalebars,...
                 'units','normalized',...
                 'position',[.85 .20 .1 .04],...
                 'Callback',@lock_scalebars);
             
             h.B(22) = uicontrol('style','checkbox',...
                 'String','Statistical CMapping',...
+                'Value',obj.ShowImageSettings.StatisticalCMap,...
                 'units','normalized',...
                 'position',[.85 .25 .1 .04],...
                 'Callback',@statistical_cmapping);
@@ -2756,7 +2774,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             
             h.B(31) = uicontrol('Style','checkbox',...
                 'String','Use Overlay',...
-                'Value',0,...
+                'Value',obj.ShowImageSettings.UseOverlay,...
                 'Tooltip','Green, if both Channels share an overlay',...
                 'Units','normalized',...
                 'Position',[.85 .39 .1 .03]);
@@ -2768,25 +2786,30 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             
             h.CurChannel1Idx = h.B(2).Value;
             h.CurChannel2Idx = h.B(3).Value;
-            h.RelativeChannelIndex = 0;
             
             h.ResetOnNextZoom = false;
             h.MainLine = [];
             h.ChildLine = [];
             h.hasCrossSection = 0;
-            h.hasBothCrossSections = 0;
-            h.hasChannel2 = 0;
-            h.isUpscaled = false;
-            h.lockedChannels = h.B(20).Value;
-            [~,DefIndex] = Class{1}.get_channel('Processed');
+            
+            if obj.ShowImageSettings.DefaultChannel1SubIndex == 0 ||...
+                obj.ShowImageSettings.DefaultChannel2SubIndex == 0
+                obj.ShowImageSettings.HasChannel2 = 0;
+                [~,DefIndex] = Class{1}.get_channel('Processed');
+                if isempty(DefIndex)
+                    DefIndex = 2;
+                else
+                    DefIndex = DefIndex + 1;
+                end
+                h.B(2).Value = DefIndex;
+                obj.ShowImageSettings.DefaultChannel2SubIndex = DefIndex;
+                h.B(3).Value = 1;
+                obj.ShowImageSettings.DefaultChannel2SubIndex = 1;
+            end
+            
             h.CurrentClassName{1} = Class{1}.Name;
             h.CurrentClassName{2} = Class{1}.Name;
-            if isempty(DefIndex)
-                DefIndex = 2;
-            else
-                DefIndex = DefIndex + 1;
-            end
-            h.B(2).Value = DefIndex;
+            h.OnePass = false;
             draw_channel_1
             
             function cross_section_toggle(varargin)
@@ -2801,21 +2824,25 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             
             function draw_channel_1(varargin)
                 LeftRight = 'Left';
-                if h.hasChannel2 && h.hasCrossSection
+                if obj.ShowImageSettings.HasChannel2 && h.hasCrossSection
                     FullPart = 'PartTwo';
-                elseif h.hasChannel2 && ~h.hasCrossSection
+                elseif obj.ShowImageSettings.HasChannel2 && ~h.hasCrossSection
                     FullPart = 'FullTwo';
-                elseif ~h.hasChannel2 && h.hasCrossSection
+                elseif ~obj.ShowImageSettings.HasChannel2 && h.hasCrossSection
                     FullPart = 'PartOne';
-                elseif ~h.hasChannel2 && ~h.hasCrossSection
+                elseif ~obj.ShowImageSettings.HasChannel2 && ~h.hasCrossSection
                     FullPart = 'FullOne';
                 end
+                obj.ShowImageSettings.DefaultChannel1Index = h.B(16).Value;
+                obj.ShowImageSettings.DefaultChannel2Index = h.B(17).Value;
+                obj.ShowImageSettings.DefaultChannel1SubIndex = h.B(2).Value;
+                obj.ShowImageSettings.DefaultChannel2SubIndex = h.B(3).Value;
                 h.hasChannel1 = true;
                 draw_image(LeftRight,FullPart)
                 if isequal(h.Channel{1},'none')
                     h.hasChannel1 = false;
                 end
-                if h.hasChannel2 && ~h.OnePass
+                if obj.ShowImageSettings.HasChannel2 && ~h.OnePass
                     h.OnePass = true;
                     draw_channel_2
                 end
@@ -2833,10 +2860,14 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 elseif ~h.hasChannel1 && ~h.hasCrossSection
                     FullPart = 'FullOne';
                 end
-                h.hasChannel2 = true;
+                obj.ShowImageSettings.DefaultChannel1Index = h.B(16).Value;
+                obj.ShowImageSettings.DefaultChannel2Index = h.B(17).Value;
+                obj.ShowImageSettings.DefaultChannel1SubIndex = h.B(2).Value;
+                obj.ShowImageSettings.DefaultChannel2SubIndex = h.B(3).Value;
+                obj.ShowImageSettings.HasChannel2 = true;
                 draw_image(LeftRight,FullPart)
                 if isequal(h.Channel{2},'none')
-                    h.hasChannel2 = false;
+                    obj.ShowImageSettings.HasChannel2 = false;
                 end
                 if h.hasChannel1 && ~h.OnePass
                     h.OnePass = true;
@@ -2855,8 +2886,8 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 if ~isvalid(h.MainLine)
                     h.MainLine = [];
                     h.MainLine = drawline('Position',h.MainProfilePosition,...
-                        'Color',h.ColorMode(h.ColorIndex).Profile1,...
-                        'Parent',h.ImAx(h.MainIndex),'LineWidth',h.ProfileLineWidth);
+                        'Color',h.ColorMode(obj.ShowImageSettings.ColorIndex).Profile1,...
+                        'Parent',h.ImAx(h.MainIndex),'LineWidth',obj.ShowImageSettings.ProfileLineWidth);
                     addlistener(h.MainLine,'MovingROI',@moving_cross_section);
                     addlistener(h.MainLine,'ROIMoved',@moving_cross_section);
                 end
@@ -2873,24 +2904,24 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 [MultiplierX,UnitX,~] = AFMImage.parse_unit_scale(range(Points),'m',1);
                 h.ImAx(3) = subplot(10,10,[71:78 81:88 91:98]);
                 h.P = plot(Points.*MultiplierX,MainProfile.*MainMultiplierY);
-                if h.hasBothCrossSections && (h.hasChannel2 && h.hasChannel1)
+                if obj.ShowImageSettings.BothCrossSections && (obj.ShowImageSettings.HasChannel2 && h.hasChannel1)
                     yyaxis left
                 end
                 hold on
                 grid on
                 CurrentAxHeight = round(h.Fig.Position(4)*h.ImAx(h.MainIndex).Position(4));
-                h.ImAx(3).Color = h.ColorMode(h.ColorIndex).Background;
+                h.ImAx(3).Color = h.ColorMode(obj.ShowImageSettings.ColorIndex).Background;
                 h.ImAx(3).LineWidth = 1;
-                h.ImAx(3).FontSize = round(h.ReferenceFontSize*(CurrentAxHeight/756));
-                h.ImAx(3).XColor = h.ColorMode(h.ColorIndex).Text;
-                h.ImAx(3).YColor = h.ColorMode(h.ColorIndex).Profile1;
-                h.ImAx(3).GridColor = h.ColorMode(h.ColorIndex).Text;
+                h.ImAx(3).FontSize = round(obj.ShowImageSettings.ReferenceFontSize*(CurrentAxHeight/756));
+                h.ImAx(3).XColor = h.ColorMode(obj.ShowImageSettings.ColorIndex).Text;
+                h.ImAx(3).YColor = h.ColorMode(obj.ShowImageSettings.ColorIndex).Profile1;
+                h.ImAx(3).GridColor = h.ColorMode(obj.ShowImageSettings.ColorIndex).Text;
                 xlabel(sprintf('[%s]',UnitX))
                 ylabel(sprintf('%s [%s]',h.Channel{h.MainIndex},UnitY))
                 xlim([0 Points(end).*MultiplierX])
                 h.P.LineWidth = 2;
-                h.P.Color = h.ColorMode(h.ColorIndex).Profile1;
-                if h.hasBothCrossSections && (h.hasChannel2 && h.hasChannel1)
+                h.P.Color = h.ColorMode(obj.ShowImageSettings.ColorIndex).Profile1;
+                if obj.ShowImageSettings.BothCrossSections && (obj.ShowImageSettings.HasChannel2 && h.hasChannel1)
                     if ~isempty(h.ChildLine)
                         if ~isstruct(h.ChildLine)
                             if ~isvalid(h.ChildLine)
@@ -2953,8 +2984,8 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                         InitPos = h.MainLine.Position;
                     end
                     h.ChildLine = drawline('Position',InitPos,...
-                        'Parent',h.ImAx(h.ChildIndex),'Color',h.ColorMode(h.ColorIndex).Profile2,...
-                        'LineWidth',h.ProfileLineWidth);
+                        'Parent',h.ImAx(h.ChildIndex),'Color',h.ColorMode(obj.ShowImageSettings.ColorIndex).Profile2,...
+                        'LineWidth',obj.ShowImageSettings.ProfileLineWidth);
                     addlistener(h.ChildLine,'MovingROI',@moving_cross_section);
                     addlistener(h.ChildLine,'ROIMoved',@moving_cross_section);
                     CPos1 = [h.ChildLine.Position(1,1) h.ChildLine.Position(1,2)];
@@ -2966,17 +2997,17 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                     h.CP = plot(ChildPoints.*MultiplierX,ChildProfile.*ChildMultiplierY);
                     grid on
                     CurrentAxHeight = round(h.Fig.Position(4)*h.ImAx(h.ChildIndex).Position(4));
-                    h.ImAx(3).Color = h.ColorMode(h.ColorIndex).Background;
+                    h.ImAx(3).Color = h.ColorMode(obj.ShowImageSettings.ColorIndex).Background;
                     h.ImAx(3).LineWidth = 1;
-                    h.ImAx(3).FontSize = round(h.ReferenceFontSize*(CurrentAxHeight/756));
-                    h.ImAx(3).XColor = h.ColorMode(h.ColorIndex).Text;
-                    h.ImAx(3).YColor = h.ColorMode(h.ColorIndex).Profile2;
-                    h.ImAx(3).GridColor = h.ColorMode(h.ColorIndex).Text;
+                    h.ImAx(3).FontSize = round(obj.ShowImageSettings.ReferenceFontSize*(CurrentAxHeight/756));
+                    h.ImAx(3).XColor = h.ColorMode(obj.ShowImageSettings.ColorIndex).Text;
+                    h.ImAx(3).YColor = h.ColorMode(obj.ShowImageSettings.ColorIndex).Profile2;
+                    h.ImAx(3).GridColor = h.ColorMode(obj.ShowImageSettings.ColorIndex).Text;
                     xlabel(sprintf('[%s]',UnitX))
                     ylabel(sprintf('%s [%s]',h.Channel{h.ChildIndex},UnitY))
                     xlim([0 ChildPoints(end).*MultiplierX])
                     h.CP.LineWidth = 2;
-                    h.CP.Color = h.ColorMode(h.ColorIndex).Profile2;
+                    h.CP.Color = h.ColorMode(obj.ShowImageSettings.ColorIndex).Profile2;
                     if isequal(h.BaseUnit{1},h.BaseUnit{2})
                         yyaxis left
                         ylim([min([min(ChildProfile)*ChildMultiplierY min(MainProfile)*MainMultiplierY])...
@@ -2990,14 +3021,14 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                     
 %                     % Temporary
 %                     legend({'Before','After'},'Location','northwest',...
-%                         'FontSize',h.ReferenceFontSize);
+%                         'FontSize',obj.ShowImageSettings.ReferenceFontSize);
                     
                 end
                 hold off
             end
             
             function checked_both_cross_sections(varargin)
-                h.hasBothCrossSections = ~h.hasBothCrossSections;
+                obj.ShowImageSettings.BothCrossSections = ~obj.ShowImageSettings.BothCrossSections;
                 try
                     delete(h.ImAx(3));
                 catch
@@ -3016,7 +3047,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                     end
                 end
                 h.MainLine.Visible = 'off';
-                if h.hasBothCrossSections && (h.hasChannel2 && h.hasChannel1)
+                if obj.ShowImageSettings.BothCrossSections && (obj.ShowImageSettings.HasChannel2 && h.hasChannel1)
                     if ~isempty(h.ChildLine)
                         if ~isvalid(h.ChildLine)
                             h.ChildLine = [];
@@ -3035,8 +3066,8 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                     delete(h.ImAx(3))
                 catch
                 end
-                h.MainLine = drawline('Color',h.ColorMode(h.ColorIndex).Profile1,...
-                    'Parent',varargin{1}.Parent,'LineWidth',h.ProfileLineWidth);
+                h.MainLine = drawline('Color',h.ColorMode(obj.ShowImageSettings.ColorIndex).Profile1,...
+                    'Parent',varargin{1}.Parent,'LineWidth',obj.ShowImageSettings.ProfileLineWidth);
                 addlistener(h.MainLine,'MovingROI',@moving_cross_section);
                 addlistener(h.MainLine,'ROIMoved',@moving_cross_section);
                 h.MainProfilePosition = h.MainLine.Position;
@@ -3055,24 +3086,24 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 [MultiplierX,UnitX,~] = AFMImage.parse_unit_scale(range(Points),'m',1);
                 h.ImAx(3) = subplot(10,10,[71:78 81:88 91:98]);
                 h.P = plot(Points.*MultiplierX,MainProfile.*MainMultiplierY);
-                if h.hasBothCrossSections && (h.hasChannel2 && h.hasChannel1)
+                if obj.ShowImageSettings.BothCrossSections && (obj.ShowImageSettings.HasChannel2 && h.hasChannel1)
                     yyaxis left
                 end
                 hold on
                 grid on
                 CurrentAxHeight = round(h.Fig.Position(4)*h.ImAx(h.MainIndex).Position(4));
-                h.ImAx(3).Color = h.ColorMode(h.ColorIndex).Background;
+                h.ImAx(3).Color = h.ColorMode(obj.ShowImageSettings.ColorIndex).Background;
                 h.ImAx(3).LineWidth = 1;
-                h.ImAx(3).FontSize = round(h.ReferenceFontSize*(CurrentAxHeight/756));
-                h.ImAx(3).XColor = h.ColorMode(h.ColorIndex).Text;
-                h.ImAx(3).YColor = h.ColorMode(h.ColorIndex).Profile1;
-                h.ImAx(3).GridColor = h.ColorMode(h.ColorIndex).Text;
+                h.ImAx(3).FontSize = round(obj.ShowImageSettings.ReferenceFontSize*(CurrentAxHeight/756));
+                h.ImAx(3).XColor = h.ColorMode(obj.ShowImageSettings.ColorIndex).Text;
+                h.ImAx(3).YColor = h.ColorMode(obj.ShowImageSettings.ColorIndex).Profile1;
+                h.ImAx(3).GridColor = h.ColorMode(obj.ShowImageSettings.ColorIndex).Text;
                 xlabel(sprintf('[%s]',UnitX))
                 ylabel(sprintf('%s [%s]',h.Channel{h.MainIndex},UnitY))
                 xlim([0 Points(end).*MultiplierX])
                 h.P.LineWidth = 2;
-                h.P.Color = h.ColorMode(h.ColorIndex).Profile1;
-                if h.hasBothCrossSections && (h.hasChannel2 && h.hasChannel1)
+                h.P.Color = h.ColorMode(obj.ShowImageSettings.ColorIndex).Profile1;
+                if obj.ShowImageSettings.BothCrossSections && (obj.ShowImageSettings.HasChannel2 && h.hasChannel1)
                     
                     if h.B(31).Value && ...
                             Class{h.MainIndex}.OverlayGroup.hasOverlayGroup &&...
@@ -3120,8 +3151,8 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                         InitPos = h.MainLine.Position;
                     end
                     h.ChildLine = drawline('Position',InitPos,...
-                        'Parent',h.ImAx(h.ChildIndex),'Color',h.ColorMode(h.ColorIndex).Profile2,...
-                        'LineWidth',h.ProfileLineWidth);
+                        'Parent',h.ImAx(h.ChildIndex),'Color',h.ColorMode(obj.ShowImageSettings.ColorIndex).Profile2,...
+                        'LineWidth',obj.ShowImageSettings.ProfileLineWidth);
                     addlistener(h.ChildLine,'MovingROI',@moving_cross_section);
                     addlistener(h.ChildLine,'ROIMoved',@moving_cross_section);
                     CPos1 = [h.ChildLine.Position(1,1) h.ChildLine.Position(1,2)];
@@ -3133,12 +3164,12 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                     h.CP = plot(ChildPoints.*MultiplierX,ChildProfile.*ChildMultiplierY);
                     grid on
                     CurrentAxHeight = round(h.Fig.Position(4)*h.ImAx(h.MainIndex).Position(4));
-                    h.ImAx(3).Color = h.ColorMode(h.ColorIndex).Background;
+                    h.ImAx(3).Color = h.ColorMode(obj.ShowImageSettings.ColorIndex).Background;
                     h.ImAx(3).LineWidth = 1;
-                    h.ImAx(3).FontSize = round(h.ReferenceFontSize*(CurrentAxHeight/756));
-                    h.ImAx(3).XColor = h.ColorMode(h.ColorIndex).Text;
-                    h.ImAx(3).YColor = h.ColorMode(h.ColorIndex).Profile2;
-                    h.ImAx(3).GridColor = h.ColorMode(h.ColorIndex).Text;
+                    h.ImAx(3).FontSize = round(obj.ShowImageSettings.ReferenceFontSize*(CurrentAxHeight/756));
+                    h.ImAx(3).XColor = h.ColorMode(obj.ShowImageSettings.ColorIndex).Text;
+                    h.ImAx(3).YColor = h.ColorMode(obj.ShowImageSettings.ColorIndex).Profile2;
+                    h.ImAx(3).GridColor = h.ColorMode(obj.ShowImageSettings.ColorIndex).Text;
                     xlabel(sprintf('[%s]',UnitX))
                     ylabel(sprintf('%s [%s]',h.Channel{h.ChildIndex},UnitY))
                     xlim([0 ChildPoints(end).*MultiplierX])
@@ -3153,7 +3184,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                         ylim([min(ChildProfile)*ChildMultiplierY max(ChildProfile)*ChildMultiplierY]);
                     end
                     h.CP.LineWidth = 2;
-                    h.CP.Color = h.ColorMode(h.ColorIndex).Profile2;
+                    h.CP.Color = h.ColorMode(obj.ShowImageSettings.ColorIndex).Profile2;
                 end
                 hold off
             end
@@ -3191,14 +3222,14 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 end
                 
                 
-                if h.lockedChannels && Index==1
+                if obj.ShowImageSettings.LockChannels && Index==1
                     h.CurChannel1Idx = h.B(16).Value;
-                    h.B(17).Value = mod(h.CurChannel1Idx + h.RelativeChannelIndex,h.NumClasses+1);
+                    h.B(17).Value = mod(h.CurChannel1Idx + obj.ShowImageSettings.RelativeChannelIndex,h.NumClasses+1);
                     h.CurChannel2Idx = h.B(17).Value;
                     CurIndex = h.CurChannel1Idx;
-                elseif h.lockedChannels && Index==2
+                elseif obj.ShowImageSettings.LockChannels && Index==2
                     h.CurChannel2Idx = h.B(17).Value;
-                    h.B(16).Value = mod(h.CurChannel2Idx - h.RelativeChannelIndex,h.NumClasses+1);
+                    h.B(16).Value = mod(h.CurChannel2Idx - obj.ShowImageSettings.RelativeChannelIndex,h.NumClasses+1);
                     h.CurChannel1Idx = h.B(16).Value;
                     CurIndex = h.CurChannel2Idx;
                 else
@@ -3207,7 +3238,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                     h.CurChannel1Idx = h.B(16).Value;
                 end
                 
-                h.RelativeChannelIndex = h.CurChannel2Idx - h.CurChannel1Idx;
+                obj.ShowImageSettings.RelativeChannelIndex = h.CurChannel2Idx - h.CurChannel1Idx;
                 
                 Class{Index} = obj.get_class_instance(ClassIndex(CurIndex,:));
                 CurrentChannelName = h.B(1+Index).String{h.B(1+Index).Value};
@@ -3234,12 +3265,12 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                     if Index == 1
                         h.hasChannel1 = 0;
                     elseif Index == 2
-                        h.hasChannel2 = 0;
+                        obj.ShowImageSettings.HasChannel2 = 0;
                     end
                     return
                 else
                     [Channel,ChannelIndex] = Class{Index}.get_channel(h.Channel{Index});
-                    if h.isUpscaled
+                    if obj.ShowImageSettings.IsUpscaled
                         Channel.Image = fillmissing(Channel.Image,'linear','EndValues','nearest');
                         Channel = AFMImage.resize_channel(Channel,1,1920,false);
                     end
@@ -3252,7 +3283,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                     ColorPattern = Class{Index}.CMap;
                 end
                 
-                if h.B(21).Value && h.hasChannel2 && h.hasChannel1 && isequal(h.BaseUnit{1},h.BaseUnit{2})
+                if h.B(21).Value && obj.ShowImageSettings.HasChannel2 && h.hasChannel1 && isequal(h.BaseUnit{1},h.BaseUnit{2})
                     CurImage = h.Image{Index};
                     Range = range(CurImage,'all');
                     OtherImage = h.Image{mod(Index,2)+1};
@@ -3330,11 +3361,11 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 CurrentAxWidth = round(h.Fig.Position(3)*h.ImAx(Index).Position(3));
                 AFMImage.draw_scalebar_into_current_image(Channel.NumPixelsX,Channel.NumPixelsY,Channel.ScanSizeX,BarToImageRatio,CurrentAxHeight,CurrentAxWidth);
                 c = colorbar('northoutside');
-                c.FontSize = round(h.ReferenceFontSize*(CurrentAxHeight/756));
-                c.Color = h.ColorMode(h.ColorIndex).Text;
+                c.FontSize = round(obj.ShowImageSettings.ReferenceFontSize*(CurrentAxHeight/756));
+                c.Color = h.ColorMode(obj.ShowImageSettings.ColorIndex).Text;
                 c.Label.String = sprintf('%s [%s]',h.Channel{Index},h.Unit{Index});
-                c.Label.FontSize = round(h.ReferenceFontSize*(CurrentAxHeight/756));
-                c.Label.Color = h.ColorMode(h.ColorIndex).Text;
+                c.Label.FontSize = round(obj.ShowImageSettings.ReferenceFontSize*(CurrentAxHeight/756));
+                c.Label.Color = h.ColorMode(obj.ShowImageSettings.ColorIndex).Text;
                 
                 if isequal(h.CurrentClassName{Index},Class{Index}.Name) && ~h.ResetOnNextZoom
                     try
@@ -3392,15 +3423,15 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             
             function save_figure_to_file(varargin)
                 
-                filter = {DefType;'*.eps';'*.emf';'*.png';'*.tif';'*.jpg'};
+                filter = {obj.ShowImageSettings.DefaultSaveType;'*.eps';'*.emf';'*.png';'*.tif';'*.jpg'};
                 Name = split(Class{1}.Name,'.');
                 DefName = Name{1};
-                DefFull = fullfile(DefaultPath,DefName);
+                DefFull = fullfile(obj.ShowImageSettings.DefaultSavePath,DefName);
                 [file, path] = uiputfile(filter,'Select Format, Name and Location of your figure',DefFull);
-                DefaultPath = path;
+                obj.ShowImageSettings.DefaultSavePath = path;
                 FullFile = fullfile(path,file);
                 Split = split(FullFile,'.');
-                DefType = strcat('*.',Split{end});
+                obj.ShowImageSettings.DefaultSaveType = strcat('*.',Split{end});
                 if isequal(Split{end},'eps') || isequal(Split{end},'emf')
                     exportgraphics(h.Fig,FullFile,'ContentType','vector','Resolution',300,'BackgroundColor','current')
                 else
@@ -3412,12 +3443,12 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             function changed_color(varargin)
                 
                 if ~h.B(7).Value
-                    h.ColorIndex = 1;
+                    obj.ShowImageSettings.ColorIndex = 1;
                 else
-                    h.ColorIndex = 2;
+                    obj.ShowImageSettings.ColorIndex = 2;
                 end
                 
-                h.Fig.Color = h.ColorMode(h.ColorIndex).Background;
+                h.Fig.Color = h.ColorMode(obj.ShowImageSettings.ColorIndex).Background;
                 
                 draw_channel_1
                 draw_channel_2
@@ -3426,7 +3457,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             
             function upscale_images(varargin)
                 
-                h.isUpscaled = h.B(19).Value;
+                obj.ShowImageSettings.IsUpscaled = h.B(19).Value;
                 h.ResetOnNextZoom = true;
                 
                 draw_channel_1
@@ -3438,9 +3469,9 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             
             function lock_channels(varargin)
                 
-                h.lockedChannels = h.B(20).Value;
+                obj.ShowImageSettings.LockChannels = h.B(20).Value;
                 
-                h.RelativeChannelIndex = h.CurChannel2Idx - h.CurChannel1Idx;
+                obj.ShowImageSettings.RelativeChannelIndex = h.CurChannel2Idx - h.CurChannel1Idx;
                 draw_channel_1
                 draw_channel_2
                 
@@ -3478,7 +3509,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             function check_for_overlay_group(varargin)
                 
                 
-                if h.hasChannel2 &&...
+                if obj.ShowImageSettings.HasChannel2 &&...
                             ~isempty(Class{1}.OverlayGroup) &&...
                             ~isempty(Class{2}.OverlayGroup) &&...
                             Class{1}.OverlayGroup.hasOverlayGroup &&...
@@ -3507,18 +3538,10 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             h.ColorMode(2).Profile2 = [0 181 26]./255; % alternatives %[80 200 204]./255;%[0,0.870588235294118,0.407843137254902];
             h.ColorMode(2).Text = 'k';
             
-            h.ColorIndex = 1;
-            h.ReferenceFontSize = 24;
-            h.ProfileLineWidth = 3;
-            
-            current = what();
-            DefaultPath = current.path;
-            DefType = '*.png';
-            
             h.Fig = figure('Name',sprintf('%s',obj.ExperimentName),...
                 'Units','pixels',...
                 'Position',[200 200 1024 512],...
-                'Color',h.ColorMode(h.ColorIndex).Background);
+                'Color',h.ColorMode(obj.ShowImageSettings.ColorIndex).Background);
             
             h.B(1) = uicontrol('style','togglebutton',...
                 'String','Cross Section',...
@@ -3830,15 +3853,15 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             
             h.CurChannel1Idx = h.B(2).Value;
             h.CurChannel2Idx = h.B(3).Value;
-            h.RelativeChannelIndex = 0;
+            obj.ShowImageSettings.RelativeChannelIndex = 0;
             
             h.MainLine = [];
             h.ChildLine = [];
             h.hasCrossSection = 0;
-            h.hasBothCrossSections = 0;
+            obj.ShowImageSettings.BothCrossSections = 0;
             h.hasChannel2 = 0;
-            h.isUpscaled = false;
-            h.lockedChannels = h.B(20).Value;
+            obj.ShowImageSettings.IsUpscaled = false;
+            obj.ShowImageSettings.LockChannels = h.B(20).Value;
             [~,DefIndex] = Class{1}.get_channel('Processed');
             
             % set initial listbox items
@@ -3942,14 +3965,14 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 end
                 
                 
-                if h.lockedChannels && Index==1
+                if obj.ShowImageSettings.LockChannels && Index==1
                     h.CurChannel1Idx = h.B(16).Value;
-                    h.B(17).Value = mod(h.CurChannel1Idx + h.RelativeChannelIndex,h.NumClasses+1);
+                    h.B(17).Value = mod(h.CurChannel1Idx + obj.ShowImageSettings.RelativeChannelIndex,h.NumClasses+1);
                     h.CurChannel2Idx = h.B(17).Value;
                     CurIndex = h.CurChannel1Idx;
-                elseif h.lockedChannels && Index==2
+                elseif obj.ShowImageSettings.LockChannels && Index==2
                     h.CurChannel2Idx = h.B(17).Value;
-                    h.B(16).Value = mod(h.CurChannel2Idx - h.RelativeChannelIndex,h.NumClasses+1);
+                    h.B(16).Value = mod(h.CurChannel2Idx - obj.ShowImageSettings.RelativeChannelIndex,h.NumClasses+1);
                     h.CurChannel1Idx = h.B(16).Value;
                     CurIndex = h.CurChannel2Idx;
                 else
@@ -3958,7 +3981,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                     h.CurChannel1Idx = h.B(16).Value;
                 end
                 
-                h.RelativeChannelIndex = h.CurChannel2Idx - h.CurChannel1Idx;
+                obj.ShowImageSettings.RelativeChannelIndex = h.CurChannel2Idx - h.CurChannel1Idx;
                 
                 Class{Index} = obj.get_class_instance(ClassIndex(CurIndex,:));
                 if ~isequal(h.CurrentClassName,Class{1}.Name)
@@ -3994,7 +4017,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                     return
                 else
                     [Channel,ChannelIndex] = Class{Index}.get_channel(h.Channel{Index});
-                    if h.isUpscaled
+                    if obj.ShowImageSettings.IsUpscaled
                         Channel.Image = fillmissing(Channel.Image,'linear','EndValues','nearest');
                         Channel = AFMImage.resize_channel(Channel,1,1920,true);
                     end
@@ -4089,11 +4112,11 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 CurrentAxWidth = round(h.Fig.Position(3)*h.ImAx(Index).Position(3));
                 %AFMImage.draw_scalebar_into_current_image(Channel.NumPixelsX,Channel.NumPixelsY,Channel.ScanSizeX,BarToImageRatio,CurrentAxHeight,CurrentAxWidth);
                 c = colorbar('northoutside');
-                c.FontSize = round(h.ReferenceFontSize*(CurrentAxHeight/756));
-                c.Color = h.ColorMode(h.ColorIndex).Text;
+                c.FontSize = round(obj.ShowImageSettings.ReferenceFontSize*(CurrentAxHeight/756));
+                c.Color = h.ColorMode(obj.ShowImageSettings.ColorIndex).Text;
                 c.Label.String = sprintf('%s [%s]',h.Channel{Index},h.Unit{Index});
-                c.Label.FontSize = round(h.ReferenceFontSize*(CurrentAxHeight/756));
-                c.Label.Color = h.ColorMode(h.ColorIndex).Text;
+                c.Label.FontSize = round(obj.ShowImageSettings.ReferenceFontSize*(CurrentAxHeight/756));
+                c.Label.Color = h.ColorMode(obj.ShowImageSettings.ColorIndex).Text;
                 
                 set(h.B(MinIndex+4),'String',{'Min',sprintf('[%s]',h.Unit{Index})});
                 set(h.B(MaxIndex+4),'String',{'Max',sprintf('[%s]',h.Unit{Index})});
@@ -4164,15 +4187,15 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             
             function save_figure_to_file(varargin)
                 
-                filter = {DefType;'*.eps';'*.emf';'*.png';'*.tif';'*.jpg'};
+                filter = {obj.ShowImageSettings.DefaultSaveType;'*.eps';'*.emf';'*.png';'*.tif';'*.jpg'};
                 Name = split(Class{1}.Name,'.');
                 DefName = Name{1};
-                DefFull = fullfile(DefaultPath,DefName);
+                DefFull = fullfile(obj.ShowImageSettings.DefaultSavePath,DefName);
                 [file, path] = uiputfile(filter,'Select Format, Name and Location of your figure',DefFull);
-                DefaultPath = path;
+                obj.ShowImageSettings.DefaultSavePath = path;
                 FullFile = fullfile(path,file);
                 Split = split(FullFile,'.');
-                DefType = strcat('*.',Split{end});
+                obj.ShowImageSettings.DefaultSaveType = strcat('*.',Split{end});
                 if isequal(Split{end},'eps') || isequal(Split{end},'emf')
                     exportgraphics(h.Fig,FullFile,'ContentType','vector','Resolution',300,'BackgroundColor','current')
                 else
@@ -4184,12 +4207,12 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             function changed_color(varargin)
                 
                 if ~h.B(7).Value
-                    h.ColorIndex = 1;
+                    obj.ShowImageSettings.ColorIndex = 1;
                 else
-                    h.ColorIndex = 2;
+                    obj.ShowImageSettings.ColorIndex = 2;
                 end
                 
-                h.Fig.Color = h.ColorMode(h.ColorIndex).Background;
+                h.Fig.Color = h.ColorMode(obj.ShowImageSettings.ColorIndex).Background;
                 
                 draw_channel_1
                 draw_channel_2
@@ -4198,7 +4221,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             
             function upscale_images(varargin)
                 
-                h.isUpscaled = h.B(19).Value;
+                obj.ShowImageSettings.IsUpscaled = h.B(19).Value;
                 
                 draw_channel_1
                 draw_channel_2
@@ -4207,9 +4230,9 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             
             function lock_channels(varargin)
                 
-                h.lockedChannels = h.B(20).Value;
+                obj.ShowImageSettings.LockChannels = h.B(20).Value;
                 
-                h.RelativeChannelIndex = h.CurChannel2Idx - h.CurChannel1Idx;
+                obj.ShowImageSettings.RelativeChannelIndex = h.CurChannel2Idx - h.CurChannel1Idx;
                 draw_channel_1
                 draw_channel_2
                 
@@ -6008,16 +6031,16 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             c(16) = uicontrol(h.f,'style','checkbox','units','normalized',...
                 'position',[.3 .025 .3 .085],'string','Big Data mode',...
                 'tooltip','Recommended when processing >~100000 force curves',...
-                'FontSize',18,'Callback',@pushed_big_data);
+                'Value',true,'FontSize',18,'Callback',@pushed_big_data);
             c(17) = uicontrol(h.f,'style','checkbox','units','normalized',...
                 'position',[.3 .025 .3 .025],'string','Python Loader Mode',...
                 'tooltip','Recommended Mode: Avoids unpacking large folder structures',...
-                'FontSize',18,'Callback',@pushed_python_loader,'enable','off');
+                'Value',true,'FontSize',18,'Callback',@pushed_python_loader,'enable','on');
             c(18) = uicontrol(h.f,'style','checkbox','units','normalized',...
                 'position',[.6 .025 .3 .025],'string','Keep Files open in RAM',...
                 'tooltip','Trades off burst execution speed for RAM. Recommended when running long analysis scripts. Not Recommended for data/results review',...
-                'Enable','off',...
-                'Value',true,...
+                'Enable','on',...
+                'Value',false,...
                 'FontSize',18);
             
             HeightPos = [.82 .64 .46 .28 .1];
@@ -6374,6 +6397,32 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 'UnselectCurveFragmentsAppRetSwitch',2,...
                 'SaveWhenFinished',true,...
                 'SaveAfterEachMap',false);
+            
+        end
+        
+        function SISettings = set_default_show_image_settings()
+            
+            
+            current = what();
+            
+            SISettings = struct(...
+                'DefaultChannel1Index',1,...
+                'DefaultChannel2Index',1,...
+                'DefaultChannel1SubIndex',0,...
+                'DefaultChannel2SubIndex',0,...
+                'HasChannel2',0,...
+                'ColorIndex',1,...
+                'ReferenceFontSize',24,...
+                'ProfileLineWidth',3,...
+                'DefaultSavePath',current.path,...
+                'DefaultSaveType','*.png',...
+                'BothCrossSections',0,...
+                'LockChannels',0,...
+                'RelativeChannelIndex',0,...
+                'LockScalebars',0,...
+                'UseOverlay',0,...
+                'StatisticalCMap',0,...
+                'IsUpscaled',0);
             
         end
         
