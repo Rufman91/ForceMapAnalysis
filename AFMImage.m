@@ -2075,7 +2075,8 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             A.Color = 'w';
             A.FontSize = FontSize;
             A.FontWeight = 'bold';
-            
+            A.FontUnits = 'pixels';
+            A.FontSize = min(A.FontSize,1.*Height.*CurAxHeight);
             
         end
         
