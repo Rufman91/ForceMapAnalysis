@@ -2870,6 +2870,11 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             h.MainLine = [];
             h.ChildLine = [];
             h.hasCrossSection = 0;
+            h.OldMultiplier{1} = [];
+            h.OldMultiplier{2} = [];
+            h.SubChannelName{1} = [];
+            h.SubChannelName{2} = [];
+            
             
             if obj.ShowImageSettings.DefaultChannel1SubIndex == 0 ||...
                 obj.ShowImageSettings.DefaultChannel2SubIndex == 0
@@ -3437,9 +3442,25 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 
                 [h.Multiplier{Index},h.Unit{Index},~] = AFMImage.parse_unit_scale(FinalRange,h.BaseUnit{Index},1);
                 
+                if ~isempty(h.SubChannelName{Index}) &&...
+                        ~isequal(h.SubChannelName{Index},Channel.Name)
+                    h.B(MinIndex).String = [];
+                    h.B(MaxIndex).String = [];
+                    h.OldMultiplie{Index} = [];
+                end
+                h.SubChannelName{Index} = Channel.Name;
+                
                 if ~isempty(get(h.B(MinIndex),'String')) && ~isempty(get(h.B(MaxIndex),'String'))
-                    MinValue = str2double(get(h.B(MinIndex),'String'))/h.Multiplier{Index};
-                    MaxValue = str2double(get(h.B(MaxIndex),'String'))/h.Multiplier{Index};
+                    if ~isempty(h.OldMultiplier{Index}) && ...
+                            h.OldMultiplier{Index} ~= h.Multiplier{Index}
+                        MinValue = str2double(get(h.B(MinIndex),'String'))...
+                            *(h.Multiplier{Index}/h.OldMultiplier{Index})/h.Multiplier{Index};
+                        MaxValue = str2double(get(h.B(MaxIndex),'String'))...
+                            *(h.Multiplier{Index}/h.OldMultiplier{Index})/h.Multiplier{Index};
+                    else
+                        MinValue = str2double(get(h.B(MinIndex),'String'))/h.Multiplier{Index};
+                        MaxValue = str2double(get(h.B(MaxIndex),'String'))/h.Multiplier{Index};
+                    end
                     if isnan(MinValue) || isnan(MaxValue)
                     else
                         CutMin = MinValue;
@@ -3487,6 +3508,13 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 
                 set(h.B(MinIndex+4),'String',{'Min',sprintf('[%s]',h.Unit{Index})});
                 set(h.B(MaxIndex+4),'String',{'Max',sprintf('[%s]',h.Unit{Index})});
+                if ~isempty(get(h.B(MinIndex),'String')) && ~isempty(get(h.B(MaxIndex),'String'))
+                    h.OldMultiplier{Index} = h.Multiplier{Index};
+                    h.B(MinIndex).String = num2str(MinValue.*h.Multiplier{Index});
+                    h.B(MaxIndex).String = num2str(MaxValue.*h.Multiplier{Index});
+                else
+                    h.OldMultiplier{Index} = [];
+                end
                 
                 moving_cross_section
                 try
