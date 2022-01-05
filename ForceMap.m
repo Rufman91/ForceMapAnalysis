@@ -5467,11 +5467,42 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             
         end
         
+        function IsLoaded = check_if_zipped_file_is_loaded(obj,AskIfLoadDialogueBool)
+            
+            if nargin < 2
+                AskIfLoadDialogueBool = false;
+            end
+            
+            if obj.PythonLoaderFlag && obj.BigDataFlag
+                Meta = metaclass(obj.OpenZipFile);
+                if ~isequal(Meta.Name,'py.zipfile.ZipFile')
+                    IsLoaded = false;
+                    if AskIfLoadDialogueBool
+                        answer = questdlg('File container is not loaded. Load to memory?',...
+                            'Load Zip file',...
+                            'Yes','No','No');
+                        if isequal(answer,'Yes')
+                            h = waitbar(1/3,'Loading can take a few minutes',...
+                                'Name','Loading file container');
+                            obj.load_zipped_files_with_python;
+                            IsLoaded = true;
+                            close(h)
+                        end 
+                    end
+                else
+                    IsLoaded = true;
+                end
+            else
+                IsLoaded = true;
+                return
+            end
+            
+        end
+        
     end
     
     methods
         % methods for visualization, plotting, statistics and quality control
-        
         
         function show_force_curve(obj,ZoomMult,k,fig)
             if nargin < 2
