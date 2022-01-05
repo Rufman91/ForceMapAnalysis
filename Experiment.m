@@ -4035,10 +4035,6 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 HHRet = (RawHHRet - CP(1)) - TipHeightSwitch.*(Ret/SpringConstant);
                 
                 if obj.ShowImageSettings.PlotTime
-                    ExtSamplingTimePerPoint = Class{h.VolumeStruct.Index}.ExtendZLength./...
-                        Class{h.VolumeStruct.Index}.ExtendVelocity;
-                    RetSamplingTimePerPoint = Class{h.VolumeStruct.Index}.RetractZLength./...
-                        Class{h.VolumeStruct.Index}.RetractVelocity;
                     TimeApp = (RawHHApp - RawHHApp(1))./Class{h.VolumeStruct.Index}.ExtendVelocity;
                     TimeRet = (-RawHHRet + RawHHRet(1))./Class{h.VolumeStruct.Index}.RetractVelocity...
                         + TimeApp(end) + Class{h.VolumeStruct.Index}.HoldingTime;
@@ -4061,6 +4057,24 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                     Y2 = Ret./(SpringConstant.*Sens);
                 end
                 
+                % Add HertzFit, if requested
+                if obj.ShowImageSettings.ShowHertzFit && ...
+                        obj.ShowImageSettings.TipHeight
+                    FitFunction = fittype(Class{h.VolumeStruct.Index}.HertzFitType);
+                    FitCoeffValues = ...
+                        Class{h.VolumeStruct.Index}.HertzFitValues{h.VolumeStruct.ListIndex};
+                    if length(FitCoeffValues) == 1
+                        Fit = cfit(FitFunction,FitCoeffValues);
+                    elseif length(FitCoeffValues) == 2
+                        Fit = cfit(FitFunction,FitCoeffValues(1),FitCoeffValues(2));
+                    end
+                    X3 = HHApp(HHApp >= 0);
+                    Y3 = feval(Fit,X3);
+                else
+                    X3 = [];
+                    Y3 = [];
+                end
+                
                 % scale the data and determine units and prefixes
                 if h.FVM(6).Value
                     BaseUnitX = 's';
@@ -4078,8 +4092,10 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                     AFMImage.parse_unit_scale(RangeY,BaseUnitY,10);
                 X1 = X1.*h.VolumeStruct.MultiplierX;
                 X2 = X2.*h.VolumeStruct.MultiplierX;
+                X3 = X3.*h.VolumeStruct.MultiplierX;
                 Y1 = Y1.*h.VolumeStruct.MultiplierY;
                 Y2 = Y2.*h.VolumeStruct.MultiplierY;
+                Y3 = Y3.*h.VolumeStruct.MultiplierY;
                 
                 if obj.ShowImageSettings.PlotTime
                     XLabel = ['Time [' UnitX ']'];
@@ -4091,11 +4107,11 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 YLabel = ['vDeflection [' UnitY ']'];
                 
                 % plot data
-                h.VolumeStruct.Plot = plot(X1,Y1,X2,Y2);
+                h.VolumeStruct.Plot = plot(X1,Y1,X2,Y2,X3,Y3);
                 hold on
                 grid on
                 CurrentAxHeight = ...
-                    round(h.Fig.Position(4)*h.ImAx(h.VolumeStruct.Index).Position(4));
+                    round(h.Fig.Position(4)*h.ImAx(1).Position(4));
                 h.ImAx(3).Color = ...
                     h.ColorMode(obj.ShowImageSettings.ColorIndex).Background;
                 h.ImAx(3).LineWidth = 1;
@@ -4104,17 +4120,30 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 h.ImAx(3).XColor = ...
                     h.ColorMode(obj.ShowImageSettings.ColorIndex).Text;
                 h.ImAx(3).YColor = ...
-                    h.ColorMode(obj.ShowImageSettings.ColorIndex).Profile1;
+                    h.ColorMode(obj.ShowImageSettings.ColorIndex).Text;
                 h.ImAx(3).GridColor = ...
                     h.ColorMode(obj.ShowImageSettings.ColorIndex).Text;
                  xlabel(XLabel)
                  ylabel(YLabel)
                 h.VolumeStruct.Plot(1).LineWidth = 2;
                 h.VolumeStruct.Plot(2).LineWidth = 2;
+                h.VolumeStruct.Plot(3).LineWidth = 2;
                 h.VolumeStruct.Plot(1).Color = ...
                     h.ColorMode(obj.ShowImageSettings.ColorIndex).Profile1;
                 h.VolumeStruct.Plot(2).Color = ...
                     h.ColorMode(obj.ShowImageSettings.ColorIndex).Profile2;
+                h.VolumeStruct.Plot(3).Color = 'r';
+                if obj.ShowImageSettings.ShowHertzFit && ...
+                        obj.ShowImageSettings.TipHeight
+                    Legend = legend({'Approach','Retract','Hertz Fit'});
+                else
+                    Legend = legend({'Approach','Retract'});
+                end
+                Legend.TextColor = ...
+                    h.ColorMode(obj.ShowImageSettings.ColorIndex).Text;
+                Legend.Color = ...
+                    h.ColorMode(obj.ShowImageSettings.ColorIndex).Backdrop;
+                Legend.Location = 'northwest';
             end
             
             function changed_baseline_corrected(varargin)
