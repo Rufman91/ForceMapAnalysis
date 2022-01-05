@@ -3665,9 +3665,9 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 try
                     if (h.ScanSizeX(1) == h.ScanSizeX(2)) &&...
                             (h.ScanSizeY(1) == h.ScanSizeY(2))
-                        h.B(18).BackgroundColor = 'g';
+                        h.B(18).BackgroundColor = [.302 .6902 .302];
                     else
-                        h.B(18).BackgroundColor = 'r';
+                        h.B(18).BackgroundColor = [.8392 .2706 .2706];
                     end
                 catch
                 end
@@ -3811,9 +3811,9 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                             Class{1}.OverlayGroup.hasOverlayGroup &&...
                             Class{2}.OverlayGroup.hasOverlayGroup &&...
                             isequal(Class{1}.OverlayGroup.Names,Class{2}.OverlayGroup.Names)
-                    h.B(31).BackgroundColor = 'g';
+                    h.B(31).BackgroundColor = [.302 .6902 .302];
                 else
-                    h.B(31).BackgroundColor = 'r';
+                    h.B(31).BackgroundColor = [.8392 .2706 .2706];
                 end
                 
             end
