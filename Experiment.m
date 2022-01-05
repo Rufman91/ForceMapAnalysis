@@ -4015,7 +4015,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                     BaseParams = Class{h.VolumeStruct.Index}.Basefit{...
                         h.VolumeStruct.ListIndex};
                 else
-                    BaseParams = [1 0];
+                    BaseParams = [0 0];
                 end
                 if obj.ShowImageSettings.TipHeight
                     TipHeightSwitch = 1;
@@ -4127,14 +4127,14 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                  ylabel(YLabel)
                 h.VolumeStruct.Plot(1).LineWidth = 2;
                 h.VolumeStruct.Plot(2).LineWidth = 2;
-                h.VolumeStruct.Plot(3).LineWidth = 2;
                 h.VolumeStruct.Plot(1).Color = ...
                     h.ColorMode(obj.ShowImageSettings.ColorIndex).Profile1;
                 h.VolumeStruct.Plot(2).Color = ...
                     h.ColorMode(obj.ShowImageSettings.ColorIndex).Profile2;
-                h.VolumeStruct.Plot(3).Color = 'r';
                 if obj.ShowImageSettings.ShowHertzFit && ...
                         obj.ShowImageSettings.TipHeight
+                    h.VolumeStruct.Plot(3).LineWidth = 2;
+                    h.VolumeStruct.Plot(3).Color = 'r';
                     Legend = legend({'Approach','Retract','Hertz Fit'});
                 else
                     Legend = legend({'Approach','Retract'});
