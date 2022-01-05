@@ -184,69 +184,6 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             close(h); 
         end
         
-        function deconvolute_image(obj,CTClassInstance)
-            % Comment
-            
-            ErodedTip = CTClassInstance.get_channel('Eroded Tip');
-            if isempty(ErodedTip)
-                CTClassInstance.deconvolute_cantilever_tip;
-                ErodedTip = CTClassInstance.get_channel('Eroded Tip');
-            end
-            Processed = obj.get_channel('Processed');
-            if isempty('Processed')
-                warning('Image needs to be flattened first')
-                return
-            end
-            
-            % Resize and pad images to same resolution at correct spacial
-            % ratio
-            TempMultiplier = (ErodedTip.NumPixelsX/ErodedTip.ScanSizeX)/(Processed.NumPixelsX/Processed.ScanSizeX);
-            if TempMultiplier*Processed.NumPixelsX > 1024
-                ReductionFactor = 1024/(TempMultiplier*Processed.NumPixelsX);
-                Multiplier = TempMultiplier*ReductionFactor;
-                ReducedRes = round(ErodedTip.NumPixelsX*ReductionFactor);
-                ErodedTip.Image = imresize(ErodedTip.Image,[ReducedRes nan]);
-            end
-            if TempMultiplier >= 1
-                Smaller = ErodedTip.Image;
-                Bigger = Processed.Image;
-            else
-                Smaller = Processed.Image;
-                Bigger = ErodedTip.Image;
-            end
-            Bigger = imresize(Bigger,[round(Multiplier*size(Bigger,1)) nan]);
-            Smaller = padarray(Smaller,size(Bigger)-size(Smaller),...
-                min(Smaller,[],'all'),'post');
-            
-            if TempMultiplier >= 1
-                In1 = Bigger;
-                In2 = Smaller;
-            else
-                In1 = Smaller;
-                In2 = Bigger;
-            end
-            
-            OutImage = obj.deconvolute_by_mathematical_morphology(In1,In2);
-            OutImage = imresize(OutImage,[Processed.NumPixelsX Processed.NumPixelsY]);
-            
-            Deconvoluted = Processed;
-            Deconvoluted.Name = 'Deconvoluted';
-            
-            MinIn = min(Processed.Image,[],'all');
-            MinOut = min(OutImage,[],'all');
-            
-            OutImage = OutImage + (MinIn - MinOut);
-            
-            Deconvoluted.Image = OutImage;
-            
-            [~,Index] = obj.get_channel('Deconvoluted');
-            if isempty(Index)
-                obj.Channel(end+1) = Deconvoluted;
-            else
-                obj.Channel(Index) = Deconvoluted;
-            end
-        end
-        
         function base_image()
             
         end
@@ -1137,40 +1074,6 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             CMap(:,3) = (0:1/255:1).*2 - 1 + PlusBrightness;
             CMap(CMap < 0) = 0;
             CMap(CMap > 1) = 1;
-        end
-        
-        function OutImage = deconvolute_by_mathematical_morphology(InImage,ErodingGeometry)
-            
-            if ~isequal(size(InImage),size(ErodingGeometry))
-                error('The Image and the Eroding Geometry need to have the same pixel-dimensions')
-            end
-            MaxPeakValue = max(ErodingGeometry,[],'all');
-            [PeakIndexX,PeakIndexY] = find(ErodingGeometry==MaxPeakValue);
-            EGPixelsX = size(ErodingGeometry,1);
-            EGPixelsY = size(ErodingGeometry,2);
-            InPixelsX = size(InImage,1);
-            InPixelsY = size(InImage,2);
-            OutImage=ones(InPixelsX,InPixelsY); %creates the empty image array
-            
-            
-            h = waitbar(0,'Please wait, processing deconvolution...');
-            
-            %loops over all the elements and find the minimum value of w and allocate it
-            for j=1:InPixelsY %loops over points in image output
-                waitbar(j/InPixelsY);
-                s_ymin=max(-j,-PeakIndexY); %determines the allowed range for tip scanning
-                s_ymax=min(EGPixelsY-PeakIndexY,InPixelsY-j)-1; %idem
-                for i=1:InPixelsX %loops over points in other direction in image output
-                    s_xmin=max(-PeakIndexX,-i); %determines allowed range for tip scanning
-                    s_xmax=min(EGPixelsX-PeakIndexX,InPixelsX-i)-1; %idem
-                    TempMat = InImage((i+1+s_xmin ):(i+1+s_xmax),(j+1+s_ymin):(j+1+s_ymax))-...
-                        ErodingGeometry((s_xmin+PeakIndexX+1):(s_xmax+PeakIndexX+1),...
-                        +(1+PeakIndexY+s_ymin):(1+PeakIndexY+s_ymax));
-                    minimum=min(TempMat,[],'all'); %checks if w is minimum
-                    OutImage(i,j)=minimum; %allocates the minimum value
-                end
-            end
-            close(h);
         end
         
         function DepthDependendTipRadius = calculate_depth_dependend_tip_data(ProjectedTipArea,RangePercent)
