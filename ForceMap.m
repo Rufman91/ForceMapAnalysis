@@ -1203,6 +1203,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             iRange = find(obj.SelectedCurves);
             obj.EModHertz = zeros(obj.NCurves,1);
             obj.IndentationDepth = zeros(obj.NCurves,1);
+            obj.IndentationDepthHertz = zeros(obj.NCurves,1);
             while ~isempty(iRange')
                 NumWorkers = 8;
                 BatchSize = min(NumWorkers,length(iRange));
