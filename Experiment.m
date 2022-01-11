@@ -1711,6 +1711,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
         end
                        
         
+   
         function SMFS_analysis_dashboard(obj,ExtVelocityValue,RetVelocityValue,HoldingTimeValue,SubstrateValue,EnvCondValue,ChipCantValue,ChipboxValue,LinkerValue)
             % I all velocities should be selected use input variable: 0
             
@@ -1771,8 +1772,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             figname=strcat(obj.ExperimentName,{'_'},ExtVelocityValueStr,{'_'},RetVelocityValueStr,{'_'},HoldingTimeValueStr,{'_'},SubstrateValue,{'_'},EnvCondValue,{'_'},ChipCantValue,{'_'},ChipboxValue,{'_'},LinkerValue);
             figname=char(figname);
             parttitle1='Parameters';
-            %% Figure
-            % Figure 1
+            %% Figure 1
             h_fig1=figure(1);
             h_fig1.Color='white'; % changes the background color of the figure
             h_fig1.Units='normalized'; % Defines the units
@@ -1799,7 +1799,6 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             %% Debugging
             %for ff=6 % for debugging
              sprintf('Force curve No. %d',ff) % Gives current Force curve
-            % for debugging
                 % Allocate data
                 yAdhMaxApp=obj.FM{IdxArray(ff)}.AdhForceMaxRet;
                 yAdhMaxRet=obj.FM{IdxArray(ff)}.AdhForceMaxApp;
@@ -1897,8 +1896,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 SnapInMedian=median(nonzeros(ConcateArray7));
                 SnapInMin=min(nonzeros(ConcateArray7));
                 SnapInMax=max(nonzeros(ConcateArray7));
-                         
-                % Plot
+                %% Tiles
                 % Tile 1 - Max. adhesion force approach
                 ax1=nexttile(1);
                 hold on
@@ -2193,6 +2191,232 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             %%% Save the current figure in the current folder
             print(h_fig1,fullname1,'-dpng');
             
+            %% Figure 2
+            h_fig2=figure(2);
+            h_fig2.Color='white'; % changes the background color of the figure
+            h_fig2.Units='normalized'; % Defines the units
+            h_fig2.OuterPosition=[0 0 1 1];% changes the size of the to the whole screen
+            h_fig2.PaperOrientation='landscape';
+            h_fig2.Name=figname;
+            %% Plotting the tiles
+            t = tiledlayout(3,3);
+            t.TileSpacing = 'compact';
+            t.Padding = 'compact';
+            %t.TileSpacing = 'none'; % To reduce the spacing between the tiles
+            %t.Padding = 'none'; % To reduce the padding of perimeter of a tile                                   
+            % for loop
+            for ff=1:length(IdxArray)
+            %% Debugging
+            %for ff=6 % for debugging
+             sprintf('Force curve No. %d',ff) % Gives current Force curve   
+                %% Tiles
+                % Tile 1 - Max. adhesion force approach
+                ax1=nexttile(1);
+                hold on
+                qqplot(nonzeros(yAdhMaxApp))
+                % Title for each Subplot
+                ti=title('Max. Adhesion Force Approach');                                     
+                ti.Units='normalized'; % Set units to 'normalized'  
+                ti.Position=[0.5,0.95]; % Position the subplot title within the subplot    
+                % Tile 2 - Max. adhesion force retract
+                ax2=nexttile(2);
+                hold on
+                qqplot(nonzeros(yAdhMaxRet))
+                ti=title('Max. Adhesion Force Retraction');                                     
+                ti.Units='normalized'; % Set units to 'normalized'  
+                ti.Position=[0.5,0.95]; % Position the subplot title within the subplot    
+                % Tile 3 - Unbinding adhesion force (retract)
+                ax3=nexttile(3);
+                hold on
+                qqplot(nonzeros(yAdhUnbinding))
+                ti=title('Unbinding Adhesion Force (Retraction)');                                     
+                ti.Units='normalized'; % Set units to 'normalized'  
+                ti.Position=[0.5,0.95]; % Position the subplot title within the subplot    
+                % Tile 4 - Adhesion energy approach
+                ax4=nexttile(4);
+                hold on
+                qqplot(nonzeros(yAdhEneApp))
+                ti=title('Adhesion Energy Approach');                                     
+                ti.Units='normalized'; % Set units to 'normalized'  
+                ti.Position=[0.5,0.95]; % Position the subplot title within the subplot    
+                % Tile 5 - Adhesion energy retraction
+                ax5=nexttile(5);
+                hold on
+                qqplot(nonzeros(yAdhEneRet))
+                ti=title('Adhesion Energy Retraction');                                     
+                ti.Units='normalized'; % Set units to 'normalized'  
+                ti.Position=[0.5,0.95]; % Position the subplot title within the subplot    
+                % Tile 6 - Pulling length
+                ax6=nexttile(6);
+                hold on
+                qqplot(nonzeros(yPullingLength))
+                ti=title('Pulling Length');                                     
+                ti.Units='normalized'; % Set units to 'normalized'  
+                ti.Position=[0.5,0.95]; % Position the subplot title within the subplot    
+                % Tile 7 - Snap-in length
+                ax7=nexttile(7);
+                hold on
+                qqplot(nonzeros(ySnapInLength))
+                ti=title('Snap-In Length');                                     
+                ti.Units='normalized'; % Set units to 'normalized'  
+                ti.Position=[0.5,0.95]; % Position the subplot title within the subplot    
+                % Tile 8
+                ax8=nexttile(8);
+                ax8.Color=RGB11;
+                ax8.Box='on';
+                ax8.LineWidth = 10;
+                ax8.XTick=[];
+                ax8.XTickLabel=[];
+                ax8.YTick=[];
+                ax8.YTickLabel=[];
+                % Tile 9
+                ax9=nexttile(9);
+                ax9.Color=RGB11;
+                ax9.Box='on';
+                ax9.LineWidth = 10;
+                ax9.XTick=[];
+                ax9.XTickLabel=[];
+                ax9.YTick=[];
+                ax9.YTickLabel=[];
+            end
+            % Axes
+            ax1.FontSize = 12;
+            ax1.XLabel.String = 'Standard Normal Quantiles';
+            ax1.XLabel.FontSize = 10;
+            ax1.YLabel.String = 'Quantiles of Sample';
+            ax1.YLabel.FontSize = 10;
+            ax2.FontSize = 12;
+            ax2.XLabel.String = 'Standard Normal Quantiles';
+            ax2.XLabel.FontSize = 10;
+            ax2.YLabel.String = 'Quantiles of Sample';
+            ax2.YLabel.FontSize = 10;
+            ax3.FontSize = 12;
+            ax3.XLabel.String = 'Standard Normal Quantiles';
+            ax3.XLabel.FontSize = 10;
+            ax3.YLabel.String = 'Quantiles of Sample';
+            ax3.YLabel.FontSize = 10;
+            ax4.FontSize = 12;
+            ax4.XLabel.String = 'Standard Normal Quantiles';
+            ax4.XLabel.FontSize = 10;
+            ax4.YLabel.String = 'Quantiles of Sample';
+            ax4.YLabel.FontSize = 10;
+            ax5.FontSize = 12;
+            ax5.XLabel.String = 'Standard Normal Quantiles';
+            ax5.XLabel.FontSize = 10;
+            ax5.YLabel.String = 'Quantiles of Sample';
+            ax5.YLabel.FontSize = 10;
+            ax6.FontSize = 12;
+            ax6.XLabel.String = 'Standard Normal Quantiles';
+            ax6.XLabel.FontSize = 10;
+            ax6.YLabel.String = 'Quantiles of Sample';
+            ax6.YLabel.FontSize = 10;
+            ax7.FontSize = 12;
+            ax7.XLabel.String = 'Standard Normal Quantiles';
+            ax7.XLabel.FontSize = 10;
+            ax7.YLabel.String = 'Quantiles of Sample';
+            ax7.YLabel.FontSize = 10;
+            % Tile 8
+            ax8TextPos = [max(ax8.XLim)*0.5 max(ax8.YLim)*0.5];  % Define the position in the plot
+            partstr81a='Extend Velocity: ';
+            if ExtVelocityValue==0
+                partstr82a='All';
+                partstr83a='';
+            else
+            partstr82a=num2str(ExtVelocityValueStr);
+            partstr83a='m*s^{-1}';
+            end           
+            fullstr8a=strcat(partstr81a,partstr82a,partstr83a); % Define the string that shall be shown in the plot
+            partstr81b='Retract Velocity: ';
+            if RetVelocityValue==0
+                partstr82b='All';
+                partstr83b='';
+            else
+            partstr82b=num2str(RetVelocityValueStr);
+            partstr83b='m*s^{-1}';
+            end            
+            fullstr8b=strcat(partstr81b,partstr82b,partstr83b); % Define the string that shall be shown in the plot
+            partstr81c='Holding time: ';
+            if HoldingTimeValue==-1
+                partstr82c='All';
+                partstr83c='';
+            else            
+            partstr82c=num2str(HoldingTimeValueStr);
+            partstr83c='s';
+            end
+            fullstr8c=strcat(partstr81c,partstr82c,partstr83c); % Define the string that shall be shown in the plot
+            partstr81d='Substrate: ';
+            partstr82d=num2str(SubstrateValue);
+            fullstr8d=strcat(partstr81d,partstr82d); % Define the string that shall be shown in the plot          
+            partstr81e='Medium: ';
+            partstr82e=num2str(EnvCondValue);
+            fullstr8e=strcat(partstr81e,partstr82e); % Define the string that shall be shown in the plot     
+            partstr81f='Chip & Cantilever: ';
+            partstr82f=num2str(ChipCantValue);
+            fullstr8f=strcat(partstr81f,partstr82f); % Define the string that shall be shown in the plot      
+            partstr81g='Chipbox: ';
+            partstr82g=num2str(ChipboxValue);
+            fullstr8g=strcat(partstr81g,partstr82g); % Define the string that shall be shown in the plot           
+            partstr81h='Linker: ';
+            partstr82h=num2str(ChipboxValue);
+            fullstr8h=strcat(partstr81h,partstr82h); % Define the string that shall be shown in the plot   
+            te8=text(ax8,ax8TextPos(1), ax8TextPos(2),{fullstr8a, fullstr8b, fullstr8c, fullstr8d, fullstr8e, fullstr8f, fullstr8g, fullstr8h}, 'VerticalAlignment','middle', 'HorizontalAlignment','center');
+            te8.FontSize = 18;
+            % Tile 9     
+            ax9TextPos = [max(ax9.XLim)*0.5 max(ax9.YLim)*0.5];  % Define the position in the plot
+            fullstr9a='Number of force curves analysed: ';
+            if ~isempty(yAdhMaxApp)
+                 partstr91b='Max. Adhesion Force Approach: ';
+                 partstr92b=num2str(length(nonzeros(ConcateArray1)));
+                 fullstr9b=strcat(partstr91b,partstr92b); % Define the string that shall be shown in the plot
+                else                   
+            end             
+            if ~isempty(yAdhMaxRet)
+                 partstr91c='Max. Adhesion Force Retraction:';
+                 partstr92c=num2str(length(nonzeros(ConcateArray2)));
+                 fullstr9c=strcat(partstr91c,partstr92c); % Define the string that shall be shown in the plot
+                else                   
+            end 
+            if ~isempty(yAdhUnbinding)
+                 partstr91d='Unbinding Adhesion Force (Retraction): ';
+                 partstr92d=num2str(length(nonzeros(ConcateArray3)));
+                 fullstr9d=strcat(partstr91d,partstr92d); % Define the string that shall be shown in the plot
+                else                   
+            end 
+            if ~isempty(yAdhEneApp)
+                 partstr91e='Adhesion Energy Approach: ';
+                 partstr92e=num2str(length(nonzeros(ConcateArray4)));
+                 fullstr9e=strcat(partstr91e,partstr92e); % Define the string that shall be shown in the plot
+                else                   
+            end 
+            if ~isempty(yAdhEneRet)
+                 partstr91d='Adhesion Energy Retraction: ';
+                 partstr92d=num2str(length(nonzeros(ConcateArray5)));
+                 fullstr9d=strcat(partstr91d,partstr92d); % Define the string that shall be shown in the plot
+                else                   
+            end 
+            if ~isempty(yPullingLength)
+                 partstr91e='Pulling Length: ';
+                 partstr92e=num2str(length(nonzeros(ConcateArray6)));
+                 fullstr9e=strcat(partstr91e,partstr92e); % Define the string that shall be shown in the plot
+                else                   
+            end 
+             if ~isempty(ySnapInLength)
+                 partstr91f='Snap-In Length: ';
+                 partstr92f=num2str(length(nonzeros(ConcateArray7)));
+                 fullstr9f=strcat(partstr91f,partstr92f); % Define the string that shall be shown in the plot
+                else                   
+            end 
+            te9=text(ax9,ax9TextPos(1), ax9TextPos(2),{fullstr9a, fullstr9b, fullstr9c, fullstr9d, fullstr9e, fullstr9f},'VerticalAlignment','middle', 'HorizontalAlignment','center');
+            te9.FontSize = 18;    
+            % Save figure
+            %%% Define the name for the figure title
+            partname='qqplots';
+            % fullname=sprintf('%s%s',figname,partname);
+            fullname1=strcat(figname,{'_'},parttitle1,{'_'},partname);
+            fullname1=char(fullname1);
+            %%% Save the current figure in the current folder
+            print(h_fig2,fullname1,'-dpng');
+            
             %% SMFS Results structure 
             % Check entry
             if ~isempty(obj.SMFSResults)
@@ -2200,16 +2424,19 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             else
                 jj=1;
             end
-            
+            % Debugging
+            % jj=4
             % Append the new data into the concatenated array
             obj.SMFSResults{jj,1}.Data(1).AdhMaxApp=ConcateArray1;
             obj.SMFSResults{jj,1}.Data(1).AdhMaxRet= ConcateArray2;
             obj.SMFSResults{jj,1}.Data(1).AdhUnbinding=ConcateArray3;
             obj.SMFSResults{jj,1}.Data(1).AdhEneApp=ConcateArray4;
             obj.SMFSResults{jj,1}.Data(1).AdhEneRet=ConcateArray5;
-            obj.SMFSResults{jj,1}.Data(1).AdhPullingLength=ConcateArray6;
+            obj.SMFSResults{jj,1}.Data(1).yPullingLength=ConcateArray6;
+            obj.SMFSResults{jj,1}.Data(1).ySnapInLength=ConcateArray7;
             obj.SMFSResults{jj,1}.Properties(1).ExtendVelocity=ExtVelocityValue;
             obj.SMFSResults{jj,1}.Properties(1).RetractVelocity=RetVelocityValue;
+            obj.SMFSResults{jj,1}.Properties(1).HoldingTime=HoldingTimeValue;
             obj.SMFSResults{jj,1}.Properties(1).Substrate=SubstrateValue;
             obj.SMFSResults{jj,1}.Properties(1).Medium=EnvCondValue;
             obj.SMFSResults{jj,1}.Properties(1).ChipCantilever=ChipCantValue;
@@ -2237,12 +2464,13 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             %% House keeping
             close all
         end
-        
+             
         function SMFS_analysis_dashboard2(obj,ExtVelocityValue,RetVelocityValue,HoldingTimeValue,SubstrateValue,EnvCondValue,ChipCantValue,ChipboxValue,LinkerValue)
             % I all velocities should be selected use input variable: 0
             
             % Output time and date for the dairy
             datetime('now')
+            
             % Write to log file
             obj.write_to_log_file('Function: SMFS_analysis_dashboard','Trial15','start')
             obj.write_to_log_file('Extend Velocity',num2str(ExtVelocityValue))
