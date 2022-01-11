@@ -1363,8 +1363,8 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             cd(currpath);
             
             % force map loop
-            %for ii=1:obj.NumForceMaps   
-            for ii=1:2 % debugging
+            for ii=1:obj.NumForceMaps   
+            % for ii=1:2 % debugging
                 if isequal(KeepFlagged,'Yes') && obj.SMFSFlag.Preprocessed(ii) == 1
                     continue
                 end
@@ -1453,8 +1453,9 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             cd(currpath); 
             
             % Loop over the imported force maps
-            %for ii=1:obj.NumForceMaps
-            for ii=1:2 % Debugging
+            for ii=1:obj.NumForceMaps
+            %for ii=1:2 % Debugging
+           
                % Command window output
                sprintf('Force Map No. %d of %d',ii,obj.NumForceMaps) % Gives current Force Map Position
                % Run the chosen functions
@@ -1521,8 +1522,8 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             cd(currpath); 
             
             % Loop over the imported force maps
-            %for ii=1:obj.NumForceMaps
-            for ii=1:50 % Debugging
+            for ii=1:obj.NumForceMaps
+           % for ii=1:50 % Debugging
                % Command window output
                sprintf('Force Map No. %d of %d',ii,obj.NumForceMaps) % Gives current Force Map Position
                % Run the chosen functions
@@ -1692,10 +1693,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
         
         
         function SMFS_analysis_flag_status(obj)
-            % SMFS_sinoidal_fit: This function allows to conduct an automated presorting of the force curves 
-            % The function flags force curves and whole force maps that are
-            % non-functionalize
-            % Needed function: obj.preprocessing
+            
          
             % Loop over the imported force maps
             
@@ -1818,6 +1816,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                     row_end   = ff * ArrayLength; % Define the appropriate row end to append the new data
                     % Concatenated data
                     ConcateArray1(row_start:row_end,:)=yAdhMaxApp'; % Append the new data into the concatenated vector
+                    ConcateArray1(row_start:row_end,:)=ConcateArray1(row_start:row_end,:).*obj.FM{ff}.SMFSFlag.Selected'; % Set non-selected force curves from the concatenated arrays to zero
                 else                   
                 end                
                 if ~isempty(yAdhMaxRet)
@@ -1827,6 +1826,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                     row_end   = ff * ArrayLength; % Define the appropriate row end to append the new data
                     % Concatenated data
                     ConcateArray2(row_start:row_end,:)=yAdhMaxRet'; % Append the new data into the concatenated vector
+                    ConcateArray2(row_start:row_end,:)=ConcateArray2(row_start:row_end,:).*obj.FM{ff}.SMFSFlag.Selected'; % Set non-selected force curves from the concatenated arrays to zero
                 else                  
                 end
                 if ~isempty(yAdhUnbinding)
@@ -1836,6 +1836,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                     row_end   = ff * ArrayLength; % Define the appropriate row end to append the new data
                     % Concatenated data
                     ConcateArray3(row_start:row_end,:)=yAdhUnbinding'; % Append the new data into the concatenated vector
+                    ConcateArray3(row_start:row_end,:)=ConcateArray3(row_start:row_end,:).*obj.FM{ff}.SMFSFlag.Selected'; % Set non-selected force curves from the concatenated arrays to zero
                 else                  
                 end
                 if ~isempty(yAdhEneApp)
@@ -1845,6 +1846,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                     row_end   = ff * ArrayLength; % Define the appropriate row end to append the new data
                     % Concatenated data
                     ConcateArray4(row_start:row_end,:)=yAdhEneApp'; % Append the new data into the concatenated vector
+                    ConcateArray4(row_start:row_end,:)=ConcateArray4(row_start:row_end,:).*obj.FM{ff}.SMFSFlag.Selected'; % Set non-selected force curves from the concatenated arrays to zero
                 else                  
                 end
                 if ~isempty(yAdhEneRet)
@@ -1854,6 +1856,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                     row_end   = ff * ArrayLength; % Define the appropriate row end to append the new data
                     % Concatenated data
                     ConcateArray5(row_start:row_end,:)=yAdhEneRet'; % Append the new data into the concatenated vector
+                    ConcateArray5(row_start:row_end,:)=ConcateArray5(row_start:row_end,:).*obj.FM{ff}.SMFSFlag.Selected'; % Set non-selected force curves from the concatenated arrays to zero
                 else                  
                 end
                 if ~isempty(yPullingLength)
@@ -1863,6 +1866,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                     row_end   = ff * ArrayLength; % Define the appropriate row end to append the new data
                     % Concatenated data
                      ConcateArray6(row_start:row_end,:)=yPullingLength'; % Append the new data into the concatenated vector
+                     ConcateArray6(row_start:row_end,:)=ConcateArray6(row_start:row_end,:).*obj.FM{ff}.SMFSFlag.Selected'; % Set non-selected force curves from the concatenated arrays to zero
                 else                  
                 end
                 if ~isempty(ySnapInLength)
@@ -1872,33 +1876,33 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                     row_end   = ff * ArrayLength; % Define the appropriate row end to append the new data
                     % Concatenated data
                      ConcateArray7(row_start:row_end,:)=ySnapInLength'; % Append the new data into the concatenated vector
+                     ConcateArray7(row_start:row_end,:)=ConcateArray7(row_start:row_end,:).*obj.FM{ff}.SMFSFlag.Selected'; % Set non-selected force curves from the concatenated arrays to zero
                 else                  
                 end  
                 
-                      
                 % Statistics
-                AdhMaxAppSelMean=mean(ConcateArray1);
-                AdhMaxAppSelStd=std(ConcateArray1);
-                AdhMaxRetSelMean=mean(ConcateArray2);
-                AdhMaxRetSelStd=std(ConcateArray2);
-                AdhMaxRetSelUnbindingMean=mean(ConcateArray3);
-                AdhMaxRetSelUnbindingStd=std(ConcateArray3);
-                AdhEneAppSelMean=mean(ConcateArray4);
-                AdhEneAppSelStd=std(ConcateArray4);
-                AdhEneRetSelMean=mean(ConcateArray5);
-                AdhEneRetSelStd=std(ConcateArray5);
-                PullLengthMedian=median(ConcateArray6);
-                PullLengthMin=min(ConcateArray6);
-                PullLengthMax=max(ConcateArray6);
-                SnapInMedian=median(ConcateArray7);
-                SnapInMin=min(ConcateArray7);
-                SnapInMax=max(ConcateArray7);
+                AdhMaxAppSelMean=mean(nonzeros(ConcateArray1));
+                AdhMaxAppSelStd=std(nonzeros(ConcateArray1));
+                AdhMaxRetSelMean=mean(nonzeros(ConcateArray2));
+                AdhMaxRetSelStd=std(nonzeros(ConcateArray2));
+                AdhMaxRetSelUnbindingMean=mean(nonzeros(ConcateArray3));
+                AdhMaxRetSelUnbindingStd=std(nonzeros(ConcateArray3));
+                AdhEneAppSelMean=mean(nonzeros(ConcateArray4));
+                AdhEneAppSelStd=std(nonzeros(ConcateArray4));
+                AdhEneRetSelMean=mean(nonzeros(ConcateArray5));
+                AdhEneRetSelStd=std(nonzeros(ConcateArray5));
+                PullLengthMedian=median(nonzeros(ConcateArray6));
+                PullLengthMin=min(nonzeros(ConcateArray6));
+                PullLengthMax=max(nonzeros(ConcateArray6));
+                SnapInMedian=median(nonzeros(ConcateArray7));
+                SnapInMin=min(nonzeros(ConcateArray7));
+                SnapInMax=max(nonzeros(ConcateArray7));
                          
                 % Plot
                 % Tile 1 - Max. adhesion force approach
                 ax1=nexttile(1);
                 hold on
-                plot(yAdhMaxApp,'o')
+                plot(nonzeros(yAdhMaxApp),'o')
                 % Title for each Subplot
                 ti=title('Max. Adhesion Force Approach');                                     
                 ti.Units='normalized'; % Set units to 'normalized'  
@@ -1906,42 +1910,42 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 % Tile 2 - Max. adhesion force retract
                 ax2=nexttile(2);
                 hold on
-                plot(yAdhMaxRet,'o')
+                plot(nonzeros(yAdhMaxRet),'o')
                 ti=title('Max. Adhesion Force Retraction');                                     
                 ti.Units='normalized'; % Set units to 'normalized'  
                 ti.Position=[0.5,0.95]; % Position the subplot title within the subplot    
                 % Tile 3 - Unbinding adhesion force (retract)
                 ax3=nexttile(3);
                 hold on
-                plot(yAdhUnbinding,'o')
+                plot(nonzeros(yAdhUnbinding),'o')
                 ti=title('Unbinding Adhesion Force (Retraction)');                                     
                 ti.Units='normalized'; % Set units to 'normalized'  
                 ti.Position=[0.5,0.95]; % Position the subplot title within the subplot    
                 % Tile 4 - Adhesion energy approach
                 ax4=nexttile(4);
                 hold on
-                plot(yAdhEneApp,'o')
+                plot(nonzeros(yAdhEneApp),'o')
                 ti=title('Adhesion Energy Approach');                                     
                 ti.Units='normalized'; % Set units to 'normalized'  
                 ti.Position=[0.5,0.95]; % Position the subplot title within the subplot    
                 % Tile 5 - Adhesion energy retraction
                 ax5=nexttile(5);
                 hold on
-                plot(yAdhEneRet,'o')
+                plot(nonzeros(yAdhEneRet),'o')
                 ti=title('Adhesion Energy Retraction');                                     
                 ti.Units='normalized'; % Set units to 'normalized'  
                 ti.Position=[0.5,0.95]; % Position the subplot title within the subplot    
                 % Tile 6 - Pulling length
                 ax6=nexttile(6);
                 hold on
-                plot(yPullingLength,'o')
+                plot(nonzeros(yPullingLength),'o')
                 ti=title('Pulling Length');                                     
                 ti.Units='normalized'; % Set units to 'normalized'  
                 ti.Position=[0.5,0.95]; % Position the subplot title within the subplot    
                 % Tile 7 - Snap-in length
                 ax7=nexttile(7);
                 hold on
-                plot(ySnapInLength,'o')
+                plot(nonzeros(ySnapInLength),'o')
                 ti=title('Snap-In Length');                                     
                 ti.Units='normalized'; % Set units to 'normalized'  
                 ti.Position=[0.5,0.95]; % Position the subplot title within the subplot    
@@ -2090,16 +2094,31 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             % Tile 8
             ax8TextPos = [max(ax8.XLim)*0.5 max(ax8.YLim)*0.5];  % Define the position in the plot
             partstr81a='Extend Velocity: ';
+            if ExtVelocityValue==0
+                partstr82a='All';
+                partstr83a='';
+            else
             partstr82a=num2str(ExtVelocityValueStr);
             partstr83a='m*s^{-1}';
+            end           
             fullstr8a=strcat(partstr81a,partstr82a,partstr83a); % Define the string that shall be shown in the plot
             partstr81b='Retract Velocity: ';
+            if RetVelocityValue==0
+                partstr82b='All';
+                partstr83b='';
+            else
             partstr82b=num2str(RetVelocityValueStr);
             partstr83b='m*s^{-1}';
+            end            
             fullstr8b=strcat(partstr81b,partstr82b,partstr83b); % Define the string that shall be shown in the plot
             partstr81c='Holding time: ';
+            if HoldingTimeValue==-1
+                partstr82c='All';
+                partstr83c='';
+            else            
             partstr82c=num2str(HoldingTimeValueStr);
             partstr83c='s';
+            end
             fullstr8c=strcat(partstr81c,partstr82c,partstr83c); % Define the string that shall be shown in the plot
             partstr81d='Substrate: ';
             partstr82d=num2str(SubstrateValue);
@@ -2123,43 +2142,43 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             fullstr9a='Number of force curves analysed: ';
             if ~isempty(yAdhMaxApp)
                  partstr91b='Max. Adhesion Force Approach: ';
-                 partstr92b=num2str(length(yAdhMaxApp));
+                 partstr92b=num2str(length(nonzeros(ConcateArray1)));
                  fullstr9b=strcat(partstr91b,partstr92b); % Define the string that shall be shown in the plot
                 else                   
             end             
             if ~isempty(yAdhMaxRet)
                  partstr91c='Max. Adhesion Force Retraction:';
-                 partstr92c=num2str(length(yAdhMaxRet));
+                 partstr92c=num2str(length(nonzeros(ConcateArray2)));
                  fullstr9c=strcat(partstr91c,partstr92c); % Define the string that shall be shown in the plot
                 else                   
             end 
             if ~isempty(yAdhUnbinding)
                  partstr91d='Unbinding Adhesion Force (Retraction): ';
-                 partstr92d=num2str(length(yAdhUnbinding));
+                 partstr92d=num2str(length(nonzeros(ConcateArray3)));
                  fullstr9d=strcat(partstr91d,partstr92d); % Define the string that shall be shown in the plot
                 else                   
             end 
             if ~isempty(yAdhEneApp)
                  partstr91e='Adhesion Energy Approach: ';
-                 partstr92e=num2str(length(yAdhEneApp));
+                 partstr92e=num2str(length(nonzeros(ConcateArray4)));
                  fullstr9e=strcat(partstr91e,partstr92e); % Define the string that shall be shown in the plot
                 else                   
             end 
             if ~isempty(yAdhEneRet)
                  partstr91d='Adhesion Energy Retraction: ';
-                 partstr92d=num2str(length(yAdhEneRet));
+                 partstr92d=num2str(length(nonzeros(ConcateArray5)));
                  fullstr9d=strcat(partstr91d,partstr92d); % Define the string that shall be shown in the plot
                 else                   
             end 
             if ~isempty(yPullingLength)
                  partstr91e='Pulling Length: ';
-                 partstr92e=num2str(length(yPullingLength));
+                 partstr92e=num2str(length(nonzeros(ConcateArray6)));
                  fullstr9e=strcat(partstr91e,partstr92e); % Define the string that shall be shown in the plot
                 else                   
             end 
              if ~isempty(ySnapInLength)
                  partstr91f='Snap-In Length: ';
-                 partstr92f=num2str(length(ySnapInLength));
+                 partstr92f=num2str(length(nonzeros(ConcateArray7)));
                  fullstr9f=strcat(partstr91f,partstr92f); % Define the string that shall be shown in the plot
                 else                   
             end 
@@ -2219,33 +2238,42 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             close all
         end
         
-      
         function SMFS_analysis_dashboard2(obj,ExtVelocityValue,RetVelocityValue,HoldingTimeValue,SubstrateValue,EnvCondValue,ChipCantValue,ChipboxValue,LinkerValue)
             % I all velocities should be selected use input variable: 0
             
             % Output time and date for the dairy
             datetime('now')
-            
+            % Write to log file
+            obj.write_to_log_file('Function: SMFS_analysis_dashboard','Trial15','start')
+            obj.write_to_log_file('Extend Velocity',num2str(ExtVelocityValue))
+            obj.write_to_log_file('Retention Velocity',num2str(RetVelocityValue))
+            obj.write_to_log_file('Holding Time',num2str(HoldingTimeValue))
+            obj.write_to_log_file('Substrate',SubstrateValue)
+            obj.write_to_log_file('Linker',EnvCondValue)
+            obj.write_to_log_file('Chip',ChipCantValue)
+            obj.write_to_log_file('Chipbox',ChipboxValue)
+            obj.write_to_log_file('Linker',LinkerValue)
+            obj.write_to_log_file('','','end')
             % Define variables
-            j=1;
+            jj=1;
             IdxArray=[];
-            %for ii=1:obj.NumForceMaps
+            for ii=1:obj.NumForceMaps
             %% Debugging
-            for ii=1:10 % for debugging
+            %for ii=1:10 % for debugging
                 % sprintf('Force curve No. %d',ii) % Gives current Force curve
                 % for debugging
                 if ((obj.FM{ii}.ExtendVelocity==ExtVelocityValue || ExtVelocityValue==0) ...
                         && (obj.FM{ii}.RetractVelocity==RetVelocityValue || RetVelocityValue==0) ...
-                        && (obj.FM{ii}.HoldingTime==HoldingTimeValue || HoldingTimeValue==0) ...
+                        && (obj.FM{ii}.HoldingTime==HoldingTimeValue || HoldingTimeValue==-1) ...
                         && (strcmpi(obj.FM{ii}.Substrate,SubstrateValue) || strcmpi(SubstrateValue,'All')) ...
                         && (strcmpi(obj.FM{ii}.EnvCond,EnvCondValue) || strcmpi(EnvCondValue,'All')) ...
                         && (strcmpi(obj.FM{ii}.ChipCant,ChipCantValue) || strcmpi(ChipCantValue,'All')) ...
                         && (strcmpi(obj.FM{ii}.Chipbox,ChipboxValue) || strcmpi(ChipboxValue,'All')) ...
                         && (strcmpi(obj.FM{ii}.Linker,LinkerValue) || strcmpi(LinkerValue,'All')))
                     % Define variables for the if condition
-                    IdxArray(j,1)=ii;
+                    IdxArray(jj,1)=ii;
                     % Adjust variable
-                    j=j+1;
+                    jj=jj+1;
                 end     
             end
             % If condition to handle an empty index array
@@ -2262,7 +2290,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             cd(obj.ExperimentFolder) % Move into the folder
             % Create folders for saving the produced figures
             %foldername='FM_test';    % for debugging
-            foldername='FM_analysis';    % Defines the folder name
+            foldername='FM_analysis_dashboard';    % Defines the folder name
             mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
             currpath=fullfile(obj.ExperimentFolder,foldername);
             cd(currpath);
@@ -2295,48 +2323,113 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                        
             % for loop
             for ff=1:length(IdxArray)
+            %% Debugging
+            %for ff=6 % for debugging
+             sprintf('Force curve No. %d',ff) % Gives current Force curve
+            % for debugging
                 % Allocate data
-                yAdhMaxRet=obj.FM{IdxArray(ff)}.AdhForceMaxApp;
                 yAdhMaxApp=obj.FM{IdxArray(ff)}.AdhForceMaxRet;
+                yAdhMaxRet=obj.FM{IdxArray(ff)}.AdhForceMaxApp;
                 yAdhUnbinding=obj.FM{IdxArray(ff)}.AdhForceUnbinding;
                 yAdhEneApp=obj.FM{IdxArray(ff)}.AppAdhEnergy_IdxMethod;
                 yAdhEneRet=obj.FM{IdxArray(ff)}.RetAdhEnergy_IdxMethod;
                 yPullingLength=obj.FM{IdxArray(ff)}.PullingLength;
                 ySnapInLength=obj.FM{IdxArray(ff)}.SnapInLength;
-                % Determine the number of rows per force map
-                ArrayLength=length(yAdhMaxRet); % Define the length of the array
-                row_start = ((ff-1) * ArrayLength) + 1; % Define the appropriate row start to append the new data
-                row_end   = ff * ArrayLength; % Define the appropriate row end to append the new data
-                % Concatenated data
-                ConcateArray1(row_start:row_end,:)=yAdhMaxApp; % Append the new data into the concatenated vector
-                ConcateArray2(row_start:row_end,:)=yAdhMaxRet; % Append the new data into the concatenated vector
-                ConcateArray3(row_start:row_end,:)=yAdhUnbinding; % Append the new data into the concatenated vector
-                ConcateArray4(row_start:row_end,:)=yAdhEneApp; % Append the new data into the concatenated vector
-                ConcateArray5(row_start:row_end,:)=yAdhEneRet; % Append the new data into the concatenated vector
-                ConcateArray6(row_start:row_end,:)=yPullingLength; % Append the new data into the concatenated vector
-                ConcateArray7(row_start:row_end,:)=ySnapInLength; % Append the new data into the concatenated vector     
+                % Concatenate condition
+                if ~isempty(yAdhMaxApp)
+                    % Determine the number of rows per force map
+                    ArrayLength=length(yAdhMaxApp); % Define the length of the array
+                    row_start = ((ff-1) * ArrayLength) + 1; % Define the appropriate row start to append the new data
+                    row_end   = ff * ArrayLength; % Define the appropriate row end to append the new data
+                    % Concatenated data
+                    ConcateArray1(row_start:row_end,:)=yAdhMaxApp'; % Append the new data into the concatenated vector
+                    ConcateArray1(row_start:row_end,:)=ConcateArray1(row_start:row_end,:).*obj.FM{ff}.SMFSFlag.Selected'; % Set non-selected force curves from the concatenated arrays to zero
+                else                   
+                end                
+                if ~isempty(yAdhMaxRet)
+                    % Determine the number of rows per force map
+                    ArrayLength=length(yAdhMaxRet); % Define the length of the array
+                    row_start = ((ff-1) * ArrayLength) + 1; % Define the appropriate row start to append the new data
+                    row_end   = ff * ArrayLength; % Define the appropriate row end to append the new data
+                    % Concatenated data
+                    ConcateArray2(row_start:row_end,:)=yAdhMaxRet'; % Append the new data into the concatenated vector
+                    ConcateArray2(row_start:row_end,:)=ConcateArray2(row_start:row_end,:).*obj.FM{ff}.SMFSFlag.Selected'; % Set non-selected force curves from the concatenated arrays to zero
+                else                  
+                end
+                if ~isempty(yAdhUnbinding)
+                    % Determine the number of rows per force map
+                    ArrayLength=length(yAdhUnbinding); % Define the length of the array
+                    row_start = ((ff-1) * ArrayLength) + 1; % Define the appropriate row start to append the new data
+                    row_end   = ff * ArrayLength; % Define the appropriate row end to append the new data
+                    % Concatenated data
+                    ConcateArray3(row_start:row_end,:)=yAdhUnbinding'; % Append the new data into the concatenated vector
+                    ConcateArray3(row_start:row_end,:)=ConcateArray3(row_start:row_end,:).*obj.FM{ff}.SMFSFlag.Selected'; % Set non-selected force curves from the concatenated arrays to zero
+                else                  
+                end
+                if ~isempty(yAdhEneApp)
+                    % Determine the number of rows per force map
+                    ArrayLength=length(yAdhEneApp); % Define the length of the array
+                    row_start = ((ff-1) * ArrayLength) + 1; % Define the appropriate row start to append the new data
+                    row_end   = ff * ArrayLength; % Define the appropriate row end to append the new data
+                    % Concatenated data
+                    ConcateArray4(row_start:row_end,:)=yAdhEneApp'; % Append the new data into the concatenated vector
+                    ConcateArray4(row_start:row_end,:)=ConcateArray4(row_start:row_end,:).*obj.FM{ff}.SMFSFlag.Selected'; % Set non-selected force curves from the concatenated arrays to zero
+                else                  
+                end
+                if ~isempty(yAdhEneRet)
+                    % Determine the number of rows per force map
+                    ArrayLength=length(yAdhEneRet); % Define the length of the array
+                    row_start = ((ff-1) * ArrayLength) + 1; % Define the appropriate row start to append the new data
+                    row_end   = ff * ArrayLength; % Define the appropriate row end to append the new data
+                    % Concatenated data
+                    ConcateArray5(row_start:row_end,:)=yAdhEneRet'; % Append the new data into the concatenated vector
+                    ConcateArray5(row_start:row_end,:)=ConcateArray5(row_start:row_end,:).*obj.FM{ff}.SMFSFlag.Selected'; % Set non-selected force curves from the concatenated arrays to zero
+                else                  
+                end
+                if ~isempty(yPullingLength)
+                    % Determine the number of rows per force map
+                    ArrayLength=length(yPullingLength); % Define the length of the array
+                    row_start = ((ff-1) * ArrayLength) + 1; % Define the appropriate row start to append the new data
+                    row_end   = ff * ArrayLength; % Define the appropriate row end to append the new data
+                    % Concatenated data
+                     ConcateArray6(row_start:row_end,:)=yPullingLength'; % Append the new data into the concatenated vector
+                     ConcateArray6(row_start:row_end,:)=ConcateArray6(row_start:row_end,:).*obj.FM{ff}.SMFSFlag.Selected'; % Set non-selected force curves from the concatenated arrays to zero
+                else                  
+                end
+                if ~isempty(ySnapInLength)
+                    % Determine the number of rows per force map
+                    ArrayLength=length(ySnapInLength); % Define the length of the array
+                    row_start = ((ff-1) * ArrayLength) + 1; % Define the appropriate row start to append the new data
+                    row_end   = ff * ArrayLength; % Define the appropriate row end to append the new data
+                    % Concatenated data
+                     ConcateArray7(row_start:row_end,:)=ySnapInLength'; % Append the new data into the concatenated vector
+                     ConcateArray7(row_start:row_end,:)=ConcateArray7(row_start:row_end,:).*obj.FM{ff}.SMFSFlag.Selected'; % Set non-selected force curves from the concatenated arrays to zero
+                else                  
+                end  
+                
                 % Statistics
-                AdhMaxAppSelMean=mean(ConcateArray1);
-                AdhMaxAppSelStd=std(ConcateArray1);
-                AdhMaxRetSelMean=mean(ConcateArray2);
-                AdhMaxRetSelStd=std(ConcateArray2);
-                AdhMaxRetSelUnbindingMean=mean(ConcateArray3);
-                AdhMaxRetSelUnbindingStd=std(ConcateArray3);
-                AdhEneAppSelMean=mean(ConcateArray4);
-                AdhEneAppSelStd=std(ConcateArray4);
-                AdhEneRetSelMean=mean(ConcateArray5);
-                AdhEneRetSelStd=std(ConcateArray5);
-                PullLengthMedian=median(ConcateArray6);
-                PullLengthMin=min(ConcateArray6);
-                PullLengthMax=max(ConcateArray6);
-                SnapInMedian=median(ConcateArray7);
-                SnapInMin=min(ConcateArray7);
-                SnapInMax=max(ConcateArray7);                        
+                AdhMaxAppSelMean=mean(nonzeros(ConcateArray1));
+                AdhMaxAppSelStd=std(nonzeros(ConcateArray1));
+                AdhMaxRetSelMean=mean(nonzeros(ConcateArray2));
+                AdhMaxRetSelStd=std(nonzeros(ConcateArray2));
+                AdhMaxRetSelUnbindingMean=mean(nonzeros(ConcateArray3));
+                AdhMaxRetSelUnbindingStd=std(nonzeros(ConcateArray3));
+                AdhEneAppSelMean=mean(nonzeros(ConcateArray4));
+                AdhEneAppSelStd=std(nonzeros(ConcateArray4));
+                AdhEneRetSelMean=mean(nonzeros(ConcateArray5));
+                AdhEneRetSelStd=std(nonzeros(ConcateArray5));
+                PullLengthMedian=median(nonzeros(ConcateArray6));
+                PullLengthMin=min(nonzeros(ConcateArray6));
+                PullLengthMax=max(nonzeros(ConcateArray6));
+                SnapInMedian=median(nonzeros(ConcateArray7));
+                SnapInMin=min(nonzeros(ConcateArray7));
+                SnapInMax=max(nonzeros(ConcateArray7));
+                         
                 % Plot
                 % Tile 1 - Max. adhesion force approach
                 ax1=nexttile(1);
                 hold on
-                plot(yAdhMaxApp,'o')
+                plot(nonzeros(yAdhMaxApp),'o')
                 % Title for each Subplot
                 ti=title('Max. Adhesion Force Approach');                                     
                 ti.Units='normalized'; % Set units to 'normalized'  
@@ -2344,42 +2437,42 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 % Tile 2 - Max. adhesion force retract
                 ax2=nexttile(2);
                 hold on
-                plot(yAdhMaxRet,'o')
+                plot(nonzeros(yAdhMaxRet),'o')
                 ti=title('Max. Adhesion Force Retraction');                                     
                 ti.Units='normalized'; % Set units to 'normalized'  
                 ti.Position=[0.5,0.95]; % Position the subplot title within the subplot    
                 % Tile 3 - Unbinding adhesion force (retract)
                 ax3=nexttile(3);
                 hold on
-                plot(yAdhUnbinding,'o')
+                plot(nonzeros(yAdhUnbinding),'o')
                 ti=title('Unbinding Adhesion Force (Retraction)');                                     
                 ti.Units='normalized'; % Set units to 'normalized'  
                 ti.Position=[0.5,0.95]; % Position the subplot title within the subplot    
                 % Tile 4 - Adhesion energy approach
                 ax4=nexttile(4);
                 hold on
-                plot(yAdhEneApp,'o')
+                plot(nonzeros(yAdhEneApp),'o')
                 ti=title('Adhesion Energy Approach');                                     
                 ti.Units='normalized'; % Set units to 'normalized'  
                 ti.Position=[0.5,0.95]; % Position the subplot title within the subplot    
                 % Tile 5 - Adhesion energy retraction
                 ax5=nexttile(5);
                 hold on
-                plot(yAdhEneRet,'o')
+                plot(nonzeros(yAdhEneRet),'o')
                 ti=title('Adhesion Energy Retraction');                                     
                 ti.Units='normalized'; % Set units to 'normalized'  
                 ti.Position=[0.5,0.95]; % Position the subplot title within the subplot    
                 % Tile 6 - Pulling length
                 ax6=nexttile(6);
                 hold on
-                plot(yPullingLength,'o')
+                plot(nonzeros(yPullingLength),'o')
                 ti=title('Pulling Length');                                     
                 ti.Units='normalized'; % Set units to 'normalized'  
                 ti.Position=[0.5,0.95]; % Position the subplot title within the subplot    
                 % Tile 7 - Snap-in length
                 ax7=nexttile(7);
                 hold on
-                plot(ySnapInLength,'o')
+                plot(nonzeros(ySnapInLength),'o')
                 ti=title('Snap-In Length');                                     
                 ti.Units='normalized'; % Set units to 'normalized'  
                 ti.Position=[0.5,0.95]; % Position the subplot title within the subplot    
@@ -2392,6 +2485,15 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 ax8.XTickLabel=[];
                 ax8.YTick=[];
                 ax8.YTickLabel=[];
+                % Tile 9
+                ax9=nexttile(9);
+                ax9.Color=RGB11;
+                ax9.Box='on';
+                ax9.LineWidth = 10;
+                ax9.XTick=[];
+                ax9.XTickLabel=[];
+                ax9.YTick=[];
+                ax9.YTickLabel=[];
             end
             % Axes
             ax1.FontSize = 12;
@@ -2519,16 +2621,31 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             % Tile 8
             ax8TextPos = [max(ax8.XLim)*0.5 max(ax8.YLim)*0.5];  % Define the position in the plot
             partstr81a='Extend Velocity: ';
+            if ExtVelocityValue==0
+                partstr82a='All';
+                partstr83a='';
+            else
             partstr82a=num2str(ExtVelocityValueStr);
             partstr83a='m*s^{-1}';
+            end           
             fullstr8a=strcat(partstr81a,partstr82a,partstr83a); % Define the string that shall be shown in the plot
             partstr81b='Retract Velocity: ';
+            if RetVelocityValue==0
+                partstr82b='All';
+                partstr83b='';
+            else
             partstr82b=num2str(RetVelocityValueStr);
             partstr83b='m*s^{-1}';
+            end            
             fullstr8b=strcat(partstr81b,partstr82b,partstr83b); % Define the string that shall be shown in the plot
             partstr81c='Holding time: ';
+            if HoldingTimeValue==-1
+                partstr82c='All';
+                partstr83c='';
+            else            
             partstr82c=num2str(HoldingTimeValueStr);
             partstr83c='s';
+            end
             fullstr8c=strcat(partstr81c,partstr82c,partstr83c); % Define the string that shall be shown in the plot
             partstr81d='Substrate: ';
             partstr82d=num2str(SubstrateValue);
@@ -2545,15 +2662,55 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             partstr81h='Linker: ';
             partstr82h=num2str(ChipboxValue);
             fullstr8h=strcat(partstr81h,partstr82h); % Define the string that shall be shown in the plot   
-            partstr81i='Number of force curves analysed: ';
-            partstr82i=num2str(length(ConcateArray1));
-            fullstr8i=strcat(partstr81i,partstr82i); % Define the string that shall be shown in the plot
-            partstr81j='Number of force maps analysed: ';
-            partstr82j=num2str(length(IdxArray));
-            fullstr8j=strcat(partstr81j,partstr82j); % Define the string that shall be shown in the plot
-            te8=text(ax8,ax8TextPos(1), ax8TextPos(2),{fullstr8a, fullstr8b, fullstr8c, fullstr8d, fullstr8e, fullstr8f, fullstr8g, fullstr8h, fullstr8i, fullstr8j}, 'VerticalAlignment','middle', 'HorizontalAlignment','center');
+            te8=text(ax8,ax8TextPos(1), ax8TextPos(2),{fullstr8a, fullstr8b, fullstr8c, fullstr8d, fullstr8e, fullstr8f, fullstr8g, fullstr8h}, 'VerticalAlignment','middle', 'HorizontalAlignment','center');
             te8.FontSize = 18;
-    
+            % Tile 9     
+            ax9TextPos = [max(ax9.XLim)*0.5 max(ax9.YLim)*0.5];  % Define the position in the plot
+            fullstr9a='Number of force curves analysed: ';
+            if ~isempty(yAdhMaxApp)
+                 partstr91b='Max. Adhesion Force Approach: ';
+                 partstr92b=num2str(length(nonzeros(ConcateArray1)));
+                 fullstr9b=strcat(partstr91b,partstr92b); % Define the string that shall be shown in the plot
+                else                   
+            end             
+            if ~isempty(yAdhMaxRet)
+                 partstr91c='Max. Adhesion Force Retraction:';
+                 partstr92c=num2str(length(nonzeros(ConcateArray2)));
+                 fullstr9c=strcat(partstr91c,partstr92c); % Define the string that shall be shown in the plot
+                else                   
+            end 
+            if ~isempty(yAdhUnbinding)
+                 partstr91d='Unbinding Adhesion Force (Retraction): ';
+                 partstr92d=num2str(length(nonzeros(ConcateArray3)));
+                 fullstr9d=strcat(partstr91d,partstr92d); % Define the string that shall be shown in the plot
+                else                   
+            end 
+            if ~isempty(yAdhEneApp)
+                 partstr91e='Adhesion Energy Approach: ';
+                 partstr92e=num2str(length(nonzeros(ConcateArray4)));
+                 fullstr9e=strcat(partstr91e,partstr92e); % Define the string that shall be shown in the plot
+                else                   
+            end 
+            if ~isempty(yAdhEneRet)
+                 partstr91d='Adhesion Energy Retraction: ';
+                 partstr92d=num2str(length(nonzeros(ConcateArray5)));
+                 fullstr9d=strcat(partstr91d,partstr92d); % Define the string that shall be shown in the plot
+                else                   
+            end 
+            if ~isempty(yPullingLength)
+                 partstr91e='Pulling Length: ';
+                 partstr92e=num2str(length(nonzeros(ConcateArray6)));
+                 fullstr9e=strcat(partstr91e,partstr92e); % Define the string that shall be shown in the plot
+                else                   
+            end 
+             if ~isempty(ySnapInLength)
+                 partstr91f='Snap-In Length: ';
+                 partstr92f=num2str(length(nonzeros(ConcateArray7)));
+                 fullstr9f=strcat(partstr91f,partstr92f); % Define the string that shall be shown in the plot
+                else                   
+            end 
+            te9=text(ax9,ax9TextPos(1), ax9TextPos(2),{fullstr9a, fullstr9b, fullstr9c, fullstr9d, fullstr9e, fullstr9f},'VerticalAlignment','middle', 'HorizontalAlignment','center');
+            te9.FontSize = 18;            
             % Save figure
             %%% Define the name for the figure title
             partname='Dashboard';
@@ -2563,32 +2720,47 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             %%% Save the current figure in the current folder
             print(h_fig1,fullname1,'-dpng');
             
-            %% SMFSResults Structure
-            % Check entry 
-            if length(obj.SMFSResults)>0
+            %% SMFS Results structure 
+            % Check entry
+            if ~isempty(obj.SMFSResults)
                 jj=length(obj.SMFSResults)+1;
             else
                 jj=1;
             end
+            
             % Append the new data into the concatenated array
             obj.SMFSResults{jj,1}.Data(1).AdhMaxApp=ConcateArray1;
-            obj.SMFSResults{jj,1}.Data(1).AdhMaxRet=ConcateArray2;
+            obj.SMFSResults{jj,1}.Data(1).AdhMaxRet= ConcateArray2;
             obj.SMFSResults{jj,1}.Data(1).AdhUnbinding=ConcateArray3;
             obj.SMFSResults{jj,1}.Data(1).AdhEneApp=ConcateArray4;
             obj.SMFSResults{jj,1}.Data(1).AdhEneRet=ConcateArray5;
-            obj.SMFSResults{jj,1}.Data(1).PullingLength=ConcateArray6;
-            obj.SMFSResults{jj,1}.Data(1).SnapInLength=ConcateArray7;
+            obj.SMFSResults{jj,1}.Data(1).AdhPullingLength=ConcateArray6;
             obj.SMFSResults{jj,1}.Properties(1).ExtendVelocity=ExtVelocityValue;
             obj.SMFSResults{jj,1}.Properties(1).RetractVelocity=RetVelocityValue;
-            obj.SMFSResults{jj,1}.Properties(1).HoldingTime=HoldingTimeValue;
             obj.SMFSResults{jj,1}.Properties(1).Substrate=SubstrateValue;
             obj.SMFSResults{jj,1}.Properties(1).Medium=EnvCondValue;
             obj.SMFSResults{jj,1}.Properties(1).ChipCantilever=ChipCantValue;
             obj.SMFSResults{jj,1}.Properties(1).Chipbox=ChipboxValue;
             obj.SMFSResults{jj,1}.Properties(1).Linker=LinkerValue;
             obj.SMFSResults{jj,1}.FMIndex=IdxArray;
-            
-            
+            obj.SMFSResults{jj,1}.Results(1).AdhMaxAppMean=AdhMaxAppSelMean;
+            obj.SMFSResults{jj,1}.Results(1).AdhMaxAppMean=AdhMaxAppSelMean;
+            obj.SMFSResults{jj,1}.Results(1).AdhMaxAppStd=AdhMaxAppSelStd;
+            obj.SMFSResults{jj,1}.Results(1).AdhMaxRetMean=AdhMaxRetSelMean;
+            obj.SMFSResults{jj,1}.Results(1).AdhMaxRetStd=AdhMaxRetSelStd;
+            obj.SMFSResults{jj,1}.Results(1).AdhMaxRetUnbindingMean=AdhMaxRetSelUnbindingMean;
+            obj.SMFSResults{jj,1}.Results(1).AdhMaxRetUnbindingStd=AdhMaxRetSelUnbindingStd;
+            obj.SMFSResults{jj,1}.Results(1).AdhEneAppMean=AdhEneAppSelMean;
+            obj.SMFSResults{jj,1}.Results(1).AdhEneAppStd=AdhEneAppSelStd;
+            obj.SMFSResults{jj,1}.Results(1).AdhEneRetMean=AdhEneRetSelMean;
+            obj.SMFSResults{jj,1}.Results(1).AdhEneRetStd=AdhEneRetSelStd;
+            obj.SMFSResults{jj,1}.Results(1).PullLengthMedian=PullLengthMedian;
+            obj.SMFSResults{jj,1}.Results(1).PullLengthMin=PullLengthMin;
+            obj.SMFSResults{jj,1}.Results(1).PullLengthMax=PullLengthMax;
+            obj.SMFSResults{jj,1}.Results(1).SnapInMedian=SnapInMedian;
+            obj.SMFSResults{jj,1}.Results(1).SnapInMin=SnapInMin;
+            obj.SMFSResults{jj,1}.Results(1).SnapInMax=SnapInMax;
+                       
             %% House keeping
             close all
         end

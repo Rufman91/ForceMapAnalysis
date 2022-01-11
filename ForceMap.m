@@ -2468,7 +2468,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             for jj=1:obj.NCurves
             %% Debugging
             %for jj=7 % for debugging
-                %sprintf('Force curve No. %d',jj) % Gives current
+                 sprintf('Force curve No. %d',jj) % Gives current
                 % Force curve for debugging
                 if ~obj.SMFSFlag.Uncorrupt(jj) || ~obj.SMFSFlag.AppMinCrit(jj)     % Exclude corrupted force curves or force curves showing no snap-in from the analysis
                     continue
@@ -4737,6 +4737,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
         function fc_flag_status(obj)
             % Find not processed force curves
             obj.SMFSFlagDown.Uncorrupt=find(~obj.SMFSFlag.Uncorrupt);
+            obj.SMFSFlagDown.Selected=find(~obj.SMFSFlag.Selected);
             obj.SMFSFlagDown.AppMinCrit=find(~obj.SMFSFlag.AppMinCrit);
             obj.SMFSFlagDown.RetMinCrit=find(~obj.SMFSFlag.RetMinCrit);
             obj.SMFSFlagDown.LengthRequisite=find(~obj.SMFSFlag.LengthRequisite);
