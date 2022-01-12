@@ -2559,6 +2559,13 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 'Position',[200 200 1024 512],...
                 'Color',h.ColorMode(obj.ShowImageSettings.ColorIndex).Background);
             
+            h.Backdrop = uicontrol('style','text',...
+                'String','',...
+                'Units','normalized',...
+                'ForegroundColor',h.ColorMode(obj.ShowImageSettings.ColorIndex).ButtonText,...
+                'BackgroundColor',h.ColorMode(obj.ShowImageSettings.ColorIndex).Backdrop,...
+                'Position',[.845 .0 .2 1]);
+            
             initialize_starting_class_and_popups
             
             set_main_tab_ui
@@ -2628,13 +2635,6 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             end
             
             function set_main_tab_ui()
-                
-                h.Backdrop = uicontrol('style','text',...
-                    'String','',...
-                    'Units','normalized',...
-                    'ForegroundColor',h.ColorMode(obj.ShowImageSettings.ColorIndex).ButtonText,...
-                    'BackgroundColor',h.ColorMode(obj.ShowImageSettings.ColorIndex).Backdrop,...
-                    'Position',[.845 .0 .2 1]);
                 
                 h.B(1) = uicontrol('style','togglebutton',...
                     'String','Cross Section',...
@@ -2896,6 +2896,9 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                     'Visible',obj.ShowImageSettings.MainMenuValue,...
                     'Position',[.875 .3 .1 .03],...
                     'Callback',@changed_use_overlay);
+                
+                    h.ToggledMainMenuIndizes = [18 19 20 21 22 31 1];
+                    
             end
             
             function set_volume_data_tab_ui()
@@ -2990,31 +2993,86 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                     'Position',[.875 .12 .1 .03],...
                     'Callback',@changed_extended_information);
                 
+                    h.ToggledVolumeMenuIndizes = [1 2 3 4 5 6 7 8 9];
+                
             end
             
             function set_results_tab_ui()
                 
                 % Results Data Buttons
-                h.Res(1) = uicontrol('style','text',...
-                    'String','Placeholder for upcoming feature',...
+                h.Res(1) = uicontrol('style','radiobutton',...
+                    'String','Use Snapped',...
+                    'Tooltip','Use algorithmically snapped segments instead of handdrawn',...
                     'ForegroundColor',h.ColorMode(obj.ShowImageSettings.ColorIndex).ButtonText,...
                     'BackgroundColor',h.ColorMode(obj.ShowImageSettings.ColorIndex).Buttons,...
                     'Units','normalized',...
+                    'Value',obj.ShowImageSettings.UseSnapped,...
                     'Visible',obj.ShowImageSettings.ResultsMenuValue,...
-                    'Position',[.85 .26 .1 .1]);
+                    'Position',[.875 .28 .1 .03],...
+                    'Callback',@changed_use_snapped);
+                h.Res(2) = uicontrol('style','radiobutton',...
+                    'String','Plot whole Group',...
+                    'Tooltip',"Compare all members of Channel 1's Overlay Group",...
+                    'ForegroundColor',h.ColorMode(obj.ShowImageSettings.ColorIndex).ButtonText,...
+                    'BackgroundColor',h.ColorMode(obj.ShowImageSettings.ColorIndex).Buttons,...
+                    'Units','normalized',...
+                    'Value',obj.ShowImageSettings.PlotGroup,...
+                    'Visible',obj.ShowImageSettings.ResultsMenuValue,...
+                    'Position',[.875 .25 .1 .03],...
+                    'Callback',@changed_plot_group);
+                h.Res(3) = uicontrol('style','radiobutton',...
+                    'String','Ignore Zeros',...
+                    'Tooltip','Replace zeros in data set with NaNs',...
+                    'ForegroundColor',h.ColorMode(obj.ShowImageSettings.ColorIndex).ButtonText,...
+                    'BackgroundColor',h.ColorMode(obj.ShowImageSettings.ColorIndex).Buttons,...
+                    'Units','normalized',...
+                    'Value',obj.ShowImageSettings.IgnoreZeros,...
+                    'Visible',obj.ShowImageSettings.ResultsMenuValue,...
+                    'Position',[.875 .22 .1 .03],...
+                    'Callback',@changed_ignore_zeros);
+                h.Res(4) = uicontrol('style','radiobutton',...
+                    'String','Just Channel 1',...
+                    'Tooltip','Plot just Channel 1',...
+                    'ForegroundColor',h.ColorMode(obj.ShowImageSettings.ColorIndex).ButtonText,...
+                    'BackgroundColor',h.ColorMode(obj.ShowImageSettings.ColorIndex).Buttons,...
+                    'Units','normalized',...
+                    'Value',obj.ShowImageSettings.JustChannel1,...
+                    'Visible',obj.ShowImageSettings.ResultsMenuValue,...
+                    'Position',[.875 .19 .1 .03],...
+                    'Callback',@changed_just_channel_1);
+                h.Res(5) = uicontrol('style','radiobutton',...
+                    'String','Just Channel 2',...
+                    'Tooltip','Plot just Channel 2',...
+                    'ForegroundColor',h.ColorMode(obj.ShowImageSettings.ColorIndex).ButtonText,...
+                    'BackgroundColor',h.ColorMode(obj.ShowImageSettings.ColorIndex).Buttons,...
+                    'Units','normalized',...
+                    'Value',obj.ShowImageSettings.JustChannel2,...
+                    'Visible',obj.ShowImageSettings.ResultsMenuValue,...
+                    'Position',[.875 .16 .1 .03],...
+                    'Callback',@changed_just_channel_2);
+                h.Res(6) = uicontrol('style','pushbutton',...
+                    'String','Export Data',...
+                    'Tooltip','Export Data to workspace aswell as .mat-file into user chosen folder',...
+                    'ForegroundColor',h.ColorMode(obj.ShowImageSettings.ColorIndex).ButtonText,...
+                    'BackgroundColor',h.ColorMode(obj.ShowImageSettings.ColorIndex).Buttons,...
+                    'units','normalized',...
+                    'Visible',1,...
+                    'position',[.875 .12 .1 .04],...
+                    'Callback',@export_data);
+                
+                h.ToggledResultMenuIndizes = [1 2 3 4 5 6];
                 
             end
             
             function initialize_starting_state()
                 
-                h.ToggledMainMenuIndizes = [18 19 20 21 22 31 1];
-                h.ToggledVolumeMenuIndizes = [1 2 3 4 5 6 7 8 9];
-                h.ToggledResultMenuIndizes = [1];
-                
                 h.Channel1Max = 1;
                 h.Channel1Min = 0;
                 h.Channel2Max = 1;
                 h.Channel2Min = 0;
+                
+                h.Channel{1} = 'none';
+                h.Channel{2} = 'none';
                 
                 h.CurChannel1Idx = h.B(2).Value;
                 h.CurChannel2Idx = h.B(3).Value;
@@ -3048,6 +3106,27 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 h.CurrentClassName{1} = h.Class{1}.Name;
                 h.CurrentClassName{2} = h.Class{1}.Name;
                 h.OnePass = false;
+                
+                % Related to Results Struct
+                h.ResultStruct.SelectedSegmentIndex = zeros(2,1);
+                h.ResultStruct.DisabledSegmentIndizes{1} = [];
+                h.ResultStruct.DisabledSegmentIndizes{2} = [];
+                h.ResultStruct.Results(1).Name = h.Class{1}.Name;
+                h.ResultStruct.Results(2).Name = h.Class{1}.Name;
+                h.ResultStruct.Results(1).ChannelType = 'none';
+                h.ResultStruct.Results(2).ChannelType = 'none';
+                h.ResultStruct.Results(1).Data = [];
+                h.ResultStruct.Results(2).Data = [];
+                h.ResultStruct.Results(1).SegmentNames = [];
+                h.ResultStruct.Results(2).SegmentNames = [];
+                h.ResultStruct.Results(1).Unit = [];
+                h.ResultStruct.Results(2).Unit = [];
+                h.ResultStruct.Results(1).SubSegmentCell = [];
+                h.ResultStruct.Results(2).SubSegmentCell = [];
+                h.ResultStruct.Results(1).SegmentCell = [];
+                h.ResultStruct.Results(2).SegmentCell = [];
+                h.ResultStruct.Results(1).Mask = [];
+                h.ResultStruct.Results(2).Mask = [];
                 
             end
             
@@ -3642,7 +3721,11 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 elseif h.MenuTabs(2).Value
                     h.I(Index).ButtonDownFcn = @get_and_draw_volume_information;
                 elseif h.MenuTabs(3).Value
-                    % TODO
+                    if Index == 1
+                        h.I(Index).ButtonDownFcn = @select_clicked_roi_channel_1;
+                    else
+                        h.I(Index).ButtonDownFcn = @select_clicked_roi_channel_2;
+                    end
                 end
                 hold on
                 CurrentAxHeight = round(h.Fig.Position(4)*h.ImAx(Index).Position(4));
@@ -3679,6 +3762,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 
                 moving_cross_section
                 draw_volume_information
+                draw_results(Index)
                 try
                     if (h.ScanSizeX(1) == h.ScanSizeX(2)) &&...
                             (h.ScanSizeY(1) == h.ScanSizeY(2))
@@ -3700,6 +3784,8 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             	ColorMode(1).Backdrop = [.05 .05 .05];
             	ColorMode(1).Buttons = [.1 .1 .1];
             	ColorMode(1).ButtonText = 'w';
+                ColorMode(1).SpecialHighlight = 'w';
+                ColorMode(1).Disabled = [.65 .65 .65];
             
             
             
@@ -3710,6 +3796,8 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             	ColorMode(2).Backdrop = [.95 .95 .95];
             	ColorMode(2).Buttons = [.9 .9 .9];
             	ColorMode(2).ButtonText = 'k';
+                ColorMode(2).SpecialHighlight = 'k';
+                ColorMode(2).Disabled = [.65 .65 .65];
             
             end
             
@@ -4254,6 +4342,315 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                     h.FVM(8).Value;
                 
                 draw_volume_information
+            end
+            
+            function draw_results(Index,varargin)
+                
+                if ~obj.ShowImageSettings.ResultsMenuValue
+                    return
+                end
+                
+                draw_existing_segments(Index)
+                draw_boxplots
+                
+            end
+            
+            function draw_existing_segments(Index,varargin)
+                
+                if isempty(h.Class{Index}.Segment)
+                    return
+                end
+                if isempty(h.Class{Index}.Segment(1).Name)
+                    return
+                end
+                
+                Names = {h.Class{Index}.Segment.Name};
+                UniqueNames = unique(Names);
+                NumSegments = length(UniqueNames);
+                NumSubSegments = length(Names);
+                
+                
+                
+                % This guy figured out one simple trick to get all
+                % the colors. Painters hate him
+                FakePlots = zeros(2,NumSegments*2);
+                FakeAx = plot(FakePlots);
+                SegmentColors = get(FakeAx,'Color');
+                delete(FakeAx)
+                clear FakeAx FakePlots
+                
+                
+                h.ResultStruct.ChosenSubsetIndizes{Index} = [];
+                for i=1:NumSubSegments
+                    if (obj.ShowImageSettings.UseSnapped &&...
+                            sum(strfind(Names{i},'Snapped'))) ||...
+                            (~obj.ShowImageSettings.UseSnapped &&...
+                            ~sum(strfind(Names{i},'Snapped')))
+                        h.ResultStruct.ChosenSubsetIndizes{Index}(end+1) = i;
+                    else
+                        continue
+                    end
+                    SegmentIndex = find(strcmp(UniqueNames,h.Class{Index}.Segment(i).Name));
+                    if sum(h.ResultStruct.DisabledSegmentIndizes{Index} == i)
+                        h.ROIObjects{Index}{i} = drawpolyline('Position',h.Class{Index}.Segment(i).ROIObject.Position,...
+                            'Deletable',0,...
+                            'InteractionsAllowed','none',...
+                            'LineWidth',h.Class{Index}.Segment(i).ROIObject.LineWidth,...
+                            'Color',h.ColorMode(obj.ShowImageSettings.ColorIndex).Disabled);
+                    elseif i == h.ResultStruct.SelectedSegmentIndex(Index)
+                        h.ROIObjects{Index}{i} = drawpolyline('Position',h.Class{Index}.Segment(i).ROIObject.Position,...
+                            'Deletable',0,...
+                            'InteractionsAllowed','none',...
+                            'LineWidth',h.Class{Index}.Segment(i).ROIObject.LineWidth*2,...
+                            'Label',sprintf('%s || %s',h.Class{Index}.Segment(i).Name,h.Class{Index}.Segment(i).SubSegmentName),...
+                            'Color',h.ColorMode(obj.ShowImageSettings.ColorIndex).SpecialHighlight,...
+                            'LabelAlpha',1);
+                    else
+                        h.ROIObjects{Index}{i} = drawpolyline('Position',h.Class{Index}.Segment(i).ROIObject.Position,...
+                            'Deletable',0,...
+                            'InteractionsAllowed','none',...
+                            'LineWidth',h.Class{Index}.Segment(i).ROIObject.LineWidth,...
+                            'Color',SegmentColors{2*SegmentIndex-1},...
+                            'StripeColor',SegmentColors{2*SegmentIndex});
+                    end
+                end
+                
+                create_map_of_rois(Index);
+                
+            end
+            
+            function create_map_of_rois(Index,varargin)
+                
+                Size = size(h.I(1).CData);
+                h.ROIImage{Index} = zeros(Size);
+                
+                for i=1:length(h.Class{Index}.Segment)
+                    if ismember(i,h.ResultStruct.ChosenSubsetIndizes{Index})
+                        TempMask = h.ROIObjects{Index}{i}.createMask;
+                        TempMask = imdilate(TempMask,strel('diamond',ceil(Size(1)/128)));
+                    else
+                        continue
+                    end
+                    h.ROIImage{Index}(TempMask) = i;
+                end
+                
+            end
+            
+            function select_clicked_roi_channel_1(varargin)
+                
+                Point = varargin{2}.IntersectionPoint;
+                
+                X = round(Point(1));
+                Y = round(Point(2));
+                
+                NewIndex = h.ROIImage{1}(Y,X);
+                
+                if h.ResultStruct.SelectedSegmentIndex(1) == NewIndex
+                    h.ResultStruct.DisabledSegmentIndizes{1} =...
+                        unique([h.ResultStruct.DisabledSegmentIndizes{1} NewIndex]);
+                    h.ResultStruct.SelectedSegmentIndex(1) = 0;
+                elseif sum(h.ResultStruct.DisabledSegmentIndizes{1} == NewIndex)
+                    h.ResultStruct.DisabledSegmentIndizes{1}(h.ResultStruct.DisabledSegmentIndizes{1} == NewIndex) = [];
+                else
+                    h.ResultStruct.SelectedSegmentIndex(1) = NewIndex;
+                end
+                
+                draw_channel_1
+            end
+            
+            function select_clicked_roi_channel_2(varargin)
+                
+                Point = varargin{2}.IntersectionPoint;
+                
+                X = round(Point(1));
+                Y = round(Point(2));
+                
+                NewIndex = h.ROIImage{2}(Y,X);
+                
+                if h.ResultStruct.SelectedSegmentIndex(2) == NewIndex
+                    h.ResultStruct.DisabledSegmentIndizes{2} =...
+                        unique([h.ResultStruct.DisabledSegmentIndizes{2} NewIndex]);
+                    h.ResultStruct.SelectedSegmentIndex(2) = 0;
+                elseif sum(h.ResultStruct.DisabledSegmentIndizes{2} == NewIndex)
+                    h.ResultStruct.DisabledSegmentIndizes{2}(h.ResultStruct.DisabledSegmentIndizes{2} == NewIndex) = [];
+                else
+                    h.ResultStruct.SelectedSegmentIndex(2) = NewIndex;
+                end
+                
+                draw_channel_2
+            end
+            
+            function Results = read_out_results()
+                Results = [];
+                
+                % Determine how many Sets are to be created from which
+                % class instances
+                if obj.ShowImageSettings.PlotGroup
+                    MotherClass = obj.get_afm_base_class_by_name(h.CurrentClassName{1});
+                    ClassNames = MotherClass.OverlayGroup.Names;
+                    NumResults = length(ClassNames);
+                    for i=1:NumResults
+                        Class{i} = obj.get_afm_base_class_by_name(ClassNames{i});
+                    end
+                    ChannelName{1} = h.Channel{1};
+                else
+                    if obj.ShowImageSettings.JustChannel1
+                        NumResults = 1;
+                        ChannelName{1} = h.Channel{1};
+                        Class{1} = obj.get_afm_base_class_by_name(h.CurrentClassName{1});
+                    elseif obj.ShowImageSettings.JustChannel2
+                        NumResults = 1;
+                        ChannelName{1} = h.Channel{2};
+                        Class{1} = obj.get_afm_base_class_by_name(h.CurrentClassName{2});
+                    else
+                        NumResults = 2;
+                        Class{1} = obj.get_afm_base_class_by_name(h.CurrentClassName{1});
+                        Class{2} = obj.get_afm_base_class_by_name(h.CurrentClassName{2});
+                        ChannelName{1} = h.Channel{1};
+                        ChannelName{2} = h.Channel{2};
+                    end
+                end
+                
+                for i=NumResults:-1:1
+                    if i > length(h.ResultStruct.Results) ||...
+                            ((~isequal(h.ResultStruct.Results(i).Name,Class{i}.Name) ||...
+                            ~isequal(h.ResultStruct.Results(i).ChannelType,ChannelName{i})) &&...
+                            (~isequal(h.ResultStruct.Results(i).ChannelType,'none') ||...
+                            ~isequal('none',ChannelName{i})))
+                        Waitbar = waitbar(1/2,'Reading out results');
+                        TempChannel = Class{i}.get_channel(ChannelName{i});
+                        if isempty(TempChannel) &&...
+                                NumResults > i &&...
+                                i < length(Results)
+                            Results(i) = [];
+                            close(Waitbar)
+                            continue
+                        end
+                        [Results(i).Data,...
+                            Results(i).SubSegmentCell,...
+                            Results(i).SegmentCell,...
+                            Results(i).Mask] = Class{1}.get_segment_data_from_channel(ChannelName{i},0);
+                        Results(i).Name = Class{1}.Name;
+                        Results(i).SegmentNames = {Class{i}.Segment.Name};
+                        Results(i).ChannelType = TempChannel.Name;
+                        Results(i).Unit = TempChannel.Unit;
+                        close(Waitbar)
+                    end
+                end
+                
+            end
+            
+            function draw_boxplots()
+                
+                h.ResultStruct.Results = read_out_results();
+                
+                if isempty(h.ResultStruct.Results)
+                    return
+                end
+                
+                try
+                    delete(h.ImAx(3));
+                catch
+                end
+                
+                h.ImAx(3) = subplot(10,10,[71:78 81:88 91:98]);
+                NumPlots = length(h.ResultStruct.Results);
+                for i=1:NumPlots
+                    boxplot(h.ResultStruct.Results(i).Data,'BoxStyle','filled');
+                end
+                hold on
+                grid on
+                CurrentAxHeight = ...
+                    round(h.Fig.Position(4)*h.ImAx(1).Position(4));
+                h.ImAx(3).Color = ...
+                    h.ColorMode(obj.ShowImageSettings.ColorIndex).Background;
+                h.ImAx(3).LineWidth = 1;
+                h.ImAx(3).FontSize = ...
+                    round(obj.ShowImageSettings.ReferenceFontSize*(CurrentAxHeight/756));
+                h.ImAx(3).XColor = ...
+                    h.ColorMode(obj.ShowImageSettings.ColorIndex).Text;
+                h.ImAx(3).YColor = ...
+                    h.ColorMode(obj.ShowImageSettings.ColorIndex).Text;
+                h.ImAx(3).GridColor = ...
+                    h.ColorMode(obj.ShowImageSettings.ColorIndex).Text;
+                
+%                 h.VolumeStruct.Plot(1).LineWidth = 2;
+%                 h.VolumeStruct.Plot(1).Color = ...
+%                     h.ColorMode(obj.ShowImageSettings.ColorIndex).Profile1;
+            end
+            
+            function changed_use_snapped(varargin)
+                
+                obj.ShowImageSettings.UseSnapped = ...
+                    h.Res(1).Value;
+                
+                draw_channel_1
+                draw_channel_2
+            end
+            
+            function changed_plot_group(varargin)
+                
+                obj.ShowImageSettings.PlotGroup = ...
+                    h.Res(2).Value;
+                
+                draw_channel_1
+                draw_channel_2
+            end
+            
+            function changed_ignore_zeros(varargin)
+                
+                obj.ShowImageSettings.IgnoreZeros = ...
+                    h.Res(1).Value;
+                
+                draw_channel_1
+                draw_channel_2
+            end
+            
+            function changed_just_channel_1(varargin)
+                
+                obj.ShowImageSettings.JustChannel1 = ...
+                    h.Res(4).Value;
+                
+                obj.ShowImageSettings.JustChannel2 = 0;
+                h.Res(5).Value = 0;
+                
+                draw_channel_1
+                draw_channel_2
+            end
+            
+            function changed_just_channel_2(varargin)
+                
+                obj.ShowImageSettings.JustChannel2 = ...
+                    h.Res(5).Value;
+                
+                obj.ShowImageSettings.JustChannel1 = 0;
+                h.Res(4).Value = 0;
+                
+                draw_channel_1
+                draw_channel_2
+            end
+            
+            function export_data(varargin)
+                
+                filter = {'*.mat'};
+                if obj.ShowImageSettings.JustChannel2
+                    Name = split(h.Class{2}.Name,'.');
+                else
+                    Name = split(h.Class{1}.Name,'.');
+                end
+                if obj.ShowImageSettings.PlotGroup
+                    DefName = ['GroupData_' Name{1}];
+                else
+                    DefName = ['Data_' Name{1}];
+                end
+                DefFull = fullfile(obj.ShowImageSettings.DefaultSavePath,DefName);
+                [file, path] = uiputfile(filter,'Select Name and Location of your .mat-file',DefFull);
+                obj.ShowImageSettings.DefaultSavePath = path;
+                FullFile = fullfile(path,file);
+                Result = h.ResultStruct.Results;
+                save(FullFile,'Result')
+                % send to workspace
+                assignin('base','Result',Result)
             end
             
             uiwait(h.Fig)
@@ -6600,6 +6997,41 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             end
         end
         
+        function OutClass = get_afm_base_class_by_name(obj,Name,AllCellStructs)
+            
+            if nargin < 3
+                AllCellStructs = false;
+            end
+            
+            for i=1:obj.NumForceMaps
+                if isequal(Name,obj.FM{i}.Name)
+                    OutClass = obj.FM{i};
+                    return
+                end
+            end
+            for i=1:obj.NumAFMImages
+                if isequal(Name,obj.I{i}.Name)
+                    OutClass = obj.I{i};
+                    return
+                end
+            end
+            if AllCellStructs
+                for i=1:obj.NumReferenceForceMaps
+                    if isequal(Name,obj.RefFM{i}.Name)
+                        OutClass = obj.RefFM{i};
+                        return
+                    end
+                end
+                for i=1:obj.NumCantileverTips
+                    if isequal(Name,obj.CantileverTips{i}.Name)
+                        OutClass = obj.CantileverTips{i};
+                        return
+                    end
+                end
+            end
+            
+        end
+        
     end
     methods(Static)
         % Static auxilary methods mainly for tip deconvolution (code by Orestis Andriotis)
@@ -7167,7 +7599,12 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 'PlotTime',0,...
                 'UseCorrectedSensitivity',0,...
                 'vDeflectionUnitIndex',1,...
-                'ExtendedInformation',1);
+                'ExtendedInformation',1,...
+                'UseSnapped',1,...
+                'PlotGroup',0,...
+                'IgnoreZeros',1,...
+                'JustChannel1',0,...
+                'JustChannel2',0);
             
         end
         

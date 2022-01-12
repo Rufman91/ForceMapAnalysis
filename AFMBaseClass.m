@@ -618,13 +618,15 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle
             
             SegmentNames = unique({obj.Segment.Name});
             set(0,'DefaultFigureVisible','off');
-            
+            f = figure;
+            I = imshow(Data);
+            Parent = I.Parent;
             for i=1:length(SegmentNames)
                 k = 1;
                 for j=1:length(obj.Segment)
                     if isequal(SegmentNames{i},obj.Segment(j).Name)
-                        imshow(Data)
-                        Line = drawpolyline('Position',obj.Segment(j).ROIObject.Position);
+                        gca = Parent;
+                        Line = drawpolyline('Position',obj.Segment(j).ROIObject.Position,'Parent',Parent);
                         Mask = Line.createMask;
                         if PixelDilation
                             StrEl = strel('Disk',PixelDilation,0);
@@ -637,7 +639,7 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle
                     end
                 end
             end
-            close gcf
+            close(f)
             set(0,'DefaultFigureVisible','on');
             
             for i=1:length(OutCell)
