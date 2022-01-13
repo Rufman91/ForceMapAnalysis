@@ -1814,6 +1814,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 yPullingLength(yPullingLength==0)=nan; % Replace zero entries by nan´s
                 ySnapInLength=obj.FM{IdxArray(ff)}.SnapInLength;
                 ySnapInLength(ySnapInLength==0)=nan; % Replace zero entries by nan´s
+                FMID=obj.FM{ff}.ID;
                 %% Concatenate arrays
                 % FCs of each FM in seperate column
                 yAdhMaxAppAll(:,ff)=yAdhMaxApp'.*obj.FM{ff}.SMFSFlag.Selected';
@@ -1833,6 +1834,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                     ConcateArray1(row_start:row_end,:)=yAdhMaxApp'; % Append the new data into the concatenated vector
                     ConcateArray1(row_start:row_end,:)=ConcateArray1(row_start:row_end,:).*obj.FM{ff}.SMFSFlag.Selected'; % Set non-selected force curves from the concatenated arrays to zero
                     ConcateArray1(ConcateArray1==0)=nan; % Replace zero entries by nan´s
+                    FMIDArray(row_start:row_end,:)={FMID}; % Allocate the FM ID to each row           
                     % Save the number of force curves per force map 
                     FCperFM(ff,1)=row_end;
                 else                   
@@ -2513,6 +2515,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             obj.SMFSResults{jj,1}.Parameters(1).Linker=LinkerValue;
             obj.SMFSResults{jj,1}.Concatenate(1).FMIndex=IdxArray;
             obj.SMFSResults{jj,1}.Concatenate(1).FCperFM=FCperFM;
+            obj.SMFSResults{jj,1}.Concatenate(1).FMID=FMIDArray;
             obj.SMFSResults{jj,1}.Results(1).AdhMaxAppMean=AdhMaxAppSelMean;
             obj.SMFSResults{jj,1}.Results(1).AdhMaxAppMean=AdhMaxAppSelMean;
             obj.SMFSResults{jj,1}.Results(1).AdhMaxAppStd=AdhMaxAppSelStd;
@@ -2880,7 +2883,6 @@ g2 = repmat({'Second'},FCperFM,1);
 g = [g1; g2];
 
 PlotData=obj.SMFSResults{jj}.Data.AdhMaxAppConcat
-PlotData(PlotData==0)=nan % Replace zeros by NAN
 
           boxplot(PlotData,g)
           
@@ -2898,7 +2900,57 @@ PlotData(PlotData==0)=nan % Replace zeros by NAN
                             ti.Units='normalized'; % Set units to 'normalized'
                             ti.Position=[0.5,1]; % Position the subplot title within the subplot                     
                             
-                    
+                   
+                             % Figure 3
+                h_fig=figure(3);
+                h_fig.Color='white'; % changes the background color of the figure
+                h_fig.Units='normalized'; % Defines the units
+                h_fig.OuterPosition=[0 0 1 1];% changes the size of the to the whole screen
+                h_fig.PaperOrientation='landscape';
+                h_fig.Name='Concatenated FM Data Boxplot';
+                    %% Plot loop                   
+                    for jj=1:length(obj.SMFSResults)
+                        % Allocate saved parameters
+                        if obj.SMFSResults{jj}.Parameters.ExtendVelocity==0
+                            ExtVelocityValueStr='All';
+                        else
+                            ExtVelocityValueStr=num2str(obj.SMFSResults{jj}.Parameters.ExtendVelocity);
+                        end
+                        if obj.SMFSResults{jj}.Parameters.RetractVelocity==0
+                            RetVelocityValueStr='All';
+                        else
+                            RetVelocityValueStr=num2str(obj.SMFSResults{jj}.Parameters.RetractVelocity);
+                        end
+                        if obj.SMFSResults{jj}.Parameters.HoldingTime==-1
+                            HoldingTimeValueStr='All';
+                        else
+                            HoldingTimeValueStr=num2str(obj.SMFSResults{jj}.Parameters.HoldingTime);
+                        end            
+                        SubstrateValue=obj.SMFSResults{jj}.Parameters.Substrate;
+                        EnvCondValue=obj.SMFSResults{jj}.Parameters.Medium;
+                        ChipCantValue=obj.SMFSResults{jj}.Parameters.ChipCantilever;
+                        ChipboxValue=obj.SMFSResults{jj}.Parameters.Chipbox;
+                        LinkerValue=obj.SMFSResults{jj}.Parameters.Linker;
+                    end
+                        % Define variables
+                          PlotTitle=strcat(obj.ExperimentName,{' '},ExtVelocityValueStr,{' '},RetVelocityValueStr,{' '},HoldingTimeValueStr,{' '},SubstrateValue,{' '},EnvCondValue,{' '},ChipCantValue,{' '},ChipboxValue,{' '},LinkerValue);
+                          PlotTitle=char(PlotTitle);                   
+                            ax=nexttile;
+                            ax.XLim = [XMin XMax];
+                            ax.YLim = [YMin YMax];                             
+                            %ax.YLim = [obj.MinPullingLength obj.MaxPullingLength];
+                            hold on
+                            grid on                           
+                            boxplot(obj.SMFSResults{jj}.Data.AdhMaxApp,obj.SMFSResults{jj}.Concatenate.FMID);                       
+                            % Title for each Subplot
+                            %ti=title(sprintf('%i',jj),'Color','k');
+                            ti=title(num2str(PlotTitle));
+                            ti.Units='normalized'; % Set units to 'normalized'
+                            ti.Position=[0.5,1]; % Position the subplot title within the subplot                     
+                                    
+              
+                            
+                            
 %                 %% Save figures
 %                 %%% Define the name for the figure title
 %                 partname=sprintf('-p%d',ii);
