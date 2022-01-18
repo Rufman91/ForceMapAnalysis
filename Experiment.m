@@ -1363,8 +1363,8 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             cd(currpath);
             
             % force map loop
-            for ii=1:obj.NumForceMaps   
-            % for ii=1:2 % debugging
+            %for ii=1:obj.NumForceMaps   
+             for ii=1:33 % debugging
                 if isequal(KeepFlagged,'Yes') && obj.SMFSFlag.Preprocessed(ii) == 1
                     continue
                 end
@@ -1406,8 +1406,8 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             
             
             % Loop over the imported force maps
-            for ii=1:obj.NumForceMaps
-             %for ii=1:43 % Debugging
+            %for ii=1:obj.NumForceMaps
+             for ii=1:33 % Debugging
                 if isequal(KeepFlagged,'Yes') && obj.SMFSFlag.Preprocessed(ii) == 1
                     continue
                 end   
@@ -1477,8 +1477,8 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             set(groot,'defaultFigureVisible','off')      
             % set(groot,'defaultFigureVisible','on') 
             %% Loop
-            for hh=1:obj.NumForceMaps
-            %for hh=4 % Debugging     
+            %for hh=1:obj.NumForceMaps
+            for hh=1:33 % Debugging     
                sprintf('Force Map No. %d of %d',hh,obj.NumForceMaps) % Gives current Force Map Position   
                % Print force curves containing label for the pulling length
                % and colored area for the adhesion energy                              
@@ -1710,6 +1710,337 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             end
         end
                        
+        
+        function SMFS_results_structure(obj,ExtVelocityValue,RetVelocityValue,HoldingTimeValue,SubstrateValue,EnvCondValue,ChipCantValue,ChipboxValue,LinkerValue)
+            % I all velocities should be selected use input variable: 0
+            
+            % Output time and date for the dairy
+            datetime('now')
+            % Write to log file
+            obj.write_to_log_file('Function: SMFS_results_structure','Trial15','start')
+            obj.write_to_log_file('Extend Velocity',num2str(ExtVelocityValue))
+            obj.write_to_log_file('Retention Velocity',num2str(RetVelocityValue))
+            obj.write_to_log_file('Holding Time',num2str(HoldingTimeValue))
+            obj.write_to_log_file('Substrate',SubstrateValue)
+            obj.write_to_log_file('Linker',EnvCondValue)
+            obj.write_to_log_file('Chip',ChipCantValue)
+            obj.write_to_log_file('Chipbox',ChipboxValue)
+            obj.write_to_log_file('Linker',LinkerValue)
+            obj.write_to_log_file('','','end')
+            % Define variables
+            jj=1;
+            IdxArray=[];
+           % for ii=1:obj.NumForceMaps
+            %% Debugging
+            for ii=1:17 % for debugging
+                 sprintf('Force map No. %d',ii) % Gives current force map
+                % Parameters
+                if ((obj.FM{ii}.ExtendVelocity==ExtVelocityValue || ExtVelocityValue==0) ...
+                        && (obj.FM{ii}.RetractVelocity==RetVelocityValue || RetVelocityValue==0) ...
+                        && (obj.FM{ii}.HoldingTime==HoldingTimeValue || HoldingTimeValue==-1) ...
+                        && (strcmpi(obj.FM{ii}.Substrate,SubstrateValue) || strcmpi(SubstrateValue,'All')) ...
+                        && (strcmpi(obj.FM{ii}.EnvCond,EnvCondValue) || strcmpi(EnvCondValue,'All')) ...
+                        && (strcmpi(obj.FM{ii}.ChipCant,ChipCantValue) || strcmpi(ChipCantValue,'All')) ...
+                        && (strcmpi(obj.FM{ii}.Chipbox,ChipboxValue) || strcmpi(ChipboxValue,'All')) ...
+                        && (strcmpi(obj.FM{ii}.Linker,LinkerValue) || strcmpi(LinkerValue,'All')))
+                    % Define variables for the if condition
+                    IdxArray(jj,1)=ii;
+                    % Adjust variable
+                    jj=jj+1;
+                end     
+            end
+            % If condition to handle an empty index array
+            if isempty(IdxArray)
+                return
+            else    
+            end
+            % Define variables
+            ConcateArray1=zeros(1,1);
+            ConcateArray2=zeros(1,1);
+            ConcateArray3=zeros(1,1);
+            ConcateArray4=zeros(1,1);
+            ConcateArray5=zeros(1,1);
+            ConcateArray6=zeros(1,1);
+            ConcateArray7=zeros(1,1);                      
+            % Loop
+            for ff=1:length(IdxArray)
+            %% Debugging
+            %for ff=6 % for debugging
+             sprintf('Force map No. %d',ff) % Gives current Force curve
+                % Allocate data
+                yAdhMaxApp=obj.FM{IdxArray(ff)}.AdhForceMaxRet;
+                yAdhMaxApp(yAdhMaxApp==0)=nan; % Replace zero entries by nan´s
+                yAdhMaxRet=obj.FM{IdxArray(ff)}.AdhForceMaxApp;
+                yAdhMaxRet(yAdhMaxRet==0)=nan; % Replace zero entries by nan´s
+                yAdhUnbinding=obj.FM{IdxArray(ff)}.AdhForceUnbinding;
+                yAdhUnbinding(yAdhUnbinding==0)=nan; % Replace zero entries by nan´s
+                yAdhEneApp=obj.FM{IdxArray(ff)}.AppAdhEnergy_IdxMethod;
+                yAdhEneApp(yAdhEneApp==0)=nan; % Replace zero entries by nan´s
+                yAdhEneRet=obj.FM{IdxArray(ff)}.RetAdhEnergy_IdxMethod;
+                yAdhEneRet(yAdhEneRet==0)=nan; % Replace zero entries by nan´s
+                yPullingLength=obj.FM{IdxArray(ff)}.PullingLength;
+                yPullingLength(yPullingLength==0)=nan; % Replace zero entries by nan´s
+                ySnapInLength=obj.FM{IdxArray(ff)}.SnapInLength;
+                ySnapInLength(ySnapInLength==0)=nan; % Replace zero entries by nan´s
+                FMID=obj.FM{ff}.ID;
+                FMExtVelocity=obj.FM{IdxArray(ff)}.ExtendVelocity;
+                FMRetVelocity=obj.FM{IdxArray(ff)}.RetractVelocity;
+                FMHoldingTime=obj.FM{IdxArray(ff)}.HoldingTime;
+                FMSubstrate=obj.FM{IdxArray(ff)}.Substrate;
+                FMEnvCond=obj.FM{IdxArray(ff)}.EnvCond;
+                FMChipCant=obj.FM{IdxArray(ff)}.ChipCant;
+                FMChipbox=obj.FM{IdxArray(ff)}.Chipbox;
+                FMLinker=obj.FM{IdxArray(ff)}.Linker;
+                FMDate=obj.FM{IdxArray(ff)}.Date;
+                FMTime=obj.FM{IdxArray(ff)}.Time;
+          
+                %% Concatenate arrays
+                % FCs of each FM in seperate column
+                yAdhMaxAppAll(:,ff)=yAdhMaxApp'.*obj.FM{IdxArray(ff)}.SMFSFlag.Selected';
+                yAdhMaxRetAll(:,ff)=yAdhMaxRet'.*obj.FM{IdxArray(ff)}.SMFSFlag.Selected';
+                yAdhUnbindingAll(:,ff)=yAdhUnbinding'.*obj.FM{IdxArray(ff)}.SMFSFlag.Selected';
+                yAdhEneAppAll(:,ff)=yAdhEneApp'.*obj.FM{IdxArray(ff)}.SMFSFlag.Selected';
+                yAdhEneRetAll(:,ff)=yAdhEneRet'.*obj.FM{IdxArray(ff)}.SMFSFlag.Selected';
+                yPullingLengthAll(:,ff)=yPullingLength'.*obj.FM{IdxArray(ff)}.SMFSFlag.Selected';
+                ySnapInLengthAll(:,ff)=ySnapInLength'.*obj.FM{IdxArray(ff)}.SMFSFlag.Selected';            
+                % All FCs of all FM in one column
+                if ~isempty(yAdhMaxApp)
+                    % Determine the number of rows per force map
+                    ArrayLength=length(yAdhMaxApp); % Define the length of the array
+                    row_start = ((ff-1) * ArrayLength) + 1; % Define the appropriate row start to append the new data
+                    row_end   = ff * ArrayLength; % Define the appropriate row end to append the new data
+                    % Concatenated data
+                    ConcateArray1(row_start:row_end,:)=yAdhMaxApp'; % Append the new data into the concatenated vector
+                    ConcateArray1(row_start:row_end,:)=ConcateArray1(row_start:row_end,:).*obj.FM{ff}.SMFSFlag.Selected'; % Set non-selected force curves from the concatenated arrays to zero
+                    ConcateArray1(ConcateArray1==0)=nan; % Replace zero entries by nan´s
+                    FMIDArray(row_start:row_end,:)={FMID}; % Allocate the FM ID to each row 
+                      FMExtVelocityArray(row_start:row_end,:)=FMExtVelocity;
+                      FMRetVelocityArray(row_start:row_end,:)=FMRetVelocity;
+                      FMHoldingTimeArray(row_start:row_end,:)=FMHoldingTime;
+                
+             
+             FMSubstrateArray(row_start:row_end,:)={FMSubstrate};
+                    FMEnvCondArray(row_start:row_end,:)={FMEnvCond};
+                    FMChipCantArray(row_start:row_end,:)={FMChipCant};
+                    FMChipboxArray(row_start:row_end,:)={FMChipbox};
+                    FMLinkerArray(row_start:row_end,:)={FMLinker};
+                    FMDateArray(row_start:row_end,:)={FMDate};
+                    FMTimeArray(row_start:row_end,:)={FMTime};
+                    % Save the number of force curves per force map 
+                    FCperFM(ff,1)=row_end;
+                else                   
+                end                
+                if ~isempty(yAdhMaxRet)
+                    % Determine the number of rows per force map
+                    ArrayLength=length(yAdhMaxRet); % Define the length of the array
+                    row_start = ((ff-1) * ArrayLength) + 1; % Define the appropriate row start to append the new data
+                    row_end   = ff * ArrayLength; % Define the appropriate row end to append the new data
+                    % Concatenated data
+                    ConcateArray2(row_start:row_end,:)=yAdhMaxRet'; % Append the new data into the concatenated vector
+                    ConcateArray2(row_start:row_end,:)=ConcateArray2(row_start:row_end,:).*obj.FM{ff}.SMFSFlag.Selected'; % Set non-selected force curves from the concatenated arrays to zero
+                    ConcateArray2(ConcateArray2==0)=nan; % Replace zero entries by nan´s
+                else                  
+                end
+                if ~isempty(yAdhUnbinding)
+                    % Determine the number of rows per force map
+                    ArrayLength=length(yAdhUnbinding); % Define the length of the array
+                    row_start = ((ff-1) * ArrayLength) + 1; % Define the appropriate row start to append the new data
+                    row_end   = ff * ArrayLength; % Define the appropriate row end to append the new data
+                    % Concatenated data
+                    ConcateArray3(row_start:row_end,:)=yAdhUnbinding'; % Append the new data into the concatenated vector
+                    ConcateArray3(row_start:row_end,:)=ConcateArray3(row_start:row_end,:).*obj.FM{ff}.SMFSFlag.Selected'; % Set non-selected force curves from the concatenated arrays to zero
+                    ConcateArray3(ConcateArray3==0)=nan; % Replace zero entries by nan´s
+                else                  
+                end
+                if ~isempty(yAdhEneApp)
+                    % Determine the number of rows per force map
+                    ArrayLength=length(yAdhEneApp); % Define the length of the array
+                    row_start = ((ff-1) * ArrayLength) + 1; % Define the appropriate row start to append the new data
+                    row_end   = ff * ArrayLength; % Define the appropriate row end to append the new data
+                    % Concatenated data
+                    ConcateArray4(row_start:row_end,:)=yAdhEneApp'; % Append the new data into the concatenated vector
+                    ConcateArray4(row_start:row_end,:)=ConcateArray4(row_start:row_end,:).*obj.FM{ff}.SMFSFlag.Selected'; % Set non-selected force curves from the concatenated arrays to zero
+                    ConcateArray4(ConcateArray4==0)=nan; % Replace zero entries by nan´s
+                else                  
+                end
+                if ~isempty(yAdhEneRet)
+                    % Determine the number of rows per force map
+                    ArrayLength=length(yAdhEneRet); % Define the length of the array
+                    row_start = ((ff-1) * ArrayLength) + 1; % Define the appropriate row start to append the new data
+                    row_end   = ff * ArrayLength; % Define the appropriate row end to append the new data
+                    % Concatenated data
+                    ConcateArray5(row_start:row_end,:)=yAdhEneRet'; % Append the new data into the concatenated vector
+                    ConcateArray5(row_start:row_end,:)=ConcateArray5(row_start:row_end,:).*obj.FM{ff}.SMFSFlag.Selected'; % Set non-selected force curves from the concatenated arrays to zero
+                    ConcateArray5(ConcateArray5==0)=nan; % Replace zero entries by nan´s
+                else                  
+                end
+                if ~isempty(yPullingLength)
+                    % Determine the number of rows per force map
+                    ArrayLength=length(yPullingLength); % Define the length of the array
+                    row_start = ((ff-1) * ArrayLength) + 1; % Define the appropriate row start to append the new data
+                    row_end   = ff * ArrayLength; % Define the appropriate row end to append the new data
+                    % Concatenated data
+                    ConcateArray6(row_start:row_end,:)=yPullingLength'; % Append the new data into the concatenated vector
+                    ConcateArray6(row_start:row_end,:)=ConcateArray6(row_start:row_end,:).*obj.FM{ff}.SMFSFlag.Selected'; % Set non-selected force curves from the concatenated arrays to zero
+                    ConcateArray6(ConcateArray6==0)=nan; % Replace zero entries by nan´s
+                else                  
+                end
+                if ~isempty(ySnapInLength)
+                    % Determine the number of rows per force map
+                    ArrayLength=length(ySnapInLength); % Define the length of the array
+                    row_start = ((ff-1) * ArrayLength) + 1; % Define the appropriate row start to append the new data
+                    row_end   = ff * ArrayLength; % Define the appropriate row end to append the new data
+                    % Concatenated data
+                    ConcateArray7(row_start:row_end,:)=ySnapInLength'; % Append the new data into the concatenated vector
+                    ConcateArray7(row_start:row_end,:)=ConcateArray7(row_start:row_end,:).*obj.FM{ff}.SMFSFlag.Selected'; % Set non-selected force curves from the concatenated arrays to zero
+                    ConcateArray7(ConcateArray7==0)=nan; % Replace zero entries by nan´s
+                else                  
+                end  
+                
+                % Statistics
+                AdhMaxAppSelMean=mean(ConcateArray1,'omitnan');
+                AdhMaxAppSelStd=std(ConcateArray1,'omitnan');
+                AdhMaxRetSelMean=mean(ConcateArray2,'omitnan');
+                AdhMaxRetSelStd=std(ConcateArray2,'omitnan');
+                AdhMaxRetSelUnbindingMean=mean(ConcateArray3,'omitnan');
+                AdhMaxRetSelUnbindingStd=std(ConcateArray3,'omitnan');
+                AdhEneAppSelMean=mean(ConcateArray4,'omitnan');
+                AdhEneAppSelStd=std(ConcateArray4,'omitnan');
+                AdhEneRetSelMean=mean(ConcateArray5,'omitnan');
+                AdhEneRetSelStd=std(ConcateArray5,'omitnan');
+                PullLengthMedian=median(ConcateArray6,'omitnan');
+                PullLengthMin=min(ConcateArray6,[],'omitnan');
+                PullLengthMax=max(ConcateArray6,[],'omitnan');
+                SnapInMedian=median(ConcateArray7,'omitnan');
+                SnapInMin=min(ConcateArray7,[],'omitnan');
+                SnapInMax=max(ConcateArray7,[],'omitnan');
+            end
+            
+            %% SMFS Results structure 
+            % Check entry
+            if ~isempty(obj.SMFSResults)
+                jj=length(obj.SMFSResults)+1;
+            else
+                jj=1;
+            end
+            % Debugging
+            % jj=4
+            % Append the new data into the concatenated array
+            yAdhMaxAppAll(:,ff)=yAdhMaxApp';
+                yAdhMaxRetAll(:,ff)=yAdhMaxRet';
+                yAdhUnbindingAll(:,ff)=yAdhUnbinding';
+                yAdhEneAppAll(:,ff)=yAdhEneApp';
+                yAdhEneRetAll(:,ff)=yAdhEneRet';
+                yPullingLengthAll(:,ff)=yPullingLength';
+                ySnapInLengthAll(:,ff)=ySnapInLength';               
+            % Allocate data    
+            obj.SMFSResults{jj,1}.Data(1).AdhMaxApp=yAdhMaxAppAll;
+            obj.SMFSResults{jj,1}.Data(1).AdhMaxRet=yAdhMaxRetAll;
+            obj.SMFSResults{jj,1}.Data(1).AdhUnbinding=yAdhUnbindingAll;
+            obj.SMFSResults{jj,1}.Data(1).AdhEneApp=yAdhEneAppAll;
+            obj.SMFSResults{jj,1}.Data(1).AdhEneRet=yAdhEneRetAll;
+            obj.SMFSResults{jj,1}.Data(1).yPullingLength=yPullingLengthAll;
+            obj.SMFSResults{jj,1}.Data(1).ySnapInLength=ySnapInLengthAll;
+            obj.SMFSResults{jj,1}.Data(1).AdhMaxAppConcat=ConcateArray1;
+            obj.SMFSResults{jj,1}.Data(1).AdhMaxRetConcat= ConcateArray2;
+            obj.SMFSResults{jj,1}.Data(1).AdhUnbindingConcat=ConcateArray3;
+            obj.SMFSResults{jj,1}.Data(1).AdhEneAppConcat=ConcateArray4;
+            obj.SMFSResults{jj,1}.Data(1).AdhEneRetConcat=ConcateArray5;
+            obj.SMFSResults{jj,1}.Data(1).yPullingLengthConcat=ConcateArray6;
+            obj.SMFSResults{jj,1}.Data(1).ySnapInLengthConcat=ConcateArray7;
+            obj.SMFSResults{jj,1}.Parameters(1).ExtendVelocity=ExtVelocityValue;
+            obj.SMFSResults{jj,1}.Parameters(1).RetractVelocity=RetVelocityValue;
+            obj.SMFSResults{jj,1}.Parameters(1).HoldingTime=HoldingTimeValue;
+            obj.SMFSResults{jj,1}.Parameters(1).Substrate=SubstrateValue;
+            obj.SMFSResults{jj,1}.Parameters(1).Medium=EnvCondValue;
+            obj.SMFSResults{jj,1}.Parameters(1).ChipCantilever=ChipCantValue;
+            obj.SMFSResults{jj,1}.Parameters(1).Chipbox=ChipboxValue;
+            obj.SMFSResults{jj,1}.Parameters(1).Linker=LinkerValue;
+            obj.SMFSResults{jj,1}.Concatenate(1).FMIndex=IdxArray;
+            obj.SMFSResults{jj,1}.Concatenate(1).FCperFM=FCperFM;
+            obj.SMFSResults{jj,1}.Concatenate(1).FMID=FMIDArray;
+            obj.SMFSResults{jj,1}.Concatenate(1).FMExtVelocity=FMExtVelocityArray;
+            obj.SMFSResults{jj,1}.Concatenate(1).FMRetVelocity=FMRetVelocityArray;
+            obj.SMFSResults{jj,1}.Concatenate(1).FMHoldingTime=FMHoldingTimeArray;                   
+            obj.SMFSResults{jj,1}.Concatenate(1).FMSubstrate=FMSubstrateArray;
+            obj.SMFSResults{jj,1}.Concatenate(1).FMEnvCond=FMEnvCondArray;
+            obj.SMFSResults{jj,1}.Concatenate(1).FMChipCant=FMChipCantArray;
+            obj.SMFSResults{jj,1}.Concatenate(1).FMChipbox=FMChipboxArray;
+            obj.SMFSResults{jj,1}.Concatenate(1).FMLinker=FMLinkerArray;
+            obj.SMFSResults{jj,1}.Concatenate(1).FMDate=FMDateArray;
+            obj.SMFSResults{jj,1}.Concatenate(1).FMTime=FMTimeArray;            
+            obj.SMFSResults{jj,1}.Results(1).AdhMaxAppMean=AdhMaxAppSelMean;
+            obj.SMFSResults{jj,1}.Results(1).AdhMaxAppMean=AdhMaxAppSelMean;
+            obj.SMFSResults{jj,1}.Results(1).AdhMaxAppStd=AdhMaxAppSelStd;
+            obj.SMFSResults{jj,1}.Results(1).AdhMaxRetMean=AdhMaxRetSelMean;
+            obj.SMFSResults{jj,1}.Results(1).AdhMaxRetStd=AdhMaxRetSelStd;
+            obj.SMFSResults{jj,1}.Results(1).AdhMaxRetUnbindingMean=AdhMaxRetSelUnbindingMean;
+            obj.SMFSResults{jj,1}.Results(1).AdhMaxRetUnbindingStd=AdhMaxRetSelUnbindingStd;
+            obj.SMFSResults{jj,1}.Results(1).AdhEneAppMean=AdhEneAppSelMean;
+            obj.SMFSResults{jj,1}.Results(1).AdhEneAppStd=AdhEneAppSelStd;
+            obj.SMFSResults{jj,1}.Results(1).AdhEneRetMean=AdhEneRetSelMean;
+            obj.SMFSResults{jj,1}.Results(1).AdhEneRetStd=AdhEneRetSelStd;
+            obj.SMFSResults{jj,1}.Results(1).PullLengthMedian=PullLengthMedian;
+            obj.SMFSResults{jj,1}.Results(1).PullLengthMin=PullLengthMin;
+            obj.SMFSResults{jj,1}.Results(1).PullLengthMax=PullLengthMax;
+            obj.SMFSResults{jj,1}.Results(1).SnapInMedian=SnapInMedian;
+            obj.SMFSResults{jj,1}.Results(1).SnapInMin=SnapInMin;
+            obj.SMFSResults{jj,1}.Results(1).SnapInMax=SnapInMax;
+                       
+            %% House keeping
+            close all
+        end
+        
+        
+        function SMFS_results_gramm(obj)
+            % I all velocities should be selected use input variable: 0
+            
+            % Output time and date for the dairy
+            datetime('now')
+            
+            Res=[1 1 2560 1440]; % Define the figure resolution
+            % Define variables
+            ii=5;
+            Plottitle='Boxplots';
+            LegendxAxis='Extend velocity';
+            LegendyAxis='Pulling length (m)';
+            LegendColor='Date';         
+            % Allocate data
+            xData=obj.SMFSResults{ii}.Concatenate.FMExtVelocity;
+            yData=obj.SMFSResults{ii}.Data.yPullingLengthConcat;
+            ColorData=obj.SMFSResults{ii}.Concatenate.FMRetVelocity;   
+            LightnessData=obj.SMFSResults{ii}.Concatenate.FMEnvCond;
+            SubdivideData=obj.SMFSResults{ii}.Concatenate.FMHoldingTime;         
+            
+            %% Gramm object 1
+            % Figure
+                h_fig=figure(ii);
+                h_fig.Color='white'; % changes the background color of the figure
+                h_fig.Units='pixel'; % Defines the units
+                h_fig.OuterPosition=Res;
+                h_fig.PaperOrientation='landscape';
+      %          h_fig.Name=figname;
+            % Create a gramm object
+            g1=gramm('x',xData,'y',yData,...
+                'color',ColorData);            
+            % Subdivide the data in subplots horizontally by region of origin
+            g1.facet_grid([],SubdivideData)
+            % Define the visualization of the data in the plot Plot raw data as points
+            %g1.geom_point() % Plot raw data as points
+            %g1.geom_jitter() % Plot raw data as jitter
+            % Plot data in boxplots
+            g1.stat_boxplot('notch',true)                       
+            % Set appropriate names for legends
+            g1.set_names('x',LegendxAxis,'y',LegendyAxis,'color',LegendColor)
+            %Set figure title
+            g1.set_title(Plottitle)           
+            % The actual plotting
+            g1.draw()
+            
+            
+            
+            
+        end
         
    
         function SMFS_analysis_dashboard(obj,ExtVelocityValue,RetVelocityValue,HoldingTimeValue,SubstrateValue,EnvCondValue,ChipCantValue,ChipboxValue,LinkerValue)
@@ -3134,20 +3465,16 @@ PlotData=obj.SMFSResults{jj}.Data.AdhMaxAppConcat
             
             % Figure visibility
             %set(groot,'defaultFigureVisible','off')      
-             set(groot,'defaultFigureVisible','on')  
-            
-             
-             for ii=1:obj.NumForceMaps
-          %  for ii=135
+      %       set(groot,'defaultFigureVisible','on')  
 
-               obj.FM{ii}.fc_TipHeight_calculation
-          %    obj.FM{ii}.initialize_flags
-          %
-          
+           %  for ii=1:obj.NumForceMaps
+            for ii=1:33
+
+               obj.FM{ii}.fc_testing
+          %    obj.FM{ii}.initialize_flags       
             
                  % obj.write_to_log_file('Test','variable ii','start')
-                 % aa=33;
-                  
+                 % aa=33;                
                  % obj.write_to_log_file('','','end')
             end                    
             

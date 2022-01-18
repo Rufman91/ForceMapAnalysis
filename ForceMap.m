@@ -2114,8 +2114,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             % Figure loop
             for jj=1:NFigures
                 %% Plot condition                
-                %if  ~obj.DebugFlag.Plot % Suppress plotting
-                if  obj.DebugFlag.Plot % Allow plotting
+                if  ~obj.DebugFlag.Plot % Suppress plotting
+                %if  obj.DebugFlag.Plot % Allow plotting
                     continue
                 end
                 % Figure properties
@@ -2271,8 +2271,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             end
             % Figure loop
             for jj=1:NFigures
-               % if  ~obj.DebugFlag.Plot % Suppress plotting
-                if  obj.DebugFlag.Plot % Allow plotting
+                if  ~obj.DebugFlag.Plot % Suppress plotting
+                %if  obj.DebugFlag.Plot % Allow plotting
                     continue
                 end
                 % Figure properties
@@ -5502,9 +5502,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             % For loop
             for jj=1:obj.NCurves
             %% Debugging
-            %for jj=54 % for debugging
-              e.FM{463, 1}
-              obj.LinFitCoeffa
+            %for jj=33 % for debugging
+              obj.SMFSFlag.Selected=ones(1,obj.NCurves);
             
             end
             
