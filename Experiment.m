@@ -1363,8 +1363,8 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             cd(currpath);
             
             % force map loop
-            %for ii=1:obj.NumForceMaps   
-             for ii=1:33 % debugging
+            for ii=1:obj.NumForceMaps   
+            % for ii=1:33 % debugging
                 if isequal(KeepFlagged,'Yes') && obj.SMFSFlag.Preprocessed(ii) == 1
                     continue
                 end
@@ -1406,8 +1406,8 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             
             
             % Loop over the imported force maps
-            %for ii=1:obj.NumForceMaps
-             for ii=1:33 % Debugging
+            for ii=1:obj.NumForceMaps
+            % for ii=1:33 % Debugging
                 if isequal(KeepFlagged,'Yes') && obj.SMFSFlag.Preprocessed(ii) == 1
                     continue
                 end   
@@ -1460,7 +1460,6 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                sprintf('Force Map No. %d of %d',ii,obj.NumForceMaps) % Gives current Force Map Position
                % Run the chosen functions
             %   obj.FM{ii}.fc_visual_selection_all(XMin,XMax,YMin,YMax);  
-            %   obj.FM{ii}.fc_visual_selection_flag_Selected(XMin,XMax,YMin,YMax,NumFcMax);
                 obj.FM{ii}.fc_visual_selection_flag_Uncorrupt(XMin,XMax,YMin,YMax,NumFcMax,Res)
                %obj.save_experiment;        % Save immediately after each force curve
             end    
@@ -1477,8 +1476,8 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             set(groot,'defaultFigureVisible','off')      
             % set(groot,'defaultFigureVisible','on') 
             %% Loop
-            %for hh=1:obj.NumForceMaps
-            for hh=1:33 % Debugging     
+            for hh=1:obj.NumForceMaps
+            %for hh=1:33 % Debugging     
                sprintf('Force Map No. %d of %d',hh,obj.NumForceMaps) % Gives current Force Map Position   
                % Print force curves containing label for the pulling length
                % and colored area for the adhesion energy                              
@@ -1730,9 +1729,9 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             % Define variables
             jj=1;
             IdxArray=[];
-           % for ii=1:obj.NumForceMaps
+            for ii=1:obj.NumForceMaps
             %% Debugging
-            for ii=1:17 % for debugging
+            %for ii=1:17 % for debugging
                  sprintf('Force map No. %d',ii) % Gives current force map
                 % Parameters
                 if ((obj.FM{ii}.ExtendVelocity==ExtVelocityValue || ExtVelocityValue==0) ...
@@ -2000,7 +1999,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             
             Res=[1 1 2560 1440]; % Define the figure resolution
             % Define variables
-            ii=5;
+            ii=1;
             Plottitle='Boxplots';
             LegendxAxis='Extend velocity';
             LegendyAxis='Pulling length (m)';
@@ -3467,15 +3466,15 @@ PlotData=obj.SMFSResults{jj}.Data.AdhMaxAppConcat
             %set(groot,'defaultFigureVisible','off')      
       %       set(groot,'defaultFigureVisible','on')  
 
-           %  for ii=1:obj.NumForceMaps
-            for ii=1:33
+             for ii=1:obj.NumForceMaps
+           % for ii=1:33
 
-               obj.FM{ii}.fc_testing
+             %  obj.FM{ii}.fc_testing
           %    obj.FM{ii}.initialize_flags       
-            
-                 % obj.write_to_log_file('Test','variable ii','start')
-                 % aa=33;                
-                 % obj.write_to_log_file('','','end')
+             obj.FM{ii}.fc_snap_in_length_MAD
+             
+             
+             
             end                    
             
         end

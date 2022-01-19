@@ -2458,18 +2458,23 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
      
         function fc_snap_in_length_MAD(obj)
             % Fct determines the snap-in length using a moving median absolute deviation
+            
+            % Preallocate
+            obj.SnapInIdx=zeros(1,obj.NCurves);
+            obj.SnapInLength=zeros(1,obj.NCurves);
             % Define variables
             WindowBeforePercentage=0.1;
             WindowAfterPercentage=0.1;
             DataShareStartApp=0.65; 
             DataShareEndApp=0.15;
             LimitFactor=1.5;
-            % For loop
+            %% Loop over all force curves
             for jj=1:obj.NCurves
-            %% Debugging
+            % Debugging
             %for jj=7 % for debugging
-                 sprintf('Force curve No. %d',jj) % Gives current
+               %  sprintf('Force curve No. %d',jj) % Gives current
                 % Force curve for debugging
+                %% Force curve selection criteria
                 if ~obj.SMFSFlag.Uncorrupt(jj) || ~obj.SMFSFlag.AppMinCrit(jj)     % Exclude corrupted force curves or force curves showing no snap-in from the analysis
                     continue
                 end
@@ -2499,7 +2504,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 obj.SMFSFlag.SnapIn(jj)=1;
                 % Allocate data
                 obj.SnapInIdx(jj)=length(yApp)-PeakIdx; % Correct for the data the peak index is based on by substracting from the number of data points
-                obj.SnapInLength(jj)=abs(xApp(obj.SnapInIdx(jj))); % Corresponding x-value of the index
+                obj.SnapInLength(jj)=abs(xApp(obj.SnapInIdx(jj))); % Corresponding x-value of the index               
                 %% Plot condition
                 if  ~obj.DebugFlag.Plot % Suppress plotting
                 %if  obj.DebugFlag.Plot % Allow plotting
@@ -2512,7 +2517,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 % Classification criteria
                 figname=strcat(obj.Date,{'_'},obj.Time,{'_'},obj.ID,{'_'},obj.Substrate,{'_'},obj.EnvCond,{'_'},obj.Linker,{'_'},obj.Chipbox,{'_'},obj.ChipCant,{'_'},ExtendVelocityConvert,{'_'},RetractVelocityConvert,{'_'},HoldingTimeConvert);
                 figname=char(figname);
-                % Figure
+                %% Figure
                 h_fig=figure(jj);
                 h_fig.Color='white'; % changes the background color of the figure
                 h_fig.Units='normalized'; % Defines the units
@@ -2567,28 +2572,30 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             obj.FMSnapInMin=min(obj.SnapInLength);
             obj.FMSnapInMax=max(obj.SnapInLength);
         end
-      
+       
         function fc_pulling_length_MAD(obj)
             
+            % Preallocate
+            obj.PullingLengthIdx=zeros(1,obj.NCurves);
+            obj.PullingLength=zeros(1,obj.NCurves);
             % Define variables
             DataShareStartRet=0.02; %
             DataShareEndRet=0.07; %
             WindowBeforePercentage=0.01;
             WindowAfterPercentage=0.01;
             LimitFactor=2;
-            % For loop
+            %% Loop over all force curves
             for jj=1:obj.NCurves
-            %% Debugging
+            % Debugging
             %for jj=7 % for debugging
                 % sprintf('Force curve No. %d',jj) % Gives current Force curve
-                % for debugging
+                %% Force curve selection criteria
                 if ~obj.SMFSFlag.Uncorrupt(jj) || ~obj.SMFSFlag.RetMinCrit(jj)     % Exclude corrupted force curves from the analysis
                     continue
                 end
                 % Allocate data
                 xRet=obj.THRet{jj}-obj.CP_HardSurface(jj);
-                yRet=obj.BasedRet{jj};
-                
+                yRet=obj.BasedRet{jj};                
                 % Determine the pulling length index                
                 DataPtsRet=size(yRet); % Determine the amount of data points in the force curve
                 LimitIdxRet1=round(DataPtsRet(1)*DataShareStartRet); % Determine the corresponding index
@@ -2627,7 +2634,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 % Classification criteria
                 figname=strcat(obj.Date,{'_'},obj.Time,{'_'},obj.ID,{'_'},obj.Substrate,{'_'},obj.EnvCond,{'_'},obj.Linker,{'_'},obj.Chipbox,{'_'},obj.ChipCant,{'_'},ExtendVelocityConvert,{'_'},RetractVelocityConvert,{'_'},HoldingTimeConvert);
                 figname=char(figname);
-                % Figure
+                %% Figure
                 h_fig=figure(jj);
                 h_fig.Color='white'; % changes the background color of the figure
                 h_fig.Units='normalized'; % Defines the units
@@ -2687,22 +2694,29 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             % Function to find the maximum adhesion force value in the
             % approach and retraction data of a force curve
             
+            % Preallocate
+            obj.AdhForceMaxApp=zeros(1,obj.NCurves);
+            obj.AdhForceMaxAppIdx=zeros(1,obj.NCurves);
+            obj.AdhForceMaxRet=zeros(1,obj.NCurves);
+            obj.AdhForceMaxRetIdx=zeros(1,obj.NCurves);
+            obj.AdhForceUnbinding=zeros(1,obj.NCurves);
+            obj.AdhForceUnbindingIdx=zeros(1,obj.NCurves);
             % Define variables            
             RGB_A1=[0 25 255]./255;  % Blue 
             RGB_A3=[255 102 0]./255; % Orange
             RGB_A5=[255 0 26]./255; % Red
             xDistance=15e-9;
-            % For loop
+            %% %% Loop over all force curves
             for kk=1:obj.NCurves
-            %% Debugging
+            % Debugging
             %for kk=7 % for debugging
             % sprintf('Force curve No. %d',kk) % Gives current Force curve
             % for debugging
             %% Force curve selection criteria
             if ~obj.SMFSFlag.Uncorrupt(kk) || ~obj.SMFSFlag.RetMinCrit(kk) || ~obj.SMFSFlag.LengthRequisite(kk)  % Exclude corrupted force curves from the analysis     
                 continue
-            end
-            %% Allocate data
+            end            
+            % Allocate data
             xApp=obj.THApp{kk}-obj.CP_HardSurface(kk);
             xRet=obj.THRet{kk}-obj.CP_HardSurface(kk);            
             yApp=obj.BasedApp{kk};
@@ -2767,20 +2781,27 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
        
         function fc_adhesion_energy_idxlength(obj)
             % Determine the adhesion energy using the previous defined pulling length index
-            
+                % Preallocate
+                obj.yAppLim=cell(1,obj.NCurves);
+                obj.AppAdhEnergy_IdxMethod=zeros(1,obj.NCurves);
+                obj.yRetLim=cell(1,obj.NCurves);
+                obj.RetAdhEnergy_IdxMethod=zeros(1,obj.NCurves);
+                IntApp=zeros(1,obj.NCurves);
+                IntRet=zeros(1,obj.NCurves);
+                % Define variables
+                limit1=0;   % Define the limit
             %% Loop over all force curves
                 for kk=1:obj.NCurves
                 %for ii=97 % % For debugging and testing
+                %% Force curve selection criteria
                 if ~obj.SMFSFlag.Uncorrupt(kk) || ~obj.SMFSFlag.RetMinCrit(kk) || ~obj.SMFSFlag.LengthRequisite(kk)    % Exclude corrupted force curves from the analysis     
                 continue
-                end               
+                end                 
                 % Allocate data
                 xRet=obj.THRet{kk}-obj.CP_HardSurface(kk); % Retraction x-data (m): Vertical tip height data corrected by the determined contact point using the hard surface method 
                 xApp=obj.THApp{kk}-obj.CP_HardSurface(kk); % Retraction x-data (m): Vertical tip height data corrected by the determined contact point using the hard surface method 
                 yApp=obj.BasedApp{kk};
-                yRet=obj.BasedRet{kk};
-                % Define variables
-                limit1=0;   % Define the limit
+                yRet=obj.BasedRet{kk};                
                 % Apply the limit                
                     if obj.SMFSFlag.SnapIn(kk)==1                                    
                     % Approach
