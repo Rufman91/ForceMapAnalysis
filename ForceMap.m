@@ -76,6 +76,8 @@ classdef ForceMap < matlab.mixin.Copyable
         HZShift         % original height data shifted to the zero line
         psF
         psH
+        kF
+        kH
 
     end
     properties
@@ -1791,7 +1793,21 @@ classdef ForceMap < matlab.mixin.Copyable
 
                          % Force-Data are only placed horizontally in 
                          % the zero line with detrend
-                         ForceTrend{i,j} = detrend(obj.FZShift{i,j});
+                         %ForceTrend{i,j} = detrend(obj.FZShift{i,j});
+                         
+                         linearfitF = polyfit(obj.SegTime{j},obj.FZShift{i,j},1);
+                         Fvalueslinfit = polyval(linearfitF,obj.SegTime{j});
+                         linearfitH = polyfit(obj.SegTime{j},obj.HZShift{i,j},1);
+                         Hvalueslinfit = polyval(linearfitH,obj.SegTime{j});
+                         
+                         %y =k*x+d, d=0, k =y/x;
+                         obj.kF = Fvalueslinfit/obj.SegTime{j};
+                         obj.kH = Hvalueslinfit/obj.SegTime{j};
+                         
+                         %manually detrended data
+                         ForceTrend{i,j} = obj.FZShift{i,j} - Fvalueslinfit;
+                         IndentTrend{i,j} = obj.HZShift{i,j} - Hvalueslinfit;
+                         
                          AmplitudeFTrend=((max(ForceTrend{i,j}) - min(ForceTrend{i,j}))/2);
                          %1D-digital filter
                          iN = Invariance/100;
@@ -1799,7 +1815,7 @@ classdef ForceMap < matlab.mixin.Copyable
                          obj.FilterF{i,j} = filtfilt(d,1,ForceTrend{i,j});
                          
                          % Modification of Indentation-Data
-                         IndentTrend{i,j} = detrend(obj.HZShift{i,j});
+                         %IndentTrend{i,j} = detrend(obj.HZShift{i,j});
                          AmplitudeHTrend=((max(IndentTrend{i,j}) - min(IndentTrend{i,j}))/2);
                          iN = Invariance/100;
                          d = ones(1,fix(iN))/iN;
@@ -1942,30 +1958,34 @@ classdef ForceMap < matlab.mixin.Copyable
                          %obj.SineVarsH{i,j}(3)= firstsignchangeH;
                          
                          %check relation
-                         RelationF1 = AmplitudeF/obj.SineVarsF{i,j}(1);
-                         RelationH1 = AmplitudeH/obj.SineVarsH{i,j}(1);
+                         %RelationF1 = AmplitudeF/obj.SineVarsF{i,j}(1);
+                         %RelationH1 = AmplitudeH/obj.SineVarsH{i,j}(1);
                          
                          % Rescaling Amplitude
                          %remove Amplitude Correction to get filtered data
                          %before correction
-                         obj.SineVarsF{i,j}(1) = obj.SineVarsF{i,j}(1)/AmplCorrectionF;
-                         obj.SineVarsH{i,j}(1) = obj.SineVarsH{i,j}(1)/AmplCorrectionH;
+                         %obj.SineVarsF{i,j}(1) = obj.SineVarsF{i,j}(1)/AmplCorrectionF;
+                         %obj.SineVarsH{i,j}(1) = obj.SineVarsH{i,j}(1)/AmplCorrectionH;
                          
                          %get back to trend data
-                         obj.SineVarsF{i,j}(1) = obj.SineVarsF{i,j}(1)*(AmplitudeFTrend/AmplitudeFFilter);
-                         obj.SineVarsH{i,j}(1) = obj.SineVarsH{i,j}(1)*(AmplitudeHTrend/AmplitudeHFilter);
+                         %obj.SineVarsF{i,j}(1) = obj.SineVarsF{i,j}(1)*(AmplitudeFTrend/AmplitudeFFilter);
+                         %obj.SineVarsH{i,j}(1) = obj.SineVarsH{i,j}(1)*(AmplitudeHTrend/AmplitudeHFilter);
                          
                          %get back to shifted data 
-                         obj.SineVarsF{i,j}(1) = obj.SineVarsF{i,j}(1)*(AmplitudeFShift/AmplitudeFTrend);
-                         obj.SineVarsH{i,j}(1) = obj.SineVarsH{i,j}(1)*(AmplitudeHShift/AmplitudeHTrend);
+                         %obj.SineVarsF{i,j}(1) = obj.SineVarsF{i,j}(1)*(AmplitudeFShift/AmplitudeFTrend);
+                         %obj.SineVarsH{i,j}(1) = obj.SineVarsH{i,j}(1)*(AmplitudeHShift/AmplitudeHTrend);
+                         
+                         %add trend again
+                         %obj.SineVarsF{i,j}(1) = obj.SineVarsF{i,j}(1)*kF;
+                         %obj.SineVarsH{i,j}(1) = obj.SineVarsH{i,j}(1)*kH;
                          
                          %multiply range back 
                          obj.SineVarsF{i,j}(1) = obj.SineVarsF{i,j}(1)*rangeF;
                          obj.SineVarsH{i,j}(1) = obj.SineVarsH{i,j}(1)*rangeH;
                          
                          %check relation 
-                         RelationF2 = AmplitudeFOrig/obj.SineVarsF{i,j}(1);
-                         RelationH2 = AmplitudeHOrig/obj.SineVarsH{i,j}(1);
+                         %RelationF2 = AmplitudeFOrig/obj.SineVarsF{i,j}(1);
+                         %RelationH2 = AmplitudeHOrig/obj.SineVarsH{i,j}(1);
                         
 
                         % phase shift of force and indentation
@@ -4009,12 +4029,14 @@ classdef ForceMap < matlab.mixin.Copyable
                         try
                             ypF = obj.SineVarsF{i,j}(1)*(sin(2*pi*x.*obj.SineVarsF{i,j}(2) + obj.SineVarsF{i,j}(3))) + meanF;
                             ypH = obj.SineVarsH{i,j}(1)*(sin(2*pi*x.*obj.SineVarsH{i,j}(2) + obj.SineVarsH{i,j}(3))) + meanH;
+                            
+                            %add trend
+                            ypFtrend = ypF + obj.kF*x;
+                            ypHtrend = ypH + obj.kH*x;
                         catch
                             ypF = zeros(length(x),1);
                             ypH = zeros(length(x),1);
                         end
-                        
-                        %hold on
                         
 
                         
@@ -4022,7 +4044,7 @@ classdef ForceMap < matlab.mixin.Copyable
 
                         yyaxis left
                         [MultiplierF,UnitF,~] = AFMImage.parse_unit_scale(range(obj.BasedForce{i,j}),'N',10);
-                        plot(x,obj.BasedForce{i,j}*MultiplierF,'-r',x,ypF*MultiplierF,':m')
+                        plot(x,obj.BasedForce{i,j}*MultiplierF,'-r',x,ypFtrend*MultiplierF,':m')
                         set(gca, 'YColor', 'r')
                         %Legends = {'force data','force fit data'};
                         xlabel('time [s]')
@@ -4031,7 +4053,7 @@ classdef ForceMap < matlab.mixin.Copyable
                         
                         yyaxis right
                         [MultiplierI,UnitI,~] = AFMImage.parse_unit_scale(range(obj.Indentation{i,j}),'m',10);
-                        plot(x,obj.Indentation{i,j}*MultiplierI,'-c',x,ypH*MultiplierI,':b')
+                        plot(x,obj.Indentation{i,j}*MultiplierI,'-c',x,ypHtrend*MultiplierI,':b')
                         %Legends{end+1} = 'indentation data';
                         set(gca, 'YColor', 'c')
                         title(sprintf('Force and Indentation over Time incl. Fit Curve %i',i))
