@@ -3760,6 +3760,9 @@ classdef ForceMap < matlab.mixin.Copyable
             m=3*obj.NCurves + 1;
             for i=1:obj.NCurves
                 
+                %Identify position of first modulation
+                FirstFreq = find(obj.SegFrequency,1,'first');
+                
                 %force time
                 figure(k)
                 hold on
@@ -4002,7 +4005,11 @@ classdef ForceMap < matlab.mixin.Copyable
             DirectoryPath = uigetdir();
             k=1;
             for i=1:obj.NCurves
-               
+                
+                %Identify position of first modulation
+                FirstFreq = find(obj.SegFrequency,1,'first');
+                
+                %Plot
                 figure('Name',sprintf('Curves with Fit %i',i))
                 %fig = figure;
                 %left_color = [1 0 0];
@@ -4043,8 +4050,8 @@ classdef ForceMap < matlab.mixin.Copyable
                         hold on
 
                         yyaxis left
-                        [MultiplierF,UnitF,~] = AFMImage.parse_unit_scale(range(obj.BasedForce{i,j}),'N',10);
-                        plot(x,obj.BasedForce{i,j}*MultiplierF,'-r',x,ypFtrend*MultiplierF,':m')
+                        [MultiplierF,UnitF,~] = AFMImage.parse_unit_scale(range(obj.BasedForce{i,FirstFreq}),'N',10);
+                        plot(x,obj.BasedForce{i,j}*MultiplierF,'-r',x,ypFtrend*MultiplierF,':m',x,obj.kF*x,':b')
                         set(gca, 'YColor', 'r')
                         %Legends = {'force data','force fit data'};
                         xlabel('time [s]')
@@ -4052,8 +4059,8 @@ classdef ForceMap < matlab.mixin.Copyable
                         %ylabel('force')
                         
                         yyaxis right
-                        [MultiplierI,UnitI,~] = AFMImage.parse_unit_scale(range(obj.Indentation{i,j}),'m',10);
-                        plot(x,obj.Indentation{i,j}*MultiplierI,'-c',x,ypHtrend*MultiplierI,':b')
+                        [MultiplierI,UnitI,~] = AFMImage.parse_unit_scale(range(obj.Indentation{i,FirstFreq}),'m',10);
+                        plot(x,obj.Indentation{i,j}*MultiplierI,'-c',x,ypHtrend*MultiplierI,':b',x,obj.kH*x,':m')
                         %Legends{end+1} = 'indentation data';
                         set(gca, 'YColor', 'c')
                         title(sprintf('Force and Indentation over Time incl. Fit Curve %i',i))
@@ -4086,9 +4093,13 @@ classdef ForceMap < matlab.mixin.Copyable
             DirectoryPath = uigetdir();
             k=1;
             for i=1:obj.NCurves
-               
+                
+                %Identify position of first modulation
+                FirstFreq = find(obj.SegFrequency{j},1,'first');
+                        
+               % Plot
                 figure('Name',sprintf('Phaseshift Curve %i',i))
-                lastseg = obj.NumSegments - 2;
+                %lastseg = obj.NumSegments - 2;
                 hold on
                 for j=1:obj.NumSegments
                     
@@ -4111,15 +4122,12 @@ classdef ForceMap < matlab.mixin.Copyable
                             ypH = zeros(length(x),1);
                         end
                         
-          
-                        FreqIndex = find(obj.SegFrequency{j});
-                        FirstFreq = FreqIndex(1);
                         
 
                         hold on
                         
-                        [MultiplierI,UnitI,~] = AFMImage.parse_unit_scale(range(obj.Indentation{i,3}),'m',10);
-                        [MultiplierF,UnitF,~] = AFMImage.parse_unit_scale(range(obj.BasedForce{i,3}),'N',10);
+                        [MultiplierI,UnitI,~] = AFMImage.parse_unit_scale(range(obj.Indentation{i,FirstFreq}),'m',10);
+                        [MultiplierF,UnitF,~] = AFMImage.parse_unit_scale(range(obj.BasedForce{i,FirstFreq}),'N',10);
                         subplot(1,obj.NumSegments,j)
                         findpeaks(ypF*MultiplierF,x)
                         hold on
