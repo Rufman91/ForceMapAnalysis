@@ -4096,7 +4096,7 @@ classdef ForceMap < matlab.mixin.Copyable
                 
                 for j=1:obj.NumSegments
                     frequencies = zeros(obj.NumSegments,1);
-                    frequencies(j) = obj.SegFrequency{j};
+                    frequencies(j,:) = obj.SegFrequency{j};
                 end
                 
                 %Identify position of first modulation
