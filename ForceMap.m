@@ -4054,8 +4054,8 @@ classdef ForceMap < matlab.mixin.Copyable
                         
                         %Y-values fitted sine of indentation and force:
                         try
-                            ypF = obj.SineVarsF{i,j}(1)*(sin(2*pi*x.*obj.SineVarsF{i,j}(2) + obj.SineVarsF{i,j}(3)));
-                            ypH = obj.SineVarsH{i,j}(1)*(sin(2*pi*x.*obj.SineVarsH{i,j}(2) + obj.SineVarsH{i,j}(3)));
+                            ypF = obj.SineVarsF{i,j}(1)*(sin(2*pi*x.*obj.SineVarsF{i,j}(2) + obj.SineVarsF{i,j}(3))) + meanF;
+                            ypH = obj.SineVarsH{i,j}(1)*(sin(2*pi*x.*obj.SineVarsH{i,j}(2) + obj.SineVarsH{i,j}(3))) + meanH;
                             
                             ypFtrend = ypF + obj.slopeF(i,j).*x;
                             ypHtrend = ypH + obj.slopeH(i,j).*x;
