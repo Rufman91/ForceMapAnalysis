@@ -78,6 +78,8 @@ classdef ForceMap < matlab.mixin.Copyable
         psH
         slopeF
         slopeH
+        shiftF
+        shiftH
 
     end
     properties
@@ -1723,6 +1725,8 @@ classdef ForceMap < matlab.mixin.Copyable
             
             obj.slopeF = zeros(obj.NCurves,obj.NumSegments);
             obj.slopeH = zeros(obj.NCurves,obj.NumSegments);
+            obj.shiftF = zeros(obj.NCurves,obj.NumSegments);
+            obj.shiftH = zeros(obj.NCurves,obj.NumSegments);
                  
             for i=1:obj.NCurves
                 lastseg = obj.NumSegments-1;
@@ -1787,8 +1791,8 @@ classdef ForceMap < matlab.mixin.Copyable
                          obj.FZShift{i,j} = obj.BasedForce{i,j}-maxF1+(DiffF1/2);
                          obj.HZShift{i,j} = obj.Indentation{i,j}-maxH1+(DiffH1/2);
                          
-                         shiftF = maxF1-(DiffF1/2);
-                         shiftH = maxH1-(DiffH1/2);
+                         obj.shiftF(i,j) = maxF1-(DiffF1/2);
+                         obj.shiftH(i,j) = maxH1-(DiffH1/2);
                          
                          AmplitudeFShift=((max(obj.FZShift{i,j}) - min(obj.FZShift{i,j}))/2);
                          AmplitudeHShift=((max(obj.HZShift{i,j}) - min(obj.HZShift{i,j}))/2);
@@ -1988,8 +1992,8 @@ classdef ForceMap < matlab.mixin.Copyable
                          %obj.SineVarsH{i,j}(1) = obj.SineVarsH{i,j}(1)*(AmplitudeHShift/AmplitudeHTrend);
                          
                          %add shift again
-                         obj.SineVarsF{i,j}(1) = obj.SineVarsF{i,j}(1)+shiftF;
-                         obj.SineVarsH{i,j}(1) = obj.SineVarsH{i,j}(1)+shiftH;
+                         %obj.SineVarsF{i,j}(1) = obj.SineVarsF{i,j}(1)+shiftF;
+                         %obj.SineVarsH{i,j}(1) = obj.SineVarsH{i,j}(1)+shiftH;
                          
                          %multiply range back 
                          obj.SineVarsF{i,j}(1) = obj.SineVarsF{i,j}(1)*rangeF;
@@ -2017,6 +2021,8 @@ classdef ForceMap < matlab.mixin.Copyable
                        
                         
                         % turn range back to normal
+                        obj.shiftF(i,j) = obj.shiftF(i,j)*rangeF;
+                        obj.shiftH(i,j) = obj.shiftH(i,j)*rangeH;
                         obj.slopeF(i,j) = obj.slopeF(i,j)*rangeF;
                         obj.slopeH(i,j) = obj.slopeH(i,j)*rangeH;
                         obj.BasedForce{i,j} = obj.BasedForce{i,j}*rangeF;
@@ -4060,8 +4066,8 @@ classdef ForceMap < matlab.mixin.Copyable
                             ypF = obj.SineVarsF{i,j}(1)*(sin(2*pi*x.*obj.SineVarsF{i,j}(2) + obj.SineVarsF{i,j}(3))) + meanF;
                             ypH = obj.SineVarsH{i,j}(1)*(sin(2*pi*x.*obj.SineVarsH{i,j}(2) + obj.SineVarsH{i,j}(3))) + meanH;
                             
-                            ypFtrend = ypF + obj.slopeF(i,j).*x;
-                            ypHtrend = ypH + obj.slopeH(i,j).*x;
+                            ypFtrend = ypF + obj.slopeF(i,j).*x + obj.shiftF(i,j);
+                            ypHtrend = ypH + obj.slopeH(i,j).*x + obj.shiftH(i,j);
                         catch
                             ypF = zeros(length(x),1);
                             ypH = zeros(length(x),1);
