@@ -4067,7 +4067,7 @@ classdef ForceMap < matlab.mixin.Copyable
                             ypH = obj.SineVarsH{i,j}(1)*(sin(2*pi*x.*obj.SineVarsH{i,j}(2) + obj.SineVarsH{i,j}(3)));
                             
                             ypFtrend = ypF + obj.slopeF(i,j).*x + obj.shiftF(i,j)/2;
-                            ypHtrend = ypH + obj.slopeH(i,j).*x + obj.shiftF(i,j)/2;
+                            ypHtrend = ypH + obj.slopeH(i,j).*x + obj.shiftH(i,j)/2;
                         catch
                             ypF = zeros(length(x),1);
                             ypH = zeros(length(x),1);
