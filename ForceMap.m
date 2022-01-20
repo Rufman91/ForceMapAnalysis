@@ -1787,6 +1787,9 @@ classdef ForceMap < matlab.mixin.Copyable
                          obj.FZShift{i,j} = obj.BasedForce{i,j}-maxF1+(DiffF1/2);
                          obj.HZShift{i,j} = obj.Indentation{i,j}-maxH1+(DiffH1/2);
                          
+                         shiftF = obj.BasedForce{i,j}-obj.FZShift{i,j};
+                         shiftH = obj.Indentation{i,j}-obj.HZShift{i,j};
+                         
                          AmplitudeFShift=((max(obj.FZShift{i,j}) - min(obj.FZShift{i,j}))/2);
                          AmplitudeHShift=((max(obj.HZShift{i,j}) - min(obj.HZShift{i,j}))/2);
                         
@@ -1984,9 +1987,9 @@ classdef ForceMap < matlab.mixin.Copyable
                          %obj.SineVarsF{i,j}(1) = obj.SineVarsF{i,j}(1)*(AmplitudeFShift/AmplitudeFTrend);
                          %obj.SineVarsH{i,j}(1) = obj.SineVarsH{i,j}(1)*(AmplitudeHShift/AmplitudeHTrend);
                          
-                         %add trend again
-                         %obj.SineVarsF{i,j}(1) = obj.SineVarsF{i,j}(1)*kF;
-                         %obj.SineVarsH{i,j}(1) = obj.SineVarsH{i,j}(1)*kH;
+                         %add shift again
+                         obj.SineVarsF{i,j}(1) = obj.SineVarsF{i,j}(1)+shiftF;
+                         obj.SineVarsH{i,j}(1) = obj.SineVarsH{i,j}(1)+shiftH;
                          
                          %multiply range back 
                          obj.SineVarsF{i,j}(1) = obj.SineVarsF{i,j}(1)*rangeF;
