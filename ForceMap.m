@@ -4094,8 +4094,8 @@ classdef ForceMap < matlab.mixin.Copyable
             k=1;
             for i=1:obj.NCurves
                 
+                frequencies = zeros(obj.NumSegments,1);
                 for j=1:obj.NumSegments
-                    frequencies = zeros(obj.NumSegments,1);
                     frequencies(j,:) = obj.SegFrequency{j};
                 end
                 
