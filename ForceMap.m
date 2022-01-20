@@ -1722,6 +1722,10 @@ classdef ForceMap < matlab.mixin.Copyable
             close all
             for i=1:obj.NCurves
                 lastseg = obj.NumSegments-1;
+                
+                 obj.kF = zeros(obj.NCurves,obj.NumSegments);
+                 obj.kH = zeros(obj.NCurves,obj.NumSegments);
+                 
                 for j=2:lastseg
                     
                     if obj.SegFrequency{j} > 0
@@ -1801,8 +1805,6 @@ classdef ForceMap < matlab.mixin.Copyable
                          Hvalueslinfit = polyval(linearfitH,obj.SegTime{j});
                          
                          %y =k*x+d, d=0, k =y/x;
-                         obj.kF = zeros(obj.NCurves,obj.NumSegments);
-                         obj.kH = zeros(obj.NCurves,obj.NumSegments);
                          obj.kF(i,j) = Fvalueslinfit\obj.SegTime{j};
                          obj.kH(i,j) = Hvalueslinfit\obj.SegTime{j};
                          
