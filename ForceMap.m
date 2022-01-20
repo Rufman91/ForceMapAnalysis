@@ -4094,8 +4094,10 @@ classdef ForceMap < matlab.mixin.Copyable
             k=1;
             for i=1:obj.NCurves
                 
-                %Identify position of first modulation
-                FirstFreq = find(obj.SegFrequency{j},1,'first');
+                for j=1:obj.NumSegments
+                    %Identify position of first modulation
+                    FirstFreq = find(obj.SegFrequency{j},1,'first');
+                end
                         
                % Plot
                 figure('Name',sprintf('Phaseshift Curve %i',i))
