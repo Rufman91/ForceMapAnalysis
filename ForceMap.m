@@ -4058,8 +4058,8 @@ classdef ForceMap < matlab.mixin.Copyable
                         end
                         
                         % calculate linear fit
-                        lF = obj.kF*x;
-                        lH = obj.kH*x;
+                        lF = obj.kF.*x;
+                        lH = obj.kH.*x;
                         
 
                         
