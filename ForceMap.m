@@ -1720,11 +1720,12 @@ classdef ForceMap < matlab.mixin.Copyable
         
         function sine_fit_for_microrheology(obj)
             close all
+            
+            obj.kF = zeros(obj.NCurves,obj.NumSegments);
+            obj.kH = zeros(obj.NCurves,obj.NumSegments);
+                 
             for i=1:obj.NCurves
                 lastseg = obj.NumSegments-1;
-                
-                 obj.kF = zeros(obj.NCurves,obj.NumSegments);
-                 obj.kH = zeros(obj.NCurves,obj.NumSegments);
                  
                 for j=2:lastseg
                     
