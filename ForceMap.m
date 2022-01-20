@@ -4051,6 +4051,9 @@ classdef ForceMap < matlab.mixin.Copyable
                         catch
                             ypF = zeros(length(x),1);
                             ypH = zeros(length(x),1);
+                            
+                            ypFtrend = zeros(length(x),1);
+                            ypHtrend = zeros(length(x),1);
                         end
                         
 
