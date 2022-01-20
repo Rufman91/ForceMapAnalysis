@@ -3808,6 +3808,9 @@ classdef ForceMap < matlab.mixin.Copyable
                 hold on
                 for j=1:obj.NumSegments
                     
+                       yHmin = 1.2*min(obj.Indentation{i,j});
+                       yHmax = 1.2*max(obj.Indentation{i,j});
+                    
                        lengthHHApp = length(obj.HHApp{i});
                        obj.SecPerPoint{1} = obj.SegDuration{1}/lengthHHApp;
                        obj.TStart{1} = obj.SecPerPoint{1}/2;
@@ -3822,8 +3825,9 @@ classdef ForceMap < matlab.mixin.Copyable
                        obj.SegTime{obj.NumSegments} = obj.TStart{obj.NumSegments}:obj.SecPerPoint{obj.NumSegments}:obj.TEnd{obj.NumSegments};
                        obj.SegTime{obj.NumSegments} = obj.SegTime{obj.NumSegments}.';
                         
-                      [MultiplierI,UnitI,~] = AFMImage.parse_unit_scale(range(obj.Indentation{i,FirstFreq}),'m',100);
+                      [MultiplierI,UnitI,~] = AFMImage.parse_unit_scale(range(obj.Indentation{i,FirstFreq}),'m',10);
                        plot(obj.SegTime{j},obj.Indentation{i,j}*MultiplierI,'b')
+                       ylim([yHmin yHmax])
                        title(sprintf('Indentation Time Curve %i',i))
                        xlabel('time in s')
                        ylabel(sprintf('Indentation [%s]',UnitI));
@@ -3855,28 +3859,30 @@ classdef ForceMap < matlab.mixin.Copyable
                        obj.SegTime{obj.NumSegments} = obj.TStart{obj.NumSegments}:obj.SecPerPoint{obj.NumSegments}:obj.TEnd{obj.NumSegments};
                        obj.SegTime{obj.NumSegments} = obj.SegTime{obj.NumSegments}.';
                        
-                       yHmin = 0.8*min(obj.Indentation{i,j});
+                       yHmin = 1.2*min(obj.Indentation{i,j});
                        yHmax = 1.2*max(obj.Indentation{i,j});
-                       yFmin = 0.8*min(obj.Force{i,j});
+                       yFmin = 1.2*min(obj.Force{i,j});
                        yFmax = 1.2*max(obj.Force{i,j});
 
                        hold on
 
                        yyaxis left
+                       ylim([yHmin yHmax])
                        [MultiplierI,UnitI,~] = AFMImage.parse_unit_scale(range(obj.Indentation{i,FirstFreq}),'m',100);
                        plot(obj.SegTime{j},obj.Indentation{i,j}*MultiplierI,'-')
                        xlabel('time in s')
                        ylabel(sprintf('Indentation [%s]',UnitI));
-                       %ylim([yFmin yFmax])
+                       
 
                        yyaxis right
+                       ylim([yFmin yFmax])
                        [MultiplierF,UnitF,~] = AFMImage.parse_unit_scale(range(obj.BasedForce{i,FirstFreq}),'N',100);
                        plot(obj.SegTime{j},obj.BasedForce{i,j}*MultiplierF,'-')
                        title(sprintf('Force and Indentation over Time Curve %i',i))
                        ylabel(sprintf('vDeflection-Force [%s]',UnitF))
                        grid on
                        grid minor
-                       %ylim([yFmin yFmax])
+                       
                        
                         if DirectoryPath~=0
                            whereToStore=fullfile(DirectoryPath,['force_indentation_time_curve_' num2str(i) '.svg']);
