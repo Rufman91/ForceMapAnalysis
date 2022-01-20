@@ -1471,13 +1471,28 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
            
             % Output time and date for the dairy
             datetime('now')
-            
+             h = waitbar(0,'setting up','Units','normalized','Position',[0.4 0.3 0.2 0.1]);
+            NLoop = length(obj.ForceMapNames);
+            if sum(obj.SMFSFlag.Analysed) >= 1
+                KeepFlagged = questdlg(sprintf('Some maps have been processed already.\nDo you want to skip them and keep old results?'),...
+                    'Processing Options',...
+                    'Yes',...
+                    'No',...
+                    'No');
+            else
+                KeepFlagged = 'No';
+            end
             % Figure visibility
             set(groot,'defaultFigureVisible','off')      
             % set(groot,'defaultFigureVisible','on') 
             %% Loop
             for hh=1:obj.NumForceMaps
-            %for hh=1:33 % Debugging     
+            %for hh=1:33 % Debugging    
+            if isequal(KeepFlagged,'Yes') && obj.SMFSFlag.Preprocessed(ii) == 1
+                    continue
+            end   
+               waitbar(hh/NLoop,h,sprintf('Preprocessing ForceMap %i/%i\nProcessing force curves',hh,NLoop));
+               waitbar(hh/NLoop,h,sprintf('Preprocessing ForceMap %i/%i\nWrapping Up And Saving',hh,NLoop));
                sprintf('Force Map No. %d of %d',hh,obj.NumForceMaps) % Gives current Force Map Position   
                % Print force curves containing label for the pulling length
                % and colored area for the adhesion energy                              
@@ -1488,9 +1503,11 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                % Maximum adhesion force
                obj.FM{hh}.fc_adh_force_max
                % Adhesion energy
-               obj.FM{hh}.fc_adhesion_energy_idxlength                    
+               obj.FM{hh}.fc_adhesion_energy_idxlength    
+               % Flag
+               obj.SMFSFlag.Analysed(hh) = 1;
             end
-            
+            close(h);
         end
         
          
@@ -1699,11 +1716,10 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             %for ii=464:obj.NumForceMaps % Debugging
             
             % Find not processed force maps
-            obj.SMFSFlagDown.Fit=find(~obj.SMFSFlag.Fit);
             obj.SMFSFlagDown.Preprocessed=find(~obj.SMFSFlag.Preprocessed);
             obj.SMFSFlagDown.Presorted=find(~obj.SMFSFlag.Presorted);
             obj.SMFSFlagDown.SelectFM=find(~obj.SMFSFlag.SelectFM);
-          
+            obj.SMFSFlagDown.Analysed=find(~obj.SMFSFlag.Analysed);
             for ii=1:obj.NumForceMaps
             obj.FM{ii}.fc_flag_status          
             end
@@ -1733,6 +1749,10 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             %% Debugging
             %for ii=1:17 % for debugging
                  sprintf('Force map No. %d',ii) % Gives current force map
+            %% Force map selection criteria
+            if ~obj.SMFSFlag.Analysed(ii)   % Exclude force map if analysis has not been done     
+                continue
+            end  
                 % Parameters
                 if ((obj.FM{ii}.ExtendVelocity==ExtVelocityValue || ExtVelocityValue==0) ...
                         && (obj.FM{ii}.RetractVelocity==RetVelocityValue || RetVelocityValue==0) ...
@@ -1765,7 +1785,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             for ff=1:length(IdxArray)
             %% Debugging
             %for ff=6 % for debugging
-             sprintf('Force map No. %d',ff) % Gives current Force curve
+             sprintf('Index array row No. %d',ff) % Gives current Force curve
                 % Allocate data
                 yAdhMaxApp=obj.FM{IdxArray(ff)}.AdhForceMaxRet;
                 yAdhMaxApp(yAdhMaxApp==0)=nan; % Replace zero entries by nan´s
@@ -2042,6 +2062,8 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
         end
         
    
+        
+        
         function SMFS_analysis_dashboard(obj,ExtVelocityValue,RetVelocityValue,HoldingTimeValue,SubstrateValue,EnvCondValue,ChipCantValue,ChipboxValue,LinkerValue)
             % I all velocities should be selected use input variable: 0
             
@@ -3471,9 +3493,10 @@ PlotData=obj.SMFSResults{jj}.Data.AdhMaxAppConcat
 
              %  obj.FM{ii}.fc_testing
           %    obj.FM{ii}.initialize_flags       
-             obj.FM{ii}.fc_snap_in_length_MAD
+           %  obj.FM{ii}.fc_snap_in_length_MAD
              
-             
+             obj.SMFSFlag.Analysed = false(obj.NumForceMaps,1);
+             obj.SMFSFlagDown.Analysed = false(obj.NumForceMaps,1);
              
             end                    
             
@@ -5331,7 +5354,7 @@ PlotData=obj.SMFSResults{jj}.Data.AdhMaxAppConcat
                 obj.SMFSFlagDown.SelectFM = false(NFM,1);
                 obj.SMFSFlagDown.Preprocessed = false(NFM,1);
                 obj.SMFSFlagDown.Presorted = false(NFM,1);
-                obj.SMFSFlagDown.Fit= false(NFM,1);
+                obj.SMFSFlagDown.Analysed = false(NFM,1);
                 
             if isempty(obj.FMFlag)
                 NFM = obj.NumForceMaps;
@@ -5342,16 +5365,11 @@ PlotData=obj.SMFSResults{jj}.Data.AdhMaxAppConcat
                 NSPM = obj.NumSurfacePotentialMaps;
                 obj.SPMFlag.FibrilAnalysis = false(NSPM,1);
                 obj.SPMFlag.Grouping = false;
+                % SMFSFlag
                 obj.SMFSFlag.SelectFM = false(NFM,1);
                 obj.SMFSFlag.Preprocessed = false(NFM,1);
+                obj.SMFSFlag.Analysed = false(NFM,1);
                 obj.SMFSFlag.Presorted = false(NFM,1);
-                obj.SMFSFlag.Uncorrupt= false(NFM,1);
-                obj.SMFSFlag.AppMinCrit= false(NFM,1);
-                obj.SMFSFlag.RetMinCrit= false(NFM,1);
-                obj.SMFSFlag.Length= false(NFM,1);
-                obj.SMFSFlag.Fit= false(NFM,1);
-                obj.SMFSFlag.SnapIn= false(NFM,1);
-                obj.SMFSFlag.PullingLength= false(NFM,1);
                 
                 obj.DebugFlag.Plot= false(NFM,1);
                 obj.CantileverTipFlag = false;
@@ -5389,6 +5407,7 @@ PlotData=obj.SMFSResults{jj}.Data.AdhMaxAppConcat
                 obj.SPMFlag.Grouping = false;
                 obj.SMFSFlag.SelectFM(end+1:NFM) = false(DiffFM,1);
                 obj.SMFSFlag.Preprocessed(end+1:NFM) = false(DiffFM,1);
+                obj.SMFSFlag.Analysed(end+1:NFM) = false(DiffFM,1);
                 obj.SMFSFlag.Presorted(end+1:NFM) = false(DiffFM,1);
                 
                 obj.CantileverTipFlag = false;
