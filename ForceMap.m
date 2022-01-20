@@ -3895,7 +3895,7 @@ classdef ForceMap < matlab.mixin.Copyable
                 %force indentation all segments
                 figure(m)
                 
-                xHmin = 0.5*min(obj.Indentation{i,j});
+                %xHmin = 0.5*min(obj.Indentation{i,j});
                        
                 hold on
                 for j=1:obj.NumSegments
@@ -3904,7 +3904,7 @@ classdef ForceMap < matlab.mixin.Copyable
                        [MultiplierF,UnitF,~] = AFMImage.parse_unit_scale(range(obj.BasedForce{i,FirstFreq}),'N',10);
                        plot(obj.HHApp{i}*MultiplierI,obj.BasedApp{i}*MultiplierF,'-r',obj.HHRet{i}*MultiplierI,obj.BasedRet{i}*MultiplierF,'-b')
                        %plot(obj.Indentation{i,j}*MultiplierI,obj.BasedForce{i,j}*MultiplierF,':b',obj.HHApp{i}*MultiplierI,obj.BasedApp{i}*MultiplierF,'-r',obj.HHRet{i}*MultiplierI,obj.BasedRet{i}*MultiplierF,'-b')
-                       xlim([-0.5 0.5])
+                       %xlim([-0.5 0.5])
                        %plot(obj.Height{i,j},obj.Force{i,j},'r')
                        title(sprintf('Force Indentation Curve %i',i))
                        xlabel(sprintf('Indentation [%s]',UnitI));
@@ -3961,29 +3961,24 @@ classdef ForceMap < matlab.mixin.Copyable
             
         end
         
-        function show_sine(obj)
+        function show_emodmicro(obj)
             close all
             DirectoryPath = uigetdir();
             k=1;
             for i=1:obj.NCurves
+
                 for j=1:obj.NumSegments
                     
                     if obj.SegFrequency{j} > 0
                         
                         
                         x= obj.SegTime{j};
-                        %xpF = linspace(min(obj.InterpTimeF{j}),max(obj.InterpTimeF{j}),100000);
-                        %xpH = linspace(min(obj.InterpTimeH{j}),max(obj.InterpTimeH{j}),100000);
-                        
-                        %Y-values fitted sine of indentation and force:
-                        ypF = obj.SineVarsF{i,j}(1)*(sin(2*pi*x.*obj.SineVarsF{i,j}(2) + obj.SineVarsF{i,j}(3)));
-                        ypH = obj.SineVarsH{i,j}(1)*(sin(2*pi*x.*obj.SineVarsH{i,j}(2) + obj.SineVarsH{i,j}(3)));
-                        
+
                         k = k + 1;
                          % time indentation
                         figure('Name',sprintf('Force Curve %i Segment %i',i,j))
                         subplot(3,1,1)
-                        plot(x,obj.FZShift{i,j},x,obj.FilterF{i,j},x,ypF)
+                        plot(obj.SegFrequency{j},obj.DeltaPhi{i,j})
                         legend({'shifted force data to zero line','filtered force data','fitted force data 1'},'Location','southoutside')
                         subplot(3,1,2)
                         plot(x,obj.HZShift{i,j},x,obj.FilterH{i,j},x,ypH)
@@ -4062,13 +4057,17 @@ classdef ForceMap < matlab.mixin.Copyable
                             ypHtrend = zeros(length(x),1);
                         end
                         
+                        % calculate linear fit
+                        lF = obj.kF*x;
+                        lH = obj.kH*x;
+                        
 
                         
                         hold on
 
                         yyaxis left
                         [MultiplierF,UnitF,~] = AFMImage.parse_unit_scale(range(obj.BasedForce{i,FirstFreq}),'N',10);
-                        plot(x,obj.BasedForce{i,j}*MultiplierF,'-r',x,ypFtrend*MultiplierF,':m',x,obj.kF*x,':b')
+                        plot(x,obj.BasedForce{i,j}*MultiplierF,'-r',x,ypFtrend*MultiplierF,':m',x,lF,':b')
                         set(gca, 'YColor', 'r')
                         %Legends = {'force data','force fit data'};
                         xlabel('time [s]')
@@ -4077,7 +4076,7 @@ classdef ForceMap < matlab.mixin.Copyable
                         
                         yyaxis right
                         [MultiplierI,UnitI,~] = AFMImage.parse_unit_scale(range(obj.Indentation{i,FirstFreq}),'m',10);
-                        plot(x,obj.Indentation{i,j}*MultiplierI,'-c',x,ypHtrend*MultiplierI,':b',x,obj.kH*x,':m')
+                        plot(x,obj.Indentation{i,j}*MultiplierI,'-c',x,ypHtrend*MultiplierI,':b',x,lH,':m')
                         %Legends{end+1} = 'indentation data';
                         set(gca, 'YColor', 'c')
                         title(sprintf('Force and Indentation over Time incl. Fit Curve %i',i))
