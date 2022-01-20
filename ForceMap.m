@@ -76,8 +76,8 @@ classdef ForceMap < matlab.mixin.Copyable
         HZShift         % original height data shifted to the zero line
         psF
         psH
-        kF
-        kH
+        slopeF
+        slopeH
 
     end
     properties
@@ -1721,8 +1721,8 @@ classdef ForceMap < matlab.mixin.Copyable
         function sine_fit_for_microrheology(obj)
             close all
             
-            obj.kF = zeros(obj.NCurves,obj.NumSegments);
-            obj.kH = zeros(obj.NCurves,obj.NumSegments);
+            obj.slopeF = zeros(obj.NCurves,obj.NumSegments);
+            obj.slopeH = zeros(obj.NCurves,obj.NumSegments);
                  
             for i=1:obj.NCurves
                 lastseg = obj.NumSegments-1;
@@ -1806,8 +1806,12 @@ classdef ForceMap < matlab.mixin.Copyable
                          Hvalueslinfit = polyval(linearfitH,obj.SegTime{j});
                          
                          %y =k*x+d, d=0, k =y/x;
-                         obj.kF(i,j) = Fvalueslinfit\obj.SegTime{j};
-                         obj.kH(i,j) = Hvalueslinfit\obj.SegTime{j};
+                         slopeF = linearfitF(1);
+                         slopeH = linearfitH(1);
+                         obj.slopeF(i,j) = slopeF;
+                         obj.slopeH(i,j) = slopeH;
+                         %obj.kF(i,j) = Fvalueslinfit\obj.SegTime{j};
+                         %obj.kH(i,j) = Hvalueslinfit\obj.SegTime{j};
                          
                          %manually detrended data
                          ForceTrend{i,j} = obj.FZShift{i,j} - Fvalueslinfit;
@@ -4052,8 +4056,8 @@ classdef ForceMap < matlab.mixin.Copyable
                             ypH = obj.SineVarsH{i,j}(1)*(sin(2*pi*x.*obj.SineVarsH{i,j}(2) + obj.SineVarsH{i,j}(3))) + meanH;
                             
                             %add trend
-                            ypFtrend = ypF + obj.kF(i,j).*x;
-                            ypHtrend = ypH + obj.kH(i,j).*x;
+                            ypFtrend = ypF + obj.slopeF(i,j).*x;
+                            ypHtrend = ypH + obj.slopeH(i,j).*x;
                         catch
                             ypF = zeros(length(x),1);
                             ypH = zeros(length(x),1);
@@ -4063,8 +4067,8 @@ classdef ForceMap < matlab.mixin.Copyable
                         end
                         
                         % calculate linear fit
-                        lF = obj.kF(i,j).*x;
-                        lH = obj.kH(i,j).*x;
+                        lF = obj.slopeF(i,j).*x;
+                        lH = obj.slopeH(i,j).*x;
                         
 
                         
