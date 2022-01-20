@@ -2014,6 +2014,8 @@ classdef ForceMap < matlab.mixin.Copyable
                        
                         
                         % turn range back to normal
+                        obj.slopeF(i,j) = obj.slopeF(i,j)*rangeF;
+                        obj.slopeH(i,j) = obj.slopeH(i,j)*rangeH;
                         obj.BasedForce{i,j} = obj.BasedForce{i,j}*rangeF;
                         obj.Indentation{i,j} = obj.Indentation{i,j}*rangeH;
                         
