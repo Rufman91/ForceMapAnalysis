@@ -1801,8 +1801,8 @@ classdef ForceMap < matlab.mixin.Copyable
                          Hvalueslinfit = polyval(linearfitH,obj.SegTime{j});
                          
                          %y =k*x+d, d=0, k =y/x;
-                         obj.kF = Fvalueslinfit/obj.SegTime{j};
-                         obj.kH = Hvalueslinfit/obj.SegTime{j};
+                         obj.kF = Fvalueslinfit\obj.SegTime{j};
+                         obj.kH = Hvalueslinfit\obj.SegTime{j};
                          
                          %manually detrended data
                          ForceTrend{i,j} = obj.FZShift{i,j} - Fvalueslinfit;
