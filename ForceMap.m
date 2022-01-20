@@ -4052,8 +4052,8 @@ classdef ForceMap < matlab.mixin.Copyable
                             ypH = obj.SineVarsH{i,j}(1)*(sin(2*pi*x.*obj.SineVarsH{i,j}(2) + obj.SineVarsH{i,j}(3))) + meanH;
                             
                             %add trend
-                            ypFtrend = ypF + obj.kF*x;
-                            ypHtrend = ypH + obj.kH*x;
+                            ypFtrend = ypF + obj.kF{i,j}.*x;
+                            ypHtrend = ypH + obj.kH{i,j}.*x;
                         catch
                             ypF = zeros(length(x),1);
                             ypH = zeros(length(x),1);
@@ -4063,8 +4063,8 @@ classdef ForceMap < matlab.mixin.Copyable
                         end
                         
                         % calculate linear fit
-                        lF = obj.kF.*x;
-                        lH = obj.kH.*x;
+                        lF = obj.kF{i,j}.*x;
+                        lH = obj.kH{i,j}.*x;
                         
 
                         
@@ -4072,7 +4072,7 @@ classdef ForceMap < matlab.mixin.Copyable
 
                         yyaxis left
                         [MultiplierF,UnitF,~] = AFMImage.parse_unit_scale(range(obj.BasedForce{i,FirstFreq}),'N',10);
-                        plot(x,obj.BasedForce{i,j}*MultiplierF,'-r',x,ypF*MultiplierF,':m')
+                        plot(x,obj.BasedForce{i,j}*MultiplierF,'-r',x,ypFtrend*MultiplierF,':m')
                         set(gca, 'YColor', 'r')
                         %Legends = {'force data','force fit data'};
                         xlabel('time [s]')
@@ -4081,7 +4081,7 @@ classdef ForceMap < matlab.mixin.Copyable
                         
                         yyaxis right
                         [MultiplierI,UnitI,~] = AFMImage.parse_unit_scale(range(obj.Indentation{i,FirstFreq}),'m',10);
-                        plot(x,obj.Indentation{i,j}*MultiplierI,'-c',x,ypH*MultiplierI,':b')
+                        plot(x,obj.Indentation{i,j}*MultiplierI,'-c',x,ypHtrend*MultiplierI,':b')
                         %Legends{end+1} = 'indentation data';
                         set(gca, 'YColor', 'c')
                         title(sprintf('Force and Indentation over Time incl. Fit Curve %i',i))
