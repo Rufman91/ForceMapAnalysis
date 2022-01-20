@@ -1787,8 +1787,8 @@ classdef ForceMap < matlab.mixin.Copyable
                          obj.FZShift{i,j} = obj.BasedForce{i,j}-maxF1+(DiffF1/2);
                          obj.HZShift{i,j} = obj.Indentation{i,j}-maxH1+(DiffH1/2);
                          
-                         shiftF = obj.BasedForce{i,j}-obj.FZShift{i,j};
-                         shiftH = obj.Indentation{i,j}-obj.HZShift{i,j};
+                         shiftF = maxF1-(DiffF1/2);
+                         shiftH = maxH1-(DiffH1/2);
                          
                          AmplitudeFShift=((max(obj.FZShift{i,j}) - min(obj.FZShift{i,j}))/2);
                          AmplitudeHShift=((max(obj.HZShift{i,j}) - min(obj.HZShift{i,j}))/2);
