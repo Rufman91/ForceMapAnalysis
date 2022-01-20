@@ -4052,8 +4052,8 @@ classdef ForceMap < matlab.mixin.Copyable
                             ypH = obj.SineVarsH{i,j}(1)*(sin(2*pi*x.*obj.SineVarsH{i,j}(2) + obj.SineVarsH{i,j}(3))) + meanH;
                             
                             %add trend
-                            ypFtrend = ypF + obj.kF{i,j}.*x;
-                            ypHtrend = ypH + obj.kH{i,j}.*x;
+                            ypFtrend = ypF + obj.kF(i,j).*x;
+                            ypHtrend = ypH + obj.kH(i,j).*x;
                         catch
                             ypF = zeros(length(x),1);
                             ypH = zeros(length(x),1);
@@ -4063,8 +4063,8 @@ classdef ForceMap < matlab.mixin.Copyable
                         end
                         
                         % calculate linear fit
-                        lF = obj.kF{i,j}.*x;
-                        lH = obj.kH{i,j}.*x;
+                        lF = obj.kF(i,j).*x;
+                        lH = obj.kH(i,j).*x;
                         
 
                         
