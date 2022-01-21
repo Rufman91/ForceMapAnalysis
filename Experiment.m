@@ -1790,7 +1790,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             for ff=1:length(IdxArray)
             %% Debugging
             %for ff=6 % for debugging
-             sprintf('Index array row No. %d',ff) % Gives current Force curve
+             %sprintf('Index array row No. %d',ff) % Gives current Force curve
                 % Allocate data
                 yAdhMaxApp=obj.FM{IdxArray(ff)}.AdhForceMaxRet;
                 yAdhMaxApp(yAdhMaxApp==0)=nan; % Replace zero entries by nan´s
@@ -1945,15 +1945,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 jj=1;
             end
             % Debugging
-            % jj=4
-            % Append the new data into the concatenated array
-            yAdhMaxAppAll(:,ff)=yAdhMaxApp';
-            yAdhMaxRetAll(:,ff)=yAdhMaxRet';
-            yAdhUnbindingAll(:,ff)=yAdhUnbinding';
-            yAdhEneAppAll(:,ff)=yAdhEneApp';
-            yAdhEneRetAll(:,ff)=yAdhEneRet';
-            yPullingLengthAll(:,ff)=yPullingLength';
-            ySnapInLengthAll(:,ff)=ySnapInLength';               
+            % jj=1                         
             % Allocate data    
             obj.SMFSResults{jj,1}.Data(1).AdhMaxApp=yAdhMaxAppAll;
             obj.SMFSResults{jj,1}.Data(1).AdhMaxRet=yAdhMaxRetAll;
