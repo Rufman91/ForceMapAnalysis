@@ -80,6 +80,8 @@ classdef ForceMap < matlab.mixin.Copyable
         slopeH
         shiftF
         shiftH
+        interceptF
+        interceptH
 
     end
     properties
@@ -1727,6 +1729,8 @@ classdef ForceMap < matlab.mixin.Copyable
             obj.slopeH = zeros(obj.NCurves,obj.NumSegments);
             obj.shiftF = zeros(obj.NCurves,obj.NumSegments);
             obj.shiftH = zeros(obj.NCurves,obj.NumSegments);
+            obj.interceptF = zeros(obj.NCurves,obj.NumSegments);
+            obj.interceptH = zeros(obj.NCurves,obj.NumSegments);
                  
             for i=1:obj.NCurves
                 lastseg = obj.NumSegments-1;
@@ -1810,7 +1814,8 @@ classdef ForceMap < matlab.mixin.Copyable
                          obj.slopeF(i,j) = slopeF;
                          obj.slopeH(i,j) = slopeH;
                          
-                        
+                         obj.interceptF(i,j) = linearfitF(2);
+                         obj.interceptH(i,j) = linearfitH(2);
 
                          
                          %manually detrended data
@@ -2013,6 +2018,8 @@ classdef ForceMap < matlab.mixin.Copyable
                         % turn range back to normal
                         obj.shiftF(i,j) = obj.shiftF(i,j)*rangeF;
                         obj.shiftH(i,j) = obj.shiftH(i,j)*rangeH;
+                        obj.interceptF(i,j) = obj.interceptF(i,j)*rangeF;
+                        obj.interceptH(i,j) = obj.interceptH(i,j)*rangeH;
                         obj.slopeF(i,j) = obj.slopeF(i,j)*rangeF;
                         obj.slopeH(i,j) = obj.slopeH(i,j)*rangeH;
                         obj.BasedForce{i,j} = obj.BasedForce{i,j}*rangeF;
@@ -4057,11 +4064,11 @@ classdef ForceMap < matlab.mixin.Copyable
                         
                         %Y-values fitted sine of indentation and force:
                         try
-                            ypF = obj.SineVarsF{i,j}(1)*(sin(2*pi*x.*obj.SineVarsF{i,j}(2) + obj.SineVarsF{i,j}(3))) + meanF;
-                            ypH = obj.SineVarsH{i,j}(1)*(sin(2*pi*x.*obj.SineVarsH{i,j}(2) + obj.SineVarsH{i,j}(3))) + meanH;
+                            ypF = obj.SineVarsF{i,j}(1)*(sin(2*pi*x.*obj.SineVarsF{i,j}(2) + obj.SineVarsF{i,j}(3)));
+                            ypH = obj.SineVarsH{i,j}(1)*(sin(2*pi*x.*obj.SineVarsH{i,j}(2) + obj.SineVarsH{i,j}(3)));
                             
-                            ypFtrend = ypF + obj.slopeF(i,j).*x;
-                            ypHtrend = ypH + obj.slopeH(i,j).*x;
+                            ypFtrend = ypF + obj.slopeF(i,j).*x + obj.interceptF(i,j);
+                            ypHtrend = ypH + obj.slopeH(i,j).*x + obj.interceptH(i,j);
                         catch
                             ypF = zeros(length(x),1);
                             ypH = zeros(length(x),1);
