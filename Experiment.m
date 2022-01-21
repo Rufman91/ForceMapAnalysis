@@ -1391,8 +1391,8 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             
             % Output time and date for the dairy
             datetime('now')
-            
-             h = waitbar(0,'setting up','Units','normalized','Position',[0.4 0.3 0.2 0.1]);
+         
+            h = waitbar(0,'setting up','Units','normalized','Position',[0.4 0.3 0.2 0.1]);
             NLoop = length(obj.ForceMapNames);
             if sum(obj.SMFSFlag.Presorted) >= 1
                 KeepFlagged = questdlg(sprintf('Some maps have been processed already.\nDo you want to skip them and keep old results?'),...
@@ -1403,8 +1403,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             else
                 KeepFlagged = 'No';
             end
-            
-            
+                        
             % Loop over the imported force maps
             for ii=1:obj.NumForceMaps
             % for ii=1:33 % Debugging
@@ -1509,8 +1508,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             end
             close(h);
         end
-        
-         
+                 
         function SMFS_visual_selection_analysed(obj,XMin,XMax,YMin,YMax,NumFcMax,Res)
        
             % 
@@ -1830,15 +1828,14 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                     row_end   = ff * ArrayLength; % Define the appropriate row end to append the new data
                     % Concatenated data
                     ConcateArray1(row_start:row_end,:)=yAdhMaxApp'; % Append the new data into the concatenated vector
-                    ConcateArray1(row_start:row_end,:)=ConcateArray1(row_start:row_end,:).*obj.FM{ff}.SMFSFlag.Selected'; % Set non-selected force curves from the concatenated arrays to zero
+                    ConcateArray1(row_start:row_end,:)=ConcateArray1(row_start:row_end,:).*obj.FM{IdxArray(ff)}.SMFSFlag.Selected'; % Set non-selected force curves from the concatenated arrays to zero
                     ConcateArray1(ConcateArray1==0)=nan; % Replace zero entries by nan´s
+                    % Allocate parameters
                     FMIDArray(row_start:row_end,:)={FMID}; % Allocate the FM ID to each row 
-                      FMExtVelocityArray(row_start:row_end,:)=FMExtVelocity;
-                      FMRetVelocityArray(row_start:row_end,:)=FMRetVelocity;
-                      FMHoldingTimeArray(row_start:row_end,:)=FMHoldingTime;
-                
-             
-             FMSubstrateArray(row_start:row_end,:)={FMSubstrate};
+                    FMExtVelocityArray(row_start:row_end,:)=FMExtVelocity;
+                    FMRetVelocityArray(row_start:row_end,:)=FMRetVelocity;
+                    FMHoldingTimeArray(row_start:row_end,:)=FMHoldingTime;
+                    FMSubstrateArray(row_start:row_end,:)={FMSubstrate};
                     FMEnvCondArray(row_start:row_end,:)={FMEnvCond};
                     FMChipCantArray(row_start:row_end,:)={FMChipCant};
                     FMChipboxArray(row_start:row_end,:)={FMChipbox};
@@ -1856,7 +1853,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                     row_end   = ff * ArrayLength; % Define the appropriate row end to append the new data
                     % Concatenated data
                     ConcateArray2(row_start:row_end,:)=yAdhMaxRet'; % Append the new data into the concatenated vector
-                    ConcateArray2(row_start:row_end,:)=ConcateArray2(row_start:row_end,:).*obj.FM{ff}.SMFSFlag.Selected'; % Set non-selected force curves from the concatenated arrays to zero
+                    ConcateArray2(row_start:row_end,:)=ConcateArray2(row_start:row_end,:).*obj.FM{IdxArray(ff)}.SMFSFlag.Selected'; % Set non-selected force curves from the concatenated arrays to zero
                     ConcateArray2(ConcateArray2==0)=nan; % Replace zero entries by nan´s
                 else                  
                 end
@@ -1867,7 +1864,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                     row_end   = ff * ArrayLength; % Define the appropriate row end to append the new data
                     % Concatenated data
                     ConcateArray3(row_start:row_end,:)=yAdhUnbinding'; % Append the new data into the concatenated vector
-                    ConcateArray3(row_start:row_end,:)=ConcateArray3(row_start:row_end,:).*obj.FM{ff}.SMFSFlag.Selected'; % Set non-selected force curves from the concatenated arrays to zero
+                    ConcateArray3(row_start:row_end,:)=ConcateArray3(row_start:row_end,:).*obj.FM{IdxArray(ff)}.SMFSFlag.Selected'; % Set non-selected force curves from the concatenated arrays to zero
                     ConcateArray3(ConcateArray3==0)=nan; % Replace zero entries by nan´s
                 else                  
                 end
@@ -1878,7 +1875,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                     row_end   = ff * ArrayLength; % Define the appropriate row end to append the new data
                     % Concatenated data
                     ConcateArray4(row_start:row_end,:)=yAdhEneApp'; % Append the new data into the concatenated vector
-                    ConcateArray4(row_start:row_end,:)=ConcateArray4(row_start:row_end,:).*obj.FM{ff}.SMFSFlag.Selected'; % Set non-selected force curves from the concatenated arrays to zero
+                    ConcateArray4(row_start:row_end,:)=ConcateArray4(row_start:row_end,:).*obj.FM{IdxArray(ff)}.SMFSFlag.Selected'; % Set non-selected force curves from the concatenated arrays to zero
                     ConcateArray4(ConcateArray4==0)=nan; % Replace zero entries by nan´s
                 else                  
                 end
@@ -1889,7 +1886,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                     row_end   = ff * ArrayLength; % Define the appropriate row end to append the new data
                     % Concatenated data
                     ConcateArray5(row_start:row_end,:)=yAdhEneRet'; % Append the new data into the concatenated vector
-                    ConcateArray5(row_start:row_end,:)=ConcateArray5(row_start:row_end,:).*obj.FM{ff}.SMFSFlag.Selected'; % Set non-selected force curves from the concatenated arrays to zero
+                    ConcateArray5(row_start:row_end,:)=ConcateArray5(row_start:row_end,:).*obj.FM{IdxArray(ff)}.SMFSFlag.Selected'; % Set non-selected force curves from the concatenated arrays to zero
                     ConcateArray5(ConcateArray5==0)=nan; % Replace zero entries by nan´s
                 else                  
                 end
@@ -1900,7 +1897,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                     row_end   = ff * ArrayLength; % Define the appropriate row end to append the new data
                     % Concatenated data
                     ConcateArray6(row_start:row_end,:)=yPullingLength'; % Append the new data into the concatenated vector
-                    ConcateArray6(row_start:row_end,:)=ConcateArray6(row_start:row_end,:).*obj.FM{ff}.SMFSFlag.Selected'; % Set non-selected force curves from the concatenated arrays to zero
+                    ConcateArray6(row_start:row_end,:)=ConcateArray6(row_start:row_end,:).*obj.FM{IdxArray(ff)}.SMFSFlag.Selected'; % Set non-selected force curves from the concatenated arrays to zero
                     ConcateArray6(ConcateArray6==0)=nan; % Replace zero entries by nan´s
                 else                  
                 end
@@ -1911,7 +1908,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                     row_end   = ff * ArrayLength; % Define the appropriate row end to append the new data
                     % Concatenated data
                     ConcateArray7(row_start:row_end,:)=ySnapInLength'; % Append the new data into the concatenated vector
-                    ConcateArray7(row_start:row_end,:)=ConcateArray7(row_start:row_end,:).*obj.FM{ff}.SMFSFlag.Selected'; % Set non-selected force curves from the concatenated arrays to zero
+                    ConcateArray7(row_start:row_end,:)=ConcateArray7(row_start:row_end,:).*obj.FM{IdxArray(ff)}.SMFSFlag.Selected'; % Set non-selected force curves from the concatenated arrays to zero
                     ConcateArray7(ConcateArray7==0)=nan; % Replace zero entries by nan´s
                 else                  
                 end  
@@ -1946,12 +1943,12 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             % jj=4
             % Append the new data into the concatenated array
             yAdhMaxAppAll(:,ff)=yAdhMaxApp';
-                yAdhMaxRetAll(:,ff)=yAdhMaxRet';
-                yAdhUnbindingAll(:,ff)=yAdhUnbinding';
-                yAdhEneAppAll(:,ff)=yAdhEneApp';
-                yAdhEneRetAll(:,ff)=yAdhEneRet';
-                yPullingLengthAll(:,ff)=yPullingLength';
-                ySnapInLengthAll(:,ff)=ySnapInLength';               
+            yAdhMaxRetAll(:,ff)=yAdhMaxRet';
+            yAdhUnbindingAll(:,ff)=yAdhUnbinding';
+            yAdhEneAppAll(:,ff)=yAdhEneApp';
+            yAdhEneRetAll(:,ff)=yAdhEneRet';
+            yPullingLengthAll(:,ff)=yPullingLength';
+            ySnapInLengthAll(:,ff)=ySnapInLength';               
             % Allocate data    
             obj.SMFSResults{jj,1}.Data(1).AdhMaxApp=yAdhMaxAppAll;
             obj.SMFSResults{jj,1}.Data(1).AdhMaxRet=yAdhMaxRetAll;
