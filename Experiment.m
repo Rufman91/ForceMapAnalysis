@@ -1792,20 +1792,13 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             %for ff=6 % for debugging
              %sprintf('Index array row No. %d',ff) % Gives current Force curve
                 % Allocate data
-                yAdhMaxApp=obj.FM{IdxArray(ff)}.AdhForceMaxRet;
-                yAdhMaxApp(yAdhMaxApp==0)=nan; % Replace zero entries by nan´s
+                yAdhMaxApp=obj.FM{IdxArray(ff)}.AdhForceMaxRet;               
                 yAdhMaxRet=obj.FM{IdxArray(ff)}.AdhForceMaxApp;
-                yAdhMaxRet(yAdhMaxRet==0)=nan; % Replace zero entries by nan´s
                 yAdhUnbinding=obj.FM{IdxArray(ff)}.AdhForceUnbinding;
-                yAdhUnbinding(yAdhUnbinding==0)=nan; % Replace zero entries by nan´s
                 yAdhEneApp=obj.FM{IdxArray(ff)}.AppAdhEnergy_IdxMethod;
-                yAdhEneApp(yAdhEneApp==0)=nan; % Replace zero entries by nan´s
                 yAdhEneRet=obj.FM{IdxArray(ff)}.RetAdhEnergy_IdxMethod;
-                yAdhEneRet(yAdhEneRet==0)=nan; % Replace zero entries by nan´s
                 yPullingLength=obj.FM{IdxArray(ff)}.PullingLength;
-                yPullingLength(yPullingLength==0)=nan; % Replace zero entries by nan´s
                 ySnapInLength=obj.FM{IdxArray(ff)}.SnapInLength;
-                ySnapInLength(ySnapInLength==0)=nan; % Replace zero entries by nan´s
                 FMID=obj.FM{IdxArray(ff)}.ID;
                 FMExtVelocity=obj.FM{IdxArray(ff)}.ExtendVelocity;
                 FMRetVelocity=obj.FM{IdxArray(ff)}.RetractVelocity;
@@ -1821,12 +1814,19 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 %% Concatenate arrays
                 % FCs of each FM in seperate column
                 yAdhMaxAppAll(:,ff)=yAdhMaxApp'.*obj.FM{IdxArray(ff)}.SMFSFlag.Selected';
+                yAdhMaxAppAll(yAdhMaxAppAll==0)=nan; % Replace zero entries by nan´s
                 yAdhMaxRetAll(:,ff)=yAdhMaxRet'.*obj.FM{IdxArray(ff)}.SMFSFlag.Selected';
+                yAdhMaxRetAll(yAdhMaxRetAll==0)=nan; % Replace zero entries by nan´s
                 yAdhUnbindingAll(:,ff)=yAdhUnbinding'.*obj.FM{IdxArray(ff)}.SMFSFlag.Selected';
+                yAdhUnbindingAll(yAdhUnbindingAll==0)=nan; % Replace zero entries by nan´s
                 yAdhEneAppAll(:,ff)=yAdhEneApp'.*obj.FM{IdxArray(ff)}.SMFSFlag.Selected';
+                yAdhEneAppAll(yAdhEneAppAll==0)=nan; % Replace zero entries by nan´s
                 yAdhEneRetAll(:,ff)=yAdhEneRet'.*obj.FM{IdxArray(ff)}.SMFSFlag.Selected';
+                yAdhEneRetAll(yAdhEneRetAll==0)=nan; % Replace zero entries by nan´s
                 yPullingLengthAll(:,ff)=yPullingLength'.*obj.FM{IdxArray(ff)}.SMFSFlag.Selected';
-                ySnapInLengthAll(:,ff)=ySnapInLength'.*obj.FM{IdxArray(ff)}.SMFSFlag.Selected';            
+                yPullingLengthAll(yPullingLengthAll==0)=nan; % Replace zero entries by nan´s
+                ySnapInLengthAll(:,ff)=ySnapInLength'.*obj.FM{IdxArray(ff)}.SMFSFlag.Selected';  
+                ySnapInLengthAll(ySnapInLengthAll==0)=nan; % Replace zero entries by nan´s
                 % All FCs of all FM in one column
                 if ~isempty(yAdhMaxApp)
                     % Determine the number of rows per force map
