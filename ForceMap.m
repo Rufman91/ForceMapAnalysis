@@ -1761,9 +1761,7 @@ classdef ForceMap < matlab.mixin.Copyable
 %                         findpeaks(-HHGP)
 %                         drawnow
 
-                        AmplitudeFOrig=((max(obj.BasedForce{i,j}) - min(obj.BasedForce{i,j}))/2);
-                        AmplitudeHOrig=((max(obj.Indentation{i,j}) - min(obj.Indentation{i,j}))/2);
-                        
+
                         % Divide data through their range
                         rangeF = range(obj.BasedForce{i,j});
                         rangeH = range(obj.Indentation{i,j});
@@ -1783,9 +1781,7 @@ classdef ForceMap < matlab.mixin.Copyable
                          DiffF1 = maxF1 - minF1;
                          DiffH1 = maxH1 - minH1;
                          
-                         AmplitudeFRang=((max(obj.BasedForce{i,j}) - min(obj.BasedForce{i,j}))/2);
-                         AmplitudeHRang=((max(obj.Indentation{i,j}) - min(obj.Indentation{i,j}))/2);
-                        
+                         
 
                          % Shift to Zero Line
                          obj.FZShift{i,j} = obj.BasedForce{i,j}-maxF1+(DiffF1/2);
@@ -1794,10 +1790,7 @@ classdef ForceMap < matlab.mixin.Copyable
                          obj.shiftF(i,j) = maxF1-(DiffF1/2);
                          obj.shiftH(i,j) = maxH1-(DiffH1/2);
                          
-                         AmplitudeFShift=((max(obj.FZShift{i,j}) - min(obj.FZShift{i,j}))/2);
-                         AmplitudeHShift=((max(obj.HZShift{i,j}) - min(obj.HZShift{i,j}))/2);
-                        
-                         
+
                          % Calculation of Sampling rate and Invariance to
                          % be able to subsequently choose the right filter
                          Samplingrate = 1/obj.SecPerPoint{j};
@@ -1806,10 +1799,9 @@ classdef ForceMap < matlab.mixin.Copyable
                          % Force-Data are only placed horizontally in 
                          % the zero line with detrend
                          %ForceTrend{i,j} = detrend(obj.FZShift{i,j});
-                         
-                         linearfitF = polyfit(obj.SegTime{j},obj.FZShift{i,j},1);
+                         linearfitF = polyfit(obj.SegTime{j},obj.BasedForce{i,j},1);
                          Fvalueslinfit = polyval(linearfitF,obj.SegTime{j});
-                         linearfitH = polyfit(obj.SegTime{j},obj.HZShift{i,j},1);
+                         linearfitH = polyfit(obj.SegTime{j},obj.Indentation{i,j},1);
                          Hvalueslinfit = polyval(linearfitH,obj.SegTime{j});
                          
                          %y =k*x+d, d=0, k =y/x;
@@ -1817,12 +1809,13 @@ classdef ForceMap < matlab.mixin.Copyable
                          slopeH = linearfitH(1);
                          obj.slopeF(i,j) = slopeF;
                          obj.slopeH(i,j) = slopeH;
-                         %obj.kF(i,j) = Fvalueslinfit\obj.SegTime{j};
-                         %obj.kH(i,j) = Hvalueslinfit\obj.SegTime{j};
+                         
+                        
+
                          
                          %manually detrended data
-                         ForceTrend{i,j} = obj.FZShift{i,j} - Fvalueslinfit;
-                         IndentTrend{i,j} = obj.HZShift{i,j} - Hvalueslinfit;
+                         ForceTrend{i,j} = obj.BasedForce{i,j} - Fvalueslinfit;
+                         IndentTrend{i,j} = obj.Indentation{i,j} - Hvalueslinfit;
                          
                          AmplitudeFTrend=((max(ForceTrend{i,j}) - min(ForceTrend{i,j}))/2);
                          %1D-digital filter
@@ -1837,9 +1830,6 @@ classdef ForceMap < matlab.mixin.Copyable
                          d = ones(1,fix(iN))/iN;
                          obj.FilterH{i,j} = filtfilt(d,1,IndentTrend{i,j});
                          
-                         
-                         AmplitudeFFilter=((max(obj.FilterF{i,j}) - min(obj.FilterF{i,j}))/2);
-                         AmplitudeHFilter=((max(obj.FilterH{i,j}) - min(obj.FilterH{i,j}))/2);
                          
                          % Amplitude Correction
                          AmplFiltF = trapz(abs(obj.FilterF{i,j}));
@@ -3985,42 +3975,50 @@ classdef ForceMap < matlab.mixin.Copyable
             close all
             DirectoryPath = uigetdir();
             k=1;
+            
+            figure('Phaseshift, Loss and Storage Modulus of all curves')
+            hold on
             for i=1:obj.NCurves
-
+                hold on
                 for j=1:obj.NumSegments
                     
                     if obj.SegFrequency{j} > 0
                         
                         
-                        x= obj.SegTime{j};
-
-                        k = k + 1;
-                         % time indentation
-                        figure('Name',sprintf('Force Curve %i Segment %i',i,j))
-                        subplot(3,1,1)
+                        %subplot(3,1,1)
                         plot(obj.SegFrequency{j},obj.DeltaPhi{i,j})
-                        legend({'shifted force data to zero line','filtered force data','fitted force data 1'},'Location','southoutside')
-                        subplot(3,1,2)
-                        plot(x,obj.HZShift{i,j},x,obj.FilterH{i,j},x,ypH)
-                        legend({'shifted indentation data to zero line','filtered indentation data','fitted indentation data 1'},'Location','southoutside')
-                        subplot(3,1,3)
-                        %plot(x,ypF)
-                        findpeaks(ypF)
                         hold on
-                        %findpeaks(-obj.SineFunctionF)
-                        findpeaks(ypH)
-                        %findpeaks(-obj.SineFunctionH)
-                        legend({'force','force peak','indentation','indentation peak'},'Location','southoutside')
-                        drawnow
+                        title('Phaseshift of all curves')
+                        xlabel('frequency [Hz]')
+                        ylabel('phaseshift [°]')
+                        legend(sprintf('Curve %i',i))
                         
-                        if DirectoryPath~=0
-                           whereToStore=fullfile(DirectoryPath,['fit_curve_' num2str(i) '_segment_' num2str(j) '.svg']);
-                           saveas(gcf, whereToStore);
-                        end
+                        %legend({'shifted force data to zero line','filtered force data','fitted force data 1'},'Location','southoutside')
+                        %subplot(3,1,2)
+                        %plot(x,obj.HZShift{i,j},x,obj.FilterH{i,j},x,ypH)
+                        %legend({'shifted indentation data to zero line','filtered indentation data','fitted indentation data 1'},'Location','southoutside')
+                        %subplot(3,1,3)
+                        %plot(x,ypF)
+                        %findpeaks(ypF)
+                        %hold on
+                        %findpeaks(-obj.SineFunctionF)
+                        %findpeaks(ypH)
+                        %findpeaks(-obj.SineFunctionH)
+                        %legend({'force','force peak','indentation','indentation peak'},'Location','southoutside')
+                        
                         
                     end
                         
                 end
+            end
+            
+            drawnow
+            grid on
+            grid minor
+
+            if DirectoryPath~=0
+               whereToStore=fullfile(DirectoryPath,['fit_curve_' num2str(i) '_segment_' num2str(j) '.svg']);
+               saveas(gcf, whereToStore);
             end
  
         end
@@ -4029,6 +4027,8 @@ classdef ForceMap < matlab.mixin.Copyable
             close all
             DirectoryPath = uigetdir();
             k=1;
+            
+            
             for i=1:obj.NCurves
                 
                 %Identify position of first modulation for Multiplier later
@@ -4038,12 +4038,9 @@ classdef ForceMap < matlab.mixin.Copyable
                 end
                 FirstFreq = find(frequencies,1,'first');
                 
+                
                 %Plot
                 figure('Name',sprintf('Curves with Fit %i',i))
-                %fig = figure;
-                %left_color = [1 0 0];
-                %right_color = [0 1 1];
-                %set(figure,'defaultAxesColorOrder',[left_color; right_color]);
                 lastseg = obj.NumSegments - 2;
                 hold on
                 for j=3:lastseg
@@ -4053,9 +4050,6 @@ classdef ForceMap < matlab.mixin.Copyable
                         
                         x= obj.SegTime{j};
                         
-                        %if isempty(obj.SineVarsH{i,j})
-                        %    obj.SineVarsH{i,j}=0;
-                        %end
                         
                         % Estimate offset
                          meanF = mean(obj.BasedForce{i,j});
@@ -4066,8 +4060,8 @@ classdef ForceMap < matlab.mixin.Copyable
                             ypF = obj.SineVarsF{i,j}(1)*(sin(2*pi*x.*obj.SineVarsF{i,j}(2) + obj.SineVarsF{i,j}(3)));
                             ypH = obj.SineVarsH{i,j}(1)*(sin(2*pi*x.*obj.SineVarsH{i,j}(2) + obj.SineVarsH{i,j}(3)));
                             
-                            ypFtrend = ypF + obj.slopeF(i,j).*x + obj.shiftF(i,j)/2;
-                            ypHtrend = ypH + obj.slopeH(i,j).*x + obj.shiftH(i,j)/2;
+                            ypFtrend = ypF + obj.slopeF(i,j).*x;
+                            ypHtrend = ypH + obj.slopeH(i,j).*x;
                         catch
                             ypF = zeros(length(x),1);
                             ypH = zeros(length(x),1);
@@ -4099,7 +4093,8 @@ classdef ForceMap < matlab.mixin.Copyable
                         %Legends{end+1} = 'indentation data';
                         set(gca, 'YColor', 'c')
                         title(sprintf('Force and Indentation over Time incl. Fit Curve %i',i))
-                        legend({'force data','force fit data','','','','','indentation data','indentation fit data'},'Location','southoutside')
+                        %legend({'force data','force fit data','','','','','indentation data','indentation fit data'},'Location','southoutside')
+                        legend
                         %ylabel('indentation')
                         ylabel(sprintf('Indentation [%s]',UnitI));
                         grid on
