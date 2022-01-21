@@ -1771,14 +1771,21 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 return
             else    
             end
-            % Define variables
-            ConcateArray1=zeros(1,1);
-            ConcateArray2=zeros(1,1);
-            ConcateArray3=zeros(1,1);
-            ConcateArray4=zeros(1,1);
-            ConcateArray5=zeros(1,1);
-            ConcateArray6=zeros(1,1);
-            ConcateArray7=zeros(1,1);                      
+            % Preallocate
+            ConcateArray1=zeros(length(IdxArray)*obj.FM{IdxArray(1)}.NCurves,1);
+            ConcateArray2=zeros(length(IdxArray)*obj.FM{IdxArray(1)}.NCurves,1);
+            ConcateArray3=zeros(length(IdxArray)*obj.FM{IdxArray(1)}.NCurves,1);
+            ConcateArray4=zeros(length(IdxArray)*obj.FM{IdxArray(1)}.NCurves,1);
+            ConcateArray5=zeros(length(IdxArray)*obj.FM{IdxArray(1)}.NCurves,1);
+            ConcateArray6=zeros(length(IdxArray)*obj.FM{IdxArray(1)}.NCurves,1);
+            ConcateArray7=zeros(length(IdxArray)*obj.FM{IdxArray(1)}.NCurves,1);     
+            yAdhMaxAppAll=zeros(obj.FM{IdxArray(1)}.NCurves,length(IdxArray));
+            yAdhMaxRetAll=zeros(obj.FM{IdxArray(1)}.NCurves,length(IdxArray));
+            yAdhUnbindingAll=zeros(obj.FM{IdxArray(1)}.NCurves,length(IdxArray));
+            yAdhEneAppAll=zeros(obj.FM{IdxArray(1)}.NCurves,length(IdxArray));
+            yAdhEneRetAll=zeros(obj.FM{IdxArray(1)}.NCurves,length(IdxArray));
+            yPullingLengthAll=zeros(obj.FM{IdxArray(1)}.NCurves,length(IdxArray));
+            ySnapInLengthAll=zeros(obj.FM{IdxArray(1)}.NCurves,length(IdxArray));            
             % Loop
             for ff=1:length(IdxArray)
             %% Debugging
@@ -1799,7 +1806,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 yPullingLength(yPullingLength==0)=nan; % Replace zero entries by nan´s
                 ySnapInLength=obj.FM{IdxArray(ff)}.SnapInLength;
                 ySnapInLength(ySnapInLength==0)=nan; % Replace zero entries by nan´s
-                FMID=obj.FM{ff}.ID;
+                FMID=obj.FM{IdxArray(ff)}.ID;
                 FMExtVelocity=obj.FM{IdxArray(ff)}.ExtendVelocity;
                 FMRetVelocity=obj.FM{IdxArray(ff)}.RetractVelocity;
                 FMHoldingTime=obj.FM{IdxArray(ff)}.HoldingTime;
@@ -1842,8 +1849,6 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                     FMLinkerArray(row_start:row_end,:)={FMLinker};
                     FMDateArray(row_start:row_end,:)={FMDate};
                     FMTimeArray(row_start:row_end,:)={FMTime};
-                    % Save the number of force curves per force map 
-                    FCperFM(ff,1)=row_end;
                 else                   
                 end                
                 if ~isempty(yAdhMaxRet)
@@ -1973,7 +1978,6 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             obj.SMFSResults{jj,1}.Parameters(1).Chipbox=ChipboxValue;
             obj.SMFSResults{jj,1}.Parameters(1).Linker=LinkerValue;
             obj.SMFSResults{jj,1}.Concatenate(1).FMIndex=IdxArray;
-            obj.SMFSResults{jj,1}.Concatenate(1).FCperFM=FCperFM;
             obj.SMFSResults{jj,1}.Concatenate(1).FMID=FMIDArray;
             obj.SMFSResults{jj,1}.Concatenate(1).FMExtVelocity=FMExtVelocityArray;
             obj.SMFSResults{jj,1}.Concatenate(1).FMRetVelocity=FMRetVelocityArray;
