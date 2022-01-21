@@ -4087,7 +4087,7 @@ classdef ForceMap < matlab.mixin.Copyable
 
                         yyaxis left
                         [MultiplierF,UnitF,~] = AFMImage.parse_unit_scale(range(obj.BasedForce{i,FirstFreq}),'N',10);
-                        plot(x,obj.BasedForce{i,j}*MultiplierF,'-m',x,ypFtrend*MultiplierF,':b')
+                        plot(x,obj.BasedForce{i,j}*MultiplierF,':m',x,ypFtrend*MultiplierF,'-b')
                         set(gca, 'YColor', 'm')
                         %Legends = {'force data','force fit data'};
                         xlabel('time [s]')
