@@ -1786,6 +1786,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             yAdhEneRetAll=zeros(obj.FM{IdxArray(1)}.NCurves,length(IdxArray));
             yPullingLengthAll=zeros(obj.FM{IdxArray(1)}.NCurves,length(IdxArray));
             ySnapInLengthAll=zeros(obj.FM{IdxArray(1)}.NCurves,length(IdxArray));
+            FMArray=zeros(length(IdxArray),1);
             FCperFMArray=zeros(length(IdxArray),1);
             % Loop
             for ff=1:length(IdxArray)
@@ -1810,7 +1811,8 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 FMChipbox=obj.FM{IdxArray(ff)}.Chipbox;
                 FMLinker=obj.FM{IdxArray(ff)}.Linker;
                 FMDate=obj.FM{IdxArray(ff)}.Date;
-                FMTime=obj.FM{IdxArray(ff)}.Time;                
+                FMTime=obj.FM{IdxArray(ff)}.Time;
+                FCperFM=nnz(obj.FM{IdxArray(ff)}.SMFSFlag.Selected');   % Gives all force curves used for analysis          
                 %% Concatenate arrays
                 % FCs of each FM in seperate column
                 yAdhMaxAppAll(:,ff)=yAdhMaxApp'.*obj.FM{IdxArray(ff)}.SMFSFlag.Selected';
@@ -1826,8 +1828,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 yPullingLengthAll(:,ff)=yPullingLength'.*obj.FM{IdxArray(ff)}.SMFSFlag.Selected';
                 yPullingLengthAll(yPullingLengthAll==0)=nan; % Replace zero entries by nan´s
                 ySnapInLengthAll(:,ff)=ySnapInLength'.*obj.FM{IdxArray(ff)}.SMFSFlag.Selected';  
-                ySnapInLengthAll(ySnapInLengthAll==0)=nan; % Replace zero entries by nan´s
-                FCperFM=nnz(~isnan(yAdhMaxAppAll));
+                ySnapInLengthAll(ySnapInLengthAll==0)=nan; % Replace zero entries by nan´s                
                 % All FCs of all FM in one column
                 if ~isempty(yAdhMaxApp)
                     % Determine the number of rows per force map
@@ -1850,7 +1851,6 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                     FMLinkerArray(row_start:row_end,:)={FMLinker};
                     FMDateArray(row_start:row_end,:)={FMDate};
                     FMTimeArray(row_start:row_end,:)={FMTime};
-                    FCperFMArray(ff)=FCperFM;
                 else                   
                 end                
                 if ~isempty(yAdhMaxRet)
@@ -1948,8 +1948,20 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             end
             % Debugging
             % jj=1                         
-            % Allocate data   
-            obj.SMFSResults{jj,1}.Data(1).NoFcAnalysed=sum(FCperFMArray);
+            % Allocate data
+            obj.SMFSResults{jj,1}.Concatenate(1).FMID=FMIDArray;
+            obj.SMFSResults{jj,1}.Concatenate(1).FMExtVelocity=FMExtVelocityArray;
+            obj.SMFSResults{jj,1}.Concatenate(1).FMRetVelocity=FMRetVelocityArray;
+            obj.SMFSResults{jj,1}.Concatenate(1).FMHoldingTime=FMHoldingTimeArray;                   
+            obj.SMFSResults{jj,1}.Concatenate(1).FMSubstrate=FMSubstrateArray;
+            obj.SMFSResults{jj,1}.Concatenate(1).FMEnvCond=FMEnvCondArray;
+            obj.SMFSResults{jj,1}.Concatenate(1).FMChipCant=FMChipCantArray;
+            obj.SMFSResults{jj,1}.Concatenate(1).FMChipbox=FMChipboxArray;
+            obj.SMFSResults{jj,1}.Concatenate(1).FMLinker=FMLinkerArray;
+            obj.SMFSResults{jj,1}.Concatenate(1).FMDate=FMDateArray;
+            obj.SMFSResults{jj,1}.Concatenate(1).FMTime=FMTimeArray;         
+            obj.SMFSResults{jj,1}.Data(1).FMIndex=IdxArray;
+            obj.SMFSResults{jj,1}.Data(1).NumFcAnalysed=sum(FCperFMArray);
             obj.SMFSResults{jj,1}.Data(1).AdhMaxApp=yAdhMaxAppAll;
             obj.SMFSResults{jj,1}.Data(1).AdhMaxRet=yAdhMaxRetAll;
             obj.SMFSResults{jj,1}.Data(1).AdhUnbinding=yAdhUnbindingAll;
@@ -1971,19 +1983,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             obj.SMFSResults{jj,1}.Parameters(1).Medium=EnvCondValue;
             obj.SMFSResults{jj,1}.Parameters(1).ChipCantilever=ChipCantValue;
             obj.SMFSResults{jj,1}.Parameters(1).Chipbox=ChipboxValue;
-            obj.SMFSResults{jj,1}.Parameters(1).Linker=LinkerValue;
-            obj.SMFSResults{jj,1}.Concatenate(1).FMIndex=IdxArray;
-            obj.SMFSResults{jj,1}.Concatenate(1).FMID=FMIDArray;
-            obj.SMFSResults{jj,1}.Concatenate(1).FMExtVelocity=FMExtVelocityArray;
-            obj.SMFSResults{jj,1}.Concatenate(1).FMRetVelocity=FMRetVelocityArray;
-            obj.SMFSResults{jj,1}.Concatenate(1).FMHoldingTime=FMHoldingTimeArray;                   
-            obj.SMFSResults{jj,1}.Concatenate(1).FMSubstrate=FMSubstrateArray;
-            obj.SMFSResults{jj,1}.Concatenate(1).FMEnvCond=FMEnvCondArray;
-            obj.SMFSResults{jj,1}.Concatenate(1).FMChipCant=FMChipCantArray;
-            obj.SMFSResults{jj,1}.Concatenate(1).FMChipbox=FMChipboxArray;
-            obj.SMFSResults{jj,1}.Concatenate(1).FMLinker=FMLinkerArray;
-            obj.SMFSResults{jj,1}.Concatenate(1).FMDate=FMDateArray;
-            obj.SMFSResults{jj,1}.Concatenate(1).FMTime=FMTimeArray;            
+            obj.SMFSResults{jj,1}.Parameters(1).Linker=LinkerValue;                          
             obj.SMFSResults{jj,1}.Results(1).AdhMaxAppMean=AdhMaxAppSelMean;
             obj.SMFSResults{jj,1}.Results(1).AdhMaxAppMean=AdhMaxAppSelMean;
             obj.SMFSResults{jj,1}.Results(1).AdhMaxAppStd=AdhMaxAppSelStd;
