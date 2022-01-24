@@ -1748,9 +1748,9 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             %for ii=1:17 % for debugging
                  sprintf('Force map No. %d',ii) % Gives current force map
             %% Force map selection criteria
-            if ~obj.SMFSFlag.Analysed(ii)   % Exclude force map if analysis has not been done     
-                continue
-            end  
+         %   if ~obj.SMFSFlag.Analysed(ii)   % Exclude force map if analysis has not been done     
+         %       continue
+         %   end  
                 % Parameters
                 if ((obj.FM{ii}.ExtendVelocity==ExtVelocityValue || ExtVelocityValue==0) ...
                         && (obj.FM{ii}.RetractVelocity==RetVelocityValue || RetVelocityValue==0) ...
@@ -1785,15 +1785,16 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             yAdhEneAppAll=zeros(obj.FM{IdxArray(1)}.NCurves,length(IdxArray));
             yAdhEneRetAll=zeros(obj.FM{IdxArray(1)}.NCurves,length(IdxArray));
             yPullingLengthAll=zeros(obj.FM{IdxArray(1)}.NCurves,length(IdxArray));
-            ySnapInLengthAll=zeros(obj.FM{IdxArray(1)}.NCurves,length(IdxArray));            
+            ySnapInLengthAll=zeros(obj.FM{IdxArray(1)}.NCurves,length(IdxArray));
+            FCperFMArray=zeros(length(IdxArray),1);
             % Loop
             for ff=1:length(IdxArray)
             %% Debugging
             %for ff=6 % for debugging
              %sprintf('Index array row No. %d',ff) % Gives current Force curve
                 % Allocate data
-                yAdhMaxApp=obj.FM{IdxArray(ff)}.AdhForceMaxRet;               
-                yAdhMaxRet=obj.FM{IdxArray(ff)}.AdhForceMaxApp;
+                yAdhMaxApp=obj.FM{IdxArray(ff)}.AdhForceMaxApp;               
+                yAdhMaxRet=obj.FM{IdxArray(ff)}.AdhForceMaxRet;
                 yAdhUnbinding=obj.FM{IdxArray(ff)}.AdhForceUnbinding;
                 yAdhEneApp=obj.FM{IdxArray(ff)}.AppAdhEnergy_IdxMethod;
                 yAdhEneRet=obj.FM{IdxArray(ff)}.RetAdhEnergy_IdxMethod;
@@ -1809,8 +1810,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 FMChipbox=obj.FM{IdxArray(ff)}.Chipbox;
                 FMLinker=obj.FM{IdxArray(ff)}.Linker;
                 FMDate=obj.FM{IdxArray(ff)}.Date;
-                FMTime=obj.FM{IdxArray(ff)}.Time;
-          
+                FMTime=obj.FM{IdxArray(ff)}.Time;                
                 %% Concatenate arrays
                 % FCs of each FM in seperate column
                 yAdhMaxAppAll(:,ff)=yAdhMaxApp'.*obj.FM{IdxArray(ff)}.SMFSFlag.Selected';
@@ -1827,6 +1827,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 yPullingLengthAll(yPullingLengthAll==0)=nan; % Replace zero entries by nan´s
                 ySnapInLengthAll(:,ff)=ySnapInLength'.*obj.FM{IdxArray(ff)}.SMFSFlag.Selected';  
                 ySnapInLengthAll(ySnapInLengthAll==0)=nan; % Replace zero entries by nan´s
+                FCperFM=nnz(~isnan(yAdhMaxAppAll));
                 % All FCs of all FM in one column
                 if ~isempty(yAdhMaxApp)
                     % Determine the number of rows per force map
@@ -1849,6 +1850,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                     FMLinkerArray(row_start:row_end,:)={FMLinker};
                     FMDateArray(row_start:row_end,:)={FMDate};
                     FMTimeArray(row_start:row_end,:)={FMTime};
+                    FCperFMArray(ff)=FCperFM;
                 else                   
                 end                
                 if ~isempty(yAdhMaxRet)
@@ -1946,7 +1948,8 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             end
             % Debugging
             % jj=1                         
-            % Allocate data    
+            % Allocate data   
+            obj.SMFSResults{jj,1}.Data(1).NoFcAnalysed=sum(FCperFMArray);
             obj.SMFSResults{jj,1}.Data(1).AdhMaxApp=yAdhMaxAppAll;
             obj.SMFSResults{jj,1}.Data(1).AdhMaxRet=yAdhMaxRetAll;
             obj.SMFSResults{jj,1}.Data(1).AdhUnbinding=yAdhUnbindingAll;
@@ -2003,7 +2006,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             close all
         end
         
-        
+       
         function SMFS_results_gramm(obj,ii)
             
             % Input variable adaptation
@@ -2025,10 +2028,14 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             cd(currpath); 
             
             % Define variables
-            Plottitle='Boxplots';
-            LegendxAxis='Extend velocity';
+            FMExtVeloData=obj.SMFSResults{ii}.Concatenate.FMExtVelocity;
+            FMRetVeloData=obj.SMFSResults{ii}.Concatenate.FMRetVelocity;
+            PlottitlePt1='Boxplots';
+            PlottitlePt2=sprintf('Number of Force curves');
+            LegendxAxis='Retraction velocity (m/s)';
             LegendyAxis='Pulling length (m)';
-            LegendColor='Date';           
+            LegendColor='Date'; 
+            ColumnName='Holding Time (s)';
             if obj.SMFSResults{ii}.Parameters.ExtendVelocity==0
                 ExtVelocityValueStr='All';
             else
@@ -2048,7 +2055,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             FigNamePt1=char(FigNamePt1);
             FigNamePt2=sprintf('_SMFSResultRow%d',ii);
             % Allocate data
-            xData=obj.SMFSResults{ii}.Concatenate.FMExtVelocity;
+            xData=FMRetVeloData;
             yData=obj.SMFSResults{ii}.Data.yPullingLengthConcat;
             ColorData=obj.SMFSResults{ii}.Concatenate.FMRetVelocity;   
             LightnessData=obj.SMFSResults{ii}.Concatenate.FMEnvCond;
@@ -2064,17 +2071,17 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 h_fig1.PaperOrientation='landscape';
                 h_fig1.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3);
             % Create a gramm object
-            g1=gramm('x',xData,'y',yData,...
-                'color',ColorData);            
+            g1=gramm('x',xData,'y',yData)%,...
+              %  'color',ColorData);            
             % Subdivide the data in subplots horizontally by region of origin
             g1.facet_grid([],SubdivideData)
             % Define the visualization of the data in the plot Plot raw data as points
-            %g1.geom_point() % Plot raw data as points
+            g1.geom_point() % Plot raw data as points
             %g1.geom_jitter() % Plot raw data as jitter
             % Plot data in boxplots
             g1.stat_boxplot('notch',true)                       
             % Set appropriate names for legends
-            g1.set_names('x',LegendxAxis,'y',LegendyAxis,'color',LegendColor)
+            g1.set_names('x',LegendxAxis,'y',LegendyAxis,'color',LegendColor,'column',ColumnName)
             %Set figure title
             g1.set_title(Plottitle)           
             % The actual plotting
@@ -2082,15 +2089,14 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             
             % Save figure
             % fullname=sprintf('%s%s',figname,partname);
-            fullname1=strcat(FigNamePt1,FigNamePt2);
+            fullname1=strcat(FigNamePt1,FigNamePt2,FigNamePt3);
         %    fullname1=char(fullname1);
             %%% Save the current figure in the current folder
             print(h_fig1,fullname1,'-dpng');
             
-            
-        end
-        
-   
+            % House keeping
+            close all
+        end   
         
         
         function SMFS_analysis_dashboard(obj,ExtVelocityValue,RetVelocityValue,HoldingTimeValue,SubstrateValue,EnvCondValue,ChipCantValue,ChipboxValue,LinkerValue)
