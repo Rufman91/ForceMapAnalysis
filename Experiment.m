@@ -2042,6 +2042,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             end
             FigNamePt1=strcat(ExtVelocityValueStr,{'_'},RetVelocityValueStr,{'_'},HoldingTimeValueStr,{'_'},obj.SMFSResults{ii}.Parameters.Substrate,{'_'},obj.SMFSResults{ii}.Parameters.Medium,{'_'},obj.SMFSResults{ii}.Parameters.ChipCantilever,{'_'},obj.SMFSResults{ii}.Parameters.Chipbox,{'_'},obj.SMFSResults{ii}.Parameters.Linker);
             FigNamePt1=char(FigNamePt1);
+            FigNamePt2=sprintf('_SMFSResultRow%d',ii);
             % Allocate data
             xData=obj.SMFSResults{ii}.Concatenate.FMExtVelocity;
             yData=obj.SMFSResults{ii}.Data.yPullingLengthConcat;
@@ -2050,14 +2051,14 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             SubdivideData=obj.SMFSResults{ii}.Concatenate.FMHoldingTime;                    
             %% Gramm object 1
             % Define variables
-            FigNamePt2='_Boxplot';
+            FigNamePt3='_Boxplot';
             % Figure
                 h_fig1=figure(ii);
                 h_fig1.Color='white'; % changes the background color of the figure
                 h_fig1.Units='pixel'; % Defines the units
                 h_fig1.OuterPosition=Res;
                 h_fig1.PaperOrientation='landscape';
-                h_fig1.Name=strcat(FigNamePt1,FigNamePt2);
+                h_fig1.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3);
             % Create a gramm object
             g1=gramm('x',xData,'y',yData,...
                 'color',ColorData);            
