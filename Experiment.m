@@ -1748,9 +1748,9 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             %for ii=1:17 % for debugging
                  sprintf('Force map No. %d',ii) % Gives current force map
             %% Force map selection criteria
-         %   if ~obj.SMFSFlag.Analysed(ii)   % Exclude force map if analysis has not been done     
-         %       continue
-         %   end  
+            if ~obj.SMFSFlag.Analysed(ii)   % Exclude force map if analysis has not been done     
+                continue
+            end  
                 % Parameters
                 if ((obj.FM{ii}.ExtendVelocity==ExtVelocityValue || ExtVelocityValue==0) ...
                         && (obj.FM{ii}.RetractVelocity==RetVelocityValue || RetVelocityValue==0) ...
@@ -2036,12 +2036,12 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             if obj.SMFSResults{ii}.Parameters.ExtendVelocity==0
                 ExtVelocityValueStr='All';
             else
-             ExtVelocityValueStr=num2str(obj.SMFSResults{ii}.Parameters.ExtendVelocity);
+             ExtVelocityValueStr=num2str(round(obj.SMFSResults{ii}.Parameters.ExtendVelocity*1e9));
             end                                 
             if obj.SMFSResults{ii}.Parameters.RetractVelocity==0
                  RetVelocityValueStr='All';
             else
-            RetVelocityValueStr=num2str(obj.SMFSResults{ii}.Parameters.RetractVelocity);
+            RetVelocityValueStr=num2str(round(obj.SMFSResults{ii}.Parameters.RetractVelocity*1e9));
             end                        
              if obj.SMFSResults{ii}.Parameters.HoldingTime==-1
                 HoldingTimeValueStr='All';
