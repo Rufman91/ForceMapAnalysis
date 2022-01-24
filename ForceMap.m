@@ -1723,8 +1723,6 @@ classdef ForceMap < matlab.mixin.Copyable
             
             obj.slopeF = zeros(obj.NCurves,obj.NumSegments);
             obj.slopeH = zeros(obj.NCurves,obj.NumSegments);
-            obj.shiftF = zeros(obj.NCurves,obj.NumSegments);
-            obj.shiftH = zeros(obj.NCurves,obj.NumSegments);
             obj.interceptF = zeros(obj.NCurves,obj.NumSegments);
             obj.interceptH = zeros(obj.NCurves,obj.NumSegments);
                  
