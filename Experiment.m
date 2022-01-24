@@ -1786,6 +1786,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             yAdhEneRetAll=zeros(obj.FM{IdxArray(1)}.NCurves,length(IdxArray));
             yPullingLengthAll=zeros(obj.FM{IdxArray(1)}.NCurves,length(IdxArray));
             ySnapInLengthAll=zeros(obj.FM{IdxArray(1)}.NCurves,length(IdxArray));
+            FCperFM=zeros(length(IdxArray),1);
             % Loop
             for ff=1:length(IdxArray)
             %% Debugging
@@ -1810,7 +1811,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 FMLinker=obj.FM{IdxArray(ff)}.Linker;
                 FMDate=obj.FM{IdxArray(ff)}.Date;
                 FMTime=obj.FM{IdxArray(ff)}.Time;
-                FCperFM=nnz(obj.FM{IdxArray(ff)}.SMFSFlag.Selected');   % Gives all force curves used for analysis          
+                FCperFM(ff)=nnz(obj.FM{IdxArray(ff)}.SMFSFlag.Selected');   % Gives all force curves used for analysis          
                 %% Concatenate arrays
                 % FCs of each FM in seperate column
                 yAdhMaxAppAll(:,ff)=yAdhMaxApp'.*obj.FM{IdxArray(ff)}.SMFSFlag.Selected';
