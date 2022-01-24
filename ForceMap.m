@@ -3657,9 +3657,12 @@ classdef ForceMap < matlab.mixin.Copyable
                 end
                 FirstFreq = find(frequencies,1,'first');
                 
+                
                 % Multiplier
                 [MultiplierF,UnitF,~] = AFMImage.parse_unit_scale(range(obj.BasedForce{i,FirstFreq}),'N',10);
                 [MultiplierI,UnitI,~] = AFMImage.parse_unit_scale(range(obj.Indentation{i,FirstFreq}),'m',10);
+                
+                
                 
                 
                 %force time
@@ -3702,8 +3705,6 @@ classdef ForceMap < matlab.mixin.Copyable
                 hold on
                 for j=1:obj.NumSegments
                     
-                       yHmin = 1.2*min(obj.Indentation{i,j})*MultiplierI;
-                       yHmax = 1.2*max(obj.Indentation{i,j})*MultiplierI;
                     
                        lengthHHApp = length(obj.HHApp{i});
                        obj.SecPerPoint{1} = obj.SegDuration{1}/lengthHHApp;
@@ -3718,7 +3719,13 @@ classdef ForceMap < matlab.mixin.Copyable
                        obj.TEnd{obj.NumSegments} = obj.SeriesTime{obj.NumSegments};
                        obj.SegTime{obj.NumSegments} = obj.TStart{obj.NumSegments}:obj.SecPerPoint{obj.NumSegments}:obj.TEnd{obj.NumSegments};
                        obj.SegTime{obj.NumSegments} = obj.SegTime{obj.NumSegments}.';
-                        
+                       
+                       % find min/max of indentation and force modulation
+                        if obj.SegFrequency{j} > 0
+
+                            yHmin = 1.2*min(obj.Indentation{i,j})*MultiplierI;
+                            yHmax = 1.2*max(obj.Indentation{i,j})*MultiplierI;
+                        end
                       
                        plot(obj.SegTime{j},obj.Indentation{i,j}*MultiplierI,'b')
                        ylim([yHmin yHmax])
@@ -3753,10 +3760,16 @@ classdef ForceMap < matlab.mixin.Copyable
                        obj.SegTime{obj.NumSegments} = obj.TStart{obj.NumSegments}:obj.SecPerPoint{obj.NumSegments}:obj.TEnd{obj.NumSegments};
                        obj.SegTime{obj.NumSegments} = obj.SegTime{obj.NumSegments}.';
                        
-                       yHmin = 1.2*min(obj.Indentation{i,j})*MultiplierI;
-                       yHmax = 1.2*max(obj.Indentation{i,j})*MultiplierI;
-                       yFmin = 1.2*min(obj.Force{i,j})*MultiplierF;
-                       yFmax = 1.2*max(obj.Force{i,j})*MultiplierF;
+                       
+                       % find min/max of indentation and force modulation
+                        if obj.SegFrequency{j} > 0
+
+                           yHmin = 1.2*min(obj.Indentation{i,j})*MultiplierI;
+                           yHmax = 1.2*max(obj.Indentation{i,j})*MultiplierI;
+                           yFmin = 1.2*min(obj.Force{i,j})*MultiplierF;
+                           yFmax = 1.2*max(obj.Force{i,j})*MultiplierF;
+                       
+                        end
 
                        hold on
 
