@@ -2005,18 +2005,31 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
         
         
         function SMFS_results_gramm(obj)
-            % I all velocities should be selected use input variable: 0
-            
+                        
             % Output time and date for the dairy
             datetime('now')
             
             Res=[1 1 2560 1440]; % Define the figure resolution
+            
+            % Change into the Folder of Interest
+            cd(obj.ExperimentFolder) % Move into the folder 
+            % Create folders for saving the produced figures
+            foldername='SMFS_results_gramm';    % Defines the folder name
+            mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
+            currpath=fullfile(obj.ExperimentFolder,foldername);
+            cd(currpath); 
+            
             % Define variables
             ii=1;
             Plottitle='Boxplots';
             LegendxAxis='Extend velocity';
             LegendyAxis='Pulling length (m)';
-            LegendColor='Date';         
+            LegendColor='Date';
+            ExtVelocityValueStr=num2str(obj.SMFSResults{ii}.Parameters.ExtendVelocity);
+            RetVelocityValueStr=num2str(obj.SMFSResults{ii}.Parameters.RetractVelocity);
+            HoldingTimeValueStr=num2str(obj.SMFSResults{ii}.Parameters.HoldingTime);
+            FigNamePt1=strcat(ExtVelocityValueStr,{'_'},RetVelocityValueStr,{'_'},HoldingTimeValueStr,{'_'},obj.SMFSResults{ii}.Parameters.Substrate,{'_'},obj.SMFSResults{ii}.Parameters.Medium,{'_'},obj.SMFSResults{ii}.Parameters.ChipCantilever,{'_'},obj.SMFSResults{ii}.Parameters.Chipbox,{'_'},obj.SMFSResults{ii}.Parameters.Linker);
+            FigNamePt1=char(FigNamePt1);
             % Allocate data
             xData=obj.SMFSResults{ii}.Concatenate.FMExtVelocity;
             yData=obj.SMFSResults{ii}.Data.yPullingLengthConcat;
@@ -2025,13 +2038,15 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             SubdivideData=obj.SMFSResults{ii}.Concatenate.FMHoldingTime;         
             
             %% Gramm object 1
+            % Define variables
+            FigNamePt2='_Boxplot';
             % Figure
-                h_fig=figure(ii);
-                h_fig.Color='white'; % changes the background color of the figure
-                h_fig.Units='pixel'; % Defines the units
-                h_fig.OuterPosition=Res;
-                h_fig.PaperOrientation='landscape';
-      %          h_fig.Name=figname;
+                h_fig1=figure(ii);
+                h_fig1.Color='white'; % changes the background color of the figure
+                h_fig1.Units='pixel'; % Defines the units
+                h_fig1.OuterPosition=Res;
+                h_fig1.PaperOrientation='landscape';
+                h_fig1.Name=strcat(FigNamePt1,FigNamePt2);
             % Create a gramm object
             g1=gramm('x',xData,'y',yData,...
                 'color',ColorData);            
@@ -2049,7 +2064,12 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             % The actual plotting
             g1.draw()
             
-            
+            % Save figure
+            % fullname=sprintf('%s%s',figname,partname);
+            fullname1=strcat(FigNamePt1,FigNamePt2);
+        %    fullname1=char(fullname1);
+            %%% Save the current figure in the current folder
+            print(h_fig1,fullname1,'-dpng');
             
             
         end
