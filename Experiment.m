@@ -2024,10 +2024,22 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             Plottitle='Boxplots';
             LegendxAxis='Extend velocity';
             LegendyAxis='Pulling length (m)';
-            LegendColor='Date';
-            ExtVelocityValueStr=num2str(obj.SMFSResults{ii}.Parameters.ExtendVelocity);
+            LegendColor='Date';           
+            if obj.SMFSResults{ii}.Parameters.ExtendVelocity==0
+                ExtVelocityValueStr='All';
+            else
+             ExtVelocityValueStr=num2str(obj.SMFSResults{ii}.Parameters.ExtendVelocity);
+            end                                 
+            if obj.SMFSResults{ii}.Parameters.RetractVelocity==0
+                 RetVelocityValueStr='All';
+            else
             RetVelocityValueStr=num2str(obj.SMFSResults{ii}.Parameters.RetractVelocity);
+            end                        
+             if obj.SMFSResults{ii}.Parameters.HoldingTime==-1
+                HoldingTimeValueStr='All';
+            else            
             HoldingTimeValueStr=num2str(obj.SMFSResults{ii}.Parameters.HoldingTime);
+            end
             FigNamePt1=strcat(ExtVelocityValueStr,{'_'},RetVelocityValueStr,{'_'},HoldingTimeValueStr,{'_'},obj.SMFSResults{ii}.Parameters.Substrate,{'_'},obj.SMFSResults{ii}.Parameters.Medium,{'_'},obj.SMFSResults{ii}.Parameters.ChipCantilever,{'_'},obj.SMFSResults{ii}.Parameters.Chipbox,{'_'},obj.SMFSResults{ii}.Parameters.Linker);
             FigNamePt1=char(FigNamePt1);
             % Allocate data
@@ -2035,8 +2047,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             yData=obj.SMFSResults{ii}.Data.yPullingLengthConcat;
             ColorData=obj.SMFSResults{ii}.Concatenate.FMRetVelocity;   
             LightnessData=obj.SMFSResults{ii}.Concatenate.FMEnvCond;
-            SubdivideData=obj.SMFSResults{ii}.Concatenate.FMHoldingTime;         
-            
+            SubdivideData=obj.SMFSResults{ii}.Concatenate.FMHoldingTime;                    
             %% Gramm object 1
             % Define variables
             FigNamePt2='_Boxplot';
@@ -2582,9 +2593,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             fullname1=char(fullname1);
             %%% Save the current figure in the current folder
             print(h_fig1,fullname1,'-dpng');
-            
-  % Anderson-Darling test 
-  [h,p]=adtest(nonzeros(yAdhMaxApp))
+
             % Define the probability distribution for the qqplots
             Distname1='Normal';
             Distname2='Lognormal';                           
@@ -3502,16 +3511,22 @@ PlotData=obj.SMFSResults{jj}.Data.AdhMaxAppConcat
       %       set(groot,'defaultFigureVisible','on')  
 
              for ii=1:obj.NumForceMaps
+                 
+                  IdxArray(ii,1)=obj.FM{ii}.ExtendVelocity
+                 
+  
+        
+             end     
            % for ii=1:33
 
              %  obj.FM{ii}.fc_testing
           %    obj.FM{ii}.initialize_flags       
            %  obj.FM{ii}.fc_snap_in_length_MAD
+          ii   
+         %    obj.SMFSFlag.Analysed = false(obj.NumForceMaps,1);
+          %   obj.SMFSFlagDown.Analysed = false(obj.NumForceMaps,1);
              
-             obj.SMFSFlag.Analysed = false(obj.NumForceMaps,1);
-             obj.SMFSFlagDown.Analysed = false(obj.NumForceMaps,1);
-             
-            end                    
+         %   end                    
             
         end
      
