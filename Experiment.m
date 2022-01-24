@@ -1786,8 +1786,6 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             yAdhEneRetAll=zeros(obj.FM{IdxArray(1)}.NCurves,length(IdxArray));
             yPullingLengthAll=zeros(obj.FM{IdxArray(1)}.NCurves,length(IdxArray));
             ySnapInLengthAll=zeros(obj.FM{IdxArray(1)}.NCurves,length(IdxArray));
-            FMArray=zeros(length(IdxArray),1);
-            FCperFMArray=zeros(length(IdxArray),1);
             % Loop
             for ff=1:length(IdxArray)
             %% Debugging
@@ -1961,7 +1959,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             obj.SMFSResults{jj,1}.Concatenate(1).FMDate=FMDateArray;
             obj.SMFSResults{jj,1}.Concatenate(1).FMTime=FMTimeArray;         
             obj.SMFSResults{jj,1}.Data(1).FMIndex=IdxArray;
-            obj.SMFSResults{jj,1}.Data(1).NumFcAnalysed=sum(FCperFMArray);
+            obj.SMFSResults{jj,1}.Data(1).NumFcAnalysed=sum(FCperFM);
             obj.SMFSResults{jj,1}.Data(1).AdhMaxApp=yAdhMaxAppAll;
             obj.SMFSResults{jj,1}.Data(1).AdhMaxRet=yAdhMaxRetAll;
             obj.SMFSResults{jj,1}.Data(1).AdhUnbinding=yAdhUnbindingAll;
@@ -2030,8 +2028,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             % Define variables
             FMExtVeloData=obj.SMFSResults{ii}.Concatenate.FMExtVelocity;
             FMRetVeloData=obj.SMFSResults{ii}.Concatenate.FMRetVelocity;
-            PlottitlePt1='Boxplots';
-            PlottitlePt2=sprintf('Number of Force curves');
+            Plottitle=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ii,1}.Data(1).FMIndex),obj.SMFSResults{ii,1}.Data(1).NumFcAnalysed);
             LegendxAxis='Retraction velocity (m/s)';
             LegendyAxis='Pulling length (m)';
             LegendColor='Date'; 
