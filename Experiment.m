@@ -2004,8 +2004,13 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
         end
         
         
-        function SMFS_results_gramm(obj)
-                        
+        function SMFS_results_gramm(obj,ii)
+            
+            % Input variable adaptation
+            if nargin<2
+                ii=1;            
+            end
+            
             % Output time and date for the dairy
             datetime('now')
             
@@ -2020,7 +2025,6 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             cd(currpath); 
             
             % Define variables
-            ii=1;
             Plottitle='Boxplots';
             LegendxAxis='Extend velocity';
             LegendyAxis='Pulling length (m)';
