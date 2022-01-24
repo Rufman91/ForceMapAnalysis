@@ -68,20 +68,16 @@ classdef ForceMap < matlab.mixin.Copyable
         LossTangent     % Loss tangent 
         SineVarsF       % Variables of Force fitted Sine (Amplitude, Phaseshift)
         SineVarsH       % Variables of Height fitted Sine (..)
-        SineFunctionF   % Y-values of Force fitted sine function
-        SineFunctionH   % Y-values of Height fitted sine function
         FilterF         % filtered force data
         FilterH         % filtered height data
         FZShift         % original force data shifted to the zero line
         HZShift         % original height data shifted to the zero line
-        psF
-        psH
-        slopeF
-        slopeH
-        shiftF
-        shiftH
-        interceptF
-        interceptH
+        psF             % phase shift of forve
+        psH             % phase shift of indentation
+        slopeF          % slope of linear force data
+        slopeH          % slope of linear indentation data
+        interceptF      % intercept of linear force data
+        interceptH      % intercept of linear indentation data
 
     end
     properties
@@ -1739,32 +1735,6 @@ classdef ForceMap < matlab.mixin.Copyable
                     
                     if obj.SegFrequency{j} > 0
                         
-                        
-%                         Y = obj.Force{i,j};
-%                         Y = Y - mean(Y);
-%                         SSR = length(Y)/2048;
-%                         YSS = Y(1:SSR:end);
-%                         YSS = YSS/range(YSS);
-%                         X = 1:length(YSS);
-%                         FrequencyMultiplier = 1/obj.SegFrequency{j};
-%                         Lambda = exp(FrequencyMultiplier-1)*10000;
-%                         YGP = predictGP_mean(X',X',1,Lambda,YSS,0);
-%                         HH = obj.Height{i,j}(1:SSR:end);
-%                         HH = HH - mean(HH);
-%                         HH = HH/range(HH);
-%                         XHH = 1:length(HH);
-%                         HHGP = predictGP_mean(XHH',XHH',1,10000,HH,0);
-%                         figure('Name',sprintf('Force Curve %i Segment %j',i,j))
-%                         subplot(2,1,1)
-%                         plot(X,YSS,X,YGP,XHH,HH,XHH,HHGP)
-%                         subplot(2,1,2)
-%                         findpeaks(YGP)
-%                         hold on
-%                         findpeaks(-YGP)
-%                         findpeaks(HHGP)
-%                         findpeaks(-HHGP)
-%                         drawnow
-
 
                         % Divide data through their range
                         rangeF = range(obj.BasedForce{i,j});
@@ -1774,25 +1744,22 @@ classdef ForceMap < matlab.mixin.Copyable
                         obj.Indentation{i,j} = obj.Indentation{i,j}/rangeH;
                         
                         % Max values of Force and Indentation
-                         maxF1 = max(obj.BasedForce{i,j});
-                         maxH1 = max(obj.Indentation{i,j});
+                         %maxF1 = max(obj.BasedForce{i,j});
+                         %maxH1 = max(obj.Indentation{i,j});
 
                          % Min values of Force and Indentation
-                         minF1 = min(obj.BasedForce{i,j});
-                         minH1 = min(obj.Indentation{i,j});
+                         %minF1 = min(obj.BasedForce{i,j});
+                         %minH1 = min(obj.Indentation{i,j});
 
                          % Difference max min
-                         DiffF1 = maxF1 - minF1;
-                         DiffH1 = maxH1 - minH1;
-                         
+                         %DiffF1 = maxF1 - minF1;
+                         %DiffH1 = maxH1 - minH1;
                          
 
                          % Shift to Zero Line
-                         obj.FZShift{i,j} = obj.BasedForce{i,j}-maxF1+(DiffF1/2);
-                         obj.HZShift{i,j} = obj.Indentation{i,j}-maxH1+(DiffH1/2);
+                         %obj.FZShift{i,j} = obj.BasedForce{i,j}-maxF1+(DiffF1/2);
+                         %obj.HZShift{i,j} = obj.Indentation{i,j}-maxH1+(DiffH1/2);
                          
-                         obj.shiftF(i,j) = maxF1-(DiffF1/2);
-                         obj.shiftH(i,j) = maxH1-(DiffH1/2);
                          
 
                          % Calculation of Sampling rate and Invariance to
@@ -1808,11 +1775,9 @@ classdef ForceMap < matlab.mixin.Copyable
                          linearfitH = polyfit(obj.SegTime{j},obj.Indentation{i,j},1);
                          Hvalueslinfit = polyval(linearfitH,obj.SegTime{j});
                          
-                         %y =k*x+d, d=0, k =y/x;
-                         slopeF = linearfitF(1);
-                         slopeH = linearfitH(1);
-                         obj.slopeF(i,j) = slopeF;
-                         obj.slopeH(i,j) = slopeH;
+                         %y =k*x+d;
+                         obj.slopeF(i,j) = linearfitF(1);
+                         obj.slopeH(i,j) = linearfitH(1);
                          
                          obj.interceptF(i,j) = linearfitF(2);
                          obj.interceptH(i,j) = linearfitH(2);
@@ -1822,7 +1787,7 @@ classdef ForceMap < matlab.mixin.Copyable
                          ForceTrend{i,j} = obj.BasedForce{i,j} - Fvalueslinfit;
                          IndentTrend{i,j} = obj.Indentation{i,j} - Hvalueslinfit;
                          
-                         AmplitudeFTrend=((max(ForceTrend{i,j}) - min(ForceTrend{i,j}))/2);
+                         
                          %1D-digital filter
                          iN = Invariance/100;
                          d = ones(1,fix(iN))/iN;
@@ -1830,7 +1795,6 @@ classdef ForceMap < matlab.mixin.Copyable
                          
                          % Modification of Indentation-Data
                          %IndentTrend{i,j} = detrend(obj.HZShift{i,j});
-                         AmplitudeHTrend=((max(IndentTrend{i,j}) - min(IndentTrend{i,j}))/2);
                          iN = Invariance/100;
                          d = ones(1,fix(iN))/iN;
                          obj.FilterH{i,j} = filtfilt(d,1,IndentTrend{i,j});
@@ -1847,55 +1811,6 @@ classdef ForceMap < matlab.mixin.Copyable
                          AmplCorrectionH = AmplOrigH/AmplFiltH;
                          obj.FilterH{i,j} = obj.FilterH{i,j}*AmplCorrectionH;
                          
-                         %AmplitudeFCorr=((max(obj.FilterF{i,j}) - min(obj.FilterF{i,j}))/2);
-                         %AmplitudeHCorr=((max(obj.FilterH{i,j}) - min(obj.FilterH{i,j}))/2);
-                        
-                        
-                         % Time Vectors with more entries for interpolation
-                         %obj.InterpTimeF{i} = obj.TStart{i}:0.1:obj.TEnd{i};
-                         %obj.InterpTimeF{i} = obj.InterpTimeF{i}.';
-                         
-                         %obj.InterpTimeH{i} = obj.TStart{i}:0.0001:obj.TEnd{i};
-                         %obj.InterpTimeH{i} = obj.InterpTimeH{i}.';
-                        
-                         %INTERPOLATION with the purpose to add more points to indentation data
-                         %at every newly added timestep
-                         %obj.FInterp{i,j} = interp1(obj.SegTime{j},obj.FilterF{i,j},obj.InterpTimeF{j});
-                         %HInterp{i,j} = interp1(obj.SegTime{j},obj.FilterH{i,j},obj.InterpTimeH{j});
-
-                         %Finding the rows where NaNs are located due to interpolation:
-                         %row_F = find(isnan(obj.FInterp{i,j}));
-                         %row_H = find(isnan(HInterp{i,j}));
-
-                         %also deleting those rows from the timestep vector:
-                         %obj.InterpTimeF{j}(row_F,:)=[];
-                         %obj.InterpTimeH{j}(row_H,:)=[];
-
-                         %deleting NaN from interpolated indentation data:
-                         %obj.FInterp{i,j} = rmmissing(obj.FInterp{i,j});
-                         %HInterp{i,j} = rmmissing(HInterp{i,j});
-                        
-                        
-                        %Finding changes in signs from positive to negative, inbetween the zero
-                         %crossing must occur
-                         %signchangeF{i,j} = find( diff( sign(obj.FilterF{i,j}) ) ~= 0 );
-                         %signchangeH{i,j} = find( diff( sign(obj.FilterH{i,j}) ) ~= 0 );
-                        
-                         %interpolation and time data where the sign changes
-                         %ZeroCrossF{i,j} = obj.FilterF{i,j}(signchangeF{i,j});
-                         %ZeroCrossTimeF{i,j} = obj.SegTime{j}(signchangeF{i,j});
-                         %ZeroCrossH{i,j} = obj.FilterH{i,j}(signchangeH{i,j});
-                         %ZeroCrossTimeH{i,j} = obj.SegTime{j}(signchangeH{i,j});
-                         
-                         
-                         %locate the first change of sign:
-                         %help_F=signchangeF{i,j}(1);
-                         %help_H=signchangeH{i,j}(1);
-
-                         %define the time span between first time step and first change of sign
-                         %which will be a parameter for the sine fit later:
-                         %firstsignchangeF = obj.SegTime{j}(help_F) - obj.SegTime{j}(1);
-                         %firstsignchangeH = obj.SegTime{j}(help_H)- obj.SegTime{j}(1);
 
                          % Max values of Force and Indentation
                          maxF = max(obj.FilterF{i,j});
@@ -1909,23 +1824,14 @@ classdef ForceMap < matlab.mixin.Copyable
                          DiffF = maxF - minF;
                          DiffH = maxH - minH;
 
-                         % shift the zero crossings to the original height again:
-                         %FZLoc{i,j} = ZeroCrossF{i,j}+maxF-(DiffF/2);
-                         %HZLoc{i,j} = ZeroCrossH{i,j}+maxH-(DiffH/2);
-
                          % Amplitude
                          AmplitudeF=(DiffF/2);
                          AmplitudeH=(DiffH/2);
                          
 
- 
-                         % Estimate period
-                         %PeriodF = 2*mean(diff(ZeroCrossTimeF{i,j}));
-                         %PeriodH = 2*mean(diff(ZeroCrossTimeH{i,j}));
-
                          % Estimate offset
-                         meanF = mean(obj.FilterF{i,j});
-                         meanH = mean(obj.FilterH{i,j});
+                         %meanF = mean(obj.FilterF{i,j});
+                         %meanH = mean(obj.FilterH{i,j});
 
                          x = obj.SegTime{j};
 
@@ -1949,10 +1855,6 @@ classdef ForceMap < matlab.mixin.Copyable
 
                          
                          % Function to fit indentation data 
-                         %n = 7;
-                         %p = polyfit(x,obj.Indentation{i,j},n);
-                         x = obj.SegTime{j};
-                         
                          %b(1) (max-min)/2 b(2) FFT b(3) first sign change b(4) mean
                          fit = @(a,x)  a(1).*(sin(2*pi*x.*obj.SegFrequency{j} + a(3)));    
                          % Least-Squares cost function:
@@ -1968,37 +1870,12 @@ classdef ForceMap < matlab.mixin.Copyable
                          obj.SineVarsH{i,j}(2)= obj.SegFrequency{j};
                          %obj.SineVarsH{i,j}(3)= firstsignchangeH;
                          
-                         %check relation
-                         %RelationF1 = AmplitudeF/obj.SineVarsF{i,j}(1);
-                         %RelationH1 = AmplitudeH/obj.SineVarsH{i,j}(1);
-                         
-                         % Rescaling Amplitude
-                         %remove Amplitude Correction to get filtered data
-                         %before correction
-                         %obj.SineVarsF{i,j}(1) = obj.SineVarsF{i,j}(1)/AmplCorrectionF;
-                         %obj.SineVarsH{i,j}(1) = obj.SineVarsH{i,j}(1)/AmplCorrectionH;
-                         
-                         %get back to trend data
-                         %obj.SineVarsF{i,j}(1) = obj.SineVarsF{i,j}(1)*(AmplitudeFTrend/AmplitudeFFilter);
-                         %obj.SineVarsH{i,j}(1) = obj.SineVarsH{i,j}(1)*(AmplitudeHTrend/AmplitudeHFilter);
-                         
-                         %get back to shifted data 
-                         %obj.SineVarsF{i,j}(1) = obj.SineVarsF{i,j}(1)*(AmplitudeFShift/AmplitudeFTrend);
-                         %obj.SineVarsH{i,j}(1) = obj.SineVarsH{i,j}(1)*(AmplitudeHShift/AmplitudeHTrend);
-                         
-                         %add shift again
-                         %obj.SineVarsF{i,j}(1) = obj.SineVarsF{i,j}(1)+shiftF;
-                         %obj.SineVarsH{i,j}(1) = obj.SineVarsH{i,j}(1)+shiftH;
                          
                          %multiply range back 
                          obj.SineVarsF{i,j}(1) = obj.SineVarsF{i,j}(1)*rangeF;
                          obj.SineVarsH{i,j}(1) = obj.SineVarsH{i,j}(1)*rangeH;
                          
-                         %check relation 
-                         %RelationF2 = AmplitudeFOrig/obj.SineVarsF{i,j}(1);
-                         %RelationH2 = AmplitudeHOrig/obj.SineVarsH{i,j}(1);
-                        
-
+                         
                         % phase shift of force and indentation
                          obj.psF{i,j} = obj.SineVarsF{i,j}(3);
                          obj.psH{i,j} = obj.SineVarsH{i,j}(3);
@@ -2016,8 +1893,6 @@ classdef ForceMap < matlab.mixin.Copyable
                        
                         
                         % turn range back to normal
-                        obj.shiftF(i,j) = obj.shiftF(i,j)*rangeF;
-                        obj.shiftH(i,j) = obj.shiftH(i,j)*rangeH;
                         obj.interceptF(i,j) = obj.interceptF(i,j)*rangeF;
                         obj.interceptH(i,j) = obj.interceptH(i,j)*rangeH;
                         obj.slopeF(i,j) = obj.slopeF(i,j)*rangeF;
@@ -3784,6 +3659,11 @@ classdef ForceMap < matlab.mixin.Copyable
                 end
                 FirstFreq = find(frequencies,1,'first');
                 
+                % Multiplier
+                [MultiplierF,UnitF,~] = AFMImage.parse_unit_scale(range(obj.BasedForce{i,FirstFreq}),'N',10);
+                [MultiplierI,UnitI,~] = AFMImage.parse_unit_scale(range(obj.Indentation{i,FirstFreq}),'m',10);
+                
+                
                 %force time
                 figure(k)
                 hold on
@@ -3805,7 +3685,6 @@ classdef ForceMap < matlab.mixin.Copyable
                        obj.SegTime{obj.NumSegments} = obj.SegTime{obj.NumSegments}.';
                        
                        
-                       [MultiplierF,UnitF,~] = AFMImage.parse_unit_scale(range(obj.BasedForce{i,FirstFreq}),'N',10);
                        plot(obj.SegTime{j},obj.BasedForce{i,j}*MultiplierF,'b')
                        title(sprintf('Force Time Curve %i',i))
                        xlabel('time in s')
@@ -3825,8 +3704,8 @@ classdef ForceMap < matlab.mixin.Copyable
                 hold on
                 for j=1:obj.NumSegments
                     
-                       yHmin = 1.2*min(obj.Indentation{i,j});
-                       yHmax = 1.2*max(obj.Indentation{i,j});
+                       yHmin = 1.2*min(obj.Indentation{i,j})*MultiplierI;
+                       yHmax = 1.2*max(obj.Indentation{i,j})*MultiplierI;
                     
                        lengthHHApp = length(obj.HHApp{i});
                        obj.SecPerPoint{1} = obj.SegDuration{1}/lengthHHApp;
@@ -3842,7 +3721,7 @@ classdef ForceMap < matlab.mixin.Copyable
                        obj.SegTime{obj.NumSegments} = obj.TStart{obj.NumSegments}:obj.SecPerPoint{obj.NumSegments}:obj.TEnd{obj.NumSegments};
                        obj.SegTime{obj.NumSegments} = obj.SegTime{obj.NumSegments}.';
                         
-                      [MultiplierI,UnitI,~] = AFMImage.parse_unit_scale(range(obj.Indentation{i,FirstFreq}),'m',10);
+                      
                        plot(obj.SegTime{j},obj.Indentation{i,j}*MultiplierI,'b')
                        ylim([yHmin yHmax])
                        title(sprintf('Indentation Time Curve %i',i))
@@ -3876,16 +3755,15 @@ classdef ForceMap < matlab.mixin.Copyable
                        obj.SegTime{obj.NumSegments} = obj.TStart{obj.NumSegments}:obj.SecPerPoint{obj.NumSegments}:obj.TEnd{obj.NumSegments};
                        obj.SegTime{obj.NumSegments} = obj.SegTime{obj.NumSegments}.';
                        
-                       yHmin = 1.2*min(obj.Indentation{i,j});
-                       yHmax = 1.2*max(obj.Indentation{i,j});
-                       yFmin = 1.2*min(obj.Force{i,j});
-                       yFmax = 1.2*max(obj.Force{i,j});
+                       yHmin = 1.2*min(obj.Indentation{i,j})*MultiplierI;
+                       yHmax = 1.2*max(obj.Indentation{i,j})*MultiplierI;
+                       yFmin = 1.2*min(obj.Force{i,j})*MultiplierF;
+                       yFmax = 1.2*max(obj.Force{i,j})*MultiplierF;
 
                        hold on
 
                        yyaxis left
                        ylim([yHmin yHmax])
-                       [MultiplierI,UnitI,~] = AFMImage.parse_unit_scale(range(obj.Indentation{i,FirstFreq}),'m',100);
                        plot(obj.SegTime{j},obj.Indentation{i,j}*MultiplierI,'-')
                        xlabel('time in s')
                        ylabel(sprintf('Indentation [%s]',UnitI));
@@ -3893,7 +3771,6 @@ classdef ForceMap < matlab.mixin.Copyable
 
                        yyaxis right
                        ylim([yFmin yFmax])
-                       [MultiplierF,UnitF,~] = AFMImage.parse_unit_scale(range(obj.BasedForce{i,FirstFreq}),'N',100);
                        plot(obj.SegTime{j},obj.BasedForce{i,j}*MultiplierF,'-')
                        title(sprintf('Force and Indentation over Time Curve %i',i))
                        ylabel(sprintf('vDeflection-Force [%s]',UnitF))
@@ -3917,8 +3794,6 @@ classdef ForceMap < matlab.mixin.Copyable
                 hold on
                 for j=1:obj.NumSegments
                     
-                       [MultiplierI,UnitI,~] = AFMImage.parse_unit_scale(range(obj.Indentation{i,FirstFreq}),'m',10);
-                       [MultiplierF,UnitF,~] = AFMImage.parse_unit_scale(range(obj.BasedForce{i,FirstFreq}),'N',10);
                        plot(obj.HHApp{i}*MultiplierI,obj.BasedApp{i}*MultiplierF,'-r',obj.HHRet{i}*MultiplierI,obj.BasedRet{i}*MultiplierF,'-b')
                        %plot(obj.Indentation{i,j}*MultiplierI,obj.BasedForce{i,j}*MultiplierF,':b',obj.HHApp{i}*MultiplierI,obj.BasedApp{i}*MultiplierF,'-r',obj.HHRet{i}*MultiplierI,obj.BasedRet{i}*MultiplierF,'-b')
                        %xlim([-0.5 0.5])
@@ -4049,6 +3924,10 @@ classdef ForceMap < matlab.mixin.Copyable
                 %Plot
                 figure('Name',sprintf('Curves with Fit %i',i))
                 lastseg = obj.NumSegments - 2;
+                L(1) = plot(nan, nan, 'b-');
+                hold on
+                L(2) = plot(nan, nan, 'r-');
+                legend(L, {'first case', 'second case'})
                 hold on
                 for j=FirstFreq:lastseg
                     
