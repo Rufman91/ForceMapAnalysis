@@ -3663,7 +3663,26 @@ classdef ForceMap < matlab.mixin.Copyable
                 [MultiplierI,UnitI,~] = AFMImage.parse_unit_scale(range(obj.Indentation{i,FirstFreq}),'m',10);
                 
                 
-                
+                % find min/max of indentation and force modulation
+                Hmin = zeros(obj.NumSegments,1);
+                Hmax = zeros(obj.NumSegments,1);
+                Fmin = zeros(obj.NumSegments,1);
+                Fmax = zeros(obj.NumSegments,1);
+                for j=1:obj.NumSegments
+                    if obj.SegFrequency{j} > 0
+
+                       Hmin(j,:) = min(obj.Indentation{i,j});
+                       Hmax(j,:) = max(obj.Indentation{i,j});
+                       Fmin(j,:) = min(obj.Force{i,j});
+                       Fmax(j,:) = max(obj.Force{i,j});
+
+                    end
+                end
+                yHmin = 1.2*min(Hmin)*MultiplierI;
+                yHmax = 1.2*max(Hmax)*MultiplierI;
+                yFmin = 1.2*min(Fmin)*MultiplierF;
+                yFmax = 1.2*max(Fmax)*MultiplierF;
+                        
                 
                 %force time
                 figure(k)
@@ -3761,15 +3780,7 @@ classdef ForceMap < matlab.mixin.Copyable
                        obj.SegTime{obj.NumSegments} = obj.SegTime{obj.NumSegments}.';
                        
                        
-                       % find min/max of indentation and force modulation
-                        if obj.SegFrequency{j} > 0
-
-                           yHmin = 1.2*min(obj.Indentation{i,j})*MultiplierI;
-                           yHmax = 1.2*max(obj.Indentation{i,j})*MultiplierI;
-                           yFmin = 1.2*min(obj.Force{i,j})*MultiplierF;
-                           yFmax = 1.2*max(obj.Force{i,j})*MultiplierF;
                        
-                        end
 
                        hold on
 
