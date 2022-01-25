@@ -3675,6 +3675,11 @@ classdef ForceMap < matlab.mixin.Copyable
                        Hmax(j,:) = max(obj.Indentation{i,j});
                        Fmin(j,:) = min(obj.Force{i,j});
                        Fmax(j,:) = max(obj.Force{i,j});
+                    else
+                       Hmin(j,:) = 1000;
+                       Hmax(j,:) = 0;
+                       Fmin(j,:) = 1000;
+                       Fmax(j,:) = 0;
 
                     end
                 end
