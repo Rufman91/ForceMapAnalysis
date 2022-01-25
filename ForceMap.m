@@ -4024,8 +4024,8 @@ classdef ForceMap < matlab.mixin.Copyable
                         plot(x,ypFtrend*MultiplierF,'-','color',lila)
                         set(gca, 'YColor', 'm')
                         %Legends = {'force data','force fit data'};
-                        xlabel('time [s]')
-                        ylabel(sprintf('vDeflection-Force [%s]',UnitF))
+                        xlabel('time [s]','FontSize', 24)
+                        ylabel(sprintf('vDeflection-Force [%s]',UnitF),'FontSize', 24)
                         %ylabel('force')
                         
                         yyaxis right
@@ -4035,21 +4035,21 @@ classdef ForceMap < matlab.mixin.Copyable
                         plot(x,ypHtrend*MultiplierI,'-','color',darkblue)
                         %Legends{end+1} = 'indentation data';
                         set(gca, 'YColor', lightblue)
-                        title(sprintf('Force and Indentation over Time incl. Fit Curve %i',i))
+                        title(sprintf('Force and Indentation over Time incl. Fit Curve %i',i),'FontSize', 30)
                         %legend({'force data','force fit data','','','','','indentation data','indentation fit data'},'Location','southoutside')
                         %legend
                         %ylabel('indentation')
-                        ylabel(sprintf('Indentation [%s]',UnitI));
+                        ylabel(sprintf('Indentation [%s]',UnitI),'FontSize', 24);
                         grid on
                         grid minor
 
 
                         l1 = plot(nan, nan, 'm-');
                         hold on
-                        l2 = plot(nan, nan, 'r-');
+                        l2 = plot(nan, nan, '-','color', lila);
                         l3 = plot(nan, nan, '-', 'color', lightblue);
                         l4 = plot(nan, nan, '-','color',darkblue);
-                        legend([l1, l2, l3, l4], {'force data', 'force fit','indentation data', 'indentation fit'}, 'Location', 'southoutside')
+                        legend([l1, l2, l3, l4], {'force data', 'force fit','indentation data', 'indentation fit'}, 'Location', 'southoutside','FontSize', 22)
                        
                        
                         if DirectoryPath~=0
