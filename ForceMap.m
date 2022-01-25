@@ -3975,7 +3975,7 @@ classdef ForceMap < matlab.mixin.Copyable
                 lila = [0.368, 0.058, 0.721];
                 pink = [0.937, 0.043, 0.403];
                 lightblue = [0.101, 0.701, 0.976];
-                orange = [0.937, 0.454, 0.043];
+                darkblue = [0.129, 0.129, 0.450];
                 
                 
                 %Plot
@@ -4032,7 +4032,7 @@ classdef ForceMap < matlab.mixin.Copyable
                         [MultiplierI,UnitI,~] = AFMImage.parse_unit_scale(range(obj.Indentation{i,FirstFreq}),'m',10);
                         plot(x,obj.Indentation{i,j}*MultiplierI,'-','color', lightblue)
                         hold on
-                        plot(x,ypHtrend*MultiplierI,'-b')
+                        plot(x,ypHtrend*MultiplierI,'-',color,'darkblue')
                         %Legends{end+1} = 'indentation data';
                         set(gca, 'YColor', lightblue)
                         title(sprintf('Force and Indentation over Time incl. Fit Curve %i',i))
@@ -4048,7 +4048,7 @@ classdef ForceMap < matlab.mixin.Copyable
                         hold on
                         l2 = plot(nan, nan, 'r-');
                         l3 = plot(nan, nan, '-', 'color', lightblue);
-                        l4 = plot(nan, nan, 'b-');
+                        l4 = plot(nan, nan, '-','color',darkblue);
                         legend([l1, l2, l3, l4], {'force data', 'force fit','indentation data', 'indentation fit'}, 'Location', 'southoutside')
                        
                        
