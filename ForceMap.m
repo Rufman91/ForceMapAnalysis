@@ -3975,7 +3975,7 @@ classdef ForceMap < matlab.mixin.Copyable
                 lila = [0.368, 0.058, 0.721];
                 pink = [0.937, 0.043, 0.403];
                 lightblue = [0.101, 0.701, 0.976];
-                darkblue = [0.129, 0.129, 0.450];
+                darkblue = [0.109, 0.078, 0.941];
                 
                 
                 %Plot
