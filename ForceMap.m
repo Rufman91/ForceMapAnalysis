@@ -4018,10 +4018,10 @@ classdef ForceMap < matlab.mixin.Copyable
 
                         yyaxis left
                         [MultiplierF,UnitF,~] = AFMImage.parse_unit_scale(range(obj.BasedForce{i,FirstFreq}),'N',10);
-                        plot(x,obj.BasedForce{i,j}*MultiplierF,'-','color',pink)
+                        plot(x,obj.BasedForce{i,j}*MultiplierF,'-','color',rose)
                         hold on
                         plot(x,ypFtrend*MultiplierF,'-r')
-                        set(gca, 'YColor', pink)
+                        set(gca, 'YColor', rose)
                         %Legends = {'force data','force fit data'};
                         xlabel('time [s]')
                         ylabel(sprintf('vDeflection-Force [%s]',UnitF))
@@ -4048,7 +4048,7 @@ classdef ForceMap < matlab.mixin.Copyable
                         l2 = plot(nan, nan, 'r-');
                         l3 = plot(nan, nan, '-', 'color', lightblue);
                         l4 = plot(nan, nan, 'b-');
-                        legend([l1, l2, l3, l4], {'force data', 'force fit','indentation data', 'indentation fit'}, 'Location', 'southeastoutside')
+                        legend([l1, l2, l3, l4], {'force data', 'force fit','indentation data', 'indentation fit'}, 'Location', 'southoutside')
                        
                        
                         if DirectoryPath~=0
