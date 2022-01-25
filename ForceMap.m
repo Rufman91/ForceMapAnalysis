@@ -3676,10 +3676,10 @@ classdef ForceMap < matlab.mixin.Copyable
                        Fmin(j,:) = min(obj.Force{i,j});
                        Fmax(j,:) = max(obj.Force{i,j});
                     else
-                       Hmin(j,:) = 1000;
-                       Hmax(j,:) = 0;
-                       Fmin(j,:) = 1000;
-                       Fmax(j,:) = 0;
+                       Hmin(j,:) = NaN;
+                       Hmax(j,:) = NaN;
+                       Fmin(j,:) = NaN;
+                       Fmax(j,:) = NaN;
 
                     end
                 end
