@@ -3716,7 +3716,15 @@ classdef ForceMap < matlab.mixin.Copyable
                 else
                     yFmax = yFmax * 0.7;
                 end
-                        
+                
+                
+                %Colours 
+                lila = [0.368, 0.058, 0.721];
+                lightblue = [0.101, 0.701, 0.976];
+                darkblue = [0.109, 0.078, 0.941];
+                
+                
+                
                 
                 %force time
                 figure(k)
@@ -3739,7 +3747,7 @@ classdef ForceMap < matlab.mixin.Copyable
                        obj.SegTime{obj.NumSegments} = obj.SegTime{obj.NumSegments}.';
                        
                        
-                       plot(obj.SegTime{j},obj.BasedForce{i,j}*MultiplierF,'b')
+                       plot(obj.SegTime{j},obj.BasedForce{i,j}*MultiplierF,'m')
                        title(sprintf('Force Time Curve %i',i),'FontSize', 18)
                        xlabel('time in s','FontSize', 16)
                        ylabel(sprintf('vDeflection-Force [%s]',UnitF),'FontSize', 16)
@@ -3774,7 +3782,7 @@ classdef ForceMap < matlab.mixin.Copyable
                        obj.SegTime{obj.NumSegments} = obj.SegTime{obj.NumSegments}.';
                        
                       
-                       plot(obj.SegTime{j},obj.Indentation{i,j}*MultiplierI,'b')
+                       plot(obj.SegTime{j},obj.Indentation{i,j}*MultiplierI,'-','color',lightblue)
                        ylim([yHmin yHmax])
                        title(sprintf('Indentation Time Curve %i',i),'FontSize', 18)
                        xlabel('time in s','FontSize', 16)
@@ -3814,14 +3822,14 @@ classdef ForceMap < matlab.mixin.Copyable
 
                        yyaxis left
                        ylim([yHmin yHmax])
-                       plot(obj.SegTime{j},obj.Indentation{i,j}*MultiplierI,'-')
+                       plot(obj.SegTime{j},obj.Indentation{i,j}*MultiplierI,'-','color',lightblue)
                        xlabel('time in s','FontSize', 16)
                        ylabel(sprintf('Indentation [%s]',UnitI),'FontSize', 16);
                        
 
                        yyaxis right
                        ylim([yFmin yFmax])
-                       plot(obj.SegTime{j},obj.BasedForce{i,j}*MultiplierF,'-')
+                       plot(obj.SegTime{j},obj.BasedForce{i,j}*MultiplierF,'-m')
                        title(sprintf('Force and Indentation over Time Curve %i',i),'FontSize', 18)
                        ylabel(sprintf('vDeflection-Force [%s]',UnitF),'FontSize', 16)
                        grid on
@@ -4118,10 +4126,10 @@ classdef ForceMap < matlab.mixin.Copyable
                         findpeaks(ypF*MultiplierF,x)
                         hold on
                         findpeaks(ypH*MultiplierI,x)
-                        title(sprintf('Curve %i, %.1f [Hz]',i,Freq),'FontSize', 18)
-                        xlabel('time [s]','FontSize', 16)
-                        ylabel(sprintf('fit of vDeflection-Force [%s] and Indentation [%s]',UnitF, UnitI),'FontSize', 16)
-                        legend({'force fit','force fit peak','indentation fit','indentation fit peak'},'Location','southoutside','FontSize', 14)
+                        title(sprintf('Curve %i, %.1f [Hz]',i,Freq),'FontSize', 16)
+                        xlabel('time [s]','FontSize', 14)
+                        ylabel(sprintf('fit of vDeflection-Force [%s] and Indentation [%s]',UnitF, UnitI),'FontSize', 14)
+                        legend({'force fit','force fit peak','indentation fit','indentation fit peak'},'Location','southoutside','FontSize', 12)
                         drawnow
                         grid on
                         grid minor
