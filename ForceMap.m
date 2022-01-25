@@ -3979,10 +3979,6 @@ classdef ForceMap < matlab.mixin.Copyable
                 %Plot
                 figure('Name',sprintf('Curves with Fit %i',i))
                 lastseg = obj.NumSegments - 2;
-                l1 = plot(nan, nan, 'b-');
-                hold on
-                l2 = plot(nan, nan, 'r-');
-                legend([l1, l2], {'first case', 'second case'})
                 hold on
                 for j=FirstFreq:lastseg
                     
@@ -4021,9 +4017,7 @@ classdef ForceMap < matlab.mixin.Copyable
 
                         yyaxis left
                         [MultiplierF,UnitF,~] = AFMImage.parse_unit_scale(range(obj.BasedForce{i,FirstFreq}),'N',10);
-                        plot(x,obj.BasedForce{i,j}*MultiplierF,'color',rose,'linestyle','-')
-                        hold on
-                        plot(x,ypFtrend*MultiplierF,'color',pink,'linestyle','-')
+                        plot(x,obj.BasedForce{i,j}*MultiplierF,'-m',x,ypFtrend*MultiplierF,'-r')
                         set(gca, 'YColor', 'm')
                         %Legends = {'force data','force fit data'};
                         xlabel('time [s]')
@@ -4044,7 +4038,10 @@ classdef ForceMap < matlab.mixin.Copyable
                         grid minor
 
 
-                         
+                        l1 = plot(nan, nan, 'b-');
+                        hold on
+                        l2 = plot(nan, nan, 'r-');
+                        legend([l1, l2], {'first case', 'second case'})
                        
                        
                         if DirectoryPath~=0
