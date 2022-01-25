@@ -4049,7 +4049,7 @@ classdef ForceMap < matlab.mixin.Copyable
                         l2 = plot(nan, nan, '-','color', lila);
                         l3 = plot(nan, nan, '-', 'color', lightblue);
                         l4 = plot(nan, nan, '-','color',darkblue);
-                        legend([l1, l2, l3, l4], {'force data', 'force fit','indentation data', 'indentation fit'}, 'Location', 'southoutside','LineWidth',1.5,'FontSize', 14)
+                        legend([l1, l2, l3, l4], {'force data', 'force fit','indentation data', 'indentation fit'}, 'Location', 'southoutside','LineWidth',2.5,'FontSize', 14)
                        
                        
                         if DirectoryPath~=0
