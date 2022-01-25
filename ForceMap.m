@@ -4018,8 +4018,10 @@ classdef ForceMap < matlab.mixin.Copyable
 
                         yyaxis left
                         [MultiplierF,UnitF,~] = AFMImage.parse_unit_scale(range(obj.BasedForce{i,FirstFreq}),'N',10);
-                        plot(x,obj.BasedForce{i,j}*MultiplierF,'-m',x,ypFtrend*MultiplierF,'-r')
-                        set(gca, 'YColor', 'm')
+                        plot(x,obj.BasedForce{i,j}*MultiplierF,'-','color',pink)
+                        hold on
+                        plot(x,ypFtrend*MultiplierF,'-r')
+                        set(gca, 'YColor', 'color', pink)
                         %Legends = {'force data','force fit data'};
                         xlabel('time [s]')
                         ylabel(sprintf('vDeflection-Force [%s]',UnitF))
@@ -4031,7 +4033,7 @@ classdef ForceMap < matlab.mixin.Copyable
                         hold on
                         plot(x,ypHtrend*MultiplierI,'-b')
                         %Legends{end+1} = 'indentation data';
-                        set(gca, 'YColor', 'c')
+                        set(gca, 'YColor', 'color', lightblue)
                         title(sprintf('Force and Indentation over Time incl. Fit Curve %i',i))
                         %legend({'force data','force fit data','','','','','indentation data','indentation fit data'},'Location','southoutside')
                         %legend
@@ -4046,7 +4048,7 @@ classdef ForceMap < matlab.mixin.Copyable
                         l2 = plot(nan, nan, 'r-');
                         l3 = plot(nan, nan, '-', 'color', lightblue);
                         l4 = plot(nan, nan, 'b-');
-                        legend([l1, l2, l3, l4], {'force data', 'force fit','indentation data', 'indentation fit'})
+                        legend([l1, l2, l3, l4], {'force data', 'force fit','indentation data', 'indentation fit'}, 'Location', 'southeastoutside')
                        
                        
                         if DirectoryPath~=0
