@@ -1801,8 +1801,8 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 yPullingLength=obj.FM{IdxArray(ff)}.PullingLength;
                 ySnapInLength=obj.FM{IdxArray(ff)}.SnapInLength;
                 FMID=obj.FM{IdxArray(ff)}.ID;
-                FMExtVelocity=obj.FM{IdxArray(ff)}.ExtendVelocity;
-                FMRetVelocity=obj.FM{IdxArray(ff)}.RetractVelocity;
+                FMExtVelocity=round(obj.FM{IdxArray(ff)}.ExtendVelocity,8);
+                FMRetVelocity=round(obj.FM{IdxArray(ff)}.RetractVelocity,8);
                 FMHoldingTime=obj.FM{IdxArray(ff)}.HoldingTime;
                 FMSubstrate=obj.FM{IdxArray(ff)}.Substrate;
                 FMEnvCond=obj.FM{IdxArray(ff)}.EnvCond;
