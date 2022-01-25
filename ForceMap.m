@@ -3683,10 +3683,10 @@ classdef ForceMap < matlab.mixin.Copyable
 
                     end
                 end
-                yHmin = 2*min(Hmin)*MultiplierI;
-                yHmax = 2*max(Hmax)*MultiplierI;
-                yFmin = 2*min(Fmin)*MultiplierF;
-                yFmax = 2*max(Fmax)*MultiplierF;
+                yHmin = 2*min(Hmin);
+                yHmax = 2*max(Hmax);
+                yFmin = 2*min(Fmin);
+                yFmax = 2*max(Fmax);
                         
                 
                 %force time
