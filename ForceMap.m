@@ -3839,14 +3839,15 @@ classdef ForceMap < matlab.mixin.Copyable
                 %force indentation all segments
                 figure(m)
                 
-                %xHmin = 0.5*min(obj.Indentation{i,j});
                        
                 hold on
                 for j=1:obj.NumSegments
                     
                        plot(obj.HHApp{i}*MultiplierI,obj.BasedApp{i}*MultiplierF,'-r',obj.HHRet{i}*MultiplierI,obj.BasedRet{i}*MultiplierF,'-b')
-                       %plot(obj.Indentation{i,j}*MultiplierI,obj.BasedForce{i,j}*MultiplierF,':b',obj.HHApp{i}*MultiplierI,obj.BasedApp{i}*MultiplierF,'-r',obj.HHRet{i}*MultiplierI,obj.BasedRet{i}*MultiplierF,'-b')
-                       %xlim([-0.5 0.5])
+                       hold on
+                       plot(obj.Indentation{i,j}*MultiplierI,obj.BasedForce{i,j}*MultiplierF,':b')
+                       xlim([yHmin yHmax])
+                       legend
                        %plot(obj.Height{i,j},obj.Force{i,j},'r')
                        title(sprintf('Force Indentation Curve %i',i))
                        xlabel(sprintf('Indentation [%s]',UnitI));
