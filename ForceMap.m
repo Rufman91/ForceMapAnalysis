@@ -3975,6 +3975,7 @@ classdef ForceMap < matlab.mixin.Copyable
                 rose = [0.933, 0.627, 0.858];
                 pink = [0.976, 0.101, 0.6];
                 lightblue = [0.101, 0.701, 0.976];
+                orange = [0.937, 0.454, 0.043];
                 
                 
                 %Plot
@@ -4018,10 +4019,10 @@ classdef ForceMap < matlab.mixin.Copyable
 
                         yyaxis left
                         [MultiplierF,UnitF,~] = AFMImage.parse_unit_scale(range(obj.BasedForce{i,FirstFreq}),'N',10);
-                        plot(x,obj.BasedForce{i,j}*MultiplierF,'-','color',pink)
+                        plot(x,obj.BasedForce{i,j}*MultiplierF,'-','color',orange)
                         hold on
                         plot(x,ypFtrend*MultiplierF,'-r')
-                        set(gca, 'YColor', pink)
+                        set(gca, 'YColor', orange)
                         %Legends = {'force data','force fit data'};
                         xlabel('time [s]')
                         ylabel(sprintf('vDeflection-Force [%s]',UnitF))
