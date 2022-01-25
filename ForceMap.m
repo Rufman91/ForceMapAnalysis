@@ -4038,10 +4038,12 @@ classdef ForceMap < matlab.mixin.Copyable
                         grid minor
 
 
-                        l1 = plot(nan, nan, 'b-');
+                        l1 = plot(nan, nan, 'm-');
                         hold on
                         l2 = plot(nan, nan, 'r-');
-                        legend([l1, l2], {'first case', 'second case'})
+                        l3 = plot(nan, nan, 'c-');
+                        l4 = plot(nan, nan, 'b-');
+                        legend([l1, l2, l3, l4], {'force data', 'force fit','indentation data', 'indentation fit'})
                        
                        
                         if DirectoryPath~=0
