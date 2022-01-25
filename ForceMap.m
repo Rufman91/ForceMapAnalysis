@@ -4032,7 +4032,7 @@ classdef ForceMap < matlab.mixin.Copyable
                         [MultiplierI,UnitI,~] = AFMImage.parse_unit_scale(range(obj.Indentation{i,FirstFreq}),'m',10);
                         plot(x,obj.Indentation{i,j}*MultiplierI,'-','color', lightblue)
                         hold on
-                        plot(x,ypHtrend*MultiplierI,'-',color,'darkblue')
+                        plot(x,ypHtrend*MultiplierI,'-','color',darkblue)
                         %Legends{end+1} = 'indentation data';
                         set(gca, 'YColor', lightblue)
                         title(sprintf('Force and Indentation over Time incl. Fit Curve %i',i))
