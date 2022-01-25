@@ -4082,10 +4082,6 @@ classdef ForceMap < matlab.mixin.Copyable
                 end
                 FirstFreq = find(frequencies,1,'first');
                 
-                %Colours 
-                lila = [0.368, 0.058, 0.721];
-                lightblue = [0.101, 0.701, 0.976];
-                darkblue = [0.109, 0.078, 0.941];
                         
                % Plot
                 figure('Name',sprintf('Phaseshift Curve %i',i))
@@ -4119,9 +4115,9 @@ classdef ForceMap < matlab.mixin.Copyable
                         [MultiplierI,UnitI,~] = AFMImage.parse_unit_scale(range(obj.Indentation{i,FirstFreq}),'m',10);
                         [MultiplierF,UnitF,~] = AFMImage.parse_unit_scale(range(obj.BasedForce{i,FirstFreq}),'N',10);
                         subplot(1,obj.NumSegments,j)
-                        findpeaks(ypF*MultiplierF,x,'color',lila)
+                        findpeaks(ypF*MultiplierF,x)
                         hold on
-                        findpeaks(ypH*MultiplierI,x,'color',darkblue)
+                        findpeaks(ypH*MultiplierI,x)
                         title(sprintf('Phaseshift of Fits of Curve %i, %.1f [Hz]',i,Freq),'FontSize', 18)
                         xlabel('time [s]','FontSize', 16)
                         ylabel(sprintf('fit of vDeflection-Force [%s] and Indentation [%s]',UnitF, UnitI),'FontSize', 16)
