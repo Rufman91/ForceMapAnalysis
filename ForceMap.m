@@ -3744,12 +3744,6 @@ classdef ForceMap < matlab.mixin.Copyable
                        obj.SegTime{obj.NumSegments} = obj.TStart{obj.NumSegments}:obj.SecPerPoint{obj.NumSegments}:obj.TEnd{obj.NumSegments};
                        obj.SegTime{obj.NumSegments} = obj.SegTime{obj.NumSegments}.';
                        
-                       % find min/max of indentation and force modulation
-                        if obj.SegFrequency{j} > 0
-
-                            yHmin = 1.2*min(obj.Indentation{i,j})*MultiplierI;
-                            yHmax = 1.2*max(obj.Indentation{i,j})*MultiplierI;
-                        end
                       
                        plot(obj.SegTime{j},obj.Indentation{i,j}*MultiplierI,'b')
                        ylim([yHmin yHmax])
