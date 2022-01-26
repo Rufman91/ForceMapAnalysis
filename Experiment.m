@@ -1780,12 +1780,19 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             ConcateArray6=zeros(length(IdxArray)*obj.FM{IdxArray(1)}.NCurves,1);
             ConcateArray7=zeros(length(IdxArray)*obj.FM{IdxArray(1)}.NCurves,1);     
             yAdhMaxAppAll=zeros(obj.FM{IdxArray(1)}.NCurves,length(IdxArray));
+            FCAnalysedyAdhMaxApp=zeros(1,length(IdxArray));
             yAdhMaxRetAll=zeros(obj.FM{IdxArray(1)}.NCurves,length(IdxArray));
+            FCAnalysedyAdhMaxRet=zeros(1,length(IdxArray));
             yAdhUnbindingAll=zeros(obj.FM{IdxArray(1)}.NCurves,length(IdxArray));
+            FCAnalysedyAdhUnbind=zeros(1,length(IdxArray));
             yAdhEneAppAll=zeros(obj.FM{IdxArray(1)}.NCurves,length(IdxArray));
+            FCAnalysedyAdhEneApp=zeros(1,length(IdxArray));
             yAdhEneRetAll=zeros(obj.FM{IdxArray(1)}.NCurves,length(IdxArray));
+            FCAnalysedyAdhEneRet=zeros(1,length(IdxArray));
             yPullingLengthAll=zeros(obj.FM{IdxArray(1)}.NCurves,length(IdxArray));
+            FCAnalysedyPullingLength=zeros(1,length(IdxArray));
             ySnapInLengthAll=zeros(obj.FM{IdxArray(1)}.NCurves,length(IdxArray));
+            FCAnalysedySnapInLength=zeros(1,length(IdxArray));
             FCperFM=zeros(length(IdxArray),1);
             % Loop
             for ff=1:length(IdxArray)
@@ -1816,18 +1823,25 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 % FCs of each FM in seperate column
                 yAdhMaxAppAll(:,ff)=yAdhMaxApp'.*obj.FM{IdxArray(ff)}.SMFSFlag.Selected';
                 yAdhMaxAppAll(yAdhMaxAppAll==0)=nan; % Replace zero entries by nan´s
+                FCAnalysedyAdhMaxApp(1,ff)=nnz(~isnan(yAdhMaxAppAll(:,ff)));
                 yAdhMaxRetAll(:,ff)=yAdhMaxRet'.*obj.FM{IdxArray(ff)}.SMFSFlag.Selected';
                 yAdhMaxRetAll(yAdhMaxRetAll==0)=nan; % Replace zero entries by nan´s
+                FCAnalysedyAdhMaxRet(1,ff)=nnz(~isnan(yAdhMaxRetAll(:,ff)));
                 yAdhUnbindingAll(:,ff)=yAdhUnbinding'.*obj.FM{IdxArray(ff)}.SMFSFlag.Selected';
                 yAdhUnbindingAll(yAdhUnbindingAll==0)=nan; % Replace zero entries by nan´s
+                FCAnalysedyAdhUnbind(1,ff)=nnz(~isnan(yAdhUnbindingAll(:,ff)));
                 yAdhEneAppAll(:,ff)=yAdhEneApp'.*obj.FM{IdxArray(ff)}.SMFSFlag.Selected';
                 yAdhEneAppAll(yAdhEneAppAll==0)=nan; % Replace zero entries by nan´s
+                FCAnalysedyAdhEneApp(1,ff)=nnz(~isnan(yAdhEneAppAll(:,ff)));
                 yAdhEneRetAll(:,ff)=yAdhEneRet'.*obj.FM{IdxArray(ff)}.SMFSFlag.Selected';
                 yAdhEneRetAll(yAdhEneRetAll==0)=nan; % Replace zero entries by nan´s
+                FCAnalysedyAdhEneRet(1,ff)=nnz(~isnan(yAdhEneRetAll(:,ff)));
                 yPullingLengthAll(:,ff)=yPullingLength'.*obj.FM{IdxArray(ff)}.SMFSFlag.Selected';
                 yPullingLengthAll(yPullingLengthAll==0)=nan; % Replace zero entries by nan´s
+                FCAnalysedyPullingLength(1,ff)=nnz(~isnan(yPullingLengthAll(:,ff)));
                 ySnapInLengthAll(:,ff)=ySnapInLength'.*obj.FM{IdxArray(ff)}.SMFSFlag.Selected';  
-                ySnapInLengthAll(ySnapInLengthAll==0)=nan; % Replace zero entries by nan´s                
+                ySnapInLengthAll(ySnapInLengthAll==0)=nan; % Replace zero entries by nan´s  
+                FCAnalysedySnapInLength(1,ff)=nnz(~isnan(ySnapInLengthAll(:,ff)));
                 % All FCs of all FM in one column
                 if ~isempty(yAdhMaxApp)
                     % Determine the number of rows per force map
@@ -1960,7 +1974,21 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             obj.SMFSResults{jj,1}.Concatenate(1).FMDate=FMDateArray;
             obj.SMFSResults{jj,1}.Concatenate(1).FMTime=FMTimeArray;         
             obj.SMFSResults{jj,1}.Data(1).FMIndex=IdxArray;
-            obj.SMFSResults{jj,1}.Data(1).NumFcAnalysed=sum(FCperFM);
+            obj.SMFSResults{jj,1}.Data(1).SumNumFcAnalysed=sum(FCperFM);
+            obj.SMFSResults{jj,1}.Data(1).SumNumFcAnalysedAdhMaxApp=nnz(~isnan(ConcateArray1));
+            obj.SMFSResults{jj,1}.Data(1).SumNumFcAnalysedAdhMaxRet=nnz(~isnan(ConcateArray2));
+            obj.SMFSResults{jj,1}.Data(1).SumNumFcAnalysedAdhUnbinding=nnz(~isnan(ConcateArray3));
+            obj.SMFSResults{jj,1}.Data(1).SumNumFcAnalysedAdhEneApp=nnz(~isnan(ConcateArray4));
+            obj.SMFSResults{jj,1}.Data(1).SumNumFcAnalysedAdhEneRet=nnz(~isnan(ConcateArray5));
+            obj.SMFSResults{jj,1}.Data(1).SumNumFcAnalysedyPullingLength=nnz(~isnan(ConcateArray6));
+            obj.SMFSResults{jj,1}.Data(1).SumNumFcAnalysedySnapInLength=nnz(~isnan(ConcateArray7));             
+            obj.SMFSResults{jj,1}.Data(1).NumFcAnalysedAdhMaxApp=FCAnalysedyAdhMaxApp;
+            obj.SMFSResults{jj,1}.Data(1).NumFcAnalysedAdhMaxRet=FCAnalysedyAdhMaxRet;
+            obj.SMFSResults{jj,1}.Data(1).NumFcAnalysedAdhUnbinding=FCAnalysedyAdhUnbind;
+            obj.SMFSResults{jj,1}.Data(1).NumFcAnalysedAdhEneApp=FCAnalysedyAdhEneApp;
+            obj.SMFSResults{jj,1}.Data(1).NumFcAnalysedAdhEneRet=FCAnalysedyAdhEneRet;
+            obj.SMFSResults{jj,1}.Data(1).NumFcAnalysedyPullingLength=FCAnalysedyPullingLength;
+            obj.SMFSResults{jj,1}.Data(1).NumFcAnalysedySnapInLength=FCAnalysedySnapInLength;             
             obj.SMFSResults{jj,1}.Data(1).AdhMaxApp=yAdhMaxAppAll;
             obj.SMFSResults{jj,1}.Data(1).AdhMaxRet=yAdhMaxRetAll;
             obj.SMFSResults{jj,1}.Data(1).AdhUnbinding=yAdhUnbindingAll;
