@@ -2075,7 +2075,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             % Define variables
             FMExtVeloData=obj.SMFSResults{ii}.Concatenate.FMExtVelocity;
             FMRetVeloData=obj.SMFSResults{ii}.Concatenate.FMRetVelocity;
-            Plottitle=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ii,1}.Data(1).FMIndex),obj.SMFSResults{ii,1}.Data(1).NumFcAnalysed);
+            Plottitle=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ii,1}.Data(1).FMIndex),obj.SMFSResults{ii,1}.Data(1).SumNumFcAnalysedAdhMaxApp);
             LegendxAxis='Holding Time (s)';
             LegendyAxis='Adhesion force (N)';
             LegendColor='Approach velocity (m/s)';
@@ -2117,7 +2117,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             % Define variables
             FMExtVeloData=obj.SMFSResults{ii}.Concatenate.FMExtVelocity;
             FMRetVeloData=obj.SMFSResults{ii}.Concatenate.FMRetVelocity;
-            Plottitle=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ii,1}.Data(1).FMIndex),obj.SMFSResults{ii,1}.Data(1).NumFcAnalysed);
+            Plottitle=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ii,1}.Data(1).FMIndex),obj.SMFSResults{ii,1}.Data(1).SumNumFcAnalysedAdhMaxRet);
             LegendxAxis='Holding Time (s)';
             LegendyAxis='Adhesion force (N)';
             LegendColor='Approach velocity (m/s)';
@@ -2159,7 +2159,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             % Define variables
             FMExtVeloData=obj.SMFSResults{ii}.Concatenate.FMExtVelocity;
             FMRetVeloData=obj.SMFSResults{ii}.Concatenate.FMRetVelocity;
-            Plottitle=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ii,1}.Data(1).FMIndex),obj.SMFSResults{ii,1}.Data(1).NumFcAnalysed);
+            Plottitle=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ii,1}.Data(1).FMIndex),obj.SMFSResults{ii,1}.Data(1).SumNumFcAnalysedAdhUnbinding); 
             LegendxAxis='Holding Time (s)';
             LegendyAxis='Adhesion force (N)';
             LegendColor='Approach velocity (m/s)';
@@ -2201,7 +2201,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             % Define variables
             FMExtVeloData=obj.SMFSResults{ii}.Concatenate.FMExtVelocity;
             FMRetVeloData=obj.SMFSResults{ii}.Concatenate.FMRetVelocity;
-            Plottitle=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ii,1}.Data(1).FMIndex),obj.SMFSResults{ii,1}.Data(1).NumFcAnalysed);
+            Plottitle=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ii,1}.Data(1).FMIndex),obj.SMFSResults{ii,1}.Data(1).SumNumFcAnalysedAdhEneApp); 
             LegendxAxis='Holding Time (s)';
             LegendyAxis='Adhesion energry';
             LegendColor='Approach velocity (m/s)';
@@ -2243,7 +2243,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             % Define variables
             FMExtVeloData=obj.SMFSResults{ii}.Concatenate.FMExtVelocity;
             FMRetVeloData=obj.SMFSResults{ii}.Concatenate.FMRetVelocity;
-            Plottitle=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ii,1}.Data(1).FMIndex),obj.SMFSResults{ii,1}.Data(1).NumFcAnalysed);
+            Plottitle=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ii,1}.Data(1).FMIndex),obj.SMFSResults{ii,1}.Data(1).SumNumFcAnalysedAdhEneRet);
             LegendxAxis='Holding Time (s)';
             LegendyAxis='Adhesion energy';
             LegendColor='Approach velocity (m/s)';
@@ -2285,7 +2285,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             % Define variables
             FMExtVeloData=obj.SMFSResults{ii}.Concatenate.FMExtVelocity;
             FMRetVeloData=obj.SMFSResults{ii}.Concatenate.FMRetVelocity;
-            Plottitle=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ii,1}.Data(1).FMIndex),obj.SMFSResults{ii,1}.Data(1).NumFcAnalysed);
+            Plottitle=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ii,1}.Data(1).FMIndex),obj.SMFSResults{ii,1}.Data(1).SumNumFcAnalysedyPullingLength);
             LegendxAxis='Holding Time (s)';
             LegendyAxis='Pulling length (m)';
             LegendColor='Approach velocity (m/s)';
@@ -2327,7 +2327,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             % Define variables
             FMExtVeloData=obj.SMFSResults{ii}.Concatenate.FMExtVelocity;
             FMRetVeloData=obj.SMFSResults{ii}.Concatenate.FMRetVelocity;
-            Plottitle=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ii,1}.Data(1).FMIndex),obj.SMFSResults{ii,1}.Data(1).NumFcAnalysed);
+            Plottitle=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ii,1}.Data(1).FMIndex),obj.SMFSResults{ii,1}.Data(1).SumNumFcAnalysedySnapInLength);
             LegendxAxis='Holding Time (s)';
             LegendyAxis='Snap-In length (m)';
             LegendColor='Approach velocity (m/s)';
