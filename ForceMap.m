@@ -3856,7 +3856,7 @@ classdef ForceMap < matlab.mixin.Copyable
                        plot(obj.Indentation{i,1}*MultiplierI,obj.BasedForce{i,1}*MultiplierF,'-r',obj.Indentation{i,obj.NumSegments}*MultiplierI,obj.BasedForce{i,obj.NumSegments}*MultiplierF,'-b')
                        hold on
                        plot(obj.Indentation{i,j}*MultiplierI,obj.BasedForce{i,j}*MultiplierF,':m')
-                       %xlim([yHmin yHmax])
+                       xlim([-500 500])
                        legend
                        %plot(obj.Height{i,j},obj.Force{i,j},'r')
                        title(sprintf('Force Indentation Curve %i',i),'FontSize', 18)
