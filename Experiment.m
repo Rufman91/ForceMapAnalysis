@@ -1748,9 +1748,9 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             %for ii=1:17 % for debugging
                  sprintf('Force map No. %d',ii) % Gives current force map
             %% Force map selection criteria
-%            if ~obj.SMFSFlag.Analysed(ii)   % Exclude force map if analysis has not been done     
-%                continue
-%            end  
+            if ~obj.SMFSFlag.Analysed(ii)   % Exclude force map if analysis has not been done     
+                continue
+            end  
                 % Parameters
                 if ((obj.FM{ii}.ExtendVelocity==ExtVelocityValue || ExtVelocityValue==0) ...
                         && (obj.FM{ii}.RetractVelocity==RetVelocityValue || RetVelocityValue==0) ...
