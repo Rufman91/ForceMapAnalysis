@@ -2034,7 +2034,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
         end
         
         
-        function SMFS_results_gramm(obj,ii)
+        function SMFS_results_gramm_boxplot(obj,ii)
             
             % Input variable adaptation
             if nargin<2
@@ -2364,6 +2364,335 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             FullName7=strcat(FigNamePt1,FigNamePt2,FigNamePt3,NameSuffix7);
             %%% Save the current figure in the current folder
             print(h_fig7,FullName7,'-dpng');
+            % House keeping
+            close all
+        end
+        
+        
+         function SMFS_results_gramm_qqplot(obj,ii)
+            
+            % Input variable adaptation
+            if nargin<2
+                ii=1;
+            end
+            % Output time and date for the dairy
+            datetime('now')
+            % Change into the Folder of Interest
+            cd(obj.ExperimentFolder) % Move into the folder
+            % Create folders for saving the produced figures
+            foldername='SMFS_results_gramm';    % Defines the folder name
+            mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
+            currpath=fullfile(obj.ExperimentFolder,foldername);
+            cd(currpath);
+            %% General variables 1
+            Res=[1 1 2560 1250]; % Define the figure resolution
+            if obj.SMFSResults{ii}.Parameters.ExtendVelocity==0
+                ExtVelocityValueStr='All';
+            else
+                ExtVelocityValueStr=num2str(round(obj.SMFSResults{ii}.Parameters.ExtendVelocity*1e9));
+            end
+            if obj.SMFSResults{ii}.Parameters.RetractVelocity==0
+                RetVelocityValueStr='All';
+            else
+                RetVelocityValueStr=num2str(round(obj.SMFSResults{ii}.Parameters.RetractVelocity*1e9));
+            end
+            if obj.SMFSResults{ii}.Parameters.HoldingTime==-1
+                HoldingTimeValueStr='All';
+            else
+                HoldingTimeValueStr=num2str(obj.SMFSResults{ii}.Parameters.HoldingTime);
+            end
+            FigNamePt1=strcat(ExtVelocityValueStr,{'_'},RetVelocityValueStr,{'_'},HoldingTimeValueStr,{'_'},obj.SMFSResults{ii}.Parameters.Substrate,{'_'},obj.SMFSResults{ii}.Parameters.Medium,{'_'},obj.SMFSResults{ii}.Parameters.ChipCantilever,{'_'},obj.SMFSResults{ii}.Parameters.Chipbox,{'_'},obj.SMFSResults{ii}.Parameters.Linker);
+            FigNamePt1=char(FigNamePt1);
+            FigNamePt2=sprintf('_SMFSResultRow%d',ii);
+            FigNamePt3='_Boxplot';
+                 
+            %% Gramm object 1
+            % Define variables
+%             FMExtVeloData=obj.SMFSResults{ii}.Concatenate.FMExtVelocity;
+%             FMRetVeloData=obj.SMFSResults{ii}.Concatenate.FMRetVelocity;
+%             Plottitle=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ii,1}.Data(1).FMIndex),obj.SMFSResults{ii,1}.Data(1).SumNumFcAnalysedAdhMaxApp);
+%             LegendxAxis='Adhesion force (N))';
+%             LegendyAxis='Adhesion force (N)';
+%             LegendColor='Approach velocity (m/s)';
+%             ColumnName='Retraction velocity (m/s)';
+%             NameSuffix1='_MaxAdhesionForceApproach';
+%             % Allocate data
+%             xData1=obj.SMFSResults{ii}.Data.AdhMaxAppConcat; 
+%             ColorData1=FMExtVeloData;
+%             ColumnData1=FMRetVeloData;
+%             
+%             % Create a gramm object
+%             g1=gramm('x',xData1);
+%       %      g1.facet_grid([],ColumnData1) % Subdivide the data in subplots horizontally
+%             % Plot data 
+%      %       g1.geom_jitter('width',0.2,...
+%       %          'dodge',2.4); % Plot raw data as jitter
+%             g1.stat_qq('distribution',makedist('Lognormal')); % Plot data in boxplot           
+%             g1.set_title(Plottitle) %Set figure title
+%             % Legend
+%             g1.set_names('x',LegendxAxis,'y',LegendyAxis,'color',LegendColor,'column',ColumnName)    
+%             % Figure
+%             h_fig1=figure(1);
+%             h_fig1.Color='white'; % changes the background color of the figure
+%             h_fig1.Units='pixel'; % Defines the units
+%             h_fig1.OuterPosition=Res;
+%             h_fig1.PaperOrientation='landscape';
+%             h_fig1.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3);
+%             % The actual plotting
+%             g1.draw()
+%             % Save figure            
+%             FullName1=strcat(FigNamePt1,FigNamePt2,FigNamePt3,NameSuffix1);
+%             %%% Save the current figure in the current folder
+%             print(h_fig1,FullName1,'-dpng');
+            
+%             %% Gramm object 2
+%             % Define variables
+%             FMExtVeloData=obj.SMFSResults{ii}.Concatenate.FMExtVelocity;
+%             FMRetVeloData=obj.SMFSResults{ii}.Concatenate.FMRetVelocity;
+%             Plottitle=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ii,1}.Data(1).FMIndex),obj.SMFSResults{ii,1}.Data(1).SumNumFcAnalysedAdhMaxRet);
+%             LegendxAxis='Holding Time (s)';
+%             LegendyAxis='Adhesion force (N)';
+%             LegendColor='Approach velocity (m/s)';
+%             ColumnName='Retraction velocity (m/s)';
+%             NameSuffix2='_MaxAdhesionForceRetract';
+%             % Allocate data
+%             xData2=obj.SMFSResults{ii}.Data.AdhMaxRetConcat;
+%             ColorData2=FMExtVeloData;
+%             ColumnData2=FMRetVeloData;
+%             % Create a gramm object
+%             g2=gramm('x',xData2,'y',yData2,...
+%                 'color',ColorData2);
+%             g2.facet_grid([],ColumnData2) % Subdivide the data in subplots horizontally
+%             % Plot data 
+%             g2.geom_jitter('width',0.2,...
+%                 'dodge',2.4); % Plot raw data as jitter
+%             g2.stat_qq(); % Plot data in boxplot            
+%             g2.set_title(Plottitle) %Set figure title
+%             % Legend
+%             g2.set_names('x',LegendxAxis,'y',LegendyAxis,'color',LegendColor,'column',ColumnName)    
+%             % Figure
+%             h_fig2=figure(2);
+%             h_fig2.Color='white'; % changes the background color of the figure
+%             h_fig2.Units='pixel'; % Defines the units
+%             h_fig2.OuterPosition=Res;
+%             h_fig2.PaperOrientation='landscape';
+%             h_fig2.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3);
+%             % The actual plotting
+%             g2.draw()
+%             % Save figure            
+%             FullName2=strcat(FigNamePt1,FigNamePt2,FigNamePt3,NameSuffix2);
+%             %%% Save the current figure in the current folder
+%             print(h_fig2,FullName2,'-dpng');
+%             
+%             %% Gramm object 3
+%             % Define variables
+%             FMExtVeloData=obj.SMFSResults{ii}.Concatenate.FMExtVelocity;
+%             FMRetVeloData=obj.SMFSResults{ii}.Concatenate.FMRetVelocity;
+%             Plottitle=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ii,1}.Data(1).FMIndex),obj.SMFSResults{ii,1}.Data(1).SumNumFcAnalysedAdhUnbinding); 
+%             LegendxAxis='Holding Time (s)';
+%             LegendyAxis='Adhesion force (N)';
+%             LegendColor='Approach velocity (m/s)';
+%             ColumnName='Retraction velocity (m/s)';
+%             NameSuffix3='_AdhForceUnbinding';
+%             % Allocate data
+%             xData3=obj.SMFSResults{ii}.Data.AdhUnbindingConcat;
+%             ColorData3=FMExtVeloData;
+%             ColumnData3=FMRetVeloData;
+%             % Create a gramm object
+%             g3=gramm();
+%             g3.facet_grid([],ColumnData3) % Subdivide the data in subplots horizontally
+%             % Plot data
+%             g3.geom_jitter('width',0.2,...
+%                 'dodge',2.4); % Plot raw data as jitter
+%             g3.stat_qq(); % Plot data in boxplot
+%             g3.set_title(Plottitle) %Set figure title
+%             % Legend
+%             g3.set_names('x',LegendxAxis,'y',LegendyAxis,'color',LegendColor,'column',ColumnName)    
+%             % Figure
+%             h_fig3=figure(3);
+%             h_fig3.Color='white'; % changes the background color of the figure
+%             h_fig3.Units='pixel'; % Defines the units
+%             h_fig3.OuterPosition=Res;
+%             h_fig3.PaperOrientation='landscape';
+%             h_fig3.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3);
+%             % The actual plotting
+%             g3.draw()
+%             % Save figure
+%             FullName3=strcat(FigNamePt1,FigNamePt2,FigNamePt3,NameSuffix3);
+%             %%% Save the current figure in the current folder
+%             print(h_fig3,FullName3,'-dpng');
+%             
+%             %% Gramm object 4
+%             % Define variables
+%             FMExtVeloData=obj.SMFSResults{ii}.Concatenate.FMExtVelocity;
+%             FMRetVeloData=obj.SMFSResults{ii}.Concatenate.FMRetVelocity;
+%             Plottitle=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ii,1}.Data(1).FMIndex),obj.SMFSResults{ii,1}.Data(1).SumNumFcAnalysedAdhEneApp); 
+%             LegendxAxis='Holding Time (s)';
+%             LegendyAxis='Adhesion energry';
+%             LegendColor='Approach velocity (m/s)';
+%             ColumnName='Retraction velocity (m/s)';
+%             NameSuffix4='_AdhEnergyApproach';
+%             % Allocate data
+%             xData4=obj.SMFSResults{ii}.Data.AdhEneAppConcat;
+%             ColorData4=FMExtVeloData;
+%             ColumnData4=FMRetVeloData;
+%             % Create a gramm object
+%             g4=gramm('x',xData4,'y',yData4,...
+%                 'color',ColorData4);
+%             g4.facet_grid([],ColumnData4) % Subdivide the data in subplots horizontally
+%             % Plot data
+%             g4.geom_jitter('width',0.2,...
+%                 'dodge',2.4); % Plot raw data as jitter
+%             g4.stat_qq(); % Plot data in boxplot
+%             g4.set_title(Plottitle) %Set figure title
+%             % Legend
+%             g4.set_names('x',LegendxAxis,'y',LegendyAxis,'color',LegendColor,'column',ColumnName)    
+%             % Figure
+%             h_fig4=figure(4);
+%             h_fig4.Color='white'; % changes the background color of the figure
+%             h_fig4.Units='pixel'; % Defines the units
+%             h_fig4.OuterPosition=Res;
+%             h_fig4.PaperOrientation='landscape';
+%             h_fig4.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3);
+%             % The actual plotting
+%             g4.draw()
+%             % Save figure
+%             FullName4=strcat(FigNamePt1,FigNamePt2,FigNamePt3,NameSuffix4);
+%             %%% Save the current figure in the current folder
+%             print(h_fig4,FullName4,'-dpng');
+%             
+%             %% Gramm object 5
+%             % Define variables
+%             FMExtVeloData=obj.SMFSResults{ii}.Concatenate.FMExtVelocity;
+%             FMRetVeloData=obj.SMFSResults{ii}.Concatenate.FMRetVelocity;
+%             Plottitle=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ii,1}.Data(1).FMIndex),obj.SMFSResults{ii,1}.Data(1).SumNumFcAnalysedAdhEneRet);
+%             LegendxAxis='Holding Time (s)';
+%             LegendyAxis='Adhesion energy';
+%             LegendColor='Approach velocity (m/s)';
+%             ColumnName='Retraction velocity (m/s)';
+%             NameSuffix5='_AdhEnergyRetract';
+%             % Allocate data
+%             xData5=obj.SMFSResults{ii}.Data.AdhEneRetConcat;
+%             ColorData5=FMExtVeloData;
+%             ColumnData5=FMRetVeloData;
+%             % Create a gramm object
+%             g5=gramm('x',xData5,'y',yData5,...
+%                 'color',ColorData5);
+%             g5.facet_grid([],ColumnData5) % Subdivide the data in subplots horizontally
+%             % Plot data 
+%             g5.geom_jitter('width',0.2,...
+%                 'dodge',2.4); % Plot raw data as jitter
+%             g5.stat_qq(); % Plot data in boxplot
+%             g5.set_title(Plottitle) %Set figure title
+%             % Legend
+%             g5.set_names('x',LegendxAxis,'y',LegendyAxis,'color',LegendColor,'column',ColumnName)    
+%             % Figure
+%             h_fig5=figure(5);
+%             h_fig5.Color='white'; % changes the background color of the figure
+%             h_fig5.Units='pixel'; % Defines the units
+%             h_fig5.OuterPosition=Res;
+%             h_fig5.PaperOrientation='landscape';
+%             h_fig5.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3);
+%             % The actual plotting
+%             g5.draw()
+%             % Save figure
+%             FullName5=strcat(FigNamePt1,FigNamePt2,FigNamePt3,NameSuffix5);
+%             %%% Save the current figure in the current folder
+%             print(h_fig5,FullName5,'-dpng');
+%             
+            %% Gramm object 6            
+            % Define variables
+            FMExtVeloData=obj.SMFSResults{ii}.Concatenate.FMExtVelocity;
+            FMRetVeloData=obj.SMFSResults{ii}.Concatenate.FMRetVelocity;
+            Plottitle=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ii,1}.Data(1).FMIndex),obj.SMFSResults{ii,1}.Data(1).SumNumFcAnalysedyPullingLength);
+            LegendxAxis='Holding Time (s)';
+            LegendyAxis='Pulling length (m)';
+            LegendColor='Approach velocity (m/s)';
+            ColumnName='Retraction velocity (m/s)';
+            NameSuffix6='_Pullinglength';
+            % Allocate data
+            xData6=obj.SMFSResults{ii}.Data.yPullingLengthConcat;
+            yData6=obj.SMFSResults{ii}.Data.yPullingLengthConcat;
+            ColorData6=FMExtVeloData;
+            ColumnData6=FMRetVeloData;
+            RowData6=obj.SMFSResults{ii}.Concatenate.FMHoldingTime;
+            pd=makedist('Lognormal')
+            % Create a gramm object
+            g6=gramm('x',xData6,'y',yData6,...
+                'color',ColorData6);
+            g6.facet_grid(RowData6,ColumnData6) % Subdivide the data in subplots horizontally
+            % Plot data 
+%             g6.geom_jitter('width',0.2,...
+%                 'dodge',2.4); % Plot raw data as jitter
+        %    g6.stat_qq('distribution',pd);  % Plot data in boxplot
+            g6.stat_qq('distribution','y');  % Plot data in boxplot
+            
+            g6.set_title(Plottitle) %Set figure title
+            % Legend
+            g6.set_names('x',LegendxAxis,'y',LegendyAxis,'color',LegendColor,'column',ColumnName)    
+            % Figure
+            h_fig6=figure(6);
+            h_fig6.Color='white'; % changes the background color of the figure
+            h_fig6.Units='pixel'; % Defines the units
+            h_fig6.OuterPosition=Res;
+            h_fig6.PaperOrientation='landscape';
+            h_fig6.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3);
+            % The actual plotting
+            g6.draw()
+            plot(g6.facet_axes_handles(1,2),[0 1],[0 1],'k--')
+            % Save figure
+            FullName6=strcat(FigNamePt1,FigNamePt2,FigNamePt3,NameSuffix6);
+            %%% Save the current figure in the current folder
+            print(h_fig6,FullName6,'-dpng');
+            
+            hf=figure(17)
+            h_fig6.Color='white'; % changes the background color of the figure
+            h_fig6.Units='pixel'; % Defines the units
+            h_fig6.OuterPosition=Res;
+            h_fig6.PaperOrientation='landscape';
+            pd=makedist('Lognormal')
+            qqplot(xData6,pd)
+            
+            
+%             
+%             %% Gramm object 7
+%             % Define variables
+%             FMExtVeloData=obj.SMFSResults{ii}.Concatenate.FMExtVelocity;
+%             FMRetVeloData=obj.SMFSResults{ii}.Concatenate.FMRetVelocity;
+%             Plottitle=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ii,1}.Data(1).FMIndex),obj.SMFSResults{ii,1}.Data(1).SumNumFcAnalysedySnapInLength);
+%             LegendxAxis='Holding Time (s)';
+%             LegendyAxis='Snap-In length (m)';
+%             LegendColor='Approach velocity (m/s)';
+%             ColumnName='Retraction velocity (m/s)';
+%             NameSuffix7='_SnapInLength';
+%             % Allocate data
+%             xData7=obj.SMFSResults{ii}.Data.ySnapInLengthConcat;
+%             ColorData7=FMExtVeloData;
+%             ColumnData7=FMRetVeloData;
+%             % Create a gramm object
+%             g7=gramm('x',xData7,'y',yData7,...
+%                 'color',ColorData7);
+%             g7.facet_grid([],ColumnData7) % Subdivide the data in subplots horizontally
+%             % Plot data
+%             g7.geom_jitter('width',0.2,...
+%                 'dodge',2.4); % Plot raw data as jitter
+%             g7.stat_qq(); % Plot data in boxplot            
+%             g7.set_title(Plottitle) %Set figure title
+%             % Legend
+%             g7.set_names('x',LegendxAxis,'y',LegendyAxis,'color',LegendColor,'column',ColumnName)    
+%             % Figure
+%             h_fig7=figure(7);
+%             h_fig7.Color='white'; % changes the background color of the figure
+%             h_fig7.Units='pixel'; % Defines the units
+%             h_fig7.OuterPosition=Res;
+%             h_fig7.PaperOrientation='landscape';
+%             h_fig7.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3);
+%             % The actual plotting
+%             g7.draw()
+%             % Save figure
+%             FullName7=strcat(FigNamePt1,FigNamePt2,FigNamePt3,NameSuffix7);
+%             %%% Save the current figure in the current folder
+%            print(h_fig7,FullName7,'-dpng');
             % House keeping
             close all
         end

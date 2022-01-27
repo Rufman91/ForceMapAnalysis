@@ -21,10 +21,10 @@ function hndl=my_qq(obj,draw_data,params)
 if strcmp(params.distribution,'y')
     %If we compare the distribution of x and y
     x=comb(draw_data.x);
-    y=comb(draw_data.y);
+    yRaw=comb(draw_data.y); % 26/02/22: Bugfix by Manuel Rufin 
     
-    y=sort(y(~isnan(y) & ~isnan(x)));
-    xdist=sort(x(~isnan(y) & ~isnan(x)));
+    y=sort(yRaw(~isnan(yRaw) & ~isnan(x))); % 26/02/22: Bugfix by Manuel Rufin
+    xdist=sort(x(~isnan(yRaw) & ~isnan(x)));
     
     if obj.result_ind==1
         obj.aes_names.y=[obj.aes_names.y ' quantiles'];
