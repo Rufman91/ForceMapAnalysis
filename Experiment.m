@@ -3056,11 +3056,20 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                     'ForegroundColor',h.ColorMode(obj.ShowImageSettings.ColorIndex).ButtonText,...
                     'BackgroundColor',h.ColorMode(obj.ShowImageSettings.ColorIndex).Buttons,...
                     'units','normalized',...
-                    'Visible',1,...
+                    'Visible',obj.ShowImageSettings.ResultsMenuValue,...
                     'position',[.875 .12 .1 .04],...
                     'Callback',@export_data);
+                h.Res(7) = uicontrol('style','pushbutton',...
+                    'String','Plot Results',...
+                    'Tooltip','Plot results from the segments on display. Grayed out segmnts are ignored, highlighted segments are highlighted',...
+                    'ForegroundColor',h.ColorMode(obj.ShowImageSettings.ColorIndex).ButtonText,...
+                    'BackgroundColor',h.ColorMode(obj.ShowImageSettings.ColorIndex).Buttons,...
+                    'units','normalized',...
+                    'Visible',obj.ShowImageSettings.ResultsMenuValue,...
+                    'position',[.875 .36 .1 .04],...
+                    'Callback',@draw_results);
                 
-                h.ToggledResultMenuIndizes = [1 2 3 4 5 6];
+                h.ToggledResultMenuIndizes = [1 2 3 4 5 6 7];
                 
             end
             
@@ -3108,7 +3117,9 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 h.OnePass = false;
                 
                 % Related to Results Struct
-                h.ResultStruct.SelectedSegmentIndex = zeros(2,1);
+                h.ResultStruct.SelectedSegmentIndex = cell(1,2);
+                h.ResultStruct.SelectedSegmentIndex{1} = 0;
+                h.ResultStruct.SelectedSegmentIndex{2} = 0;
                 h.ResultStruct.DisabledSegmentIndizes{1} = [];
                 h.ResultStruct.DisabledSegmentIndizes{2} = [];
                 h.ResultStruct.Results(1).Name = h.Class{1}.Name;
@@ -3127,6 +3138,14 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 h.ResultStruct.Results(2).SegmentCell = [];
                 h.ResultStruct.Results(1).Mask = [];
                 h.ResultStruct.Results(2).Mask = [];
+                
+                if obj.ShowImageSettings.MainMenuValue
+                        switch_to_main_menu
+                elseif obj.ShowImageSettings.VolumeMenuValue
+                        switch_to_volume_menu
+                elseif obj.ShowImageSettings.ResultsMenuValue
+                        switch_to_results_menu
+                end
                 
             end
             
@@ -3721,11 +3740,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 elseif h.MenuTabs(2).Value
                     h.I(Index).ButtonDownFcn = @get_and_draw_volume_information;
                 elseif h.MenuTabs(3).Value
-                    if Index == 1
-                        h.I(Index).ButtonDownFcn = @select_clicked_roi_channel_1;
-                    else
-                        h.I(Index).ButtonDownFcn = @select_clicked_roi_channel_2;
-                    end
+                    h.I(Index).ButtonDownFcn = {@select_clicked_roi,Index};
                 end
                 hold on
                 CurrentAxHeight = round(h.Fig.Position(4)*h.ImAx(Index).Position(4));
@@ -3762,7 +3777,15 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 
                 moving_cross_section
                 draw_volume_information
-                draw_results(Index)
+                draw_existing_segments(Index)
+%                 if obj.ShowImageSettings.ResultsMenuValue
+%                     if h.hasChannel1
+%                         draw_existing_segments(1)
+%                     end
+%                     if obj.ShowImageSettings.HasChannel2
+%                         draw_existing_segments(2)
+%                     end
+%                 end
                 try
                     if (h.ScanSizeX(1) == h.ScanSizeX(2)) &&...
                             (h.ScanSizeY(1) == h.ScanSizeY(2))
@@ -4344,19 +4367,23 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 draw_volume_information
             end
             
-            function draw_results(Index,varargin)
+            function draw_results(varargin)
                 
                 if ~obj.ShowImageSettings.ResultsMenuValue
                     return
                 end
                 
-                draw_existing_segments(Index)
+%                 draw_existing_segments(1)
+%                 draw_existing_segments(2)
                 draw_boxplots
                 
             end
             
             function draw_existing_segments(Index,varargin)
                 
+                if ~obj.ShowImageSettings.ResultsMenuValue
+                    return
+                end
                 if isempty(h.Class{Index}.Segment)
                     return
                 end
@@ -4397,7 +4424,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                             'InteractionsAllowed','none',...
                             'LineWidth',h.Class{Index}.Segment(i).ROIObject.LineWidth,...
                             'Color',h.ColorMode(obj.ShowImageSettings.ColorIndex).Disabled);
-                    elseif i == h.ResultStruct.SelectedSegmentIndex(Index)
+                    elseif ismember(i,h.ResultStruct.SelectedSegmentIndex{Index})
                         h.ROIObjects{Index}{i} = drawpolyline('Position',h.Class{Index}.Segment(i).ROIObject.Position,...
                             'Deletable',0,...
                             'InteractionsAllowed','none',...
@@ -4436,52 +4463,40 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 
             end
             
-            function select_clicked_roi_channel_1(varargin)
+            function select_clicked_roi(varargin)
+                
+                Index = varargin{3};
+                
+                modifiers = get(h.Fig,'currentModifier');
+                ctrlIsPressed = ismember('control',modifiers);
                 
                 Point = varargin{2}.IntersectionPoint;
                 
                 X = round(Point(1));
                 Y = round(Point(2));
                 
-                NewIndex = h.ROIImage{1}(Y,X);
+                NewIndex = h.ROIImage{Index}(Y,X);
                 
-                if h.ResultStruct.SelectedSegmentIndex(1) == NewIndex
-                    h.ResultStruct.DisabledSegmentIndizes{1} =...
-                        unique([h.ResultStruct.DisabledSegmentIndizes{1} NewIndex]);
-                    h.ResultStruct.SelectedSegmentIndex(1) = 0;
-                elseif sum(h.ResultStruct.DisabledSegmentIndizes{1} == NewIndex)
-                    h.ResultStruct.DisabledSegmentIndizes{1}(h.ResultStruct.DisabledSegmentIndizes{1} == NewIndex) = [];
-                else
-                    h.ResultStruct.SelectedSegmentIndex(1) = NewIndex;
+                if h.ResultStruct.SelectedSegmentIndex{Index}(1) == NewIndex
+                    h.ResultStruct.DisabledSegmentIndizes{Index} =...
+                        unique([h.ResultStruct.DisabledSegmentIndizes{Index} NewIndex]);
+                    h.ResultStruct.SelectedSegmentIndex{Index} = 0;
+                elseif sum(h.ResultStruct.DisabledSegmentIndizes{Index} == NewIndex)
+                    h.ResultStruct.DisabledSegmentIndizes{Index}(h.ResultStruct.DisabledSegmentIndizes{Index} == NewIndex) = [];
+                elseif ~ctrlIsPressed
+                    h.ResultStruct.SelectedSegmentIndex{Index}(1) = NewIndex;
+                    if numel(h.ResultStruct.SelectedSegmentIndex{Index}) > 1
+                        h.ResultStruct.SelectedSegmentIndex{Index}(2:end) = [];
+                    end
+                elseif ctrlIsPressed
+                    h.ResultStruct.SelectedSegmentIndex{Index}(end+1) = NewIndex;
                 end
                 
                 draw_channel_1
             end
             
-            function select_clicked_roi_channel_2(varargin)
-                
-                Point = varargin{2}.IntersectionPoint;
-                
-                X = round(Point(1));
-                Y = round(Point(2));
-                
-                NewIndex = h.ROIImage{2}(Y,X);
-                
-                if h.ResultStruct.SelectedSegmentIndex(2) == NewIndex
-                    h.ResultStruct.DisabledSegmentIndizes{2} =...
-                        unique([h.ResultStruct.DisabledSegmentIndizes{2} NewIndex]);
-                    h.ResultStruct.SelectedSegmentIndex(2) = 0;
-                elseif sum(h.ResultStruct.DisabledSegmentIndizes{2} == NewIndex)
-                    h.ResultStruct.DisabledSegmentIndizes{2}(h.ResultStruct.DisabledSegmentIndizes{2} == NewIndex) = [];
-                else
-                    h.ResultStruct.SelectedSegmentIndex(2) = NewIndex;
-                end
-                
-                draw_channel_2
-            end
-            
             function Results = read_out_results()
-                Results = [];
+                Results = struct();
                 
                 % Determine how many Sets are to be created from which
                 % class instances
@@ -4512,30 +4527,24 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 end
                 
                 for i=NumResults:-1:1
-                    if i > length(h.ResultStruct.Results) ||...
-                            ((~isequal(h.ResultStruct.Results(i).Name,Class{i}.Name) ||...
-                            ~isequal(h.ResultStruct.Results(i).ChannelType,ChannelName{i})) &&...
-                            (~isequal(h.ResultStruct.Results(i).ChannelType,'none') ||...
-                            ~isequal('none',ChannelName{i})))
-                        Waitbar = waitbar(1/2,'Reading out results');
-                        TempChannel = Class{i}.get_channel(ChannelName{i});
-                        if isempty(TempChannel) &&...
-                                NumResults > i &&...
-                                i < length(Results)
-                            Results(i) = [];
-                            close(Waitbar)
-                            continue
-                        end
-                        [Results(i).Data,...
-                            Results(i).SubSegmentCell,...
-                            Results(i).SegmentCell,...
-                            Results(i).Mask] = Class{1}.get_segment_data_from_channel(ChannelName{i},0);
-                        Results(i).Name = Class{1}.Name;
-                        Results(i).SegmentNames = {Class{i}.Segment.Name};
-                        Results(i).ChannelType = TempChannel.Name;
-                        Results(i).Unit = TempChannel.Unit;
+                    Waitbar = waitbar(1/2,'Reading out results');
+                    TempChannel = Class{i}.get_channel(ChannelName{i});
+                    if isempty(TempChannel) &&...
+                            NumResults > i &&...
+                            i < length(Results)
+                        Results(i) = [];
                         close(Waitbar)
+                        continue
                     end
+                    [Results(i).Data,...
+                        Results(i).SubSegmentCell,...
+                        Results(i).SegmentCell,...
+                        Results(i).Mask] = Class{1}.get_segment_data_from_channel(ChannelName{i},0);
+                    Results(i).Name = Class{1}.Name;
+                    Results(i).SegmentNames = {Class{i}.Segment.Name};
+                    Results(i).ChannelType = TempChannel.Name;
+                    Results(i).Unit = TempChannel.Unit;
+                    close(Waitbar)
                 end
                 
             end
