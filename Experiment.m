@@ -1988,8 +1988,6 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 [AdhMaxAppMax,AdhMaxAppMaxIdx]=max(AdhMaxAppMax);
                 AdhMaxAppMinFM=IdxArray(AdhMaxAppMinIdx);
                 AdhMaxAppMaxFM=IdxArray(AdhMaxAppMaxIdx);
-                AdhMaxAppMinFc=AdhMaxAppMinFc(AdhMaxAppMinIdx,1);
-                AdhMaxAppMaxFc=AdhMaxAppMaxFc(AdhMaxAppMaxIdx,1);
                 AdhMaxAppMinFc=AdhMaxAppMinFc(AdhMaxAppMinIdx,1)-(AdhMaxAppMinFM-1)*100;
                 AdhMaxAppMaxFc=AdhMaxAppMaxFc(AdhMaxAppMaxIdx,1)-(AdhMaxAppMaxFM-1)*100;
                 AdhMaxRetMean=mean(ConcateArray2,'omitnan');
