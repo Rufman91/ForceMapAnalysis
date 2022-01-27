@@ -1748,9 +1748,9 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             %for ii=1:17 % for debugging
                  sprintf('Force map No. %d',ii) % Gives current force map
             %% Force map selection criteria
-%            if ~obj.SMFSFlag.Analysed(ii)   % Exclude force map if analysis has not been done     
-%                continue
-%            end  
+            if ~obj.SMFSFlag.Analysed(ii)   % Exclude force map if analysis has not been done     
+                continue
+            end  
                 % Parameters
                 if ((obj.FM{ii}.ExtendVelocity==ExtVelocityValue || ExtVelocityValue==0) ...
                         && (obj.FM{ii}.RetractVelocity==RetVelocityValue || RetVelocityValue==0) ...
@@ -2135,6 +2135,8 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             h_fig1.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3);
             % The actual plotting
             g1.draw()
+            % Reset axis limits
+            g1.facet_axes_handles(1,2).YLim=[-5e-10 1e-9]; 
             % Save figure            
             FullName1=strcat(FigNamePt1,FigNamePt2,FigNamePt3,NameSuffix1);
             %%% Save the current figure in the current folder
@@ -2176,7 +2178,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             h_fig2.PaperOrientation='landscape';
             h_fig2.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3);
             % The actual plotting
-            g2.draw()
+            g2.draw()             
             % Save figure            
             FullName2=strcat(FigNamePt1,FigNamePt2,FigNamePt3,NameSuffix2);
             %%% Save the current figure in the current folder
