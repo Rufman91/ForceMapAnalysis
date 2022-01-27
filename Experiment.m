@@ -1748,9 +1748,9 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             %for ii=1:17 % for debugging
                  sprintf('Force map No. %d',ii) % Gives current force map
             %% Force map selection criteria
-            if ~obj.SMFSFlag.Analysed(ii)   % Exclude force map if analysis has not been done     
-                continue
-            end  
+%            if ~obj.SMFSFlag.Analysed(ii)   % Exclude force map if analysis has not been done     
+%                continue
+%            end  
                 % Parameters
                 if ((obj.FM{ii}.ExtendVelocity==ExtVelocityValue || ExtVelocityValue==0) ...
                         && (obj.FM{ii}.RetractVelocity==RetVelocityValue || RetVelocityValue==0) ...
@@ -1794,6 +1794,14 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             ySnapInLengthAll=zeros(obj.FM{IdxArray(1)}.NCurves,length(IdxArray));
             FCAnalysedySnapInLength=zeros(1,length(IdxArray));
             FCperFM=zeros(length(IdxArray),1);
+            PullLengthMin=zeros(length(IdxArray),1);
+            PullLengthMinFc=zeros(length(IdxArray),1);
+            PullLengthMax=zeros(length(IdxArray),1);
+            PullLengthMaxFc=zeros(length(IdxArray),1);
+            SnapInMin=zeros(length(IdxArray),1);
+            SnapInMinFc=zeros(length(IdxArray),1);
+            SnapInMax=zeros(length(IdxArray),1);
+            SnapInMaxFc=zeros(length(IdxArray),1);
             % Loop
             for ff=1:length(IdxArray)
             %% Debugging
@@ -1932,8 +1940,13 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                     ConcateArray7(ConcateArray7==0)=nan; % Replace zero entries by nan´s
                 else                  
                 end  
-                
-                % Statistics
+                % Min max values and location
+            [PullLengthMin(ff,1),PullLengthMinFc(ff,1)]=min(ConcateArray6,[],'omitnan');
+            [PullLengthMax(ff,1),PullLengthMaxFc(ff,1)]=max(ConcateArray6,[],'omitnan');
+            [SnapInMin(ff,1),SnapInMinFc(ff,1)]=min(ConcateArray7,[],'omitnan');
+            [SnapInMax(ff,1),SnapInMaxFc(ff,1)]=max(ConcateArray7,[],'omitnan');
+            end
+            % Statistics
                 AdhMaxAppSelMean=mean(ConcateArray1,'omitnan');
                 AdhMaxAppSelStd=std(ConcateArray1,'omitnan');
                 AdhMaxRetSelMean=mean(ConcateArray2,'omitnan');
@@ -1945,12 +1958,19 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 AdhEneRetSelMean=mean(ConcateArray5,'omitnan');
                 AdhEneRetSelStd=std(ConcateArray5,'omitnan');
                 PullLengthMedian=median(ConcateArray6,'omitnan');
-                PullLengthMin=min(ConcateArray6,[],'omitnan');
-                PullLengthMax=max(ConcateArray6,[],'omitnan');
+                [PullLengthMin,PullLengthMinIdx]=min(PullLengthMin);
+                [PullLengthMax,PullLengthMaxIdx]=max(PullLengthMax);
+                PullLengthMinFc=PullLengthMinFc(PullLengthMinIdx,1);
+                PullLengthMaxFc=PullLengthMaxFc(PullLengthMaxIdx,1);
+                PullLengthMinFM=IdxArray(PullLengthMinIdx);
+                PullLengthMaxFM=IdxArray(PullLengthMaxIdx);
                 SnapInMedian=median(ConcateArray7,'omitnan');
-                SnapInMin=min(ConcateArray7,[],'omitnan');
-                SnapInMax=max(ConcateArray7,[],'omitnan');
-            end
+                [SnapInMin,SnapInMinIdx]=min(SnapInMin);
+                [SnapInMax,SnapInMaxIdx]=max(SnapInMax);
+                SnapInMinFc=SnapInMinFc(PullLengthMinIdx,1);
+                SnapInMaxFc=SnapInMaxFc(PullLengthMaxIdx,1);
+                SnapInMinFM=IdxArray(SnapInMinIdx);
+                SnapInMaxFM=IdxArray(SnapInMaxIdx);
             
             %% SMFS Results structure 
             % Check entry
@@ -2024,11 +2044,18 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             obj.SMFSResults{jj,1}.Results(1).AdhEneRetStd=AdhEneRetSelStd;
             obj.SMFSResults{jj,1}.Results(1).PullLengthMedian=PullLengthMedian;
             obj.SMFSResults{jj,1}.Results(1).PullLengthMin=PullLengthMin;
+            obj.SMFSResults{jj,1}.Results(1).PullLengthMinFM=PullLengthMinFM;
+            obj.SMFSResults{jj,1}.Results(1).PullLengthMinFc=PullLengthMinFc;
             obj.SMFSResults{jj,1}.Results(1).PullLengthMax=PullLengthMax;
+            obj.SMFSResults{jj,1}.Results(1).PullLengthMaxFM=PullLengthMaxFM;
+            obj.SMFSResults{jj,1}.Results(1).PullLengthMaxFc=PullLengthMaxFc;            
             obj.SMFSResults{jj,1}.Results(1).SnapInMedian=SnapInMedian;
             obj.SMFSResults{jj,1}.Results(1).SnapInMin=SnapInMin;
+            obj.SMFSResults{jj,1}.Results(1).SnapInMinFM=SnapInMinFM;
+            obj.SMFSResults{jj,1}.Results(1).SnapInMinFc=SnapInMinFc;            
             obj.SMFSResults{jj,1}.Results(1).SnapInMax=SnapInMax;
-                       
+            obj.SMFSResults{jj,1}.Results(1).SnapInMaxFM=SnapInMaxFM; 
+            obj.SMFSResults{jj,1}.Results(1).SnapInMaxFc=SnapInMaxFc;                                                      
             %% House keeping
             close all
         end
