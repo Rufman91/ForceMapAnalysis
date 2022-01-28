@@ -3919,7 +3919,7 @@ classdef ForceMap < matlab.mixin.Copyable
             DirectoryPath = uigetdir();
             k=1;
             
-            figure('Phaseshift, Loss and Storage Modulus of all curves')
+            figure(k)
             hold on
             for i=1:obj.NCurves
                 hold on
