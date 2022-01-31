@@ -2239,7 +2239,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             % The actual plotting
             g1.draw()
             % Reset axis limits
-            g1.facet_axes_handles(1,2).YLim=[-5e-10 1e-9]; 
+%g1.facet_axes_handles(1,2).YLim=[-5e-10 1e-9]; 
             % Save figure            
             FullName1=strcat(FigNamePt1,FigNamePt2,FigNamePt3,NameSuffix1);
             %%% Save the current figure in the current folder
@@ -2511,6 +2511,19 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             if nargin<2
                 ii=1;
             end
+            
+            CS1=[165 0 38]./255; % Dark reddish
+            CS2=[215 48 39]./255; % Light reddish
+            CS3=[244 109 67]./255; % Orangish
+            CS4=[253 174 97]./255; % Ochreish
+            CS5=[254 224 144]./255; % Yellowish
+            CS6=[224 243 248]./255; % Pastel blueish
+            CS7=[171 217 233]./255; % Light blueish
+            CS8=[116 173 209]./255; % Steel blueish
+            CS9=[69 117 180]./255; % Distant blueish
+            CS10=[49 54 149]./255; % Pale ultramarineish
+            
+            
             % Output time and date for the dairy
             datetime('now')
             % Change into the Folder of Interest
@@ -2521,15 +2534,14 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             currpath=fullfile(obj.ExperimentFolder,foldername);
             cd(currpath);
             %% General variables 1
-            ColorMap1=[[0 25 255]./255;  % Blue
-                [26 255 0]./255; % Green
-                [255 102 0]./255; % Orange
-                [255 0 26]./255]; % Red                
+            ColorMap1=[CS10;  % Pale ultramarineish
+                CS4; % Ochreish
+                CS2]; % Light reddish                
             LimitForce1=[0 14e-12]; % Regime I - Entropic
             LimitForce2=[14e-12 5e-9]; %Regime II - Unfolding
             LimitForce3=[5e-9 22e-9]; % Regime III - Backbone stretching
             LimitLength1=[0 317e-9]; % Regime I - Entropic
-            LimitLength2=[317 390e-9]; %Regime II - Unfolding
+            LimitLength2=[317e-9 390e-9]; %Regime II - Unfolding
             LimitLength3=[390e-9 452.6e-9]; % Regime III - Backbone stretching
             Res=[1 1 2560 1250]; % Define the figure resolution
             Plottitle=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ii,1}.Data(1).FMIndex),obj.SMFSResults{ii,1}.Data(1).SumNumFcAnalysedAdhMaxApp);
@@ -2593,8 +2605,6 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             h_fig1.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3);
             % The actual plotting
             g1.draw()
-            % Reset axis limits
-            g1.facet_axes_handles(1,2).YLim=[-5e-10 1e-9]; 
             % Save figure            
             FullName1=strcat(FigNamePt1,FigNamePt2,FigNamePt3,NameSuffix1);
             %%% Save the current figure in the current folder
@@ -2808,6 +2818,135 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             FullName7=strcat(FigNamePt1,FigNamePt2,FigNamePt3,NameSuffix7);
             %%% Save the current figure in the current folder
             print(h_fig7,FullName7,'-dpng');
+            % House keeping
+            close all
+        end
+        
+                  
+        function SMFS_results_gramm_boxplot_ESB(obj,ii)
+            
+            % Input variable adaptation
+            if nargin<2
+                ii=1;
+            end
+            
+            CS1=[165 0 38]./255; % Dark reddish
+            CS2=[215 48 39]./255; % Light reddish
+            CS3=[244 109 67]./255; % Orangish
+            CS4=[253 174 97]./255; % Ochreish
+            CS5=[254 224 144]./255; % Yellowish
+            CS6=[224 243 248]./255; % Pastel blueish
+            CS7=[171 217 233]./255; % Light blueish
+            CS8=[116 173 209]./255; % Steel blueish
+            CS9=[69 117 180]./255; % Distant blueish
+            CS10=[49 54 149]./255; % Pale ultramarineish
+            
+            % Output time and date for the dairy
+            datetime('now')
+            % Change into the Folder of Interest
+            cd(obj.ExperimentFolder) % Move into the folder
+            % Create folders for saving the produced figures
+            foldername='SMFS_results_gramm_boxplot_ESB';    % Defines the folder name
+            mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
+            currpath=fullfile(obj.ExperimentFolder,foldername);
+            cd(currpath);
+            %% General variables 1
+            ColorMap1=[CS10;  % Pale ultramarineish
+                  %      CS7;    % Light blueish
+                        CS4; % Ochreish
+                        CS2]; % Light reddish               
+            LimitForce1=[0 14e-3]; % Regime I - Entropic
+            LimitForce2=[14e-3 5]; %Regime II - Unfolding
+            LimitForce3=[5 22]; % Regime III - Backbone stretching
+            LimitLength1=[0 317]; % Regime I - Entropic
+            LimitLength2=[317 390]; %Regime II - Unfolding
+            LimitLength3=[390 452.6]; % Regime III - Backbone stretching
+            Res=[1 1 2560 1250]; % Define the figure resolution
+            if obj.SMFSResults{ii}.Parameters.ExtendVelocity==0
+                ExtVelocityValueStr='All';
+            else
+                ExtVelocityValueStr=num2str(round(obj.SMFSResults{ii}.Parameters.ExtendVelocity*1e9));
+            end
+            if obj.SMFSResults{ii}.Parameters.RetractVelocity==0
+                RetVelocityValueStr='All';
+            else
+                RetVelocityValueStr=num2str(round(obj.SMFSResults{ii}.Parameters.RetractVelocity*1e9));
+            end
+            if obj.SMFSResults{ii}.Parameters.HoldingTime==-1
+                HoldingTimeValueStr='All';
+            else
+                HoldingTimeValueStr=num2str(obj.SMFSResults{ii}.Parameters.HoldingTime);
+            end
+            FigNamePt1=strcat(ExtVelocityValueStr,{'_'},RetVelocityValueStr,{'_'},HoldingTimeValueStr,{'_'},obj.SMFSResults{ii}.Parameters.Substrate,{'_'},obj.SMFSResults{ii}.Parameters.Medium,{'_'},obj.SMFSResults{ii}.Parameters.ChipCantilever,{'_'},obj.SMFSResults{ii}.Parameters.Chipbox,{'_'},obj.SMFSResults{ii}.Parameters.Linker);
+            FigNamePt1=char(FigNamePt1);
+            FigNamePt2=sprintf('_SMFSResultRow%d',ii);
+            FigNamePt3='_Boxplot';
+%            Plottitle=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ii,1}.Data(1).FMIndex),obj.SMFSResults{ii,1}.Data(1).SumNumFcAnalysedAdhMaxRet);
+            LegendxAxis='Holding Time (s)';
+            LegendyAxis2='Adhesion force (N)';
+            LegendColor='Approach velocity (m/s)';
+            ColumnName='Retraction velocity (m/s)';
+            NameSuffix='_MaxAdhesionForceRetract_Pullinglength';
+            % Allocate data
+            xData=obj.SMFSResults{ii}.Concatenate.FMHoldingTime;
+            FMExtVeloData=obj.SMFSResults{ii}.Concatenate.FMExtVelocity;
+            FMRetVeloData=obj.SMFSResults{ii}.Concatenate.FMRetVelocity;
+            ColorData=FMExtVeloData;
+            ColumnData=FMRetVeloData;
+            %% Gramm object 2
+            % Allocate data
+            yData2=obj.SMFSResults{ii}.Data.AdhMaxRetConcat*-1e9;
+            % Define variables
+            LegendyAxis2='Adhesion force (nN)';
+            % Create a gramm object
+            g(1,1)=gramm('x',xData,'y',yData2,...
+                'color',ColorData);
+            g(1,1).facet_grid([],ColumnData) % Subdivide the data in subplots horizontally
+            % Plot data 
+            g(1,1).geom_polygon('y',{LimitForce1;LimitForce2;LimitForce3},'color',ColorMap1);
+            g(1,1).geom_jitter('width',0.6,...
+                'dodge',0.4); % Plot raw data as jitter
+            g(1,1).stat_boxplot('notch',true,...
+                'width',0.6,...
+                'dodge',0.4); % Plot data in boxplot            
+            %g(1,1).set_title(Plottitle) %Set figure title
+            g(1,1).set_text_options('base_size',32) % Set font size 
+            % Legend
+            g(1,1).set_names('x',LegendxAxis,'y',LegendyAxis2,'color',LegendColor,'column',ColumnName)    
+            %% Gramm object 6
+            % Allocate data
+            yData6=obj.SMFSResults{ii}.Data.yPullingLengthConcat*1e9; 
+            % Define variables
+            LegendyAxis2='Pulling length (nm)';
+            % Create a gramm object
+            g(1,2)=gramm('x',xData,'y',yData6,...
+                'color',ColorData);
+            g(1,2).facet_grid([],ColumnData) % Subdivide the data in subplots horizontally
+            % Plot data 
+            g(1,2).geom_polygon('y',{LimitLength1;LimitLength2;LimitLength3},'color',ColorMap1);
+            g(1,2).geom_jitter('width',0.6,...
+                'dodge',0.4); % Plot raw data as jitter
+            g(1,2).stat_boxplot('notch',true,...
+                'width',0.6,...
+                'dodge',0.4); % Plot data in boxplot
+            %g(1,2).set_title(Plottitle) % Set figure title
+            g(1,2).set_text_options('base_size',32) % Set font size 
+            % Legend
+            g(1,2).set_names('x',LegendxAxis,'y',LegendyAxis2,'color',LegendColor,'column',ColumnName)   
+            % Figure
+            h_fig2=figure(2);
+            h_fig2.Color='white'; % changes the background color of the figure
+            h_fig2.Units='pixel'; % Defines the units
+            h_fig2.OuterPosition=Res;
+            h_fig2.PaperOrientation='landscape';
+            h_fig2.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3);
+            % The actual plotting
+            g.draw()             
+            % Save figure            
+            FullName2=strcat(FigNamePt1,FigNamePt2,FigNamePt3,NameSuffix);
+            %%% Save the current figure in the current folder
+            print(h_fig2,FullName2,'-dpng');
+                                 
             % House keeping
             close all
         end
@@ -4393,8 +4532,6 @@ PlotData=obj.SMFSResults{jj}.Data.AdhMaxAppConcat
            
         end
              
-       
-       
 
         function SMFS_fine_figure(obj,XMin,XMax,YMin,YMax,ii)
             % Function to plot individual fine figures for publication
@@ -4404,11 +4541,11 @@ PlotData=obj.SMFSResults{jj}.Data.AdhMaxAppConcat
                 YMin= -inf;
                 YMax= inf;
             end
-            ii=65
+            ii=452
             % Change into the Folder of Interest
             cd(obj.ExperimentFolder) % Move into the folder
             % Create folders for saving the produced figures
-            foldername='FineFigures';    % Defines the folder name
+            foldername='SMFS_fine_figure';    % Defines the folder name
             mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
             currpath=fullfile(obj.ExperimentFolder,foldername);
             cd(currpath);
