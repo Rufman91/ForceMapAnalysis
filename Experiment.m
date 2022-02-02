@@ -509,6 +509,9 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                             OldFilePath = split(...
                                 Experiment.replace_fileseps(E.FM{i}.RawDataFilePath),...
                                 filesep);
+                            if iscell(E.FM{i}.RawDataFilePath)
+                                E.FM{i}.RawDataFilePath = E.FM{i}.RawDataFilePath{1};
+                            end
                             E.FM{i}.RawDataFilePath = fullfile(E.FM{i}.DataStoreFolder,OldFilePath{end});
                         end
                         E.FM{i}.Folder = E.switch_old_with_new_toplvl_path(...
