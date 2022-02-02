@@ -490,6 +490,8 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
 %                 Path = [Path filesep];
 %             end
             
+            E.ExperimentFolder = Experiment.replace_fileseps(E.ExperimentFolder);
+            
             for i=1:E.NumForceMaps
                 if ~isempty(E.FM{i})
                     if ~JustExperiment
