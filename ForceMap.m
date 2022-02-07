@@ -4770,6 +4770,24 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             
         end
         
+        function [CS1,CS2,CS3,CS4,CS5,CS6,CS7,CS8,CS9,CS10]=fc_ColorScheme(obj)
+            % Color scheme from colorbrewer2.org
+            % https://colorbrewer2.org/#type=diverging&scheme=RdYlBu&n=10
+            % Properties: colorblind safe
+            % Number of data classes (colors): 10
+            
+            CS1=[165 0 38]./255; % Dark reddish
+            CS2=[215 48 39]./255; % Light reddish
+            CS3=[244 109 67]./255; % Orangish
+            CS4=[253 174 97]./255; % Ochreish
+            CS5=[254 224 144]./255; % Yellowish
+            CS6=[224 243 248]./255; % Pastel blueish
+            CS7=[171 217 233]./255; % Light blueish
+            CS8=[116 173 209]./255; % Steel blueish
+            CS9=[69 117 180]./255; % Distant blueish
+            CS10=[49 54 149]./255; % Pale ultramarineish
+            
+        end
         
         function fc_fine_figure(obj,XMin,XMax,YMin,YMax,ii)
              
@@ -4790,12 +4808,29 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             RGB11=[200 255 150]./255; % Light Green
             RGB12=[185 230 254]./255; % Light Blue
             RGB13=[200 0 0]./255; % Red
+            RGB_A4=[66 255 0]./255; % Green
+            
+            
+            CS1=[165 0 38]./255; % Dark reddish
+            CS2=[215 48 39]./255; % Light reddish
+            CS3=[244 109 67]./255; % Orangish
+            CS4=[253 174 97]./255; % Ochreish
+            CS5=[254 224 144]./255; % Yellowish
+            CS6=[224 243 248]./255; % Pastel blueish
+            CS7=[171 217 233]./255; % Light blueish
+            CS8=[116 173 209]./255; % Steel blueish
+            CS9=[69 117 180]./255; % Distant blueish
+            CS10=[49 54 149]./255; % Pale ultramarineish
+            
+            
             Res=[1 1 2560 1440]; % Define the figure resolution
               
             [Xmultiplier,Xunit,~] = AFMImage.parse_unit_scale(1e+9,'nm',1);
             [Ymultiplier,Yunit,~] = AFMImage.parse_unit_scale(1e+9,'nN',1);
             
-            kk=25;
+            
+            
+            kk=10;
             % Define variables for the figure name
             ExtendVelocityConvert=num2str(obj.ExtendVelocity*1e9);
             RetractVelocityConvert=num2str(obj.RetractVelocity*1e9);
@@ -4805,7 +4840,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             figname=char(figname);
           
             % Allocate data
-            % Allocate data
+       
                         xApp=(obj.HHApp{kk}-obj.CP_HardSurface(kk))/-Xmultiplier; % Retraction x-data (m): Vertical tip height data corrected by the determined contact point using the hard surface method
                         xRet=(obj.HHRet{kk}-obj.CP_HardSurface(kk))/-Xmultiplier; % Retraction x-data (m): Vertical tip height data corrected by the determined contact point using the hard surface method
                         yApp=obj.BasedApp{kk}/Ymultiplier;
@@ -4816,6 +4851,11 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
 %                         xRet=flip(obj.HHRet{kk}) % Retraction x-data (m): Vertical tip height data corrected by the determined contact point using the hard surface method
 %                         yApp=obj.App{kk}
 %                         yRet=obj.Ret{kk}
+            xPolygon1=[-10 1000 1000 -10];
+            yPolygon1=[0 0 -14e-3 -14e-3];
+            yPolygon2=[-14e-3 -14e-3 -0.9 -0.9];
+            PolygonShape1=polyshape(xPolygon1,yPolygon1);
+            PolygonShape2=polyshape(xPolygon1,yPolygon2);
 %                                      
             % Figure
             h_fig=figure(ii);
@@ -4829,10 +4869,16 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             % Plot
             hold on
             grid on
-               area(xRet(1:obj.PullingLengthIdx(kk)),yRetLim(1:obj.PullingLengthIdx(kk)),'FaceColor',RGB11)
-%                                         area(xApp(obj.SnapInIdx(kk):end),yAppLim(obj.SnapInIdx(kk):end),'FaceColor',RGB7)  
+       %    area(xRet(1:obj.PullingLengthIdx(kk)),yRetLim(1:obj.PullingLengthIdx(kk)),'FaceColor',CS8)  
            plot(xApp,yApp,'Color',RGB1,'LineWidth',6);
-             plot(xRet,yRet,'Color',RGB2,'LineWidth',6);
+           plot(xRet,yRet,'Color',RGB2,'LineWidth',6);
+           Polygon1=plot(PolygonShape1);
+           Polygon1.FaceColor=CS10;
+           Polygon1.EdgeColor='none';
+           Polygon2=plot(PolygonShape2);
+           Polygon2.FaceColor=CS4;
+           Polygon2.EdgeColor='none';
+           
           %  plot(xApp1,yApp1,'Color',RGB1,'LineWidth',4);
         %    plot(xRet1(obj.PullingLengthIdx:end),yRet1(obj.PullingLengthIdx:end),'Color',RGB3,'LineWidth',4);
             % Title for each Subplot
@@ -4854,15 +4900,16 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
            % ax.YTickLabel=[];
             %ax.XLabel.String = sprintf('Tip-Substrate separation (%s)',Xunit);
           % ax.XLabel.String = 'Tip-Substrate separation (nm)';
-          ax.XLabel.String = 'Tip-Substrate separation (m)';
+          ax.XLabel.String = 'Tip-Substrate separation (nm)';
             ax.XLabel.FontSize = 52;
             %ax.YLabel.String = sprintf('Force (%s)',Yunit);
          %   ax.YLabel.String = 'Force (nN)';
-            ax.YLabel.String = 'Force (N)';
+            ax.YLabel.String = 'Pull-off force (nN)';
             ax.YLabel.FontSize = 52;
+            ax.YLimMode='manual';
             ax.XLim = [XMin XMax];
       %     ax.YLim = [-inf 0.3e-9];
-           ax.YLim = [-inf 0.1];
+           ax.YLim = [YMin YMax];
            % ax.XLim = [XMin XMax];
         %    ax.YLim = [YMin YMax];
             %% Save figures

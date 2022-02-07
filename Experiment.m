@@ -62,6 +62,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
     % SMFS related
     properties
         SMFSResults
+        SMFSResultsParameters
     end
     
     methods
@@ -1722,7 +1723,17 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             obj.FM{ii}.fc_flag_status          
             end
         end
-                       
+        
+        function SMFS_initialize_arrays(obj)
+            
+           
+            TableSize=[1 9];
+            VarTypes = {'double','double','double','double','string','string','string','string','string'};
+            VarNames = {'SMFSResults Idx','Extend velocity','Retraction velocity','Holding time','Substrate','Medium','Chip cantilever number','Chipbox number','Linker'};
+            obj.SMFSResultsParameters=table('Size',TableSize,'VariableTypes',VarTypes,'VariableNames',VarNames);
+            
+            
+        end
         
         function SMFS_results_structure(obj,ExtVelocityValue,RetVelocityValue,HoldingTimeValue,SubstrateValue,EnvCondValue,ChipCantValue,ChipboxValue,LinkerValue)
             % I all velocities should be selected use input variable: 0
@@ -1741,8 +1752,8 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             obj.write_to_log_file('Linker',LinkerValue)
             obj.write_to_log_file('','','end')
             % Define variables
-            jj=1;
             IdxArray=[];
+            jj=1;           
             for ii=1:obj.NumForceMaps
             %% Debugging
             %for ii=1:17 % for debugging
@@ -1890,8 +1901,9 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                     FMChipCantArray(row_start:row_end,:)={FMChipCant};
                     FMChipboxArray(row_start:row_end,:)={FMChipbox};
                     FMLinkerArray(row_start:row_end,:)={FMLinker};
-                    FMDateArray(row_start:row_end,:)={FMDate};
-                    FMTimeArray(row_start:row_end,:)={FMTime};
+                    DateTimeStr=[FMDate,' ',FMTime];                    
+                    FMDateTimeArray(row_start:row_end,:)=datetime(DateTimeStr,'InputFormat','yyyy-MM-dd HH-mm-ss-SSS');
+                    FMDateTimeNumberArray(row_start:row_end,:)=datenum(datetime(DateTimeStr,'InputFormat','yyyy-MM-dd HH-mm-ss-SSS'));
                 else                   
                 end                
                 if ~isempty(yAdhMaxRet)
@@ -2055,8 +2067,8 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             obj.SMFSResults{jj,1}.Concatenate(1).FMChipCant=FMChipCantArray;
             obj.SMFSResults{jj,1}.Concatenate(1).FMChipbox=FMChipboxArray;
             obj.SMFSResults{jj,1}.Concatenate(1).FMLinker=FMLinkerArray;
-            obj.SMFSResults{jj,1}.Concatenate(1).FMDate=FMDateArray;
-            obj.SMFSResults{jj,1}.Concatenate(1).FMTime=FMTimeArray;         
+            obj.SMFSResults{jj,1}.Concatenate(1).FMDateTime=FMDateTimeArray;
+            obj.SMFSResults{jj,1}.Concatenate(1).FMDateTimeNumber=FMDateTimeNumberArray;
             obj.SMFSResults{jj,1}.Data(1).FMIndex=IdxArray;
             obj.SMFSResults{jj,1}.Data(1).SumNumFcAnalysed=sum(FCperFM);
             obj.SMFSResults{jj,1}.Data(1).SumNumFcAnalysedAdhMaxApp=nnz(~isnan(ConcateArray1));
@@ -2148,7 +2160,10 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             obj.SMFSResults{jj,1}.Results(1).SnapInMinFc=SnapInMinFc;            
             obj.SMFSResults{jj,1}.Results(1).SnapInMax=SnapInMax;
             obj.SMFSResults{jj,1}.Results(1).SnapInMaxFM=SnapInMaxFM; 
-            obj.SMFSResults{jj,1}.Results(1).SnapInMaxFc=SnapInMaxFc;                                                      
+            obj.SMFSResults{jj,1}.Results(1).SnapInMaxFc=SnapInMaxFc;   
+                       
+            obj.SMFSResultsParameters(jj,:)={jj,ExtVelocityValue,RetVelocityValue,HoldingTimeValue,SubstrateValue,EnvCondValue,ChipCantValue,ChipboxValue,LinkerValue};
+            
             %% House keeping
             close all
         end
@@ -2164,7 +2179,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             % Change into the Folder of Interest
             cd(obj.ExperimentFolder) % Move into the folder
             % Create folders for saving the produced figures
-            foldername='SMFS_results_gramm';    % Defines the folder name
+            foldername='SMFS_results_gramm_boxplot';    % Defines the folder name
             mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
             currpath=fullfile(obj.ExperimentFolder,foldername);
             cd(currpath);
@@ -2529,7 +2544,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             % Change into the Folder of Interest
             cd(obj.ExperimentFolder) % Move into the folder
             % Create folders for saving the produced figures
-            foldername='SMFS_results_gramm';    % Defines the folder name
+            foldername='SMFS_results_gramm_boxplot2';    % Defines the folder name
             mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
             currpath=fullfile(obj.ExperimentFolder,foldername);
             cd(currpath);
@@ -2544,14 +2559,14 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             LimitLength2=[317e-9 390e-9]; %Regime II - Unfolding
             LimitLength3=[390e-9 452.6e-9]; % Regime III - Backbone stretching
             Res=[1 1 2560 1250]; % Define the figure resolution
+         %   Res=[0 0 1 1]; % Define the figure resolution
             Plottitle=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ii,1}.Data(1).FMIndex),obj.SMFSResults{ii,1}.Data(1).SumNumFcAnalysedAdhMaxApp);
-            LegendxAxis='Force map ID';
+            LegendxAxis='Date and Time';
             LegendColor='Approach velocity (m/s)';
-            ColumnName='Retraction velocity (m/s)';
-            NameSuffix1='_MaxAdhesionForceApproach';
+            LightnessName='Retraction velocity (m/s)';
             FMExtVeloData=obj.SMFSResults{ii}.Concatenate.FMExtVelocity;
             FMRetVeloData=obj.SMFSResults{ii}.Concatenate.FMRetVelocity;
-            xData=obj.SMFSResults{ii}.Concatenate.FMID;
+            xData=obj.SMFSResults{ii}.Concatenate.FMDateTimeNumber;
             ColorData=FMExtVeloData;
             LightnessData=FMRetVeloData;
             MarkerData=obj.SMFSResults{ii}.Concatenate.FMHoldingTime;
@@ -2575,179 +2590,179 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             FigNamePt2=sprintf('_SMFSResultRow%d',ii);
             FigNamePt3='_Boxplot2';
             
-            %% Gramm object 1
-            % Define variables
-            LegendyAxis1='Adhesion force (N)';  
-            NameSuffix1='_MaxAdhesionForceApproach';
-            % Allocate data
-            yData1=obj.SMFSResults{ii}.Data.AdhMaxAppConcat;           
-            % Create a gramm object
-            g1=gramm('x',xData,'y',yData1,...
-                'color',ColorData,...
-                'lightness',LightnessData,...
-                'marker',MarkerData);
-            % Plot data 
-            g1.geom_polygon('y',{LimitForce1;LimitForce2;LimitForce3},'color',ColorMap1);
-            g1.geom_jitter('width',0.1,...
-                'dodge',0.1); % Plot raw data as jitter
-            g1.stat_boxplot('notch',true,...
-                'width',0.1,...
-                'dodge',0.2); % Plot data in boxplot           
-            g1.set_title(Plottitle) %Set figure title
-            % Legend
-            g1.set_names('x',LegendxAxis,'y',LegendyAxis1,'color',LegendColor,'column',ColumnName)    
-            % Figure
-            h_fig1=figure(1);
-            h_fig1.Color='white'; % changes the background color of the figure
-            h_fig1.Units='pixel'; % Defines the units
-            h_fig1.OuterPosition=Res;
-            h_fig1.PaperOrientation='landscape';
-            h_fig1.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3);
-            % The actual plotting
-            g1.draw()
-            % Save figure            
-            FullName1=strcat(FigNamePt1,FigNamePt2,FigNamePt3,NameSuffix1);
-            %%% Save the current figure in the current folder
-            print(h_fig1,FullName1,'-dpng');
-            
-            %% Gramm object 2
-            % Define variables
-            Plottitle=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ii,1}.Data(1).FMIndex),obj.SMFSResults{ii,1}.Data(1).SumNumFcAnalysedAdhMaxRet);
-            LegendyAxis2='Adhesion force (N)';
-            NameSuffix2='_MaxAdhesionForceRetract';
-            % Allocate data
-            yData2=obj.SMFSResults{ii}.Data.AdhMaxRetConcat; 
-            % Create a gramm object
-            g2=gramm('x',xData,'y',yData2,...
-                'color',ColorData,...
-                'lightness',LightnessData,...
-                'marker',MarkerData);
-            % Plot data 
-            g2.geom_polygon('y',{LimitForce1;LimitForce2;LimitForce3},'color',ColorMap1);
-            g2.geom_jitter('width',0.2,...
-                'dodge',2.4); % Plot raw data as jitter
-            g2.stat_boxplot('notch',true,...
-                'width',2,...
-                'dodge',2.4); % Plot data in boxplot            
-            g2.set_title(Plottitle) %Set figure title
-            % Legend
-            g2.set_names('x',LegendxAxis,'y',LegendyAxis2,'color',LegendColor,'column',ColumnName)    
-            % Figure
-            h_fig2=figure(2);
-            h_fig2.Color='white'; % changes the background color of the figure
-            h_fig2.Units='pixel'; % Defines the units
-            h_fig2.OuterPosition=Res;
-            h_fig2.PaperOrientation='landscape';
-            h_fig2.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3);
-            % The actual plotting
-            g2.draw()             
-            % Save figure            
-            FullName2=strcat(FigNamePt1,FigNamePt2,FigNamePt3,NameSuffix2);
-            %%% Save the current figure in the current folder
-            print(h_fig2,FullName2,'-dpng');
-            
-            %% Gramm object 3           
-            % Define variables
-            LegendyAxis3='Adhesion force (N)';
-            NameSuffix3='_AdhForceUnbinding';
-            % Allocate data
-            yData3=obj.SMFSResults{ii}.Data.AdhUnbindingConcat; 
-            % Create a gramm object
-            g3=gramm('x',xData,'y',yData3,...
-                'color',ColorData,...
-                'lightness',LightnessData,...
-                'marker',MarkerData);
-            % Plot data
-            g3.geom_polygon('y',{LimitForce1;LimitForce2;LimitForce3},'color',ColorMap1);
-            g3.geom_jitter('width',0.2,...
-                'dodge',2.4); % Plot raw data as jitter
-            g3.stat_boxplot('notch',true,...
-                'width',2,...
-                'dodge',2.4); % Plot data in boxplot
-            g3.set_title(Plottitle) %Set figure title
-            % Legend
-            g3.set_names('x',LegendxAxis,'y',LegendyAxis3,'color',LegendColor,'column',ColumnName)    
-            % Figure
-            h_fig3=figure(3);
-            h_fig3.Color='white'; % changes the background color of the figure
-            h_fig3.Units='pixel'; % Defines the units
-            h_fig3.OuterPosition=Res;
-            h_fig3.PaperOrientation='landscape';
-            h_fig3.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3);
-            % The actual plotting
-            g3.draw()
-            % Save figure
-            FullName3=strcat(FigNamePt1,FigNamePt2,FigNamePt3,NameSuffix3);
-            %%% Save the current figure in the current folder
-            print(h_fig3,FullName3,'-dpng');
-            
-            %% Gramm object 4
-            % Define variables
-            LegendyAxis4='Adhesion energry';
-            NameSuffix4='_AdhEnergyApproach';
-            % Allocate data
-            yData4=obj.SMFSResults{ii}.Data.AdhEneAppConcat;
-            % Create a gramm object
-            g4=gramm('x',xData,'y',yData4,...
-                'color',ColorData,...
-                'lightness',LightnessData,...
-                'marker',MarkerData);
-            % Plot data
-            g4.geom_jitter('width',0.2,...
-                'dodge',2.4); % Plot raw data as jitter
-            g4.stat_boxplot('notch',true,...
-                'width',2,...
-                'dodge',2.4); % Plot data in boxplot
-            g4.set_title(Plottitle) %Set figure title
-            % Legend
-            g4.set_names('x',LegendxAxis,'y',LegendyAxis4,'color',LegendColor,'column',ColumnName)    
-            % Figure
-            h_fig4=figure(4);
-            h_fig4.Color='white'; % changes the background color of the figure
-            h_fig4.Units='pixel'; % Defines the units
-            h_fig4.OuterPosition=Res;
-            h_fig4.PaperOrientation='landscape';
-            h_fig4.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3);
-            % The actual plotting
-            g4.draw()
-            % Save figure
-            FullName4=strcat(FigNamePt1,FigNamePt2,FigNamePt3,NameSuffix4);
-            %%% Save the current figure in the current folder
-            print(h_fig4,FullName4,'-dpng');
-            
-            %% Gramm object 5
-            % Define variables
-            LegendyAxis5='Adhesion energy';
-            NameSuffix5='_AdhEnergyRetract';
-            % Allocate data
-            yData5=obj.SMFSResults{ii}.Data.AdhEneRetConcat;
-            % Create a gramm object
-            g5=gramm('x',xData,'y',yData5,...
-                'color',ColorData,...
-                'lightness',LightnessData,...
-                'marker',MarkerData);
-            % Plot data 
-            g5.geom_jitter('width',0.2,...
-                'dodge',2.4); % Plot raw data as jitter
-            g5.stat_boxplot('notch',true,...
-                'width',2,...
-                'dodge',2.4); % Plot data in boxplot
-            g5.set_title(Plottitle) %Set figure title
-            % Legend
-            g5.set_names('x',LegendxAxis,'y',LegendyAxis5,'color',LegendColor,'column',ColumnName)    
-            % Figure
-            h_fig5=figure(5);
-            h_fig5.Color='white'; % changes the background color of the figure
-            h_fig5.Units='pixel'; % Defines the units
-            h_fig5.OuterPosition=Res;
-            h_fig5.PaperOrientation='landscape';
-            h_fig5.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3);
-            % The actual plotting
-            g5.draw()
-            % Save figure
-            FullName5=strcat(FigNamePt1,FigNamePt2,FigNamePt3,NameSuffix5);
-            %%% Save the current figure in the current folder
-            print(h_fig5,FullName5,'-dpng');
+%             %% Gramm object 1
+%             % Define variables
+%             LegendyAxis1='Adhesion force (N)';  
+%             NameSuffix1='_MaxAdhesionForceApproach';
+%             % Allocate data
+%             yData1=obj.SMFSResults{ii}.Data.AdhMaxAppConcat;           
+%             % Create a gramm object
+%             g1=gramm('x',xData,'y',yData1,...
+%                 'color',ColorData,...
+%                 'lightness',LightnessData,...
+%                 'marker',MarkerData);
+%             % Plot data 
+%             g1.geom_polygon('y',{LimitForce1;LimitForce2;LimitForce3},'color',ColorMap1);
+%             g1.geom_jitter('width',0.5,...
+%                 'dodge',0.5); % Plot raw data as jitter
+%             g1.stat_boxplot('notch',true,...
+%                 'width',0.5,...
+%                 'dodge',0.5); % Plot data in boxplot           
+%             g1.set_title(Plottitle) %Set figure title
+%             % Legend
+%             g1.set_names('x',LegendxAxis,'y',LegendyAxis1,'color',LegendColor,'column',ColumnName)    
+%             % Figure
+%             h_fig1=figure(1);
+%             h_fig1.Color='white'; % changes the background color of the figure
+%             h_fig1.Units='Normalized'; % Defines the units
+%             h_fig1.OuterPosition=Res;
+%             h_fig1.PaperOrientation='landscape';
+%             h_fig1.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3);
+%             % The actual plotting
+%             g1.draw()
+%             % Save figure            
+%             FullName1=strcat(FigNamePt1,FigNamePt2,FigNamePt3,NameSuffix1);
+%             %%% Save the current figure in the current folder
+%             print(h_fig1,FullName1,'-dpng');
+%             
+%             %% Gramm object 2
+%             % Define variables
+%             Plottitle=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ii,1}.Data(1).FMIndex),obj.SMFSResults{ii,1}.Data(1).SumNumFcAnalysedAdhMaxRet);
+%             LegendyAxis2='Adhesion force (N)';
+%             NameSuffix2='_MaxAdhesionForceRetract';
+%             % Allocate data
+%             yData2=obj.SMFSResults{ii}.Data.AdhMaxRetConcat; 
+%             % Create a gramm object
+%             g2=gramm('x',xData,'y',yData2,...
+%                 'color',ColorData,...
+%                 'lightness',LightnessData,...
+%                 'marker',MarkerData);
+%             % Plot data 
+%             g2.geom_polygon('y',{LimitForce1;LimitForce2;LimitForce3},'color',ColorMap1);
+%             g2.geom_jitter('width',0.2,...
+%                 'dodge',2.4); % Plot raw data as jitter
+%             g2.stat_boxplot('notch',true,...
+%                 'width',2,...
+%                 'dodge',2.4); % Plot data in boxplot            
+%             g2.set_title(Plottitle) %Set figure title
+%             % Legend
+%             g2.set_names('x',LegendxAxis,'y',LegendyAxis2,'color',LegendColor,'column',ColumnName)    
+%             % Figure
+%             h_fig2=figure(2);
+%             h_fig2.Color='white'; % changes the background color of the figure
+%             h_fig2.Units='pixel'; % Defines the units
+%             h_fig2.OuterPosition=Res;
+%             h_fig2.PaperOrientation='landscape';
+%             h_fig2.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3);
+%             % The actual plotting
+%             g2.draw()             
+%             % Save figure            
+%             FullName2=strcat(FigNamePt1,FigNamePt2,FigNamePt3,NameSuffix2);
+%             %%% Save the current figure in the current folder
+%             print(h_fig2,FullName2,'-dpng');
+%             
+%             %% Gramm object 3           
+%             % Define variables
+%             LegendyAxis3='Adhesion force (N)';
+%             NameSuffix3='_AdhForceUnbinding';
+%             % Allocate data
+%             yData3=obj.SMFSResults{ii}.Data.AdhUnbindingConcat; 
+%             % Create a gramm object
+%             g3=gramm('x',xData,'y',yData3,...
+%                 'color',ColorData,...
+%                 'lightness',LightnessData,...
+%                 'marker',MarkerData);
+%             % Plot data
+%             g3.geom_polygon('y',{LimitForce1;LimitForce2;LimitForce3},'color',ColorMap1);
+%             g3.geom_jitter('width',0.2,...
+%                 'dodge',2.4); % Plot raw data as jitter
+%             g3.stat_boxplot('notch',true,...
+%                 'width',2,...
+%                 'dodge',2.4); % Plot data in boxplot
+%             g3.set_title(Plottitle) %Set figure title
+%             % Legend
+%             g3.set_names('x',LegendxAxis,'y',LegendyAxis3,'color',LegendColor,'column',ColumnName)    
+%             % Figure
+%             h_fig3=figure(3);
+%             h_fig3.Color='white'; % changes the background color of the figure
+%             h_fig3.Units='pixel'; % Defines the units
+%             h_fig3.OuterPosition=Res;
+%             h_fig3.PaperOrientation='landscape';
+%             h_fig3.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3);
+%             % The actual plotting
+%             g3.draw()
+%             % Save figure
+%             FullName3=strcat(FigNamePt1,FigNamePt2,FigNamePt3,NameSuffix3);
+%             %%% Save the current figure in the current folder
+%             print(h_fig3,FullName3,'-dpng');
+%             
+%             %% Gramm object 4
+%             % Define variables
+%             LegendyAxis4='Adhesion energry';
+%             NameSuffix4='_AdhEnergyApproach';
+%             % Allocate data
+%             yData4=obj.SMFSResults{ii}.Data.AdhEneAppConcat;
+%             % Create a gramm object
+%             g4=gramm('x',xData,'y',yData4,...
+%                 'color',ColorData,...
+%                 'lightness',LightnessData,...
+%                 'marker',MarkerData);
+%             % Plot data
+%             g4.geom_jitter('width',0.2,...
+%                 'dodge',2.4); % Plot raw data as jitter
+%             g4.stat_boxplot('notch',true,...
+%                 'width',2,...
+%                 'dodge',2.4); % Plot data in boxplot
+%             g4.set_title(Plottitle) %Set figure title
+%             % Legend
+%             g4.set_names('x',LegendxAxis,'y',LegendyAxis4,'color',LegendColor,'column',ColumnName)    
+%             % Figure
+%             h_fig4=figure(4);
+%             h_fig4.Color='white'; % changes the background color of the figure
+%             h_fig4.Units='pixel'; % Defines the units
+%             h_fig4.OuterPosition=Res;
+%             h_fig4.PaperOrientation='landscape';
+%             h_fig4.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3);
+%             % The actual plotting
+%             g4.draw()
+%             % Save figure
+%             FullName4=strcat(FigNamePt1,FigNamePt2,FigNamePt3,NameSuffix4);
+%             %%% Save the current figure in the current folder
+%             print(h_fig4,FullName4,'-dpng');
+%             
+%             %% Gramm object 5
+%             % Define variables
+%             LegendyAxis5='Adhesion energy';
+%             NameSuffix5='_AdhEnergyRetract';
+%             % Allocate data
+%             yData5=obj.SMFSResults{ii}.Data.AdhEneRetConcat;
+%             % Create a gramm object
+%             g5=gramm('x',xData,'y',yData5,...
+%                 'color',ColorData,...
+%                 'lightness',LightnessData,...
+%                 'marker',MarkerData);
+%             % Plot data 
+%             g5.geom_jitter('width',0.2,...
+%                 'dodge',2.4); % Plot raw data as jitter
+%             g5.stat_boxplot('notch',true,...
+%                 'width',2,...
+%                 'dodge',2.4); % Plot data in boxplot
+%             g5.set_title(Plottitle) %Set figure title
+%             % Legend
+%             g5.set_names('x',LegendxAxis,'y',LegendyAxis5,'color',LegendColor,'column',ColumnName)    
+%             % Figure
+%             h_fig5=figure(5);
+%             h_fig5.Color='white'; % changes the background color of the figure
+%             h_fig5.Units='pixel'; % Defines the units
+%             h_fig5.OuterPosition=Res;
+%             h_fig5.PaperOrientation='landscape';
+%             h_fig5.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3);
+%             % The actual plotting
+%             g5.draw()
+%             % Save figure
+%             FullName5=strcat(FigNamePt1,FigNamePt2,FigNamePt3,NameSuffix5);
+%             %%% Save the current figure in the current folder
+%             print(h_fig5,FullName5,'-dpng');
             
             %% Gramm object 6
             % Define variables
@@ -2762,14 +2777,21 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 'marker',MarkerData);
             % Plot data 
             g6.geom_polygon('y',{LimitLength1;LimitLength2;LimitLength3},'color',ColorMap1);
-            g6.geom_jitter('width',0.2,...
-                'dodge',2.4); % Plot raw data as jitter
+            g6.geom_point()
+        %    g6.geom_jitter('width',2,...
+        %        'dodge',2.4); % Plot raw data as jitter
             g6.stat_boxplot('notch',true,...
-                'width',2,...
-                'dodge',2.4); % Plot data in boxplot
+                'width',35,...
+                'dodge',2); % Plot data in boxplot
+            % Set options
             g6.set_title(Plottitle) %Set figure title
-            % Legend
-            g6.set_names('x',LegendxAxis,'y',LegendyAxis6,'color',LegendColor,'column',ColumnName)    
+            g6.set_names('x',LegendxAxis,'y',LegendyAxis6,'color',LegendColor,'lightness',LightnessName)    
+            g6.set_datetick('x',0,'keepticks') % Format x-axis
+            g6.set_color_options('map','hcl',...
+                'n_color',6,...
+                'n_lightness',6,...
+                'legend','expand')
+ %           g6.legend_axe_handle.XLim=[];
             % Figure
             h_fig6=figure(6);
             h_fig6.Color='white'; % changes the background color of the figure
@@ -2782,7 +2804,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             % Save figure
             FullName6=strcat(FigNamePt1,FigNamePt2,FigNamePt3,NameSuffix6);
             %%% Save the current figure in the current folder
-            print(h_fig6,FullName6,'-dpng');
+            print(h_fig6,FullName6,'-r1200','-dpng');
             
             %% Gramm object 7
             % Define variables
@@ -2883,7 +2905,6 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             FigNamePt3='_Boxplot';
 %            Plottitle=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ii,1}.Data(1).FMIndex),obj.SMFSResults{ii,1}.Data(1).SumNumFcAnalysedAdhMaxRet);
             LegendxAxis='Holding Time (s)';
-            LegendyAxis2='Adhesion force (N)';
             LegendColor='Approach velocity (m/s)';
             ColumnName='Retraction velocity (m/s)';
             NameSuffix='_MaxAdhesionForceRetract_Pullinglength';
@@ -2897,7 +2918,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             % Allocate data
             yData2=obj.SMFSResults{ii}.Data.AdhMaxRetConcat*-1e9;
             % Define variables
-            LegendyAxis2='Adhesion force (nN)';
+            LegendyAxis2='Pull-off force (nN)';
             % Create a gramm object
             g(1,1)=gramm('x',xData,'y',yData2,...
                 'color',ColorData);
