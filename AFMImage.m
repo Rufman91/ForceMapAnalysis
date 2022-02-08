@@ -1340,20 +1340,32 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
         function [FitParameters,FittedChannel] = fit_tip_radius_to_depth_polynomial(ProjectedTipArea,varargin)
             % function FitParameters = fit_tip_radius_to_depth_polynomial(ProjectedTipArea,varargin)
             %
-            % <FUNCTION DESCRIPTION HERE>
+            % Takes the projected area of a cantilever tip (or any 3D
+            % object for that matter) and fits a DegreeOfPolyfit-th
+            % polynomial to the radius-depth curve using only even
+            % polynomial terms.
             %
             %
             % Required inputs
-            % ProjectedTipArea ... <VARIABLE DESCRIPTION>
+            % ProjectedTipArea ... 1xn or nx1 numeric vector of projected
+            %                      tip area. Depth information is implizit through AreaStepSize
+            %                      with the relation Index*AreaStepSize = Depth
             %
             % Name-Value pairs
-            % "AreaStepSize" ... <NAMEVALUE DESCRIPTION>
-            % "DegreeOfFit" ... <NAMEVALUE DESCRIPTION>
-            % "DepthRange" ... <NAMEVALUE DESCRIPTION>
-            % "DepthRangeUnit" ... <NAMEVALUE DESCRIPTION>
-            % "Verbose" ... <NAMEVALUE DESCRIPTION>
-            % "TipImageChannel" ... <NAMEVALUE DESCRIPTION>
-            % "DegreeOfConcentration" ... <NAMEVALUE DESCRIPTION>
+            % "AreaStepSize" ... Relates Radius to Depth via Index*AreaStepSize = Depth
+            %                   (default=1e-9)
+            % "DegreeOfFit" ... 
+            % "DepthRange" ... How much of the ProjectedTipArea is to be
+            %                   fitted. either a fraction or a distance. Depening on
+            %                   DepthRangeUnit
+            % "DepthRangeUnit" ... {'Fraction'(def),'Meters'}
+            % "Verbose" ... logical. If true, a figure is created
+            % "TipImageChannel" ... Enables FittedChannel output and
+            %                   unlocks further details in the figure.
+            % "DegreeOfConcentration" ... Concentrates fitting points to
+            %                             the apex of the tip to ensure
+            %                             more accuracy in the region that
+            %                             matters. Interger > 0 (default=4)
             
             p = inputParser;
             p.FunctionName = "fit_tip_radius_to_depth_polynomial";
@@ -1366,7 +1378,7 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             
             % NameValue inputs
             defaultAreaStepSize = 1e-9;
-            defaultDegreeOfFit = 20;
+            defaultDegreeOfFit = 30;
             defaultDepthRange = .4;
             defaultDepthRangeUnit = 'Fraction';
             defaultVerbose = true;
@@ -1421,7 +1433,7 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             XNorm = vertcat(XNorm,-XNorm);
             YNorm = vertcat(YNorm,YNorm);
             X = XConcentrated;
-            Y = interp1(XNorm,YNorm,X,'cubic');
+            Y = interp1(XNorm,YNorm,X,'makima');
             
             
             Parameters = accurate_polyfit(X,Y,DegreeOfFit,'Symmetry','even','isAffine',false);
