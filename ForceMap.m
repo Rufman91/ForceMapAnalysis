@@ -1180,12 +1180,15 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             obj.CPFlag.HardSurface = 1;
         end
         
-        function E = calculate_e_mod_hertz(obj,CPType,TipShape,LowerCurvePercent,UpperCurvePercent,AllowXShift,CorrectSensitivity,UseTipData,UseTopology,TipObject,DataWeightByDistanceBool)
-            % E = calculate_e_mod_hertz(obj,CPType,TipShape,LowerCurvePercent,UpperCurvePercent,AllowXShift,CorrectSensitivity,UseTipData,UseTopology,TipObject)
-            %
-            % calculate the E modulus of the chosen curves using the CP
-            % type chosen in the arguments fitting the lower to upper CurvePercent
-            % part of the curves
+        function E = calculate_e_mod_hertz(obj,CPType,TipShape,LowerCurvePercent,...
+                UpperCurvePercent,AllowXShift,CorrectSensitivity,UseTipData,...
+                UseTopology,TipObject,DataWeightByDistanceBool,...
+                SortHeightDataForFit,FitDegreeForSneddonPolySurf)
+%                 E = calculate_e_mod_hertz(obj,CPType,TipShape,LowerCurvePercent,...
+%                 UpperCurvePercent,AllowXShift,CorrectSensitivity,UseTipData,...
+%                 UseTopology,TipObject,DataWeightByDistanceBool,...
+%                 SortHeightDataForFit)
+
             if nargin < 5
                 AllowXShift = false;
                 CorrectSensitivity = false;
@@ -1198,6 +1201,21 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 else
                     Fitfunction = 'a*(x)^(3/2)';
                 end
+            elseif isequal(lower(TipShape,'sneddonpolysurf'))
+                Area = TipObject.DepthDependendTipRadius;
+                Radius = sqrt(Area/pi);
+                Depth = [1:length(Radius)]'.*1e-9;
+                RangeR = range(Radius);
+                RangeD = range(Depth);
+                X = Radius/RangeR;
+                Y = Depth/RangeD;
+                TypeString = '';
+                for i=1:FitDegreeForSneddonPolySurf
+                    TypeString = [TypeString '+c' num2str(i,'%02u') '*x^' num2str(i)];
+                end
+                FitType = fittype(TypeString);
+                FitOpts = fitoptions('Method','LinearLeastSquares');
+                FitObject = fit(X,Y,FitType,FitOpts);
             end
             
             iRange = find(obj.SelectedCurves);
@@ -1226,6 +1244,9 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 end
                 for i=1:BatchSize
                     [App{i},HHApp{i}] = obj.get_force_curve_data(iRange(i),0,1,0);
+                    if SortHeightDataForFit
+                        HHApp{i} = sort(HHApp{i},'ascend');
+                    end
                     force{i} = App{i} - CP(i,2);
                     if CorrectSensitivity
                         force{i} = force{i}.*obj.RefSlopeCorrectedSensitivity/obj.Sensitivity;

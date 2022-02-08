@@ -42,6 +42,8 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
         MaskBackground
     end
     properties
+        % Properties related to cantilever data
+        TipPolyFitParams
         ErodedTip
         DepthDependendTipRadius
         ProjectedTipArea
@@ -179,6 +181,8 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             waitbar(2/3,h,'Calculating depth dependent tip radius');
             
             obj.DepthDependendTipRadius = obj.calculate_depth_dependend_tip_data(obj.ProjectedTipArea,75);
+            
+            obj.fit_tip_radius_to_depth_polynomial;
             
             obj.hasDeconvolutedCantileverTip = true;
             close(h); 
@@ -1333,48 +1337,229 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             
         end
         
-        function OutChannel = convert_point_cloud_to_image(X,Y,Z,InChannel,ResMultiplier)
-            % Embedds X and Y into an Image grid with Pixel values Z. If
-            % multiple pointas fall into one pixel, the one with higher Z
-            % value is chosen. If a pixel is empty, it is interpolated
-            % from neighboring points.
+        function [FitParameters,FittedChannel] = fit_tip_radius_to_depth_polynomial(ProjectedTipArea,varargin)
+            % function FitParameters = fit_tip_radius_to_depth_polynomial(ProjectedTipArea,varargin)
+            %
+            % <FUNCTION DESCRIPTION HERE>
+            %
+            %
+            % Required inputs
+            % ProjectedTipArea ... <VARIABLE DESCRIPTION>
+            %
+            % Name-Value pairs
+            % "AreaStepSize" ... <NAMEVALUE DESCRIPTION>
+            % "DegreeOfFit" ... <NAMEVALUE DESCRIPTION>
+            % "DepthRange" ... <NAMEVALUE DESCRIPTION>
+            % "DepthRangeUnit" ... <NAMEVALUE DESCRIPTION>
+            % "Verbose" ... <NAMEVALUE DESCRIPTION>
+            % "TipImageChannel" ... <NAMEVALUE DESCRIPTION>
+            % "DegreeOfConcentration" ... <NAMEVALUE DESCRIPTION>
             
-            if nargin < 5
-                ResMultiplier = 1;
+            p = inputParser;
+            p.FunctionName = "fit_tip_radius_to_depth_polynomial";
+            p.CaseSensitive = false;
+            p.PartialMatching = true;
+            
+            % Required inputs
+            validProjectedTipArea = @(x)isnumeric(x)&&(size(x,1)==1||size(x,2)==1);
+            addRequired(p,"ProjectedTipArea",validProjectedTipArea);
+            
+            % NameValue inputs
+            defaultAreaStepSize = 1e-9;
+            defaultDegreeOfFit = 20;
+            defaultDepthRange = .4;
+            defaultDepthRangeUnit = 'Fraction';
+            defaultVerbose = true;
+            defaultTipImageChannel = [];
+            defaultDegreeOfConcentration = 4;
+            validAreaStepSize = @(x)isscalar(x);
+            validDegreeOfFit = @(x)isscalar(x)&&round(x)==x;
+            validDepthRange = @(x)isscalar(x)&&x>0;
+            validDepthRangeUnit = @(x)any(validatestring(x,{'Fraction','Meters'}));
+            validVerbose = @(x)islogical(x);
+            validTipImageChannel = @(x)isstruct(x);
+            validDegreeOfConcentration = @(x)isscalar(x)&&round(x)==x;
+            addParameter(p,"AreaStepSize",defaultAreaStepSize,validAreaStepSize);
+            addParameter(p,"DegreeOfFit",defaultDegreeOfFit,validDegreeOfFit);
+            addParameter(p,"DepthRange",defaultDepthRange,validDepthRange);
+            addParameter(p,"DepthRangeUnit",defaultDepthRangeUnit,validDepthRangeUnit);
+            addParameter(p,"Verbose",defaultVerbose,validVerbose);
+            addParameter(p,"TipImageChannel",defaultTipImageChannel,validTipImageChannel);
+            addParameter(p,"DegreeOfConcentration",defaultDegreeOfConcentration,validDegreeOfConcentration);
+            
+            parse(p,ProjectedTipArea,varargin{:});
+            
+            % Assign parsing results to named variables
+            ProjectedTipArea = p.Results.ProjectedTipArea;
+            AreaStepSize = p.Results.AreaStepSize;
+            DegreeOfFit = p.Results.DegreeOfFit;
+            DepthRange = p.Results.DepthRange;
+            DepthRangeUnit = p.Results.DepthRangeUnit;
+            Verbose = p.Results.Verbose;
+            TipImageChannel = p.Results.TipImageChannel;
+            DegreeOfConcentration = p.Results.DegreeOfConcentration;
+            
+            
+            % Read out and prepare data for fitting
+            if isequal(DepthRangeUnit,'Fraction')
+                DepthIndex = round(DepthRange.*length(ProjectedTipArea));
+            elseif isequal(DepthRangeUnit,'Meters')
+                DepthIndex = ceil(DepthRange/AreaStepSize);
+            end
+            Radius = sqrt((ProjectedTipArea(1:DepthIndex)./pi));
+            Depth = [1:length(Radius)]'.*AreaStepSize;
+            [Radius,UniqueIndizes] = unique(Radius);
+            Depth = Depth(UniqueIndizes);
+            
+            RangeR = range(Radius);
+            RangeD = range(Depth);
+            XNorm = Radius./RangeR;
+            YNorm = Depth./RangeD;
+            XInterpolated = linspace(0,1,1000)';
+            XConcentrated = XInterpolated.^DegreeOfConcentration;
+            XConcentrated = vertcat(XConcentrated,-XConcentrated);
+            XNorm = vertcat(XNorm,-XNorm);
+            YNorm = vertcat(YNorm,YNorm);
+            X = XConcentrated;
+            Y = interp1(XNorm,YNorm,X,'cubic');
+            
+            
+            Parameters = accurate_polyfit(X,Y,DegreeOfFit,'Symmetry','even','isAffine',false);
+            
+            % Rescale fitting function to real world units
+            FitParameters = zeros(size(Parameters));
+            for i=0:(length(Parameters)-1)
+                FitParameters(end-i) = Parameters(end-i).*RangeD/(RangeR).^i;
             end
             
-            DummyScaled = imresize(InChannel.Image,ResMultiplier);
-            OutChannel = InChannel;
-            OutChannel.NumPixelsX = size(DummyScaled,1);
-            OutChannel.NumPixelsY = size(DummyScaled,2);
-            OutChannel.ScanSizeX = range(X);
-            OutChannel.ScanSizeY = range(Y);
+            if hasInfNaN(FitParameters)
+                error([newline 'Fit produced infinite values'...
+                    newline newline 'Try a lower degree of fit.'])
+            end
             
-            % Quantize the X and Y coordinates and sort out multiples with
-            % lower z-values.
-            XMult = (OutChannel.NumPixelsX-1)/OutChannel.ScanSizeX;
-            YMult = (OutChannel.NumPixelsY-1)/OutChannel.ScanSizeY;
-            XQ = floor((X-min(X)).*XMult) + 1;
-            YQ = floor((Y-min(Y)).*YMult) + 1;
+            if ~isempty(TipImageChannel)
+                FittedChannel = AFMImage.draw_object_of_revolution_to_channel(...
+                    Radius,polyval(FitParameters,Radius),...
+                    'RelatedChannel',TipImageChannel);
+                
+                NumSubplotRows = 2;
+            else
+                FittedChannel = AFMImage.draw_object_of_revolution_to_channel(...
+                    Radius,polyval(FitParameters,Radius));
+                NumSubplotRows = 1;
+            end
             
-            I = zeros(OutChannel.NumPixelsX,OutChannel.NumPixelsY);
-            for i=1:length(XQ)
-                if I(XQ(i),YQ(i)) < Z(i)
-                    I(XQ(i),YQ(i)) = Z(i);
+            if Verbose
+                figure('Color','w')
+                title(p.FunctionName)
+                
+                subplot(NumSubplotRows,2,1)
+                plot(Radius,Depth,'b*')
+                hold on
+                plot(Radius,polyval(FitParameters,Radius),'r-')
+                ylim([min(Depth) max(Depth)])
+                legend({'Original Data','Polyfit'})
+                xlabel('Radius [m]')
+                ylabel('Depth [m]')
+                
+                subplot(NumSubplotRows,2,2)
+                plot(X,Y,'b*')
+                hold on
+                XConcentrated = sort(XConcentrated);
+                plot(XConcentrated,polyval(Parameters,XConcentrated),'r-')
+                ylim([min(Y) max(Y)])
+                legend({'Normalized and Concentrated Data','Normalized Polyfit'})
+                xlabel('Normalized Radius')
+                ylabel('Normalized Depth')
+                
+                if NumSubplotRows==2
+                    subplot(2,2,3)
+                    XTip = linspace(0,1,TipImageChannel.NumPixelsX).*...
+                        TipImageChannel.ScanSizeX;
+                    YTip = linspace(0,1,TipImageChannel.NumPixelsY).*...
+                        TipImageChannel.ScanSizeY;
+                    SurfOriginal = surf(XTip,YTip,TipImageChannel.Image);
+                    subplot(2,2,4)
+                    XFitted = linspace(0,1,TipImageChannel.NumPixelsX).*...
+                        TipImageChannel.ScanSizeX;
+                    YFitted = linspace(0,1,TipImageChannel.NumPixelsY).*...
+                        TipImageChannel.ScanSizeY;
+                    SurfFitted = surf(XFitted,YFitted,FittedChannel.Image);
                 end
             end
-            
-            I(I==0) = min(Z);
-            
-            OutChannel.Image = I;
         end
         
-        function OutImage = create_pixel_difference_map(InImage)
+        function OutChannel = draw_object_of_revolution_to_channel(X,Y,varargin)
+            % function OutImage = draw_object_of_revolution_to_channel(X,Y,varargin)
+            %
+            % Takes a z=f(r) relation (z,r ... cylindrical coordinates) and
+            % revolves it around the center of an 'RelatedChannel'-like
+            % image. Physical sizes are taken from 'RelatedChannel'
+            %
+            %
+            % Required inputs
+            % X ... Radius r; nx1 or 1xn numerical vector
+            % Y ... Depth z;  nx1 or 1xn numerical vector
+            %
+            % Name-Value pairs
+            % "RelatedChannel" ... AFMBaseClass Channel-Struct; determines
+            % the resolution, size per pixel and overall range of height
+            % data. Ideally X and Y derive from RelatedChannel. Default []
+            % will output a 
             
-            OutImage = diff(InImage,1,2);
-            OutImage = imresize(OutImage,size(InImage));
+            p = inputParser;
+            p.FunctionName = "draw_object_of_revolution_to_channel";
+            p.CaseSensitive = false;
+            p.PartialMatching = true;
+            
+            % Required inputs
+            validX = @(x)true;
+            validY = @(x)true;
+            addRequired(p,"X",validX);
+            addRequired(p,"Y",validY);
+            
+            % NameValue inputs
+            defaultRelatedChannel = struct('Image',zeros(512,512),...
+                'NumPixelsX',512,'NumPixelsY',512,...
+                'ScanSizeX',range(X),'ScanSizeY',range(X),...
+                'Name','DummyChannel',...
+                'OriginX',0,'OriginY',0,...
+                'Unit','m');
+            defaultRelatedChannel.Image(256,256) = range(Y);
+            validRelatedChannel = @(x)true;
+            addParameter(p,"RelatedChannel",defaultRelatedChannel,validRelatedChannel);
+            
+            parse(p,X,Y,varargin{:});
+            
+            % Assign parsing results to named variables
+            X = p.Results.X;
+            Y = p.Results.Y;
+            RelatedChannel = p.Results.RelatedChannel;
+            
+            %Define Image center, resolution and physical dimension
+            MaxRange = range(RelatedChannel.Image,'all');
+            Image = zeros(size(RelatedChannel.Image));
+            CenterX = floor(RelatedChannel.NumPixelsX/2);
+            CenterY = floor(RelatedChannel.NumPixelsY/2);
+            SizePerPixelX = RelatedChannel.ScanSizeX/RelatedChannel.NumPixelsX;
+            SizePerPixelY = RelatedChannel.ScanSizeY/RelatedChannel.NumPixelsY;
+            for i=1:RelatedChannel.NumPixelsX
+                for j=1:RelatedChannel.NumPixelsY
+                    if sqrt(((CenterX-i)*SizePerPixelX)^2 + ((CenterY-j)*SizePerPixelY)^2) > 0.95.*max(X)
+                        continue
+                    else
+                        Image(i,j) = MaxRange - interp1(X,Y,...
+                            sqrt(((CenterX-i)*SizePerPixelX)^2 + ((CenterY-j)*SizePerPixelY)^2),...
+                            'spline');
+                    end
+                end
+            end
+            OutChannel = RelatedChannel;
+            OutChannel.Name = 'Body of revolution';
+            OutChannel.Image = Image;
             
         end
+        
     end
     
     methods
