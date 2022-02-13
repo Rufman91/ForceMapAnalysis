@@ -1337,6 +1337,49 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             
         end
         
+        function OutChannel = convert_point_cloud_to_image(X,Y,Z,InChannel,ResMultiplier)
+            % Embedds X and Y into an Image grid with Pixel values Z. If
+            % multiple pointas fall into one pixel, the one with higher Z
+            % value is chosen. If a pixel is empty, it is interpolated
+            % from neighboring points.
+            
+            if nargin < 5
+                ResMultiplier = 1;
+            end
+            
+            DummyScaled = imresize(InChannel.Image,ResMultiplier);
+            OutChannel = InChannel;
+            OutChannel.NumPixelsX = size(DummyScaled,1);
+            OutChannel.NumPixelsY = size(DummyScaled,2);
+            OutChannel.ScanSizeX = range(X);
+            OutChannel.ScanSizeY = range(Y);
+            
+            % Quantize the X and Y coordinates and sort out multiples with
+            % lower z-values.
+            XMult = (OutChannel.NumPixelsX-1)/OutChannel.ScanSizeX;
+            YMult = (OutChannel.NumPixelsY-1)/OutChannel.ScanSizeY;
+            XQ = floor((X-min(X)).*XMult) + 1;
+            YQ = floor((Y-min(Y)).*YMult) + 1;
+            
+            I = zeros(OutChannel.NumPixelsX,OutChannel.NumPixelsY);
+            for i=1:length(XQ)
+                if I(XQ(i),YQ(i)) < Z(i)
+                    I(XQ(i),YQ(i)) = Z(i);
+                end
+            end
+            
+            I(I==0) = min(Z);
+            
+            OutChannel.Image = I;
+        end
+        
+        function OutImage = create_pixel_difference_map(InImage)
+            
+            OutImage = diff(InImage,1,2);
+            OutImage = imresize(OutImage,size(InImage));
+            
+        end
+        
         function [FitParameters,FittedChannel] = fit_tip_radius_to_depth_polynomial(ProjectedTipArea,varargin)
             % function FitParameters = fit_tip_radius_to_depth_polynomial(ProjectedTipArea,varargin)
             %
@@ -1515,9 +1558,10 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             %
             % Name-Value pairs
             % "RelatedChannel" ... AFMBaseClass Channel-Struct; determines
-            % the resolution, size per pixel and overall range of height
-            % data. Ideally X and Y derive from RelatedChannel. Default []
-            % will output a 
+            %                   the resolution, size per pixel and overall range of height
+            %                   data. Ideally X and Y derive from RelatedChannel. Default []
+            %                   will output a Channelstruct sized to the
+            %                   ranges of X and Y.
             
             p = inputParser;
             p.FunctionName = "draw_object_of_revolution_to_channel";
