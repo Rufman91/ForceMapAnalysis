@@ -724,7 +724,9 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle
             
         end
         
-        function automatic_segmentation_on_singular_vertical_fiber(obj,SampleDistanceMeters,WidthLocalWindowMeters,SmoothingWindowSize,SmoothingWindowWeighting,Indizes)
+        function automatic_segmentation_on_singular_vertical_fiber(obj,...
+                SampleDistanceMeters,WidthLocalWindowMeters,...
+                SmoothingWindowSize,SmoothingWindowWeighting,Indizes)
             
             
             HeightChannel = obj.get_unprocessed_height_channel('Processed');
@@ -752,9 +754,105 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle
             
         end
         
-        function [OutArrayStruct,OutStruct,OutStructAll] = characterize_fiber_like_polyline_segments(obj,...
-                WidthLocalWindowMeters,SmoothingWindowSize,MinPeakDistanceMeters,...
-                DebugBool,RecordMovieBool,NumFrameSkips)
+        function [OutArrayStruct,OutStruct,OutStructAll] = characterize_fiber_like_polyline_segments(obj,varargin)
+            % function [OutArrayStruct,OutStruct,OutStructAll] = characterize_fiber_like_polyline_segments(obj,varargin)
+            %
+            % Takes in SNAPPED polyline-segmented fiber-like structures and
+            % determines several characterstics such as Height, FWHM, Area.
+            %
+            % The outputs are as follows:
+            %       OutArrayStruct ... All nx1 Segment characteristics put
+            %           together in an nxm array with m the number of unique
+            %           segments (subsegments are concatenated).
+            %       OutStruct ... All available information, barring the
+            %           distance vectors, but only for unique segments
+            %           (subsegments are concatenated).
+            %       OutStructAll ... All available information on every
+            %           subsegment separately this is also the information
+            %           that is saved as part of the Experiment as a
+            %           substruct of AFMBaseClass.Segment
+            %
+            %
+            % Required inputs
+            % obj ... AFMBaseClass object that already has polyline
+            %         segments and a 'Processed' channel
+            %
+            % Name-Value pairs
+            % "WidthLocalWindowMeters" ... Width of the local profile
+            %                           that is taken from the
+            %                           orthogonal to the local
+            %                           direction vector. Points within
+            %                           this profile are further
+            %                           processed. Unit meters e.g. for
+            %                           200 nm type 200e-9
+            % "SmoothingWindowSize" ... Integer>3. Number of data points in
+            %                       the running window smoothing step.
+            % "MinPeakDistanceMeters" ... Minimum Distance between two
+            %                         peaks determined by findpeaks() in
+            %                         order for them to actually count as
+            %                         valid peaks. If distance is snmaller,
+            %                         only the higher peak persists.
+            %                         Unit meters e.g. for
+            %                         50 nm type 50e-9
+            % "LowerEndThreshold" ... Determines the lower end of the
+            %                     fiber-like object. Can be given as a
+            %                     fraction of fiber height or in meters. 
+            % "ThresholdType" ... 'Fraction'(def), 'Meters'
+            % "Verbose" ... logical; if true, the function will draw a
+            %               visualization of what is happening.
+            % "RecordMovieBool" ... logical. if true, the verbose figure
+            %                       will be recorded to a videofile
+            % "KeyFrames" ... Integer>0. Video will only record every
+            %                 KeyFrames step.
+            %                 FramesInVideo=TotalFrames/KeyFrames
+            
+            p = inputParser;
+            p.FunctionName = "characterize_fiber_like_polyline_segments";
+            p.CaseSensitive = false;
+            p.PartialMatching = true;
+            
+            % Required inputs
+            validobj = @(x)true;
+            addRequired(p,"obj",validobj);
+            
+            % NameValue inputs
+            defaultWidthLocalWindowMeters = 800e-9;
+            defaultSmoothingWindowSize = 41;
+            defaultMinPeakDistanceMeters = 50e-9;
+            defaultLowerEndThreshold = .1;
+            defaultThresholdType = 'Fraction';
+            defaultVerbose = false;
+            defaultRecordMovieBool = false;
+            defaultKeyFrames = 3;
+            validWidthLocalWindowMeters = @(x)isnumeric(x)&&isscalar(x);
+            validSmoothingWindowSize = @(x)isnumeric(x)&&mod(x,1)==0;
+            validMinPeakDistanceMeters = @(x)isnumeric(x)&&isscalar(x);
+            validLowerEndThreshold = @(x)isnumeric(x)&&isscalar(x);
+            validThresholdType = @(x)any(validatestring(x,{'Fraction','Meters'}));
+            validVerbose = @(x)islogical(x);
+            validRecordMovieBool = @(x)islogical(x);
+            validKeyFrames = @(x)isnumeric(x)&&mod(x,1)==0;
+            addParameter(p,"WidthLocalWindowMeters",defaultWidthLocalWindowMeters,validWidthLocalWindowMeters);
+            addParameter(p,"SmoothingWindowSize",defaultSmoothingWindowSize,validSmoothingWindowSize);
+            addParameter(p,"MinPeakDistanceMeters",defaultMinPeakDistanceMeters,validMinPeakDistanceMeters);
+            addParameter(p,"LowerEndThreshold",defaultLowerEndThreshold,validLowerEndThreshold);
+            addParameter(p,"ThresholdType",defaultThresholdType,validThresholdType);
+            addParameter(p,"Verbose",defaultVerbose,validVerbose);
+            addParameter(p,"RecordMovieBool",defaultRecordMovieBool,validRecordMovieBool);
+            addParameter(p,"KeyFrames",defaultKeyFrames,validKeyFrames);
+            
+            parse(p,obj,varargin{:});
+            
+            % Assign parsing results to named variables
+            obj = p.Results.obj;
+            WidthLocalWindowMeters = p.Results.WidthLocalWindowMeters;
+            SmoothingWindowSize = p.Results.SmoothingWindowSize;
+            MinPeakDistanceMeters = p.Results.MinPeakDistanceMeters;
+            LowerEndThreshold = p.Results.LowerEndThreshold;
+            ThresholdType = p.Results.ThresholdType;
+            Verbose = p.Results.Verbose;
+            RecordMovieBool = p.Results.RecordMovieBool;
+            KeyFrames = p.Results.KeyFrames;
             
             OutArrayStruct = struct();
             OutStruct = struct();
@@ -801,7 +899,7 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle
                     PixelDil = PixelDil + 1;
                 end
                 SegmentMasks(:,:,i) = TempMask;
-                if DebugBool
+                if Verbose
                     subplot(1,2,2)
                     imshowpair(Channel.Image,max(SegmentMasks,[],3))
                     drawnow
@@ -812,7 +910,7 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle
                 end
             end
             
-            if ~DebugBool
+            if ~Verbose
                 close(f)
             end
             
@@ -835,6 +933,8 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle
                 LocalProminence = zeros(length(SegmentPositions(:,1)),1);
                 LocalWidthHalfHeight = zeros(length(SegmentPositions(:,1)),1);
                 LocalWidthHalfProminence = zeros(length(SegmentPositions(:,1)),1);
+                LocalArea = zeros(length(SegmentPositions(:,1)),1);
+                LocalWidthBase = zeros(length(SegmentPositions(:,1)),1);
                 for j=1:length(SegmentPositions(:,1))
                     PerpendicularVector(j,:) = [LocalDirectionVector(j,2) -LocalDirectionVector(j,1)]/norm(LocalDirectionVector(j,:));
                     WindowStart =SegmentPositions(j,:) + PerpendicularVector(j,:).*WidthLocalWindowPixels/2;
@@ -874,7 +974,7 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle
                     TempScore = ~ismember(Locations,ForbiddenLocalDistance).*Heights.*Prom./abs(Locations).^2;
                     [~,WinnerIndex] = max(TempScore);
                     
-                    if DebugBool && mod(j,NumFrameSkips)==1
+                    if Verbose && mod(j,KeyFrames)==0
                         subplot('Position',[0.05 0.05 .5 .25])
                         imshow(IgnoreMask,[])
                         title('Forbidden Areas')
@@ -915,13 +1015,70 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle
                         LocalProminence(j) = nan;
                         LocalWidthHalfHeight(j) = nan;
                         LocalWidthHalfProminence(j) = nan;
+                        LocalArea(j) = nan;
+                        LocalWidthBase(j) = nan;
                         continue
                     end
+                    % find out local area
+                    PeakIndex = find(LocalDistance==Locations(WinnerIndex));
+                    if isequal(ThresholdType,'Fraction')
+                        Thresh = LowerEndThreshold.*LocalProfile(PeakIndex);
+                    else
+                        Thresh = LowerEndThreshold;
+                    end
+                    % To the left
+                    kk = 1;
+                    LeftBoundIndex = [];
+                    while (PeakIndex-kk)>0 && isempty(LeftBoundIndex)
+                        if LocalProfile(PeakIndex-kk) < Thresh
+                            LeftBoundIndex = PeakIndex - kk;
+                        end
+                        kk = kk + 1;
+                    end
+                    RightBoundIndex = [];
+                    % To the right
+                    kk = 1;
+                    while (PeakIndex+kk)<=length(LocalProfile) && isempty(RightBoundIndex)
+                        if LocalProfile(PeakIndex+kk) < Thresh
+                            RightBoundIndex = PeakIndex + kk;
+                        end
+                        kk = kk + 1;
+                    end
+                    % If info is sufficient, calculate area and base width
+                    if ~isempty(LeftBoundIndex) && ~isempty(RightBoundIndex)
+                        LocalArea(j) = trapz(...
+                            LocalDistance(LeftBoundIndex:RightBoundIndex),...
+                            LocalProfile(LeftBoundIndex:RightBoundIndex));
+                        LocalWidthBase(j) = abs(LocalDistance(LeftBoundIndex)...
+                             - LocalDistance(RightBoundIndex));
+                    else
+                        LocalArea(j) = nan;
+                        LocalWidthBase(j) = nan;
+                    end
+                    
+                    % Write down results
                     LocalHeight(j) = Heights(WinnerIndex);
                     LocalProminence(j) = Prom(WinnerIndex);
                     LocalWidthHalfHeight(j) = TempWidthHalfHeight(WinnerIndex);
                     LocalWidthHalfProminence(j) = TempWidthHalfProm(WinnerIndex);
                 end
+                % find out overall segment pathlength
+                for m=size(SegmentPositions,1):-1:1
+                    if SegmentPositions(m,1)>Channel.NumPixelsX ||...
+                            SegmentPositions(m,1)<0
+                        SegmentPositions(m,:) = [];
+                        continue
+                    end
+                    if SegmentPositions(m,2)>Channel.NumPixelsY ||...
+                            SegmentPositions(m,2)<0
+                        SegmentPositions(m,:) = [];
+                    end
+                end
+                SegmentLength = sum(vecnorm(...
+                    (SegmentPositions(1:end-1,:) - SegmentPositions(2:end,:))...
+                    *SizePerPixel,2,2),'all');
+                
+                % write down results
                 Struct(k).Name = obj.Segment(i).Name;
                 Struct(k).Height = LocalHeight;
                 obj.Segment(i).Height = LocalHeight;
@@ -933,11 +1090,58 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle
                 obj.Segment(i).WidthHalfProminence = LocalWidthHalfProminence;
                 Struct(k).DirectionVector = LocalDirectionVector;
                 obj.Segment(i).DirectionVector = LocalDirectionVector;
+                Struct(k).SegmentLength = SegmentLength;
+                obj.Segment(i).SegmentLength = SegmentLength;
+                Struct(k).Mean_WidthHalfHeight = nanmean(LocalWidthHalfHeight);
+                obj.Segment(i).Mean_WidthHalfHeight = nanmean(LocalWidthHalfHeight);
+                Struct(k).Median_WidthHalfHeight = nanmedian(LocalWidthHalfHeight);
+                obj.Segment(i).Median_WidthHalfHeight = nanmedian(LocalWidthHalfHeight);
+                Struct(k).Mean_Height = nanmean(LocalHeight);
+                obj.Segment(i).Mean_Height = nanmean(LocalHeight);
+                Struct(k).Median_Height = nanmedian(LocalHeight);
+                obj.Segment(i).Median_Height = nanmedian(LocalHeight);
+                Struct(k).Mean_WidthHalfProminence = nanmean(LocalWidthHalfProminence);
+                obj.Segment(i).Mean_WidthHalfProminence = nanmean(LocalWidthHalfProminence);
+                Struct(k).Median_WidthHalfProminence = nanmedian(LocalWidthHalfProminence);
+                obj.Segment(i).Median_WidthHalfProminence = nanmedian(LocalWidthHalfProminence);
+                Struct(k).Mean_Prominence = nanmean(LocalProminence);
+                obj.Segment(i).Mean_Prominence = nanmean(LocalProminence);
+                Struct(k).Median_Prominence = nanmedian(LocalProminence);
+                obj.Segment(i).Median_Prominence = nanmedian(LocalProminence);
+                Struct(k).Area = LocalArea;
+                obj.Segment(i).Area = LocalArea;
+                Struct(k).Mean_Area = nanmean(LocalArea);
+                obj.Segment(i).Mean_Area = nanmean(LocalArea);
+                Struct(k).Median_Area = nanmedian(LocalArea);
+                obj.Segment(i).Median_Area = nanmedian(LocalArea);
+                Struct(k).WidthBase = LocalWidthBase;
+                obj.Segment(i).WidthBase = LocalWidthBase;
+                Struct(k).Mean_WidthBase = nanmean(LocalWidthBase);
+                obj.Segment(i).Mean_WidthBase = nanmean(LocalWidthBase);
+                Struct(k).Median_WidthBase = nanmedian(LocalWidthBase);
+                obj.Segment(i).Median_WidthBase = nanmedian(LocalWidthBase);
+                Struct(k).AspectRatioHalfHeight = LocalHeight./LocalWidthHalfProminence;
+                obj.Segment(i).AspectRatioHalfHeight = LocalHeight./LocalWidthHalfProminence;
+                Struct(k).Mean_AspectRatioHalfHeight = nanmean(LocalHeight./LocalWidthHalfProminence);
+                obj.Segment(i).Mean_AspectRatioHalfHeight = nanmean(LocalHeight./LocalWidthHalfProminence);
+                Struct(k).Median_AspectRatioHalfHeight = nanmedian(LocalHeight./LocalWidthHalfProminence);
+                obj.Segment(i).Median_AspectRatioHalfHeight = nanmedian(LocalHeight./LocalWidthHalfProminence);
+                Struct(k).AspectRatioBaseHeight = LocalHeight./LocalWidthBase;
+                obj.Segment(i).AspectRatioBaseHeight = LocalHeight./LocalWidthBase;
+                Struct(k).Mean_AspectRatioBaseHeight = nanmean(LocalHeight./LocalWidthBase);
+                obj.Segment(i).Mean_AspectRatioBaseHeight = nanmean(LocalHeight./LocalWidthBase);
+                Struct(k).Median_AspectRatioBaseHeight = nanmedian(LocalHeight./LocalWidthBase);
+                obj.Segment(i).Median_AspectRatioBaseHeight = nanmedian(LocalHeight./LocalWidthBase);
+                Struct(k).AreaDerivedDiameter = sqrt(LocalArea/pi).*2;
+                obj.Segment(i).AreaDerivedDiameter = sqrt(LocalArea/pi).*2;
+                Struct(k).Mean_AreaDerivedDiameter = nanmean(sqrt(LocalArea/pi).*2);
+                obj.Segment(i).Mean_AreaDerivedDiameter = nanmean(sqrt(LocalArea/pi).*2);
+                Struct(k).Median_AreaDerivedDiameter = nanmedian(sqrt(LocalArea/pi).*2);
+                obj.Segment(i).Median_AreaDerivedDiameter = nanmedian(sqrt(LocalArea/pi).*2);
                 k = k + 1;
             end
             
-            % Now for some tedious data handling. Life is pain
-            
+            % Now for some tedious data handling. Life is pain            
             if isempty(Struct)
                 close(h)
                 return
@@ -952,14 +1156,45 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle
                 OutStruct(i).WidthHalfHeight = [];
                 OutStruct(i).Prominence = [];
                 OutStruct(i).WidthHalfProminence = [];
+                OutStruct(i).Area = [];
+                OutStruct(i).WidthBase = [];
+                OutStruct(i).AspectRatioHalfHeight = [];
+                OutStruct(i).AspectRatioBaseHeight = [];
+                OutStruct(i).AreaDerivedDiameter = [];
+                TempSegmentLength = 0;
                 for j=1:length(Struct)
                     if isequal(Unique{i},Struct(j).Name)
                         OutStruct(i).Height = vertcat(OutStruct(i).Height,Struct(j).Height);
                         OutStruct(i).WidthHalfHeight = vertcat(OutStruct(i).WidthHalfHeight,Struct(j).WidthHalfHeight);
                         OutStruct(i).Prominence = vertcat(OutStruct(i).Prominence,Struct(j).Prominence);
                         OutStruct(i).WidthHalfProminence = vertcat(OutStruct(i).WidthHalfProminence,Struct(j).WidthHalfProminence);
+                        OutStruct(i).Area = vertcat(OutStruct(i).Area,Struct(j).Area);
+                        OutStruct(i).WidthBase = vertcat(OutStruct(i).WidthBase,Struct(j).WidthBase);
+                        OutStruct(i).AspectRatioHalfHeight = vertcat(OutStruct(i).AspectRatioHalfHeight,Struct(j).AspectRatioHalfHeight);
+                        OutStruct(i).AspectRatioBaseHeight = vertcat(OutStruct(i).AspectRatioBaseHeight,Struct(j).AspectRatioBaseHeight);
+                        OutStruct(i).AreaDerivedDiameter = vertcat(OutStruct(i).AreaDerivedDiameter,Struct(j).AreaDerivedDiameter);
+                        TempSegmentLength = TempSegmentLength + Struct(j).SegmentLength;
                     end
                 end
+                OutStruct(i).SegmentLength = TempSegmentLength;
+                OutStruct(i).Mean_Height = nanmean(OutStruct(i).Height);
+                OutStruct(i).Median_Height = nanmedian(OutStruct(i).Height);
+                OutStruct(i).Mean_WidthHalfHeight = nanmean(OutStruct(i).WidthHalfHeight);
+                OutStruct(i).Median_WidthHalfHeight = nanmedian(OutStruct(i).WidthHalfHeight);
+                OutStruct(i).Mean_Prominence = nanmean(OutStruct(i).Prominence);
+                OutStruct(i).Median_Prominence = nanmedian(OutStruct(i).Prominence);
+                OutStruct(i).Mean_WidthHalfProminence = nanmean(OutStruct(i).WidthHalfProminence);
+                OutStruct(i).Median_WidthHalfProminence = nanmedian(OutStruct(i).WidthHalfProminence);
+                OutStruct(i).Mean_Area = nanmean(OutStruct(i).Area);
+                OutStruct(i).Median_Area = nanmedian(OutStruct(i).Area);
+                OutStruct(i).Mean_WidthBase = nanmean(OutStruct(i).WidthBase);
+                OutStruct(i).Median_WidthBase = nanmedian(OutStruct(i).WidthBase);
+                OutStruct(i).Mean_AspectRatioHalfHeight = nanmean(OutStruct(i).AspectRatioHalfHeight);
+                OutStruct(i).Median_AspectRatioHalfHeight = nanmedian(OutStruct(i).AspectRatioHalfHeight);
+                OutStruct(i).Mean_AspectRatioBaseHeight = nanmean(OutStruct(i).AspectRatioBaseHeight);
+                OutStruct(i).Median_AspectRatioBaseHeight = nanmedian(OutStruct(i).AspectRatioBaseHeight);
+                OutStruct(i).Mean_AreaDerivedDiameter = nanmean(OutStruct(i).AreaDerivedDiameter);
+                OutStruct(i).Median_AreaDerivedDiameter = nanmedian(OutStruct(i).AreaDerivedDiameter);
             end
             
             for i=1:length(OutStruct)
@@ -969,13 +1204,22 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle
             OutArrayStruct.Height = nan.*ones(MaxLength,length(OutStruct));
             OutArrayStruct.WidthHalfHeight = nan.*ones(MaxLength,length(OutStruct));
             OutArrayStruct.Prominence = nan.*ones(MaxLength,length(OutStruct));
-            OutArrayStruct.WidthHalfProminence = nan.*ones(MaxLength,length(OutStruct));
+            OutArrayStruct.Area = nan.*ones(MaxLength,length(OutStruct));
+            OutArrayStruct.WidthBase = nan.*ones(MaxLength,length(OutStruct));
+            OutArrayStruct.AspectRatioHalfHeight = nan.*ones(MaxLength,length(OutStruct));
+            OutArrayStruct.AspectRatioBaseHeight = nan.*ones(MaxLength,length(OutStruct));
+            OutArrayStruct.AreaDerivedDiameter = nan.*ones(MaxLength,length(OutStruct));
             
             for i=1:length(OutStruct)
                 OutArrayStruct.Height(1:length(OutStruct(i).Height),i) = OutStruct(i).Height;
                 OutArrayStruct.WidthHalfHeight(1:length(OutStruct(i).Height),i) = OutStruct(i).WidthHalfHeight;
                 OutArrayStruct.Prominence(1:length(OutStruct(i).Height),i) = OutStruct(i).Prominence;
                 OutArrayStruct.WidthHalfProminence(1:length(OutStruct(i).Height),i) = OutStruct(i).WidthHalfProminence;
+                OutArrayStruct.Area(1:length(OutStruct(i).Height),i) = OutStruct(i).Area;
+                OutArrayStruct.WidthBase(1:length(OutStruct(i).Height),i) = OutStruct(i).WidthBase;
+                OutArrayStruct.AspectRatioHalfHeight(1:length(OutStruct(i).Height),i) = OutStruct(i).AspectRatioHalfHeight;
+                OutArrayStruct.AspectRatioBaseHeight(1:length(OutStruct(i).Height),i) = OutStruct(i).AspectRatioBaseHeight;
+                OutArrayStruct.AreaDerivedDiameter(1:length(OutStruct(i).Height),i) = OutStruct(i).AreaDerivedDiameter;
             end
             
             
