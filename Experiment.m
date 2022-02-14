@@ -1268,14 +1268,110 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             obj.write_to_log_file('','','end')
         end
         
-        function OutStruct = characterize_fiber_like_polyline_segments(obj,...
-                WidthLocalWindowMeters,SmoothingWindowSize,MinPeakDistanceMeters,DebugBool)
+        function OutStruct = characterize_fiber_like_polyline_segments(obj,varargin)
+            % function OutStruct = characterize_fiber_like_polyline_segments(obj,varargin)
+            %
+            % BATCH PROCESS
+            % Takes in SNAPPED polyline-segmented fiber-like structures and
+            % determines several characterstics such as Height, FWHM, Area.
+            %
+            %
+            % Required inputs
+            % obj ... Experiment class object containing instances of 
+            %         AFMBaseClass object that already have polyline
+            %         segments and a 'Processed' channel. E.I and E.FM are
+            %         processed
+            %
+            % Name-Value pairs
+            % "WidthLocalWindowMeters" ... Width of the local profile
+            %                           that is taken from the
+            %                           orthogonal to the local
+            %                           direction vector. Points within
+            %                           this profile are further
+            %                           processed. Unit meters e.g. for
+            %                           200 nm type 200e-9
+            % "SmoothingWindowSize" ... Integer>3. Number of data points in
+            %                       the running window smoothing step.
+            % "MinPeakDistanceMeters" ... Minimum Distance between two
+            %                         peaks determined by findpeaks() in
+            %                         order for them to actually count as
+            %                         valid peaks. If distance is snmaller,
+            %                         only the higher peak persists.
+            %                         Unit meters e.g. for
+            %                         50 nm type 50e-9
+            % "LowerEndThreshold" ... Determines the lower end of the
+            %                     fiber-like object. Can be given as a
+            %                     fraction of fiber height or in meters. 
+            % "ThresholdType" ... 'Fraction'(def), 'Meters'
+            % "Verbose" ... logical; if true, the function will draw a
+            %               visualization of what is happening.
+            % "RecordMovieBool" ... logical. if true, the verbose figure
+            %                       will be recorded to a videofile
+            % "KeyFrames" ... Integer>0. Video will only record every
+            %                 KeyFrames step.
+            %                 FramesInVideo=TotalFrames/KeyFrames
+            
+            p = inputParser;
+            p.FunctionName = "characterize_fiber_like_polyline_segments";
+            p.CaseSensitive = false;
+            p.PartialMatching = true;
+            
+            % Required inputs
+            validobj = @(x)true;
+            addRequired(p,"obj",validobj);
+            
+            % NameValue inputs
+            defaultWidthLocalWindowMeters = 800e-9;
+            defaultSmoothingWindowSize = 41;
+            defaultMinPeakDistanceMeters = 50e-9;
+            defaultLowerEndThreshold = .1;
+            defaultThresholdType = 'Fraction';
+            defaultVerbose = false;
+            defaultRecordMovieBool = false;
+            defaultKeyFrames = 3;
+            validWidthLocalWindowMeters = @(x)isnumeric(x)&&isscalar(x);
+            validSmoothingWindowSize = @(x)isnumeric(x)&&mod(x,1)==0;
+            validMinPeakDistanceMeters = @(x)isnumeric(x)&&isscalar(x);
+            validLowerEndThreshold = @(x)isnumeric(x)&&isscalar(x);
+            validThresholdType = @(x)any(validatestring(x,{'Fraction','Meters'}));
+            validVerbose = @(x)islogical(x);
+            validRecordMovieBool = @(x)islogical(x);
+            validKeyFrames = @(x)isnumeric(x)&&mod(x,1)==0;
+            addParameter(p,"WidthLocalWindowMeters",defaultWidthLocalWindowMeters,validWidthLocalWindowMeters);
+            addParameter(p,"SmoothingWindowSize",defaultSmoothingWindowSize,validSmoothingWindowSize);
+            addParameter(p,"MinPeakDistanceMeters",defaultMinPeakDistanceMeters,validMinPeakDistanceMeters);
+            addParameter(p,"LowerEndThreshold",defaultLowerEndThreshold,validLowerEndThreshold);
+            addParameter(p,"ThresholdType",defaultThresholdType,validThresholdType);
+            addParameter(p,"Verbose",defaultVerbose,validVerbose);
+            addParameter(p,"RecordMovieBool",defaultRecordMovieBool,validRecordMovieBool);
+            addParameter(p,"KeyFrames",defaultKeyFrames,validKeyFrames);
+            
+            parse(p,obj,varargin{:});
+            
+            % Assign parsing results to named variables
+            obj = p.Results.obj;
+            WidthLocalWindowMeters = p.Results.WidthLocalWindowMeters;
+            SmoothingWindowSize = p.Results.SmoothingWindowSize;
+            MinPeakDistanceMeters = p.Results.MinPeakDistanceMeters;
+            LowerEndThreshold = p.Results.LowerEndThreshold;
+            ThresholdType = p.Results.ThresholdType;
+            Verbose = p.Results.Verbose;
+            RecordMovieBool = p.Results.RecordMovieBool;
+            KeyFrames = p.Results.KeyFrames;
+            
             
             k = 1;
             for i=1:obj.NumForceMaps
                 [OutStruct(k).Array,OutStruct(k).Struct,OutStruct(k).StructAll] = ...
                     obj.FM{i}.characterize_fiber_like_polyline_segments(...
-                    WidthLocalWindowMeters,SmoothingWindowSize,MinPeakDistanceMeters,DebugBool,0,1);
+                    'WidthLocalWindowMeters',WidthLocalWindowMeters,...
+                    'SmoothingWindowSize',SmoothingWindowSize,...
+                    'MinPeakDistanceMeters',MinPeakDistanceMeters,...
+                    'LowerEndThreshold',LowerEndThreshold,...
+                    'ThresholdType',ThresholdType,...
+                    'Verbose',Verbose,...
+                    'RecordMovieBool',RecordMovieBool,...
+                    'KeyFrames',KeyFrames);
                 if ~isempty(OutStruct(k).Array)
                     k = k + 1;
                 end
@@ -1284,7 +1380,14 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 [OutStruct(k).Array,OutStruct(k).Struct,...
                     OutStruct(k).StructAll] = ...
                     obj.I{i}.characterize_fiber_like_polyline_segments(...
-                    WidthLocalWindowMeters,SmoothingWindowSize,MinPeakDistanceMeters,DebugBool,0,1);
+                    'WidthLocalWindowMeters',WidthLocalWindowMeters,...
+                    'SmoothingWindowSize',SmoothingWindowSize,...
+                    'MinPeakDistanceMeters',MinPeakDistanceMeters,...
+                    'LowerEndThreshold',LowerEndThreshold,...
+                    'ThresholdType',ThresholdType,...
+                    'Verbose',Verbose,...
+                    'RecordMovieBool',RecordMovieBool,...
+                    'KeyFrames',KeyFrames);
                 if ~isempty(OutStruct(k).Array)
                     k = k + 1;
                 end
@@ -4528,8 +4631,8 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                     NumResults = length(ClassNames);
                     for i=1:NumResults
                         Class{i} = obj.get_afm_base_class_by_name(ClassNames{i});
+                        ChannelName{i} = h.Channel{1};
                     end
-                    ChannelName{1} = h.Channel{1};
                 else
                     if obj.ShowImageSettings.JustChannel1
                         NumResults = 1;
@@ -4549,7 +4652,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 end
                 
                 for i=NumResults:-1:1
-                    Waitbar = waitbar(1/2,'Reading out results');
+                    Waitbar = waitbar(1/2,['Reading out results: ' num2str(NumResults+1 -i) ' of ' num2str(NumResults)]);
                     TempChannel = Class{i}.get_channel(ChannelName{i});
                     if isempty(TempChannel) &&...
                             NumResults > i &&...
@@ -4561,9 +4664,12 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                     [Results(i).Data,...
                         Results(i).SubSegmentCell,...
                         Results(i).SegmentCell,...
-                        Results(i).Mask] = Class{1}.get_segment_data_from_channel(ChannelName{i},0);
-                    Results(i).Name = Class{1}.Name;
-                    Results(i).SegmentNames = {Class{i}.Segment.Name};
+                        Results(i).Mask] = Class{i}.get_segment_data_from_channel(ChannelName{i},0);
+                    Results(i).Name = Class{i}.Name;
+                    Results(i).SegmentNames = unique({Class{i}.Segment.Name});
+                    for j=1:length(Class{i}.Segment)
+                        Results(i).SubSegmentNames{j} = [Class{i}.Segment(j).Name ' || ' Class{i}.Segment(j).SubSegmentName];
+                    end
                     Results(i).ChannelType = TempChannel.Name;
                     Results(i).Unit = TempChannel.Unit;
                     close(Waitbar)
@@ -4585,29 +4691,64 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 end
                 
                 h.ImAx(3) = subplot(10,10,[71:78 81:88 91:98]);
-                NumPlots = length(h.ResultStruct.Results);
-                for i=1:NumPlots
-                    boxplot(h.ResultStruct.Results(i).Data,'BoxStyle','filled');
-                end
-                hold on
-                grid on
-                CurrentAxHeight = ...
-                    round(h.Fig.Position(4)*h.ImAx(1).Position(4));
-                h.ImAx(3).Color = ...
-                    h.ColorMode(obj.ShowImageSettings.ColorIndex).Background;
-                h.ImAx(3).LineWidth = 1;
-                h.ImAx(3).FontSize = ...
-                    round(obj.ShowImageSettings.ReferenceFontSize*(CurrentAxHeight/756));
-                h.ImAx(3).XColor = ...
-                    h.ColorMode(obj.ShowImageSettings.ColorIndex).Text;
-                h.ImAx(3).YColor = ...
-                    h.ColorMode(obj.ShowImageSettings.ColorIndex).Text;
-                h.ImAx(3).GridColor = ...
-                    h.ColorMode(obj.ShowImageSettings.ColorIndex).Text;
                 
-%                 h.VolumeStruct.Plot(1).LineWidth = 2;
-%                 h.VolumeStruct.Plot(1).Color = ...
-%                     h.ColorMode(obj.ShowImageSettings.ColorIndex).Profile1;
+                % Set up gramm object. Need to unroll data into single
+                % columns. Loop over everything in Data.
+                Incr = 1;
+                for i=1:length(h.ResultStruct.Results)
+                    for j=1:length(h.ResultStruct.Results(i).SegmentNames)
+                        for k=1:size(h.ResultStruct.Results(i).Data,1)
+                            TempValue = h.ResultStruct.Results(i).Data(k,j);
+                            if isnan(TempValue) ||...
+                                    (obj.ShowImageSettings.IgnoreZeros&&TempValue==0)
+                                continue
+                            end
+                            Value(Incr) = TempValue;
+                            SegmentName{Incr} = h.ResultStruct.Results(i).SegmentNames{j};
+                            Name{Incr} = h.ResultStruct.Results(i).Name;
+                            ResultIndex(Incr) = i;
+                            Incr = Incr + 1;
+                        end
+                    end
+                end
+                
+                GroupingOption = 'lightness'; %'color','lightness','size','marker','linestyle'
+                Group = ResultIndex;
+                Y = Value;
+                X = SegmentName;
+                g(1,1) = gramm('x',X,'y',Y,GroupingOption,Group);
+                g(1,2)=copy(g(1));
+                g(1,3)=copy(g(1));
+                g(2,1)=copy(g(1));
+                g(2,2)=copy(g(1));
+                
+                %Raw data as scatter plot
+                g(1,1).geom_point();
+                g(1,1).set_title('geom_point()');
+                
+                %Jittered scatter plot
+                g(1,2).geom_jitter('width',0.4,'height',0);
+                g(1,2).set_title('geom_jitter()');
+                
+                %Averages with confidence interval
+                g(1,3).stat_summary('geom',{'bar','black_errorbar'});
+                g(1,3).set_title('stat_summary()');
+                
+                %Boxplots
+                g(2,1).stat_boxplot();
+                g(2,1).set_title('stat_boxplot()');
+                
+                %Violin plots
+                g(2,2).stat_violin('fill','transparent');
+                g(2,2).set_title('stat_violin()');
+                
+                %These functions can be called on arrays of gramm objects
+                g.set_names('x','Origin','y','Horsepower','color','# Cyl');
+                g.set_title('Visualization of Y~X relationships with X as categorical variable');
+                
+                g.draw();
+                
+                g.draw();
             end
             
             function changed_use_snapped(varargin)
