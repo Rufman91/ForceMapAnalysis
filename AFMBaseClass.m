@@ -603,14 +603,92 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle
             
         end
         
-        function [OutMat,OutConcatCell,OutCell,OutMask] = get_segment_data_from_channel(obj,ChannelName,PixelDilation)
-            
+        function [OutMat,OutConcatCell,OutCell,OutMask] = get_segment_data_from_channel(obj,ChannelName,varargin)
+                % function [OutMat,OutConcatCell,OutCell,OutMask] = get_segment_data_from_channel(obj,ChannelName,varargin)
+                %
+                % Reads out data points from under an objects Segments from
+                % any channel existing in obj.Channel
+                %
+                %
+                % Required inputs
+                % obj ... AFMBaseClass Object with valid nonempty Segment
+                %          properties
+                % ChannelName ... Name of ChannelStruct in property Channel
+                %          of obj
+                %
+                % Name-Value pairs
+                % "PixelDilation" ... (def=0) Integer>=0. Not only output pixels from
+                %               directly under the segment line but widened
+                %               by PixelDilation pixels.
+                % "JustSnapped" ...(def=false) Only use Data from Segments with the
+                %               matched string 'Snapped'. Has priority over
+                %               JustUnsnapped
+                % "JustUnsnapped" ...(def=false) Only use Data from Segments without
+                %               the match string 'Snapped'
+                % "MatchString" ...(def=[]) Only take Data from Segments matching
+                %               the string MatchString. Multiple matches
+                %               still return True
+                % "IncludeIndexVector" ...(def=[]) Include segments with
+                %                   Index contained in IncludeIndexVector.
+                %                   Gets overwritten by any of the
+                %                   discriminators above
+                % "ExcludeIndexVector" ...(def=[]) Exclude segments with
+                %                   Index contained in IncludeIndexVector.
+                %                   Gets overwritten by any of the
+                %                   discriminators above
+                
+                p = inputParser;
+                p.FunctionName = "get_segment_data_from_channel";
+                p.CaseSensitive = false;
+                p.PartialMatching = true;
+                
+                % Required inputs
+                validobj = @(x)true;
+                validChannelName = @(x)true;
+                addRequired(p,"obj",validobj);
+                addRequired(p,"ChannelName",validChannelName);
+                
+                % NameValue inputs
+                defaultPixelDilation = 0;
+                defaultJustSnapped = false;
+                defaultJustUnsnapped = false;
+                defaultMatchString = [];
+                defaultIncludeIndexVector = [];
+                defaultExcludeIndexVector = [];
+                validPixelDilation = @(x)isscalar(x)&&x>=0;
+                validJustSnapped = @(x)islogical(x);
+                validJustUnsnapped = @(x)islogical(x);
+                validMatchString = @(x)ischar(x);
+                validIncludeIndexVector = @(x)isnumeric(x)&&(size(x,1)==1||size(x,2)==1)||isempty(x);
+                validExcludeIndexVector = @(x)isnumeric(x)&&(size(x,1)==1||size(x,2)==1)||isempty(x);
+                addParameter(p,"PixelDilation",defaultPixelDilation,validPixelDilation);
+                addParameter(p,"JustSnapped",defaultJustSnapped,validJustSnapped);
+                addParameter(p,"JustUnsnapped",defaultJustUnsnapped,validJustUnsnapped);
+                addParameter(p,"MatchString",defaultMatchString,validMatchString);
+                addParameter(p,"IncludeIndexVector",defaultIncludeIndexVector,validIncludeIndexVector);
+                addParameter(p,"ExcludeIndexVector",defaultExcludeIndexVector,validExcludeIndexVector);
+                
+                parse(p,obj,ChannelName,varargin{:});
+                
+                % Assign parsing results to named variables
+                obj = p.Results.obj;
+                ChannelName = p.Results.ChannelName;
+                PixelDilation = round(p.Results.PixelDilation);
+                JustSnapped = p.Results.JustSnapped;
+                JustUnsnapped = p.Results.JustUnsnapped&&~JustSnapped;
+                MatchString = p.Results.MatchString;
+                IncludeIndexVector = p.Results.IncludeIndexVector;
+                ExcludeIndexVector = setdiff(p.Results.ExcludeIndexVector,IncludeIndexVector);
+                
+                
+                
             if isempty(obj.Segment) || isempty(obj.Segment(1).Name)
                 warning(sprintf('%s has no segementation data',obj.Name))
             end
-            if nargin < 3
-                PixelDilation = 0;
-            end
+            
+            OutMat = [];
+            OutConcatCell = {};
+            OutCell = {};
             
             Channel = obj.get_channel(ChannelName);
             Data = Channel.Image;
@@ -625,6 +703,21 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle
                 k = 1;
                 for j=1:length(obj.Segment)
                     if isequal(SegmentNames{i},obj.Segment(j).Name)
+                        if any(find(ExcludeIndexVector==j))
+                            continue
+                        end
+                        if ~isempty(IncludeIndexVector)&&~any(find(IncludeIndexVector==j))
+                            continue
+                        end
+                        if ~isempty(MatchString)&&~any(strfind(obj.Segment(j).Name,MatchString))
+                            continue
+                        end
+                        if JustSnapped&&~any(strfind(obj.Segment(j).Name,'Snapped'))
+                            continue
+                        end
+                        if JustUnsnapped&&any(strfind(obj.Segment(j).Name,'Snapped'))
+                            continue
+                        end
                         gca = Parent;
                         Line = drawpolyline('Position',obj.Segment(j).ROIObject.Position,'Parent',Parent);
                         Mask = Line.createMask;
@@ -641,6 +734,15 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle
             end
             close(f)
             set(0,'DefaultFigureVisible','on');
+            
+            for i=length(OutCell):-1:1
+                if isempty(OutCell{i})
+                    OutCell(i) = [];
+                end
+            end
+            if isempty(OutCell)
+                return
+            end
             
             for i=1:length(OutCell)
                 ConcVec = [];
