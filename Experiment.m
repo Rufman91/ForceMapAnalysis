@@ -2679,6 +2679,8 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             
             h.ColorMode = set_default_color_options();
             
+            set(gcf,'SizeChangedFcn',@(a,b)update_interface)
+            
             h.Fig = figure('Name',sprintf('%s',obj.ExperimentName),...
                 'Units','pixels',...
                 'Position',[200 200 1024 512],...
@@ -3193,8 +3195,38 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                     'Visible',obj.ShowImageSettings.ResultsMenuValue,...
                     'position',[.875 .36 .1 .04],...
                     'Callback',@draw_results);
+                h.Res(8) = uicontrol('style','text',...
+                    'String','',...
+                    'Units','normalized',...
+                    'ForegroundColor',h.ColorMode(obj.ShowImageSettings.ColorIndex).ButtonText,...
+                    'BackgroundColor',h.ColorMode(obj.ShowImageSettings.ColorIndex).Backdrop,...
+                    'Position',[0 0 .85 .34]);
+                h.Res(9) = uicontrol('style','text',...
+                    'String','',...
+                    'Units','normalized',...
+                    'ForegroundColor',h.ColorMode(obj.ShowImageSettings.ColorIndex).ButtonText,...
+                    'BackgroundColor',h.ColorMode(obj.ShowImageSettings.ColorIndex).Buttons,...
+                    'Position',[.445 0.03 .002 .29]);
+                h.Res(10) = uicontrol('style','text',...
+                    'String','Data',...
+                    'Units','normalized',...
+                    'ForegroundColor',h.ColorMode(obj.ShowImageSettings.ColorIndex).ButtonText,...
+                    'BackgroundColor',h.ColorMode(obj.ShowImageSettings.ColorIndex).Buttons,...
+                    'Position',[0.13 .3 .2 .03]);
+                h.Res(11) = uicontrol('style','text',...
+                    'String','Plot Settings',...
+                    'Units','normalized',...
+                    'ForegroundColor',h.ColorMode(obj.ShowImageSettings.ColorIndex).ButtonText,...
+                    'BackgroundColor',h.ColorMode(obj.ShowImageSettings.ColorIndex).Buttons,...
+                    'Position',[0.55 .3 .2 .03]);
+                h.Res(12) = uicontrol('style','text',...
+                    'String','',...
+                    'Units','normalized',...
+                    'ForegroundColor',h.ColorMode(obj.ShowImageSettings.ColorIndex).ButtonText,...
+                    'BackgroundColor',h.ColorMode(obj.ShowImageSettings.ColorIndex).Buttons,...
+                    'Position',[0.843 0 .002 .34]);
                 
-                h.ToggledResultMenuIndizes = [1 2 3 4 5 6 7];
+                h.ToggledResultMenuIndizes = [1 2 3 4 5 6 7 8 9 10 11 12];
                 
             end
             
@@ -4500,7 +4532,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 
 %                 draw_existing_segments(1)
 %                 draw_existing_segments(2)
-                draw_boxplots
+                draw_result_plots
                 
             end
             
@@ -4629,6 +4661,10 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                     MotherClass = obj.get_afm_base_class_by_name(h.CurrentClassName{1});
                     ClassNames = MotherClass.OverlayGroup.Names;
                     NumResults = length(ClassNames);
+                    if h.ResultStruct.SelectedSegmentIndex{1}(1) ~= 0 ||...
+                            length(h.ResultStruct.SelectedSegmentIndex{1}) > 1
+                        FullNameCell = MotherClass.get_full_names_from_segment_indizes(h.ResultStruct.SelectedSegmentIndex{1});
+                    end
                     for i=1:NumResults
                         Class{i} = obj.get_afm_base_class_by_name(ClassNames{i});
                         ChannelName{i} = h.Channel{1};
@@ -4651,6 +4687,15 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                     end
                 end
                 
+                if obj.ShowImageSettings.JustChannel1 || ...
+                        obj.ShowImageSettings.PlotGroup
+                    Ind = [1 1];
+                elseif obj.ShowImageSettings.JustChannel2
+                    Ind = [2 2];
+                else
+                    Ind = [1 2];
+                end
+                
                 for i=NumResults:-1:1
                     Waitbar = waitbar(1/2,['Reading out results: ' num2str(NumResults+1 -i) ' of ' num2str(NumResults)]);
                     TempChannel = Class{i}.get_channel(ChannelName{i});
@@ -4661,15 +4706,27 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                         close(Waitbar)
                         continue
                     end
+                    if h.ResultStruct.SelectedSegmentIndex{Ind(min(i,2))}(1) == 0 &&...
+                        length(h.ResultStruct.SelectedSegmentIndex{Ind(min(i,2))}) == 1
+                        IncludeIndexVector = [];
+                    elseif ~obj.ShowImageSettings.PlotGroup
+                        IncludeIndexVector = h.ResultStruct.SelectedSegmentIndex{Ind(min(i,2))};
+                    else
+                        IncludeIndexVector = Class{i}.get_indizes_of_matching_segments(FullNameCell);
+                    end
                     [Results(i).Data,...
                         Results(i).SubSegmentCell,...
                         Results(i).SegmentCell,...
-                        Results(i).Mask] = Class{i}.get_segment_data_from_channel(ChannelName{i},0);
+                        Results(i).Mask,...
+                        Results(i).SegmentNames,...
+                        Results(i).SubSegmentNames] = Class{i}.get_segment_data_from_channel(ChannelName{i},...
+                        'PixelDilation',0,...
+                        'JustSnapped',obj.ShowImageSettings.UseSnapped,...
+                        'JustUnsnapped',~obj.ShowImageSettings.UseSnapped,...
+                        'MatchString',[],...
+                        'IncludeIndexVector',IncludeIndexVector,...
+                        'ExcludeIndexVector',h.ResultStruct.DisabledSegmentIndizes{Ind(min(i,2))});
                     Results(i).Name = Class{i}.Name;
-                    Results(i).SegmentNames = unique({Class{i}.Segment.Name});
-                    for j=1:length(Class{i}.Segment)
-                        Results(i).SubSegmentNames{j} = [Class{i}.Segment(j).Name ' || ' Class{i}.Segment(j).SubSegmentName];
-                    end
                     Results(i).ChannelType = TempChannel.Name;
                     Results(i).Unit = TempChannel.Unit;
                     close(Waitbar)
@@ -4677,7 +4734,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 
             end
             
-            function draw_boxplots()
+            function draw_result_plots()
                 
                 h.ResultStruct.Results = read_out_results();
                 
@@ -4689,8 +4746,6 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                     delete(h.ImAx(3));
                 catch
                 end
-                
-                h.ImAx(3) = subplot(10,10,[71:78 81:88 91:98]);
                 
                 % Set up gramm object. Need to unroll data into single
                 % columns. Loop over everything in Data.
@@ -4717,36 +4772,20 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 Y = Value;
                 X = SegmentName;
                 g(1,1) = gramm('x',X,'y',Y,GroupingOption,Group);
-                g(1,2)=copy(g(1));
-                g(1,3)=copy(g(1));
-                g(2,1)=copy(g(1));
-                g(2,2)=copy(g(1));
-                
-                %Raw data as scatter plot
-                g(1,1).geom_point();
-                g(1,1).set_title('geom_point()');
-                
-                %Jittered scatter plot
-                g(1,2).geom_jitter('width',0.4,'height',0);
-                g(1,2).set_title('geom_jitter()');
                 
                 %Averages with confidence interval
-                g(1,3).stat_summary('geom',{'bar','black_errorbar'});
-                g(1,3).set_title('stat_summary()');
-                
-                %Boxplots
-                g(2,1).stat_boxplot();
-                g(2,1).set_title('stat_boxplot()');
-                
-                %Violin plots
-                g(2,2).stat_violin('fill','transparent');
-                g(2,2).set_title('stat_violin()');
+                g(1,1).stat_summary('geom',{'bar','black_errorbar'});
+                g(1,1).set_title('stat_summary()');
                 
                 %These functions can be called on arrays of gramm objects
                 g.set_names('x','Origin','y','Horsepower','color','# Cyl');
                 g.set_title('Visualization of Y~X relationships with X as categorical variable');
                 
-                g.draw();
+                g(1,1).set_color_options('map','brewer_1');
+                
+                FigPos = h.Fig.InnerPosition;
+                FigPos(3:4) = FigPos(3:4).*.8;
+                g.set_parent(figure('Position',FigPos));
                 
                 g.draw();
             end

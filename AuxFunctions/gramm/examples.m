@@ -92,6 +92,7 @@ g(3,2).geom_point();
 g(3,2).set_names('x','Horsepower','y','MPG','column','# Cyl');
 g(3,2).set_title('subplot columns');
 
+g(1,1).set_color_options('map','brewer_dark')
 
 figure('Position',[100 100 800 800]);
 g.draw();

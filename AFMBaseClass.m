@@ -603,8 +603,10 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle
             
         end
         
-        function [OutMat,OutConcatCell,OutCell,OutMask] = get_segment_data_from_channel(obj,ChannelName,varargin)
-                % function [OutMat,OutConcatCell,OutCell,OutMask] = get_segment_data_from_channel(obj,ChannelName,varargin)
+        function [OutMat,OutConcatCell,OutCell,OutMask,SegmentNameList,FullSegmentNameList]...
+                = get_segment_data_from_channel(obj,ChannelName,varargin)
+                % function [OutMat,OutConcatCell,OutCell,OutMask,SegmentNameList,FullSegmentNameList]...
+                % = get_segment_data_from_channel(obj,ChannelName,varargin)
                 %
                 % Reads out data points from under an objects Segments from
                 % any channel existing in obj.Channel
@@ -631,11 +633,10 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle
                 % "IncludeIndexVector" ...(def=[]) Include segments with
                 %                   Index contained in IncludeIndexVector.
                 %                   Gets overwritten by any of the
-                %                   discriminators above
+                %                   discriminators above.
                 % "ExcludeIndexVector" ...(def=[]) Exclude segments with
-                %                   Index contained in IncludeIndexVector.
-                %                   Gets overwritten by any of the
-                %                   discriminators above
+                %                   Index contained in ExcludeIndexVector.
+                %                   Gets overwritten by IncludeIndexVector.
                 
                 p = inputParser;
                 p.FunctionName = "get_segment_data_from_channel";
@@ -644,7 +645,7 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle
                 
                 % Required inputs
                 validobj = @(x)true;
-                validChannelName = @(x)true;
+                validChannelName = @(x)ischar(x);
                 addRequired(p,"obj",validobj);
                 addRequired(p,"ChannelName",validChannelName);
                 
@@ -656,9 +657,9 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle
                 defaultIncludeIndexVector = [];
                 defaultExcludeIndexVector = [];
                 validPixelDilation = @(x)isscalar(x)&&x>=0;
-                validJustSnapped = @(x)islogical(x);
-                validJustUnsnapped = @(x)islogical(x);
-                validMatchString = @(x)ischar(x);
+                validJustSnapped = @(x)islogical(x)||x==0||x==1;
+                validJustUnsnapped = @(x)islogical(x)||x==0||x==1;
+                validMatchString = @(x)ischar(x)||isempty(x);
                 validIncludeIndexVector = @(x)isnumeric(x)&&(size(x,1)==1||size(x,2)==1)||isempty(x);
                 validExcludeIndexVector = @(x)isnumeric(x)&&(size(x,1)==1||size(x,2)==1)||isempty(x);
                 addParameter(p,"PixelDilation",defaultPixelDilation,validPixelDilation);
@@ -699,6 +700,7 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle
             f = figure;
             I = imshow(Data);
             Parent = I.Parent;
+            m = 1;
             for i=1:length(SegmentNames)
                 k = 1;
                 for j=1:length(obj.Segment)
@@ -728,12 +730,18 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle
                         OutMask = OutMask | Mask;
                         SubSegmentPoints = Data(Mask == 1);
                         OutCell{i}{k} = SubSegmentPoints;
+                        SegmentNameList{m} = obj.Segment(j).Name;
+                        FullSegmentNameList{m} = [obj.Segment(j).Name ' || ' obj.Segment(j).SubSegmentName];
+                        m = m + 1;
                         k = k + 1;
                     end
                 end
             end
             close(f)
             set(0,'DefaultFigureVisible','on');
+            
+            SegmentNameList = unique(SegmentNameList);
+            FullSegmentNameList = unique(FullSegmentNameList);
             
             for i=length(OutCell):-1:1
                 if isempty(OutCell{i})
@@ -1559,5 +1567,37 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle
         end
         
     end
-    
+    methods
+        % auxiliary methods
+        
+        function IndexVector = get_indizes_of_matching_segments(obj,FullNameCell)
+            % IndexVector = get_indizes_of_matching_segments(obj,FullNameCell)
+            
+            IndexVector = 0;
+            
+            for i=1:length(obj.Segment)
+                TempName = [obj.Segment(i).Name ' || ' obj.Segment(i).SubSegmentName];
+                if any(matches(TempName,FullNameCell))
+                    IndexVector(end+1) = i;
+                end
+            end
+            
+        end
+        
+        function FullNameCell = get_full_names_from_segment_indizes(obj,IndexVector)
+            % FullNameCell = get_full_names_from_segment_indizes(obj,IndexVector)
+            
+            IndexVector(IndexVector == 0) = [];
+            
+            FullNameCell = {};
+            
+            k = 1;
+            for i=IndexVector
+                FullNameCell{k} = [obj.Segment(i).Name ' || ' obj.Segment(i).SubSegmentName];
+                k=k+1;
+            end
+            
+        end
+        
+    end
 end
