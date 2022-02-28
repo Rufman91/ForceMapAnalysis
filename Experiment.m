@@ -1331,7 +1331,27 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             close(Fig)
         end
         
-        %% SMFS section                     
+        %% SMFS section
+        function SMFS_flag_num_fc(obj,SetNumFcValue)
+            % function SMFS_flag_num_fc(obj,SetNumFcValue)
+            %% Function preface
+            % <The function verifies the number of force curves per force map and flags each force map based on the determined value compared to the input variable 'SetNumFcValue'>
+            %
+            %
+            % Required inputs
+            % obj ... <VARIABLE DESCRIPTION>
+            % SetNumFcValue ... < The variable defines the set number of force curves per force map>
+            
+            %% Function body
+            for ii=1:obj.NumForceMaps
+                if obj.FM{ii}.NCurves==SetNumFcValue
+                    obj.SMFSFlag.NumForceCurves(ii)=1;
+                else
+                    obj.SMFSFlag.NumForceCurves(ii)=0;
+                end
+            end
+        end
+
         
         function SMFS_preprocessing(obj)
             % SMFS_preprocessing: A function to run a bundle of other 
@@ -1719,6 +1739,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             obj.SMFSFlagDown.Presorted=find(~obj.SMFSFlag.Presorted);
             obj.SMFSFlagDown.SelectFM=find(~obj.SMFSFlag.SelectFM);
             obj.SMFSFlagDown.Analysed=find(~obj.SMFSFlag.Analysed);
+            obj.SMFSFlagDown.NumForceCurves=find(~obj.SMFSFlag.NumForceCurves);
             for ii=1:obj.NumForceMaps
             obj.FM{ii}.fc_flag_status          
             end
@@ -1738,19 +1759,10 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
         function SMFS_results_structure(obj,ExtVelocityValue,RetVelocityValue,HoldingTimeValue,SubstrateValue,EnvCondValue,ChipCantValue,ChipboxValue,LinkerValue)
             % I all velocities should be selected use input variable: 0
             
+            %% Bug in obj.SMFSResults{ii}.Concatenate.FMIndex  row 138!!
+            
             % Output time and date for the dairy
             datetime('now')
-            % Write to log file
-            obj.write_to_log_file('Function: SMFS_results_structure','Trial15','start')
-            obj.write_to_log_file('Extend Velocity',num2str(ExtVelocityValue))
-            obj.write_to_log_file('Retention Velocity',num2str(RetVelocityValue))
-            obj.write_to_log_file('Holding Time',num2str(HoldingTimeValue))
-            obj.write_to_log_file('Substrate',SubstrateValue)
-            obj.write_to_log_file('Linker',EnvCondValue)
-            obj.write_to_log_file('Chip',ChipCantValue)
-            obj.write_to_log_file('Chipbox',ChipboxValue)
-            obj.write_to_log_file('Linker',LinkerValue)
-            obj.write_to_log_file('','','end')
             % Define variables
             IdxArray=[];
             jj=1;        
@@ -1760,7 +1772,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             %for ii=1:17 % for debugging
                  sprintf('Force map No. %d',ii) % Gives current force map
             %% Force map selection criteria
-            if ~obj.SMFSFlag.Analysed(ii)   % Exclude force map if analysis has not been done     
+            if ~obj.SMFSFlag.Analysed(ii) || ~obj.SMFSFlag.NumForceCurves(ii)    % Exclude force map if analysis has not been done     
                 continue
             end  
                 % Parameters
@@ -1894,6 +1906,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                     ConcateArray1(ConcateArray1==0)=nan; % Replace zero entries by nan´s
                     % Allocate parameters
                     FMIDArray(row_start:row_end,:)={FMID}; % Allocate the FM ID to each row 
+                    FMIndexArray(row_start:row_end,:)=IdxArray(ff);  
                     FMExtVelocityArray(row_start:row_end,:)=FMExtVelocity;
                     FMRetVelocityArray(row_start:row_end,:)=FMRetVelocity;
                     FMHoldingTimeArray(row_start:row_end,:)=FMHoldingTime;
@@ -2060,6 +2073,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             % jj=1                         
             % Allocate data
             obj.SMFSResults{jj,1}.Concatenate(1).FMID=FMIDArray;
+            obj.SMFSResults{jj,1}.Concatenate(1).FMIndex=FMIndexArray;
             obj.SMFSResults{jj,1}.Concatenate(1).FMExtVelocity=FMExtVelocityArray;
             obj.SMFSResults{jj,1}.Concatenate(1).FMRetVelocity=FMRetVelocityArray;
             obj.SMFSResults{jj,1}.Concatenate(1).FMHoldingTime=FMHoldingTimeArray;                   
@@ -2164,9 +2178,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             obj.SMFSResults{jj,1}.Results(1).SnapInMaxFc=SnapInMaxFc;   
                        
             obj.SMFSResultsParameters(jj,:)={jj,ExtVelocityValue,RetVelocityValue,HoldingTimeValue,SubstrateValue,EnvCondValue,ChipCantValue,ChipboxValue,LinkerValue};
-            
-            %% House keeping
-            close all
+
         end
                 
         function SMFS_results_gramm_boxplot(obj,ii)
@@ -2234,7 +2246,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             LegendyAxis1='Adhesion force (N)';
             NameSuffix1='_MaxAdhesionForceApproach';
             % Allocate data
-            yData1=obj.SMFSResults{ii}.Data.AdhMaxAppConcat; 
+            yData1=obj.SMFSResults{ii}.Data.AdhMaxAppConcat*-1; 
             % Create a gramm object
             g1=gramm('x',xData,'y',yData1,...
                 'color',ColorData);
@@ -2269,7 +2281,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             LegendyAxis2='Adhesion force (N)';
             NameSuffix2='_MaxAdhesionForceRetract';
             % Allocate data
-            yData2=obj.SMFSResults{ii}.Data.AdhMaxRetConcat;
+            yData2=obj.SMFSResults{ii}.Data.AdhMaxRetConcat*-1;
             % Create a gramm object
             g2=gramm('x',xData,'y',yData2,...
                 'color',ColorData);
@@ -2304,7 +2316,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             LegendyAxis3='Adhesion force (N)';
             NameSuffix3='_AdhForceUnbinding';
             % Allocate data
-            yData3=obj.SMFSResults{ii}.Data.AdhUnbindingConcat;
+            yData3=obj.SMFSResults{ii}.Data.AdhUnbindingConcat*-1;
             % Create a gramm object
             g3=gramm('x',xData,'y',yData3,...
                 'color',ColorData);
@@ -2339,12 +2351,11 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             LegendyAxis4='Adhesion energry (J)';
             NameSuffix4='_AdhEnergyApproach';
             % Allocate data
-            xData4=obj.SMFSResults{ii}.Concatenate.FMHoldingTime;
-            yData4=obj.SMFSResults{ii}.Data.AdhEneAppConcat;
+            yData4=obj.SMFSResults{ii}.Data.AdhEneAppConcat*-1;
             ColorData4=FMExtVeloData;
             ColumnData4=FMRetVeloData;
             % Create a gramm object
-            g4=gramm('x',xData4,'y',yData4,...
+            g4=gramm('x',xData,'y',yData4,...
                 'color',ColorData4);
             g4.facet_grid([],ColumnData4) % Subdivide the data in subplots horizontally
             % Plot data
@@ -2376,7 +2387,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             LegendyAxis5='Adhesion energy (J)';
             NameSuffix5='_AdhEnergyRetract';
             % Allocate data
-            yData5=obj.SMFSResults{ii}.Data.AdhEneRetConcat;
+            yData5=obj.SMFSResults{ii}.Data.AdhEneRetConcat*-1;
             % Create a gramm object
             g5=gramm('x',xData,'y',yData5,...
                 'color',ColorData);
@@ -2478,7 +2489,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
         end
         
                  
-        function SMFS_results_gramm_boxplot2(obj,ii)
+        function SMFS_results_gramm_boxplot2(obj,ii,xArg)
             % x-axis: Date and Time
             % Lightness: Retraction velocity
             % Color: Approach velocity
@@ -2509,6 +2520,28 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             currpath=fullfile(obj.ExperimentFolder,foldername);
             cd(currpath);
             %% General variables 1
+            if strcmpi(xArg,'DateTime')
+            LegendxAxis='Date and Time';
+            xData=obj.SMFSResults{ii}.Concatenate.FMDateTimeNumber;
+ 
+            xDataMin=min(xData(xData>0));
+            xDataMax=max(xData);                        
+            xDataPt20=xDataMax-(xDataMax-xDataMin)*0.8;
+            xDataPt40=xDataMax-(xDataMax-xDataMin)*0.6;
+            xDataPt60=xDataMax-(xDataMax-xDataMin)*0.4; 
+            xDataPt80=xDataMax-(xDataMax-xDataMin)*0.2; 
+            elseif strcmpi(xArg,'Index')
+            LegendxAxis='Force map index';
+            xData=obj.SMFSResults{ii}.Concatenate.FMIndex;         
+            xDataMin=xData(1);
+            xDataMax=xData(end);
+            xDataPt20=ceil(xDataMax-(xDataMax-xDataMin)*0.8);
+            xDataPt40=ceil(xDataMax-(xDataMax-xDataMin)*0.6);
+            xDataPt60=ceil(xDataMax-(xDataMax-xDataMin)*0.4); 
+            xDataPt80=ceil(xDataMax-(xDataMax-xDataMin)*0.2);            
+            end
+                    %    EmptyIdx=cellfun(@isempty,xData); % Find empty entries in the cell array
+        %    xData(EmptyIdx)=[]; % Remove empty cell arrays
             ColorMap1=[CS10;  % Pale ultramarineish
                 CS4; % Ochreish
                 CS2]; % Light reddish                
@@ -2519,18 +2552,10 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             LimitLength2=[317 390]; % in nm; Regime II - Unfolding
             LimitLength3=[390 452.6]; % in nm; Regime III - Backbone stretching
             Res=[1 1 2560 1250]; % Define the figure resolution
-            LegendxAxis='Date and Time';
             LegendColor='Approach velocity (m/s)';
             LightnessName='Retraction velocity (m/s)';
             FMExtVeloData=obj.SMFSResults{ii}.Concatenate.FMExtVelocity;
             FMRetVeloData=obj.SMFSResults{ii}.Concatenate.FMRetVelocity;
-            xData=obj.SMFSResults{ii}.Concatenate.FMDateTimeNumber;
-            xDataMin=min(xData(xData>0));
-            xDataMax=max(xData);
-            xDataPt20=xDataMax-(xDataMax-xDataMin)*0.8;
-            xDataPt40=xDataMax-(xDataMax-xDataMin)*0.6;
-            xDataPt60=xDataMax-(xDataMax-xDataMin)*0.4; 
-            xDataPt80=xDataMax-(xDataMax-xDataMin)*0.2; 
             ColorData=FMExtVeloData;
             LightnessData=FMRetVeloData;
             MarkerData=obj.SMFSResults{ii}.Concatenate.FMHoldingTime;
@@ -2565,7 +2590,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             LegendyAxis2='Adhesion force (nN)';
             NameSuffix2='_MaxAdhesionForceRetract';
             % Allocate data
-            yData2=obj.SMFSResults{ii}.Data.AdhMaxRetConcat*-1e9;          
+            yData2=obj.SMFSResults{ii}.Data.AdhMaxRetConcat*-1e9;               
             % Create a gramm object
             g2=gramm('x',xData,'y',yData2,...
                 'color',ColorData,...
@@ -2573,30 +2598,31 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 'marker',MarkerData);
             % Plot data 
             g2.geom_polygon('y',{LimitForce1;LimitForce2;LimitForce3},'color',ColorMap1);
-            g2.geom_point()
             g2.stat_boxplot('notch',true,...
-                'width',35,...
-                'dodge',2); % Plot data in boxplot
-            % Set options
-            g2.axe_property('xlim',[xDataMin xDataMax]) % Set x limit
-            g2.set_datetick('x',0,'keeplimits') % Format x-axis
-            g2.set_title(Plottitle) %Set figure title
-            g2.set_names('x',LegendxAxis,'y',LegendyAxis2,'color',LegendColor,'lightness',LightnessName)
-            g2.set_color_options('map','hcl',...
-                'n_color',6,...
-                'n_lightness',6,...
-                'legend','expand')  
+                 'width',2,...
+                 'dodge',2); % Plot data in boxplot
+           % Set options
+           g2.axe_property('xlim',[xDataMin xDataMax]) % Set x limit
+           if strcmpi(xArg,'DateTime')
+           g2.set_datetick('x',0,'keeplimits') % Format x-axis
+           end
+           g2.set_title(Plottitle) %Set figure title
+           g2.set_names('x',LegendxAxis,'y',LegendyAxis2,'color',LegendColor,'lightness',LightnessName)
+           g2.set_color_options('map','hcl',...
+               'n_color',6,...
+               'n_lightness',6,...
+               'legend','expand')  
             % Figure
             h_fig2=figure(2);
             h_fig2.Color='white'; % changes the background color of the figure
             h_fig2.Units='pixel'; % Defines the units
             h_fig2.OuterPosition=Res;
             h_fig2.PaperOrientation='landscape';
-            h_fig2.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3);
+            h_fig2.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_xArg_',xArg,NameSuffix2);
             % The actual plotting
             g2.draw()             
             % Save figure            
-            FullName2=strcat(FigNamePt1,FigNamePt2,FigNamePt3,NameSuffix2);
+            FullName2=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_xArg_',xArg,NameSuffix2);
             %%% Save the current figure in the current folder
             print(h_fig2,FullName2,'-dpng'); 
             %% Create a gramm object 21
@@ -2607,11 +2633,13 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             % Plot data 
             g21.geom_polygon('y',{LimitForce1;LimitForce2;LimitForce3},'color',ColorMap1);
             g21.stat_boxplot('notch',true,...
-                'width',150,...
+                'width',20,...
                 'dodge',2); % Plot data in boxplot
             % Set options
             g21.axe_property('xlim',[xDataMin xDataPt20]) % Set x limit
+            if strcmpi(xArg,'DateTime')
             g21.set_datetick('x',0,'keeplimits') % Format x-axis
+            end
             g21.set_names('x',LegendxAxis,'y',LegendyAxis2,'color',LegendColor,'lightness',LightnessName)
             g21.set_color_options('map','hcl',...
                 'n_color',6,...
@@ -2624,11 +2652,11 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             h_fig21.Units='pixel'; % Defines the units
             h_fig21.OuterPosition=Res;
             h_fig21.PaperOrientation='landscape';
-            h_fig21.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,GenNameSuffix1);
+            h_fig21.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_xArg_',xArg,NameSuffix2,GenNameSuffix1);
             % The actual plotting
             g21.draw()             
             % Save figure            
-            FullName21=strcat(FigNamePt1,FigNamePt2,FigNamePt3,NameSuffix2,GenNameSuffix1);
+            FullName21=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_xArg_',xArg,NameSuffix2,GenNameSuffix1);
             %%% Save the current figure in the current folder
             print(h_fig21,FullName21,'-dpng');  
             %% Create a gramm object 22
@@ -2639,11 +2667,13 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             % Plot data 
             g22.geom_polygon('y',{LimitForce1;LimitForce2;LimitForce3},'color',ColorMap1);
             g22.stat_boxplot('notch',true,...
-                'width',150,...
+                'width',20,...
                 'dodge',2); % Plot data in boxplot
             % Set options
             g22.axe_property('xlim',[xDataPt20 xDataPt40]) % Set x limit
+            if strcmpi(xArg,'DateTime')    
             g22.set_datetick('x',0,'keeplimits') % Format x-axis
+            end
             g22.set_names('x',LegendxAxis,'y',LegendyAxis2,'color',LegendColor,'lightness',LightnessName)
             g22.set_color_options('map','hcl',...
                 'n_color',6,...
@@ -2656,11 +2686,11 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             h_fig22.Units='pixel'; % Defines the units
             h_fig22.OuterPosition=Res;
             h_fig22.PaperOrientation='landscape';
-            h_fig22.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,GenNameSuffix2);
+            h_fig22.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_xArg_',xArg,NameSuffix2,GenNameSuffix2);
             % The actual plotting
             g22.draw()             
             % Save figure            
-            FullName22=strcat(FigNamePt1,FigNamePt2,FigNamePt3,NameSuffix2,GenNameSuffix2);
+            FullName22=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_xArg_',xArg,NameSuffix2,GenNameSuffix2);
             %%% Save the current figure in the current folder
             print(h_fig22,FullName22,'-dpng'); 
             %% Create a gramm object 23
@@ -2671,11 +2701,13 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             % Plot data 
             g23.geom_polygon('y',{LimitForce1;LimitForce2;LimitForce3},'color',ColorMap1);
             g23.stat_boxplot('notch',true,...
-                'width',150,...
+                'width',20,...
                 'dodge',2); % Plot data in boxplot
             % Set options
             g23.axe_property('xlim',[xDataPt40 xDataPt60]) % Set x limit
+            if strcmpi(xArg,'DateTime')
             g23.set_datetick('x',0,'keeplimits') % Format x-axis
+            end
             g23.set_names('x',LegendxAxis,'y',LegendyAxis2,'color',LegendColor,'lightness',LightnessName)
             g23.set_color_options('map','hcl',...
                 'n_color',6,...
@@ -2688,11 +2720,11 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             h_fig23.Units='pixel'; % Defines the units
             h_fig23.OuterPosition=Res;
             h_fig23.PaperOrientation='landscape';
-            h_fig23.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,GenNameSuffix3);
+            h_fig23.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_xArg_',xArg,NameSuffix2,GenNameSuffix3);
             % The actual plotting
             g23.draw()             
             % Save figure            
-            FullName23=strcat(FigNamePt1,FigNamePt2,FigNamePt3,NameSuffix2,GenNameSuffix3);
+            FullName23=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_xArg_',xArg,NameSuffix2,GenNameSuffix3);
             %%% Save the current figure in the current folder
             print(h_fig23,FullName23,'-dpng');  
             %% Create a gramm object 24
@@ -2703,11 +2735,13 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             % Plot data 
             g24.geom_polygon('y',{LimitForce1;LimitForce2;LimitForce3},'color',ColorMap1);
             g24.stat_boxplot('notch',true,...
-                'width',150,...
+                'width',20,...
                 'dodge',2); % Plot data in boxplot
             % Set options
             g24.axe_property('xlim',[xDataPt60 xDataMax]) % Set x limit
+            if strcmpi(xArg,'DateTime')
             g24.set_datetick('x',0,'keeplimits') % Format x-axis
+            end
             g24.set_names('x',LegendxAxis,'y',LegendyAxis2,'color',LegendColor,'lightness',LightnessName)
             g24.set_color_options('map','hcl',...
                 'n_color',6,...
@@ -2720,11 +2754,11 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             h_fig24.Units='pixel'; % Defines the units
             h_fig24.OuterPosition=Res;
             h_fig24.PaperOrientation='landscape';
-            h_fig24.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,GenNameSuffix4);
+            h_fig24.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_xArg_',xArg,NameSuffix2,GenNameSuffix4);
             % The actual plotting
             g24.draw()             
             % Save figure            
-            FullName24=strcat(FigNamePt1,FigNamePt2,FigNamePt3,NameSuffix2,GenNameSuffix4);
+            FullName24=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_xArg_',xArg,NameSuffix2,GenNameSuffix4);
             %%% Save the current figure in the current folder
             print(h_fig24,FullName24,'-dpng');   
             %% Create a gramm object 25
@@ -2735,11 +2769,13 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             % Plot data 
             g25.geom_polygon('y',{LimitForce1;LimitForce2;LimitForce3},'color',ColorMap1);
             g25.stat_boxplot('notch',true,...
-                'width',150,...
+                'width',20,...
                 'dodge',2); % Plot data in boxplot
             % Set options
             g25.axe_property('xlim',[xDataPt80 xDataMax]) % Set x limit
+            if strcmpi(xArg,'DateTime')
             g25.set_datetick('x',0,'keeplimits') % Format x-axis
+            end
             g25.set_names('x',LegendxAxis,'y',LegendyAxis2,'color',LegendColor,'lightness',LightnessName)
             g25.set_color_options('map','hcl',...
                 'n_color',6,...
@@ -2752,11 +2788,11 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             h_fig25.Units='pixel'; % Defines the units
             h_fig25.OuterPosition=Res;
             h_fig25.PaperOrientation='landscape';
-            h_fig25.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,GenNameSuffix5);
+            h_fig25.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_xArg_',xArg,NameSuffix2,GenNameSuffix5);
             % The actual plotting
             g25.draw()             
             % Save figure            
-            FullName25=strcat(FigNamePt1,FigNamePt2,FigNamePt3,NameSuffix2,GenNameSuffix5);
+            FullName25=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_xArg_',xArg,NameSuffix2,GenNameSuffix5);
             %%% Save the current figure in the current folder
             print(h_fig25,FullName25,'-dpng');
 
@@ -2778,7 +2814,9 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 'dodge',2); % Plot data in boxplot
             % Set options
             g5.axe_property('xlim',[xDataMin xDataMax]) % Set x limit
+            if strcmpi(xArg,'DateTime')
             g5.set_datetick('x',0,'keeplimits') % Format x-axis
+            end
             g5.set_title(Plottitle) %Set figure title
             g5.set_names('x',LegendxAxis,'y',LegendyAxis5,'color',LegendColor,'lightness',LightnessName)    
             g5.set_color_options('map','hcl',...
@@ -2805,11 +2843,13 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 'marker',MarkerData);
             % Plot data 
             g51.stat_boxplot('notch',true,...
-                'width',150,...
+                'width',20,...
                 'dodge',2); % Plot data in boxplot
             % Set options
             g51.axe_property('xlim',[xDataMin xDataPt20]) % Set x limit
+            if strcmpi(xArg,'DateTime')
             g51.set_datetick('x',0,'keeplimits') % Format x-axis
+            end
             g51.set_names('x',LegendxAxis,'y',LegendyAxis5,'color',LegendColor,'lightness',LightnessName)
             g51.set_color_options('map','hcl',...
                 'n_color',6,...
@@ -2822,11 +2862,11 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             h_fig51.Units='pixel'; % Defines the units
             h_fig51.OuterPosition=Res;
             h_fig51.PaperOrientation='landscape';
-            h_fig51.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,NameSuffix5,GenNameSuffix1);
+            h_fig51.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_xArg_',xArg,NameSuffix5,GenNameSuffix1);
             % The actual plotting
             g51.draw()             
             % Save figure            
-            FullName51=strcat(FigNamePt1,FigNamePt2,FigNamePt3,NameSuffix5,GenNameSuffix1);
+            FullName51=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_xArg_',xArg,NameSuffix5,GenNameSuffix1);
             %%% Save the current figure in the current folder
             print(h_fig51,FullName51,'-dpng');
             %% Create a gramm object 52
@@ -2836,11 +2876,13 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 'marker',MarkerData);
             % Plot data            
             g52.stat_boxplot('notch',true,...
-                'width',150,...
+                'width',20,...
                 'dodge',2); % Plot data in boxplot
             % Set options
             g52.axe_property('xlim',[xDataPt20 xDataPt40]) % Set x limit
+            if strcmpi(xArg,'DateTime')
             g52.set_datetick('x',0,'keeplimits') % Format x-axis
+            end
             g52.set_names('x',LegendxAxis,'y',LegendyAxis5,'color',LegendColor,'lightness',LightnessName)
             g52.set_color_options('map','hcl',...
                 'n_color',6,...
@@ -2853,11 +2895,11 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             h_fig52.Units='pixel'; % Defines the units
             h_fig52.OuterPosition=Res;
             h_fig52.PaperOrientation='landscape';
-            h_fig52.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,NameSuffix5,GenNameSuffix2);
+            h_fig52.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_xArg_',xArg,NameSuffix5,GenNameSuffix2);
             % The actual plotting
             g52.draw()             
             % Save figure            
-            FullName52=strcat(FigNamePt1,FigNamePt2,FigNamePt3,NameSuffix5,GenNameSuffix2);
+            FullName52=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_xArg_',xArg,NameSuffix5,GenNameSuffix2);
             %%% Save the current figure in the current folder
             print(h_fig52,FullName52,'-dpng');
             %% Create a gramm object 53
@@ -2867,11 +2909,13 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 'marker',MarkerData);
             % Plot data 
             g53.stat_boxplot('notch',true,...
-                'width',150,...
+                'width',20,...
                 'dodge',2); % Plot data in boxplot
             % Set options
             g53.axe_property('xlim',[xDataPt40 xDataPt60]) % Set x limit
+            if strcmpi(xArg,'DateTime')
             g53.set_datetick('x',0,'keeplimits') % Format x-axis
+            end
             g53.set_names('x',LegendxAxis,'y',LegendyAxis5,'color',LegendColor,'lightness',LightnessName)
             g53.set_color_options('map','hcl',...
                 'n_color',6,...
@@ -2884,11 +2928,11 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             h_fig53.Units='pixel'; % Defines the units
             h_fig53.OuterPosition=Res;
             h_fig53.PaperOrientation='landscape';
-            h_fig53.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,NameSuffix5,GenNameSuffix3);
+            h_fig53.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_xArg_',xArg,NameSuffix5,GenNameSuffix3);
             % The actual plotting
             g53.draw()             
             % Save figure            
-            FullName53=strcat(FigNamePt1,FigNamePt2,FigNamePt3,NameSuffix5,GenNameSuffix3);
+            FullName53=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_xArg_',xArg,NameSuffix5,GenNameSuffix3);
             %%% Save the current figure in the current folder
             print(h_fig53,FullName53,'-dpng');
             %% Create a gramm object 54
@@ -2898,11 +2942,13 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 'marker',MarkerData);
             % Plot data 
             g54.stat_boxplot('notch',true,...
-                'width',150,...
+                'width',20,...
                 'dodge',2); % Plot data in boxplot
             % Set options
             g54.axe_property('xlim',[xDataPt60 xDataMax]) % Set x limit
+            if strcmpi(xArg,'DateTime')
             g54.set_datetick('x',0,'keeplimits') % Format x-axis
+            end
             g54.set_names('x',LegendxAxis,'y',LegendyAxis5,'color',LegendColor,'lightness',LightnessName)
             g54.set_color_options('map','hcl',...
                 'n_color',6,...
@@ -2915,11 +2961,11 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             h_fig54.Units='pixel'; % Defines the units
             h_fig54.OuterPosition=Res;
             h_fig54.PaperOrientation='landscape';
-            h_fig54.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,NameSuffix5,GenNameSuffix4);
+            h_fig54.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_xArg_',xArg,NameSuffix5,GenNameSuffix4);
             % The actual plotting
             g54.draw()             
             % Save figure            
-            FullName54=strcat(FigNamePt1,FigNamePt2,FigNamePt3,NameSuffix5,GenNameSuffix4);
+            FullName54=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_xArg_',xArg,NameSuffix5,GenNameSuffix4);
             %%% Save the current figure in the current folder
             print(h_fig54,FullName54,'-dpng');              
             %% Create a gramm object 55
@@ -2929,11 +2975,13 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 'marker',MarkerData);
             % Plot data 
             g55.stat_boxplot('notch',true,...
-                'width',150,...
+                'width',20,...
                 'dodge',2); % Plot data in boxplot
             % Set options
             g55.axe_property('xlim',[xDataPt80 xDataMax]) % Set x limit
+            if strcmpi(xArg,'DateTime')
             g55.set_datetick('x',0,'keeplimits') % Format x-axis
+            end
             g55.set_names('x',LegendxAxis,'y',LegendyAxis5,'color',LegendColor,'lightness',LightnessName)
             g55.set_color_options('map','hcl',...
                 'n_color',6,...
@@ -2946,11 +2994,11 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             h_fig55.Units='pixel'; % Defines the units
             h_fig55.OuterPosition=Res;
             h_fig55.PaperOrientation='landscape';
-            h_fig55.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,NameSuffix5,GenNameSuffix5);
+            h_fig55.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_xArg_',xArg,NameSuffix5,GenNameSuffix5);
             % The actual plotting
             g55.draw()             
             % Save figure            
-            FullName55=strcat(FigNamePt1,FigNamePt2,FigNamePt3,NameSuffix5,GenNameSuffix5);
+            FullName55=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_xArg_',xArg,NameSuffix5,GenNameSuffix5);
             %%% Save the current figure in the current folder
             print(h_fig55,FullName55,'-dpng');    
             
@@ -2968,11 +3016,13 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             % Plot data 
             g6.geom_polygon('y',{LimitLength1;LimitLength2;LimitLength3},'color',ColorMap1);
             g6.stat_boxplot('notch',true,...
-                'width',150,...
+                'width',20,...
                 'dodge',2); % Plot data in boxplot
             % Set options
             g6.axe_property('xlim',[xDataMin xDataMax]) % Set x limit
+            if strcmpi(xArg,'DateTime')
             g6.set_datetick('x',0,'keeplimits') % Format x-axis
+            end
             g6.set_title(Plottitle) %Set figure title
             g6.set_names('x',LegendxAxis,'y',LegendyAxis6,'color',LegendColor,'lightness',LightnessName)    
             g6.set_color_options('map','hcl',...
@@ -2985,11 +3035,11 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             h_fig6.Units='pixel'; % Defines the units
             h_fig6.OuterPosition=Res;
             h_fig6.PaperOrientation='landscape';
-            h_fig6.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,NameSuffix6);
+            h_fig6.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_xArg_',xArg,NameSuffix6);
             % The actual plotting
             g6.draw()
             % Save figure
-            FullName6=strcat(FigNamePt1,FigNamePt2,FigNamePt3,NameSuffix6);
+            FullName6=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_xArg_',xArg,NameSuffix6);
             %%% Save the current figure in the current folder
             print(h_fig6,FullName6,'-r1200','-dpng');           
             %% Create a gramm object 61
@@ -3000,11 +3050,13 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             % Plot data 
             g61.geom_polygon('y',{LimitLength1;LimitLength2;LimitLength3},'color',ColorMap1);
             g61.stat_boxplot('notch',true,...
-                'width',150,...
+                'width',20,...
                 'dodge',2); % Plot data in boxplot
             % Set options
             g61.axe_property('xlim',[xDataMin xDataPt20]) % Set x limit
+            if strcmpi(xArg,'DateTime')
             g61.set_datetick('x',0,'keeplimits') % Format x-axis
+            end
             g61.set_names('x',LegendxAxis,'y',LegendyAxis6,'color',LegendColor,'lightness',LightnessName)
             g61.set_color_options('map','hcl',...
                 'n_color',6,...
@@ -3017,11 +3069,11 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             h_fig61.Units='pixel'; % Defines the units
             h_fig61.OuterPosition=Res;
             h_fig61.PaperOrientation='landscape';
-            h_fig61.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,NameSuffix6,GenNameSuffix1);
+            h_fig61.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_xArg_',xArg,NameSuffix6,GenNameSuffix1);
             % The actual plotting
             g61.draw()             
             % Save figure            
-            FullName61=strcat(FigNamePt1,FigNamePt2,FigNamePt3,NameSuffix6,GenNameSuffix1);
+            FullName61=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_xArg_',xArg,NameSuffix6,GenNameSuffix1);
             %%% Save the current figure in the current folder
             print(h_fig61,FullName61,'-dpng');
             %% Create a gramm object 62
@@ -3032,11 +3084,13 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             % Plot data 
             g62.geom_polygon('y',{LimitLength1;LimitLength2;LimitLength3},'color',ColorMap1);
             g62.stat_boxplot('notch',true,...
-                'width',150,...
+                'width',20,...
                 'dodge',2); % Plot data in boxplot
             % Set options
             g62.axe_property('xlim',[xDataPt20 xDataPt40]) % Set x limit
+            if strcmpi(xArg,'DateTime')
             g62.set_datetick('x',0,'keeplimits') % Format x-axis
+            end
             g62.set_names('x',LegendxAxis,'y',LegendyAxis6,'color',LegendColor,'lightness',LightnessName)
             g62.set_color_options('map','hcl',...
                 'n_color',6,...
@@ -3049,11 +3103,11 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             h_fig62.Units='pixel'; % Defines the units
             h_fig62.OuterPosition=Res;
             h_fig62.PaperOrientation='landscape';
-            h_fig62.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,NameSuffix6,GenNameSuffix2);
+            h_fig62.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_xArg_',xArg,NameSuffix6,GenNameSuffix2);
             % The actual plotting
             g62.draw()             
             % Save figure            
-            FullName62=strcat(FigNamePt1,FigNamePt2,FigNamePt3,NameSuffix6,GenNameSuffix2);
+            FullName62=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_xArg_',xArg,NameSuffix6,GenNameSuffix2);
             %%% Save the current figure in the current folder
             print(h_fig62,FullName62,'-dpng');
             %% Create a gramm object 63
@@ -3064,11 +3118,13 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             % Plot data 
             g63.geom_polygon('y',{LimitLength1;LimitLength2;LimitLength3},'color',ColorMap1);
             g63.stat_boxplot('notch',true,...
-                'width',150,...
+                'width',20,...
                 'dodge',2); % Plot data in boxplot
             % Set options
             g63.axe_property('xlim',[xDataPt40 xDataPt60]) % Set x limit
+            if strcmpi(xArg,'DateTime')
             g63.set_datetick('x',0,'keeplimits') % Format x-axis
+            end
             g63.set_names('x',LegendxAxis,'y',LegendyAxis6,'color',LegendColor,'lightness',LightnessName)
             g63.set_color_options('map','hcl',...
                 'n_color',6,...
@@ -3081,11 +3137,11 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             h_fig63.Units='pixel'; % Defines the units
             h_fig63.OuterPosition=Res;
             h_fig63.PaperOrientation='landscape';
-            h_fig63.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,NameSuffix6,GenNameSuffix3);
+            h_fig63.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_xArg_',xArg,NameSuffix6,GenNameSuffix3);
             % The actual plotting
             g63.draw()             
             % Save figure            
-            FullName63=strcat(FigNamePt1,FigNamePt2,FigNamePt3,NameSuffix6,GenNameSuffix3);
+            FullName63=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_xArg_',xArg,NameSuffix6,GenNameSuffix3);
             %%% Save the current figure in the current folder
             print(h_fig63,FullName63,'-dpng');
             %% Create a gramm object 64
@@ -3096,11 +3152,13 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             % Plot data 
             g64.geom_polygon('y',{LimitLength1;LimitLength2;LimitLength3},'color',ColorMap1);
             g64.stat_boxplot('notch',true,...
-                'width',150,...
+                'width',20,...
                 'dodge',2); % Plot data in boxplot
             % Set options
             g64.axe_property('xlim',[xDataPt60 xDataMax]) % Set x limit
+            if strcmpi(xArg,'DateTime')
             g64.set_datetick('x',0,'keeplimits') % Format x-axis
+            end
             g64.set_names('x',LegendxAxis,'y',LegendyAxis6,'color',LegendColor,'lightness',LightnessName)
             g64.set_color_options('map','hcl',...
                 'n_color',6,...
@@ -3113,11 +3171,11 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             h_fig64.Units='pixel'; % Defines the units
             h_fig64.OuterPosition=Res;
             h_fig64.PaperOrientation='landscape';
-            h_fig64.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,NameSuffix6,GenNameSuffix4);
+            h_fig64.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_xArg_',xArg,NameSuffix6,GenNameSuffix4);
             % The actual plotting
             g64.draw()             
             % Save figure            
-            FullName64=strcat(FigNamePt1,FigNamePt2,FigNamePt3,NameSuffix6,GenNameSuffix4);
+            FullName64=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_xArg_',xArg,NameSuffix6,GenNameSuffix4);
             %%% Save the current figure in the current folder
             print(h_fig64,FullName64,'-dpng');              
             %% Create a gramm object 65
@@ -3128,11 +3186,13 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             % Plot data 
             g65.geom_polygon('y',{LimitLength1;LimitLength2;LimitLength3},'color',ColorMap1);
             g65.stat_boxplot('notch',true,...
-                'width',150,...
+                'width',20,...
                 'dodge',2); % Plot data in boxplot
             % Set options
             g65.axe_property('xlim',[xDataPt80 xDataMax]) % Set x limit
+            if strcmpi(xArg,'DateTime')
             g65.set_datetick('x',0,'keeplimits') % Format x-axis
+            end
             g65.set_names('x',LegendxAxis,'y',LegendyAxis6,'color',LegendColor,'lightness',LightnessName)
             g65.set_color_options('map','hcl',...
                 'n_color',6,...
@@ -3145,11 +3205,11 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             h_fig65.Units='pixel'; % Defines the units
             h_fig65.OuterPosition=Res;
             h_fig65.PaperOrientation='landscape';
-            h_fig65.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,NameSuffix6,GenNameSuffix5);
+            h_fig65.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_xArg_',xArg,NameSuffix6,GenNameSuffix5);
             % The actual plotting
             g65.draw()             
             % Save figure            
-            FullName65=strcat(FigNamePt1,FigNamePt2,FigNamePt3,NameSuffix6,GenNameSuffix5);
+            FullName65=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_xArg_',xArg,NameSuffix6,GenNameSuffix5);
             %%% Save the current figure in the current folder
             print(h_fig65,FullName65,'-dpng');    
             
@@ -3158,12 +3218,29 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
         end
         
     
-        function SMFS_results_gramm_plot(obj,ii)
+        function SMFS_results_gramm_plot(obj,ii,IdxShift,FMArg,FMChar)
+            % ii - row index in the SMFSResultsParameters table
+            % FMShift - force map shift
+            % FMArg - force map argument
+            % FMChar - force map characteristic
             
             % Input variable adaptation
-            if nargin<2
+            if nargin<5
                 ii=1;
-            end
+                IdxShift=3;
+                FMArg=1;
+                FMChar='Length';
+            end            
+            % Input variables based condition
+            if strcmpi(FMArg,'Max') && strcmpi(FMChar,'Length')
+            FMoI=obj.SMFSResults{ii}.Results.PullLengthMaxFM;
+            elseif strcmpi(FMArg,'Max') && strcmpi(FMChar,'Force')
+            FMoI=obj.SMFSResults{ii}.Results.AdhMaxRetMaxFM;
+            elseif strcmpi(FMArg,'Max') && strcmpi(FMChar,'Energy')
+            FMoI=obj.SMFSResults{ii}.Results.Results.AdhEneRetMinFM;
+            else
+            FMoI=FMArg;
+            end            
             % Output time and date for the dairy
             datetime('now')
             % Change into the Folder of Interest
@@ -3176,17 +3253,32 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             %% Allocate data
             FMExtVeloData=obj.SMFSResults{ii}.Concatenate.FMExtVelocity;
             FMRetVeloData=obj.SMFSResults{ii}.Concatenate.FMRetVelocity;
-            FMIDArray=obj.SMFSResults{ii}.Concatenate.FMID;            
+            FMIDArray=obj.SMFSResults{ii}.Concatenate.FMID;
+            FMIdxArray=obj.SMFSResults{ii}.Data.FMIndex;
             EmptyIdx=find(cellfun(@isempty,FMIDArray)); % Find empty entries in the cell array
-            FMIDArray(EmptyIdx)=[]; % Remove empty cell arrays  
-            FMShift=3;
-            FMIDBeforeMax=(obj.SMFSResults{ii}.Results.PullLengthMaxFM)-FMShift;
-            FMIDBeforeMax=strcat(obj.ExperimentName,sprintf('-%d',FMIDBeforeMax));        
-            FMIDBeforeMax=find(strcmp(FMIDBeforeMax,FMIDArray)); % Find indices of the FM of interest
-            FMIDAfterMax=(obj.SMFSResults{ii}.Results.PullLengthMaxFM)+FMShift;
-            FMIDAfterMax=strcat(obj.ExperimentName,sprintf('-%d',FMIDAfterMax));
-            FMIDAfterMax=find(strcmp(FMIDAfterMax,FMIDArray)); % Find indices of the FM of interest  
-            ColorData=obj.SMFSResults{ii}.Concatenate.FMID(FMIDBeforeMax(1):FMIDAfterMax(end));               
+            FMIDArray(EmptyIdx)=[]; % Remove empty cell arrays             
+            % Determine neighboring force maps based
+            FMoIID=strcat(obj.ExperimentName,sprintf('-%d',FMoI));
+            FMoIIdx=find(FMIdxArray==FMoI); % Find indices of the FM of interest  
+            if isempty(FMoIIdx)
+                error('Chosen force map argument - input argument "FMArg" - is not part of the chosen SMFSResults structure - input argument "ii"')
+            end
+            FMBeforeIdx=FMoIIdx-IdxShift;
+            if FMBeforeIdx<0 % Correct for potential negative force map values
+                FMBeforeIdx=FMoIIdx;
+            end
+            FMBefore=FMIdxArray(FMBeforeIdx);
+            FMIDBefore=strcat(obj.ExperimentName,sprintf('-%d',FMBefore));        
+            FMIDBeforeIdx=find(strcmp(FMIDBefore,FMIDArray)); % Find indices of the FM of interest            
+            FMAfterIdx=FMoIIdx+IdxShift;
+            if FMAfterIdx> length(obj.SMFSResults{ii}.Data.FMIndex)  
+                FMAfterIdx=length(obj.SMFSResults{ii}.Data.FMIndex);  
+            end
+            FMAfter=FMIdxArray(FMAfterIdx);
+            FMIDAfter=strcat(obj.ExperimentName,sprintf('-%d',FMAfter));
+            FMIDAfterIdx=find(strcmp(FMIDAfter,FMIDArray)); % Find indices of the FM of interest              
+            ColorData=FMIDArray(FMIDBeforeIdx(1):FMIDAfterIdx(end));               
+            % Transform results parameters to string
             if obj.SMFSResults{ii}.Parameters.ExtendVelocity==0
                 ExtVelocityValueStr='All';
             else
@@ -3214,21 +3306,21 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             LimitLength2=[317 390e-9]; %Regime II - Unfolding
             LimitLength3=[390e-9 452.6e-9]; % Regime III - Backbone stretching
             Res=[1 1 2560 1250]; % Define the figure resolution                        
-            FigNamePt1=strcat(ExtVelocityValueStr,{'_'},RetVelocityValueStr,{'_'},HoldingTimeValueStr,{'_'},obj.SMFSResults{ii}.Parameters.Substrate,{'_'},obj.SMFSResults{ii}.Parameters.Medium,{'_'},obj.SMFSResults{ii}.Parameters.ChipCantilever,{'_'},obj.SMFSResults{ii}.Parameters.Chipbox,{'_'},obj.SMFSResults{ii}.Parameters.Linker);
-            FigNamePt1=char(FigNamePt1);
-            FigNamePt2=sprintf('_SMFSResultRow%d',ii);
+            FigNamePt1=sprintf('SMFSResultRow%d_',ii);
+            FigNamePt2=strcat(ExtVelocityValueStr,{'_'},RetVelocityValueStr,{'_'},HoldingTimeValueStr,{'_'},obj.SMFSResults{ii}.Parameters.Substrate,{'_'},obj.SMFSResults{ii}.Parameters.Medium,{'_'},obj.SMFSResults{ii}.Parameters.ChipCantilever,{'_'},obj.SMFSResults{ii}.Parameters.Chipbox,{'_'},obj.SMFSResults{ii}.Parameters.Linker);
+            FigNamePt2=char(FigNamePt2);            
             FigNamePt3='_Boxplot';
             LegendxAxis='Force Curve';
             LegendColor='Force Map ID';   
-            Plottitle=sprintf('%d Force Maps selected',2*FMShift+1);
+            Plottitle=strcat(FMoIID,sprintf(' is the chosen input FM with a shift of %d FM before and after',IdxShift));
             %% Gramm object 2            
             % Define variables           
             LegendyAxis2='Adhesion force (N)';
             NameSuffix2='_MaxAdhesionForceRetract';
             % Allocate data
-            yData2=obj.SMFSResults{ii}.Data.AdhMaxRetConcat(FMIDBeforeMax(1):FMIDAfterMax(end))*-1;
+            yData2=obj.SMFSResults{ii}.Data.AdhMaxRetConcat(FMIDBeforeIdx(1):FMIDAfterIdx(end))*-1;
             xData2=(1:length(yData2))';
-            ColorData2=obj.SMFSResults{ii}.Concatenate.FMID(FMIDBeforeMax(1):FMIDAfterMax(end));   
+            ColorData2=obj.SMFSResults{ii}.Concatenate.FMID(FMIDBeforeIdx(1):FMIDAfterIdx(end));   
             % Create a gramm object
             g2=gramm('x',xData2,'y',yData2,...
                 'color',ColorData2);
@@ -3244,11 +3336,11 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             h_fig2.Units='pixel'; % Defines the units
             h_fig2.OuterPosition=Res;
             h_fig2.PaperOrientation='landscape';
-            h_fig2.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3);
+            h_fig2.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_FM_',sprintf('%d',FMArg),NameSuffix2);
             % The actual plotting
             g2.draw()             
             % Save figure            
-            FullName2=strcat(FigNamePt1,FigNamePt2,FigNamePt3,NameSuffix2);
+            FullName2=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_FM_',sprintf('%d',FMArg),NameSuffix2);
             %%% Save the current figure in the current folder
             print(h_fig2,FullName2,'-dpng');            
             %% Gramm object 3
@@ -3256,9 +3348,9 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             LegendyAxis3='Adhesion force (N)';
             NameSuffix3='_AdhForceUnbinding';
             % Allocate data
-            yData3=obj.SMFSResults{ii}.Data.AdhUnbindingConcat(FMIDBeforeMax(1):FMIDAfterMax(end))*-1;
+            yData3=obj.SMFSResults{ii}.Data.AdhUnbindingConcat(FMIDBeforeIdx(1):FMIDAfterIdx(end))*-1;
             xData3=(1:length(yData3))';
-            ColorData3=obj.SMFSResults{ii}.Concatenate.FMID(FMIDBeforeMax(1):FMIDAfterMax(end));   
+            ColorData3=obj.SMFSResults{ii}.Concatenate.FMID(FMIDBeforeIdx(1):FMIDAfterIdx(end));   
             % Create a gramm object
             g3=gramm('x',xData3,'y',yData3,...
                 'color',ColorData3);
@@ -3274,11 +3366,11 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             h_fig3.Units='pixel'; % Defines the units
             h_fig3.OuterPosition=Res;
             h_fig3.PaperOrientation='landscape';
-            h_fig3.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,NameSuffix3);           
+            h_fig3.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_FM_',sprintf('%d',FMArg),NameSuffix3);           
             % The actual plotting
             g3.draw()
             % Save figure
-            FullName3=strcat(FigNamePt1,FigNamePt2,FigNamePt3,NameSuffix3);
+            FullName3=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_FM_',sprintf('%d',FMArg),NameSuffix3);
             %%% Save the current figure in the current folder
             print(h_fig3,FullName3,'-dpng');                        
             %% Gramm object 5
@@ -3286,7 +3378,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             LegendyAxis5='Adhesion energy (J)';
             NameSuffix5='_AdhEnergyRetract';
             % Allocate data
-            yData5=obj.SMFSResults{ii}.Data.AdhEneRetConcat(FMIDBeforeMax(1):FMIDAfterMax(end))*-1;
+            yData5=obj.SMFSResults{ii}.Data.AdhEneRetConcat(FMIDBeforeIdx(1):FMIDAfterIdx(end))*-1;
             xData5=(1:length(yData5))';
             % Create a gramm object
             g5=gramm('x',xData5,'y',yData5,...
@@ -3302,11 +3394,11 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             h_fig5.Units='pixel'; % Defines the units
             h_fig5.OuterPosition=Res;
             h_fig5.PaperOrientation='landscape';
-            h_fig5.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,NameSuffix5);
+            h_fig5.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_FM_',sprintf('%d',FMArg),NameSuffix5);
             % The actual plotting
             g5.draw()
             % Save figure
-            FullName5=strcat(FigNamePt1,FigNamePt2,FigNamePt3,NameSuffix5);
+            FullName5=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_FM_',sprintf('%d',FMArg),NameSuffix5);
             %%% Save the current figure in the current folder
             print(h_fig5,FullName5,'-dpng');            
             %% Gramm object 6          
@@ -3314,7 +3406,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             NameSuffix6='_Pullinglength';
             LegendyAxis6='Pulling length (m)';
             % Allocate data
-            yData6=obj.SMFSResults{ii}.Data.yPullingLengthConcat(FMIDBeforeMax(1):FMIDAfterMax(end));
+            yData6=obj.SMFSResults{ii}.Data.yPullingLengthConcat(FMIDBeforeIdx(1):FMIDAfterIdx(end));
             xData6=(1:length(yData6))';
             % Create a gramm object
             g6=gramm('x',xData6,'y',yData6,...
@@ -3331,11 +3423,11 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             h_fig6.Units='pixel'; % Defines the units
             h_fig6.OuterPosition=Res;
             h_fig6.PaperOrientation='landscape';
-            h_fig6.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,NameSuffix6);
+            h_fig6.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_FM_',sprintf('%d',FMArg),NameSuffix6);
             % The actual plotting
             g6.draw()
             % Save figure
-            FullName6=strcat(FigNamePt1,FigNamePt2,FigNamePt3,NameSuffix6);
+            FullName6=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_FM_',sprintf('%d',FMArg),NameSuffix6);
             %%% Save the current figure in the current folder
             print(h_fig6,FullName6,'-dpng');
 
@@ -5221,9 +5313,15 @@ PlotData=obj.SMFSResults{jj}.Data.AdhMaxAppConcat
             %set(groot,'defaultFigureVisible','off')      
       %       set(groot,'defaultFigureVisible','on')  
 
-             for ii=1:obj.NumForceMaps
+      NFM = obj.NumForceMaps;
+               
+            obj.SMFSFlagDown.NumForceCurves = false(NFM,1);
+                obj.SMFSFlag.NumForceCurves = false(NFM,1);
+      
+      
+      %       for ii=1:obj.NumForceMaps
                  
-                  IdxArray(ii,1)=obj.FM{ii}.ExtendVelocity
+              %    IdxArray(ii,1)=obj.FM{ii}.ExtendVelocity
                  
   
         
@@ -5233,13 +5331,13 @@ PlotData=obj.SMFSResults{jj}.Data.AdhMaxAppConcat
              %  obj.FM{ii}.fc_testing
           %    obj.FM{ii}.initialize_flags       
            %  obj.FM{ii}.fc_snap_in_length_MAD
-          ii   
+       %   ii   
          %    obj.SMFSFlag.Analysed = false(obj.NumForceMaps,1);
           %   obj.SMFSFlagDown.Analysed = false(obj.NumForceMaps,1);
              
          %   end                    
             
-        end
+       % end
      
             
         end
@@ -7094,6 +7192,7 @@ PlotData=obj.SMFSResults{jj}.Data.AdhMaxAppConcat
                 obj.SMFSFlagDown.Preprocessed = false(NFM,1);
                 obj.SMFSFlagDown.Presorted = false(NFM,1);
                 obj.SMFSFlagDown.Analysed = false(NFM,1);
+                obj.SMFSFlagDown.NumForceCurves = false(NFM,1);
                 
             if isempty(obj.FMFlag)
                 NFM = obj.NumForceMaps;
@@ -7109,6 +7208,7 @@ PlotData=obj.SMFSResults{jj}.Data.AdhMaxAppConcat
                 obj.SMFSFlag.Preprocessed = false(NFM,1);
                 obj.SMFSFlag.Analysed = false(NFM,1);
                 obj.SMFSFlag.Presorted = false(NFM,1);
+                obj.SMFSFlag.NumForceCurves = false(NFM,1);
                 
                 obj.DebugFlag.Plot= false(NFM,1);
                 obj.CantileverTipFlag = false;
