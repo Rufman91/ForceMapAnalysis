@@ -3643,11 +3643,6 @@ classdef ForceMap < matlab.mixin.Copyable
             
             DirectoryPath = uigetdir();
             
-           %for k=1:obj.NCurves 
-            k=1;
-            g=obj.NCurves + 1;
-            h=2*obj.NCurves + 1;
-            m=3*obj.NCurves + 1;
             for i=1:obj.NCurves
                 
                 %Identify position of first modulation for Multiplier later
@@ -3739,20 +3734,20 @@ classdef ForceMap < matlab.mixin.Copyable
                        obj.TEnd{obj.NumSegments} = obj.SeriesTime{obj.NumSegments};
                        obj.SegTime{obj.NumSegments} = obj.TStart{obj.NumSegments}:obj.SecPerPoint{obj.NumSegments}:obj.TEnd{obj.NumSegments};
                        obj.SegTime{obj.NumSegments} = obj.SegTime{obj.NumSegments}.';
-                       
-                       lengthHHApp = length(obj.HHApp{i});
-                       obj.SecPerPoint{1} = obj.SegDuration{1}/lengthHHApp;
-                       obj.TStart{1} = obj.SecPerPoint{1}/2;
-                       obj.TEnd{1} = obj.SeriesTime{1};
-                       obj.SegTime{1} = obj.TStart{1}:obj.SecPerPoint{1}:obj.TEnd{1};
-                       obj.SegTime{1} = obj.SegTime{1}.';
-                       
-                       lengthHHRet = length(obj.HHRet{i});
-                       obj.SecPerPoint{obj.NumSegments} = obj.SegDuration{obj.NumSegments}/lengthHHRet;
-                       obj.TStart{obj.NumSegments} = obj.SeriesTime{obj.NumSegments - 1}+(obj.SecPerPoint{obj.NumSegments}/2);
-                       obj.TEnd{obj.NumSegments} = obj.SeriesTime{obj.NumSegments};
-                       obj.SegTime{obj.NumSegments} = obj.TStart{obj.NumSegments}:obj.SecPerPoint{obj.NumSegments}:obj.TEnd{obj.NumSegments};
-                       obj.SegTime{obj.NumSegments} = obj.SegTime{obj.NumSegments}.';
+%                        
+%                        lengthHHApp = length(obj.HHApp{i});
+%                        obj.SecPerPoint{1} = obj.SegDuration{1}/lengthHHApp;
+%                        obj.TStart{1} = obj.SecPerPoint{1}/2;
+%                        obj.TEnd{1} = obj.SeriesTime{1};
+%                        obj.SegTime{1} = obj.TStart{1}:obj.SecPerPoint{1}:obj.TEnd{1};
+%                        obj.SegTime{1} = obj.SegTime{1}.';
+%                        
+%                        lengthHHRet = length(obj.HHRet{i});
+%                        obj.SecPerPoint{obj.NumSegments} = obj.SegDuration{obj.NumSegments}/lengthHHRet;
+%                        obj.TStart{obj.NumSegments} = obj.SeriesTime{obj.NumSegments - 1}+(obj.SecPerPoint{obj.NumSegments}/2);
+%                        obj.TEnd{obj.NumSegments} = obj.SeriesTime{obj.NumSegments};
+%                        obj.SegTime{obj.NumSegments} = obj.TStart{obj.NumSegments}:obj.SecPerPoint{obj.NumSegments}:obj.TEnd{obj.NumSegments};
+%                        obj.SegTime{obj.NumSegments} = obj.SegTime{obj.NumSegments}.';
                        
                 
                 end
@@ -3783,7 +3778,7 @@ classdef ForceMap < matlab.mixin.Copyable
                     grid minor
 
                     %subplot 3: force and indentation over time
-                    subplot(3,2,3)
+                    subplot(3,2,5)
                     hold on
 
                    yyaxis left
@@ -3805,7 +3800,7 @@ classdef ForceMap < matlab.mixin.Copyable
 
 
                    % subplot 4: force vs indentation
-                   subplot(3,2,4)
+                   subplot(3,2,6)
                    plot(obj.Indentation{i,1}*MultiplierI,obj.BasedForce{i,1}*MultiplierF,'-r',obj.Indentation{i,obj.NumSegments}*MultiplierI,obj.BasedForce{i,obj.NumSegments}*MultiplierF,'-b')
                    hold on
                    plot(obj.Indentation{i,j}*MultiplierI,obj.BasedForce{i,j}*MultiplierF,':m')
@@ -3859,11 +3854,6 @@ classdef ForceMap < matlab.mixin.Copyable
 %                 end
                 
                 
-                
-                k= k+1;
-                g=g+1;
-                h=h+1;
-                m=m+1;
 
             end
             
