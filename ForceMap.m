@@ -3915,7 +3915,7 @@ classdef ForceMap < matlab.mixin.Copyable
                 %figure('Name',sprintf('Results'))
                 hold on
                 
-                subplot(4,1,1)
+                subplot(2,2,1)
                 plot(xq,vqDphi,'-','DisplayName',sprintf('Curve %i',i))
                 hold on
                 plot(frequencies, Dphi,'o','HandleVisibility','off')
@@ -3927,7 +3927,7 @@ classdef ForceMap < matlab.mixin.Copyable
                 grid on
                 grid minor
                 
-                subplot(4,1,2)
+                subplot(2,2,2)
                 plot(xq,vqLosstangent,'-','DisplayName',sprintf('Curve %i',i))
                 hold on
                 plot(frequencies, losstangent,'o','HandleVisibility','off')
@@ -3939,7 +3939,7 @@ classdef ForceMap < matlab.mixin.Copyable
                 grid on
                 grid minor
                 
-                subplot(4,1,3)
+                subplot(2,2,3)
                 plot(xq,vqEmodmicro1,'-','DisplayName',sprintf('Curve %i',i))
                 hold on
                 plot(frequencies, emodmicro1,'o','HandleVisibility','off')
@@ -3951,7 +3951,7 @@ classdef ForceMap < matlab.mixin.Copyable
                 grid on
                 grid minor
                 
-                subplot(4,1,4)
+                subplot(2,2,4)
                 plot(xq,vqEmodmicro2,'-','DisplayName',sprintf('Curve %i',i))
                 hold on
                 plot(frequencies,emodmicro2,'o','HandleVisibility','off')
