@@ -2116,6 +2116,15 @@ classdef Experiment < matlab.mixin.Copyable
                 'HorizontalAlignment','center')
         end
         
+        function statistics_microrheology(obj)
+            
+            N = obj.NumForceMaps;
+            for i=1:N
+                LT(i) = obj.FM{i}.LossTangent;
+            end
+            
+        end
+        
         function statistical_analysis_swelling(obj)
             %%%%%%% DISCLAIMER: just works for specific cases at the moment %%%%%%%
             
