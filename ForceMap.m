@@ -3887,7 +3887,8 @@ classdef ForceMap < matlab.mixin.Copyable
                         Dphi(j,:) = obj.DeltaPhi{i,j};
                         frequencies(j,:) = obj.SegFrequency{j};
                         losstangent(j,:) = obj.LossTangent{i,j};
-                        emodmicro1(j,:) = obj.EModMicro1{i,j};
+                        EModMicro1 = num2cell(obj.EModMicro1{i,j});
+                        emodmicro1(j,:) = EModMicro1;
                         emodmicro2(j,:) = obj.EModMicro2{i,j};
                     end
                 end
