@@ -3769,6 +3769,7 @@ classdef ForceMap < matlab.mixin.Copyable
 
                     %subplot 2: indentation time
                     subplot(3,2,2)
+                    hold on
                     plot(obj.SegTime{j},obj.Indentation{i,j}*MultiplierI,'-','color',lightblue)
                     ylim([yHmin yHmax])
                     title(sprintf('Indentation Time Curve %i',i),'FontSize', 18)
@@ -3805,13 +3806,21 @@ classdef ForceMap < matlab.mixin.Copyable
                    hold on
                    plot(obj.Indentation{i,j}*MultiplierI,obj.BasedForce{i,j}*MultiplierF,':m')
                    xlim([-500 500])
-                   legend
-                   %plot(obj.Height{i,j},obj.Force{i,j},'r')
                    title(sprintf('Force Indentation Curve %i',i),'FontSize', 18)
                    xlabel(sprintf('Indentation [%s]',UnitI),'FontSize', 16);
                    ylabel(sprintf('vDeflection-Force [%s]',UnitF),'FontSize', 16);
                    grid on
                    grid minor
+                   
+                   l1 = plot(nan, nan, '-r');
+                   hold on
+                   l2 = plot(nan, nan, '-b');
+                   l3 = plot(nan, nan, ':m');
+                   l1.LineWidth = 3;
+                   l2.LineWidth = 3;
+                   l3.LineWidth = 3;
+                   legend([l1, l2, l3], {'approach', 'retract','modulation'}, 'Location', 'southoutside','FontSize', 14)
+
                
                 end
                
