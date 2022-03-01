@@ -3943,9 +3943,9 @@ classdef ForceMap < matlab.mixin.Copyable
                 plot(xq,vqEmodmicro1,'-','DisplayName',sprintf('Curve %i',i))
                 hold on
                 plot(frequencies, emodmicro1,'o','HandleVisibility','off')
-                title('Elastic (storage) modulus of all curves','FontSize', 18)
+                title('Elastic (storage) modulus of all curves','FontSize', 16)
                 xlabel('frequency [Hz]','FontSize', 16)
-                ylabel('elastic modulus','FontSize', 16)
+                ylabel('elastic modulus [N/mm2]','FontSize', 16)
                 legend show
                 %drawnow
                 grid on
@@ -3955,9 +3955,9 @@ classdef ForceMap < matlab.mixin.Copyable
                 plot(xq,vqEmodmicro2,'-','DisplayName',sprintf('Curve %i',i))
                 hold on
                 plot(frequencies,emodmicro2,'o','HandleVisibility','off')
-                title('Viscous (loss) modulus of all curves','FontSize', 18)
+                title('Viscous (loss) modulus of all curves','FontSize', 16)
                 xlabel('frequency [Hz]','FontSize', 16)
-                ylabel('viscous modulus','FontSize', 16)
+                ylabel('viscous modulus [N/mm2]','FontSize', 16)
                 legend show
                 %drawnow
                 grid on
