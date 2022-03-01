@@ -3889,7 +3889,7 @@ classdef ForceMap < matlab.mixin.Copyable
                 frequencies = frequencies(frequencies ~= 0);
                 %p = [Dphi frequencies];
                 
-                xq = 0.1:1:0.1;
+                xq = 0.1:0.1:1;
                 vq = interp1(frequencies,Dphi,xq,'spline');
                 
                 figure('Name',sprintf('Results'))
