@@ -3879,6 +3879,7 @@ classdef ForceMap < matlab.mixin.Copyable
                 
                 Dphi = zeros(obj.NumSegments,1);
                 frequencies = zeros(obj.NumSegments,1);
+                losstangent = zeros(obj.NumSegments,1);
                 for j=1:obj.NumSegments
                     if obj.SegFrequency{j} > 0
                         Dphi(j,:) = obj.DeltaPhi{i,j};
