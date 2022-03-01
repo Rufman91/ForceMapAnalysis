@@ -3887,12 +3887,12 @@ classdef ForceMap < matlab.mixin.Copyable
                 end
                 Dphi = Dphi(Dphi ~= 0);
                 frequencies = frequencies(frequencies ~= 0);
-                p = [Dphi frequencies];
+                %p = [Dphi frequencies];
                 
                 figure('Name',sprintf('Results'))
                 hold on
                 
-                plot(p,'ob')
+                plot(frequencies, Dphi,'ob')
                 hold on
                 title('Phaseshift of all curves')
                 xlabel('frequency [Hz]')
