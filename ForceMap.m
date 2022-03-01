@@ -3898,6 +3898,11 @@ classdef ForceMap < matlab.mixin.Copyable
                 %drawnow
                 grid on
                 grid minor
+                
+                if DirectoryPath~=0
+                   whereToStore=fullfile(DirectoryPath,['results_' num2str(i) '.svg']);
+                   saveas(gcf, whereToStore);
+                end
 %                 for j=1:obj.NumSegments
 %                     
 %                     p = [obj.DeltaPhi{i,j}];
@@ -3924,15 +3929,12 @@ classdef ForceMap < matlab.mixin.Copyable
                         
 %                     end
                         
-                end
+                %end
             end
             
 
 
-            if DirectoryPath~=0
-               whereToStore=fullfile(DirectoryPath,['results_' num2str(i) '.svg']);
-               saveas(gcf, whereToStore);
-            end
+            
  
         end
         
