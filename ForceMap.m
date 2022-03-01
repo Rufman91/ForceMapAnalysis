@@ -3876,23 +3876,37 @@ classdef ForceMap < matlab.mixin.Copyable
             %figure('Name',sprintf('Results'))
             %hold on
             for i=1:obj.NCurves
+                
+                Dphi = zeros(obj.NumSegments,1);
+                frequencies = zeros(obj.NumSegments,1);
+                for j=1:obj.NumSegments
+                    if obj.SegFrequency{j} > 0
+                        Dphi(j,:) = obj.DeltaPhi{i,j};
+                        frequencies(j,:) = obj.SegFrequency{j};
+                    end
+                end
+                
                 figure('Name',sprintf('Results'))
                 hold on
-                for j=1:obj.NumSegments
-                    
-                    if obj.SegFrequency{j} > 0
-                        
+                
+                plot(frequencies,Dphi)
+                hold on
+                title('Phaseshift of all curves')
+                xlabel('frequency [Hz]')
+                ylabel('phaseshift [°]')
+                legend(sprintf('Curve %i',i))
+                %drawnow
+                grid on
+                grid minor
+%                 for j=1:obj.NumSegments
+%                     
+%                     p = [obj.DeltaPhi{i,j}];
+%                     
+%                     if obj.SegFrequency{j} > 0
+%                         
                         
                         %subplot(3,1,1)
-                        plot(obj.SegFrequency{j},obj.DeltaPhi{i,j})
-                        hold on
-                        title('Phaseshift of all curves')
-                        xlabel('frequency [Hz]')
-                        ylabel('phaseshift [°]')
-                        legend(sprintf('Curve %i',i))
-                        %drawnow
-                        grid on
-                        grid minor
+                        
                         
                         %legend({'shifted force data to zero line','filtered force data','fitted force data 1'},'Location','southoutside')
                         %subplot(3,1,2)
@@ -3908,7 +3922,7 @@ classdef ForceMap < matlab.mixin.Copyable
                         %legend({'force','force peak','indentation','indentation peak'},'Location','southoutside')
                         
                         
-                    end
+%                     end
                         
                 end
             end
