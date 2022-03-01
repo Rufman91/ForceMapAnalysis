@@ -3925,7 +3925,7 @@ classdef ForceMap < matlab.mixin.Copyable
                 grid minor
                 
                 subplot(4,1,3)
-                plot(xq,vq,'-','DisplayName',sprintf('Curve %i',i))
+                plot(xq,vqDphi,'-','DisplayName',sprintf('Curve %i',i))
                 hold on
                 plot(frequencies, Dphi,'o','HandleVisibility','off')
                 title('Phaseshift of all curves','FontSize', 18)
@@ -3937,7 +3937,7 @@ classdef ForceMap < matlab.mixin.Copyable
                 grid minor
                 
                 subplot(4,1,4)
-                plot(xq,vq,'-','DisplayName',sprintf('Curve %i',i))
+                plot(xq,vqDphi,'-','DisplayName',sprintf('Curve %i',i))
                 hold on
                 plot(frequencies, Dphi,'o','HandleVisibility','off')
                 title('Phaseshift of all curves','FontSize', 18)
