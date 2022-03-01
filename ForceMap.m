@@ -3890,6 +3890,9 @@ classdef ForceMap < matlab.mixin.Copyable
                         xlabel('frequency [Hz]')
                         ylabel('phaseshift [°]')
                         legend(sprintf('Curve %i',i))
+                        %drawnow
+                        grid on
+                        grid minor
                         
                         %legend({'shifted force data to zero line','filtered force data','fitted force data 1'},'Location','southoutside')
                         %subplot(3,1,2)
@@ -3910,9 +3913,7 @@ classdef ForceMap < matlab.mixin.Copyable
                 end
             end
             
-            drawnow
-            grid on
-            grid minor
+
 
             if DirectoryPath~=0
                whereToStore=fullfile(DirectoryPath,['results_' num2str(i) '.svg']);
