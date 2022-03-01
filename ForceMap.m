@@ -3873,9 +3873,10 @@ classdef ForceMap < matlab.mixin.Copyable
             DirectoryPath = uigetdir();
             k=1;
             
-            figure('Name',sprintf('Results'))
-            hold on
+            %figure('Name',sprintf('Results'))
+            %hold on
             for i=1:obj.NCurves
+                figure('Name',sprintf('Results'))
                 hold on
                 for j=1:obj.NumSegments
                     
