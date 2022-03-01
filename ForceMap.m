@@ -3897,12 +3897,12 @@ classdef ForceMap < matlab.mixin.Copyable
                 %figure('Name',sprintf('Results'))
                 hold on
                 
-                plot(frequencies, Dphi,'o',xq,vq,'-')
+                plot(frequencies, Dphi,'o',xq,vq,'-','DisplayName',sprintf('Curve %i',i))
                 hold on
                 title('Phaseshift of all curves')
                 xlabel('frequency [Hz]')
                 ylabel('phaseshift [°]')
-                legend(sprintf('Curve %i',i))
+                legend show
                 %drawnow
                 grid on
                 grid minor
@@ -3911,33 +3911,9 @@ classdef ForceMap < matlab.mixin.Copyable
                    whereToStore=fullfile(DirectoryPath,['results_' num2str(i) '.svg']);
                    saveas(gcf, whereToStore);
                 end
-%                 for j=1:obj.NumSegments
-%                     
-%                     p = [obj.DeltaPhi{i,j}];
-%                     
-%                     if obj.SegFrequency{j} > 0
-%                         
-                        
-                        %subplot(3,1,1)
                         
                         
-                        %legend({'shifted force data to zero line','filtered force data','fitted force data 1'},'Location','southoutside')
-                        %subplot(3,1,2)
-                        %plot(x,obj.HZShift{i,j},x,obj.FilterH{i,j},x,ypH)
-                        %legend({'shifted indentation data to zero line','filtered indentation data','fitted indentation data 1'},'Location','southoutside')
-                        %subplot(3,1,3)
-                        %plot(x,ypF)
-                        %findpeaks(ypF)
-                        %hold on
-                        %findpeaks(-obj.SineFunctionF)
-                        %findpeaks(ypH)
-                        %findpeaks(-obj.SineFunctionH)
-                        %legend({'force','force peak','indentation','indentation peak'},'Location','southoutside')
-                        
-                        
-%                     end
-                        
-                %end
+
             end
             
 
