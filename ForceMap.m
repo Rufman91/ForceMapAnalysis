@@ -3723,12 +3723,6 @@ classdef ForceMap < matlab.mixin.Copyable
                 lightblue = [0.101, 0.701, 0.976];
                 darkblue = [0.109, 0.078, 0.941];
                 
-                
-                
-                
-                %force time
-                figure(k)
-                hold on
                 for j=1:obj.NumSegments
                     
                        lengthApp = length(obj.App{i});
@@ -3746,27 +3740,6 @@ classdef ForceMap < matlab.mixin.Copyable
                        obj.SegTime{obj.NumSegments} = obj.TStart{obj.NumSegments}:obj.SecPerPoint{obj.NumSegments}:obj.TEnd{obj.NumSegments};
                        obj.SegTime{obj.NumSegments} = obj.SegTime{obj.NumSegments}.';
                        
-                       
-                       plot(obj.SegTime{j},obj.BasedForce{i,j}*MultiplierF,'m')
-                       title(sprintf('Force Time Curve %i',i),'FontSize', 18)
-                       xlabel('time in s','FontSize', 16)
-                       ylabel(sprintf('vDeflection-Force [%s]',UnitF),'FontSize', 16)
-                       grid on
-                       grid minor
-                       
-                       if DirectoryPath~=0
-                           whereToStore=fullfile(DirectoryPath,['force_time_curve_' num2str(i) '.svg']);
-                           saveas(gcf, whereToStore);
-                       end
-                       
-                end
-                       
-                %indentation time
-                figure(g)
-                hold on
-                for j=1:obj.NumSegments
-                    
-                    
                        lengthHHApp = length(obj.HHApp{i});
                        obj.SecPerPoint{1} = obj.SegDuration{1}/lengthHHApp;
                        obj.TStart{1} = obj.SecPerPoint{1}/2;
@@ -3781,127 +3754,109 @@ classdef ForceMap < matlab.mixin.Copyable
                        obj.SegTime{obj.NumSegments} = obj.TStart{obj.NumSegments}:obj.SecPerPoint{obj.NumSegments}:obj.TEnd{obj.NumSegments};
                        obj.SegTime{obj.NumSegments} = obj.SegTime{obj.NumSegments}.';
                        
-                      
-                       plot(obj.SegTime{j},obj.Indentation{i,j}*MultiplierI,'-','color',lightblue)
-                       ylim([yHmin yHmax])
-                       title(sprintf('Indentation Time Curve %i',i),'FontSize', 18)
-                       xlabel('time in s','FontSize', 16)
-                       ylabel(sprintf('Indentation [%s]',UnitI),'FontSize', 16);
-                       grid on
-                       grid minor
-                       
-                        if DirectoryPath~=0
-                           whereToStore=fullfile(DirectoryPath,['indentation_time_curve_' num2str(i) '.svg']);
-                           saveas(gcf, whereToStore);
-                       end
+                
                 end
                 
-                %force and indentation time
-                figure(h)
+                % Plot
+                figure('Name',sprintf('Microrheology Curves %i',i))
                 hold on
                 for j=1:obj.NumSegments
                     
-                       lengthHHApp = length(obj.HHApp{i});
-                       obj.SecPerPoint{1} = obj.SegDuration{1}/lengthHHApp;
-                       obj.TStart{1} = obj.SecPerPoint{1}/2;
-                       obj.TEnd{1} = obj.SeriesTime{1};
-                       obj.SegTime{1} = obj.TStart{1}:obj.SecPerPoint{1}:obj.TEnd{1};
-                       obj.SegTime{1} = obj.SegTime{1}.';
-                       
-                       lengthHHRet = length(obj.HHRet{i});
-                       obj.SecPerPoint{obj.NumSegments} = obj.SegDuration{obj.NumSegments}/lengthHHRet;
-                       obj.TStart{obj.NumSegments} = obj.SeriesTime{obj.NumSegments - 1}+(obj.SecPerPoint{obj.NumSegments}/2);
-                       obj.TEnd{obj.NumSegments} = obj.SeriesTime{obj.NumSegments};
-                       obj.SegTime{obj.NumSegments} = obj.TStart{obj.NumSegments}:obj.SecPerPoint{obj.NumSegments}:obj.TEnd{obj.NumSegments};
-                       obj.SegTime{obj.NumSegments} = obj.SegTime{obj.NumSegments}.';
-                       
-                       
-                       
+                    %subplot 1: force time 
+                    subplot(3,2,1)
+                    hold on
+                    plot(obj.SegTime{j},obj.BasedForce{i,j}*MultiplierF,'m')
+                    title(sprintf('Force Time Curve %i',i),'FontSize', 18)
+                    xlabel('time in s','FontSize', 16)
+                    ylabel(sprintf('vDeflection-Force [%s]',UnitF),'FontSize', 16)
+                    grid on
+                    grid minor
 
-                       hold on
+                    %subplot 2: indentation time
+                    subplot(3,2,2)
+                    plot(obj.SegTime{j},obj.Indentation{i,j}*MultiplierI,'-','color',lightblue)
+                    ylim([yHmin yHmax])
+                    title(sprintf('Indentation Time Curve %i',i),'FontSize', 18)
+                    xlabel('time in s','FontSize', 16)
+                    ylabel(sprintf('Indentation [%s]',UnitI),'FontSize', 16);
+                    grid on
+                    grid minor
 
-                       yyaxis left
-                       ylim([yFmin yFmax])
-                       plot(obj.SegTime{j},obj.BasedForce{i,j}*MultiplierF,'-m')
-                       set(gca, 'YColor', 'm')
-                       xlabel('time in s','FontSize', 16)
-                       ylabel(sprintf('vDeflection-Force [%s]',UnitF),'FontSize', 16)
-                       
+                    %subplot 3: force and indentation over time
+                    subplot(3,2,3)
+                    hold on
 
-                       yyaxis right
-                       ylim([yHmin yHmax])
-                       plot(obj.SegTime{j},obj.Indentation{i,j}*MultiplierI,'-','color',lightblue)
-                       set(gca, 'YColor', lightblue)
-                       title(sprintf('Force and Indentation over Time Curve %i',i),'FontSize', 18)
-                       ylabel(sprintf('Indentation [%s]',UnitI),'FontSize', 16);
-                       grid on
-                       grid minor
-                       
-                       
-                        if DirectoryPath~=0
-                           whereToStore=fullfile(DirectoryPath,['force_indentation_time_curve_' num2str(i) '.svg']);
-                           saveas(gcf, whereToStore);
-                       end
+                   yyaxis left
+                   ylim([yFmin yFmax])
+                   plot(obj.SegTime{j},obj.BasedForce{i,j}*MultiplierF,'-m')
+                   set(gca, 'YColor', 'm')
+                   xlabel('time in s','FontSize', 16)
+                   ylabel(sprintf('vDeflection-Force [%s]',UnitF),'FontSize', 16)
 
+
+                   yyaxis right
+                   ylim([yHmin yHmax])
+                   plot(obj.SegTime{j},obj.Indentation{i,j}*MultiplierI,'-','color',lightblue)
+                   set(gca, 'YColor', lightblue)
+                   title(sprintf('Force and Indentation over Time Curve %i',i),'FontSize', 18)
+                   ylabel(sprintf('Indentation [%s]',UnitI),'FontSize', 16);
+                   grid on
+                   grid minor
+
+
+                   % subplot 4: force vs indentation
+                   subplot(3,2,4)
+                   plot(obj.Indentation{i,1}*MultiplierI,obj.BasedForce{i,1}*MultiplierF,'-r',obj.Indentation{i,obj.NumSegments}*MultiplierI,obj.BasedForce{i,obj.NumSegments}*MultiplierF,'-b')
+                   hold on
+                   plot(obj.Indentation{i,j}*MultiplierI,obj.BasedForce{i,j}*MultiplierF,':m')
+                   xlim([-500 500])
+                   legend
+                   %plot(obj.Height{i,j},obj.Force{i,j},'r')
+                   title(sprintf('Force Indentation Curve %i',i),'FontSize', 18)
+                   xlabel(sprintf('Indentation [%s]',UnitI),'FontSize', 16);
+                   ylabel(sprintf('vDeflection-Force [%s]',UnitF),'FontSize', 16);
+                   grid on
+                   grid minor
+               
                 end
-
-                
-                %force indentation all segments
-                figure(m)
-                
+               
+               
+               if DirectoryPath~=0
+                   whereToStore=fullfile(DirectoryPath,['microrheology_curve_' num2str(i) '.svg']);
+                   saveas(gcf, whereToStore);
+               end
                        
-                hold on
-                for j=1:obj.NumSegments
-                    
-                       plot(obj.Indentation{i,1}*MultiplierI,obj.BasedForce{i,1}*MultiplierF,'-r',obj.Indentation{i,obj.NumSegments}*MultiplierI,obj.BasedForce{i,obj.NumSegments}*MultiplierF,'-b')
-                       hold on
-                       plot(obj.Indentation{i,j}*MultiplierI,obj.BasedForce{i,j}*MultiplierF,':m')
-                       xlim([-500 500])
-                       legend
-                       %plot(obj.Height{i,j},obj.Force{i,j},'r')
-                       title(sprintf('Force Indentation Curve %i',i),'FontSize', 18)
-                       xlabel(sprintf('Indentation [%s]',UnitI),'FontSize', 16);
-                       ylabel(sprintf('vDeflection-Force [%s]',UnitF),'FontSize', 16);
-                       grid on
-                       grid minor
+          
                        
-                       
-                       hold on
-                        if DirectoryPath~=0
-                           whereToStore=fullfile(DirectoryPath,['force_indentation_curve_' num2str(i) '.svg']);
-                           saveas(gcf, whereToStore);
-                       end
-                end
-                
                 
                 %force indentation only segments
-                s=2*obj.NCurves + 10*i;
-                for j=1:obj.NumSegments
-                    
-                    
-                    if obj.SegFrequency{j} > 0
-                        
-                        Freq = obj.SegFrequency{j};
-                        
-                        figure(s)
-                        plot(obj.Indentation{i,j}*MultiplierI,obj.BasedForce{i,j}*MultiplierF,'b')
-                        title(sprintf('Force Indentation Curve %i, %.1f [Hz]',i,Freq),'FontSize', 18)
-                        xlabel(sprintf('Indentation [%s]',UnitI),'FontSize', 16);
-                        ylabel(sprintf('vDeflection-Force [%s]',UnitF),'FontSize', 16);
-                        grid on
-                        grid minor
-                        
-                        if DirectoryPath~=0
-                           whereToStore=fullfile(DirectoryPath,['force_indentation_curve_' num2str(i) '_segment_' num2str(j) '.svg']);
-                           saveas(gcf, whereToStore);
-                        end
-                       
-                        
-                        
-                    end
-                    s=s+1;
-                       
-                end
+%                 s=2*obj.NCurves + 10*i;
+%                 for j=1:obj.NumSegments
+%                     
+%                     
+%                     if obj.SegFrequency{j} > 0
+%                         
+%                         Freq = obj.SegFrequency{j};
+%                         
+%                         figure(s)
+%                         plot(obj.Indentation{i,j}*MultiplierI,obj.BasedForce{i,j}*MultiplierF,'b')
+%                         title(sprintf('Force Indentation Curve %i, %.1f [Hz]',i,Freq),'FontSize', 18)
+%                         xlabel(sprintf('Indentation [%s]',UnitI),'FontSize', 16);
+%                         ylabel(sprintf('vDeflection-Force [%s]',UnitF),'FontSize', 16);
+%                         grid on
+%                         grid minor
+%                         
+%                         if DirectoryPath~=0
+%                            whereToStore=fullfile(DirectoryPath,['force_indentation_curve_' num2str(i) '_segment_' num2str(j) '.svg']);
+%                            saveas(gcf, whereToStore);
+%                         end
+%                        
+%                         
+%                         
+%                     end
+%                     s=s+1;
+%                        
+%                 end
                 
                 
                 
@@ -3919,7 +3874,7 @@ classdef ForceMap < matlab.mixin.Copyable
             DirectoryPath = uigetdir();
             k=1;
             
-            figure(k)
+            figure('Name',sprintf('Results %i',i))
             hold on
             for i=1:obj.NCurves
                 hold on
@@ -3960,7 +3915,7 @@ classdef ForceMap < matlab.mixin.Copyable
             grid minor
 
             if DirectoryPath~=0
-               whereToStore=fullfile(DirectoryPath,['fit_curve_' num2str(i) '_segment_' num2str(j) '.svg']);
+               whereToStore=fullfile(DirectoryPath,['results_' num2str(i) '.svg']);
                saveas(gcf, whereToStore);
             end
  
