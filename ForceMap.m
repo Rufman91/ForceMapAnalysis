@@ -3897,11 +3897,12 @@ classdef ForceMap < matlab.mixin.Copyable
                 %figure('Name',sprintf('Results'))
                 hold on
                 
-                plot(frequencies, Dphi,'o',xq,vq,'-','DisplayName',sprintf('Curve %i',i))
+                plot(xq,vq,'-','DisplayName',sprintf('Curve %i',i))
                 hold on
-                title('Phaseshift of all curves')
-                xlabel('frequency [Hz]')
-                ylabel('phaseshift [°]')
+                plot(frequencies, Dphi,'o')
+                title('Phaseshift of all curves','FontSize', 18)
+                xlabel('frequency [Hz]','FontSize', 16)
+                ylabel('phaseshift [°]','FontSize', 16)
                 legend show
                 %drawnow
                 grid on
