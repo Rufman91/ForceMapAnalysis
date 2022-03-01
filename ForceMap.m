@@ -3758,7 +3758,7 @@ classdef ForceMap < matlab.mixin.Copyable
                 for j=1:obj.NumSegments
                     
                     %subplot 1: force time 
-                    subplot(4,2,1)
+                    subplot(3,2,1)
                     hold on
                     plot(obj.SegTime{j},obj.BasedForce{i,j}*MultiplierF,'m')
                     title(sprintf('Force Time Curve %i',i),'FontSize', 18)
@@ -3768,7 +3768,7 @@ classdef ForceMap < matlab.mixin.Copyable
                     grid minor
 
                     %subplot 2: indentation time
-                    subplot(4,2,2)
+                    subplot(3,2,2)
                     hold on
                     plot(obj.SegTime{j},obj.Indentation{i,j}*MultiplierI,'-','color',lightblue)
                     ylim([yHmin yHmax])
@@ -3779,7 +3779,7 @@ classdef ForceMap < matlab.mixin.Copyable
                     grid minor
 
                     %subplot 3: force and indentation over time
-                    subplot(4,2,5)
+                    subplot(3,2,5)
                     hold on
 
                    yyaxis left
@@ -3801,7 +3801,7 @@ classdef ForceMap < matlab.mixin.Copyable
 
 
                    % subplot 4: force vs indentation
-                   subplot(4,2,6)
+                   subplot(3,2,6)
                    plot(obj.Indentation{i,1}*MultiplierI,obj.BasedForce{i,1}*MultiplierF,'-r',obj.Indentation{i,obj.NumSegments}*MultiplierI,obj.BasedForce{i,obj.NumSegments}*MultiplierF,'-b')
                    hold on
                    plot(obj.Indentation{i,j}*MultiplierI,obj.BasedForce{i,j}*MultiplierF,':m')
@@ -3819,7 +3819,7 @@ classdef ForceMap < matlab.mixin.Copyable
                    l1.LineWidth = 3;
                    l2.LineWidth = 3;
                    l3.LineWidth = 3;
-                   legend([l1, l2, l3], {'approach', 'retract','modulation'}, 'Location', 'southoutside','FontSize', 14)
+                   legend([l1, l2, l3], {'approach', 'retract','modulation'}, 'FontSize', 12)
 
                
                 end
