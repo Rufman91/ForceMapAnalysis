@@ -3933,7 +3933,7 @@ classdef ForceMap < matlab.mixin.Copyable
                 plot(frequencies, losstangent,'o','HandleVisibility','off')
                 title('Loss Tangent of all curves','FontSize', 18)
                 xlabel('frequency [Hz]','FontSize', 16)
-                ylabel('losstangent [°]','FontSize', 16)
+                ylabel('losstangent','FontSize', 16)
                 legend show
                 %drawnow
                 grid on
