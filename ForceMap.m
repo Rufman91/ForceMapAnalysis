@@ -3758,7 +3758,7 @@ classdef ForceMap < matlab.mixin.Copyable
                 for j=1:obj.NumSegments
                     
                     %subplot 1: force time 
-                    subplot(3,2,1)
+                    subplot(4,2,1)
                     hold on
                     plot(obj.SegTime{j},obj.BasedForce{i,j}*MultiplierF,'m')
                     title(sprintf('Force Time Curve %i',i),'FontSize', 18)
@@ -3768,7 +3768,7 @@ classdef ForceMap < matlab.mixin.Copyable
                     grid minor
 
                     %subplot 2: indentation time
-                    subplot(3,2,2)
+                    subplot(4,2,2)
                     hold on
                     plot(obj.SegTime{j},obj.Indentation{i,j}*MultiplierI,'-','color',lightblue)
                     ylim([yHmin yHmax])
@@ -3779,7 +3779,7 @@ classdef ForceMap < matlab.mixin.Copyable
                     grid minor
 
                     %subplot 3: force and indentation over time
-                    subplot(3,2,5)
+                    subplot(4,2,5)
                     hold on
 
                    yyaxis left
@@ -3787,7 +3787,7 @@ classdef ForceMap < matlab.mixin.Copyable
                    plot(obj.SegTime{j},obj.BasedForce{i,j}*MultiplierF,'-m')
                    set(gca, 'YColor', 'm')
                    xlabel('time in s','FontSize', 16)
-                   ylabel(sprintf('vDeflection-Force [%s]',UnitF),'FontSize', 16)
+                   ylabel(sprintf('vDeflection-Force [%s]',UnitF),'FontSize', 12)
 
 
                    yyaxis right
@@ -3795,20 +3795,20 @@ classdef ForceMap < matlab.mixin.Copyable
                    plot(obj.SegTime{j},obj.Indentation{i,j}*MultiplierI,'-','color',lightblue)
                    set(gca, 'YColor', lightblue)
                    title(sprintf('Force and Indentation over Time Curve %i',i),'FontSize', 18)
-                   ylabel(sprintf('Indentation [%s]',UnitI),'FontSize', 16);
+                   ylabel(sprintf('Indentation [%s]',UnitI),'FontSize', 12);
                    grid on
                    grid minor
 
 
                    % subplot 4: force vs indentation
-                   subplot(3,2,6)
+                   subplot(4,2,6)
                    plot(obj.Indentation{i,1}*MultiplierI,obj.BasedForce{i,1}*MultiplierF,'-r',obj.Indentation{i,obj.NumSegments}*MultiplierI,obj.BasedForce{i,obj.NumSegments}*MultiplierF,'-b')
                    hold on
                    plot(obj.Indentation{i,j}*MultiplierI,obj.BasedForce{i,j}*MultiplierF,':m')
-                   xlim([-500 500])
+                   xlim([-200 200])
                    title(sprintf('Force Indentation Curve %i',i),'FontSize', 18)
-                   xlabel(sprintf('Indentation [%s]',UnitI),'FontSize', 16);
-                   ylabel(sprintf('vDeflection-Force [%s]',UnitF),'FontSize', 16);
+                   xlabel(sprintf('Indentation [%s]',UnitI),'FontSize', 12);
+                   ylabel(sprintf('vDeflection-Force [%s]',UnitF),'FontSize', 12);
                    grid on
                    grid minor
                    
