@@ -3762,8 +3762,8 @@ classdef ForceMap < matlab.mixin.Copyable
                     hold on
                     plot(obj.SegTime{j},obj.BasedForce{i,j}*MultiplierF,'m')
                     title(sprintf('Force Time Curve %i',i),'FontSize', 18)
-                    xlabel('time in s','FontSize', 16)
-                    ylabel(sprintf('vDeflection-Force [%s]',UnitF),'FontSize', 16)
+                    xlabel('time in s','FontSize', 12)
+                    ylabel(sprintf('vDeflection-Force [%s]',UnitF),'FontSize', 12)
                     grid on
                     grid minor
 
@@ -3773,8 +3773,8 @@ classdef ForceMap < matlab.mixin.Copyable
                     plot(obj.SegTime{j},obj.Indentation{i,j}*MultiplierI,'-','color',lightblue)
                     ylim([yHmin yHmax])
                     title(sprintf('Indentation Time Curve %i',i),'FontSize', 18)
-                    xlabel('time in s','FontSize', 16)
-                    ylabel(sprintf('Indentation [%s]',UnitI),'FontSize', 16);
+                    xlabel('time in s','FontSize', 12)
+                    ylabel(sprintf('Indentation [%s]',UnitI),'FontSize', 12);
                     grid on
                     grid minor
 
@@ -3786,7 +3786,7 @@ classdef ForceMap < matlab.mixin.Copyable
                    ylim([yFmin yFmax])
                    plot(obj.SegTime{j},obj.BasedForce{i,j}*MultiplierF,'-m')
                    set(gca, 'YColor', 'm')
-                   xlabel('time in s','FontSize', 16)
+                   xlabel('time in s','FontSize', 12)
                    ylabel(sprintf('vDeflection-Force [%s]',UnitF),'FontSize', 12)
 
 
@@ -3816,10 +3816,10 @@ classdef ForceMap < matlab.mixin.Copyable
                    hold on
                    l2 = plot(nan, nan, '-b');
                    l3 = plot(nan, nan, ':m');
-                   l1.LineWidth = 3;
-                   l2.LineWidth = 3;
-                   l3.LineWidth = 3;
-                   legend([l1, l2, l3], {'approach', 'retract','modulation'}, 'FontSize', 12)
+                   l1.LineWidth = 2;
+                   l2.LineWidth = 2;
+                   l3.LineWidth = 2;
+                   legend([l1, l2, l3], {'approach', 'retract','modulation'}, 'FontSize', 8)
 
                
                 end
