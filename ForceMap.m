@@ -3873,8 +3873,8 @@ classdef ForceMap < matlab.mixin.Copyable
             DirectoryPath = uigetdir();
             k=1;
             
-            %figure('Name',sprintf('Results'))
-            %hold on
+            figure('Name',sprintf('Results'))
+            hold on
             for i=1:obj.NCurves
                 
                 Dphi = zeros(obj.NumSegments,1);
@@ -3887,12 +3887,14 @@ classdef ForceMap < matlab.mixin.Copyable
                 end
                 Dphi = Dphi(Dphi ~= 0);
                 frequencies = frequencies(frequencies ~= 0);
-                %p = [Dphi frequencies];
                 
-                xq = 0.1:0.1:1;
+                minfreq = min(frequencies);
+                maxfreq = max(frequencies);
+                
+                xq = 0:0.1:maxfreq;
                 vq = interp1(frequencies,Dphi,xq,'spline');
                 
-                figure('Name',sprintf('Results'))
+                %figure('Name',sprintf('Results'))
                 hold on
                 
                 plot(frequencies, Dphi,'o',xq,vq,'-')
