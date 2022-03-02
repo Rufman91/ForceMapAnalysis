@@ -3909,8 +3909,15 @@ classdef ForceMap < matlab.mixin.Copyable
                 xq = 0:0.1:maxfreq;
                 vqDphi = interp1(frequencies,Dphi,xq,'spline');
                 vqLosstangent = interp1(frequencies,losstangent,xq,'spline');
-                vqEmodmicro1 = interp1(frequencies,emodmicro1,xq,'spline');
-                vqEmodmicro2 = interp1(frequencies,emodmicro2,xq,'spline');
+                try
+                    vqEmodmicro1 = interp1(frequencies,emodmicro1,xq,'spline');
+                    vqEmodmicro2 = interp1(frequencies,emodmicro2,xq,'spline');
+                catch
+                    vqEmodmicro1 = zeros(length(xq),1);
+                    vqEmodmicro2 = zeros(length(xq),1);
+                    emodmicro1(isnan(emodmicro1))=0;
+                    emodmicro2(isnan(emodmicro2))=0;
+                end
                 
                 %figure('Name',sprintf('Results'))
                 hold on
