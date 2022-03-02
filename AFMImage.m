@@ -182,7 +182,7 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             
             obj.DepthDependendTipRadius = obj.calculate_depth_dependend_tip_data(obj.ProjectedTipArea,75);
             
-            obj.fit_tip_radius_to_depth_polynomial;
+            %obj.fit_tip_radius_to_depth_polynomial;
             
             obj.hasDeconvolutedCantileverTip = true;
             close(h); 
