@@ -314,7 +314,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             Folder = fullfile(Split{1:end-1});
             File = Split{end};
             % If file path had a leading filesep, add it back in
-            if isequal(obj.RawDataFilePath{1}(1),filesep)
+            if isequal(obj.RawDataFilePath(1),filesep)
                 Folder = strcat(filesep,Folder);
             end
             cd(Folder)
@@ -4701,7 +4701,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 % with the python loader.
                 copyfile(MapFullFile,TempFolder)
                 Split = split(MapFullFile,filesep);
-                obj.RawDataFilePath = fullfile(TempFolder,Split(end));
+                obj.RawDataFilePath = fullfile(TempFolder,Split{end});
                 obj.load_zipped_files_with_python
             end
             
