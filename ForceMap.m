@@ -6,7 +6,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
     % words
     % -class methods are in lowercase letters and get underscores between
     % words
-    %%%%%%%%%%%%%%%%%%%%%%%%%%DISCLAIMER%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %%%%%%%%%%%%%%%%%%%%%%%%%%DISCLAIMER%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % This is a handle-class and as such the associated class methods
     % should be  called by using the class-INSTANCE and not the classname
     % 'ForceMap'.
@@ -26,10 +26,14 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
         Date            % date when the force map was detected
         Time            % time when the force map was detected
         FileVersion     % Version of jpk-force-map file
-        Folder          % location of the .csv files of the force map
         DataStoreFolder % 
+        RawDataFilePath
+        OpenZipFile
         BigDataFlag     % If true, unpack data container into Experiment subfolder
                         % and always load force volume data from there
+        PythonLoaderFlag
+        KeepPythonFilesOpen % Decides whether to preload all PythonLoader Files into memory
+                            % all the time
         FractionOfMaxRAM = 1/5 % Specifies how much of MaxRAM space can be taken for certain partitioned calculations 
         NCurves         % number of curves on the force map
         MaxPointsPerCurve
@@ -45,6 +49,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
         RefSlopeCorrectedSensitivity
         SpringConstant
         Setpoint
+        RescalingConstants
         DBanding        % Fourieranalysis-based estimate of DBanding perdiod (only available with sufficient resolution)
         RefSlope        % Refernce slope as determined from the upper curve slope from data from very hard      
         % surfaces (mica,glass), either from glass parts beneath the specimen or from
@@ -99,8 +104,6 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
         DeltaE = {}     %
         YDropPred       % Contains the Dropoutpredictions for every curve in the forcemap
         CP_Old          % contact point estimation from old script 'A_nIAFM_analysis_main'
-        LoadOld         % comes from same script as CP_old
-        UnloadOld       % comes from same script as CP_old
         Man_CP          % manually chosen contact point
         CP_HardSurface  % Detract cantilever deflection for CP estimation
         CPFlag          % Struct containing booleans to indicate if a certain CP-type has been estimated
@@ -116,6 +119,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
         FibDiamSTD      % Estimated fibril diameter std
         FibMask         % Logical mask marking the whole fibril
         BackgroundMask  % Logical mask marking the glass/mica/even-substrate background
+        RefSlopeMask    % Logical mask marking the areas to consider for reference slope calculation
         ExclMask        % Manually chosen areas that are to be excluded for calculations of fibril EMod, FibDiam, DBanding etc.
         Apex            % Value of highest pixel in each profile
         RectApex        % Value of rectified apex location in each profile
@@ -134,6 +138,9 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
         FibrilEModOliverPharr
         FibrilEModHertz
         HertzFit        % HertzFit model generated in the calculate_e_mod_hertz method
+        HertzFitType
+        HertzFitCoeffNames
+        HertzFitValues
         SnapIn
         MaxAdhesionForce
         AdhesionEnergy
@@ -142,6 +149,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
         ElasticEnergy
         PeakIndentationAngle
         IndentationDepth
+        IndentationDepthHertz
         DZslope
         Stiffness
         IndentationDepthOliverPharr
@@ -152,6 +160,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
     properties
         % auxiliary properties to facilitate comparing different methods of
         % CP estimation
+        NeuralNetAccelerator
         EModOliverPharr_CNN
         EModOliverPharr_Old
         EModOliverPharr_RoV
@@ -257,7 +266,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
     methods
         % Main methods of the class
         
-        function obj = ForceMap(MapFullFile,DataFolder,TempID,BigData,FakeOpt,NSynthCurves)
+        function obj = ForceMap(MapFullFile,DataFolder,TempID,BigData,PythonLoaderFlag,KeepPythonFilesOpen,FakeOpt,NSynthCurves)
             %%% Constructor of the class
             
             % Specify the folder where the files live. And import them.
@@ -266,19 +275,19 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             % Assigns the properties that can be found in the jpk-file
             % already
             
-            current = what();
-            
             obj.ID = TempID;
             obj.BigDataFlag = BigData;
+            obj.PythonLoaderFlag = PythonLoaderFlag;
+            obj.KeepPythonFilesOpen = KeepPythonFilesOpen;
             
-            if nargin >= 5 && isequal(FakeOpt,'Dummy')
+            if nargin >= 7 && isequal(FakeOpt,'Dummy')
                 obj.create_dummy_force_map(NSynthCurves);
             end
             
             % get OS and use appropriate fitting system command
             obj.check_for_new_host
             
-            % Unpack jpk-force-map with 7zip call to the terminal
+            % Unpack jpk-force-map with according to data loader choice
             obj.unpack_jpk_force_map(MapFullFile,DataFolder);
             
             Index = regexp(obj.ID,'(?<=\-).','all');
@@ -292,7 +301,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             
             try
                 obj.read_jpk_images_from_files
-            catch
+            catch ME
+                warning(['Could not read standard Image Channels from file ' MapFullFile])
             end
             
             if ~obj.BigDataFlag
@@ -308,9 +318,55 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             obj.FibMask = logical(zeros(obj.NumPixelsX,obj.NumPixelsY));
             
             obj.construct_list_to_map_relations
-            obj.create_pixel_difference_channel
+            try
+                obj.create_pixel_difference_channel
+                obj.set_channel_positions(obj.OriginX,obj.OriginY,obj.ScanAngle);
+            catch
+                warning(['Could not create Pixel Difference Channel for ' MapFullFile])
+            end
             
             obj.initialize_flags();
+            if ~obj.KeepPythonFilesOpen && obj.PythonLoaderFlag && obj.BigDataFlag
+                obj.clear_zipped_files_from_memory
+            end
+        end
+        
+        function load_zipped_files_with_python(obj)
+            % loads ForceMap source file (*.jpk-forrce-map,*.jpk-qi-data)
+            % into memory and keeps it, open for the session
+            
+            if ~isempty(obj.OpenZipFile) && isequal(class(obj.OpenZipFile),'py.zipfile.ZipFile')
+                disp(sprintf('File %s already loaded in',obj.Name))
+                return
+            end
+            
+            current = what;
+            Split = split(obj.RawDataFilePath,filesep);
+            Folder = fullfile(Split{1:end-1});
+            File = Split{end};
+            % If file path had a leading filesep, add it back in
+            if isequal(obj.RawDataFilePath(1),filesep)
+                Folder = strcat(filesep,Folder);
+            end
+            cd(Folder)
+            obj.OpenZipFile = py.zipfile.ZipFile(File);
+            
+            cd(current.path)
+        end
+        
+        function clear_zipped_files_from_memory(obj)
+            
+            if isempty(obj.OpenZipFile)
+                return;
+            end
+            
+            try
+                obj.OpenZipFile.close();
+                obj.OpenZipFile = [];
+            catch
+                obj.OpenZipFile = [];
+            end
+            
         end
         
         function choose_curves(obj)
@@ -509,6 +565,12 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 AboveZeroBool = zeros(length(App),1);
                 AboveZeroBool(find(App>0)) = 1;
                 k = 0;
+                if ~AboveZeroBool(end) || (sum(AboveZeroBool)==length(AboveZeroBool))
+                    obj.SelectedCurves(i) = 0;
+                    obj.CorruptedCurves(i) = 1;
+                    warning(['Curve Nr. ' num2str(i) ' is consistently above 0 force [N]'])
+                    continue
+                end
                 while AboveZeroBool(end-k)
                     k = k + 1;
                 end
@@ -679,6 +741,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             % Default NumPasses = 100
             % NumPasses >= 30 is recommended
             
+            obj.check_for_cuda_capable_gpu_device()
+            
             if nargin < 2
                 runmode = 0;
             elseif isequal(lower(RunMode),'fast')
@@ -700,7 +764,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             elseif isequal(lower(RunMode),'zoomsweep')
                 runmode = 4;
                 if nargin < 3
-                    NumPasses = 20; % if not specified in arguments, NumPasses defaults to 20
+                    NumPasses = 5; % if not specified in arguments, NumPasses defaults to 20
                 end
             end
             ImgSize = NeuralNet.Layers(1).InputSize;
@@ -715,11 +779,15 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                     Mem = memory;
                     MaxArraySize = Mem.MaxPossibleArrayBytes;
                 else
-                    [r,w] = unix('free | grep Mem');
-                    stats = str2double(regexp(w, '[0-9]*', 'match'));
-                    memsize = stats(1)/1e6;
-                    freemem = (stats(3)+stats(end))/1e6;
-                    MaxArraySize = freemem*10^9;
+                    try
+                        [r,w] = unix('free | grep Mem');
+                        stats = str2double(regexp(w, '[0-9]*', 'match'));
+                        memsize = stats(1)/1e6;
+                        freemem = (stats(3)+stats(end))/1e6;
+                        MaxArraySize = freemem*10^9;
+                    catch
+                        MaxArraySize = 1e9;
+                    end
                 end
                 if sum(runmode==[1 3 4],'all') >= 1
                     MaxPartitionSize = round(MaxArraySize/(ImgSize(1)*ImgSize(2)*ImgSize(3)*NumPasses));
@@ -749,7 +817,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                             waitbar(1/2,h,'Predicting CP');
                             while CantHandle == true
                                 try
-                                    Ypredicted = predict(NeuralNet,X,'MiniBatchSize',obj.MiniBatchSize,'Acceleration','auto');
+                                    Ypredicted = predict(NeuralNet,X,'MiniBatchSize',obj.MiniBatchSize,'Acceleration','auto',...
+                                        'ExecutionEnvironment',obj.NeuralNetAccelerator);
                                     CantHandle = false;
                                 catch
                                     obj.CPFlag.CNNopt = 0;
@@ -777,7 +846,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                                 waitbar(j/NumPasses,h,sprintf('Predicting CP for %i curves. %i/%i passes done',len,j,NumPasses));
                                 while CantHandle == true
                                     try
-                                        Temp = predict(NeuralNet,X,'MiniBatchSize',obj.MiniBatchSize,'Acceleration','auto');
+                                        Temp = predict(NeuralNet,X,'MiniBatchSize',obj.MiniBatchSize,'Acceleration','auto',...
+                                        'ExecutionEnvironment',obj.NeuralNetAccelerator);
                                         CantHandle = false;
                                     catch
                                         CantHandle = true;
@@ -811,7 +881,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                             waitbar(1/3,h,'Predicting CP, first guess...');
                             while CantHandle == true
                                 try
-                                    Ypredicted = predict(NeuralNet,X,'MiniBatchSize',obj.MiniBatchSize,'Acceleration','auto');
+                                    Ypredicted = predict(NeuralNet,X,'MiniBatchSize',obj.MiniBatchSize,'Acceleration','auto',...
+                                        'ExecutionEnvironment',obj.NeuralNetAccelerator);
                                     CantHandle = false;
                                 catch
                                     obj.CPFlag.CNNopt = 0;
@@ -837,7 +908,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                             CantHandle = true;
                             while CantHandle == true
                                 try
-                                    Ypredicted = predict(NeuralNet,X,'MiniBatchSize',obj.MiniBatchSize,'Acceleration','auto');
+                                    Ypredicted = predict(NeuralNet,X,'MiniBatchSize',obj.MiniBatchSize,'Acceleration','auto',...
+                                        'ExecutionEnvironment',obj.NeuralNetAccelerator);
                                     CantHandle = false;
                                 catch
                                     obj.CPFlag.CNNopt = 0;
@@ -864,7 +936,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                             waitbar(1/3,h,'Predicting CP, first guess...');
                             while CantHandle == true
                                 try
-                                    Ypredicted = predict(NeuralNet,X,'MiniBatchSize',obj.MiniBatchSize,'Acceleration','auto');
+                                    Ypredicted = predict(NeuralNet,X,'MiniBatchSize',obj.MiniBatchSize,'Acceleration','auto',...
+                                        'ExecutionEnvironment',obj.NeuralNetAccelerator);
                                     CantHandle = false;
                                 catch
                                     obj.CPFlag.CNNopt = 0;
@@ -890,7 +963,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                             CantHandle = true;
                             while CantHandle == true
                                 try
-                                    Ypredicted = predict(NeuralNet,X,'MiniBatchSize',obj.MiniBatchSize,'Acceleration','auto');
+                                    Ypredicted = predict(NeuralNet,X,'MiniBatchSize',obj.MiniBatchSize,'Acceleration','auto',...
+                                        'ExecutionEnvironment',obj.NeuralNetAccelerator);
                                     CantHandle = false;
                                 catch
                                     obj.CPFlag.CNNopt = 0;
@@ -916,7 +990,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                             waitbar(1/3,h,sprintf('Predicting CP, first guess...(Partition %i/%i)',BigLoop,NumPartitions));
                             while CantHandle == true
                                 try
-                                    Ypredicted = predict(NeuralNet,X,'MiniBatchSize',obj.MiniBatchSize,'Acceleration','auto');
+                                    Ypredicted = predict(NeuralNet,X,'MiniBatchSize',obj.MiniBatchSize,'Acceleration','auto',...
+                                        'ExecutionEnvironment',obj.NeuralNetAccelerator);
                                     CantHandle = false;
                                 catch
                                     obj.CPFlag.CNNopt = 0;
@@ -946,7 +1021,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                             CantHandle = true;
                             while CantHandle == true
                                 try
-                                    Ypredicted = predict(NeuralNet,X,'MiniBatchSize',obj.MiniBatchSize,'Acceleration','auto');
+                                    Ypredicted = predict(NeuralNet,X,'MiniBatchSize',obj.MiniBatchSize,'Acceleration','auto',...
+                                        'ExecutionEnvironment',obj.NeuralNetAccelerator);
                                     CantHandle = false;
                                 catch
                                     obj.CPFlag.CNNopt = 0;
@@ -1008,7 +1084,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                     unload(end-(j-1),1) = HHRet(j);
                     unload(j,2) = Ret(j);
                 end
-                [obj.LoadOld{i},obj.UnloadOld{i},Position,vDef] = ContactPoint_sort(load,unload);
+                [LoadOld{i},UnloadOld{i},Position,vDef] = ContactPoint_sort(load,unload);
                 obj.CP(i,2) = App(Position);
                 obj.CP(i,1) = HHApp(Position);
                 obj.CP_Old(i,1) =obj.CP(i,1);
@@ -1135,26 +1211,48 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             obj.CPFlag.HardSurface = 1;
         end
         
-        function [E,HertzFit] = calculate_e_mod_hertz(obj,CPType,TipShape,curve_percent,AllowXShift,CorrectSensitivity,UseTipData,UseTopology,TipObject)
-            % [E,HertzFit] = calculate_e_mod_hertz(obj,CPType,TipShape,curve_percent)
-            %
-            % calculate the E modulus of the chosen curves using the CP
-            % type chosen in the arguments fitting the upper curve_percent
-            % part of the curves
-            if ~exist('curve_percent','var') && ischar('curve_percent')
-                curve_percent = 0.75;
-            end
-            if ~exist('TipShape','var') && ~ischar(TipShape)
-                TipShape = 'parabolic';
-            end
+        function E = calculate_e_mod_hertz(obj,CPType,TipShape,LowerCurvePercent,...
+                UpperCurvePercent,AllowXShift,CorrectSensitivity,UseTipData,...
+                UseTopology,TipObject,DataWeightByDistanceBool,...
+                SortHeightDataForFit,FitDegreeForSneddonPolySurf)
+%                 E = calculate_e_mod_hertz(obj,CPType,TipShape,LowerCurvePercent,...
+%                 UpperCurvePercent,AllowXShift,CorrectSensitivity,UseTipData,...
+%                 UseTopology,TipObject,DataWeightByDistanceBool,...
+%                 SortHeightDataForFit)
+
             if nargin < 5
                 AllowXShift = false;
                 CorrectSensitivity = false;
                 UseTipData = false;
             end
+            
+            if isequal(lower(TipShape),'parabolic')
+                if AllowXShift
+                    FitFunction = 'a*(x+b)^(3/2)';
+                else
+                    Fitfunction = 'a*(x)^(3/2)';
+                end
+            elseif isequal(lower(TipShape,'sneddonpolysurf'))
+                Area = TipObject.DepthDependendTipRadius;
+                Radius = sqrt(Area/pi);
+                Depth = [1:length(Radius)]'.*1e-9;
+                RangeR = range(Radius);
+                RangeD = range(Depth);
+                X = Radius/RangeR;
+                Y = Depth/RangeD;
+                TypeString = '';
+                for i=1:FitDegreeForSneddonPolySurf
+                    TypeString = [TypeString '+c' num2str(i,'%02u') '*x^' num2str(i)];
+                end
+                FitType = fittype(TypeString);
+                FitOpts = fitoptions('Method','LinearLeastSquares');
+                FitObject = fit(X,Y,FitType,FitOpts);
+            end
+            
             iRange = find(obj.SelectedCurves);
             obj.EModHertz = zeros(obj.NCurves,1);
             obj.IndentationDepth = zeros(obj.NCurves,1);
+            obj.IndentationDepthHertz = zeros(obj.NCurves,1);
             while ~isempty(iRange')
                 NumWorkers = 8;
                 BatchSize = min(NumWorkers,length(iRange));
@@ -1177,6 +1275,9 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 end
                 for i=1:BatchSize
                     [App{i},HHApp{i}] = obj.get_force_curve_data(iRange(i),0,1,0);
+                    if SortHeightDataForFit
+                        HHApp{i} = sort(HHApp{i},'ascend');
+                    end
                     force{i} = App{i} - CP(i,2);
                     if CorrectSensitivity
                         force{i} = force{i}.*obj.RefSlopeCorrectedSensitivity/obj.Sensitivity;
@@ -1191,12 +1292,21 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                     % delete everything below curve_percent of the maximum
                     % force
                     force{i}(1:(length(force{i})-length(tip_h{i}))) = [];
-                    force{i}(force{i}<(1-curve_percent)*max(force{i})) = [];
+                    force{i}(force{i}<(LowerCurvePercent)*max(force{i})) = [];
+                    force{i}(force{i}>(UpperCurvePercent)*max(force{i})) = [];
                     tip_h{i}(1:(length(tip_h{i})-length(force{i}))) = [];
                     RangeF{i} = range(force{i});
                     RangeTH{i} = range(tip_h{i});
                     force{i} = force{i}/RangeF{i};
                     tip_h{i} = tip_h{i}/RangeTH{i};
+                    if DataWeightByDistanceBool
+                        Points = [tip_h{i}(1:end-1) force{i}(1:end-1)];
+                        ShiftedPoints = [tip_h{i}(2:end) force{i}(2:end)];
+                        TempPointWeight = vecnorm(Points-ShiftedPoints,2,2);
+                        PointWeights{i} = [TempPointWeight(1) ; TempPointWeight];
+                    else
+                        PointWeights{i} = ones(length(force{i}),1);
+                    end
                 end
                 parfor i=1:BatchSize
                     if AllowXShift
@@ -1204,14 +1314,16 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                             'Lower',[10^(-5) -min(tip_h{i})],...
                             'Upper',[inf min(tip_h{i})],...
                             'MaxIter',100,...
-                            'Startpoint',[1 0]);
-                        f = fittype('a*(x+b)^(3/2)','options',s);
+                            'Startpoint',[1 0],...
+                            'Weights',PointWeights{i});
+                        f = fittype(FitFunction,'options',s);
                     else
                         s = fitoptions('Method','NonlinearLeastSquares',...
                             'Lower',10^(-5),...
                             'Upper',inf,...
-                            'Startpoint',1);
-                        f = fittype('a*(x)^(3/2)','options',s);
+                            'Startpoint',1,...
+                            'Weights',PointWeights{i});
+                        f = fittype(FitFunction,'options',s);
                     end
                     try
                         Hertzfit{i} = fit(tip_h{i},...
@@ -1233,6 +1345,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                                     DepthRemainder = obj.IndentationDepth(iRange(i))*1e9 - DepthIndex;
                                     if DepthIndex >= length(TipObject.DepthDependendTipRadius)
                                         DepthIndex = length(TipObject.DepthDependendTipRadius) - 1;
+                                        DepthRemainder = 0;
                                     end
                                     if DepthIndex == 0
                                         TipRadius = TipObject.DepthDependendTipRadius(DepthIndex+1)*DepthRemainder;
@@ -1247,7 +1360,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                         else
                             if UseTipData
                                 DepthIndex = floor(obj.IndentationDepth(iRange(i))*1e9);
-                                DepthRemainder = obj.IndentationDepth(iRange(i)) - DepthIndex;
+                                DepthRemainder = obj.IndentationDepth(iRange(i))*1e9 - DepthIndex;
                                 if DepthIndex >= length(TipObject.DepthDependendTipRadius)
                                     DepthIndex = length(TipObject.DepthDependendTipRadius) - 1;
                                 end
@@ -1281,9 +1394,16 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                             obj.CP_HertzFitted(iRange(i),2) = CP(i,2);
                             % Not sure about this one
                             % obj.IndentationDepth(i) = obj.IndentationDepth(i) + Hertzfit.b;
+                            obj.IndentationDepthHertz(iRange(i)) = Max{i}(1)+Hertzfit{i}.b;
                         end
                         warning('on','all');
-                        obj.HertzFit{iRange(i)} = Hertzfit{i};
+                        %                         obj.HertzFit{iRange(i)} = Hertzfit{i};
+                        try
+                            obj.HertzFitType = formula(Hertzfit{i});
+                            obj.HertzFitCoeffNames = coeffnames(Hertzfit{i});
+                        catch
+                        end
+                        obj.HertzFitValues{iRange(i)} = coeffvalues(Hertzfit{i});
                     catch
                         obj.SelectedCurves(iRange(i)) = 0;
                         warning('on','all');
@@ -1292,7 +1412,6 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 iRange(1:BatchSize) = [];
             end
             E = obj.EModHertz;
-            HertzFit = obj.HertzFit;
             if isequal(lower(CPType),'cnn')
                 obj.EModHertz_CNN = E;
             elseif isequal(lower(CPType),'old')
@@ -1304,6 +1423,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 for j=1:obj.NumPixelsY
                     obj.EModMapHertz(i,j,1) = obj.EModHertz(obj.Map2List(i,j));
                     IndDepMap(i,j) = obj.IndentationDepth(obj.Map2List(i,j));
+                    IndDepMapHertz(i,j) = obj.IndentationDepthHertz(obj.Map2List(i,j));
                 end
             end
             
@@ -1332,11 +1452,42 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             else
                 obj.Channel(Index) = Channel;
             end
+            % Write to Channel
+            Channel = obj.create_standard_channel(IndDepMapHertz,'Indentation Depth Hertz','m');
+            [~,Index] = obj.get_channel('Indentation Depth Hertz');
+            if isempty(Index)
+                obj.Channel(end+1) = Channel;
+            else
+                obj.Channel(Index) = Channel;
+            end
             
             if AllowXShift
                 obj.CPFlag.HertzFitted = 1;
             end
             
+        end
+        
+        function calculate_indentation_depth_from_chosen_cp(obj,CPVector)
+            
+            
+            iRange = find(obj.SelectedCurves);
+            IndentationDepth = zeros(obj.NCurves,1);
+            for i=iRange'
+                [App{i},HHApp{i}] = obj.get_force_curve_data(iRange(i),0,1,0);
+                force{i} = App{i} - CP(i,2);
+                if CorrectSensitivity
+                    force{i} = force{i}.*obj.RefSlopeCorrectedSensitivity/obj.Sensitivity;
+                end
+                tip_h{i} = (HHApp{i} - CP(i,1)) - force{i}/obj.SpringConstant;
+                tip_h{i}(tip_h{i} < 0) = [];
+                if length(tip_h{i}) < 2
+                    continue
+                end
+                Max{i} = max(tip_h{i});
+                IndentationDepth(iRange(i)) = Max{i}(1);
+            end
+                    
+            obj.IndentationDepth = IndentationDepth;
         end
         
         function EMod = calculate_e_mod_oliverpharr(obj,TipProjArea,CurvePercent)
@@ -1759,24 +1910,50 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
         
         function manual_exclusion(obj)
             
-            obj.ExclMask = logical(ones(obj.NumPixelsX,obj.NumPixelsY));
             CheckSum = 100;
+            f = figure('Name','Choose areas to be excluded');
+            f.WindowState = 'maximized';
+            
+            if ~isempty(obj.ExclMask)
+                obj.ExclMask = logical(ones(obj.NumPixelsX,obj.NumPixelsY));
+            else
+                TempMap = obj.HeightMap(:,:,1);
+                TempMap(obj.ExclMask == 0) = max(TempMap,[],'all');
+                imshow(TempMap,[])
+                
+                answer = questdlg('There already exists an exclusion mask!', ...
+                    'Keep it!', ...
+                    'Draw new!','Draw new!');
+                % Handle response
+                switch answer
+                    case 'Keep it!'
+                        close(f)
+                        return
+                    case 'Draw new!'
+                        obj.ExclMask = logical(ones(obj.NumPixelsX,obj.NumPixelsY));
+                        close(f)
+                        f = figure('Name','Choose areas to be excluded');
+                        f.WindowState = 'maximized';
+                end
+            end
+            
             while CheckSum > 1
-                f = figure('Name','Choose areas to be excluded');
-                f.WindowState = 'maximized';
                 subplot(2,1,2)
                 surf(imresize(imrotate(obj.HeightMap(:,:,1)',90),[1024 1024]),'LineStyle','none','FaceLighting','gouraud','FaceColor','interp')
                 light('Style','local')
                 subplot(2,1,1)
-                imshow(obj.HeightMap(:,:,1).*obj.ExclMask,[min(obj.HeightMap(:,:,1),[],'all') max(obj.HeightMap(:,:,1),[],'all')])
+                TempMap = obj.HeightMap(:,:,1);
+                TempMap(obj.ExclMask == 0) = max(TempMap,[],'all');
+                imshow(TempMap,[])
                 title(sprintf('%s: Draw Freehand ROI around areas, that are to be excluded\nThe area will be taken out and the same map redrawn \n If there is nothing to do just click on the image once without dragging the cursor',obj.Name))
                 ROI = drawfreehand;
                 CheckSum = length(ROI.Waypoints);
                 Mask = ~createMask(ROI);
                 obj.ExclMask = obj.ExclMask.*Mask;
-                close(f)
+                drawnow
             end
             
+            close(f)
             %             current = what();
             %             cd(obj.Folder)
             %             savename = sprintf('%s.mat',obj.Name);
@@ -5719,7 +5896,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
         function [HeadHeight ,Force,spring_constant,sensitivity]=...
                 writedata(HeaderFileDirectory,SegmentHeaderFileDirectory,...
                 HeighDataDirectory,vDelfDataDirectory,HHType)
-            % Author: Orestis Andriotis (slightly changed and adapted by Manuel Rufin)
+            % Author: Orestis Andriotis (changed and adapted by Manuel Rufin)
             % HeaderFileDirectory: file directory of the main header properties. There
             % is the information about the scaling factors to convert the raw data.
             % SegmentHeaderFileDirectory: file directory of the header of each segment.
@@ -5788,8 +5965,6 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             
             fclose(FileID);
         end
-        
-       
         
         function [mult_height_meters1, offset_height_meters1,...
                 mult_height_meters2, offset_height_meters2,...
@@ -6055,9 +6230,9 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             % Calculate the DZslopes
             k = 1;
             for i=Range'
-                [Force,Height] = obj.get_force_curve_data(i,AppRetSwitch,1,0);
                 if (Mask(obj.List2Map(i,1),obj.List2Map(i,2)) == 1) &&...
                         (obj.ExclMask(obj.List2Map(i,1),obj.List2Map(i,2)) == 1)
+                    [Force,Height] = obj.get_force_curve_data(i,AppRetSwitch,1,0);
                     Z = Height - obj.CP(i,1);
                     D = (Force - obj.CP(i,2))/obj.SpringConstant;
                     Dmax = max(D);
@@ -6068,12 +6243,18 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                     ZCurvePercent = Z(1:length(DCurvePercent));    
                     LineFit = polyfit(ZCurvePercent,DCurvePercent,1);
                     DZslope(k) = LineFit(1);
+%                     % Debug
+%                     plot(Z,D,Z,polyval(LineFit,Z))
                     k = k + 1;
                 end
             end
-            % Fit the Gaussian
-            Gaussian = fitdist(DZslope','Normal');
-            obj.RefSlope = Gaussian.mean;
+            % Fit the log-Gaussian
+            DZslopeCleaned = DZslope;
+            DZslopeCleaned(DZslopeCleaned <= 0) = [];
+            DZslopeCleaned = exp(rmoutliers(log(DZslopeCleaned),'quartiles'));
+            Gaussian = fitdist(DZslopeCleaned','Lognormal');
+            % Expected value of a lognormal is exp(mu + sigma^2/2)
+            obj.RefSlope = exp(Gaussian.mu+Gaussian.sigma^2/2);
             obj.RefSlopeCorrectedSensitivity = obj.Sensitivity/obj.RefSlope;
             obj.HasRefSlope = true;
         end
@@ -6124,10 +6305,26 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
         
         function read_jpk_images_from_files(obj)
             
+            if obj.PythonLoaderFlag
+                current = what;
+                TempFolder = fullfile(obj.DataStoreFolder,obj.ID);
+                mkdir(TempFolder)
+                cd(TempFolder)
+                if isequal(obj.FileType,'quantitative-imaging-map')
+                    obj.OpenZipFile.extract('data-image.jpk-qi-image');
+                elseif isequal(obj.FileType,'force-scan-map')
+                    obj.OpenZipFile.extract('data-image.force');
+                end
+                cd(current.path)
+                Folder = TempFolder;
+            else
+                Folder = obj.DataStoreFolder;
+            end
+            
             if isequal(obj.FileType,'quantitative-imaging-map')
-                I = AFMImage(fullfile(obj.DataStoreFolder,'data-image.jpk-qi-image'));
+                I = AFMImage(fullfile(Folder,'data-image.jpk-qi-image'));
             elseif isequal(obj.FileType,'force-scan-map')
-                I = AFMImage(fullfile(obj.DataStoreFolder,'data-image.force'));
+                I = AFMImage(fullfile(Folder,'data-image.force'));
                 for i=1:length(I.Channel)
                     I.Channel(i).Image = fliplr(I.Channel(i).Image);
                 end
@@ -6169,6 +6366,10 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             end
             
             obj.HeightMap = Processed.Image;
+            
+            if obj.PythonLoaderFlag
+                rmdir(Folder,'s');
+            end
             
         end
         
@@ -6213,7 +6414,11 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             end
             Map = imresize(Map,[obj.NumPixelsX obj.NumPixelsY],'nearest');
             
-            Map = AFMImage.find_and_replace_outlier_lines(Map,10);
+            try
+                Map = AFMImage.find_and_replace_outlier_lines(Map,10);
+            catch
+                warning('Could not replace outlier lines')
+            end
             
             % write to Channel
             obj.delete_channel('Processed Indented Height')
@@ -6351,7 +6556,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 HasFailed = false;
                 while CantHandle == true
                     try
-                        predict(NeuralNet,X,'MiniBatchSize',obj.MiniBatchSize,'Acceleration','auto');
+                        predict(NeuralNet,X,'MiniBatchSize',obj.MiniBatchSize,'Acceleration','auto',...
+                                        'ExecutionEnvironment',obj.NeuralNetAccelerator);
                         CantHandle = false;
                         if DynMBSdone == false
                             if HasFailed == true
@@ -6405,128 +6611,91 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
         function unpack_jpk_force_map(obj,MapFullFile,DataFolder)
             
             if obj.BigDataFlag
-                TempFolderName = sprintf('FM_DataStore_%s',obj.ID);
+                if obj.PythonLoaderFlag
+                    TempFolderName = 'DataStore';
+                    mkdir(DataFolder,TempFolderName);
+                    TempFolder = fullfile(DataFolder,TempFolderName);
+                else
+                    TempFolderName = sprintf('FM_DataStore_%s',obj.ID);
+                end
             else
                 TempFolderName = sprintf('Temp%s',obj.ID);
             end
             
-            if isequal('PCW',obj.HostOS)
-                % unpack jpk-file into temporary folder to read out data
-                cmd1 = '"C:\Program Files\7-Zip\7z.exe" x ';
-                cmd2 = '"';
-                cmd3 = MapFullFile;
-                cmd4 = '"';
-                cmd5 = ' -o';
-                mkdir(DataFolder,TempFolderName)
-                cmd6 = '"';
-                TempFolder = fullfile(DataFolder,TempFolderName,filesep);
-                cmd8 = '"';
-                CMD = append(cmd1,cmd2,cmd3,cmd4,cmd5,cmd6,TempFolder,cmd8);
-                disp('extracting file...')
-                h = system(CMD);
+            if (obj.BigDataFlag && ~obj.PythonLoaderFlag) || ~obj.BigDataFlag
+                if isequal('PCW',obj.HostOS)
+                    % unpack jpk-file into temporary folder to read out data
+                    cmd1 = '"C:\Program Files\7-Zip\7z.exe" x ';
+                    cmd2 = '"';
+                    cmd3 = MapFullFile;
+                    cmd4 = '"';
+                    cmd5 = ' -o';
+                    mkdir(DataFolder,TempFolderName)
+                    cmd6 = '"';
+                    TempFolder = fullfile(DataFolder,TempFolderName,filesep);
+                    cmd8 = '"';
+                    CMD = append(cmd1,cmd2,cmd3,cmd4,cmd5,cmd6,TempFolder,cmd8);
+                    disp('extracting file...')
+                    h = system(CMD);
+                elseif isequal('GLN',obj.HostOS)
+                    % unpack jpk-file into temporary folder to read out data
+                    cmd1 = 'unzip -o ';
+                    cmd2 = MapFullFile;
+                    cmd3 = ' -d ';
+                    mkdir(DataFolder,TempFolderName)
+                    TempFolder = fullfile(DataFolder,TempFolderName,filesep);
+                    CMD = append(cmd1,cmd2,cmd3,TempFolder);
+                    h = system(CMD);
+                    disp('extracting file...')
+                elseif isequal('MAC',obj.HostOS)
+                    % unpack jpk-file into temporary folder to read out data
+                    cmd1 = 'unzip -o ';
+                    cmd2 = MapFullFile;
+                    cmd3 = ' -d ';
+                    mkdir(DataFolder,TempFolderName)
+                    TempFolder = fullfile(DataFolder,TempFolderName,filesep);
+                    CMD = append(cmd1,cmd2,cmd3,TempFolder);
+                    h = system(CMD);
+                    disp('extracting file...')
+                end
                 if h==0
                     disp('unzipping successfull')
                 elseif h==1
                     disp('unzipping failed')
                 end
-                Strings = split(MapFullFile,filesep);
-                %%% Define the search expressions
-                % Comment: JPK includes a few attributes of a measurement into the name:
-                % The name attachement is the same for all experiments:
-                % 'Typedname'+'-'+'data'+'-'+'year'+'.'+'months'+'.'+'day'+'-hour'+'.'+'minute'+'.'+'second'+'.'+'thousandths'+'.'+'jpk file extension'
-                exp1 = '.*(?=\-data)'; % Finds the typed-in name of the user during the AFM experiment
-                exp2 = '\d{4}\.\d{2}\.\d{2}'; % Finds the date
-                exp3 = '\d{2}\.\d{2}\.\d{2}\.\d{3}'; % Finds the time
-                obj.Name = regexp(Strings(end,1), exp1, 'match');
-                obj.Name = char(obj.Name{1});
-                if isequal(obj.Name,'')
-                    exp4 = '.*(?=.jpk)';
-                    obj.Name = regexp(Strings(end,1), exp4, 'match');
-                    obj.Name = char(obj.Name{1});
-                end
-                obj.Date = regexp(Strings(end,1), exp2, 'match');
-                obj.Date = char(obj.Date{1});
-                obj.Time = regexp(Strings(end,1), exp3, 'match');
-                obj.Time = char(obj.Time{1});
-                obj.Date=strrep(obj.Date,'.','-'); % Remove dots in obj.Date
-                obj.Time=strrep(obj.Time,'.','-'); % Remove dots in obj.Time
-                %%% Create a data folder to store the force data
-                mkdir(DataFolder,'ForceData')
-                obj.Folder = fullfile(DataFolder,'ForceData',filesep);
-                
-                %             system(['unzip -o ', fullfile(datadir,fnamemap), ' ''*shared-data/header.properties'' -d ', tempdir{fib,1}]);
-                %
-            elseif isequal('GLN',obj.HostOS)
-                % unpack jpk-file into temporary folder to read out data
-                cmd1 = 'unzip -o ';
-                cmd2 = MapFullFile;
-                cmd3 = ' -d ';
-                mkdir(DataFolder,TempFolderName)
-                TempFolder = fullfile(DataFolder,TempFolderName,filesep);
-                CMD = append(cmd1,cmd2,cmd3,TempFolder);
-                system(CMD);
-                disp('extracting file...')
-                Strings = split(MapFullFile,filesep);
-                %%% Define the search expressions
-                % Comment: JPK includes a few attributes of a measurement into the name:
-                % The name attachement is the same for all experiments:
-                % 'Typedname'+'-'+'data'+'-'+'year'+'.'+'months'+'.'+'day'+'-hour'+'.'+'minute'+'.'+'second'+'.'+'thousandths'+'.'+'jpk file extension'
-                exp1 = '.*(?=\-data)'; % Finds the typed-in name of the user during the AFM experiment
-                exp2 = '\d{4}\.\d{2}\.\d{2}'; % Finds the date
-                exp3 = '\d{2}\.\d{2}\.\d{2}\.\d{3}'; % Finds the time
-                obj.Name = regexp(Strings(end,1), exp1, 'match');
-                obj.Name = char(obj.Name{1});
-                if isequal(obj.Name,'')
-                    exp4 = '.*(?=.jpk)';
-                    obj.Name = regexp(Strings(end,1), exp4, 'match');
-                    obj.Name = char(obj.Name{1});
-                end
-                obj.Date = regexp(Strings(end,1), exp2, 'match');
-                obj.Date = char(obj.Date{1});
-                obj.Time = regexp(Strings(end,1), exp3, 'match');
-                obj.Time = char(obj.Time{1});
-                obj.Date=strrep(obj.Date,'.','-'); % Remove dots in obj.Date
-                obj.Time=strrep(obj.Time,'.','-'); % Remove dots in obj.Time
-                %%% Create a data folder to store the force data
-                mkdir(DataFolder,'ForceData')
-                obj.Folder = fullfile(DataFolder,'ForceData',filesep);
-                
-            elseif isequal('MAC',obj.HostOS)
-                % unpack jpk-file into temporary folder to read out data
-                cmd1 = 'unzip -o ';
-                cmd2 = MapFullFile;
-                cmd3 = ' -d ';
-                mkdir(DataFolder,TempFolderName)
-                TempFolder = fullfile(DataFolder,TempFolderName,filesep);
-                CMD = append(cmd1,cmd2,cmd3,TempFolder);
-                system(CMD);
-                disp('extracting file...')
-                Strings = split(MapFullFile,filesep);
-                %%% Define the search expressions
-                % Comment: JPK includes a few attributes of a measurement into the name:
-                % The name attachement is the same for all experiments:
-                % 'Typedname'+'-'+'data'+'-'+'year'+'.'+'months'+'.'+'day'+'-hour'+'.'+'minute'+'.'+'second'+'.'+'thousandths'+'.'+'jpk file extension'
-                exp1 = '.*(?=\-data)'; % Finds the typed-in name of the user during the AFM experiment
-                exp2 = '\d{4}\.\d{2}\.\d{2}'; % Finds the date
-                exp3 = '\d{2}\.\d{2}\.\d{2}\.\d{3}'; % Finds the time
-                obj.Name = regexp(Strings(end,1), exp1, 'match');
-                obj.Name = char(obj.Name{1});
-                if isequal(obj.Name,'')
-                    exp4 = '.*(?=.jpk)';
-                    obj.Name = regexp(Strings(end,1), exp4, 'match');
-                    obj.Name = char(obj.Name{1});
-                end
-                obj.Date = regexp(Strings(end,1), exp2, 'match');
-                obj.Date = char(obj.Date{1});
-                obj.Time = regexp(Strings(end,1), exp3, 'match');
-                obj.Time = char(obj.Time{1});
-                obj.Date=strrep(obj.Date,'.','-'); % Remove dots in obj.Date
-                obj.Time=strrep(obj.Time,'.','-'); % Remove dots in obj.Time
-                %%% Create a data folder to store the force data
-                mkdir(DataFolder,'ForceData')
-                obj.Folder = fullfile(DataFolder,'ForceData',filesep);
+            elseif obj.BigDataFlag && obj.PythonLoaderFlag
+                % Copy the jpk file to the DataStore folder and open it
+                % with the python loader.
+                copyfile(MapFullFile,TempFolder)
+                Split = split(MapFullFile,filesep);
+                obj.RawDataFilePath = fullfile(TempFolder,Split{end});
+                obj.load_zipped_files_with_python
             end
             
+            
+            Strings = split(MapFullFile,filesep);
+            %%% Define the search expressions
+            % Comment: JPK includes a few attributes of a measurement into the name:
+            % The name attachement is the same for all experiments:
+            % 'Typedname'+'-'+'data'+'-'+'year'+'.'+'months'+'.'+'day'+'-hour'+'.'+'minute'+'.'+'second'+'.'+'thousandths'+'.'+'jpk file extension'
+            exp1 = '.*(?=\-data)'; % Finds the typed-in name of the user during the AFM experiment
+            exp2 = '\d{4}\.\d{2}\.\d{2}'; % Finds the date
+            exp3 = '\d{2}\.\d{2}\.\d{2}\.\d{3}'; % Finds the time
+            obj.Name = regexp(Strings(end,1), exp1, 'match');
+            obj.Name = char(obj.Name{1});
+            if isequal(obj.Name,'')
+                exp4 = '.*(?=.jpk)';
+                obj.Name = regexp(Strings(end,1), exp4, 'match');
+                obj.Name = char(obj.Name{1});
+            end
+            obj.Date = regexp(Strings(end,1), exp2, 'match');
+            obj.Date = char(obj.Date{1});
+            obj.Time = regexp(Strings(end,1), exp3, 'match');
+            obj.Time = char(obj.Time{1});
+            obj.Date=strrep(obj.Date,'.','-'); % Remove dots in obj.Date
+            obj.Time=strrep(obj.Time,'.','-'); % Remove dots in obj.Time
+            
+            obj.Folder = [DataFolder replace(obj.Name,'.','')];
             obj.DataStoreFolder = TempFolder;
             
         end
@@ -6534,14 +6703,29 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
         function read_in_header_properties(obj)
             % Check for jpk-software version and get important ForceMap
             % properties
-            filedirectory = fullfile(obj.DataStoreFolder,'header.properties');
+            
+            if obj.PythonLoaderFlag
+                current = what;
+                TempFolder = fullfile(obj.DataStoreFolder,obj.ID);
+                TempSharedFolder = fullfile(obj.DataStoreFolder,obj.ID,'shared-data');
+                mkdir(TempFolder)
+                cd(TempFolder)
+                obj.OpenZipFile.extract('header.properties');
+                obj.OpenZipFile.extract('shared-data/header.properties');
+                cd(current.path)
+                
+                filedirectory = fullfile(TempFolder,'header.properties');
+                FileDirectoryShared = fullfile(TempSharedFolder,'header.properties');
+            else
+                filedirectory = fullfile(obj.DataStoreFolder,'header.properties');
+                FileDirectoryShared = fullfile(obj.DataStoreFolder,'shared-data','header.properties');
+            end
+            
             FileID=fopen(filedirectory,'rt','n','UTF-8'); % FileID = fopen(filename,permission,machinefmt,encodingIn)
             FileCont=fileread(filedirectory);
-            % Shared-data file directory 
-            FileDirectoryShared = fullfile(obj.DataStoreFolder,'shared-data','header.properties');
+            % Shared-data file directory
             FileIDShared=fopen(FileDirectoryShared,'rt','n','UTF-8'); % FileID = fopen(filename,permission,machinefmt,encodingIn)
             FileContShared=fileread(FileDirectoryShared);
-            
             % Height: 1. CONVERSION raw-meters & 2. SCALE meters
             % Conversion RAW -> VOLTS
             fseek(FileID,1,'cof'); % goes at the first position in the file
@@ -6835,8 +7019,69 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 end                
             end                        
             obj.HHType = 'capacitiveSensorHeight';           
-            fclose(FileID);
+            
             fclose(FileIDShared);
+            fclose(FileID);
+            
+            obj.read_in_rescaling_constants(FileDirectoryShared)
+            
+%             if obj.PythonLoaderFlag
+%                 rmdir(TempFolder,'s');
+%             end
+        end
+        
+        function read_in_rescaling_constants(obj,SharedPropertiesFullFile)
+            
+            obj.RescalingConstants = struct();
+            
+            ChannelNames = {'capacitiveSensorHeight',...
+                                'measuredHeight',...
+                                'head-height',...
+                                'height'};
+            for i=1:4
+                obj.RescalingConstants(i).ChannelName = ChannelNames{i};
+                obj.RescalingConstants(i).exists = false;
+                try
+                    [mult_height_meters1, offset_height_meters1,...
+                        mult_height_meters2, offset_height_meters2,...
+                        mult_vDefl_volts, offset_vDefl_volts,...
+                        sensitivity, spring_constant] = ForceMap.getheaderinfo(SharedPropertiesFullFile,ChannelNames{i});
+                    
+                    obj.RescalingConstants(i).Mult1 = mult_height_meters1;
+                    obj.RescalingConstants(i).Off1 = offset_height_meters1;
+                    obj.RescalingConstants(i).Mult2 = mult_height_meters2;
+                    obj.RescalingConstants(i).Off2 = offset_height_meters2;
+                    obj.RescalingConstants(i).exists = true;
+                catch
+                end
+            end
+            
+            % Special case vDef
+            obj.RescalingConstants(5).ChannelName = 'vDeflection';
+            obj.RescalingConstants(5).Mult1 = mult_vDefl_volts;
+            obj.RescalingConstants(5).Off1 = offset_vDefl_volts;
+            obj.RescalingConstants(5).Mult2 = 1;
+            obj.RescalingConstants(5).Off2 = 0;
+            obj.RescalingConstants(5).exists = true;
+            obj.SpringConstant = spring_constant;
+            obj.Sensitivity = sensitivity;
+            
+            if obj.RescalingConstants(...
+                    reshape(strcmp({obj.RescalingConstants.ChannelName}, obj.HHType),...
+                    size(obj.RescalingConstants))).exists
+            elseif obj.RescalingConstants(...
+                    reshape(strcmp({obj.RescalingConstants.ChannelName}, 'measuredHeight'),...
+                    size(obj.RescalingConstants))).exists
+                obj.HHType = 'measuredHeight';
+            elseif obj.RescalingConstants(...
+                    reshape(strcmp({obj.RescalingConstants.ChannelName}, 'head-height'),...
+                    size(obj.RescalingConstants))).exists
+                obj.HHType = 'head-height';
+            elseif obj.RescalingConstants(...
+                    reshape(strcmp({obj.RescalingConstants.ChannelName}, 'height'),...
+                    size(obj.RescalingConstants))).exists
+                obj.HHType = 'height';
+            end
         end
         
         function load_force_curves(obj)
@@ -6862,7 +7107,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                     [TempHHApp,obj.App{i},obj.SpringConstant,obj.Sensitivity]=...
                         obj.writedata(HeaderFileDirectory,SegmentHeaderFileDirectory,...
                         HeightDataDirectory,vDefDataDirectory,obj.HHType);
-                
+                    
                     obj.HHApp{i} = -TempHHApp;
                     obj.App{i} = obj.App{i}.*obj.SpringConstant;
                     clear TempHHApp
@@ -6888,7 +7133,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 if ~isfile(HeightDataDirectory) || isequal(obj.HHType,'measuredHeight')
                     HeightDataDirectory = fullfile(TempFolder,'index',string((i-1)),'segments',string(obj.NumSegments-1),'channels','measuredHeight.dat');
                 end
-                 if ~isfile(HeightDataDirectory) || isequal(obj.HHType,'Height')
+                if ~isfile(HeightDataDirectory) || isequal(obj.HHType,'Height')
                     HeightDataDirectory = fullfile(TempFolder,'index',string((i-1)),'segments',string(obj.NumSegments-1),'channels','Height.dat');
                     obj.HHType = 'Height';
                 end
@@ -6897,7 +7142,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                     [TempHHRet,obj.Ret{i}]=...
                         obj.writedata(HeaderFileDirectory,SegmentHeaderFileDirectory,...
                         HeightDataDirectory,vDefDataDirectory,obj.HHType);
-                
+                    
                     obj.HHRet{i} = -TempHHRet;
                     obj.Ret{i} = obj.Ret{i}.*obj.SpringConstant;
                 catch
@@ -6983,28 +7228,34 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 AppRetSwitch=obj.NumSegments-1;
             end
             
-            HeaderFileDirectory = fullfile(TempFolder,'shared-data','header.properties');
-            SegmentHeaderFileDirectory = fullfile(TempFolder,'index',string((CurveNumber-1)),'segments',string(AppRetSwitch),'segment-header.properties');
-            HeightDataDirectory = fullfile(TempFolder,'index',string((CurveNumber-1)),'segments',string(AppRetSwitch),'channels','capacitiveSensorHeight.dat');
-            vDefDataDirectory = fullfile(TempFolder,'index',string((CurveNumber-1)),'segments',string(AppRetSwitch),'channels','vDeflection.dat');
-            
-            if ~isfile(HeightDataDirectory) || isequal(obj.HHType,'measuredHeight')
-                HeightDataDirectory = fullfile(TempFolder,'index',string((CurveNumber-1)),'segments',string(AppRetSwitch),'channels','measuredHeight.dat');
-                obj.HHType = 'measuredHeight';
-            end
-            if ~isfile(HeightDataDirectory) || isequal(obj.HHType,'Height')
-                HeightDataDirectory = fullfile(TempFolder,'index',string((CurveNumber-1)),'segments',string(AppRetSwitch),'channels','Height.dat');
-                obj.HHType = 'Height';
+            if ~obj.PythonLoaderFlag
+                HeaderFileDirectory = fullfile(TempFolder,'shared-data','header.properties');
+                SegmentHeaderFileDirectory = fullfile(TempFolder,'index',string((CurveNumber-1)),'segments',string(AppRetSwitch),'segment-header.properties');
+                HeightDataDirectory = fullfile(TempFolder,'index',string((CurveNumber-1)),'segments',string(AppRetSwitch),'channels','capacitiveSensorHeight.dat');
+                vDefDataDirectory = fullfile(TempFolder,'index',string((CurveNumber-1)),'segments',string(AppRetSwitch),'channels','vDeflection.dat');
+                
+                if ~isfile(HeightDataDirectory) || isequal(obj.HHType,'measuredHeight')
+                    HeightDataDirectory = fullfile(TempFolder,'index',string((CurveNumber-1)),'segments',string(AppRetSwitch),'channels','measuredHeight.dat');
+                    obj.HHType = 'measuredHeight';
+                end
+                if ~isfile(HeightDataDirectory) || isequal(obj.HHType,'height')
+                    HeightDataDirectory = fullfile(TempFolder,'index',string((CurveNumber-1)),'segments',string(AppRetSwitch),'channels','height.dat');
+                    obj.HHType = 'height';
+                end
             end
             
             try
                 if obj.CorruptedCurves(CurveNumber)
                     error('skip this one')
                 end
-                [TempHeight,OutForce,SC,Sens]=...
-                    obj.writedata(HeaderFileDirectory,SegmentHeaderFileDirectory,...
-                    HeightDataDirectory,vDefDataDirectory,obj.HHType);
-                
+                if obj.PythonLoaderFlag
+                    TempHeight = obj.load_single_curve_channel_data_with_python(string(CurveNumber-1),string(AppRetSwitch),obj.HHType);
+                    OutForce = obj.load_single_curve_channel_data_with_python(string(CurveNumber-1),string(AppRetSwitch),'vDeflection');
+                else
+                    [TempHeight,OutForce,SC,Sens]=...
+                        obj.writedata(HeaderFileDirectory,SegmentHeaderFileDirectory,...
+                        HeightDataDirectory,vDefDataDirectory,obj.HHType);
+                end
                 if isempty(obj.Sensitivity)
                     obj.Sensitivity = Sens;
                 end
@@ -7051,8 +7302,46 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 k = 1;
                 while obj.CorruptedCurves(mod(CurveNumber+k-1,obj.NCurves)+1)
                     k = k + 1;
+                    if k > obj.NCurves
+                        error('All force curves seem to be corrupted');
+                    end
                 end
                 [OutForce,OutHeight] = obj.get_force_curve_data(mod(CurveNumber+k-1,obj.NCurves)+1,AppRetSwitch,isBased,isTipHeightCorrected);
+            end
+        end
+        
+        function OutVector = load_single_curve_channel_data_with_python(obj,Index,Segment,ChannelName)
+            
+            % First check if zip file is even loaded.If not, load it
+            Meta = metaclass(obj.OpenZipFile);
+            if ~isequal(Meta.Name,'py.zipfile.ZipFile')
+                warning('Zip file not loaded. Loading... You may clear the files again using .clear_zipped_files_from_memory')
+                obj.load_zipped_files_with_python;
+            end
+            
+            TargetFile = strcat('index/',Index,'/segments/',Segment,'/channels/',strcat(ChannelName,'.dat'));
+            
+            File = obj.OpenZipFile.open(TargetFile);
+            
+            Data = uint8(File.read(-1));
+            OutVector = double(swapbytes(typecast(Data,'int32')))';
+            File.close()
+            
+            % Rescale stored data to real world units
+            OutVector = obj.rescale_channel_data(OutVector,ChannelName);
+            
+        end
+        
+        function OutVector = rescale_channel_data(obj,InVector,ChannelName)
+            
+            for i=1:5
+                if isequal(ChannelName,obj.RescalingConstants(i).ChannelName)
+                    TempVector = InVector.*obj.RescalingConstants(i).Mult1 + obj.RescalingConstants(i).Off1;
+                    OutVector = TempVector.*obj.RescalingConstants(i).Mult2 + obj.RescalingConstants(i).Off2;
+                    if isequal(ChannelName,'vDeflection')
+                        OutVector = OutVector.*obj.Sensitivity;
+                    end
+                end
             end
         end
         
@@ -7141,11 +7430,83 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             end
         end
         
+        function check_for_cuda_capable_gpu_device(obj)
+            % Check if current machine is capable of gpu CUDA accel.
+            try
+                GPU = gpuDevice;
+                if GPU.DeviceAvailable && GPU.DeviceSupported
+                    obj.NeuralNetAccelerator = 'gpu'; % Drake approves
+                else
+                    obj.NeuralNetAccelerator = 'cpu'; % YIKES, get a new system
+                end
+            catch ME
+                obj.NeuralNetAccelerator = 'cpu'; % YIKES, get a new system
+            end
+            
+        end
+        
+        function reset_selected_and_corrupted_flags(obj)
+            
+            obj.SelectedCurves(:) = 1;
+            obj.CorruptedCurves(:) = 0;
+            
+        end
+        
+        function convert_hertzfit_property_to_fractioned_properties(obj)
+            
+            for i=1:length(obj.HertzFit)
+                try
+                    Formula = formula(obj.HertzFit{i});
+                    Coeffnames = coeffnames(obj.HertzFit{i});
+                    Coeffs = coeffvalues(obj.HertzFit{i});
+                    
+                    obj.HertzFitType = Formula;
+                    obj.HertzFitCoeffNames = Coeffnames;
+                    obj.HertzFitValues{i} = Coeffs;
+                catch
+                end
+            end
+            
+            obj.HertzFit = [];
+            
+        end
+        
+        function IsLoaded = check_if_zipped_file_is_loaded(obj,AskIfLoadDialogueBool)
+            
+            if nargin < 2
+                AskIfLoadDialogueBool = false;
+            end
+            
+            if obj.PythonLoaderFlag && obj.BigDataFlag
+                Meta = metaclass(obj.OpenZipFile);
+                if ~isequal(Meta.Name,'py.zipfile.ZipFile')
+                    IsLoaded = false;
+                    if AskIfLoadDialogueBool
+                        answer = questdlg('File container is not loaded. Load to memory?',...
+                            'Load Zip file',...
+                            'Yes','No','No');
+                        if isequal(answer,'Yes')
+                            h = waitbar(1/3,'Loading can take a few minutes',...
+                                'Name','Loading file container');
+                            obj.load_zipped_files_with_python;
+                            IsLoaded = true;
+                            close(h)
+                        end 
+                    end
+                else
+                    IsLoaded = true;
+                end
+            else
+                IsLoaded = true;
+                return
+            end
+            
+        end
+        
     end
     
     methods
         % methods for visualization, plotting, statistics and quality control
-        
         
         function show_force_curve(obj,ZoomMult,k,fig)
             if nargin < 2
@@ -7181,7 +7542,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             plot(AppX*MultiplierX,AppY*MultiplierY,RetX*MultiplierX,RetY*MultiplierY,'LineWidth',1.5);
             Legends = {'Approach','Retract'};
             
-            if obj.CPFlag.HertzFitted == 1
+            if obj.CPFlag.HertzFitted == 1 && ~isempty(obj.CP_HertzFitted)
                 plot(obj.CP_HertzFitted(k,1)*MultiplierX, obj.CP_HertzFitted(k,2)*MultiplierY,'O',...
                     'LineWidth',1.5,...
                     'MarkerSize',7,...
@@ -7602,7 +7963,33 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 X = AppX - obj.CP(k,1);
                 X(X<0) = [];
                 HertzModelX = 0:range(X)/100:2*max(X);
-                HertzModelY = feval(obj.HertzFit{k},HertzModelX);
+                
+                try
+                    FitModel = obj.HertzFit{m};
+                catch
+                    ft = fittype(obj.HertzFitType);
+                    if length(obj.HertzFitValues{k}) == 1
+                        FitModel = cfit(ft,obj.HertzFitValues{k}(1));
+                    elseif length(obj.HertzFitValues{k}) == 2
+                        FitModel = cfit(ft,obj.HertzFitValues{k}(1),obj.HertzFitValues{k}(2));
+                    elseif length(obj.HertzFitValues{k}) == 3
+                        FitModel = cfit(ft,obj.HertzFitValues{k}(1),obj.HertzFitValues{k}(2),...
+                            obj.HertzFitValues{k}(3));
+                    elseif length(obj.HertzFitValues{k}) == 4
+                        FitModel = cfit(ft,obj.HertzFitValues{k}(1),obj.HertzFitValues{k}(2),...
+                            obj.HertzFitValues{k}(3),obj.HertzFitValues{k}(4));
+                    elseif length(obj.HertzFitValues{k}) == 5
+                        FitModel = cfit(ft,obj.HertzFitValues{k}(1),obj.HertzFitValues{k}(2),...
+                            obj.HertzFitValues{k}(3),obj.HertzFitValues{k}(4),...
+                            obj.HertzFitValues{k}(5));
+                    elseif length(obj.HertzFitValues{k}) == 6
+                        FitModel = cfit(ft,obj.HertzFitValues{k}(1),obj.HertzFitValues{k}(2),...
+                            obj.HertzFitValues{k}(3),obj.HertzFitValues{k}(4),...
+                            obj.HertzFitValues{k}(5),obj.HertzFitValues{k}(6));
+                    end
+                end
+                
+                HertzModelY = feval(FitModel,HertzModelX);
                 
                 
                 plot(HertzModelX(HertzModelY<=max(AppY - obj.CP(k,2))),HertzModelY(HertzModelY<=max(AppY - obj.CP(k,2))),...
@@ -7795,8 +8182,31 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 X = AppX - obj.CP(m,1);
                 X(X<0) = [];
                 HertzModelX = 0:range(X)/100:2*max(X);
-                FitModel = obj.HertzFit{m};
-                FitModel.b = 0;
+                try
+                    FitModel = obj.HertzFit{m};
+                catch
+                    ft = fittype(obj.HertzFitType);
+                    if length(obj.HertzFitValues{m}) == 1
+                        FitModel = cfit(ft,obj.HertzFitValues{m}(1));
+                    elseif length(obj.HertzFitValues{m}) == 2
+                        FitModel = cfit(ft,obj.HertzFitValues{m}(1),obj.HertzFitValues{m}(2));
+                    elseif length(obj.HertzFitValues{m}) == 3
+                        FitModel = cfit(ft,obj.HertzFitValues{m}(1),obj.HertzFitValues{m}(2),...
+                            obj.HertzFitValues{m}(3));
+                    elseif length(obj.HertzFitValues{m}) == 4
+                        FitModel = cfit(ft,obj.HertzFitValues{m}(1),obj.HertzFitValues{m}(2),...
+                            obj.HertzFitValues{m}(3),obj.HertzFitValues{m}(4));
+                    elseif length(obj.HertzFitValues{m}) == 5
+                        FitModel = cfit(ft,obj.HertzFitValues{m}(1),obj.HertzFitValues{m}(2),...
+                            obj.HertzFitValues{m}(3),obj.HertzFitValues{m}(4),...
+                            obj.HertzFitValues{m}(5));
+                    elseif length(obj.HertzFitValues{m}) == 6
+                        FitModel = cfit(ft,obj.HertzFitValues{m}(1),obj.HertzFitValues{m}(2),...
+                            obj.HertzFitValues{m}(3),obj.HertzFitValues{m}(4),...
+                            obj.HertzFitValues{m}(5),obj.HertzFitValues{m}(6));
+                    end
+                end
+                
                 HertzModelY = feval(FitModel,HertzModelX);
                 
                 plot(HertzModelX(HertzModelY<=max(AppY - obj.CP(m,2))),HertzModelY(HertzModelY<=max(AppY - obj.CP(m,2))),...

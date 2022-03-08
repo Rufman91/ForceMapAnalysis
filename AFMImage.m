@@ -42,6 +42,8 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
         MaskBackground
     end
     properties
+        % Properties related to cantilever data
+        TipPolyFitParams
         ErodedTip
         DepthDependendTipRadius
         ProjectedTipArea
@@ -77,6 +79,7 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             end
             if nargin == 1
                 TempID = 'AFMImage detached from Experiment-class 1';
+                DataFolder = 'ThisNeedsNoFolder';
             end
             
             obj. CMap = obj.define_afm_color_map(0);
@@ -85,6 +88,8 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             
             obj.Name = obj.parse_file_name(ImageFullFile);
             obj.ID = TempID;
+            
+            obj.Folder = [DataFolder replace(obj.Name,'.','')];
             
             % get OS and use appropriate fitting system command
             obj.check_for_new_host
@@ -177,71 +182,10 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             
             obj.DepthDependendTipRadius = obj.calculate_depth_dependend_tip_data(obj.ProjectedTipArea,75);
             
+            %obj.fit_tip_radius_to_depth_polynomial;
+            
             obj.hasDeconvolutedCantileverTip = true;
             close(h); 
-        end
-        
-        function deconvolute_image(obj,CTClassInstance)
-            % Comment
-            
-            ErodedTip = CTClassInstance.get_channel('Eroded Tip');
-            if isempty(ErodedTip)
-                CTClassInstance.deconvolute_cantilever_tip;
-                ErodedTip = CTClassInstance.get_channel('Eroded Tip');
-            end
-            Processed = obj.get_channel('Processed');
-            if isempty('Processed')
-                warning('Image needs to be flattened first')
-                return
-            end
-            
-            % Resize and pad images to same resolution at correct spacial
-            % ratio
-            TempMultiplier = (ErodedTip.NumPixelsX/ErodedTip.ScanSizeX)/(Processed.NumPixelsX/Processed.ScanSizeX);
-            if TempMultiplier*Processed.NumPixelsX > 1024
-                ReductionFactor = 1024/(TempMultiplier*Processed.NumPixelsX);
-                Multiplier = TempMultiplier*ReductionFactor;
-                ReducedRes = round(ErodedTip.NumPixelsX*ReductionFactor);
-                ErodedTip.Image = imresize(ErodedTip.Image,[ReducedRes nan]);
-            end
-            if TempMultiplier >= 1
-                Smaller = ErodedTip.Image;
-                Bigger = Processed.Image;
-            else
-                Smaller = Processed.Image;
-                Bigger = ErodedTip.Image;
-            end
-            Bigger = imresize(Bigger,[round(Multiplier*size(Bigger,1)) nan]);
-            Smaller = padarray(Smaller,size(Bigger)-size(Smaller),...
-                min(Smaller,[],'all'),'post');
-            
-            if TempMultiplier >= 1
-                In1 = Bigger;
-                In2 = Smaller;
-            else
-                In1 = Smaller;
-                In2 = Bigger;
-            end
-            
-            OutImage = obj.deconvolute_by_mathematical_morphology(In1,In2);
-            OutImage = imresize(OutImage,[Processed.NumPixelsX Processed.NumPixelsY]);
-            
-            Deconvoluted = Processed;
-            Deconvoluted.Name = 'Deconvoluted';
-            
-            MinIn = min(Processed.Image,[],'all');
-            MinOut = min(OutImage,[],'all');
-            
-            OutImage = OutImage + (MinIn - MinOut);
-            
-            Deconvoluted.Image = OutImage;
-            
-            [~,Index] = obj.get_channel('Deconvoluted');
-            if isempty(Index)
-                obj.Channel(end+1) = Deconvoluted;
-            else
-                obj.Channel(Index) = Deconvoluted;
-            end
         end
         
         function base_image()
@@ -403,7 +347,7 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 Channel1.Image = imresize(Channel1.Image,ScaleMultiplier);
                 Channel1.NumPixelsX = size(Channel1.Image,1);
                 Channel1.NumPixelsY = size(Channel1.Image,2);
-            elseif SizePerPixel1 > SizePerPixel2
+            elseif SizePerPixel1 < SizePerPixel2
                 ScaleMultiplier = SizePerPixel2/SizePerPixel1;
                 Channel2.Image = imresize(Channel2.Image,ScaleMultiplier);
                 Channel2.NumPixelsX = size(Channel2.Image,1);
@@ -549,22 +493,22 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
         
         function [Overlay1,Overlay2,OverlayMask1,OverlayMask2] = overlay_two_images(Channel1,Channel2,ShiftPixX,ShiftPixY,Angle,Mask1,Mask2)
             
-            % Resize the bigger Channel (in ScanSize-per-Pixel) so
-            % imagesizes correspond to ScanSizes. Do nothing, if they are
-            % exactly the same
-            SizePerPixel1 = Channel1.ScanSizeX/Channel1.NumPixelsX;
-            SizePerPixel2 = Channel2.ScanSizeX/Channel2.NumPixelsX;
-            if SizePerPixel1 > SizePerPixel2
-                ScaleMultiplier = SizePerPixel1/SizePerPixel2;
-                Channel1.Image = imresize(Channel1.Image,ScaleMultiplier);
-                Channel1.NumPixelsX = size(Channel1.Image,1);
-                Channel1.NumPixelsY = size(Channel1.Image,2);
-            elseif SizePerPixel1 > SizePerPixel2
-                ScaleMultiplier = SizePerPixel2/SizePerPixel1;
-                Channel2.Image = imresize(Channel2.Image,ScaleMultiplier);
-                Channel2.NumPixelsX = size(Channel2.Image,1);
-                Channel2.NumPixelsY = size(Channel2.Image,2);
-            end
+%             % Resize the bigger Channel (in ScanSize-per-Pixel) so
+%             % imagesizes correspond to ScanSizes. Do nothing, if they are
+%             % exactly the same
+%             SizePerPixel1 = Channel1.ScanSizeX/Channel1.NumPixelsX;
+%             SizePerPixel2 = Channel2.ScanSizeX/Channel2.NumPixelsX;
+%             if SizePerPixel1 > SizePerPixel2
+%                 ScaleMultiplier = SizePerPixel1/SizePerPixel2;
+%                 Channel1.Image = imresize(Channel1.Image,ScaleMultiplier);
+%                 Channel1.NumPixelsX = size(Channel1.Image,1);
+%                 Channel1.NumPixelsY = size(Channel1.Image,2);
+%             elseif SizePerPixel1 < SizePerPixel2
+%                 ScaleMultiplier = SizePerPixel2/SizePerPixel1;
+%                 Channel2.Image = imresize(Channel2.Image,ScaleMultiplier);
+%                 Channel2.NumPixelsX = size(Channel2.Image,1);
+%                 Channel2.NumPixelsY = size(Channel2.Image,2);
+%             end
             
             % If no shifts and angles are provided, they will be calculated
             % from the positional data of the Channel-struct (Operation mode
@@ -716,7 +660,7 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             Channel1 = FirstClassInstance.get_channel('Processed');
             Channel2 = OverlayedClassInstance.get_channel('Processed');
             
-            [OutChannel,ScaleMultiplier,WhoScaled] = AFMImage.overlay_parameters_by_bayesopt(Channel1,Channel2,...
+            OutChannel = AFMImage.overlay_parameters_by_bayesopt(Channel1,Channel2,...
                 BackgroundPercent,MinOverlap,AngleRange,UseParallel,MaxFunEval,PreMaxFunEval,NumPreSearches,NClusters);
             
             OverlayedClassInstance.set_channel_positions(OutChannel.OriginX,OutChannel.OriginY,OutChannel.ScanAngle);
@@ -724,6 +668,19 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
         end
         
         function create_overlay_group(AllToOneBool,varargin)
+            % create_overlay_group(AllToOneBool,varargin)
+            %
+            % AllToOneBool... if true, all overlay-relations are tied to
+            % the first Class-instance that is input to the function
+            %
+            % varargin... Input all the class-instances that should be
+            % overlayed (Works for all classes inheriting from
+            % AFMBaseClass).
+            %
+            % Example: E.create_overlay_group(false,E.FM{1},E.FM{2},E.FM{3},...
+            %                      E.I{1},E.I{2})
+            % This will overlay FM{1}->FM{2}->FM{3}->I{1}->I{2} in this
+            % exact order
             
             for i=1:length(varargin)
                 Names{i} = varargin{i}.Name;
@@ -880,7 +837,9 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             KernelLambda = 5000;
             KernelSigma = 1;
             GPNoise = 0;
+            warning('off')
             RectMaxIdx = round(predictGP_mean(1:NumProfiles,1:NumProfiles,KernelSigma,KernelLambda,MaxIdx,GPNoise));
+            warning('on')
             for i=1:NumProfiles
                 LineFit = polyfit(SortedIndex(i,RectMaxIdx(i)+round(.25*(NumPoints-RectMaxIdx(i))):end),...
                     Sorted(i,RectMaxIdx(i)+round(.25*(NumPoints-RectMaxIdx(i))):end),1);
@@ -918,16 +877,21 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             end
             
             if isequal(lower(AutoMode),'on')
-                VecImage = reshape(Image,1,[]);
-                Sorted = sort(VecImage,'descend');
-                InvSampleRate = ceil(length(VecImage)/32^2);
-                k = 1;
-                for i=1:InvSampleRate:length(VecImage)
-                    STDLine(k) =  std(Sorted(1:i));
-                    k = k + 1;
+                try
+                    VecImage = reshape(Image,1,[]);
+                    Sorted = sort(VecImage,'descend');
+                    InvSampleRate = ceil(length(VecImage)/32^2);
+                    k = 1;
+                    for i=1:InvSampleRate:length(VecImage)
+                        STDLine(k) =  std(Sorted(1:i));
+                        k = k + 1;
+                    end
+                    Peaks = findpeaks(STDLine);
+                    Thresh = Peaks(end);
+                catch
+                    PercentOfRange = 5;
+                    Thresh = range(Image,'all')*PercentOfRange/100;
                 end
-                Peaks = findpeaks(STDLine);
-                Thresh = Peaks(end);
             else
                 Thresh = range(Image,'all')*PercentOfRange/100;
             end
@@ -1116,46 +1080,16 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             CMap(CMap > 1) = 1;
         end
         
-        function OutImage = deconvolute_by_mathematical_morphology(InImage,ErodingGeometry)
-            
-            if ~isequal(size(InImage),size(ErodingGeometry))
-                error('The Image and the Eroding Geometry need to have the same pixel-dimensions')
-            end
-            MaxPeakValue = max(ErodingGeometry,[],'all');
-            [PeakIndexX,PeakIndexY] = find(ErodingGeometry==MaxPeakValue);
-            EGPixelsX = size(ErodingGeometry,1);
-            EGPixelsY = size(ErodingGeometry,2);
-            InPixelsX = size(InImage,1);
-            InPixelsY = size(InImage,2);
-            OutImage=ones(InPixelsX,InPixelsY); %creates the empty image array
-            
-            
-            h = waitbar(0,'Please wait, processing deconvolution...');
-            
-            %loops over all the elements and find the minimum value of w and allocate it
-            for j=1:InPixelsY %loops over points in image output
-                waitbar(j/InPixelsY);
-                s_ymin=max(-j,-PeakIndexY); %determines the allowed range for tip scanning
-                s_ymax=min(EGPixelsY-PeakIndexY,InPixelsY-j)-1; %idem
-                for i=1:InPixelsX %loops over points in other direction in image output
-                    s_xmin=max(-PeakIndexX,-i); %determines allowed range for tip scanning
-                    s_xmax=min(EGPixelsX-PeakIndexX,InPixelsX-i)-1; %idem
-                    TempMat = InImage((i+1+s_xmin ):(i+1+s_xmax),(j+1+s_ymin):(j+1+s_ymax))-...
-                        ErodingGeometry((s_xmin+PeakIndexX+1):(s_xmax+PeakIndexX+1),...
-                        +(1+PeakIndexY+s_ymin):(1+PeakIndexY+s_ymax));
-                    minimum=min(TempMat,[],'all'); %checks if w is minimum
-                    OutImage(i,j)=minimum; %allocates the minimum value
-                end
-            end
-            close(h);
-        end
-        
         function DepthDependendTipRadius = calculate_depth_dependend_tip_data(ProjectedTipArea,RangePercent)
             
             if nargin < 2
                 RangePercent = 100;
             end
-            MinIdx = 2;
+            k = 2;
+            while ProjectedTipArea(1) == ProjectedTipArea(k)
+                k=k+1;
+            end
+            MinIdx = k;
             MaxIdx = floor(RangePercent/100*length(ProjectedTipArea));
             DepthDependendTipRadius = zeros(MaxIdx,1);
             
@@ -1445,6 +1379,243 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             OutImage = imresize(OutImage,size(InImage));
             
         end
+        
+        function [FitParameters,FittedChannel] = fit_tip_radius_to_depth_polynomial(ProjectedTipArea,varargin)
+            % function FitParameters = fit_tip_radius_to_depth_polynomial(ProjectedTipArea,varargin)
+            %
+            % Takes the projected area of a cantilever tip (or any 3D
+            % object for that matter) and fits a DegreeOfPolyfit-th
+            % polynomial to the radius-depth curve using only even
+            % polynomial terms.
+            %
+            %
+            % Required inputs
+            % ProjectedTipArea ... 1xn or nx1 numeric vector of projected
+            %                      tip area. Depth information is implizit through AreaStepSize
+            %                      with the relation Index*AreaStepSize = Depth
+            %
+            % Name-Value pairs
+            % "AreaStepSize" ... Relates Radius to Depth via Index*AreaStepSize = Depth
+            %                   (default=1e-9)
+            % "DegreeOfFit" ... 
+            % "DepthRange" ... How much of the ProjectedTipArea is to be
+            %                   fitted. either a fraction or a distance. Depening on
+            %                   DepthRangeUnit
+            % "DepthRangeUnit" ... {'Fraction'(def),'Meters'}
+            % "Verbose" ... logical. If true, a figure is created
+            % "TipImageChannel" ... Enables FittedChannel output and
+            %                   unlocks further details in the figure.
+            % "DegreeOfConcentration" ... Concentrates fitting points to
+            %                             the apex of the tip to ensure
+            %                             more accuracy in the region that
+            %                             matters. Interger > 0 (default=4)
+            
+            p = inputParser;
+            p.FunctionName = "fit_tip_radius_to_depth_polynomial";
+            p.CaseSensitive = false;
+            p.PartialMatching = true;
+            
+            % Required inputs
+            validProjectedTipArea = @(x)isnumeric(x)&&(size(x,1)==1||size(x,2)==1);
+            addRequired(p,"ProjectedTipArea",validProjectedTipArea);
+            
+            % NameValue inputs
+            defaultAreaStepSize = 1e-9;
+            defaultDegreeOfFit = 30;
+            defaultDepthRange = .4;
+            defaultDepthRangeUnit = 'Fraction';
+            defaultVerbose = true;
+            defaultTipImageChannel = [];
+            defaultDegreeOfConcentration = 4;
+            validAreaStepSize = @(x)isscalar(x);
+            validDegreeOfFit = @(x)isscalar(x)&&round(x)==x;
+            validDepthRange = @(x)isscalar(x)&&x>0;
+            validDepthRangeUnit = @(x)any(validatestring(x,{'Fraction','Meters'}));
+            validVerbose = @(x)islogical(x);
+            validTipImageChannel = @(x)isstruct(x);
+            validDegreeOfConcentration = @(x)isscalar(x)&&round(x)==x;
+            addParameter(p,"AreaStepSize",defaultAreaStepSize,validAreaStepSize);
+            addParameter(p,"DegreeOfFit",defaultDegreeOfFit,validDegreeOfFit);
+            addParameter(p,"DepthRange",defaultDepthRange,validDepthRange);
+            addParameter(p,"DepthRangeUnit",defaultDepthRangeUnit,validDepthRangeUnit);
+            addParameter(p,"Verbose",defaultVerbose,validVerbose);
+            addParameter(p,"TipImageChannel",defaultTipImageChannel,validTipImageChannel);
+            addParameter(p,"DegreeOfConcentration",defaultDegreeOfConcentration,validDegreeOfConcentration);
+            
+            parse(p,ProjectedTipArea,varargin{:});
+            
+            % Assign parsing results to named variables
+            ProjectedTipArea = p.Results.ProjectedTipArea;
+            AreaStepSize = p.Results.AreaStepSize;
+            DegreeOfFit = p.Results.DegreeOfFit;
+            DepthRange = p.Results.DepthRange;
+            DepthRangeUnit = p.Results.DepthRangeUnit;
+            Verbose = p.Results.Verbose;
+            TipImageChannel = p.Results.TipImageChannel;
+            DegreeOfConcentration = p.Results.DegreeOfConcentration;
+            
+            
+            % Read out and prepare data for fitting
+            if isequal(DepthRangeUnit,'Fraction')
+                DepthIndex = round(DepthRange.*length(ProjectedTipArea));
+            elseif isequal(DepthRangeUnit,'Meters')
+                DepthIndex = ceil(DepthRange/AreaStepSize);
+            end
+            Radius = sqrt((ProjectedTipArea(1:DepthIndex)./pi));
+            Depth = [1:length(Radius)]'.*AreaStepSize;
+            [Radius,UniqueIndizes] = unique(Radius);
+            Depth = Depth(UniqueIndizes);
+            
+            RangeR = range(Radius);
+            RangeD = range(Depth);
+            XNorm = Radius./RangeR;
+            YNorm = Depth./RangeD;
+            XInterpolated = linspace(0,1,1000)';
+            XConcentrated = XInterpolated.^DegreeOfConcentration;
+            XConcentrated = vertcat(XConcentrated,-XConcentrated);
+            XNorm = vertcat(XNorm,-XNorm);
+            YNorm = vertcat(YNorm,YNorm);
+            X = XConcentrated;
+            Y = interp1(XNorm,YNorm,X,'makima');
+            
+            
+            Parameters = accurate_polyfit(X,Y,DegreeOfFit,'Symmetry','even','isAffine',false);
+            
+            % Rescale fitting function to real world units
+            FitParameters = zeros(size(Parameters));
+            for i=0:(length(Parameters)-1)
+                FitParameters(end-i) = Parameters(end-i).*RangeD/(RangeR).^i;
+            end
+            
+            if hasInfNaN(FitParameters)
+                error([newline 'Fit produced infinite values'...
+                    newline newline 'Try a lower degree of fit.'])
+            end
+            
+            if ~isempty(TipImageChannel)
+                FittedChannel = AFMImage.draw_object_of_revolution_to_channel(...
+                    Radius,polyval(FitParameters,Radius),...
+                    'RelatedChannel',TipImageChannel);
+                
+                NumSubplotRows = 2;
+            else
+                FittedChannel = AFMImage.draw_object_of_revolution_to_channel(...
+                    Radius,polyval(FitParameters,Radius));
+                NumSubplotRows = 1;
+            end
+            
+            if Verbose
+                figure('Color','w')
+                title(p.FunctionName)
+                
+                subplot(NumSubplotRows,2,1)
+                plot(Radius,Depth,'b*')
+                hold on
+                plot(Radius,polyval(FitParameters,Radius),'r-')
+                ylim([min(Depth) max(Depth)])
+                legend({'Original Data','Polyfit'})
+                xlabel('Radius [m]')
+                ylabel('Depth [m]')
+                
+                subplot(NumSubplotRows,2,2)
+                plot(X,Y,'b*')
+                hold on
+                XConcentrated = sort(XConcentrated);
+                plot(XConcentrated,polyval(Parameters,XConcentrated),'r-')
+                ylim([min(Y) max(Y)])
+                legend({'Normalized and Concentrated Data','Normalized Polyfit'})
+                xlabel('Normalized Radius')
+                ylabel('Normalized Depth')
+                
+                if NumSubplotRows==2
+                    subplot(2,2,3)
+                    XTip = linspace(0,1,TipImageChannel.NumPixelsX).*...
+                        TipImageChannel.ScanSizeX;
+                    YTip = linspace(0,1,TipImageChannel.NumPixelsY).*...
+                        TipImageChannel.ScanSizeY;
+                    SurfOriginal = surf(XTip,YTip,TipImageChannel.Image);
+                    subplot(2,2,4)
+                    XFitted = linspace(0,1,TipImageChannel.NumPixelsX).*...
+                        TipImageChannel.ScanSizeX;
+                    YFitted = linspace(0,1,TipImageChannel.NumPixelsY).*...
+                        TipImageChannel.ScanSizeY;
+                    SurfFitted = surf(XFitted,YFitted,FittedChannel.Image);
+                end
+            end
+        end
+        
+        function OutChannel = draw_object_of_revolution_to_channel(X,Y,varargin)
+            % function OutImage = draw_object_of_revolution_to_channel(X,Y,varargin)
+            %
+            % Takes a z=f(r) relation (z,r ... cylindrical coordinates) and
+            % revolves it around the center of an 'RelatedChannel'-like
+            % image. Physical sizes are taken from 'RelatedChannel'
+            %
+            %
+            % Required inputs
+            % X ... Radius r; nx1 or 1xn numerical vector
+            % Y ... Depth z;  nx1 or 1xn numerical vector
+            %
+            % Name-Value pairs
+            % "RelatedChannel" ... AFMBaseClass Channel-Struct; determines
+            %                   the resolution, size per pixel and overall range of height
+            %                   data. Ideally X and Y derive from RelatedChannel. Default []
+            %                   will output a Channelstruct sized to the
+            %                   ranges of X and Y.
+            
+            p = inputParser;
+            p.FunctionName = "draw_object_of_revolution_to_channel";
+            p.CaseSensitive = false;
+            p.PartialMatching = true;
+            
+            % Required inputs
+            validX = @(x)true;
+            validY = @(x)true;
+            addRequired(p,"X",validX);
+            addRequired(p,"Y",validY);
+            
+            % NameValue inputs
+            defaultRelatedChannel = struct('Image',zeros(512,512),...
+                'NumPixelsX',512,'NumPixelsY',512,...
+                'ScanSizeX',range(X),'ScanSizeY',range(X),...
+                'Name','DummyChannel',...
+                'OriginX',0,'OriginY',0,...
+                'Unit','m');
+            defaultRelatedChannel.Image(256,256) = range(Y);
+            validRelatedChannel = @(x)true;
+            addParameter(p,"RelatedChannel",defaultRelatedChannel,validRelatedChannel);
+            
+            parse(p,X,Y,varargin{:});
+            
+            % Assign parsing results to named variables
+            X = p.Results.X;
+            Y = p.Results.Y;
+            RelatedChannel = p.Results.RelatedChannel;
+            
+            %Define Image center, resolution and physical dimension
+            MaxRange = range(RelatedChannel.Image,'all');
+            Image = zeros(size(RelatedChannel.Image));
+            CenterX = floor(RelatedChannel.NumPixelsX/2);
+            CenterY = floor(RelatedChannel.NumPixelsY/2);
+            SizePerPixelX = RelatedChannel.ScanSizeX/RelatedChannel.NumPixelsX;
+            SizePerPixelY = RelatedChannel.ScanSizeY/RelatedChannel.NumPixelsY;
+            for i=1:RelatedChannel.NumPixelsX
+                for j=1:RelatedChannel.NumPixelsY
+                    if sqrt(((CenterX-i)*SizePerPixelX)^2 + ((CenterY-j)*SizePerPixelY)^2) > 0.95.*max(X)
+                        continue
+                    else
+                        Image(i,j) = MaxRange - interp1(X,Y,...
+                            sqrt(((CenterX-i)*SizePerPixelX)^2 + ((CenterY-j)*SizePerPixelY)^2),...
+                            'spline');
+                    end
+                end
+            end
+            OutChannel = RelatedChannel;
+            OutChannel.Name = 'Body of revolution';
+            OutChannel.Image = Image;
+            
+        end
+        
     end
     
     methods
@@ -2008,8 +2179,8 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             
             if nargin < 4
                 BarToImageRatio = 1/5;
-                CurAxHeight = NumPixelsY;
-                CurAxWidth = NumPixelsX;
+                CurAxHeight = NumPixelsX;
+                CurAxWidth = NumPixelsY;
             end
             
             ImageRatio = NumPixelsY/NumPixelsX;
@@ -2033,22 +2204,23 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             BoxDeltaX = Width/4;
             BoxDeltaY = Height*3;
             
-            BackR = rectangle('Position',[Left-BoxDeltaX/2 Bottom-5*BoxDeltaY/6 Width+BoxDeltaX Height+BoxDeltaY].*NumPixelsX);
+            BackR = rectangle('Position',[(Left-BoxDeltaX/2).*NumPixelsY (Bottom-5*BoxDeltaY/6).*NumPixelsX (Width+BoxDeltaX).*NumPixelsY (Height+BoxDeltaY).*NumPixelsX]);
             BackR.FaceColor = 'k';
             BackR.EdgeColor = 'w';
             BackR.LineWidth = 1;
             
-            R = rectangle('Position',[Left Bottom Width Height].*NumPixelsX);
+            R = rectangle('Position',[Left.*NumPixelsY Bottom.*NumPixelsX Width.*NumPixelsY Height.*NumPixelsX]);
             R.FaceColor = 'w';
             R.EdgeColor = 'k';
             R.LineWidth = 2;
             
             FontSize = round(42*FontSizeMult);
-            A = text((Left*1.13)*NumPixelsX,(1.005*Bottom-3*BoxDeltaY/6)*NumPixelsY,sprintf('%i %s',SnapTo,Unit),'HorizontalAlignment','center');
+            A = text((Left*1.13)*NumPixelsY,(1.005*Bottom-3*BoxDeltaY/6)*NumPixelsX,sprintf('%i %s',SnapTo,Unit),'HorizontalAlignment','center');
             A.Color = 'w';
             A.FontSize = FontSize;
             A.FontWeight = 'bold';
-            
+            A.FontUnits = 'pixels';
+            A.FontSize = min(A.FontSize,1.*Height.*CurAxHeight);
             
         end
         
