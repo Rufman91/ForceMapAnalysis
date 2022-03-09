@@ -4420,6 +4420,15 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 end
                 YLabel = ['vDeflection [' UnitY ']'];
                 
+                % TODO needs a dedicated button
+%                 % Sort Height
+%                 X1 = sort(X1);
+%                 if obj.ShowImageSettings.PlotTime
+%                     X2 = sort(X2);
+%                 else
+%                     X2 = sort(X2,'descend');
+%                 end
+                
                 % plot data
                 h.VolumeStruct.Plot = plot(X1,Y1,X2,Y2,X3,Y3);
                 hold on
