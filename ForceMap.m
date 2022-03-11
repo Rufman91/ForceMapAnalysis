@@ -3902,30 +3902,20 @@ classdef ForceMap < matlab.mixin.Copyable
                 losstangent = losstangent(losstangent ~= 0);
                 emodmicro1 = emodmicro1(emodmicro1 ~= 0);
                 emodmicro2 = emodmicro2(emodmicro2 ~= 0);
+                emodmicro1(isnan(emodmicro1))=0;
+                emodmicro2(isnan(emodmicro2))=0;
                 
                 minfreq = min(frequencies);
                 maxfreq = max(frequencies);
                 
-                xq = 0:0.1:maxfreq;
-                vqDphi = interp1(frequencies,Dphi,xq,'spline');
-                vqLosstangent = interp1(frequencies,losstangent,xq,'spline');
-                try
-                    vqEmodmicro1 = interp1(frequencies,emodmicro1,xq,'spline');
-                    vqEmodmicro2 = interp1(frequencies,emodmicro2,xq,'spline');
-                catch
-                    emodmicro1(isnan(emodmicro1))=0;
-                    emodmicro2(isnan(emodmicro2))=0;
-                    vqEmodmicro1 = interp1(frequencies,emodmicro1,xq,'spline');
-                    vqEmodmicro2 = interp1(frequencies,emodmicro2,xq,'spline');
-                end
                 
                 %figure('Name',sprintf('Results'))
                 hold on
                 
                 subplot(2,2,1)
-                plot(xq,vqDphi,'-','DisplayName',sprintf('Curve %i',i))
-                hold on
-                plot(frequencies, Dphi,'o','HandleVisibility','off')
+                %plot(xq,vqDphi,'-','DisplayName',sprintf('Curve %i',i))
+                %hold on
+                boxplot(frequencies, Dphi,'HandleVisibility','off')
                 ylim([-270 270])
                 title('Phaseshift of all curves','FontSize', 18)
                 xlabel('frequency [Hz]','FontSize', 16)
@@ -3936,9 +3926,9 @@ classdef ForceMap < matlab.mixin.Copyable
                 grid minor
                 
                 subplot(2,2,2)
-                plot(xq,vqLosstangent,'-','DisplayName',sprintf('Curve %i',i))
-                hold on
-                plot(frequencies, losstangent,'o','HandleVisibility','off')
+                %plot(xq,vqLosstangent,'-','DisplayName',sprintf('Curve %i',i))
+                %hold on
+                boxplot(frequencies, losstangent,'HandleVisibility','off')
                 title('Loss Tangent of all curves','FontSize', 18)
                 xlabel('frequency [Hz]','FontSize', 16)
                 ylabel('losstangent','FontSize', 16)
@@ -3948,10 +3938,10 @@ classdef ForceMap < matlab.mixin.Copyable
                 grid minor
                 
                 subplot(2,2,3)
-                plot(xq,vqEmodmicro1,'-','DisplayName',sprintf('Curve %i',i))
-                hold on
-                plot(frequencies, emodmicro1,'o','HandleVisibility','off')
-                title('Elastic modulus of all curves','FontSize', 18)
+                %plot(xq,vqEmodmicro1,'-','DisplayName',sprintf('Curve %i',i))
+                %hold on
+                boxplot(frequencies, emodmicro1,'HandleVisibility','off')
+                title('Storage modulus of all curves','FontSize', 18)
                 xlabel('frequency [Hz]','FontSize', 16)
                 ylabel('elastic modulus [N/mm2]','FontSize', 16)
                 legend show
@@ -3960,10 +3950,10 @@ classdef ForceMap < matlab.mixin.Copyable
                 grid minor
                 
                 subplot(2,2,4)
-                plot(xq,vqEmodmicro2,'-','DisplayName',sprintf('Curve %i',i))
-                hold on
-                plot(frequencies,emodmicro2,'o','HandleVisibility','off')
-                title('Viscous modulus of all curves','FontSize', 18)
+                %plot(xq,vqEmodmicro2,'-','DisplayName',sprintf('Curve %i',i))
+                %hold on
+                boxplot(frequencies,emodmicro2,'HandleVisibility','off')
+                title('Loss modulus of all curves','FontSize', 18)
                 xlabel('frequency [Hz]','FontSize', 16)
                 ylabel('viscous modulus [N/mm2]','FontSize', 16)
                 legend show
