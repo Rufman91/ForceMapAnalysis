@@ -3915,7 +3915,7 @@ classdef ForceMap < matlab.mixin.Copyable
                 subplot(2,2,1)
                 %plot(xq,vqDphi,'-','DisplayName',sprintf('Curve %i',i))
                 %hold on
-                boxplot(frequencies, Dphi,'HandleVisibility','off')
+                boxplot(frequencies, Dphi)
                 ylim([-270 270])
                 title('Phaseshift of all curves','FontSize', 18)
                 xlabel('frequency [Hz]','FontSize', 16)
@@ -3928,7 +3928,7 @@ classdef ForceMap < matlab.mixin.Copyable
                 subplot(2,2,2)
                 %plot(xq,vqLosstangent,'-','DisplayName',sprintf('Curve %i',i))
                 %hold on
-                boxplot(frequencies, losstangent,'HandleVisibility','off')
+                boxplot(frequencies, losstangent)
                 title('Loss Tangent of all curves','FontSize', 18)
                 xlabel('frequency [Hz]','FontSize', 16)
                 ylabel('losstangent','FontSize', 16)
@@ -3939,8 +3939,9 @@ classdef ForceMap < matlab.mixin.Copyable
                 
                 subplot(2,2,3)
                 %plot(xq,vqEmodmicro1,'-','DisplayName',sprintf('Curve %i',i))
+                %,'HandleVisibility','off'
                 %hold on
-                boxplot(frequencies, emodmicro1,'HandleVisibility','off')
+                boxplot(frequencies, emodmicro1)
                 title('Storage modulus of all curves','FontSize', 18)
                 xlabel('frequency [Hz]','FontSize', 16)
                 ylabel('elastic modulus [N/mm2]','FontSize', 16)
@@ -3952,7 +3953,7 @@ classdef ForceMap < matlab.mixin.Copyable
                 subplot(2,2,4)
                 %plot(xq,vqEmodmicro2,'-','DisplayName',sprintf('Curve %i',i))
                 %hold on
-                boxplot(frequencies,emodmicro2,'HandleVisibility','off')
+                boxplot(frequencies,emodmicro2)
                 title('Loss modulus of all curves','FontSize', 18)
                 xlabel('frequency [Hz]','FontSize', 16)
                 ylabel('viscous modulus [N/mm2]','FontSize', 16)
