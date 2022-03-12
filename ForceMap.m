@@ -3883,8 +3883,6 @@ classdef ForceMap < matlab.mixin.Copyable
             emodmicro2 = zeros(obj.NumSegments,1);
             
             for j=1:obj.NumSegments
-                    %EModMicro1 = num2cell(obj.EModMicro1);
-                    %EModMicro2 = num2cell(obj.EModMicro2);
                     frequencies(j,:) = obj.SegFrequency{j};
             end
             frequencies = frequencies(frequencies ~= 0);
@@ -3892,95 +3890,73 @@ classdef ForceMap < matlab.mixin.Copyable
             
             Dphi = cell2mat(obj.DeltaPhi);
             losstangent = cell2mat(obj.LossTangent);
-            %emodmicro1 = cell2mat(obj.EModMicro1);
-            %emodmicro2 = cell2mat(obj.EModMicro2);
             emodmicro1 = obj.EModMicro1;
             emodmicro2 = obj.EModMicro2;
             emodmicro1(:,all(emodmicro1 == 0))=[];
             emodmicro2(:,all(emodmicro2 == 0))=[];
-            %emodmicro1 = obj.EModMicro1(obj.EModMicro1 ~= 0);
-            %emodmicro2 = obj.EModMicro2(obj.EModMicro2 ~= 0);
             emodmicro1(isnan(emodmicro1))=0;
             emodmicro2(isnan(emodmicro2))=0;
             
-%             for i=1:obj.NCurves
-%                 
-%                 for j=1:obj.NumSegments
-%                     if obj.SegFrequency{j} > 0
-%                         %Dphi(:,j) = obj.DeltaPhi{i,j};
-%                         
-%                         losstangent(:,j) = obj.LossTangent{i,j};
-%                         emodmicro1(:,j) = EModMicro1{i,j};
-%                         emodmicro2(:,j) = EModMicro2{i,j};
-%                     end
-%                 end
-%                 Dphi = Dphi(Dphi ~= 0);
-%                 losstangent = losstangent(losstangent ~= 0);
-%                 
-%                 
-%                 minfreq = min(frequencies);
-%                 maxfreq = max(frequencies);
-%             end
                 
-                %figure('Name',sprintf('Results'))
-                hold on
-                
-                subplot(2,2,1)
-                %plot(xq,vqDphi,'-','DisplayName',sprintf('Curve %i',i))
-                %hold on
-                boxplot(Dphi,frequencies)
-                %ylim([-270 270])
-                title('Phaseshift of all curves','FontSize', 18)
-                xlabel('frequency [Hz]','FontSize', 16)
-                ylabel('phaseshift [°]','FontSize', 16)
-                %legend show
-                %drawnow
-                grid on
-                grid minor
-                
-                subplot(2,2,2)
-                %plot(xq,vqLosstangent,'-','DisplayName',sprintf('Curve %i',i))
-                %hold on
-                boxplot(losstangent,frequencies)
-                title('Loss Tangent of all curves','FontSize', 18)
-                xlabel('frequency [Hz]','FontSize', 16)
-                ylabel('losstangent','FontSize', 16)
-                %legend show
-                %drawnow
-                grid on
-                grid minor
-                
-                subplot(2,2,3)
-                %plot(xq,vqEmodmicro1,'-','DisplayName',sprintf('Curve %i',i))
-                %,'HandleVisibility','off'
-                %hold on
-                boxplot(emodmicro1, frequencies)
-                title('Storage modulus of all curves','FontSize', 18)
-                xlabel('frequency [Hz]','FontSize', 16)
-                ylabel('elastic modulus [N/mm2]','FontSize', 16)
-                %legend show
-                %drawnow
-                grid on
-                grid minor
-                
-                subplot(2,2,4)
-                %plot(xq,vqEmodmicro2,'-','DisplayName',sprintf('Curve %i',i))
-                %hold on
-                boxplot(emodmicro2,frequencies)
-                title('Loss modulus of all curves','FontSize', 18)
-                xlabel('frequency [Hz]','FontSize', 16)
-                ylabel('viscous modulus [N/mm2]','FontSize', 16)
-                %legend show
-                %drawnow
-                grid on
-                grid minor
-                
-                if DirectoryPath~=0
-                   whereToStore=fullfile(DirectoryPath,['results_' num2str(i) '.svg']);
-                   saveas(gcf, whereToStore);
-                end
-                        
-                        
+            %figure('Name',sprintf('Results'))
+            hold on
+
+            subplot(2,2,1)
+            %plot(xq,vqDphi,'-','DisplayName',sprintf('Curve %i',i))
+            %hold on
+            boxplot(Dphi,frequencies)
+            %ylim([-270 270])
+            title('Phaseshift of all curves','FontSize', 18)
+            xlabel('frequency [Hz]','FontSize', 16)
+            ylabel('phaseshift [°]','FontSize', 16)
+            %legend show
+            %drawnow
+            grid on
+            grid minor
+
+            subplot(2,2,2)
+            %plot(xq,vqLosstangent,'-','DisplayName',sprintf('Curve %i',i))
+            %hold on
+            boxplot(losstangent,frequencies)
+            title('Loss Tangent of all curves','FontSize', 18)
+            xlabel('frequency [Hz]','FontSize', 16)
+            ylabel('losstangent','FontSize', 16)
+            %legend show
+            %drawnow
+            grid on
+            grid minor
+
+            subplot(2,2,3)
+            %plot(xq,vqEmodmicro1,'-','DisplayName',sprintf('Curve %i',i))
+            %,'HandleVisibility','off'
+            %hold on
+            boxplot(emodmicro1, frequencies)
+            title('Storage modulus of all curves','FontSize', 18)
+            xlabel('frequency [Hz]','FontSize', 16)
+            ylabel('elastic modulus [Pa]','FontSize', 16)
+            %legend show
+            %drawnow
+            grid on
+            grid minor
+
+            subplot(2,2,4)
+            %plot(xq,vqEmodmicro2,'-','DisplayName',sprintf('Curve %i',i))
+            %hold on
+            boxplot(emodmicro2,frequencies)
+            title('Loss modulus of all curves','FontSize', 18)
+            xlabel('frequency [Hz]','FontSize', 16)
+            ylabel('viscous modulus [Pa]','FontSize', 16)
+            %legend show
+            %drawnow
+            grid on
+            grid minor
+
+            if DirectoryPath~=0
+               whereToStore=fullfile(DirectoryPath,['results_' num2str(i) '.svg']);
+               saveas(gcf, whereToStore);
+            end
+
+
 
           
             
