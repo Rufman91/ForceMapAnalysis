@@ -3869,6 +3869,9 @@ classdef ForceMap < matlab.mixin.Copyable
         end
         
         function show_emodmicro(obj)
+            % showing the results (phaseshift, losstangent, storage and
+            % loss modulus) over the different frequencies
+            
             close all
             DirectoryPath = uigetdir();
             k=1;
@@ -3967,6 +3970,10 @@ classdef ForceMap < matlab.mixin.Copyable
         end
         
         function show_sine(obj)
+            % this function is to display the filtered force and
+            % indentation data and the respective fits to see the quality
+            % of the fit
+            
             close all
             DirectoryPath = uigetdir();
             k=1;
@@ -4035,7 +4042,8 @@ classdef ForceMap < matlab.mixin.Copyable
                         title(sprintf('Filtered Force over Time incl. Fit Curve %i',i),'FontSize', 18)
                         xlabel('time [s]','FontSize', 16)
                         ylabel(sprintf('Filtered vDeflection-Force [%s]',UnitF),'FontSize', 16)
-                        %ylabel('force')
+                        grid on
+                        grid minor
                         
                         subplot(2,1,2)
                         [MultiplierI,UnitI,~] = AFMImage.parse_unit_scale(range(obj.FilterH{i,FirstFreq}),'m',10);
@@ -4088,6 +4096,9 @@ classdef ForceMap < matlab.mixin.Copyable
         end
         
         function show_sine_2(obj)
+            % showing the original and raw force and indentation data with
+            % the respective fits
+            
             close all
             DirectoryPath = uigetdir();
             k=1;
@@ -4157,7 +4168,9 @@ classdef ForceMap < matlab.mixin.Copyable
                         hold on
                         %plot(x,obj.FilterF{i,j}*MultiplierF,'-m')
                         %hold on
-                        plot(x,ypFtrend*MultiplierF,'-','color',lila)
+                        if obj.SegFrequency{j} > 0
+                            plot(x,ypFtrend*MultiplierF,'-','color',lila)
+                        end
                         set(gca, 'YColor', 'm')
                         %Legends = {'force data','force fit data'};
                         xlabel('time [s]','FontSize', 16)
@@ -4170,7 +4183,9 @@ classdef ForceMap < matlab.mixin.Copyable
                         hold on
                         %plot(x,obj.FilterH{i,j}*MultiplierI,'-','color', lightblue)
                         %hold on
-                        plot(x,ypHtrend*MultiplierI,'-','color',darkblue)
+                        if obj.SegFrequency{j} > 0
+                            plot(x,ypHtrend*MultiplierI,'-','color',darkblue)
+                        end
                         %Legends{end+1} = 'indentation data';
                         set(gca, 'YColor', lightblue)
                         title(sprintf('Force and Indentation over Time incl. Fit Curve %i',i),'FontSize', 18)
