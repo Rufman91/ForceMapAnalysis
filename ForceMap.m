@@ -4022,6 +4022,9 @@ classdef ForceMap < matlab.mixin.Copyable
                         lF = obj.slopeF(i,j).*x;
                         lH = obj.slopeH(i,j).*x;
                         
+                        if obj.SegFrequency{j} = 0
+                            obj.FilterF{i,j} = zeros(length(x),1);
+                        end
 
                         
                         hold on
