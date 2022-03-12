@@ -3875,30 +3875,32 @@ classdef ForceMap < matlab.mixin.Copyable
             
             figure('Name',sprintf('Results'))
             hold on
+            
+            Dphi = zeros(obj.NumSegments,1);
+            frequencies = zeros(obj.NumSegments,1);
+            losstangent = zeros(obj.NumSegments,1);
+            emodmicro1 = zeros(obj.NumSegments,1);
+            emodmicro2 = zeros(obj.NumSegments,1);
+            
+            for j=1:obj.NumSegments
+                    EModMicro1 = num2cell(obj.EModMicro1);
+                    EModMicro2 = num2cell(obj.EModMicro2);
+                    frequencies(j,:) = obj.SegFrequency{j};
+            end
+            frequencies = frequencies(frequencies ~= 0);
+            lf = length(frequencies);
+                
             for i=1:obj.NCurves
                 
                 for j=1:obj.NumSegments
-                    EModMicro1 = num2cell(obj.EModMicro1);
-                    EModMicro2 = num2cell(obj.EModMicro2);
-                end
-                
-                Dphi = zeros(obj.NumSegments,1);
-                frequencies = zeros(obj.NumSegments,1);
-                losstangent = zeros(obj.NumSegments,1);
-                emodmicro1 = zeros(obj.NumSegments,1);
-                emodmicro2 = zeros(obj.NumSegments,1);
-                for j=1:obj.NumSegments
                     if obj.SegFrequency{j} > 0
-                        Dphi(j,:) = obj.DeltaPhi{i,j};
-                        frequencies(j,:) = obj.SegFrequency{j};
-                        losstangent(j,:) = obj.LossTangent{i,j};
-                        
-                        emodmicro1(j,:) = EModMicro1{i,j};
-                        emodmicro2(j,:) = EModMicro2{i,j};
+                        Dphi(:,j) = obj.DeltaPhi{i,j};
+                        losstangent(:,j) = obj.LossTangent{i,j};
+                        emodmicro1(:,j) = EModMicro1{i,j};
+                        emodmicro2(:,j) = EModMicro2{i,j};
                     end
                 end
                 Dphi = Dphi(Dphi ~= 0);
-                frequencies = frequencies(frequencies ~= 0);
                 losstangent = losstangent(losstangent ~= 0);
                 emodmicro1 = emodmicro1(emodmicro1 ~= 0);
                 emodmicro2 = emodmicro2(emodmicro2 ~= 0);
@@ -3907,7 +3909,7 @@ classdef ForceMap < matlab.mixin.Copyable
                 
                 minfreq = min(frequencies);
                 maxfreq = max(frequencies);
-                
+            end
                 
                 %figure('Name',sprintf('Results'))
                 hold on
@@ -3915,7 +3917,7 @@ classdef ForceMap < matlab.mixin.Copyable
                 subplot(2,2,1)
                 %plot(xq,vqDphi,'-','DisplayName',sprintf('Curve %i',i))
                 %hold on
-                boxplot(frequencies, Dphi)
+                boxplot(Dphi,frequencies)
                 ylim([-270 270])
                 title('Phaseshift of all curves','FontSize', 18)
                 xlabel('frequency [Hz]','FontSize', 16)
@@ -3928,7 +3930,7 @@ classdef ForceMap < matlab.mixin.Copyable
                 subplot(2,2,2)
                 %plot(xq,vqLosstangent,'-','DisplayName',sprintf('Curve %i',i))
                 %hold on
-                boxplot(frequencies, losstangent)
+                boxplot(losstangent,frequencies)
                 title('Loss Tangent of all curves','FontSize', 18)
                 xlabel('frequency [Hz]','FontSize', 16)
                 ylabel('losstangent','FontSize', 16)
@@ -3941,7 +3943,7 @@ classdef ForceMap < matlab.mixin.Copyable
                 %plot(xq,vqEmodmicro1,'-','DisplayName',sprintf('Curve %i',i))
                 %,'HandleVisibility','off'
                 %hold on
-                boxplot(frequencies, emodmicro1)
+                boxplot(emodmicro1, frequencies)
                 title('Storage modulus of all curves','FontSize', 18)
                 xlabel('frequency [Hz]','FontSize', 16)
                 ylabel('elastic modulus [N/mm2]','FontSize', 16)
@@ -3953,7 +3955,7 @@ classdef ForceMap < matlab.mixin.Copyable
                 subplot(2,2,4)
                 %plot(xq,vqEmodmicro2,'-','DisplayName',sprintf('Curve %i',i))
                 %hold on
-                boxplot(frequencies,emodmicro2)
+                boxplot(emodmicro2,frequencies)
                 title('Loss modulus of all curves','FontSize', 18)
                 xlabel('frequency [Hz]','FontSize', 16)
                 ylabel('viscous modulus [N/mm2]','FontSize', 16)
@@ -3969,7 +3971,7 @@ classdef ForceMap < matlab.mixin.Copyable
                         
                         
 
-            end
+          
             
 
 
