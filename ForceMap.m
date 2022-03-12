@@ -4003,7 +4003,7 @@ classdef ForceMap < matlab.mixin.Copyable
                         rangeH = range(obj.Indentation{i,j});
                         
                         obj.SineVarsF{i,j}(1) = obj.SineVarsF{i,j}(1)/rangeF;
-                        obj.SineVarsF{i,j}(2) = obj.SineVarsF{i,j}(2)/rangeH;
+                        obj.SineVarsH{i,j}(1) = obj.SineVarsH{i,j}(1)/rangeH;
                         obj.slopeF = obj.slopeF/rangeF;
                         obj.slopeH = obj.slopeH/rangeH;
                         obj.interceptF = obj.interceptF/rangeF;
