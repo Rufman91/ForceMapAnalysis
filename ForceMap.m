@@ -4031,9 +4031,9 @@ classdef ForceMap < matlab.mixin.Copyable
                         hold on
 
                         yyaxis left
-                        [MultiplierF,UnitF,~] = AFMImage.parse_unit_scale(range(obj.BasedForce{i,FirstFreq}),'N',10);
-                        plot(x,obj.BasedForce{i,j}*MultiplierF,':m')
-                        hold on
+                        [MultiplierF,UnitF,~] = AFMImage.parse_unit_scale(range(obj.FilterF{i,FirstFreq}),'N',10);
+                        %plot(x,obj.BasedForce{i,j}*MultiplierF,':m')
+                        %hold on
                         plot(x,obj.FilterF{i,j}*MultiplierF,'-m')
                         hold on
                         plot(x,ypFtrend*MultiplierF,'-','color',lila)
@@ -4044,9 +4044,9 @@ classdef ForceMap < matlab.mixin.Copyable
                         %ylabel('force')
                         
                         yyaxis right
-                        [MultiplierI,UnitI,~] = AFMImage.parse_unit_scale(range(obj.Indentation{i,FirstFreq}),'m',10);
-                        plot(x,obj.Indentation{i,j}*MultiplierI,':','color', lightblue)
-                        hold on
+                        [MultiplierI,UnitI,~] = AFMImage.parse_unit_scale(range(obj.FilterH{i,FirstFreq}),'m',10);
+                        %plot(x,obj.Indentation{i,j}*MultiplierI,':','color', lightblue)
+                        %hold on
                         plot(x,obj.FilterH{i,j}*MultiplierI,'-','color', lightblue)
                         hold on
                         plot(x,ypHtrend*MultiplierI,'-','color',darkblue)
@@ -4072,7 +4072,9 @@ classdef ForceMap < matlab.mixin.Copyable
                         l2.LineWidth = 3;
                         l3.LineWidth = 3;
                         l4.LineWidth = 3;
-                        legend([l1, l2, l3, l4], {'raw force data', 'filtered force data', 'force fit','raw indentation data', 'filtered indentation data', 'indentation fit'}, 'Location', 'southoutside','FontSize', 14)
+                        l5.LineWidth = 3;
+                        l6.LineWidth = 3;
+                        legend([l1, l2, l3, l4, l5, l6], {'raw force data', 'filtered force data', 'force fit','raw indentation data', 'filtered indentation data', 'indentation fit'}, 'Location', 'southoutside','FontSize', 14)
                        
                        
                         if DirectoryPath~=0
