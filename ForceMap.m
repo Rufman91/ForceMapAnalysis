@@ -3889,12 +3889,14 @@ classdef ForceMap < matlab.mixin.Copyable
             end
             frequencies = frequencies(frequencies ~= 0);
             lf = length(frequencies);
-                
+            
+            
             for i=1:obj.NCurves
                 
                 for j=1:obj.NumSegments
                     if obj.SegFrequency{j} > 0
-                        Dphi(:,j) = obj.DeltaPhi{i,j};
+                        %Dphi(:,j) = obj.DeltaPhi{i,j};
+                        Dphi = cell2mat(obj.DeltaPhi{i,j});
                         losstangent(:,j) = obj.LossTangent{i,j};
                         emodmicro1(:,j) = EModMicro1{i,j};
                         emodmicro2(:,j) = EModMicro2{i,j};
