@@ -4085,7 +4085,14 @@ classdef ForceMap < matlab.mixin.Copyable
                         l4.LineWidth = 3;
                         legend([l1, l2, l3, l4], {'filtered force data', 'force fit','filtered indentation data', 'indentation fit'}, 'Location', 'southoutside','FontSize', 14)
                        
-                       
+                        obj.SineVarsF{i,j}(1) = obj.SineVarsF{i,j}(1)*rangeF;
+                        obj.SineVarsH{i,j}(1) = obj.SineVarsH{i,j}(1)*rangeH;
+                        obj.slopeF = obj.slopeF*rangeF;
+                        obj.slopeH = obj.slopeH*rangeH;
+                        obj.interceptF = obj.interceptF*rangeF;
+                        obj.interceptH = obj.interceptH*rangeH;
+                        
+                        
                         if DirectoryPath~=0
                            whereToStore=fullfile(DirectoryPath,['force_indentation_fit_curve_' num2str(i) '.svg']);
                            saveas(gcf, whereToStore);
