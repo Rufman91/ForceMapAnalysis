@@ -4002,13 +4002,14 @@ classdef ForceMap < matlab.mixin.Copyable
                         rangeF = range(obj.BasedForce{i,j});
                         rangeH = range(obj.Indentation{i,j});
                         
-                        obj.SineVarsF{i,j}(1) = obj.SineVarsF{i,j}(1)/rangeF;
-                        obj.SineVarsH{i,j}(1) = obj.SineVarsH{i,j}(1)/rangeH;
-                        obj.slopeF = obj.slopeF/rangeF;
-                        obj.slopeH = obj.slopeH/rangeH;
-                        obj.interceptF = obj.interceptF/rangeF;
-                        obj.interceptH = obj.interceptH/rangeH;
-                        
+                        if obj.SegFrequency{j} > 0
+                            obj.SineVarsF{i,j}(1) = obj.SineVarsF{i,j}(1)/rangeF;
+                            obj.SineVarsH{i,j}(1) = obj.SineVarsH{i,j}(1)/rangeH;
+                            obj.slopeF = obj.slopeF/rangeF;
+                            obj.slopeH = obj.slopeH/rangeH;
+                            obj.interceptF = obj.interceptF/rangeF;
+                            obj.interceptH = obj.interceptH/rangeH;
+                        end
                         
                         
                         % Estimate offset
