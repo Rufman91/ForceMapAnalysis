@@ -3892,10 +3892,10 @@ classdef ForceMap < matlab.mixin.Copyable
             
             Dphi = cell2mat(obj.DeltaPhi);
             losstangent = cell2mat(obj.LossTangent);
-            emodmicro1 = cell2mat(obj.EModMicro1);
-            emodmicro2 = cell2mat(obj.EModMicro2);
-            %emodmicro1 = emodmicro1(emodmicro1 ~= 0);
-            %emodmicro2 = emodmicro2(emodmicro2 ~= 0);
+            %emodmicro1 = cell2mat(obj.EModMicro1);
+            %emodmicro2 = cell2mat(obj.EModMicro2);
+            emodmicro1 = obj.EModMicro1(obj.EModMicro1 ~= 0);
+            emodmicro2 = obj.EModMicro2(obj.EModMicro2 ~= 0);
             emodmicro1(isnan(emodmicro1))=0;
             emodmicro2(isnan(emodmicro2))=0;
             
