@@ -4014,20 +4014,6 @@ classdef ForceMap < matlab.mixin.Copyable
                          ypF = obj.SineVarsF{i,j}(1)*(sin(2*pi*x.*obj.SineVarsF{i,j}(2) + obj.SineVarsF{i,j}(3)));
                          ypH = obj.SineVarsH{i,j}(1)*(sin(2*pi*x.*obj.SineVarsH{i,j}(2) + obj.SineVarsH{i,j}(3)));
                             
-%                         try
-%                             ypF = obj.SineVarsF{i,j}(1)*(sin(2*pi*x.*obj.SineVarsF{i,j}(2) + obj.SineVarsF{i,j}(3)));
-%                             ypH = obj.SineVarsH{i,j}(1)*(sin(2*pi*x.*obj.SineVarsH{i,j}(2) + obj.SineVarsH{i,j}(3)));
-%                             
-%                             ypFtrend = ypF + obj.slopeF(i,j).*x + obj.interceptF(i,j);
-%                             ypHtrend = ypH + obj.slopeH(i,j).*x + obj.interceptH(i,j);
-%                         catch
-%                             ypF = zeros(length(x),1);
-%                             ypH = zeros(length(x),1);
-%                             
-%                             ypFtrend = zeros(length(x),1);
-%                             ypHtrend = zeros(length(x),1);
-%                         end
-                        
                         
                         if obj.SegFrequency{j} == 0
                             obj.FilterF{i,j} = zeros(length(x),1);
@@ -4037,7 +4023,7 @@ classdef ForceMap < matlab.mixin.Copyable
                         
                         hold on
 
-                        yyaxis left
+                        subplot(2,1,1)
                         [MultiplierF,UnitF,~] = AFMImage.parse_unit_scale(range(obj.FilterF{i,FirstFreq}),'N',10);
                         %plot(x,obj.BasedForce{i,j}*MultiplierF,'-m')
                         %hold on
@@ -4050,7 +4036,7 @@ classdef ForceMap < matlab.mixin.Copyable
                         ylabel(sprintf('vDeflection-Force [%s]',UnitF),'FontSize', 16)
                         %ylabel('force')
                         
-                        yyaxis right
+                        subplot(2,1,2)
                         [MultiplierI,UnitI,~] = AFMImage.parse_unit_scale(range(obj.FilterH{i,FirstFreq}),'m',10);
                         %plot(x,obj.Indentation{i,j}*MultiplierI,'-','color', lightblue)
                         %hold on
