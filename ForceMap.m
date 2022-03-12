@@ -4257,7 +4257,7 @@ classdef ForceMap < matlab.mixin.Copyable
                         drawnow
                         grid on
                         grid minor
-                        daspect([1 End 1])
+                        daspect([End 2 1])
 
 
                        
