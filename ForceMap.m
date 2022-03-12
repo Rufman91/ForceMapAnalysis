@@ -4032,13 +4032,9 @@ classdef ForceMap < matlab.mixin.Copyable
 
                         subplot(2,1,1)
                         [MultiplierF,UnitF,~] = AFMImage.parse_unit_scale(range(obj.FilterF{i,FirstFreq}),'N',10);
-                        %plot(x,obj.BasedForce{i,j}*MultiplierF,'-m')
-                        %hold on
                         plot(x,obj.FilterF{i,j}*MultiplierF,'-m')
                         hold on
                         plot(x,ypF*MultiplierF,'-','color',lila)
-                        %set(gca, 'YColor', 'm')
-                        %Legends = {'force data','force fit data'};
                         title(sprintf('Filtered Force over Time incl. Fit Curve %i',i),'FontSize', 18)
                         xlabel('time [s]','FontSize', 16)
                         ylabel(sprintf('Filtered vDeflection-Force [%s]',UnitF),'FontSize', 16)
@@ -4047,16 +4043,10 @@ classdef ForceMap < matlab.mixin.Copyable
                         
                         subplot(2,1,2)
                         [MultiplierI,UnitI,~] = AFMImage.parse_unit_scale(range(obj.FilterH{i,FirstFreq}),'m',10);
-                        %plot(x,obj.Indentation{i,j}*MultiplierI,'-','color', lightblue)
-                        %hold on
                         plot(x,obj.FilterH{i,j}*MultiplierI,'-','color', lightblue)
                         hold on
                         plot(x,ypH*MultiplierI,'-','color',darkblue)
-                        %Legends{end+1} = 'indentation data';
-                        %set(gca, 'YColor', lightblue)
                         title(sprintf('Filtered Indentation over Time incl. Fit Curve %i',i),'FontSize', 18)
-                        %legend({'force data','force fit data','','','','','indentation data','indentation fit data'},'Location','southoutside')
-                        %legend
                         xlabel('time [s]','FontSize', 16)
                         ylabel(sprintf('Filtered Indentation [%s]',UnitI),'FontSize', 16);
                         grid on
@@ -4154,10 +4144,6 @@ classdef ForceMap < matlab.mixin.Copyable
                         lF = obj.slopeF(i,j).*x;
                         lH = obj.slopeH(i,j).*x;
                         
-                        if obj.SegFrequency{j} == 0
-                            obj.FilterF{i,j} = zeros(length(x),1);
-                            obj.FilterH{i,j} = zeros(length(x),1);
-                        end
 
                         
                         hold on
@@ -4166,32 +4152,23 @@ classdef ForceMap < matlab.mixin.Copyable
                         [MultiplierF,UnitF,~] = AFMImage.parse_unit_scale(range(obj.BasedForce{i,FirstFreq}),'N',10);
                         plot(x,obj.BasedForce{i,j}*MultiplierF,'-m')
                         hold on
-                        %plot(x,obj.FilterF{i,j}*MultiplierF,'-m')
-                        %hold on
                         if obj.SegFrequency{j} > 0
                             plot(x,ypFtrend*MultiplierF,'-','color',lila)
                         end
                         set(gca, 'YColor', 'm')
-                        %Legends = {'force data','force fit data'};
                         xlabel('time [s]','FontSize', 16)
                         ylabel(sprintf('vDeflection-Force [%s]',UnitF),'FontSize', 16)
-                        %ylabel('force')
+                        
                         
                         yyaxis right
                         [MultiplierI,UnitI,~] = AFMImage.parse_unit_scale(range(obj.Indentation{i,FirstFreq}),'m',10);
                         plot(x,obj.Indentation{i,j}*MultiplierI,'-','color', lightblue)
                         hold on
-                        %plot(x,obj.FilterH{i,j}*MultiplierI,'-','color', lightblue)
-                        %hold on
                         if obj.SegFrequency{j} > 0
                             plot(x,ypHtrend*MultiplierI,'-','color',darkblue)
                         end
-                        %Legends{end+1} = 'indentation data';
                         set(gca, 'YColor', lightblue)
                         title(sprintf('Force and Indentation over Time incl. Fit Curve %i',i),'FontSize', 18)
-                        %legend({'force data','force fit data','','','','','indentation data','indentation fit data'},'Location','southoutside')
-                        %legend
-                        %ylabel('indentation')
                         ylabel(sprintf('Indentation [%s]',UnitI),'FontSize', 16);
                         grid on
                         grid minor
@@ -4279,6 +4256,7 @@ classdef ForceMap < matlab.mixin.Copyable
                         drawnow
                         grid on
                         grid minor
+                        daspect([1 2 1])
 
 
                        
