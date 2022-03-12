@@ -4047,8 +4047,8 @@ classdef ForceMap < matlab.mixin.Copyable
                         [MultiplierF,UnitF,~] = AFMImage.parse_unit_scale(range(obj.FilterF{i,FirstFreq}),'N',10);
                         %plot(x,obj.BasedForce{i,j}*MultiplierF,'-m')
                         %hold on
-                        %plot(x,obj.FilterF{i,j}*MultiplierF,'-m')
-                        %hold on
+                        plot(x,obj.FilterF{i,j}*MultiplierF,'-m')
+                        hold on
                         plot(x,ypFtrend*MultiplierF,'-','color',lila)
                         set(gca, 'YColor', 'm')
                         %Legends = {'force data','force fit data'};
@@ -4060,8 +4060,8 @@ classdef ForceMap < matlab.mixin.Copyable
                         [MultiplierI,UnitI,~] = AFMImage.parse_unit_scale(range(obj.FilterH{i,FirstFreq}),'m',10);
                         %plot(x,obj.Indentation{i,j}*MultiplierI,'-','color', lightblue)
                         %hold on
-                        %plot(x,obj.FilterH{i,j}*MultiplierI,'-','color', lightblue)
-                        %hold on
+                        plot(x,obj.FilterH{i,j}*MultiplierI,'-','color', lightblue)
+                        hold on
                         plot(x,ypHtrend*MultiplierI,'-','color',darkblue)
                         %Legends{end+1} = 'indentation data';
                         set(gca, 'YColor', lightblue)
