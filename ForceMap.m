@@ -3966,6 +3966,138 @@ classdef ForceMap < matlab.mixin.Copyable
  
         end
         
+        function show_sine(obj)
+            close all
+            DirectoryPath = uigetdir();
+            k=1;
+            
+            
+            for i=1:obj.NCurves
+                
+                %Identify position of first modulation for Multiplier later
+                frequencies = zeros(obj.NumSegments,1);
+                for j=1:obj.NumSegments
+                    frequencies(j,:) = obj.SegFrequency{j};
+                end
+                FirstFreq = find(frequencies,1,'first');
+                
+                %Colours 
+                lila = [0.368, 0.058, 0.721];
+                lightblue = [0.101, 0.701, 0.976];
+                darkblue = [0.109, 0.078, 0.941];
+                
+                
+                %Plot
+                figure('Name',sprintf('Filtered curves with Fit %i',i))
+                lastseg = obj.NumSegments - 2;
+                hold on
+                for j=FirstFreq:lastseg
+                    
+                    
+                    %if obj.SegFrequency{j} > 0
+                        
+                        x= obj.SegTime{j};
+                        
+                        % Divide data through their range
+                        rangeF = range(obj.BasedForce{i,j});
+                        rangeH = range(obj.Indentation{i,j});
+                        
+                        obj.SineVarsF{i,j}(1) = obj.SineVarsF{i,j}(1)/rangeF;
+                        obj.SineVarsF{i,j}(2) = obj.SineVarsF{i,j}(2)/rangeH;
+                        obj.slopeF = obj.slopeF/rangeF;
+                        obj.slopeH = obj.slopeH/rangeH;
+                        obj.interceptF = obj.interceptF/rangeF;
+                        obj.interceptH = obj.interceptH/rangeH;
+                        
+                        
+                        
+                        % Estimate offset
+                         meanF = mean(obj.BasedForce{i,j});
+                         meanH = mean(obj.Indentation{i,j});
+                        
+                        %Y-values fitted sine of indentation and force:
+                        try
+                            ypF = obj.SineVarsF{i,j}(1)*(sin(2*pi*x.*obj.SineVarsF{i,j}(2) + obj.SineVarsF{i,j}(3)));
+                            ypH = obj.SineVarsH{i,j}(1)*(sin(2*pi*x.*obj.SineVarsH{i,j}(2) + obj.SineVarsH{i,j}(3)));
+                            
+                            ypFtrend = ypF + obj.slopeF(i,j).*x + obj.interceptF(i,j);
+                            ypHtrend = ypH + obj.slopeH(i,j).*x + obj.interceptH(i,j);
+                        catch
+                            ypF = zeros(length(x),1);
+                            ypH = zeros(length(x),1);
+                            
+                            ypFtrend = zeros(length(x),1);
+                            ypHtrend = zeros(length(x),1);
+                        end
+                        
+                        % calculate linear fit
+                        lF = obj.slopeF(i,j).*x;
+                        lH = obj.slopeH(i,j).*x;
+                        
+                        if obj.SegFrequency{j} == 0
+                            obj.FilterF{i,j} = zeros(length(x),1);
+                            obj.FilterH{i,j} = zeros(length(x),1);
+                        end
+
+                        
+                        hold on
+
+                        yyaxis left
+                        [MultiplierF,UnitF,~] = AFMImage.parse_unit_scale(range(obj.FilterF{i,FirstFreq}),'N',10);
+                        %plot(x,obj.BasedForce{i,j}*MultiplierF,'-m')
+                        %hold on
+                        plot(x,obj.FilterF{i,j}*MultiplierF,'-m')
+                        hold on
+                        plot(x,ypFtrend*MultiplierF,'-','color',lila)
+                        set(gca, 'YColor', 'm')
+                        %Legends = {'force data','force fit data'};
+                        xlabel('time [s]','FontSize', 16)
+                        ylabel(sprintf('vDeflection-Force [%s]',UnitF),'FontSize', 16)
+                        %ylabel('force')
+                        
+                        yyaxis right
+                        [MultiplierI,UnitI,~] = AFMImage.parse_unit_scale(range(obj.FilterH{i,FirstFreq}),'m',10);
+                        %plot(x,obj.Indentation{i,j}*MultiplierI,'-','color', lightblue)
+                        %hold on
+                        plot(x,obj.FilterH{i,j}*MultiplierI,'-','color', lightblue)
+                        hold on
+                        plot(x,ypHtrend*MultiplierI,'-','color',darkblue)
+                        %Legends{end+1} = 'indentation data';
+                        set(gca, 'YColor', lightblue)
+                        title(sprintf('Force and Indentation over Time incl. Fit Curve %i',i),'FontSize', 18)
+                        %legend({'force data','force fit data','','','','','indentation data','indentation fit data'},'Location','southoutside')
+                        %legend
+                        %ylabel('indentation')
+                        ylabel(sprintf('Indentation [%s]',UnitI),'FontSize', 16);
+                        grid on
+                        grid minor
+
+
+                        l1 = plot(nan, nan, 'm-');
+                        hold on
+                        l2 = plot(nan, nan, '-','color', lila);
+                        l3 = plot(nan, nan, '-', 'color', lightblue);
+                        l4 = plot(nan, nan, '-','color',darkblue);
+                        l1.LineWidth = 3;
+                        l2.LineWidth = 3;
+                        l3.LineWidth = 3;
+                        l4.LineWidth = 3;
+                        legend([l1, l2, l3, l4], {'filtered force data', 'force fit','filtered indentation data', 'indentation fit'}, 'Location', 'southoutside','FontSize', 14)
+                       
+                       
+                        if DirectoryPath~=0
+                           whereToStore=fullfile(DirectoryPath,['force_indentation_fit_curve_' num2str(i) '.svg']);
+                           saveas(gcf, whereToStore);
+                       end
+                        
+                        
+                       
+                    %end
+                        
+                end
+            end
+        end
+        
         function show_sine_2(obj)
             close all
             DirectoryPath = uigetdir();
