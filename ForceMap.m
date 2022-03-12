@@ -4031,11 +4031,11 @@ classdef ForceMap < matlab.mixin.Copyable
                         hold on
 
                         yyaxis left
-                        [MultiplierF,UnitF,~] = AFMImage.parse_unit_scale(range(obj.FilterF{i,FirstFreq}),'N',10);
-                        %plot(x,obj.BasedForce{i,j}*MultiplierF,':m')
-                        %hold on
-                        plot(x,obj.FilterF{i,j}*MultiplierF,'-m')
+                        [MultiplierF,UnitF,~] = AFMImage.parse_unit_scale(range(obj.BasedForce{i,FirstFreq}),'N',10);
+                        plot(x,obj.BasedForce{i,j}*MultiplierF,'-m')
                         hold on
+                        %plot(x,obj.FilterF{i,j}*MultiplierF,'-m')
+                        %hold on
                         plot(x,ypFtrend*MultiplierF,'-','color',lila)
                         set(gca, 'YColor', 'm')
                         %Legends = {'force data','force fit data'};
@@ -4044,11 +4044,11 @@ classdef ForceMap < matlab.mixin.Copyable
                         %ylabel('force')
                         
                         yyaxis right
-                        [MultiplierI,UnitI,~] = AFMImage.parse_unit_scale(range(obj.FilterH{i,FirstFreq}),'m',10);
-                        %plot(x,obj.Indentation{i,j}*MultiplierI,':','color', lightblue)
-                        %hold on
-                        plot(x,obj.FilterH{i,j}*MultiplierI,'-','color', lightblue)
+                        [MultiplierI,UnitI,~] = AFMImage.parse_unit_scale(range(obj.Indentation{i,FirstFreq}),'m',10);
+                        plot(x,obj.Indentation{i,j}*MultiplierI,'-','color', lightblue)
                         hold on
+                        %plot(x,obj.FilterH{i,j}*MultiplierI,'-','color', lightblue)
+                        %hold on
                         plot(x,ypHtrend*MultiplierI,'-','color',darkblue)
                         %Legends{end+1} = 'indentation data';
                         set(gca, 'YColor', lightblue)
@@ -4061,20 +4061,16 @@ classdef ForceMap < matlab.mixin.Copyable
                         grid minor
 
 
-                        l1 = plot(nan, nan, 'm:');
+                        l1 = plot(nan, nan, 'm-');
                         hold on
-                        l2 = plot(nan, nan, 'm-');
-                        l3 = plot(nan, nan, '-','color', lila);
-                        l4 = plot(nan, nan, ':', 'color', lightblue);
-                        l5 = plot(nan, nan, '-', 'color', lightblue);
-                        l6 = plot(nan, nan, '-','color',darkblue);
+                        l2 = plot(nan, nan, '-','color', lila);
+                        l3 = plot(nan, nan, '-', 'color', lightblue);
+                        l4 = plot(nan, nan, '-','color',darkblue);
                         l1.LineWidth = 3;
                         l2.LineWidth = 3;
                         l3.LineWidth = 3;
                         l4.LineWidth = 3;
-                        l5.LineWidth = 3;
-                        l6.LineWidth = 3;
-                        legend([l1, l2, l3, l4, l5, l6], {'raw force data', 'filtered force data', 'force fit','raw indentation data', 'filtered indentation data', 'indentation fit'}, 'Location', 'southoutside','FontSize', 14)
+                        legend([l1, l2, l3, l4], {'raw force data', 'force fit','raw indentation data', 'indentation fit'}, 'Location', 'southoutside','FontSize', 14)
                        
                        
                         if DirectoryPath~=0
