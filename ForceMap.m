@@ -4002,38 +4002,32 @@ classdef ForceMap < matlab.mixin.Copyable
                         rangeF = range(obj.BasedForce{i,j});
                         rangeH = range(obj.Indentation{i,j});
                         
-                        if obj.SegFrequency{j} > 0
-                            obj.SineVarsF{i,j}(1) = obj.SineVarsF{i,j}(1)/rangeF;
-                            obj.SineVarsH{i,j}(1) = obj.SineVarsH{i,j}(1)/rangeH;
-                            obj.slopeF = obj.slopeF/rangeF;
-                            obj.slopeH = obj.slopeH/rangeH;
-                            obj.interceptF = obj.interceptF/rangeF;
-                            obj.interceptH = obj.interceptH/rangeH;
-                        end
+                        obj.SineVarsF{i,j}(1) = obj.SineVarsF{i,j}(1)/rangeF;
+                        obj.SineVarsH{i,j}(1) = obj.SineVarsH{i,j}(1)/rangeH;
+                        obj.slopeF = obj.slopeF/rangeF;
+                        obj.slopeH = obj.slopeH/rangeH;
+                        obj.interceptF = obj.interceptF/rangeF;
+                        obj.interceptH = obj.interceptH/rangeH;
                         
-                        
-                        % Estimate offset
-                         meanF = mean(obj.BasedForce{i,j});
-                         meanH = mean(obj.Indentation{i,j});
                         
                         %Y-values fitted sine of indentation and force:
-                        try
-                            ypF = obj.SineVarsF{i,j}(1)*(sin(2*pi*x.*obj.SineVarsF{i,j}(2) + obj.SineVarsF{i,j}(3)));
-                            ypH = obj.SineVarsH{i,j}(1)*(sin(2*pi*x.*obj.SineVarsH{i,j}(2) + obj.SineVarsH{i,j}(3)));
+                         ypF = obj.SineVarsF{i,j}(1)*(sin(2*pi*x.*obj.SineVarsF{i,j}(2) + obj.SineVarsF{i,j}(3)));
+                         ypH = obj.SineVarsH{i,j}(1)*(sin(2*pi*x.*obj.SineVarsH{i,j}(2) + obj.SineVarsH{i,j}(3)));
                             
-                            ypFtrend = ypF + obj.slopeF(i,j).*x + obj.interceptF(i,j);
-                            ypHtrend = ypH + obj.slopeH(i,j).*x + obj.interceptH(i,j);
-                        catch
-                            ypF = zeros(length(x),1);
-                            ypH = zeros(length(x),1);
-                            
-                            ypFtrend = zeros(length(x),1);
-                            ypHtrend = zeros(length(x),1);
-                        end
+%                         try
+%                             ypF = obj.SineVarsF{i,j}(1)*(sin(2*pi*x.*obj.SineVarsF{i,j}(2) + obj.SineVarsF{i,j}(3)));
+%                             ypH = obj.SineVarsH{i,j}(1)*(sin(2*pi*x.*obj.SineVarsH{i,j}(2) + obj.SineVarsH{i,j}(3)));
+%                             
+%                             ypFtrend = ypF + obj.slopeF(i,j).*x + obj.interceptF(i,j);
+%                             ypHtrend = ypH + obj.slopeH(i,j).*x + obj.interceptH(i,j);
+%                         catch
+%                             ypF = zeros(length(x),1);
+%                             ypH = zeros(length(x),1);
+%                             
+%                             ypFtrend = zeros(length(x),1);
+%                             ypHtrend = zeros(length(x),1);
+%                         end
                         
-                        % calculate linear fit
-                        lF = obj.slopeF(i,j).*x;
-                        lH = obj.slopeH(i,j).*x;
                         
                         if obj.SegFrequency{j} == 0
                             obj.FilterF{i,j} = zeros(length(x),1);
@@ -4049,7 +4043,7 @@ classdef ForceMap < matlab.mixin.Copyable
                         %hold on
                         plot(x,obj.FilterF{i,j}*MultiplierF,'-m')
                         hold on
-                        plot(x,ypFtrend*MultiplierF,'-','color',lila)
+                        plot(x,ypF*MultiplierF,'-','color',lila)
                         set(gca, 'YColor', 'm')
                         %Legends = {'force data','force fit data'};
                         xlabel('time [s]','FontSize', 16)
@@ -4062,7 +4056,7 @@ classdef ForceMap < matlab.mixin.Copyable
                         %hold on
                         plot(x,obj.FilterH{i,j}*MultiplierI,'-','color', lightblue)
                         hold on
-                        plot(x,ypHtrend*MultiplierI,'-','color',darkblue)
+                        plot(x,ypH*MultiplierI,'-','color',darkblue)
                         %Legends{end+1} = 'indentation data';
                         set(gca, 'YColor', lightblue)
                         title(sprintf('Force and Indentation over Time incl. Fit Curve %i',i),'FontSize', 18)
