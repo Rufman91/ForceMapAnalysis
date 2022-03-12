@@ -4224,10 +4224,11 @@ classdef ForceMap < matlab.mixin.Copyable
                          
                         Freq = obj.SegFrequency{j};
                         
-                        Period = 2*pi/obj.SegFrequency{j};
-                        End = obj.TStart{j} + 2/obj.SegFrequency{j};
-                        x = linspace(obj.TStart{j},End);
-                        
+                        %Period = 2*pi/obj.SegFrequency{j};
+                        %End = obj.TStart{j} + 2/obj.SegFrequency{j};
+                        %x = linspace(obj.TStart{j},End);
+                        End = 2/obj.SegFrequency{j};
+                        x = linspace(0,End);
                        
                         
                         %Y-values fitted sine of indentation and force:
