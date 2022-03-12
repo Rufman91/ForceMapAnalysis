@@ -3994,7 +3994,7 @@ classdef ForceMap < matlab.mixin.Copyable
                 for j=FirstFreq:lastseg
                     
                     
-                    %if obj.SegFrequency{j} > 0
+                    if obj.SegFrequency{j} > 0
                         
                         x= obj.SegTime{j};
                         
@@ -4047,9 +4047,9 @@ classdef ForceMap < matlab.mixin.Copyable
                         [MultiplierF,UnitF,~] = AFMImage.parse_unit_scale(range(obj.FilterF{i,FirstFreq}),'N',10);
                         %plot(x,obj.BasedForce{i,j}*MultiplierF,'-m')
                         %hold on
-                        plot(x,obj.FilterF{i,j}*MultiplierF,'-m')
+                        %plot(x,obj.FilterF{i,j}*MultiplierF,'-m')
                         %hold on
-                        %plot(x,ypFtrend*MultiplierF,'-','color',lila)
+                        plot(x,ypFtrend*MultiplierF,'-','color',lila)
                         set(gca, 'YColor', 'm')
                         %Legends = {'force data','force fit data'};
                         xlabel('time [s]','FontSize', 16)
@@ -4060,9 +4060,9 @@ classdef ForceMap < matlab.mixin.Copyable
                         [MultiplierI,UnitI,~] = AFMImage.parse_unit_scale(range(obj.FilterH{i,FirstFreq}),'m',10);
                         %plot(x,obj.Indentation{i,j}*MultiplierI,'-','color', lightblue)
                         %hold on
-                        plot(x,obj.FilterH{i,j}*MultiplierI,'-','color', lightblue)
+                        %plot(x,obj.FilterH{i,j}*MultiplierI,'-','color', lightblue)
                         %hold on
-                        %plot(x,ypHtrend*MultiplierI,'-','color',darkblue)
+                        plot(x,ypHtrend*MultiplierI,'-','color',darkblue)
                         %Legends{end+1} = 'indentation data';
                         set(gca, 'YColor', lightblue)
                         title(sprintf('Force and Indentation over Time incl. Fit Curve %i',i),'FontSize', 18)
@@ -4093,7 +4093,7 @@ classdef ForceMap < matlab.mixin.Copyable
                         
                         
                        
-                    %end
+                    end
                         
                 end
             end
