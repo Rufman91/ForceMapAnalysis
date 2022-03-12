@@ -4024,6 +4024,7 @@ classdef ForceMap < matlab.mixin.Copyable
                         
                         if obj.SegFrequency{j} == 0
                             obj.FilterF{i,j} = zeros(length(x),1);
+                            obj.FilterH{i,j} = zeros(length(x),1);
                         end
 
                         
