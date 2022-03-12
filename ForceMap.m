@@ -4048,8 +4048,8 @@ classdef ForceMap < matlab.mixin.Copyable
                         %plot(x,obj.BasedForce{i,j}*MultiplierF,'-m')
                         %hold on
                         plot(x,obj.FilterF{i,j}*MultiplierF,'-m')
-                        hold on
-                        plot(x,ypFtrend*MultiplierF,'-','color',lila)
+                        %hold on
+                        %plot(x,ypFtrend*MultiplierF,'-','color',lila)
                         set(gca, 'YColor', 'm')
                         %Legends = {'force data','force fit data'};
                         xlabel('time [s]','FontSize', 16)
@@ -4061,8 +4061,8 @@ classdef ForceMap < matlab.mixin.Copyable
                         %plot(x,obj.Indentation{i,j}*MultiplierI,'-','color', lightblue)
                         %hold on
                         plot(x,obj.FilterH{i,j}*MultiplierI,'-','color', lightblue)
-                        hold on
-                        plot(x,ypHtrend*MultiplierI,'-','color',darkblue)
+                        %hold on
+                        %plot(x,ypHtrend*MultiplierI,'-','color',darkblue)
                         %Legends{end+1} = 'indentation data';
                         set(gca, 'YColor', lightblue)
                         title(sprintf('Force and Indentation over Time incl. Fit Curve %i',i),'FontSize', 18)
