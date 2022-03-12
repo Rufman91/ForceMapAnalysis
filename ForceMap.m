@@ -3891,28 +3891,31 @@ classdef ForceMap < matlab.mixin.Copyable
             lf = length(frequencies);
             
             Dphi = cell2mat(obj.DeltaPhi);
+            losstangent = cell2mat(obj.LossTangent);
+            emodmicro1 = cell2mat(EModMicro1);
+            emodmicro2 = cell2mat(EModMicro2);
             
-            for i=1:obj.NCurves
-                
-                for j=1:obj.NumSegments
-                    if obj.SegFrequency{j} > 0
-                        %Dphi(:,j) = obj.DeltaPhi{i,j};
-                        
-                        losstangent(:,j) = obj.LossTangent{i,j};
-                        emodmicro1(:,j) = EModMicro1{i,j};
-                        emodmicro2(:,j) = EModMicro2{i,j};
-                    end
-                end
-                Dphi = Dphi(Dphi ~= 0);
-                losstangent = losstangent(losstangent ~= 0);
-                emodmicro1 = emodmicro1(emodmicro1 ~= 0);
-                emodmicro2 = emodmicro2(emodmicro2 ~= 0);
-                emodmicro1(isnan(emodmicro1))=0;
-                emodmicro2(isnan(emodmicro2))=0;
-                
-                minfreq = min(frequencies);
-                maxfreq = max(frequencies);
-            end
+%             for i=1:obj.NCurves
+%                 
+%                 for j=1:obj.NumSegments
+%                     if obj.SegFrequency{j} > 0
+%                         %Dphi(:,j) = obj.DeltaPhi{i,j};
+%                         
+%                         losstangent(:,j) = obj.LossTangent{i,j};
+%                         emodmicro1(:,j) = EModMicro1{i,j};
+%                         emodmicro2(:,j) = EModMicro2{i,j};
+%                     end
+%                 end
+%                 Dphi = Dphi(Dphi ~= 0);
+%                 losstangent = losstangent(losstangent ~= 0);
+%                 emodmicro1 = emodmicro1(emodmicro1 ~= 0);
+%                 emodmicro2 = emodmicro2(emodmicro2 ~= 0);
+%                 emodmicro1(isnan(emodmicro1))=0;
+%                 emodmicro2(isnan(emodmicro2))=0;
+%                 
+%                 minfreq = min(frequencies);
+%                 maxfreq = max(frequencies);
+%             end
                 
                 %figure('Name',sprintf('Results'))
                 hold on
