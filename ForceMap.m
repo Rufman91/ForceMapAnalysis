@@ -3894,6 +3894,10 @@ classdef ForceMap < matlab.mixin.Copyable
             losstangent = cell2mat(obj.LossTangent);
             emodmicro1 = cell2mat(EModMicro1);
             emodmicro2 = cell2mat(EModMicro2);
+            emodmicro1 = emodmicro1(emodmicro1 ~= 0);
+            emodmicro2 = emodmicro2(emodmicro2 ~= 0);
+            emodmicro1(isnan(emodmicro1))=0;
+            emodmicro2(isnan(emodmicro2))=0;
             
 %             for i=1:obj.NCurves
 %                 
@@ -3908,10 +3912,7 @@ classdef ForceMap < matlab.mixin.Copyable
 %                 end
 %                 Dphi = Dphi(Dphi ~= 0);
 %                 losstangent = losstangent(losstangent ~= 0);
-%                 emodmicro1 = emodmicro1(emodmicro1 ~= 0);
-%                 emodmicro2 = emodmicro2(emodmicro2 ~= 0);
-%                 emodmicro1(isnan(emodmicro1))=0;
-%                 emodmicro2(isnan(emodmicro2))=0;
+%                 
 %                 
 %                 minfreq = min(frequencies);
 %                 maxfreq = max(frequencies);
@@ -3924,11 +3925,11 @@ classdef ForceMap < matlab.mixin.Copyable
                 %plot(xq,vqDphi,'-','DisplayName',sprintf('Curve %i',i))
                 %hold on
                 boxplot(Dphi,frequencies)
-                ylim([-270 270])
+                %ylim([-270 270])
                 title('Phaseshift of all curves','FontSize', 18)
                 xlabel('frequency [Hz]','FontSize', 16)
                 ylabel('phaseshift [°]','FontSize', 16)
-                legend show
+                %legend show
                 %drawnow
                 grid on
                 grid minor
@@ -3940,7 +3941,7 @@ classdef ForceMap < matlab.mixin.Copyable
                 title('Loss Tangent of all curves','FontSize', 18)
                 xlabel('frequency [Hz]','FontSize', 16)
                 ylabel('losstangent','FontSize', 16)
-                legend show
+                %legend show
                 %drawnow
                 grid on
                 grid minor
@@ -3953,7 +3954,7 @@ classdef ForceMap < matlab.mixin.Copyable
                 title('Storage modulus of all curves','FontSize', 18)
                 xlabel('frequency [Hz]','FontSize', 16)
                 ylabel('elastic modulus [N/mm2]','FontSize', 16)
-                legend show
+                %legend show
                 %drawnow
                 grid on
                 grid minor
@@ -3965,7 +3966,7 @@ classdef ForceMap < matlab.mixin.Copyable
                 title('Loss modulus of all curves','FontSize', 18)
                 xlabel('frequency [Hz]','FontSize', 16)
                 ylabel('viscous modulus [N/mm2]','FontSize', 16)
-                legend show
+                %legend show
                 %drawnow
                 grid on
                 grid minor
