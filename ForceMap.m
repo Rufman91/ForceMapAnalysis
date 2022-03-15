@@ -1719,7 +1719,7 @@ classdef ForceMap < matlab.mixin.Copyable
         end
         
         function sine_fit_for_microrheology(obj)
-            close all
+
             
             obj.slopeF = zeros(obj.NCurves,obj.NumSegments);
             obj.slopeH = zeros(obj.NCurves,obj.NumSegments);
@@ -3637,6 +3637,94 @@ classdef ForceMap < matlab.mixin.Copyable
             light('Style','local')
         end
         
+        function show_height(obj)
+            
+            close all
+            
+            
+            for i=1:obj.NCurves
+                
+                frequencies = cell2mat(obj.SegFrequency);
+                FirstFreq = find(frequencies,1,'first');
+                
+                [MultiplierH,UnitH,~] = AFMImage.parse_unit_scale(range(obj.Height{i,FirstFreq}),'m',10);
+                
+                % find min/max of indentation and force modulation
+                Hmin = zeros(obj.NumSegments,1);
+                Hmax = zeros(obj.NumSegments,1);
+
+                for j=1:obj.NumSegments
+                    if obj.SegFrequency{j} > 0
+
+                       Hmin(j,:) = min(obj.Height{i,j});
+                       Hmax(j,:) = max(obj.Height{i,j});
+                    else
+                       Hmin(j,:) = NaN;
+                       Hmax(j,:) = NaN;
+                    end
+                end
+                
+                yHmin = min(Hmin)*MultiplierH;
+                yHmax = max(Hmax)*MultiplierH;
+
+                
+                if yHmin > 0
+                    yHmin = yHmin * 0.7;
+                    
+                else
+                    yHmin = yHmin * 1.2;
+                end
+                
+                if yHmax > 0
+                    yHmax = yHmax * 1.2;
+                    
+                else
+                    yHmax = yHmax * 0.7;
+                end
+                
+                
+                
+                %Colours 
+                lila = [0.368, 0.058, 0.721];
+                lightblue = [0.101, 0.701, 0.976];
+                darkblue = [0.109, 0.078, 0.941];
+                
+                
+                 for j=1:obj.NumSegments
+                    
+                       lengthApp = length(obj.App{i});
+                       obj.SecPerPoint{1} = obj.SegDuration{1}/lengthApp;
+                       obj.TStart{1} = obj.SecPerPoint{1}/2;
+                       obj.TEnd{1} = obj.SeriesTime{1};
+                       obj.SegTime{1} = obj.TStart{1}:obj.SecPerPoint{1}:obj.TEnd{1};
+                       obj.SegTime{1} = obj.SegTime{1}.';
+                       
+                       lastseg = obj.NumSegments - 1;
+                       lengthRet = length(obj.Ret{i});
+                       obj.SecPerPoint{obj.NumSegments} = obj.SegDuration{obj.NumSegments}/lengthRet;
+                       obj.TStart{obj.NumSegments} = obj.SeriesTime{lastseg}+(obj.SecPerPoint{obj.NumSegments}/2);
+                       obj.TEnd{obj.NumSegments} = obj.SeriesTime{obj.NumSegments};
+                       obj.SegTime{obj.NumSegments} = obj.TStart{obj.NumSegments}:obj.SecPerPoint{obj.NumSegments}:obj.TEnd{obj.NumSegments};
+                       obj.SegTime{obj.NumSegments} = obj.SegTime{obj.NumSegments}.';
+%                        
+                 end
+                 
+                 % Plot
+                figure('Name',sprintf('Microrheology Curves %i',i))
+                hold on
+                for j=1:obj.NumSegments
+                    
+                    plot(obj.SegTime{j},obj.Height{i,j}*MultiplierH,'-','color',darkblue)
+                    ylim([yHmin yHmax])
+                    title(sprintf('Displacement Time Curve %i',i),'FontSize', 18)
+                    xlabel('time in s','FontSize', 12)
+                    ylabel(sprintf('Displacement [%s]',UnitH),'FontSize', 12)
+                    grid on
+                    grid minor
+                end
+            end
+        end
+        
         function show_modulation(obj)
             
             close all
@@ -3934,7 +4022,7 @@ classdef ForceMap < matlab.mixin.Copyable
             %,'HandleVisibility','off'
             %hold on
             boxplot(emodmicro1*1e-6, frequencies)
-            title('Storage modulus of all curves','FontSize', 18)
+            title('Storage modulus','FontSize', 18)
             xlabel('frequency [Hz]','FontSize', 16)
             ylabel('elastic modulus [MPa]','FontSize', 16)
             %legend show
@@ -3946,7 +4034,7 @@ classdef ForceMap < matlab.mixin.Copyable
             %plot(xq,vqEmodmicro2,'-','DisplayName',sprintf('Curve %i',i))
             %hold on
             boxplot(emodmicro2*1e-6,frequencies)
-            title('Loss modulus of all curves','FontSize', 18)
+            title('Loss modulus','FontSize', 18)
             xlabel('frequency [Hz]','FontSize', 16)
             ylabel('viscous modulus [MPa]','FontSize', 16)
             %legend show
