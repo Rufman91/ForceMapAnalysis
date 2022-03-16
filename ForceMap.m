@@ -4012,7 +4012,7 @@ classdef ForceMap < matlab.mixin.Copyable
             
         end
         
-        function show_emodmicro(obj)
+        function show_microrheology_results(obj)
             % showing the results (phaseshift, losstangent, storage and
             % loss modulus) over the different frequencies
             
