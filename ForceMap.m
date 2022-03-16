@@ -3647,7 +3647,7 @@ classdef ForceMap < matlab.mixin.Copyable
                 frequencies = cell2mat(obj.SegFrequency);
                 FirstFreq = find(frequencies,1,'first');
                 
-                [MultiplierH,UnitH,~] = AFMImage.parse_unit_scale(range(obj.THeight{i,FirstFreq}),'m',10);
+                [MultiplierH,UnitH,~] = AFMImage.parse_unit_scale(range(obj.Height{i,FirstFreq}),'m',10);
                 
                 % find min/max of indentation and force modulation
                 Hmin = zeros(obj.NumSegments,1);
@@ -3656,8 +3656,8 @@ classdef ForceMap < matlab.mixin.Copyable
                 for j=1:obj.NumSegments
                     if obj.SegFrequency{j} > 0
 
-                       Hmin(j,:) = min(obj.THeight{i,j});
-                       Hmax(j,:) = max(obj.THeight{i,j});
+                       Hmin(j,:) = min(obj.Height{i,j});
+                       Hmax(j,:) = max(obj.Height{i,j});
                     else
                        Hmin(j,:) = NaN;
                        Hmax(j,:) = NaN;
@@ -3714,7 +3714,7 @@ classdef ForceMap < matlab.mixin.Copyable
                 hold on
                 for j=1:obj.NumSegments
                     
-                    plot(obj.SegTime{j},obj.THeight{i,j}*MultiplierH,'-','color',darkblue)
+                    plot(obj.SegTime{j},obj.Height{i,j}*MultiplierH,'-','color',darkblue)
                     ylim([yHmin yHmax])
                     title(sprintf('Displacement Time Curve %i',i),'FontSize', 18)
                     xlabel('time in s','FontSize', 12)
