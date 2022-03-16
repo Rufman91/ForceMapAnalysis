@@ -3736,7 +3736,7 @@ classdef ForceMap < matlab.mixin.Copyable
                 hold on
                 for j=1:obj.NumSegments
                     
-                    subplot(1,3,1)
+                    subplot(3,2,1)
                     hold on
                     plot(obj.SegTime{j},obj.Height{i,j}*MultiplierH,'-','color',darkblue)
                     ylim([yHmin yHmax])
@@ -3746,7 +3746,7 @@ classdef ForceMap < matlab.mixin.Copyable
                     grid on
                     grid minor
                     
-                    subplot(1,3,2)
+                    subplot(3,2,2)
                     hold on
                     plot(obj.SegTime{j},obj.Force{i,j}*MultiplierF,'-r')
                     ylim([yFmin yFmax])
@@ -3757,11 +3757,11 @@ classdef ForceMap < matlab.mixin.Copyable
                     grid minor
                     
                     % subplot 4: force vs indentation
-                   subplot(1,3,3)
+                   subplot(3,2,5)
                    plot(obj.Height{i,1}*MultiplierH,obj.Force{i,1}*MultiplierF,'-r',obj.Height{i,obj.NumSegments}*MultiplierH,obj.Force{i,obj.NumSegments}*MultiplierF,'-b')
                    hold on
                    plot(obj.Height{i,j}*MultiplierH,obj.Force{i,j}*MultiplierF,':m')
-                   xlim([-200 200])
+                   %xlim([-200 200])
                    title(sprintf('Force Displacement Curve %i',i),'FontSize', 18)
                    xlabel(sprintf('Displacement [%s]',UnitH),'FontSize', 12);
                    ylabel(sprintf('vDeflection-Force [%s]',UnitF),'FontSize', 12);
