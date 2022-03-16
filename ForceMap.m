@@ -3647,26 +3647,34 @@ classdef ForceMap < matlab.mixin.Copyable
                 frequencies = cell2mat(obj.SegFrequency);
                 FirstFreq = find(frequencies,1,'first');
                 
+                [MultiplierF,UnitF,~] = AFMImage.parse_unit_scale(range(obj.Force{i,FirstFreq}),'N',10);
                 [MultiplierH,UnitH,~] = AFMImage.parse_unit_scale(range(obj.Height{i,FirstFreq}),'m',10);
                 
                 % find min/max of indentation and force modulation
                 Hmin = zeros(obj.NumSegments,1);
                 Hmax = zeros(obj.NumSegments,1);
-
+                Fmin = zeros(obj.NumSegments,1);
+                Fmax = zeros(obj.NumSegments,1);
                 for j=1:obj.NumSegments
                     if obj.SegFrequency{j} > 0
 
                        Hmin(j,:) = min(obj.Height{i,j});
                        Hmax(j,:) = max(obj.Height{i,j});
+                       Fmin(j,:) = min(obj.Force{i,j});
+                       Fmax(j,:) = max(obj.Force{i,j});
                     else
                        Hmin(j,:) = NaN;
                        Hmax(j,:) = NaN;
+                       Fmin(j,:) = NaN;
+                       Fmax(j,:) = NaN;
+
                     end
                 end
                 
                 yHmin = min(Hmin)*MultiplierH;
                 yHmax = max(Hmax)*MultiplierH;
-
+                yFmin = min(Fmin)*MultiplierF;
+                yFmax = max(Fmax)*MultiplierF;
                 
                 if yHmin > 0
                     yHmin = yHmin * 0.7;
@@ -3680,6 +3688,20 @@ classdef ForceMap < matlab.mixin.Copyable
                     
                 else
                     yHmax = yHmax * 0.7;
+                end
+                
+                if yFmin > 0
+                    yFmin = yFmin * 0.7;
+                    
+                else
+                    yFmin = yFmin * 1.2;
+                end
+                
+                if yFmax > 0
+                    yFmax = yFmax * 1.2;
+                    
+                else
+                    yFmax = yFmax * 0.7;
                 end
                 
                 
@@ -3714,6 +3736,8 @@ classdef ForceMap < matlab.mixin.Copyable
                 hold on
                 for j=1:obj.NumSegments
                     
+                    subplot(1,3,1)
+                    hold on
                     plot(obj.SegTime{j},obj.Height{i,j}*MultiplierH,'-','color',darkblue)
                     ylim([yHmin yHmax])
                     title(sprintf('Displacement Time Curve %i',i),'FontSize', 18)
@@ -3721,6 +3745,38 @@ classdef ForceMap < matlab.mixin.Copyable
                     ylabel(sprintf('Displacement [%s]',UnitH),'FontSize', 12)
                     grid on
                     grid minor
+                    
+                    subplot(1,3,2)
+                    hold on
+                    plot(obj.SegTime{j},obj.Force{i,j}*MultiplierF,'-r')
+                    ylim([yFmin yFmax])
+                    title(sprintf('Force Time Curve %i',i),'FontSize', 18)
+                    xlabel('time in s','FontSize', 12)
+                    ylabel(sprintf('vDeflection-Force [%s]',UnitF),'FontSize', 12)
+                    grid on
+                    grid minor
+                    
+                    % subplot 4: force vs indentation
+                   subplot(1,3,3)
+                   plot(obj.Height{i,1}*MultiplierH,obj.Force{i,1}*MultiplierF,'-r',obj.Height{i,obj.NumSegments}*MultiplierH,obj.Force{i,obj.NumSegments}*MultiplierF,'-b')
+                   hold on
+                   plot(obj.Height{i,j}*MultiplierH,obj.Force{i,j}*MultiplierF,':m')
+                   xlim([-200 200])
+                   title(sprintf('Force Displacement Curve %i',i),'FontSize', 18)
+                   xlabel(sprintf('Displacement [%s]',UnitH),'FontSize', 12);
+                   ylabel(sprintf('vDeflection-Force [%s]',UnitF),'FontSize', 12);
+                   grid on
+                   grid minor
+                   
+                   l1 = plot(nan, nan, '-r');
+                   hold on
+                   l2 = plot(nan, nan, '-b');
+                   l3 = plot(nan, nan, ':m');
+                   l1.LineWidth = 2;
+                   l2.LineWidth = 2;
+                   l3.LineWidth = 2;
+                   legend([l1, l2, l3], {'approach', 'retract','modulation'}, 'FontSize', 8)
+
                 end
             end
         end
