@@ -4041,8 +4041,8 @@ classdef ForceMap < matlab.mixin.Copyable
             emodmicro2 = obj.EModMicro2;
             emodmicro1(:,all(emodmicro1 == 0))=[];
             emodmicro2(:,all(emodmicro2 == 0))=[];
-            emodmicro1(isnan(emodmicro1))=0;
-            emodmicro2(isnan(emodmicro2))=0;
+            %emodmicro1(isnan(emodmicro1))=0;
+            %emodmicro2(isnan(emodmicro2))=0;
             
                 
             %figure('Name',sprintf('Results'))
