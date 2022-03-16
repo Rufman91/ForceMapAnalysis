@@ -4345,7 +4345,10 @@ classdef ForceMap < matlab.mixin.Copyable
                         drawnow
                         grid on
                         grid minor
-                        pbaspect([1 1 1])
+                        Nx = 2; % in x-Richtung verdoppeln
+                        Ny = 1; % in y-Richtung unverändert
+                        pos = get(gcf,'Position');
+                        set(gcf,'Position',[pos(1:2) Nx*pos(3) Ny*pos(4)]); 
 
 
                        
