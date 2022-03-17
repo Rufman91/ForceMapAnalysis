@@ -4140,6 +4140,7 @@ classdef ForceMap < matlab.mixin.Copyable
                 
                 %Plot
                 figure('Name',sprintf('Filtered curves with Fit %i',i))
+                set(fig,'outerposition',[0 .06 1 .94])
                 lastseg = obj.NumSegments - 2;
                 hold on
                 for j=FirstFreq:lastseg
