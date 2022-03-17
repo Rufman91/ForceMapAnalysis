@@ -2138,6 +2138,8 @@ classdef Experiment < matlab.mixin.Copyable
             losstangent = cell2mat(obj.FM{1}.LossTangent);
             emodmicro1 = obj.FM{1}.EModMicro1;
             emodmicro2 = obj.FM{1}.EModMicro2;
+            emodmicro1(:,all(emodmicro1 == 0))=[];
+            emodmicro2(:,all(emodmicro2 == 0))=[];
                 
             N = obj.NumForceMaps;
             for i=2:N
