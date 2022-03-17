@@ -2156,9 +2156,63 @@ classdef Experiment < matlab.mixin.Copyable
                 emodmicro1 = cat(1,emodmicro1,cell2mat(obj.FM{i}.EModMicro1));
                 emodmicro2 = cat(1,emodmicro2,cell2mat(obj.FM{i}.EModMicro2));
 
-                %DataOP(i,:) = obj.FM{i}.EModOliverPharr(obj.FM{i}.RectApexIndex);
-                %DataHS(i,:) = obj.FM{i}.EModHertz(obj.FM{i}.RectApexIndex);
             end
+            
+            figure('Name',sprintf('Results'))
+            hold on
+            
+            hold on
+
+            subplot(2,2,1)
+            %plot(xq,vqDphi,'-','DisplayName',sprintf('Curve %i',i))
+            %hold on
+            boxplot(Dphi,frequencies)
+            %ylim([-270 270])
+            title('Phaseshift of all curves','FontSize', 18)
+            xlabel('frequency [Hz]','FontSize', 16)
+            ylabel('phaseshift [°]','FontSize', 16)
+            %legend show
+            %drawnow
+            grid on
+            grid minor
+
+            subplot(2,2,2)
+            %plot(xq,vqLosstangent,'-','DisplayName',sprintf('Curve %i',i))
+            %hold on
+            boxplot(losstangent,frequencies)
+            title('Loss Tangent of all curves','FontSize', 18)
+            xlabel('frequency [Hz]','FontSize', 16)
+            ylabel('losstangent','FontSize', 16)
+            %legend show
+            %drawnow
+            grid on
+            grid minor
+
+            subplot(2,2,3)
+            %plot(xq,vqEmodmicro1,'-','DisplayName',sprintf('Curve %i',i))
+            %,'HandleVisibility','off'
+            %hold on
+            boxplot(emodmicro1*1e-6, frequencies)
+            title('Storage modulus','FontSize', 18)
+            xlabel('frequency [Hz]','FontSize', 16)
+            ylabel('elastic modulus [MPa]','FontSize', 16)
+            %legend show
+            %drawnow
+            grid on
+            grid minor
+
+            subplot(2,2,4)
+            %plot(xq,vqEmodmicro2,'-','DisplayName',sprintf('Curve %i',i))
+            %hold on
+            boxplot(emodmicro2*1e-6,frequencies)
+            title('Loss modulus','FontSize', 18)
+            xlabel('frequency [Hz]','FontSize', 16)
+            ylabel('viscous modulus [MPa]','FontSize', 16)
+            %legend show
+            %drawnow
+            grid on
+            grid minor
+
             
         end
         
