@@ -2123,11 +2123,27 @@ classdef Experiment < matlab.mixin.Copyable
             %end
             %frequencies = frequencies(frequencies ~= 0);
             %lf = length(frequencies);
-            frequencies = cell2mat(obj.FM{1}.SegFrequency);
             
+            Dphi = zeros(obj.NumForceMaps,1);
+            frequencies = zeros(obj.NumForceMaps,1);
+            losstangent = zeros(obj.NumForceMaps,1);
+            emodmicro1 = zeros(obj.NumForceMaps,1);
+            emodmicro2 = zeros(obj.NumForceMaps,1);
+            
+            frequencies = cell2mat(obj.FM{1}.SegFrequency);
+            frequencies = frequencies(frequencies ~= 0);
+            lf = length(frequencies);
+            
+            Dphi = cell2mat(obj.FM{1}.DeltaPhi);
+            losstangent = cell2mat(obj.FM{1}.LossTangent);
+            emodmicro1 = obj.FM{1}.EModMicro1;
+            emodmicro2 = obj.FM{1}.EModMicro2;
+                
             N = obj.NumForceMaps;
-            for i=1:N
-                LT(i,:) = obj.FM{i}.LossTangent;
+            for i=2:N
+                
+                Dphi(end+1,1) = cell2mat(obj.FM{i}.DeltaPhi);
+
                 %DataOP(i,:) = obj.FM{i}.EModOliverPharr(obj.FM{i}.RectApexIndex);
                 %DataHS(i,:) = obj.FM{i}.EModHertz(obj.FM{i}.RectApexIndex);
             end
