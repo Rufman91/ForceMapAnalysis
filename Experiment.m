@@ -2118,6 +2118,13 @@ classdef Experiment < matlab.mixin.Copyable
         
         function statistics_microrheology(obj)
             
+            %for j=1:obj.FM{1}.NumSegments
+            %        frequencies(j,:) = obj.FM{1}.SegFrequency{j};
+            %end
+            %frequencies = frequencies(frequencies ~= 0);
+            %lf = length(frequencies);
+            frequencies = cell2mat(obj.FM{1}.SegFrequency);
+            
             N = obj.NumForceMaps;
             for i=1:N
                 LT(i,:) = obj.FM{i}.LossTangent;
