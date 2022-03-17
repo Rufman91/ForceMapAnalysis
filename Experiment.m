@@ -2143,18 +2143,16 @@ classdef Experiment < matlab.mixin.Copyable
             
                 
             N = obj.NumForceMaps;
-            for i = 1:N
-                obj.FM{i}.EModMicro1(:,all(obj.FM{i}.EModMicro1 == 0))=[];
-                obj.FM{i}.EModMicro2(:,all(obj.FM{i}.EModMicro2 == 0))=[];
-            end
             
             for i=2:N
                 
                 Dphi = cat(1,Dphi,cell2mat(obj.FM{i}.DeltaPhi));
                 losstangent = cat(1,losstangent,cell2mat(obj.FM{i}.LossTangent));
-                Dphi = cat(1,Dphi,cell2mat(obj.FM{i}.DeltaPhi));
-                emodmicro1 = cat(1,emodmicro1,cell2mat(obj.FM{i}.EModMicro1));
-                emodmicro2 = cat(1,emodmicro2,cell2mat(obj.FM{i}.EModMicro2));
+                
+                obj.FM{i}.EModMicro1(:,all(obj.FM{i}.EModMicro1 == 0))=[];
+                obj.FM{i}.EModMicro2(:,all(obj.FM{i}.EModMicro2 == 0))=[];
+                emodmicro1 = cat(1,emodmicro1,obj.FM{i}.EModMicro1);
+                emodmicro2 = cat(1,emodmicro2,obj.FM{i}.EModMicro2);
 
             end
             
