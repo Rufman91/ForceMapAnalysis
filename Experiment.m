@@ -2144,7 +2144,7 @@ classdef Experiment < matlab.mixin.Copyable
             N = obj.NumForceMaps;
             for i=2:N
                 
-                Dphi(end+1,1) = cell2mat(obj.FM{i}.DeltaPhi);
+                Dphi = cat(1,Dphi,cell2mat(obj.FM{i}.DeltaPhi));
 
                 %DataOP(i,:) = obj.FM{i}.EModOliverPharr(obj.FM{i}.RectApexIndex);
                 %DataHS(i,:) = obj.FM{i}.EModHertz(obj.FM{i}.RectApexIndex);
