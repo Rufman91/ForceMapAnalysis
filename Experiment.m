@@ -2120,7 +2120,9 @@ classdef Experiment < matlab.mixin.Copyable
             
             N = obj.NumForceMaps;
             for i=1:N
-                LT(i) = obj.FM{i}.LossTangent;
+                LT(i,:) = obj.FM{i}.LossTangent;
+                %DataOP(i,:) = obj.FM{i}.EModOliverPharr(obj.FM{i}.RectApexIndex);
+                %DataHS(i,:) = obj.FM{i}.EModHertz(obj.FM{i}.RectApexIndex);
             end
             
         end
