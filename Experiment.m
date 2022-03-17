@@ -2166,7 +2166,7 @@ classdef Experiment < matlab.mixin.Copyable
             %hold on
             boxplot(Dphi,frequencies)
             %ylim([-270 270])
-            title('Phaseshift of all curves','FontSize', 18)
+            title('Phaseshift of all fibrils','FontSize', 18)
             xlabel('frequency [Hz]','FontSize', 16)
             ylabel('phaseshift [°]','FontSize', 16)
             %legend show
@@ -2178,7 +2178,7 @@ classdef Experiment < matlab.mixin.Copyable
             %plot(xq,vqLosstangent,'-','DisplayName',sprintf('Curve %i',i))
             %hold on
             boxplot(losstangent,frequencies)
-            title('Loss Tangent of all curves','FontSize', 18)
+            title('Loss Tangent of all fibrils','FontSize', 18)
             xlabel('frequency [Hz]','FontSize', 16)
             ylabel('losstangent','FontSize', 16)
             %legend show
@@ -2191,7 +2191,7 @@ classdef Experiment < matlab.mixin.Copyable
             %,'HandleVisibility','off'
             %hold on
             boxplot(emodmicro1*1e-6, frequencies)
-            title('Storage modulus','FontSize', 18)
+            title('Storage modulus of all fibrils','FontSize', 18)
             xlabel('frequency [Hz]','FontSize', 16)
             ylabel('elastic modulus [MPa]','FontSize', 16)
             %legend show
@@ -2203,7 +2203,7 @@ classdef Experiment < matlab.mixin.Copyable
             %plot(xq,vqEmodmicro2,'-','DisplayName',sprintf('Curve %i',i))
             %hold on
             boxplot(emodmicro2*1e-6,frequencies)
-            title('Loss modulus','FontSize', 18)
+            title('Loss modulus of all fibrils','FontSize', 18)
             xlabel('frequency [Hz]','FontSize', 16)
             ylabel('viscous modulus [MPa]','FontSize', 16)
             %legend show
