@@ -2140,11 +2140,21 @@ classdef Experiment < matlab.mixin.Copyable
             emodmicro2 = obj.FM{1}.EModMicro2;
             emodmicro1(:,all(emodmicro1 == 0))=[];
             emodmicro2(:,all(emodmicro2 == 0))=[];
+            
                 
             N = obj.NumForceMaps;
+            for i = 1:N
+                obj.FM{i}.EModMicro1(:,all(obj.FM{i}.EModMicro1 == 0))=[];
+                obj.FM{i}.EModMicro2(:,all(obj.FM{i}.EModMicro2 == 0))=[];
+            end
+            
             for i=2:N
                 
                 Dphi = cat(1,Dphi,cell2mat(obj.FM{i}.DeltaPhi));
+                losstangent = cat(1,losstangent,cell2mat(obj.FM{i}.LossTangent));
+                Dphi = cat(1,Dphi,cell2mat(obj.FM{i}.DeltaPhi));
+                emodmicro1 = cat(1,emodmicro1,cell2mat(obj.FM{i}.EModMicro1));
+                emodmicro2 = cat(1,emodmicro2,cell2mat(obj.FM{i}.EModMicro2));
 
                 %DataOP(i,:) = obj.FM{i}.EModOliverPharr(obj.FM{i}.RectApexIndex);
                 %DataHS(i,:) = obj.FM{i}.EModHertz(obj.FM{i}.RectApexIndex);
