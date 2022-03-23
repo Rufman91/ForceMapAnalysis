@@ -3648,6 +3648,7 @@ classdef ForceMap < matlab.mixin.Copyable
                 FirstFreq = find(frequencies,1,'first');
                 
                 [MultiplierF,UnitF,~] = AFMImage.parse_unit_scale(range(obj.Force{i,FirstFreq}),'N',10);
+                [MultiplierF2,UnitF2,~] = AFMImage.parse_unit_scale(range(obj.BasedForce{i,FirstFreq}),'N',10);
                 [MultiplierH,UnitH,~] = AFMImage.parse_unit_scale(range(obj.Height{i,FirstFreq}),'m',10);
                 
                 % find min/max of indentation and force modulation
@@ -3758,9 +3759,30 @@ classdef ForceMap < matlab.mixin.Copyable
                     
                     % subplot 4: force vs indentation
                    subplot(3,2,5)
-                   plot(obj.Height{i,1}*MultiplierH,obj.Force{i,1}*MultiplierF,'-r',obj.Height{i,obj.NumSegments}*MultiplierH,obj.Force{i,obj.NumSegments}*MultiplierF,'-b')
+                   semilogx(obj.Height{i,1}*MultiplierH,obj.Force{i,1}*MultiplierF,'-r',obj.Height{i,obj.NumSegments}*MultiplierH,obj.Force{i,obj.NumSegments}*MultiplierF,'-b')
                    hold on
-                   plot(obj.Height{i,j}*MultiplierH,obj.Force{i,j}*MultiplierF,':m')
+                   semilogx(obj.Height{i,j}*MultiplierH,obj.Force{i,j}*MultiplierF,':m')
+                   xlim([-3200 -2400])
+                   title(sprintf('Force Displacement Curve %i',i),'FontSize', 18)
+                   xlabel(sprintf('Displacement [%s]',UnitH),'FontSize', 12);
+                   ylabel(sprintf('vDeflection-Force [%s]',UnitF),'FontSize', 12);
+                   grid on
+                   grid minor
+                   
+                   l1 = plot(nan, nan, '-r');
+                   hold on
+                   l2 = plot(nan, nan, '-b');
+                   l3 = plot(nan, nan, ':m');
+                   l1.LineWidth = 2;
+                   l2.LineWidth = 2;
+                   l3.LineWidth = 2;
+                   legend([l1, l2, l3], {'approach', 'retract','modulation'}, 'FontSize', 8)
+                   
+                   
+                   subplot(3,2,6)
+                   semilogx(obj.Height{i,1}*MultiplierH,obj.BasedForce{i,1}*MultiplierF2,'-r',obj.Height{i,obj.NumSegments}*MultiplierH,obj.BasedForce{i,obj.NumSegments}*MultiplierF2,'-b')
+                   hold on
+                   semilogx(obj.Height{i,j}*MultiplierH,obj.BasedForce{i,j}*MultiplierF2,':m')
                    xlim([-3200 -2400])
                    title(sprintf('Force Displacement Curve %i',i),'FontSize', 18)
                    xlabel(sprintf('Displacement [%s]',UnitH),'FontSize', 12);
@@ -3946,10 +3968,10 @@ classdef ForceMap < matlab.mixin.Copyable
 
                    % subplot 4: force vs indentation
                    subplot(3,2,6)
-                   plot(obj.Indentation{i,1}*MultiplierI,obj.BasedForce{i,1}*MultiplierF,'-r',obj.Indentation{i,obj.NumSegments}*MultiplierI,obj.BasedForce{i,obj.NumSegments}*MultiplierF,'-b')
+                   semilogx(obj.Indentation{i,1}*MultiplierI,obj.BasedForce{i,1}*MultiplierF,'-r',obj.Indentation{i,obj.NumSegments}*MultiplierI,obj.BasedForce{i,obj.NumSegments}*MultiplierF,'-b')
                    hold on
-                   plot(obj.Indentation{i,j}*MultiplierI,obj.BasedForce{i,j}*MultiplierF,':m')
-                   xlim([-200 200])
+                   semilogx(obj.Indentation{i,j}*MultiplierI,obj.BasedForce{i,j}*MultiplierF,':m')
+                   xlim([-20 20])
                    title(sprintf('Force Indentation Curve %i',i),'FontSize', 18)
                    xlabel(sprintf('Indentation [%s]',UnitI),'FontSize', 12);
                    ylabel(sprintf('vDeflection-Force [%s]',UnitF),'FontSize', 12);
@@ -4140,7 +4162,7 @@ classdef ForceMap < matlab.mixin.Copyable
                 
                 %Plot
                 figure('Name',sprintf('Filtered curves with Fit %i',i))
-                %set(fig,'outerposition',[0 .06 1 .94])
+                set(hObject,'units','normalized','outerposition',[0 0 1 1])
                 lastseg = obj.NumSegments - 2;
                 hold on
                 for j=FirstFreq:lastseg
@@ -4177,9 +4199,9 @@ classdef ForceMap < matlab.mixin.Copyable
 
                         subplot(2,1,1)
                         [MultiplierF,UnitF,~] = AFMImage.parse_unit_scale(range(obj.FilterF{i,FirstFreq}),'N',10);
-                        plot(x,obj.FilterF{i,j}*MultiplierF,'-m')
+                        semilogx(x,obj.FilterF{i,j}*MultiplierF,'-m')
                         hold on
-                        plot(x,ypF*MultiplierF,'-','color',lila)
+                        semilogx(x,ypF*MultiplierF,'-','color',lila)
                         title(sprintf('Filtered Force over Time incl. Fit Curve %i',i),'FontSize', 18)
                         xlabel('time [s]','FontSize', 16)
                         ylabel(sprintf('Filtered vDeflection-Force [%s]',UnitF),'FontSize', 16)
@@ -4188,9 +4210,9 @@ classdef ForceMap < matlab.mixin.Copyable
                         
                         subplot(2,1,2)
                         [MultiplierI,UnitI,~] = AFMImage.parse_unit_scale(range(obj.FilterH{i,FirstFreq}),'m',10);
-                        plot(x,obj.FilterH{i,j}*MultiplierI,'-','color', lightblue)
+                        semilogx(x,obj.FilterH{i,j}*MultiplierI,'-','color', lightblue)
                         hold on
-                        plot(x,ypH*MultiplierI,'-','color',darkblue)
+                        semilogx(x,ypH*MultiplierI,'-','color',darkblue)
                         title(sprintf('Filtered Indentation over Time incl. Fit Curve %i',i),'FontSize', 18)
                         xlabel('time [s]','FontSize', 16)
                         ylabel(sprintf('Filtered Indentation [%s]',UnitI),'FontSize', 16);
