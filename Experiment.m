@@ -787,21 +787,21 @@ classdef Experiment < matlab.mixin.Copyable
             end
             
             % Preprocessing everything, that needs user input
-            answer = questdlg('Do you want to skip manual exclusion of problematic areas?',...
-                'Manual Exclusion',...
-                'Yes',...
-                'No','No');
-            for i=1:NLoop
-                if isequal(KeepFlagged,'Yes') && obj.FMFlag.FibrilAnalysis(i) == 1
-                    continue
-                end
-                obj.FM{i}.create_and_level_height_map();
-                obj.FM{i}.create_fibril_mask();
-                if isequal(answer,'Yes')
-                    continue
-                end
-                obj.FM{i}.manual_exclusion();
-            end
+%             answer = questdlg('Do you want to skip manual exclusion of problematic areas?',...
+%                 'Manual Exclusion',...
+%                 'Yes',...
+%                 'No','No');
+%             for i=1:NLoop
+%                 if isequal(KeepFlagged,'Yes') && obj.FMFlag.FibrilAnalysis(i) == 1
+%                     continue
+%                 end
+%                 obj.FM{i}.create_and_level_height_map();
+%                 obj.FM{i}.create_fibril_mask();
+%                 if isequal(answer,'Yes')
+%                     continue
+%                 end
+%                 obj.FM{i}.manual_exclusion();
+%             end
             
             % Setting and calculating preferred method of reference slope
             obj.reference_slope_parser(1)
@@ -860,7 +860,7 @@ classdef Experiment < matlab.mixin.Copyable
                 end
                 end
                 
-                obj.FM{i}.calculate_fib_diam();
+%                 obj.FM{i}.calculate_fib_diam();
                 
                 % contact point estimation happens here
                 waitbar(i/NLoop,h,sprintf('Processing ForceMap %i/%i\nFinding Contact Point',i,NLoop));
