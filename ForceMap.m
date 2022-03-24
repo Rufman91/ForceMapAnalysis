@@ -3970,10 +3970,10 @@ classdef ForceMap < matlab.mixin.Copyable
 
                     % subplot 4: force vs indentation
                     subplot(3,2,6)
-                    semilogx(obj.Indentation{i,1}*MultiplierI,obj.BasedForce{i,1}*MultiplierF,'-r',obj.Indentation{i,obj.NumSegments}*MultiplierI,obj.BasedForce{i,obj.NumSegments}*MultiplierF,'-b')
+                    plot(obj.Indentation{i,1}*MultiplierI,obj.BasedForce{i,1}*MultiplierF,'-r',obj.Indentation{i,obj.NumSegments}*MultiplierI,obj.BasedForce{i,obj.NumSegments}*MultiplierF,'-b')
                     hold on
-                    semilogx(obj.Indentation{i,j}*MultiplierI,obj.BasedForce{i,j}*MultiplierF,':m')
-                    %xlim([-20 20])
+                    plot(obj.Indentation{i,j}*MultiplierI,obj.BasedForce{i,j}*MultiplierF,':m')
+                    xlim([-20 20])
                     title(sprintf('Force Indentation Curve %i',i),'FontSize', 18)
                     xlabel(sprintf('Indentation [%s]',UnitI),'FontSize', 12);
                     ylabel(sprintf('vDeflection-Force [%s]',UnitF),'FontSize', 12);
