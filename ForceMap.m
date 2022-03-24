@@ -4385,6 +4385,7 @@ classdef ForceMap < matlab.mixin.Copyable
                 FirstFreq = find(frequencies,1,'first');
                 frequencies = frequencies(frequencies ~= 0);
                 lf = length(frequencies);
+                k = lf/2;
                 
                         
                % Plot
@@ -4402,7 +4403,7 @@ classdef ForceMap < matlab.mixin.Copyable
                         x = linspace(obj.TStart{j},End);
                         %End = 2/obj.SegFrequency{j};
                         %x = linspace(0,End);
-                        k = lf/2;
+                        
                        
                         
                         %Y-values fitted sine of indentation and force:
