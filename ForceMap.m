@@ -3763,7 +3763,7 @@ classdef ForceMap < matlab.mixin.Copyable
                    plot(obj.Height{i,1}*MultiplierH,obj.Force{i,1}*MultiplierF,'-r',obj.Height{i,obj.NumSegments}*MultiplierH,obj.Force{i,obj.NumSegments}*MultiplierF,'-b')
                    hold on
                    plot(obj.Height{i,j}*MultiplierH,obj.Force{i,j}*MultiplierF,':m')
-                   xlim([yHmin yHmax])
+                   xlim([yHmin-100 yHmax+50])
                    title(sprintf('Force Displacement Curve %i',i),'FontSize', 18)
                    xlabel(sprintf('Displacement [%s]',UnitH),'FontSize', 12);
                    ylabel(sprintf('vDeflection-Force [%s]',UnitF),'FontSize', 12);
