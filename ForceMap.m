@@ -4383,11 +4383,12 @@ classdef ForceMap < matlab.mixin.Copyable
                     frequencies(j,:) = obj.SegFrequency{j};
                 end
                 FirstFreq = find(frequencies,1,'first');
+                lf = length(frequencies);
                 
                         
                % Plot
                 figure('Name',sprintf('Phaseshift Curve %i',i))
-                %lastseg = obj.NumSegments - 2;
+                set(gcf,'units','normalized','outerposition',[0 0 1 1])
                 hold on
                 for j=1:obj.NumSegments
                     
@@ -4400,6 +4401,7 @@ classdef ForceMap < matlab.mixin.Copyable
                         x = linspace(obj.TStart{j},End);
                         %End = 2/obj.SegFrequency{j};
                         %x = linspace(0,End);
+                        k = lf/2;
                        
                         
                         %Y-values fitted sine of indentation and force:
@@ -4417,7 +4419,7 @@ classdef ForceMap < matlab.mixin.Copyable
                         
                         [MultiplierI,UnitI,~] = AFMImage.parse_unit_scale(range(obj.Indentation{i,FirstFreq}),'m',10);
                         [MultiplierF,UnitF,~] = AFMImage.parse_unit_scale(range(obj.BasedForce{i,FirstFreq}),'N',10);
-                        subplot(1,obj.NumSegments,j)
+                        subplot(2,k,j)
                         findpeaks(ypF*MultiplierF,x)
                         hold on
                         findpeaks(ypH*MultiplierI,x)
@@ -4428,10 +4430,10 @@ classdef ForceMap < matlab.mixin.Copyable
                         %drawnow
                         grid on
                         grid minor
-                        Nx = 2; % in x-Richtung verdoppeln
-                        Ny = 1; % in y-Richtung unverändert
-                        pos = get(gcf,'Position');
-                        set(gcf,'Position',[pos(1:2) Nx*pos(3) Ny*pos(4)]); 
+                        %Nx = 2; % in x-Richtung verdoppeln
+                        %Ny = 1; % in y-Richtung unverändert
+                        %pos = get(gcf,'Position');
+                        %set(gcf,'Position',[pos(1:2) Nx*pos(3) Ny*pos(4)]); 
 
 
                        
