@@ -843,6 +843,8 @@ classdef Experiment < matlab.mixin.Copyable
                 end
                 end
                 
+                obj.FM{i}.calculate_fib_diam();
+                
                 % contact point estimation happens here
                 waitbar(i/NLoop,h,sprintf('Processing ForceMap %i/%i\nFinding Contact Point',i,NLoop));
                 obj.cp_option_converter(CPOption,i);
