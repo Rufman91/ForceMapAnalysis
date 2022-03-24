@@ -3922,6 +3922,7 @@ classdef ForceMap < matlab.mixin.Copyable
                 % Plot
                 figure('Name',sprintf('Microrheology Curves %i',i))
                 set(gcf,'units','normalized','outerposition',[0 0 1 1])
+                set(gcf, 'Position', [100, 100, 800, 600]);
                 hold on
                 for j=1:obj.NumSegments
                     
