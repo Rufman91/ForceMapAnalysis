@@ -4385,7 +4385,7 @@ classdef ForceMap < matlab.mixin.Copyable
                 FirstFreq = find(frequencies,1,'first');
                 frequencies = frequencies(frequencies ~= 0);
                 lf = length(frequencies);
-                k = lf/2;
+                k = obj.NumSegments/2;
                 
                         
                % Plot
@@ -4421,7 +4421,7 @@ classdef ForceMap < matlab.mixin.Copyable
                         
                         [MultiplierI,UnitI,~] = AFMImage.parse_unit_scale(range(obj.Indentation{i,FirstFreq}),'m',10);
                         [MultiplierF,UnitF,~] = AFMImage.parse_unit_scale(range(obj.BasedForce{i,FirstFreq}),'N',10);
-                        subplot(2,k,j)
+                        subplot(2,obj.NumSegments,j)
                         findpeaks(ypF*MultiplierF,x)
                         hold on
                         findpeaks(ypH*MultiplierI,x)
