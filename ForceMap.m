@@ -3678,17 +3678,17 @@ classdef ForceMap < matlab.mixin.Copyable
                 yFmax = max(Fmax)*MultiplierF;
                 
                 if yHmin > 0
-                    yHmin = yHmin * 0.7;
+                    yHmin = yHmin * 0.9;
                     
                 else
-                    yHmin = yHmin * 1.2;
+                    yHmin = yHmin * 1.1;
                 end
                 
                 if yHmax > 0
-                    yHmax = yHmax * 1.2;
+                    yHmax = yHmax * 1.1;
                     
                 else
-                    yHmax = yHmax * 0.7;
+                    yHmax = yHmax * 0.9;
                 end
                 
                 if yFmin > 0
@@ -3759,10 +3759,10 @@ classdef ForceMap < matlab.mixin.Copyable
                     
                     % subplot 4: force vs indentation
                    subplot(3,2,5)
-                   semilogx(obj.Height{i,1}*MultiplierH,obj.Force{i,1}*MultiplierF,'-r',obj.Height{i,obj.NumSegments}*MultiplierH,obj.Force{i,obj.NumSegments}*MultiplierF,'-b')
+                   plot(obj.Height{i,1}*MultiplierH,obj.Force{i,1}*MultiplierF,'-r',obj.Height{i,obj.NumSegments}*MultiplierH,obj.Force{i,obj.NumSegments}*MultiplierF,'-b')
                    hold on
-                   semilogx(obj.Height{i,j}*MultiplierH,obj.Force{i,j}*MultiplierF,':m')
-                   %xlim([-3200 -2400])
+                   plot(obj.Height{i,j}*MultiplierH,obj.Force{i,j}*MultiplierF,':m')
+                   xlim([-3200 -2400])
                    title(sprintf('Force Displacement Curve %i',i),'FontSize', 18)
                    xlabel(sprintf('Displacement [%s]',UnitH),'FontSize', 12);
                    ylabel(sprintf('vDeflection-Force [%s]',UnitF),'FontSize', 12);
@@ -3780,10 +3780,10 @@ classdef ForceMap < matlab.mixin.Copyable
                    
                    
                    subplot(3,2,6)
-                   semilogx(obj.Height{i,1}*MultiplierH,obj.BasedForce{i,1}*MultiplierF2,'-r',obj.Height{i,obj.NumSegments}*MultiplierH,obj.BasedForce{i,obj.NumSegments}*MultiplierF2,'-b')
+                   plot(obj.Height{i,1}*MultiplierH,obj.BasedForce{i,1}*MultiplierF2,'-r',obj.Height{i,obj.NumSegments}*MultiplierH,obj.BasedForce{i,obj.NumSegments}*MultiplierF2,'-b')
                    hold on
-                   semilogx(obj.Height{i,j}*MultiplierH,obj.BasedForce{i,j}*MultiplierF2,':m')
-                   %xlim([-3200 -2400])
+                   plot(obj.Height{i,j}*MultiplierH,obj.BasedForce{i,j}*MultiplierF2,':m')
+                   xlim([-3200 -2400])
                    title(sprintf('Force Displacement Curve %i',i),'FontSize', 18)
                    xlabel(sprintf('Displacement [%s]',UnitH),'FontSize', 12);
                    ylabel(sprintf('vDeflection-Force [%s]',UnitF2),'FontSize', 12);
@@ -3920,6 +3920,7 @@ classdef ForceMap < matlab.mixin.Copyable
                 
                 % Plot
                 figure('Name',sprintf('Microrheology Curves %i',i))
+                set(gcf,'units','normalized','outerposition',[0 0 1 1])
                 hold on
                 for j=1:obj.NumSegments
                     
@@ -3948,44 +3949,44 @@ classdef ForceMap < matlab.mixin.Copyable
                     subplot(3,2,5)
                     hold on
 
-                   yyaxis left
-                   ylim([yFmin yFmax])
-                   plot(obj.SegTime{j},obj.BasedForce{i,j}*MultiplierF,'-m')
-                   set(gca, 'YColor', 'm')
-                   xlabel('time in s','FontSize', 12)
-                   ylabel(sprintf('vDeflection-Force [%s]',UnitF),'FontSize', 12)
+                    yyaxis left
+                    ylim([yFmin yFmax])
+                    plot(obj.SegTime{j},obj.BasedForce{i,j}*MultiplierF,'-m')
+                    set(gca, 'YColor', 'm')
+                    xlabel('time in s','FontSize', 12)
+                    ylabel(sprintf('vDeflection-Force [%s]',UnitF),'FontSize', 12)
 
 
-                   yyaxis right
-                   ylim([yHmin yHmax])
-                   plot(obj.SegTime{j},obj.Indentation{i,j}*MultiplierI,'-','color',lightblue)
-                   set(gca, 'YColor', lightblue)
-                   title(sprintf('Force and Indentation over Time Curve %i',i),'FontSize', 18)
-                   ylabel(sprintf('Indentation [%s]',UnitI),'FontSize', 12);
-                   grid on
-                   grid minor
+                    yyaxis right
+                    ylim([yHmin yHmax])
+                    plot(obj.SegTime{j},obj.Indentation{i,j}*MultiplierI,'-','color',lightblue)
+                    set(gca, 'YColor', lightblue)
+                    title(sprintf('Force and Indentation over Time Curve %i',i),'FontSize', 18)
+                    ylabel(sprintf('Indentation [%s]',UnitI),'FontSize', 12);
+                    grid on
+                    grid minor
 
 
-                   % subplot 4: force vs indentation
-                   subplot(3,2,6)
-                   semilogx(obj.Indentation{i,1}*MultiplierI,obj.BasedForce{i,1}*MultiplierF,'-r',obj.Indentation{i,obj.NumSegments}*MultiplierI,obj.BasedForce{i,obj.NumSegments}*MultiplierF,'-b')
-                   hold on
-                   semilogx(obj.Indentation{i,j}*MultiplierI,obj.BasedForce{i,j}*MultiplierF,':m')
-                   %xlim([-20 20])
-                   title(sprintf('Force Indentation Curve %i',i),'FontSize', 18)
-                   xlabel(sprintf('Indentation [%s]',UnitI),'FontSize', 12);
-                   ylabel(sprintf('vDeflection-Force [%s]',UnitF),'FontSize', 12);
-                   grid on
-                   grid minor
+                    % subplot 4: force vs indentation
+                    subplot(3,2,6)
+                    semilogx(obj.Indentation{i,1}*MultiplierI,obj.BasedForce{i,1}*MultiplierF,'-r',obj.Indentation{i,obj.NumSegments}*MultiplierI,obj.BasedForce{i,obj.NumSegments}*MultiplierF,'-b')
+                    hold on
+                    semilogx(obj.Indentation{i,j}*MultiplierI,obj.BasedForce{i,j}*MultiplierF,':m')
+                    %xlim([-20 20])
+                    title(sprintf('Force Indentation Curve %i',i),'FontSize', 18)
+                    xlabel(sprintf('Indentation [%s]',UnitI),'FontSize', 12);
+                    ylabel(sprintf('vDeflection-Force [%s]',UnitF),'FontSize', 12);
+                    grid on
+                    grid minor
                    
-                   l1 = plot(nan, nan, '-r');
-                   hold on
-                   l2 = plot(nan, nan, '-b');
-                   l3 = plot(nan, nan, ':m');
-                   l1.LineWidth = 2;
-                   l2.LineWidth = 2;
-                   l3.LineWidth = 2;
-                   legend([l1, l2, l3], {'approach', 'retract','modulation'}, 'FontSize', 8)
+                    l1 = plot(nan, nan, '-r');
+                    hold on
+                    l2 = plot(nan, nan, '-b');
+                    l3 = plot(nan, nan, ':m');
+                    l1.LineWidth = 2;
+                    l2.LineWidth = 2;
+                    l3.LineWidth = 2;
+                    legend([l1, l2, l3], {'approach', 'retract','modulation'}, 'FontSize', 8)
 
                
                 end
@@ -4277,7 +4278,8 @@ classdef ForceMap < matlab.mixin.Copyable
                 
                 
                 %Plot
-                figure('Name',sprintf('Curves with Fit %i',i))
+                figure('Name',sprintf('Raw curves with Fit %i',i))
+                set(gcf,'units','normalized','outerposition',[0 0 1 1])
                 lastseg = obj.NumSegments - 2;
                 hold on
                 for j=FirstFreq:lastseg
