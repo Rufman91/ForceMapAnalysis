@@ -3762,7 +3762,7 @@ classdef ForceMap < matlab.mixin.Copyable
                    semilogx(obj.Height{i,1}*MultiplierH,obj.Force{i,1}*MultiplierF,'-r',obj.Height{i,obj.NumSegments}*MultiplierH,obj.Force{i,obj.NumSegments}*MultiplierF,'-b')
                    hold on
                    semilogx(obj.Height{i,j}*MultiplierH,obj.Force{i,j}*MultiplierF,':m')
-                   xlim([-3200 -2400])
+                   %xlim([-3200 -2400])
                    title(sprintf('Force Displacement Curve %i',i),'FontSize', 18)
                    xlabel(sprintf('Displacement [%s]',UnitH),'FontSize', 12);
                    ylabel(sprintf('vDeflection-Force [%s]',UnitF),'FontSize', 12);
@@ -3783,10 +3783,10 @@ classdef ForceMap < matlab.mixin.Copyable
                    semilogx(obj.Height{i,1}*MultiplierH,obj.BasedForce{i,1}*MultiplierF2,'-r',obj.Height{i,obj.NumSegments}*MultiplierH,obj.BasedForce{i,obj.NumSegments}*MultiplierF2,'-b')
                    hold on
                    semilogx(obj.Height{i,j}*MultiplierH,obj.BasedForce{i,j}*MultiplierF2,':m')
-                   xlim([-3200 -2400])
+                   %xlim([-3200 -2400])
                    title(sprintf('Force Displacement Curve %i',i),'FontSize', 18)
                    xlabel(sprintf('Displacement [%s]',UnitH),'FontSize', 12);
-                   ylabel(sprintf('vDeflection-Force [%s]',UnitF),'FontSize', 12);
+                   ylabel(sprintf('vDeflection-Force [%s]',UnitF2),'FontSize', 12);
                    grid on
                    grid minor
                    
@@ -3971,7 +3971,7 @@ classdef ForceMap < matlab.mixin.Copyable
                    semilogx(obj.Indentation{i,1}*MultiplierI,obj.BasedForce{i,1}*MultiplierF,'-r',obj.Indentation{i,obj.NumSegments}*MultiplierI,obj.BasedForce{i,obj.NumSegments}*MultiplierF,'-b')
                    hold on
                    semilogx(obj.Indentation{i,j}*MultiplierI,obj.BasedForce{i,j}*MultiplierF,':m')
-                   xlim([-20 20])
+                   %xlim([-20 20])
                    title(sprintf('Force Indentation Curve %i',i),'FontSize', 18)
                    xlabel(sprintf('Indentation [%s]',UnitI),'FontSize', 12);
                    ylabel(sprintf('vDeflection-Force [%s]',UnitF),'FontSize', 12);
