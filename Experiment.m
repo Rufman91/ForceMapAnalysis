@@ -786,6 +786,23 @@ classdef Experiment < matlab.mixin.Copyable
                 KeepFlagged = 'No';
             end
             
+            % Preprocessing everything, that needs user input
+            answer = questdlg('Do you want to skip manual exclusion of problematic areas?',...
+                'Manual Exclusion',...
+                'Yes',...
+                'No','No');
+            for i=1:NLoop
+                if isequal(KeepFlagged,'Yes') && obj.FMFlag.FibrilAnalysis(i) == 1
+                    continue
+                end
+                obj.FM{i}.create_and_level_height_map();
+                obj.FM{i}.create_fibril_mask();
+                if isequal(answer,'Yes')
+                    continue
+                end
+                obj.FM{i}.manual_exclusion();
+            end
+            
             % Setting and calculating preferred method of reference slope
             obj.reference_slope_parser(1)
             
