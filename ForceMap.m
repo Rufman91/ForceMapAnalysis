@@ -3678,17 +3678,17 @@ classdef ForceMap < matlab.mixin.Copyable
                 yFmax = max(Fmax)*MultiplierF;
                 
                 if yHmin > 0
-                    yHmin = yHmin * 0.9;
+                    yHmin = yHmin * 0.97;
                     
                 else
-                    yHmin = yHmin * 1.1;
+                    yHmin = yHmin * 1.03;
                 end
                 
                 if yHmax > 0
-                    yHmax = yHmax * 1.1;
+                    yHmax = yHmax * 1.03;
                     
                 else
-                    yHmax = yHmax * 0.9;
+                    yHmax = yHmax * 0.97;
                 end
                 
                 if yFmin > 0
@@ -3734,6 +3734,7 @@ classdef ForceMap < matlab.mixin.Copyable
                  
                  % Plot
                 figure('Name',sprintf('Microrheology Curves %i',i))
+                set(gcf,'units','normalized','outerposition',[0 0 1 1])
                 hold on
                 for j=1:obj.NumSegments
                     
@@ -3762,7 +3763,7 @@ classdef ForceMap < matlab.mixin.Copyable
                    plot(obj.Height{i,1}*MultiplierH,obj.Force{i,1}*MultiplierF,'-r',obj.Height{i,obj.NumSegments}*MultiplierH,obj.Force{i,obj.NumSegments}*MultiplierF,'-b')
                    hold on
                    plot(obj.Height{i,j}*MultiplierH,obj.Force{i,j}*MultiplierF,':m')
-                   xlim([-3200 -2400])
+                   %xlim([-3200 -2400])
                    title(sprintf('Force Displacement Curve %i',i),'FontSize', 18)
                    xlabel(sprintf('Displacement [%s]',UnitH),'FontSize', 12);
                    ylabel(sprintf('vDeflection-Force [%s]',UnitF),'FontSize', 12);
@@ -3783,7 +3784,7 @@ classdef ForceMap < matlab.mixin.Copyable
                    plot(obj.Height{i,1}*MultiplierH,obj.BasedForce{i,1}*MultiplierF2,'-r',obj.Height{i,obj.NumSegments}*MultiplierH,obj.BasedForce{i,obj.NumSegments}*MultiplierF2,'-b')
                    hold on
                    plot(obj.Height{i,j}*MultiplierH,obj.BasedForce{i,j}*MultiplierF2,':m')
-                   xlim([-3200 -2400])
+                   %xlim([-3200 -2400])
                    title(sprintf('Force Displacement Curve %i',i),'FontSize', 18)
                    xlabel(sprintf('Displacement [%s]',UnitH),'FontSize', 12);
                    ylabel(sprintf('vDeflection-Force [%s]',UnitF2),'FontSize', 12);
