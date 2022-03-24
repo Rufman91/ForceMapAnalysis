@@ -1128,7 +1128,6 @@ classdef ForceMap < matlab.mixin.Copyable
                     LineFit = polyfit(ZCurvePercent,DCurvePercent,1);
                     obj.DZslope(i) = LineFit(1);
                     Hmax(i) = Zmax(i) - Dmax(i);
-                    hmax(i) = max(obj.Indentation{i,obj.NumSegments});
                     dD = Dmax(i) - (1-CurvePercent)*Dmax(i);
                     dh = dD*(1./obj.DZslope(i) - 1/(obj.RefSlope));
                     df = dD*obj.SpringConstant;
