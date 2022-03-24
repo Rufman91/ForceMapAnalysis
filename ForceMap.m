@@ -3922,12 +3922,12 @@ classdef ForceMap < matlab.mixin.Copyable
                 % Plot
                 figure('Name',sprintf('Microrheology Curves %i',i))
                 set(gcf,'units','normalized','outerposition',[0 0 1 1])
-                set(gcf, 'Position', [100, 100, 800, 600]);
+                %set(gcf, 'Position', [100, 100, 800, 600]);
                 hold on
                 for j=1:obj.NumSegments
                     
                     %subplot 1: force time 
-                    subplot(3,2,1)
+                    subplot(2,2,1)
                     hold on
                     plot(obj.SegTime{j},obj.BasedForce{i,j}*MultiplierF,'m')
                     title(sprintf('Force Time Curve %i',i),'FontSize', 18)
@@ -3937,7 +3937,7 @@ classdef ForceMap < matlab.mixin.Copyable
                     grid minor
 
                     %subplot 2: indentation time
-                    subplot(3,2,2)
+                    subplot(2,2,2)
                     hold on
                     plot(obj.SegTime{j},obj.Indentation{i,j}*MultiplierI,'-','color',lightblue)
                     ylim([yHmin yHmax])
@@ -3948,7 +3948,7 @@ classdef ForceMap < matlab.mixin.Copyable
                     grid minor
 
                     %subplot 3: force and indentation over time
-                    subplot(3,2,5)
+                    subplot(2,2,3)
                     hold on
 
                     yyaxis left
@@ -3970,7 +3970,7 @@ classdef ForceMap < matlab.mixin.Copyable
 
 
                     % subplot 4: force vs indentation
-                    subplot(3,2,6)
+                    subplot(2,2,4)
                     plot(obj.Indentation{i,1}*MultiplierI,obj.BasedForce{i,1}*MultiplierF,'-r',obj.Indentation{i,obj.NumSegments}*MultiplierI,obj.BasedForce{i,obj.NumSegments}*MultiplierF,'-b')
                     hold on
                     plot(obj.Indentation{i,j}*MultiplierI,obj.BasedForce{i,j}*MultiplierF,':m')
