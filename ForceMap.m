@@ -3665,45 +3665,45 @@ classdef ForceMap < matlab.mixin.Copyable
                 yFmax2 = max(Fmax2)*MultiplierF2;
                 
                 if yHmin > 0
-                    yHmin = yHmin * 0.99;
+                    yHmin = yHmin * 0.995;
                     
                 else
                     yHmin = yHmin * 1.005;
                 end
                 
                 if yHmax > 0
-                    yHmax = yHmax * 1.01;
+                    yHmax = yHmax * 1.005;
                     
                 else
                     yHmax = yHmax * 0.995;
                 end
                 
                 if yFmin > 0
-                    yFmin = yFmin * 0.7;
+                    yFmin = yFmin * 0.995;
                     
                 else
-                    yFmin = yFmin * 1.2;
+                    yFmin = yFmin * 1.005;
                 end
                 
                 if yFmax > 0
-                    yFmax = yFmax * 1.2;
+                    yFmax = yFmax * 1.005;
                     
                 else
-                    yFmax = yFmax * 0.7;
+                    yFmax = yFmax * 0.995;
                 end
                 
                 if yFmin2 > 0
-                    yFmin2 = yFmin2 * 0.7;
+                    yFmin2 = yFmin2 * 0.995;
                     
                 else
-                    yFmin2 = yFmin2 * 1.2;
+                    yFmin2 = yFmin2 * 1.005;
                 end
                 
                 if yFmax2 > 0
-                    yFmax2 = yFmax2 * 1.2;
+                    yFmax2 = yFmax2 * 1.005;
                     
                 else
-                    yFmax2 = yFmax2 * 0.7;
+                    yFmax2 = yFmax2 * 0.995;
                 end
                 
                 
