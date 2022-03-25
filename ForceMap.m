@@ -3637,6 +3637,142 @@ classdef ForceMap < matlab.mixin.Copyable
             light('Style','local')
         end
         
+        function show_stephold(obj)
+            
+            close all
+            
+            
+            for i=1:obj.NCurves
+                
+                
+                [MultiplierF,UnitF,~] = AFMImage.parse_unit_scale(range(obj.Force{i,2}),'N',10);
+                [MultiplierF2,UnitF2,~] = AFMImage.parse_unit_scale(range(obj.BasedForce{i,2}),'N',10);
+                [MultiplierH,UnitH,~] = AFMImage.parse_unit_scale(range(obj.Height{i,2}),'m',10);
+                
+                % find min/max of indentation and force modulation
+                Hmin = min(obj.Height{i,2});
+                Hmax = max(obj.Height{i,2});
+                Fmin = min(obj.Force{i,2});
+                Fmax = max(obj.Force{i,2});
+                Fmin2 = min(obj.BasedForce{i,2});
+                Fmax2 = max(obj.BasedForce{i,2});
+                
+                yHmin = min(Hmin)*MultiplierH;
+                yHmax = max(Hmax)*MultiplierH;
+                yFmin = min(Fmin)*MultiplierF;
+                yFmax = max(Fmax)*MultiplierF;
+                yFmin2 = min(Fmin2)*MultiplierF2;
+                yFmax2 = max(Fmax2)*MultiplierF2;
+                
+                if yHmin > 0
+                    yHmin = yHmin * 0.99;
+                    
+                else
+                    yHmin = yHmin * 1.005;
+                end
+                
+                if yHmax > 0
+                    yHmax = yHmax * 1.01;
+                    
+                else
+                    yHmax = yHmax * 0.995;
+                end
+                
+                if yFmin > 0
+                    yFmin = yFmin * 0.7;
+                    
+                else
+                    yFmin = yFmin * 1.2;
+                end
+                
+                if yFmax > 0
+                    yFmax = yFmax * 1.2;
+                    
+                else
+                    yFmax = yFmax * 0.7;
+                end
+                
+                if yFmin2 > 0
+                    yFmin2 = yFmin2 * 0.7;
+                    
+                else
+                    yFmin2 = yFmin2 * 1.2;
+                end
+                
+                if yFmax2 > 0
+                    yFmax2 = yFmax2 * 1.2;
+                    
+                else
+                    yFmax2 = yFmax2 * 0.7;
+                end
+                
+                
+                
+                %Colours 
+                lila = [0.368, 0.058, 0.721];
+                lightblue = [0.101, 0.701, 0.976];
+                darkblue = [0.109, 0.078, 0.941];
+                
+                
+                for j=1:obj.NumSegments
+                    
+                       lengthApp = length(obj.App{i});
+                       obj.SecPerPoint{1} = obj.SegDuration{1}/lengthApp;
+                       obj.TStart{1} = obj.SecPerPoint{1}/2;
+                       obj.TEnd{1} = obj.SeriesTime{1};
+                       obj.SegTime{1} = obj.TStart{1}:obj.SecPerPoint{1}:obj.TEnd{1};
+                       obj.SegTime{1} = obj.SegTime{1}.';
+                       
+                       lastseg = obj.NumSegments - 1;
+                       lengthRet = length(obj.Ret{i});
+                       obj.SecPerPoint{obj.NumSegments} = obj.SegDuration{obj.NumSegments}/lengthRet;
+                       obj.TStart{obj.NumSegments} = obj.SeriesTime{lastseg}+(obj.SecPerPoint{obj.NumSegments}/2);
+                       obj.TEnd{obj.NumSegments} = obj.SeriesTime{obj.NumSegments};
+                       obj.SegTime{obj.NumSegments} = obj.TStart{obj.NumSegments}:obj.SecPerPoint{obj.NumSegments}:obj.TEnd{obj.NumSegments};
+                       obj.SegTime{obj.NumSegments} = obj.SegTime{obj.NumSegments}.';
+%                        
+                end
+                
+                 % Plot
+                figure('Name',sprintf('Stephold Curves %i',i))
+                set(gcf,'units','normalized','outerposition',[0 0 1 1])
+                hold on
+                for j=1:obj.NumSegments
+                    
+                    subplot(2,2,1)
+                    hold on
+                    plot(obj.SegTime{j},obj.Height{i,j}*MultiplierH,'-','color',darkblue)
+                    ylim([yHmin yHmax])
+                    title(sprintf('Displacement Time Curve %i',i),'FontSize', 18)
+                    xlabel('time in s','FontSize', 12)
+                    ylabel(sprintf('Displacement [%s]',UnitH),'FontSize', 12)
+                    grid on
+                    grid minor
+                    
+                    subplot(2,2,2)
+                    hold on
+                    plot(obj.SegTime{j},obj.Force{i,j}*MultiplierF,'-r')
+                    ylim([yFmin yFmax])
+                    title(sprintf('Force Time Curve %i',i),'FontSize', 18)
+                    xlabel('time in s','FontSize', 12)
+                    ylabel(sprintf('vDeflection-Force [%s]',UnitF),'FontSize', 12)
+                    grid on
+                    grid minor
+                    
+                    subplot(2,2,3)
+                    hold on
+                    plot(obj.SegTime{j},obj.BasedForce{i,j}*MultiplierF2,'-m')
+                    ylim([yFmin2 yFmax2])
+                    title(sprintf('Based Force Time Curve %i',i),'FontSize', 18)
+                    xlabel('time in s','FontSize', 12)
+                    ylabel(sprintf('vDeflection-Force [%s]',UnitF2),'FontSize', 12)
+                    grid on
+                    grid minor
+                    
+                end
+            end
+        end
+        
         function show_height(obj)
             
             close all
