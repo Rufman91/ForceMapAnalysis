@@ -5514,9 +5514,10 @@ PlotData=obj.SMFSResults{jj}.Data.AdhMaxAppConcat
             % end  
             
              for ii=1:obj.NumForceMaps
-            obj.FM{ii}.SMFSFlag.Uncorrupt(1:100)=1
+           %   for ii=2   
+ %           obj.FM{ii}.SMFSFlag.Uncorrupt(1:100)=1
 %      
-%              %  obj.FM{ii}.fc_testing
+                 obj.FM{ii}.fc_measurement_prop
 %           %    obj.FM{ii}.initialize_flags       
 %            %  obj.FM{ii}.fc_snap_in_length_MAD
 %        %   ii   

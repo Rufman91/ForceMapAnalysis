@@ -1937,9 +1937,12 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 obj.Substrate='';
             end
             % Milli-Q water
-            exp31='mil';
-            pat=regexpPattern(exp31,"IgnoreCase",true);
-            ext31=extract(obj.Name,pat);
+            exp31a='mil';
+            pata=regexpPattern(exp31a,"IgnoreCase",true);
+            ext31a=extract(obj.Name,pata);
+            exp31b='HOH';
+            patb=regexpPattern(exp31b,"IgnoreCase",true);
+            ext31b=extract(obj.Name,patb);
             % Acetic acid (HAc)
             exp32='HAc';
             pat=regexpPattern(exp32,"IgnoreCase",true);
@@ -1956,23 +1959,25 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             exp35='DPBS';
             pat=regexpPattern(exp35,"IgnoreCase",true);
             ext35=extract(obj.Name,pat);
-            % HOH
-            exp36='HOH';
+            % CaCl2
+            exp36='CaCl2';
             pat=regexpPattern(exp36,"IgnoreCase",true);
-            ext36=extract(obj.Name,pat);
+            ext36=extract(obj.Name,pat);            
             % Environmental conditions
-            if isempty(ext31)==0
+            if ~isempty(ext31a) || ~isempty(ext31b)
                 obj.EnvCond='Water'; % Milli-Q water
-            elseif isempty(ext32)==0
+            elseif ~isempty(ext32) && ~isempty(ext36)
+                obj.EnvCond='HAcCaCl2'; % Acetic acid
+            elseif ~isempty(ext32)
                 obj.EnvCond='HAc'; % Acetic acid
-            elseif isempty(ext33)==0
+            elseif ~isempty(ext33)
                 obj.EnvCond='CAPS'; % CAPS
-            elseif isempty(ext34)==0
+            elseif ~isempty(ext34)
                 obj.EnvCond='PBS'; % Phospate buffered saline
-            elseif isempty(ext35)==0
+            elseif ~isempty(ext35)
                 obj.EnvCond='DPBS'; % Dulbecco's phospate buffered saline
-            elseif isempty(ext36)==0
-                obj.EnvCond='Water'; % Dulbecco's phospate buffered saline
+            elseif ~isempty(ext36)
+                obj.EnvCond='CaCl2'; % Calcium chloride solution
             else
                 obj.EnvCond='';
             end
@@ -1990,8 +1995,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             elseif isempty(ext42)==0
                 obj.Linker='short'; % short linker
             else
-                %  obj.Linker='long';
-                obj.Linker='short';
+                 obj.Linker='long';
+                %obj.Linker='short';
             end
 
         end
@@ -4486,7 +4491,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 h_fig=figure(kk);
                 h_fig.Color='white'; % changes the background color of the figure
                 h_fig.Units='pixel'; % Defines the units
-                h_fig.OuterPosition=res;
+                h_fig.OuterPosition=Res;
                 h_fig.PaperOrientation='landscape';
                 h_fig.Name=figname;
                 %% Plotting the tiles
