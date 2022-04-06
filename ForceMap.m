@@ -2000,7 +2000,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             end
 
         end
-                
+                        
         function fc_sinoidal_fit(obj)
             %CREATEFIT1(X,Y)
             %  Create a fit.
@@ -2119,8 +2119,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             % Figure loop
             for jj=1:NFigures
                 %% Plot condition                
-                if  ~obj.DebugFlag.Plot % Suppress plotting
-                %if  obj.DebugFlag.Plot % Allow plotting
+                %if  ~obj.DebugFlag.Plot % Suppress plotting
+                if  obj.DebugFlag.Plot % Allow plotting
                     continue
                 end
                 % Figure properties
@@ -2276,8 +2276,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             end
             % Figure loop
             for jj=1:NFigures
-                if  ~obj.DebugFlag.Plot % Suppress plotting
-                %if  obj.DebugFlag.Plot % Allow plotting
+                % if  ~obj.DebugFlag.Plot % Suppress plotting
+                if  obj.DebugFlag.Plot % Allow plotting
                     continue
                 end
                 % Figure properties
@@ -2480,7 +2480,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                %  sprintf('Force curve No. %d',jj) % Gives current
                 % Force curve for debugging
                 %% Force curve selection criteria
-                if ~obj.SMFSFlag.Uncorrupt(jj) || ~obj.SMFSFlag.AppMinCrit(jj)     % Exclude corrupted force curves or force curves showing no snap-in from the analysis
+                % if ~obj.SMFSFlag.Uncorrupt(jj) || ~obj.SMFSFlag.AppMinCrit(jj)     % Condition before the first analysis: Exclude corrupted force curves or force curves showing no snap-in from the analysis
+                if ~obj.SMFSFlag.Uncorrupt(jj) || ~obj.SMFSFlag.Selected(jj) || ~obj.SMFSFlag.AppMinCrit(jj)     % Condition if FM Flag Selected has been set: Exclude corrupted force curves or force curves showing no snap-in from the analysis
                     continue
                 end
                 % Allocate data
@@ -2595,7 +2596,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             %for jj=7 % for debugging
                 % sprintf('Force curve No. %d',jj) % Gives current Force curve
                 %% Force curve selection criteria
-                if ~obj.SMFSFlag.Uncorrupt(jj) || ~obj.SMFSFlag.RetMinCrit(jj)     % Exclude corrupted force curves from the analysis
+               % if ~obj.SMFSFlag.Uncorrupt(jj) || ~obj.SMFSFlag.RetMinCrit(jj)     % Exclude corrupted force curves from the analysis
+                if ~obj.SMFSFlag.Uncorrupt(jj) || ~obj.SMFSFlag.Selected(jj) || ~obj.SMFSFlag.RetMinCrit(jj)     % Condition if FM Flag Selected has been set: Exclude corrupted force curves or force curves showing no snap-in from the analysis
                     continue
                 end
                 % Allocate data
@@ -2718,7 +2720,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             % sprintf('Force curve No. %d',kk) % Gives current Force curve
             % for debugging
             %% Force curve selection criteria
-            if ~obj.SMFSFlag.Uncorrupt(kk) || ~obj.SMFSFlag.RetMinCrit(kk) || ~obj.SMFSFlag.LengthRequisite(kk)  % Exclude corrupted force curves from the analysis     
+            % if ~obj.SMFSFlag.Uncorrupt(kk) || ~obj.SMFSFlag.RetMinCrit(kk) || ~obj.SMFSFlag.LengthRequisite(kk)  % Exclude corrupted force curves from the analysis     
+            if ~obj.SMFSFlag.Uncorrupt(kk) || ~obj.SMFSFlag.Selected(kk) || ~obj.SMFSFlag.RetMinCrit(kk) || ~obj.SMFSFlag.LengthRequisite(kk)     % Condition if FM Flag Selected has been set: Exclude corrupted force curves or force curves showing no snap-in from the analysis 
                 continue
             end            
             % Allocate data
@@ -2799,7 +2802,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 for kk=1:obj.NCurves
                 %for ii=97 % % For debugging and testing
                 %% Force curve selection criteria
-                if ~obj.SMFSFlag.Uncorrupt(kk) || ~obj.SMFSFlag.RetMinCrit(kk) || ~obj.SMFSFlag.LengthRequisite(kk)    % Exclude corrupted force curves from the analysis     
+               % if ~obj.SMFSFlag.Uncorrupt(kk) || ~obj.SMFSFlag.RetMinCrit(kk) || ~obj.SMFSFlag.LengthRequisite(kk)    % Exclude corrupted force curves from the analysis     
+                if ~obj.SMFSFlag.Uncorrupt(kk) || ~obj.SMFSFlag.Selected(kk) || ~obj.SMFSFlag.RetMinCrit(kk) || ~obj.SMFSFlag.LengthRequisite(kk)     % Condition if FM Flag Selected has been set: Exclude corrupted force curves or force curves showing no snap-in from the analysis 
                 continue
                 end                 
                 % Allocate data
@@ -2941,8 +2945,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             end
             %% figure loop
             for kk=1:NumFigures
-                if  ~obj.DebugFlag.Plot % Suppress plotting
-                %if  obj.DebugFlag.Plot % Allow plotting
+                % if  ~obj.DebugFlag.Plot % Suppress plotting
+                if  obj.DebugFlag.Plot % Allow plotting
                     continue
                 end
                 % Figure
@@ -2971,16 +2975,22 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                         qq=(kk-1)*mm*nn+1; % Determines the index of the next force curve to be plotted on the next figure
                     end
                     %% Plot loop
-                    for qq=qq:obj.NCurves % Loop over all force curves in the force map
+                    for qq=qq:obj.NCurves % Loop over all force curves in the force map                       
                         if ww<qq+DiffFc
                             ww=qq+DiffFc;
                         end
                         % Flag based while loop
-                        while ~obj.SMFSFlag.Uncorrupt(ww) || ~obj.SMFSFlag.RetMinCrit(ww) || ~obj.SMFSFlag.LengthRequisite(ww)   % Stay in the while loop as long as the entry is zero
-                            ww=ww+1;
+                        while ~obj.SMFSFlag.Uncorrupt(ww) || ~obj.SMFSFlag.RetMinCrit(ww) || ~obj.SMFSFlag.LengthRequisite(ww) || ~obj.SMFSFlag.Selected(ww)  % Stay in the while loop as long as the entry is zero
+                            ww=ww+1;                            
                             if ww>qq
                                 DiffFc=ww-qq;
                             end
+                            if ww>obj.NCurves
+                                break
+                            end
+                        end
+                        if ww>obj.NCurves
+                                break
                         end
                         %% Allocate data
                         xApp=obj.THApp{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc);
@@ -3066,6 +3076,9 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                         end
                         if qq == NumFcMax*kk
                             break
+                        end
+                        if ww==obj.NCurves
+                                break
                         end
                     end
                     
@@ -4795,14 +4808,14 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
         end
         
         function fc_fine_figure(obj,XMin,XMax,YMin,YMax,ii)
-             
+
             if nargin < 2
                 XMin= -inf;
                 XMax= inf;
                 YMin= -inf;
                 YMax= inf;
             end
-            
+
             % Define RGB colours
             % Define variables
             RGB1=[0 26 255]./255;  % Blue
@@ -4814,8 +4827,6 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             RGB12=[185 230 254]./255; % Light Blue
             RGB13=[200 0 0]./255; % Red
             RGB_A4=[66 255 0]./255; % Green
-            
-            
             CS1=[165 0 38]./255; % Dark reddish
             CS2=[215 48 39]./255; % Light reddish
             CS3=[244 109 67]./255; % Orangish
@@ -4826,44 +4837,36 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             CS8=[116 173 209]./255; % Steel blueish
             CS9=[69 117 180]./255; % Distant blueish
             CS10=[49 54 149]./255; % Pale ultramarineish
-            
-            
             Res=[1 1 2560 1440]; % Define the figure resolution
-              
+            % Parse unit scale function
             [Xmultiplier,Xunit,~] = AFMImage.parse_unit_scale(1e+9,'nm',1);
             [Ymultiplier,Yunit,~] = AFMImage.parse_unit_scale(1e+9,'nN',1);
-            
-            
-            
-            kk=10;
+            % Force curve variable
+            %Fc=100;
+            Fc=1;
             % Define variables for the figure name
             ExtendVelocityConvert=num2str(obj.ExtendVelocity*1e9);
             RetractVelocityConvert=num2str(obj.RetractVelocity*1e9);
             HoldingTimeConvert=num2str(obj.HoldingTime);
+            FcNumConvert=num2str(Fc);
             % Classification criteria
-            figname=strcat(obj.Date,{'_'},obj.Time,{'_'},obj.ID,{'_'},obj.Substrate,{'_'},obj.EnvCond,{'_'},obj.Linker,{'_'},obj.Chipbox,{'_'},obj.ChipCant,{'_'},ExtendVelocityConvert,{'_'},RetractVelocityConvert,{'_'},HoldingTimeConvert);
+            figname=strcat(obj.Date,{'_'},obj.Time,{'_'},obj.ID,{'_'},'Fc',FcNumConvert,{'_'},obj.Substrate,{'_'},obj.EnvCond,{'_'},obj.Linker,{'_'},obj.Chipbox,{'_'},obj.ChipCant,{'_'},ExtendVelocityConvert,{'_'},RetractVelocityConvert,{'_'},HoldingTimeConvert);
             figname=char(figname);
-          
-            % Allocate data
-       
-                        xApp=(obj.HHApp{kk}-obj.CP_HardSurface(kk))/-Xmultiplier; % Retraction x-data (m): Vertical tip height data corrected by the determined contact point using the hard surface method
-                        xRet=(obj.HHRet{kk}-obj.CP_HardSurface(kk))/-Xmultiplier; % Retraction x-data (m): Vertical tip height data corrected by the determined contact point using the hard surface method
-                        yApp=obj.BasedApp{kk}/Ymultiplier;
-                        yRet=obj.BasedRet{kk}/Ymultiplier;
-                %        yAppLim=(obj.yAppLim{kk})*1e9;
-                        yRetLim=(obj.yRetLim{kk})*1e9;
-%                         xApp=flip(obj.HHApp{kk})% Retraction x-data (m): Vertical tip height data corrected by the determined contact point using the hard surface method
-%                         xRet=flip(obj.HHRet{kk}) % Retraction x-data (m): Vertical tip height data corrected by the determined contact point using the hard surface method
-%                         yApp=obj.App{kk}
-%                         yRet=obj.Ret{kk}
-            xPolygon1=[-10 1000 1000 -10];
-            yPolygon1=[0 0 -14e-3 -14e-3];
-            yPolygon2=[-14e-3 -14e-3 -0.9 -0.9];
-            PolygonShape1=polyshape(xPolygon1,yPolygon1);
-            PolygonShape2=polyshape(xPolygon1,yPolygon2);
-%                                      
-            % Figure
-            h_fig=figure(ii);
+
+            %% Allocate data
+            xApp=(obj.THApp{Fc}-obj.CP_HardSurface(Fc))/-Xmultiplier; % Retraction x-data (m): Vertical tip height data corrected by the determined contact point using the hard surface method
+            xRet=(obj.THRet{Fc}-obj.CP_HardSurface(Fc))/-Xmultiplier; % Retraction x-data (m): Vertical tip height data corrected by the determined contact point using the hard surface method
+            yApp=obj.BasedApp{Fc}/Ymultiplier;
+            yRet=obj.BasedRet{Fc}/Ymultiplier;
+            %      xPolygon1=[-10 1000 1000 -10];
+            %      yPolygon1=[0 0 -14e-3 -14e-3];
+            %      yPolygon2=[-14e-3 -14e-3 -0.9 -0.9];
+            %      PolygonShape1=polyshape(xPolygon1,yPolygon1);
+            %      PolygonShape2=polyshape(xPolygon1,yPolygon2);
+            %
+            %% Figure
+            % h_fig=figure(ii);
+            h_fig=figure(1);
             h_fig.Color='white'; % changes the background color of the figure
             h_fig.Units='normalized'; % Defines the units
             h_fig.OuterPosition=[0 0 1 1];% changes the size of the to the whole screen
@@ -4874,58 +4877,57 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             % Plot
             hold on
             grid on
-       %    area(xRet(1:obj.PullingLengthIdx(kk)),yRetLim(1:obj.PullingLengthIdx(kk)),'FaceColor',CS8)  
-           plot(xApp,yApp,'Color',RGB1,'LineWidth',6);
-           plot(xRet,yRet,'Color',RGB2,'LineWidth',6);
-           Polygon1=plot(PolygonShape1);
-           Polygon1.FaceColor=CS10;
-           Polygon1.EdgeColor='none';
-           Polygon2=plot(PolygonShape2);
-           Polygon2.FaceColor=CS4;
-           Polygon2.EdgeColor='none';
-           
-          %  plot(xApp1,yApp1,'Color',RGB1,'LineWidth',4);
-        %    plot(xRet1(obj.PullingLengthIdx:end),yRet1(obj.PullingLengthIdx:end),'Color',RGB3,'LineWidth',4);
+            %    area(xRet(1:obj.PullingLengthIdx(kk)),yRetLim(1:obj.PullingLengthIdx(kk)),'FaceColor',CS8)
+          %  plot(xApp,yApp,'Color',RGB1,'LineWidth',6);
+            plot(xRet,yRet,'Color',RGB2,'LineWidth',6);
+            %            Polygon1=plot(PolygonShape1);
+            %            Polygon1.FaceColor=CS10;
+            %            Polygon1.EdgeColor='none';
+            %            Polygon2=plot(PolygonShape2);
+            %            Polygon2.FaceColor=CS4;
+            %            Polygon2.EdgeColor='none';
+            %  plot(xApp1,yApp1,'Color',RGB1,'LineWidth',4);
+            %    plot(xRet1(obj.PullingLengthIdx:end),yRet1(obj.PullingLengthIdx:end),'Color',RGB3,'LineWidth',4);
             % Title for each Subplot
-           % ti=title(sprintf('Typical force-distance curve',kk),'Color','k');
-           % ti.Units='normalized'; % Set units to 'normalized'
-           % ti.Position=[0.5,0.95]; % Position the subplot title within the subplot
+            % ti=title(sprintf('Typical force-distance curve',kk),'Color','k');
+            % ti.Units='normalized'; % Set units to 'normalized'
+            % ti.Position=[0.5,0.95]; % Position the subplot title within the subplot
             % Legend
-           % le=legend(' Adhesion energy',' Approach data',' Retraction data','Location','best');
-           % le.FontSize = 48;      
-           % le.EdgeColor='w';
+            % le=legend(' Adhesion energy',' Approach data',' Retraction data','Location','best');
+            % le.FontSize = 48;
+            % le.EdgeColor='w';
             %le.Box = 'off';
             %%% Axes
             ax = gca; % current axes
             ax.FontSize = 48;
             ax.LineWidth = 5;
-         %   ax.XTick=0:100:400;
-           % ax.XTickLabel=[];
-        %    ax.YTick=-0.3:0.1:0.2;
-           % ax.YTickLabel=[];
+            %   ax.XTick=0:100:400;
+            % ax.XTickLabel=[];
+            %    ax.YTick=-0.3:0.1:0.2;
+            % ax.YTickLabel=[];
             %ax.XLabel.String = sprintf('Tip-Substrate separation (%s)',Xunit);
-          % ax.XLabel.String = 'Tip-Substrate separation (nm)';
-          ax.XLabel.String = 'Tip-Substrate separation (nm)';
+            % ax.XLabel.String = 'Tip-Substrate separation (nm)';
+            ax.XLabel.String = 'Tip-Substrate separation (nm)';
             ax.XLabel.FontSize = 52;
             %ax.YLabel.String = sprintf('Force (%s)',Yunit);
-         %   ax.YLabel.String = 'Force (nN)';
+            %   ax.YLabel.String = 'Force (nN)';
             ax.YLabel.String = 'Pull-off force (nN)';
             ax.YLabel.FontSize = 52;
             ax.YLimMode='manual';
-            ax.XLim = [XMin XMax];
-      %     ax.YLim = [-inf 0.3e-9];
-           ax.YLim = [YMin YMax];
-           % ax.XLim = [XMin XMax];
-        %    ax.YLim = [YMin YMax];
+            %ax.XLim = [XMin XMax];
+            % ax.YLim = [YMin YMax];
+            ax.XLim = [-50 200];
+            ax.YLim = [-0.5 0.5];
+            %    ax.YLim = [YMin YMax];
             %% Save figures
             %%% Define the name for the figure title
-            partname=sprintf('-ForceCurve%d',kk);
+            partname=sprintf('-ForceCurve%d',Fc);
             % fullname=sprintf('%s%s',figname,partname);
             fullname=sprintf('%s%s',figname,partname);
             %%% Save the current figure in the current folder
             print(gcf,fullname,'-dpng');
         end
-        
+
        %% SMFS Old functions 
           
         function fc_based_ret_correction(obj,DataShareStartApp,DataShareEndApp,DataShareStartRet,DataShareEndRet)

@@ -1359,7 +1359,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
 %             % Assign parsing results to named variables
 %             obj = p.Results.obj;
 %             SetNumFcValue = p.Results.SetNumFcValue;
-%             
+            
             %% Function body
             for ii=1:obj.NumForceMaps
                 if obj.FM{ii}.NCurves==SetNumFcValue
@@ -1403,7 +1403,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             
             % force map loop
             for ii=1:obj.NumForceMaps   
-            % for ii=1:33 % debugging
+            %for ii=309  % debugging
                 if isequal(KeepFlagged,'Yes') && obj.SMFSFlag.Preprocessed(ii) == 1
                     continue
                 end
@@ -1445,8 +1445,8 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                         
             % Loop over the imported force maps
             for ii=1:obj.NumForceMaps
-            % for ii=1:33 % Debugging
-                if isequal(KeepFlagged,'Yes') && obj.SMFSFlag.Preprocessed(ii) == 1
+            % for ii=29:31 % Debugging
+                if isequal(KeepFlagged,'Yes') && ~obj.SMFSFlag.Preprocessed(ii)
                     continue
                 end   
                 waitbar(ii/NLoop,h,sprintf('Preprocessing ForceMap %i/%i\nProcessing force curves',ii,NLoop));
@@ -1492,7 +1492,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             
             % Loop over the imported force maps
             %for ii=1:obj.NumForceMaps
-            for ii=46 % Debugging
+            for ii=151:163 % Debugging
            
                % Command window output
                sprintf('Force Map No. %d of %d',ii,obj.NumForceMaps) % Gives current Force Map Position
@@ -1524,9 +1524,9 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             set(groot,'defaultFigureVisible','off')      
             % set(groot,'defaultFigureVisible','on') 
             %% Loop
-            for hh=1:obj.NumForceMaps
-            %for hh=1:33 % Debugging    
-            if isequal(KeepFlagged,'Yes') && obj.SMFSFlag.Preprocessed(ii) == 1
+            %for hh=1:obj.NumForceMaps
+            for hh=151:163 % Debugging    
+            if isequal(KeepFlagged,'Yes') && ~obj.SMFSFlag.Preprocessed(hh)
                     continue
             end   
                waitbar(hh/NLoop,h,sprintf('Preprocessing ForceMap %i/%i\nProcessing force curves',hh,NLoop));
@@ -1576,7 +1576,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             
             % Loop over the imported force maps
             %for ii=1:obj.NumForceMaps
-            for ii=36 % Debugging
+            for ii=72 % Debugging
                % Command window output
                sprintf('Force Map No. %d of %d',ii,obj.NumForceMaps) % Gives current Force Map Position
                % Run the chosen functions
@@ -1619,9 +1619,12 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             currpath=fullfile(obj.ExperimentFolder,foldername);
             cd(currpath);
             %% loop
-            for hh=1:obj.NumForceMaps
-            %for hh=544:obj.NumForceMaps % Debugging
+            % for hh=1:obj.NumForceMaps
+            for hh=75:117 % Debugging
             %sprintf('Force Map No. %d of %d',hh,obj.NumForceMaps) % Gives current Force Map Position   
+            if ~obj.SMFSFlag.Preprocessed(hh)
+                    continue
+            end   
             % Determine needed input variable
                NumFcUncorrupt(hh)=nnz(obj.FM{hh}.SMFSFlag.Uncorrupt); % Determine the number of uncorrupted force curves     
                obj.FM{hh}.fc_print_analysed(XMin,XMax,YMin,YMax,NumFcMax,NumFcUncorrupt,Res)         
@@ -1645,6 +1648,9 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             else
                 
             end
+            
+
+            
             % Figure visibility
             set(groot,'defaultFigureVisible','off')      
             % set(groot,'defaultFigureVisible','on')  
@@ -1652,15 +1658,14 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             % Change into the Folder of Interest
             cd(obj.ExperimentFolder) % Move into the folder 
             % Create folders for saving the produced figures
-            %foldername='FM_test';    % for debugging
             foldername='SMFS_print_raw';    % Defines the folder name
             mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
             currpath=fullfile(obj.ExperimentFolder,foldername);
             cd(currpath); 
             
             % Loop over the imported force maps
-            for ii=1:obj.NumForceMaps
-            %for ii=463 % Debugging
+            %for ii=1:obj.NumForceMaps
+             for ii=557:560 % Debugging
                % Command window output
                sprintf('Force Map No. %d of %d',ii,obj.NumForceMaps) % Gives current Force Map Position
                % Run the chosen functions
@@ -1732,16 +1737,16 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 StartDateMod=strrep(StartDate,'.','');
                 EndDateMod=strrep(EndDate,'.','');
                 %foldername=append('FM_Flag',SMFSFlagConvert,'_',VelocityConvert,'_',obj.FM{ii}.Substrate,'_',obj.FM{ii}.EnvCond,'_',StartDateMod,'-',EndDateMod); % Defines the folder name
-                foldername=append(obj.FM{ii}.Substrate,'_',obj.FM{ii}.EnvCond,'_',StartDateMod,'-',EndDateMod); % Defines the folder name 
-                warning('off','all'); % To not showing the warning that the same folder is created each loop
+                %foldername=append(obj.FM{ii}.Substrate,'_',obj.FM{ii}.EnvCond,'_',StartDateMod,'-',EndDateMod); % Defines the folder name 
+                foldername=append(StartDateMod,'-',EndDateMod,'_',obj.FM{ii}.Chipbox,'_',obj.FM{ii}.ChipCant); % Defines the folder name 
+                warning('off','all'); % Set warning off to prevent from showing the same warning each loop 
                 mkdir(foldername);
                 warning('on','all');
                 cd(foldername)         
                % Run the chosen functions    
                obj.FM{ii}.fc_print_raw(XMin,XMax,YMin,YMax)
                cd(obj.ExperimentFolder) % Move into the folder                             
-            end 
-            %obj.save_experiment        % Save immediately after each force curve
+            end            
         end
         
         
@@ -1785,7 +1790,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             DateFormat='yyyy-MM-dd HH-mm-ss-SSS';
             for ii=1:obj.NumForceMaps
             %% Debugging
-            %for ii=1:17 % for debugging
+            %for ii=65:117 % for debugging
                  sprintf('Force map No. %d',ii) % Gives current force map
             %% Force map selection criteria
             if ~obj.SMFSFlag.Analysed(ii) || ~obj.SMFSFlag.NumForceCurves(ii)    % Exclude force map if analysis has not been done     
@@ -2860,7 +2865,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             FullName5=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix5);
             %%% Save the current figure in the current folder
             print(h_fig5,FullName5,'-dpng');                        
-            %% Create a gramm object 61
+            %% Create a gramm object 51
             g51=gramm('x',xData,'y',yData5,...
                 'color',ColorData,...
                 'lightness',LightnessData,...
@@ -3241,7 +3246,8 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             close all
         end
         
-        function SMFS_results_gramm_boxplot3(obj,ii)
+        function SMFS_results_gramm_boxplot3(obj,ii,xArg)
+            % Trial 10 analysis
             % x-axis: Medium
             % Column: Cantilver
             % Color: Approach velocity
@@ -3260,16 +3266,207 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             currpath=fullfile(obj.ExperimentFolder,foldername);
             cd(currpath);
             %% General variables 1
+            if strcmpi(xArg,'DateTime')
+            LegendxAxis='Date and Time';
+            xData=obj.SMFSResults{ii}.Concatenate.FMDateTimeNumber;
+            BoxplotWidth=75;       
+            DodgeWidth=5;
+            elseif strcmpi(xArg,'Index')
+            LegendxAxis='Force map index';
+            xData=obj.SMFSResults{ii}.Concatenate.FMIndex;  
+            BoxplotWidth=10;
+            DodgeWidth=2;
+            end
+            LightnessData=obj.SMFSResults{ii}.Concatenate.FMEnvCond;
+            ColorData=obj.SMFSResults{ii}.Concatenate.FMChipCant;
+            MarkerData=obj.SMFSResults{ii}.Concatenate.FMSubstrate;
+            LegendColor='Cantilever';
+            LegendLightness='Medium';   
+                        
+            % Colors
             ColorMap1=[[0 25 255]./255;  % Blue
                 [26 255 0]./255; % Green
                 [255 102 0]./255; % Orange
                 [255 0 26]./255]; % Red                
-            LimitForce1=[0 14e-12]; % Regime I - Entropic
-            LimitForce2=[14e-12 5e-9]; %Regime II - Unfolding
-            LimitForce3=[5e-9 22e-9]; % Regime III - Backbone stretching
-            LimitLength1=[0 317e-9]; % Regime I - Entropic
-            LimitLength2=[317 390e-9]; %Regime II - Unfolding
-            LimitLength3=[390e-9 452.6e-9]; % Regime III - Backbone stretching
+            LimitForce1=[0 14e-3]; % Regime I - Entropic
+            LimitForce2=[14e-3 5]; %Regime II - Unfolding
+            LimitForce3=[5 22]; % Regime III - Backbone stretching
+            LimitLength1=[0 317]; % Regime I - Entropic
+            LimitLength2=[317 390]; %Regime II - Unfolding
+            LimitLength3=[390 452.6]; % Regime III - Backbone stretching
+            Res=[1 1 2560 1250]; % Define the figure resolution    
+            MarkerStyle={'d' 'o'};
+            MarkerSize=8;     
+            if obj.SMFSResults{ii}.Parameters.ExtendVelocity==0
+                ExtVelocityValueStr='All';
+            else
+                ExtVelocityValueStr=num2str(round(obj.SMFSResults{ii}.Parameters.ExtendVelocity*1e9));
+            end
+            if obj.SMFSResults{ii}.Parameters.RetractVelocity==0
+                RetVelocityValueStr='All';
+            else
+                RetVelocityValueStr=num2str(round(obj.SMFSResults{ii}.Parameters.RetractVelocity*1e9));
+            end
+            if obj.SMFSResults{ii}.Parameters.HoldingTime==-1
+                HoldingTimeValueStr='All';
+            else
+                HoldingTimeValueStr=num2str(obj.SMFSResults{ii}.Parameters.HoldingTime);
+            end
+            FigNamePt1=sprintf('SMFSResultRow%d_',ii);
+            FigNamePt2=strcat(ExtVelocityValueStr,{'_'},RetVelocityValueStr,{'_'},HoldingTimeValueStr,{'_'},obj.SMFSResults{ii}.Parameters.Substrate,{'_'},obj.SMFSResults{ii}.Parameters.Medium,{'_'},obj.SMFSResults{ii}.Parameters.ChipCantilever,{'_'},obj.SMFSResults{ii}.Parameters.Chipbox,{'_'},obj.SMFSResults{ii}.Parameters.Linker);
+            FigNamePt2=char(FigNamePt2);
+            FigNamePt3='_Boxplot';
+
+            %% Gramm object 2
+            % Define variables
+            Plottitle=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ii,1}.Data(1).FMIndex),obj.SMFSResults{ii,1}.Data(1).SumNumFcAnalysedAdhMaxRet);
+            LegendyAxis2='Adhesion force (nN)';
+            NameSuffix2='_MaxAdhesionForceRetract';
+            % Allocate data
+            yData2=obj.SMFSResults{ii}.Data.AdhMaxRetConcat*-1e9;
+            % Create a gramm object
+            g2=gramm('x',xData,'y',yData2,...
+                'color',ColorData,'lightness',LightnessData,...
+                'marker',MarkerData);
+            % Plot data 
+            g2.geom_polygon('y',{LimitForce1;LimitForce2;LimitForce3},'color',ColorMap1);                      
+            g2.geom_point();
+            g2.stat_boxplot('notch',true,...
+                'width',BoxplotWidth,...
+                'dodge',DodgeWidth); % Plot data in boxplot  
+            % Set options
+            g2.set_color_options('map','d3_20') 
+            if strcmpi(xArg,'DateTime')
+            g2.set_datetick('x',0,'keeplimits') % Format x-axis
+            end
+            g2.set_point_options('markers',MarkerStyle,'base_size',MarkerSize)
+            g2.set_title(Plottitle) % Set figure title
+            g2.set_names('x',LegendxAxis,'y',LegendyAxis2,'color',LegendColor,'lightness',LegendLightness)    
+            % Figure
+            h_fig2=figure(2);
+            h_fig2.Color='white'; % changes the background color of the figure
+            h_fig2.Units='pixel'; % Defines the units
+            h_fig2.OuterPosition=Res;
+            h_fig2.PaperOrientation='landscape';
+            h_fig2.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix2);
+            % The actual plotting
+            g2.draw()             
+            % Save figure            
+            FullName2=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix2);
+            %%% Save the current figure in the current folder
+            print(h_fig2,FullName2,'-dpng');
+                                              
+            %% Gramm object 5
+            % Define variables
+            Plottitle=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ii,1}.Data(1).FMIndex),obj.SMFSResults{ii,1}.Data(1).SumNumFcAnalysedAdhEneRet);
+            LegendyAxis5='Adhesion energy (nJ)';
+            NameSuffix5='_AdhEnergyRetract';
+            % Allocate data
+            yData5=obj.SMFSResults{ii}.Data.AdhEneRetConcat*-1e9;
+            % Create a gramm object
+            g5=gramm('x',xData,'y',yData5,...
+                'color',ColorData,'lightness',LightnessData,...
+                'marker',MarkerData);
+            % Plot data 
+            g5.geom_point();
+            g5.stat_boxplot('notch',true,...
+                'width',BoxplotWidth,...
+                'dodge',DodgeWidth); % Plot data in boxplot
+            % Set options
+            g5.set_point_options('markers',MarkerStyle,'base_size',MarkerSize)
+            g5.set_color_options('map','d3_20') 
+            if strcmpi(xArg,'DateTime')
+            g5.set_datetick('x',0,'keeplimits') % Format x-axis
+            end
+            g5.set_title(Plottitle) % Set figure title
+            g5.set_names('x',LegendxAxis,'y',LegendyAxis5,'color',LegendColor,'lightness',LegendLightness)    
+            % Figure
+            h_fig5=figure(5);
+            h_fig5.Color='white'; % changes the background color of the figure
+            h_fig5.Units='pixel'; % Defines the units
+            h_fig5.OuterPosition=Res;
+            h_fig5.PaperOrientation='landscape';
+            h_fig5.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix5);
+            % The actual plotting
+            g5.draw()
+            % Save figure
+            FullName5=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix5);
+            %%% Save the current figure in the current folder
+            print(h_fig5,FullName5,'-dpng');
+            
+            %% Gramm object 6
+            % Define variables
+            Plottitle=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ii,1}.Data(1).FMIndex),obj.SMFSResults{ii,1}.Data(1).SumNumFcAnalysedyPullingLength);
+            LegendyAxis6='Pulling length (nm)';
+            NameSuffix6='_Pullinglength';
+            % Allocate data
+            yData6=obj.SMFSResults{ii}.Data.yPullingLengthConcat*1e9;
+            % Create a gramm object
+            g6=gramm('x',xData,'y',yData6,...
+                'color',ColorData,'lightness',LightnessData,...
+                'marker',MarkerData);
+            % Plot data 
+            g6.geom_polygon('y',{LimitLength1;LimitLength2;LimitLength3},'color',ColorMap1);
+            g6.geom_point();
+            g6.stat_boxplot('notch',true,...
+                'width',BoxplotWidth,...
+                'dodge',DodgeWidth); % Plot data in boxplot
+            % Set option
+            g6.set_point_options('markers',MarkerStyle,'base_size',MarkerSize)
+            g6.set_color_options('map','d3_20') 
+            if strcmpi(xArg,'DateTime')
+            g6.set_datetick('x',0,'keeplimits') % Format x-axis
+            end
+            g6.set_title(Plottitle) % Set figure title
+            g6.set_names('x',LegendxAxis,'y',LegendyAxis6,'color',LegendColor,'lightness',LegendLightness)     
+            % Figure
+            h_fig6=figure(6);
+            h_fig6.Color='white'; % changes the background color of the figure
+            h_fig6.Units='pixel'; % Defines the units
+            h_fig6.OuterPosition=Res;
+            h_fig6.PaperOrientation='landscape';
+            h_fig6.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix6);
+            % The actual plotting
+            g6.draw()
+            % Save figure
+            FullName6=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix6);
+            %%% Save the current figure in the current folder
+            print(h_fig6,FullName6,'-dpng');
+
+            % House keeping
+            close all
+       end
+        
+        function SMFS_results_gramm_boxplot4(obj,ii)
+            % For results of Trial14
+            % x-axis: Index
+            % Column: Cantilver
+            % Color: Medium
+            
+            % Input variable adaptation
+            if nargin<2
+                ii=1;
+            end
+            % Output time and date for the dairy
+            datetime('now')
+            % Change into the Folder of Interest
+            cd(obj.ExperimentFolder) % Move into the folder
+            % Create folders for saving the produced figures
+            foldername='SMFS_results_gramm_boxplot4';    % Defines the folder name
+            mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
+            currpath=fullfile(obj.ExperimentFolder,foldername);
+            cd(currpath);
+            %% General variables 1
+            ColorMap1=[[0 25 255]./255;  % Blue
+                [26 255 0]./255; % Green
+                [255 102 0]./255; % Orange
+                [255 0 26]./255]; % Red                
+            LimitForce1=[0 14e-3]; % Regime I - Entropic
+            LimitForce2=[14e-3 5]; %Regime II - Unfolding
+            LimitForce3=[5 22]; % Regime III - Backbone stretching
+            LimitLength1=[0 317]; % Regime I - Entropic
+            LimitLength2=[317 390]; %Regime II - Unfolding
+            LimitLength3=[390 452.6]; % Regime III - Backbone stretching
             Res=[1 1 2560 1250]; % Define the figure resolution            
             if obj.SMFSResults{ii}.Parameters.ExtendVelocity==0
                 ExtVelocityValueStr='All';
@@ -3297,15 +3494,15 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             xData=obj.SMFSResults{ii}.Concatenate.FMIndex;
             LightnessData=obj.SMFSResults{ii}.Concatenate.FMEnvCond;
             ColorData=obj.SMFSResults{ii}.Concatenate.FMChipCant;
-            BoxplotWidth=10;            
+            BoxplotWidth=0.5;            
             
             %% Gramm object 2
             % Define variables
             Plottitle=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ii,1}.Data(1).FMIndex),obj.SMFSResults{ii,1}.Data(1).SumNumFcAnalysedAdhMaxRet);
-            LegendyAxis2='Adhesion force (N)';
+            LegendyAxis2='Adhesion force (nN)';
             NameSuffix2='_MaxAdhesionForceRetract';
             % Allocate data
-            yData2=obj.SMFSResults{ii}.Data.AdhMaxRetConcat*-1;
+            yData2=obj.SMFSResults{ii}.Data.AdhMaxRetConcat*-1e9;
             % Create a gramm object
             g2=gramm('x',xData,'y',yData2,...
                 'color',ColorData,'lightness',LightnessData);
@@ -3337,10 +3534,10 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             %% Gramm object 5
             % Define variables
             Plottitle=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ii,1}.Data(1).FMIndex),obj.SMFSResults{ii,1}.Data(1).SumNumFcAnalysedAdhEneRet);
-            LegendyAxis5='Adhesion energy (J)';
+            LegendyAxis5='Adhesion energy (nJ)';
             NameSuffix5='_AdhEnergyRetract';
             % Allocate data
-            yData5=obj.SMFSResults{ii}.Data.AdhEneRetConcat*-1;
+            yData5=obj.SMFSResults{ii}.Data.AdhEneRetConcat*-1e9;
             % Create a gramm object
             g5=gramm('x',xData,'y',yData5,...
                 'color',ColorData,'lightness',LightnessData);
@@ -3371,10 +3568,10 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             %% Gramm object 6
             % Define variables
             Plottitle=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ii,1}.Data(1).FMIndex),obj.SMFSResults{ii,1}.Data(1).SumNumFcAnalysedyPullingLength);
-            LegendyAxis6='Pulling length (m)';
+            LegendyAxis6='Pulling length (nm)';
             NameSuffix6='_Pullinglength';
             % Allocate data
-            yData6=obj.SMFSResults{ii}.Data.yPullingLengthConcat;
+            yData6=obj.SMFSResults{ii}.Data.yPullingLengthConcat*1e9;
             % Create a gramm object
             g6=gramm('x',xData,'y',yData6,...
                 'color',ColorData,'lightness',LightnessData);
@@ -3406,12 +3603,13 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             % House keeping
             close all
        end
-        
-        
+         
+
         function SMFS_results_gramm_plot(obj,ii,IdxShift,FMArg,FMChar)
             % ii - row index in the SMFSResultsParameters table
             % FMShift - force map shift
-            % FMArg - force map argument
+            % FMArg - force map argument (corresponds to the number in the
+            % FMID)
             % FMChar - force map characteristic
             
             % Input variable adaptation
@@ -3454,7 +3652,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 error('Chosen force map argument - input argument "FMArg" - is not part of the chosen SMFSResults structure - input argument "ii"')
             end
             FMBeforeIdx=FMoIIdx-IdxShift;
-            if FMBeforeIdx<0 % Correct for potential negative force map values
+            if FMBeforeIdx<=0 % Correct for potential negative force map values
                 FMBeforeIdx=FMoIIdx;
             end
             FMBefore=FMIdxArray(FMBeforeIdx);
@@ -3489,12 +3687,12 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 [26 255 0]./255; % Green
                 [255 102 0]./255; % Orange
                 [255 0 26]./255]; % Red                
-            LimitForce1=[0 14e-12]; % Regime I - Entropic
-            LimitForce2=[14e-12 5e-9]; %Regime II - Unfolding
-            LimitForce3=[5e-9 22e-9]; % Regime III - Backbone stretching
-            LimitLength1=[0 317e-9]; % Regime I - Entropic
-            LimitLength2=[317 390e-9]; %Regime II - Unfolding
-            LimitLength3=[390e-9 452.6e-9]; % Regime III - Backbone stretching
+            LimitForce1=[0 14e-3]; % Regime I - Entropic
+            LimitForce2=[14e-3 5]; %Regime II - Unfolding
+            LimitForce3=[5 22]; % Regime III - Backbone stretching
+            LimitLength1=[0 317]; % Regime I - Entropic
+            LimitLength2=[317 390]; %Regime II - Unfolding
+            LimitLength3=[390 452.6]; % Regime III - Backbone stretching
             Res=[1 1 2560 1250]; % Define the figure resolution                        
             FigNamePt1=sprintf('SMFSResultRow%d_',ii);
             FigNamePt2=strcat(ExtVelocityValueStr,{'_'},RetVelocityValueStr,{'_'},HoldingTimeValueStr,{'_'},obj.SMFSResults{ii}.Parameters.Substrate,{'_'},obj.SMFSResults{ii}.Parameters.Medium,{'_'},obj.SMFSResults{ii}.Parameters.ChipCantilever,{'_'},obj.SMFSResults{ii}.Parameters.Chipbox,{'_'},obj.SMFSResults{ii}.Parameters.Linker);
@@ -3502,13 +3700,13 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             FigNamePt3='_Boxplot';
             LegendxAxis='Force Curve';
             LegendColor='Force Map ID';   
-            Plottitle=strcat(FMoIID,sprintf(' is the chosen input FM with a shift of %d FM before and after',IdxShift));
+            Plottitle=strcat(FMoIID,sprintf(' is the chosen input FM with a shift of %d FM',IdxShift));
             %% Gramm object 2            
             % Define variables           
-            LegendyAxis2='Adhesion force (N)';
+            LegendyAxis2='Adhesion force (nN)';
             NameSuffix2='_MaxAdhesionForceRetract';
             % Allocate data
-            yData2=obj.SMFSResults{ii}.Data.AdhMaxRetConcat(FMIDBeforeIdx(1):FMIDAfterIdx(end))*-1;
+            yData2=obj.SMFSResults{ii}.Data.AdhMaxRetConcat(FMIDBeforeIdx(1):FMIDAfterIdx(end))*-1e9;
             xData2=(1:length(yData2))';
             ColorData2=obj.SMFSResults{ii}.Concatenate.FMID(FMIDBeforeIdx(1):FMIDAfterIdx(end));   
             % Create a gramm object
@@ -3535,10 +3733,10 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             print(h_fig2,FullName2,'-dpng');            
             %% Gramm object 3
             % Define variables
-            LegendyAxis3='Adhesion force (N)';
+            LegendyAxis3='Adhesion force (nN)';
             NameSuffix3='_AdhForceUnbinding';
             % Allocate data
-            yData3=obj.SMFSResults{ii}.Data.AdhUnbindingConcat(FMIDBeforeIdx(1):FMIDAfterIdx(end))*-1;
+            yData3=obj.SMFSResults{ii}.Data.AdhUnbindingConcat(FMIDBeforeIdx(1):FMIDAfterIdx(end))*-1e9;
             xData3=(1:length(yData3))';
             ColorData3=obj.SMFSResults{ii}.Concatenate.FMID(FMIDBeforeIdx(1):FMIDAfterIdx(end));   
             % Create a gramm object
@@ -3594,9 +3792,9 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             %% Gramm object 6          
             % Define variables
             NameSuffix6='_Pullinglength';
-            LegendyAxis6='Pulling length (m)';
+            LegendyAxis6='Pulling length (nm)';
             % Allocate data
-            yData6=obj.SMFSResults{ii}.Data.yPullingLengthConcat(FMIDBeforeIdx(1):FMIDAfterIdx(end));
+            yData6=obj.SMFSResults{ii}.Data.yPullingLengthConcat(FMIDBeforeIdx(1):FMIDAfterIdx(end))*1e9;
             xData6=(1:length(yData6))';
             % Create a gramm object
             g6=gramm('x',xData6,'y',yData6,...
@@ -3626,6 +3824,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
         end
         
                   
+        
         function SMFS_results_gramm_boxplot_ESB(obj,ii)
             
             % Input variable adaptation
@@ -5335,7 +5534,7 @@ PlotData=obj.SMFSResults{jj}.Data.AdhMaxAppConcat
         end
              
 
-        function SMFS_fine_figure(obj,XMin,XMax,YMin,YMax,ii)
+        function SMFS_fine_figure(obj,XMin,XMax,YMin,YMax,Fm)
             % Function to plot individual fine figures for publication
             if nargin < 2
                 XMin= -inf;
@@ -5343,7 +5542,11 @@ PlotData=obj.SMFSResults{jj}.Data.AdhMaxAppConcat
                 YMin= -inf;
                 YMax= inf;
             end
-            ii=452
+            %Fm=163;
+            Fm=65;
+            % Figure visibility
+            %set(groot,'defaultFigureVisible','off')      
+            set(groot,'defaultFigureVisible','on') 
             % Change into the Folder of Interest
             cd(obj.ExperimentFolder) % Move into the folder
             % Create folders for saving the produced figures
@@ -5352,9 +5555,111 @@ PlotData=obj.SMFSResults{jj}.Data.AdhMaxAppConcat
             currpath=fullfile(obj.ExperimentFolder,foldername);
             cd(currpath);
             % Load FM function           
-            obj.FM{ii}.fc_fine_figure(XMin,XMax,YMin,YMax,ii)
+            obj.FM{Fm}.fc_fine_figure(XMin,XMax,YMin,YMax,Fm)
+        end
+        
+
+        function SMFS_fine_figure2(obj,Fm1,Fm2,Fm3,Fc1,Fc2,Fc3)
+            % Function to plot individual fine figures for publication
+            if nargin < 2
+            Fm1=1;
+            Fm2=1;
+            Fm3=1;
+            Fc1=1;
+            Fc2=1;
+            Fc3=1;
+            end            
+           
+            % Figure visibility
+            %set(groot,'defaultFigureVisible','off')      
+            set(groot,'defaultFigureVisible','on') 
+            % Change into the Folder of Interest
+            cd(obj.ExperimentFolder) % Move into the folder
+            % Create folders for saving the produced figures
+            foldername='SMFS_fine_figure2';    % Defines the folder name
+            mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
+            currpath=fullfile(obj.ExperimentFolder,foldername);
+            cd(currpath)
+            % Define variables
+            nano=1e-9;
+            CS6=[224 243 248]./255; % Pastel blueish
+            CS7=[171 217 233]./255; % Light blueish
+            CS8=[116 173 209]./255; % Steel blueish
+            CS9=[69 117 180]./255; % Distant blueish
+            CS10=[49 54 149]./255; % Pale ultramarineish
+            % Define variables for the figure name
+            Fc1NumConvert=num2str(Fc1);
+            Fc2NumConvert=num2str(Fc2);
+            Fc3NumConvert=num2str(Fc3);
+            % Classification criteria
+           % figname=strcat(obj.FM{Fm1}.ID,{'_'},'Fc',Fc1NumConvert,{'_'},obj.FM{Fm1}.Date,{'_'},obj.FM{Fm1}.Time,{'_'},obj.FM{Fm2}.ID,{'_'},'Fc',Fc2NumConvert,{'_'},obj.FM{Fm2}.Date,{'_'},obj.FM{Fm2}.Time);
+            figname=strcat(obj.FM{Fm1}.ID,{'_'},'Fc',Fc1NumConvert,{'_'},obj.FM{Fm1}.Date,{'_'},obj.FM{Fm1}.Time,{'_'},obj.FM{Fm2}.ID,{'_'},'Fc',Fc2NumConvert,{'_'},obj.FM{Fm2}.Date,{'_'},obj.FM{Fm2}.Time,obj.FM{Fm3}.ID,{'_'},'Fc',Fc3NumConvert,{'_'},obj.FM{Fm3}.Date,{'_'},obj.FM{Fm3}.Time);
+            figname=char(figname);
+
+            %% Allocate data
+            xApp1=(obj.FM{Fm1}.THApp{Fc1}-obj.FM{Fm1}.CP_HardSurface(Fc1))/-nano; % Retraction x-data (m): Vertical tip height data corrected by the determined contact point using the hard surface method
+            xRet1=(obj.FM{Fm1}.THRet{Fc1}-obj.FM{Fm1}.CP_HardSurface(Fc1))/-nano; % Retraction x-data (m): Vertical tip height data corrected by the determined contact point using the hard surface method
+            yApp1=obj.FM{Fm1}.BasedApp{Fc1}/nano;
+            yRet1=obj.FM{Fm1}.BasedRet{Fc1}/nano;
+            xApp2=(obj.FM{Fm2}.THApp{Fc2}-obj.FM{Fm2}.CP_HardSurface(Fc2))/-nano; % Retraction x-data (m): Vertical tip height data corrected by the determined contact point using the hard surface method
+            xRet2=(obj.FM{Fm2}.THRet{Fc2}-obj.FM{Fm2}.CP_HardSurface(Fc2))/-nano; % Retraction x-data (m): Vertical tip height data corrected by the determined contact point using the hard surface method
+            yApp2=obj.FM{Fm2}.BasedApp{Fc2}/nano;
+            yRet2=obj.FM{Fm2}.BasedRet{Fc2}/nano;
+            xApp3=(obj.FM{Fm3}.THApp{Fc3}-obj.FM{Fm3}.CP_HardSurface(Fc3))/-nano; % Retraction x-data (m): Vertical tip height data corrected by the determined contact point using the hard surface method
+            xRet3=(obj.FM{Fm3}.THRet{Fc3}-obj.FM{Fm3}.CP_HardSurface(Fc3))/-nano; % Retraction x-data (m): Vertical tip height data corrected by the determined contact point using the hard surface method
+            yApp3=obj.FM{Fm3}.BasedApp{Fc3}/nano;
+            yRet3=obj.FM{Fm3}.BasedRet{Fc3}/nano;
+            %% Figure
+            % h_fig=figure(ii);
+            h_fig=figure(1);
+            h_fig.Color='white'; % changes the background color of the figure
+            h_fig.Units='normalized'; % Defines the units
+            h_fig.OuterPosition=[0 0 1 1];% changes the size of the to the whole screen
+            %h_fig.Units='pixel'; % Defines the units
+            %h_fig.OuterPosition=res;
+            h_fig.PaperOrientation='landscape';
+            h_fig.Name=figname;
+            % Plot
+            hold on
+            grid on
+            plot(xRet1,yRet1,'Color',CS7,'LineWidth',8);     
+            plot(xRet2,yRet2,'Color',CS8,'LineWidth',8); 
+            plot(xRet3,yRet3,'Color',CS9,'LineWidth',8); 
+            % Legend
+            FcLegend1=strcat(obj.FM{Fm1}.ID,',',sprintf('Fc%d',Fc1));
+            FcLegend2=strcat(obj.FM{Fm1}.ID,',',sprintf('Fc%d',Fc2));
+            FcLegend3=strcat(obj.FM{Fm1}.ID,',',sprintf('Fc%d',Fc3));
+            le=legend(FcLegend1,FcLegend2,FcLegend3,'Location','best');
+            le.FontSize = 48;
+            le.EdgeColor='w';
+            le.Box = 'off';
+            %%% Axes
+            ax = gca; % current axes
+            ax.FontSize = 48;
+            ax.LineWidth = 5;
+            %   ax.XTick=0:100:400;
+            % ax.XTickLabel=[];
+            %    ax.YTick=-0.3:0.1:0.2;
+            % ax.YTickLabel=[];
+            ax.XLabel.String = 'Tip-Substrate separation (nm)';
+            ax.XLabel.FontSize = 52;
+            ax.YLabel.String = 'Pull-off force (nN)';
+            ax.YLabel.FontSize = 52;
+            ax.YLimMode='manual';
+            %ax.XLim = [XMin XMax];
+            % ax.YLim = [YMin YMax];
+            ax.XLim = [-25 600];
+            ax.YLim = [-1 0.5];
+            %    ax.YLim = [YMin YMax];
+            %% Save figures
+            %%% Save the current figure in the current folder
+            print(gcf,figname,'-dpng');
+            % Close figure
+            close all
         end
                 
+
+
         function SMFS_statistics(obj)
            
             % Uncorrupt force curves
@@ -5513,11 +5818,11 @@ PlotData=obj.SMFSResults{jj}.Data.AdhMaxAppConcat
               %    IdxArray(ii,1)=obj.FM{ii}.ExtendVelocity
             % end  
             
-             for ii=1:obj.NumForceMaps
-           %   for ii=2   
- %           obj.FM{ii}.SMFSFlag.Uncorrupt(1:100)=1
+             %for ii=1:obj.NumForceMaps
+            for ii=1:441
+             obj.FM{ii}.Chipbox='XXX';
 %      
-                 obj.FM{ii}.fc_measurement_prop
+%              %  obj.FM{ii}.fc_testing
 %           %    obj.FM{ii}.initialize_flags       
 %            %  obj.FM{ii}.fc_snap_in_length_MAD
 %        %   ii   
