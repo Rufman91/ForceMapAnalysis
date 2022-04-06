@@ -3579,11 +3579,11 @@ classdef ForceMap < matlab.mixin.Copyable
             imshow(Masks)
             title('Fibril mask with excluded areas')
             
-            %subplot(2,2,2)
-            %surf(imrotate(obj.HeightMap',90),'LineStyle','none','FaceLighting','gouraud','FaceColor','interp')
-            %axis manual
-            %light('Style','local')
-            %title(sprintf('Fibril Diameter = %.2fnm',obj.FibDiam*1e9))
+            subplot(2,2,2)
+            surf(imrotate(obj.HeightMap',90),'LineStyle','none','FaceLighting','gouraud','FaceColor','interp')
+            axis manual
+            light('Style','local')
+            title(sprintf('Fibril Diameter = %.2fnm',obj.FibDiam*1e9))
             
             subplot(2,2,4)
             EM = imresize(mat2gray(log(obj.EModMapOliverPharr(:,:,1))),[1024 1024]);
