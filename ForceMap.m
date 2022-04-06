@@ -2665,11 +2665,8 @@ classdef ForceMap < matlab.mixin.Copyable
             % complete height data to generate the leveled height data.
             for i=1:size(masked_map,1)
                 for j=1:size(masked_map,2)
-                    try
-                        Plane(i,j) = (Point(3)-Norm(1)/Norm(3)*(size(masked_map,2)/size(masked_map,1)*i)-Norm(2)/Norm(3)*(size(masked_map,1)/size(masked_map,2)*j));
-                    catch
-                        Plane(i,j) = Point(3);
-                    end
+                    Plane(i,j) = (Point(3)-Norm(1)/Norm(3)*(size(masked_map,2)/size(masked_map,1)*i)-Norm(2)/Norm(3)*(size(masked_map,1)/size(masked_map,2)*j));
+                    Plane(isnan(Plane)) = Point(3);
                 end
             end
             obj.HeightMap = obj.HeightMap - Plane;
