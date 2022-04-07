@@ -1921,8 +1921,8 @@ classdef Experiment < matlab.mixin.Copyable
                  frequencies = frequencies(frequencies ~= 0);
                  lf = length(frequencies);
 
-                obj.EMod1.Apex(i,1:lf) = EMods1(obj.FM{i}.RectApexIndex);
-                obj.EMod2.Apex(i,1:lf) = EMods2(obj.FM{i}.RectApexIndex);
+                obj.EMod1.Apex(i,1:lf) = EMods1(obj.FM{i}.RectApexIndex,1:lf);
+                obj.EMod2.Apex(i,1:lf) = EMods2(obj.FM{i}.RectApexIndex,1:lf);
                 
                 %Emod1: Storage modulus
                 for j=1:lf
