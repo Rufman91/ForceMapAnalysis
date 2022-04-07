@@ -3978,7 +3978,14 @@ classdef ForceMap < matlab.mixin.Copyable
                    l2.LineWidth = 2;
                    l3.LineWidth = 2;
                    legend([l1, l2, l3], {'approach', 'retract','modulation'}, 'FontSize', 8)
-
+                    
+                   
+                   k = obj.RectApexIndex;
+                   if DirectoryPath~=0
+                       whereToStore=fullfile(DirectoryPath,['height_curves_' num2str(k) '.svg']);
+                       saveas(gcf, whereToStore);
+                   end
+               
                 end
             end
         end
@@ -4172,9 +4179,9 @@ classdef ForceMap < matlab.mixin.Copyable
                
                 end
                
-               
+               k = obj.RectApexIndex;
                if DirectoryPath~=0
-                   whereToStore=fullfile(DirectoryPath,['microrheology_curve_' num2str(i) '.svg']);
+                   whereToStore=fullfile(DirectoryPath,['microrheology_curve_' num2str(k) '.svg']);
                    saveas(gcf, whereToStore);
                end
                        
@@ -4248,6 +4255,14 @@ classdef ForceMap < matlab.mixin.Copyable
             %emodmicro1(isnan(emodmicro1))=0;
             %emodmicro2(isnan(emodmicro2))=0;
             
+            for j=1:obj.NumSegments
+                if obj.DZSlope{i} > 0.9
+                    Dphi(i,:) = [];
+                    losstangent(i,:) = [];
+                    emodmicro1i,:) = [];
+                    emodmicro2(i,:) = [];
+                end
+            end
                 
             %figure('Name',sprintf('Results'))
             hold on
@@ -4421,12 +4436,11 @@ classdef ForceMap < matlab.mixin.Copyable
                         obj.interceptH = obj.interceptH*rangeH;
                         
                         k = obj.RectApexIndex;
-                        %if j == k
-                            if DirectoryPath~=0
-                               whereToStore=fullfile(DirectoryPath,['filtered_force_indentation_fit_curve_' num2str(k) '.svg']);
-                               saveas(gcf, whereToStore);
-                            end
-                        %end
+                        if DirectoryPath~=0
+                           whereToStore=fullfile(DirectoryPath,['filtered_force_indentation_fit_curve_' num2str(k) '.svg']);
+                           saveas(gcf, whereToStore);
+                        end
+
                         
                         
                        
@@ -4537,9 +4551,9 @@ classdef ForceMap < matlab.mixin.Copyable
                         l4.LineWidth = 3;
                         legend([l1, l2, l3, l4], {'raw force data', 'force fit','raw indentation data', 'indentation fit'}, 'Location', 'southoutside','FontSize', 14)
                        
-                       
+                        k = obj.RectApexIndex;
                         if DirectoryPath~=0
-                           whereToStore=fullfile(DirectoryPath,['raw_force_indentation_fit_curve_' num2str(i) '.svg']);
+                           whereToStore=fullfile(DirectoryPath,['raw_force_indentation_fit_curve_' num2str(k) '.svg']);
                            saveas(gcf, whereToStore);
                        end
                         
@@ -4619,9 +4633,9 @@ classdef ForceMap < matlab.mixin.Copyable
                         %set(gcf,'Position',[pos(1:2) Nx*pos(3) Ny*pos(4)]); 
 
 
-                       
+                        k = obj.RectApexIndex;
                         if DirectoryPath~=0
-                           whereToStore=fullfile(DirectoryPath,['force_indentation_fit_curve_' num2str(i) '.svg']);
+                           whereToStore=fullfile(DirectoryPath,['force_indentation_fit_curve_' num2str(k) '.svg']);
                            saveas(gcf, whereToStore);
                         end
                        
