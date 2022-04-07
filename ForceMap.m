@@ -4420,7 +4420,8 @@ classdef ForceMap < matlab.mixin.Copyable
                         obj.interceptF = obj.interceptF*rangeF;
                         obj.interceptH = obj.interceptH*rangeH;
                         
-                        if j==obj.RectApexIndex
+                        k = obj.RectApexIndex;
+                        if j == k
                             if DirectoryPath~=0
                                whereToStore=fullfile(DirectoryPath,['force_indentation_fit_curve_' num2str(i) '.svg']);
                                saveas(gcf, whereToStore);
