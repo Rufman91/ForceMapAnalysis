@@ -902,6 +902,9 @@ classdef Experiment < matlab.mixin.Copyable
             % Assign the Apex curves EMod and exclude +-2.5*IQR and curves
             % from ExclMask
             for i=1:NLoop
+                
+                 Dphis = cell2mat(obj.FM{i}.DeltaPhi);
+                 LTs = cell2mat(obj.FM{i}.LossTangent);
                  EMods1 = obj.FM{i}.EModMicro1;
                  EMods2 = obj.FM{i}.EModMicro2;
                  EMods1(:,all(EMods1 == 0))=[];
@@ -911,8 +914,10 @@ classdef Experiment < matlab.mixin.Copyable
                  frequencies = frequencies(frequencies ~= 0);
                  lf = length(frequencies);
 
-                obj.EMod1.Apex(i,1:lf) = EMods1(obj.FM{i}.RectApexIndex);
-                obj.EMod2.Apex(i,1:lf) = EMods2(obj.FM{i}.RectApexIndex);
+                obj.Dphi.Apex(i,1:lf) = Dphis(obj.FM{i}.RectApexIndex,1:lf);
+                obj.LT.Apex(i,1:lf) = LTs(obj.FM{i}.RectApexIndex,1:lf);
+                obj.EMod1.Apex(i,1:lf) = EMods1(obj.FM{i}.RectApexIndex,1:lf);
+                obj.EMod2.Apex(i,1:lf) = EMods2(obj.FM{i}.RectApexIndex,1:lf);
                 
                 %Emod1: Storage modulus
                 for j=1:lf
@@ -937,11 +942,19 @@ classdef Experiment < matlab.mixin.Copyable
                 end
             end
             
-            obj.EMod1.Mean = nanmean(obj.EMod1.Apex,2);
-            obj.EMod1.STD = nanstd(obj.EMod1.Apex,[],2);
+            obj.Dphi.Mean = nanmean(obj.Dphi.Apex);
+            obj.Dphi.STD = nanstd(obj.Dphi.Apex,[]);
             
-            obj.EMod2.Mean = nanmean(obj.EMod2.Apex,2);
-            obj.EMod2.STD = nanstd(obj.EMod2.Apex,[],2);
+            obj.LT.Mean = nanmean(obj.LT.Apex);
+            obj.LT.STD = nanstd(obj.LT.Apex,[]);
+            
+            obj.EMod1.Mean = nanmean(obj.EMod1.Apex);
+            obj.EMod1.STD = nanstd(obj.EMod1.Apex,[]);
+            
+            obj.EMod2.Mean = nanmean(obj.EMod2.Apex);
+            obj.EMod2.STD = nanstd(obj.EMod2.Apex,[]);
+            
+            obj.show_results_microrheology;
             
             obj.save_experiment;
             
@@ -1896,74 +1909,7 @@ classdef Experiment < matlab.mixin.Copyable
             uiwait(h.Fig)
         end
         
-        function show_microrheology(obj)
-            
-            NLoop = obj.NumForceMaps;
-            
-%             for i=1:NLoop
-%                 
-%                 
-%                 % sine fit for modulation segments
-%                 %obj.FM{i}.show_modulation;
-%                 %obj.FM{i}.sine_fit_for_microrheology;
-%                 obj.FM{i}.show_sine_2;
-%                 
-% 
-%             end
-            
-            % Assign the Apex curves EMod and exclude +-2.5*IQR and curves
-            % from ExclMask
-            for i=1:NLoop
-                 Dphi = cell2mat(obj.FM{i}.DeltaPhi);
-                 LT = cell2mat(obj.FM{i}.LossTangent);
-                 EMods1 = obj.FM{i}.EModMicro1;
-                 EMods2 = obj.FM{i}.EModMicro2;
-                 EMods1(:,all(EMods1 == 0))=[];
-                 EMods2(:,all(EMods2 == 0))=[];
-                 
-                 frequencies = cell2mat(obj.FM{1}.SegFrequency);
-                 frequencies = frequencies(frequencies ~= 0);
-                 lf = length(frequencies);
-
-                obj.Dphi.Apex(i,1:lf) = Dphi(obj.FM{i}.RectApexIndex,1:lf);
-                obj.LT.Apex(i,1:lf) = LT(obj.FM{i}.RectApexIndex,1:lf);
-                obj.EMod1.Apex(i,1:lf) = EMods1(obj.FM{i}.RectApexIndex,1:lf);
-                obj.EMod2.Apex(i,1:lf) = EMods2(obj.FM{i}.RectApexIndex,1:lf);
-                
-                %Emod1: Storage modulus
-                for j=1:lf
-                    if obj.EMod1.Apex(i,j) > (nanmedian(obj.EMod1.Apex(i,:))+2.5*iqr(obj.EMod1.Apex(i,:))) || ...
-                            obj.EMod1.Apex(i,j) < (nanmedian(obj.EMod1.Apex(i,:))-2.5*iqr(obj.EMod1.Apex(i,:))) || ...
-                            obj.FM{i}.ExclMask(obj.FM{i}.List2Map(obj.FM{i}.RectApexIndex(1),1),obj.FM{i}.List2Map(obj.FM{i}.RectApexIndex(1),2)) == 0
-                        obj.EMod1.Apex(i,j) = NaN;
-                    elseif obj.EMod1.Apex(i,j) < 0
-                        obj.EMod1.Apex(i,j) = NaN;
-                    end
-                end
-                
-                %Emod2: Loss modulus
-                for j=1:lf
-                    if obj.EMod2.Apex(i,j) > (nanmedian(obj.EMod2.Apex(i,:))+2.5*iqr(obj.EMod2.Apex(i,:))) || ...
-                            obj.EMod2.Apex(i,j) < (nanmedian(obj.EMod2.Apex(i,:))-2.5*iqr(obj.EMod2.Apex(i,:))) || ...
-                            obj.FM{i}.ExclMask(obj.FM{i}.List2Map(obj.FM{i}.RectApexIndex(1),1),obj.FM{i}.List2Map(obj.FM{i}.RectApexIndex(1),2)) == 0
-                        obj.EMod2.Apex(i,j) = NaN;
-                    elseif obj.EMod2.Apex(i,j) < 0
-                        obj.EMod2.Apex(i,j) = NaN;
-                    end
-                end
-            end
-            
-            obj.Dphi.Mean = nanmean(obj.Dphi.Apex);
-            obj.Dphi.STD = nanstd(obj.Dphi.Apex,[]);
-            
-            obj.LT.Mean = nanmean(obj.LT.Apex);
-            obj.LT.STD = nanstd(obj.LT.Apex,[]);
-            
-            obj.EMod1.Mean = nanmean(obj.EMod1.Apex);
-            obj.EMod1.STD = nanstd(obj.EMod1.Apex,[]);
-            
-            obj.EMod2.Mean = nanmean(obj.EMod2.Apex);
-            obj.EMod2.STD = nanstd(obj.EMod2.Apex,[]);
+        function show_results_microrheology(obj)
             
             figure('Name',sprintf('Results'))
             set(gcf,'units','normalized','outerposition',[0 0 1 1])
@@ -1972,8 +1918,6 @@ classdef Experiment < matlab.mixin.Copyable
             hold on
 
             subplot(2,2,1)
-            %plot(xq,vqDphi,'-','DisplayName',sprintf('Curve %i',i))
-            %hold on
             boxplot(obj.Dphi.Apex,frequencies)
             %ylim([-270 270])
             title('Phaseshift of all fibrils','FontSize', 18)
@@ -1985,8 +1929,6 @@ classdef Experiment < matlab.mixin.Copyable
             grid minor
 
             subplot(2,2,2)
-            %plot(xq,vqLosstangent,'-','DisplayName',sprintf('Curve %i',i))
-            %hold on
             boxplot(obj.LT.Apex,frequencies)
             title('Loss Tangent of all fibrils','FontSize', 18)
             xlabel('frequency [Hz]','FontSize', 16)
@@ -1997,9 +1939,6 @@ classdef Experiment < matlab.mixin.Copyable
             grid minor
 
             subplot(2,2,3)
-            %plot(xq,vqEmodmicro1,'-','DisplayName',sprintf('Curve %i',i))
-            %,'HandleVisibility','off'
-            %hold on
             boxplot(obj.EMod1.Apex*1e-6, frequencies)
             title('Storage modulus of all fibrils','FontSize', 18)
             xlabel('frequency [Hz]','FontSize', 16)
@@ -2010,8 +1949,6 @@ classdef Experiment < matlab.mixin.Copyable
             grid minor
 
             subplot(2,2,4)
-            %plot(xq,vqEmodmicro2,'-','DisplayName',sprintf('Curve %i',i))
-            %hold on
             boxplot(obj.EMod2.Apex*1e-6,frequencies)
             title('Loss modulus of all fibrils','FontSize', 18)
             xlabel('frequency [Hz]','FontSize', 16)
@@ -2021,10 +1958,6 @@ classdef Experiment < matlab.mixin.Copyable
             grid on
             grid minor
             
-            
-           % obj.save_experiment;
-            
-           % obj.write_to_log_file('','','end')
         end
         
         
