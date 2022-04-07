@@ -1912,6 +1912,8 @@ classdef Experiment < matlab.mixin.Copyable
             % Assign the Apex curves EMod and exclude +-2.5*IQR and curves
             % from ExclMask
             for i=1:NLoop
+                 Dphi = cell2mat(obj.FM{i}.DeltaPhi);
+                 LT = cell2mat(obj.FM{i}.LossTangent);
                  EMods1 = obj.FM{i}.EModMicro1;
                  EMods2 = obj.FM{i}.EModMicro2;
                  EMods1(:,all(EMods1 == 0))=[];
@@ -1921,6 +1923,8 @@ classdef Experiment < matlab.mixin.Copyable
                  frequencies = frequencies(frequencies ~= 0);
                  lf = length(frequencies);
 
+                obj.Dphi.Apex(i,1:lf) = Dphi(obj.FM{i}.RectApexIndex,1:lf);
+                obj.LT.Apex(i,1:lf) = LT(obj.FM{i}.RectApexIndex,1:lf);
                 obj.EMod1.Apex(i,1:lf) = EMods1(obj.FM{i}.RectApexIndex,1:lf);
                 obj.EMod2.Apex(i,1:lf) = EMods2(obj.FM{i}.RectApexIndex,1:lf);
                 
@@ -1947,11 +1951,74 @@ classdef Experiment < matlab.mixin.Copyable
                 end
             end
             
+            obj.Dphi.Mean = nanmean(obj.Dphi.Apex);
+            obj.Dphi.STD = nanstd(obj.Dphi.Apex,[]);
+            
+            obj.LT.Mean = nanmean(obj.LT.Apex);
+            obj.LT.STD = nanstd(obj.LT.Apex,[]);
+            
             obj.EMod1.Mean = nanmean(obj.EMod1.Apex);
             obj.EMod1.STD = nanstd(obj.EMod1.Apex,[]);
             
             obj.EMod2.Mean = nanmean(obj.EMod2.Apex);
             obj.EMod2.STD = nanstd(obj.EMod2.Apex,[]);
+            
+            figure('Name',sprintf('Results'))
+            hold on
+            
+            hold on
+
+            subplot(2,2,1)
+            %plot(xq,vqDphi,'-','DisplayName',sprintf('Curve %i',i))
+            %hold on
+            boxplot(obj.Dphi.Apex,frequencies)
+            %ylim([-270 270])
+            title('Phaseshift of all fibrils','FontSize', 18)
+            xlabel('frequency [Hz]','FontSize', 16)
+            ylabel('phaseshift [°]','FontSize', 16)
+            %legend show
+            %drawnow
+            grid on
+            grid minor
+
+            subplot(2,2,2)
+            %plot(xq,vqLosstangent,'-','DisplayName',sprintf('Curve %i',i))
+            %hold on
+            boxplot(obj.LT.Apex,frequencies)
+            title('Loss Tangent of all fibrils','FontSize', 18)
+            xlabel('frequency [Hz]','FontSize', 16)
+            ylabel('losstangent','FontSize', 16)
+            %legend show
+            %drawnow
+            grid on
+            grid minor
+
+            subplot(2,2,3)
+            %plot(xq,vqEmodmicro1,'-','DisplayName',sprintf('Curve %i',i))
+            %,'HandleVisibility','off'
+            %hold on
+            boxplot(obj.EMod1.Apex*1e-6, frequencies)
+            title('Storage modulus of all fibrils','FontSize', 18)
+            xlabel('frequency [Hz]','FontSize', 16)
+            ylabel('elastic modulus [MPa]','FontSize', 16)
+            %legend show
+            %drawnow
+            grid on
+            grid minor
+
+            subplot(2,2,4)
+            %plot(xq,vqEmodmicro2,'-','DisplayName',sprintf('Curve %i',i))
+            %hold on
+            boxplot(obj.EMod2.Apex*1e-6,frequencies)
+            title('Loss modulus of all fibrils','FontSize', 18)
+            xlabel('frequency [Hz]','FontSize', 16)
+            ylabel('viscous modulus [MPa]','FontSize', 16)
+            %legend show
+            %drawnow
+            grid on
+            grid minor
+            
+            
            % obj.save_experiment;
             
            % obj.write_to_log_file('','','end')
