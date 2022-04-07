@@ -33,6 +33,8 @@ classdef Experiment < matlab.mixin.Copyable
         EMod
         EMod1
         EMod2
+        Dphi
+        LT
         WhichRefMap
         WhichTip
         SurfPot
