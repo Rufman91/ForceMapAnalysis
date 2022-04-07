@@ -902,15 +902,19 @@ classdef Experiment < matlab.mixin.Copyable
             for i=1:NLoop
                  EMods1 = obj.FM{i}.EModMicro1;
                  EMods2 = obj.FM{i}.EModMicro2;
+                 
+                 frequencies = cell2mat(obj.FM{1}.SegFrequency);
+                 frequencies = frequencies(frequencies ~= 0);
+                 lf = length(frequencies);
 
-                obj.EMod1.Apex(i,1:length(obj.FM{i}.RectApexIndex)) = EMods1(obj.FM{i}.RectApexIndex);
-                obj.EMod2.Apex(i,1:length(obj.FM{i}.RectApexIndex)) = EMods2(obj.FM{i}.RectApexIndex);
+                obj.EMod1.Apex(i,1:lf) = EMods1(obj.FM{i}.RectApexIndex);
+                obj.EMod2.Apex(i,1:lf) = EMods2(obj.FM{i}.RectApexIndex);
                 
                 %Emod1: Storage modulus
-                for j=1:length(obj.FM{i}.RectApexIndex)
+                for j=1:lf
                     if obj.EMod1.Apex(i,j) > (nanmedian(obj.EMod1.Apex(i,:))+2.5*iqr(obj.EMod1.Apex(i,:))) || ...
                             obj.EMod1.Apex(i,j) < (nanmedian(obj.EMod1.Apex(i,:))-2.5*iqr(obj.EMod1.Apex(i,:))) || ...
-                            obj.FM{i}.ExclMask(obj.FM{i}.List2Map(obj.FM{i}.RectApexIndex(j),1),obj.FM{i}.List2Map(obj.FM{i}.RectApexIndex(j),2)) == 0
+                            obj.FM{i}.ExclMask(obj.FM{i}.List2Map(obj.FM{i}.RectApexIndex(1),1),obj.FM{i}.List2Map(obj.FM{i}.RectApexIndex(1),2)) == 0
                         obj.EMod1.Apex(i,j) = NaN;
                     elseif obj.EMod1.Apex(i,j) < 0
                         obj.EMod1.Apex(i,j) = NaN;
@@ -918,10 +922,10 @@ classdef Experiment < matlab.mixin.Copyable
                 end
                 
                 %Emod2: Loss modulus
-                for j=1:length(obj.FM{i}.RectApexIndex)
+                for j=1:lf
                     if obj.EMod2.Apex(i,j) > (nanmedian(obj.EMod2.Apex(i,:))+2.5*iqr(obj.EMod2.Apex(i,:))) || ...
                             obj.EMod2.Apex(i,j) < (nanmedian(obj.EMod2.Apex(i,:))-2.5*iqr(obj.EMod2.Apex(i,:))) || ...
-                            obj.FM{i}.ExclMask(obj.FM{i}.List2Map(obj.FM{i}.RectApexIndex(j),1),obj.FM{i}.List2Map(obj.FM{i}.RectApexIndex(j),2)) == 0
+                            obj.FM{i}.ExclMask(obj.FM{i}.List2Map(obj.FM{i}.RectApexIndex(1),1),obj.FM{i}.List2Map(obj.FM{i}.RectApexIndex(1),2)) == 0
                         obj.EMod2.Apex(i,j) = NaN;
                     elseif obj.EMod2.Apex(i,j) < 0
                         obj.EMod2.Apex(i,j) = NaN;
@@ -2183,11 +2187,6 @@ classdef Experiment < matlab.mixin.Copyable
         
         function statistics_microrheology(obj)
             
-            %for j=1:obj.FM{1}.NumSegments
-            %        frequencies(j,:) = obj.FM{1}.SegFrequency{j};
-            %end
-            %frequencies = frequencies(frequencies ~= 0);
-            %lf = length(frequencies);
             
             Dphi = zeros(obj.NumForceMaps,1);
             frequencies = zeros(obj.NumForceMaps,1);
