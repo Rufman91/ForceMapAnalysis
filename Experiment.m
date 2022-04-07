@@ -1947,11 +1947,11 @@ classdef Experiment < matlab.mixin.Copyable
                 end
             end
             
-            obj.EMod1.Mean = nanmean(obj.EMod1.Apex,2);
-            obj.EMod1.STD = nanstd(obj.EMod1.Apex,[],2);
+            obj.EMod1.Mean = nanmean(obj.EMod1.Apex);
+            obj.EMod1.STD = nanstd(obj.EMod1.Apex,[]);
             
-            obj.EMod2.Mean = nanmean(obj.EMod2.Apex,2);
-            obj.EMod2.STD = nanstd(obj.EMod2.Apex,[],2);
+            obj.EMod2.Mean = nanmean(obj.EMod2.Apex);
+            obj.EMod2.STD = nanstd(obj.EMod2.Apex,[]);
            % obj.save_experiment;
             
            % obj.write_to_log_file('','','end')
