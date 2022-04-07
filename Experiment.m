@@ -35,6 +35,7 @@ classdef Experiment < matlab.mixin.Copyable
         EMod2
         Dphi
         LT
+        frequencies
         WhichRefMap
         WhichTip
         SurfPot
@@ -910,9 +911,9 @@ classdef Experiment < matlab.mixin.Copyable
                  EMods1(:,all(EMods1 == 0))=[];
                  EMods2(:,all(EMods2 == 0))=[];
                  
-                 frequencies = cell2mat(obj.FM{1}.SegFrequency);
-                 frequencies = frequencies(frequencies ~= 0);
-                 lf = length(frequencies);
+                 obj.frequencies = cell2mat(obj.FM{1}.SegFrequency);
+                 obj.frequencies = obj.frequencies(obj.frequencies ~= 0);
+                 lf = length(obj.frequencies);
 
                 obj.Dphi.Apex(i,1:lf) = Dphis(obj.FM{i}.RectApexIndex,1:lf);
                 obj.LT.Apex(i,1:lf) = LTs(obj.FM{i}.RectApexIndex,1:lf);
@@ -1918,7 +1919,7 @@ classdef Experiment < matlab.mixin.Copyable
             hold on
 
             subplot(2,2,1)
-            boxplot(obj.Dphi.Apex,frequencies)
+            boxplot(obj.Dphi.Apex,obj.frequencies)
             %ylim([-270 270])
             title('Phaseshift of all fibrils','FontSize', 18)
             xlabel('frequency [Hz]','FontSize', 16)
@@ -1929,7 +1930,7 @@ classdef Experiment < matlab.mixin.Copyable
             grid minor
 
             subplot(2,2,2)
-            boxplot(obj.LT.Apex,frequencies)
+            boxplot(obj.LT.Apex,obj.frequencies)
             title('Loss Tangent of all fibrils','FontSize', 18)
             xlabel('frequency [Hz]','FontSize', 16)
             ylabel('losstangent','FontSize', 16)
@@ -1939,7 +1940,7 @@ classdef Experiment < matlab.mixin.Copyable
             grid minor
 
             subplot(2,2,3)
-            boxplot(obj.EMod1.Apex*1e-6, frequencies)
+            boxplot(obj.EMod1.Apex*1e-6,obj.frequencies)
             title('Storage modulus of all fibrils','FontSize', 18)
             xlabel('frequency [Hz]','FontSize', 16)
             ylabel('elastic modulus [MPa]','FontSize', 16)
@@ -1949,7 +1950,7 @@ classdef Experiment < matlab.mixin.Copyable
             grid minor
 
             subplot(2,2,4)
-            boxplot(obj.EMod2.Apex*1e-6,frequencies)
+            boxplot(obj.EMod2.Apex*1e-6,obj.frequencies)
             title('Loss modulus of all fibrils','FontSize', 18)
             xlabel('frequency [Hz]','FontSize', 16)
             ylabel('viscous modulus [MPa]','FontSize', 16)
