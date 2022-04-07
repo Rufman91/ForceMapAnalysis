@@ -1920,7 +1920,8 @@ classdef Experiment < matlab.mixin.Copyable
 
             subplot(2,2,1)
             boxplot(obj.Dphi.Apex,obj.frequencies)
-            %ylim([-270 270])
+            hold on
+            plot(obj.Dphi.Mean,'*')
             title('Phaseshift of all fibrils','FontSize', 18)
             xlabel('frequency [Hz]','FontSize', 16)
             ylabel('phaseshift [°]','FontSize', 16)
@@ -1931,6 +1932,8 @@ classdef Experiment < matlab.mixin.Copyable
 
             subplot(2,2,2)
             boxplot(obj.LT.Apex,obj.frequencies)
+            hold on
+            plot(obj.LT.Mean,'*')
             title('Loss Tangent of all fibrils','FontSize', 18)
             xlabel('frequency [Hz]','FontSize', 16)
             ylabel('losstangent','FontSize', 16)
@@ -1941,6 +1944,8 @@ classdef Experiment < matlab.mixin.Copyable
 
             subplot(2,2,3)
             boxplot(obj.EMod1.Apex*1e-6,obj.frequencies)
+            hold on
+            plot(obj.EMod1.Mean,'*')
             title('Storage modulus of all fibrils','FontSize', 18)
             xlabel('frequency [Hz]','FontSize', 16)
             ylabel('elastic modulus [MPa]','FontSize', 16)
@@ -1951,6 +1956,8 @@ classdef Experiment < matlab.mixin.Copyable
 
             subplot(2,2,4)
             boxplot(obj.EMod2.Apex*1e-6,obj.frequencies)
+            hold on
+            plot(obj.EMod2.Mean,'*')
             title('Loss modulus of all fibrils','FontSize', 18)
             xlabel('frequency [Hz]','FontSize', 16)
             ylabel('viscous modulus [MPa]','FontSize', 16)
