@@ -4232,6 +4232,7 @@ classdef ForceMap < matlab.mixin.Copyable
             k=1;
             
             figure('Name',sprintf('Results'))
+            set(gcf,'units','normalized','outerposition',[0 0 1 1])
             hold on
             
             Dphi = zeros(obj.NumSegments,1);
@@ -4317,16 +4318,9 @@ classdef ForceMap < matlab.mixin.Copyable
             grid minor
 
             if DirectoryPath~=0
-               whereToStore=fullfile(DirectoryPath,['results_' num2str(i) '.svg']);
+               whereToStore=fullfile(DirectoryPath,['results.svg']);
                saveas(gcf, whereToStore);
             end
-
-
-
-          
-            
-
-
             
  
         end
