@@ -4255,9 +4255,8 @@ classdef ForceMap < matlab.mixin.Copyable
             %emodmicro1(isnan(emodmicro1))=0;
             %emodmicro2(isnan(emodmicro2))=0;
             
-            for j=1:obj.NumSegments
-               indices = find(obj.DZslope(j)>0.9);
-            end
+            
+            indices = find(obj.DZslope > 0.9);
             
             Dphi(indices,:) = [];
             losstangent(indices,:) = [];
