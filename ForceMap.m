@@ -4259,7 +4259,7 @@ classdef ForceMap < matlab.mixin.Copyable
                 if obj.DZSlope{i} > 0.9
                     Dphi(i,:) = [];
                     losstangent(i,:) = [];
-                    emodmicro1i,:) = [];
+                    emodmicro1(i,:) = [];
                     emodmicro2(i,:) = [];
                 end
             end
