@@ -1964,6 +1964,7 @@ classdef Experiment < matlab.mixin.Copyable
             obj.EMod2.STD = nanstd(obj.EMod2.Apex,[]);
             
             figure('Name',sprintf('Results'))
+            set(gcf,'units','normalized','outerposition',[0 0 1 1])
             hold on
             
             hold on
