@@ -31,6 +31,8 @@ classdef Experiment < matlab.mixin.Copyable
     properties
         % Non-essential properties
         EMod
+        EMod1
+        EMod2
         WhichRefMap
         WhichTip
         SurfPot
@@ -787,21 +789,21 @@ classdef Experiment < matlab.mixin.Copyable
             end
             
             % Preprocessing everything, that needs user input
-%             answer = questdlg('Do you want to skip manual exclusion of problematic areas?',...
-%                 'Manual Exclusion',...
-%                 'Yes',...
-%                 'No','No');
-%             for i=1:NLoop
-%                 if isequal(KeepFlagged,'Yes') && obj.FMFlag.FibrilAnalysis(i) == 1
-%                     continue
-%                 end
-%                 obj.FM{i}.create_and_level_height_map();
-%                 obj.FM{i}.create_fibril_mask();
-%                 if isequal(answer,'Yes')
-%                     continue
-%                 end
-%                 obj.FM{i}.manual_exclusion();
-%             end
+             answer = questdlg('Do you want to skip manual exclusion of problematic areas?',...
+                 'Manual Exclusion',...
+                 'Yes',...
+                 'No','No');
+             for i=1:NLoop
+                 if isequal(KeepFlagged,'Yes') && obj.FMFlag.FibrilAnalysis(i) == 1
+                     continue
+                 end
+                 obj.FM{i}.create_and_level_height_map();
+                 obj.FM{i}.create_fibril_mask();
+                 if isequal(answer,'Yes')
+                     continue
+                 end
+                 obj.FM{i}.manual_exclusion();
+             end
             
             % Setting and calculating preferred method of reference slope
             obj.reference_slope_parser(1)
@@ -860,7 +862,7 @@ classdef Experiment < matlab.mixin.Copyable
                 end
                 end
                 
-%                 obj.FM{i}.calculate_fib_diam();
+                 obj.FM{i}.calculate_fib_diam();
                 
                 % contact point estimation happens here
                 waitbar(i/NLoop,h,sprintf('Processing ForceMap %i/%i\nFinding Contact Point',i,NLoop));
@@ -886,8 +888,52 @@ classdef Experiment < matlab.mixin.Copyable
                  
                  waitbar(i/NLoop,h,sprintf('Processing ForceMap %i/%i\nWrapping Up And Saving',i,NLoop));
                  
+                 if i > 1
+                    close(Fig{i-1})
+                 end
+                 Fig{i} = obj.FM{i}.show_analyzed_fibril_micro();
                  obj.FMFlag.ForceMapAnalysis(i) = 1;
+                 obj.FMFlag.FibrilAnalysis(i) = 1;
             end
+            
+            
+            % Assign the Apex curves EMod and exclude +-2.5*IQR and curves
+            % from ExclMask
+            for i=1:NLoop
+                 EMods1 = obj.FM{i}.EModMicro1;
+                 EMods2 = obj.FM{i}.EModMicro2;
+
+                obj.EMod1.Apex(i,1:length(obj.FM{i}.RectApexIndex)) = EMods1(obj.FM{i}.RectApexIndex);
+                obj.EMod2.Apex(i,1:length(obj.FM{i}.RectApexIndex)) = EMods2(obj.FM{i}.RectApexIndex);
+                
+                %Emod1: Storage modulus
+                for j=1:length(obj.FM{i}.RectApexIndex)
+                    if obj.EMod1.Apex(i,j) > (nanmedian(obj.EMod1.Apex(i,:))+2.5*iqr(obj.EMod1.Apex(i,:))) || ...
+                            obj.EMod1.Apex(i,j) < (nanmedian(obj.EMod1.Apex(i,:))-2.5*iqr(obj.EMod1.Apex(i,:))) || ...
+                            obj.FM{i}.ExclMask(obj.FM{i}.List2Map(obj.FM{i}.RectApexIndex(j),1),obj.FM{i}.List2Map(obj.FM{i}.RectApexIndex(j),2)) == 0
+                        obj.EMod1.Apex(i,j) = NaN;
+                    elseif obj.EMod1.Apex(i,j) < 0
+                        obj.EMod1.Apex(i,j) = NaN;
+                    end
+                end
+                
+                %Emod2: Loss modulus
+                for j=1:length(obj.FM{i}.RectApexIndex)
+                    if obj.EMod2.Apex(i,j) > (nanmedian(obj.EMod2.Apex(i,:))+2.5*iqr(obj.EMod2.Apex(i,:))) || ...
+                            obj.EMod2.Apex(i,j) < (nanmedian(obj.EMod2.Apex(i,:))-2.5*iqr(obj.EMod2.Apex(i,:))) || ...
+                            obj.FM{i}.ExclMask(obj.FM{i}.List2Map(obj.FM{i}.RectApexIndex(j),1),obj.FM{i}.List2Map(obj.FM{i}.RectApexIndex(j),2)) == 0
+                        obj.EMod2.Apex(i,j) = NaN;
+                    elseif obj.EMod2.Apex(i,j) < 0
+                        obj.EMod2.Apex(i,j) = NaN;
+                    end
+                end
+            end
+            
+            obj.EMod1.Mean = nanmean(obj.EMod1.Apex,2);
+            obj.EMod1.STD = nanstd(obj.EMod1.Apex,[],2);
+            
+            obj.EMod2.Mean = nanmean(obj.EMod2.Apex,2);
+            obj.EMod2.STD = nanstd(obj.EMod2.Apex,[],2);
             
             obj.save_experiment;
             

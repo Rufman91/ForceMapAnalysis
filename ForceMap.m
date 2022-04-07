@@ -3591,6 +3591,48 @@ classdef ForceMap < matlab.mixin.Copyable
             title('E-Modulus Map')
         end
         
+        function Fig = show_analyzed_fibril_micro(obj)
+            T = sprintf('Height Map of %s\nwith chosen indentation points',obj.Name);
+            Fig = figure('Name',T,'Units','normalized','Position',[0.5 0.1 0.5 0.8]);
+            
+            subplot(2,2,1)
+            I = imresize(obj.HeightMap(:,:,1).*1e9,[1024 1024]);
+            %             I = (I*range(obj.HeightMap(:,:,1),'all') + min(obj.HeightMap(:,:,1),[],'all'))*1e9;
+            imshow(I,[min(I,[],'all') max(I,[],'all')],'Colormap',hot)
+            title(sprintf('%s Plane Fitted Height',obj.Name))
+            c1 = colorbar;
+            c1.Label.String = 'Height [nm]';
+            hold on;
+            try
+                for i=1:obj.NumProfiles
+                    plot((obj.List2Map(obj.RectApexIndex(i),2)-1/2)*1024/obj.NumPoints,...
+                        (obj.List2Map(obj.RectApexIndex(i),1)-1/2)*1024/obj.NumProfiles,...
+                        'g+', 'MarkerSize', 10, 'LineWidth', 2);
+                    %                 plot((obj.List2Map(obj.ApexIndex(i),2)-1/2)*1024/obj.NumPoints,...
+                    %                     (obj.List2Map(obj.ApexIndex(i),1)-1/2)*1024/obj.NumProfiles,...
+                    %                     'g+', 'MarkerSize', 10, 'LineWidth', 1);
+                end
+            catch
+            end
+            title(T);
+            
+            subplot(2,2,3)
+            Masks = imresize(obj.FibMask.*obj.ExclMask,[1024 1024]);
+            imshow(Masks)
+            title('Fibril mask with excluded areas')
+            
+%             subplot(2,2,2)
+%             surf(imrotate(obj.HeightMap',90),'LineStyle','none','FaceLighting','gouraud','FaceColor','interp')
+%             axis manual
+%             light('Style','local')
+%             title(sprintf('Fibril Diameter = %.2fnm',obj.FibDiam*1e9))
+%             
+%             subplot(2,2,4)
+%             EM = imresize(mat2gray(log(obj.EModMapOliverPharr(:,:,1))),[1024 1024]);
+%             imshow(EM)
+%             title('E-Modulus Map')
+        end
+        
         function show_height_map(obj)
             T = sprintf('Height Map of %s',obj.Name);
             Fig = figure('Name',T,'Units','normalized','Position',[0.5 0.1 0.5 0.8]);
@@ -4458,10 +4500,10 @@ classdef ForceMap < matlab.mixin.Copyable
 
                         yyaxis left
                         [MultiplierF,UnitF,~] = AFMImage.parse_unit_scale(range(obj.BasedForce{i,FirstFreq}),'N',10);
-                        plot(x,obj.BasedForce{i,j}*MultiplierF,'-m')
+                        semilogx(x,obj.BasedForce{i,j}*MultiplierF,'-m')
                         hold on
                         if obj.SegFrequency{j} > 0
-                            plot(x,ypFtrend*MultiplierF,'-','color',lila)
+                            semilogx(x,ypFtrend*MultiplierF,'-','color',lila)
                         end
                         set(gca, 'YColor', 'm')
                         xlabel('time [s]','FontSize', 16)
@@ -4470,10 +4512,10 @@ classdef ForceMap < matlab.mixin.Copyable
                         
                         yyaxis right
                         [MultiplierI,UnitI,~] = AFMImage.parse_unit_scale(range(obj.Indentation{i,FirstFreq}),'m',10);
-                        plot(x,obj.Indentation{i,j}*MultiplierI,'-','color', lightblue)
+                        semilogx(x,obj.Indentation{i,j}*MultiplierI,'-','color', lightblue)
                         hold on
                         if obj.SegFrequency{j} > 0
-                            plot(x,ypHtrend*MultiplierI,'-','color',darkblue)
+                            semilogx(x,ypHtrend*MultiplierI,'-','color',darkblue)
                         end
                         set(gca, 'YColor', lightblue)
                         title(sprintf('Force and Indentation over Time incl. Fit Curve %i',i),'FontSize', 18)
