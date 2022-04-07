@@ -1898,17 +1898,60 @@ classdef Experiment < matlab.mixin.Copyable
             
             NLoop = obj.NumForceMaps;
             
+%             for i=1:NLoop
+%                 
+%                 
+%                 % sine fit for modulation segments
+%                 %obj.FM{i}.show_modulation;
+%                 %obj.FM{i}.sine_fit_for_microrheology;
+%                 obj.FM{i}.show_sine_2;
+%                 
+% 
+%             end
+            
+            % Assign the Apex curves EMod and exclude +-2.5*IQR and curves
+            % from ExclMask
             for i=1:NLoop
-                
-                
-                % sine fit for modulation segments
-                %obj.FM{i}.show_modulation;
-                %obj.FM{i}.sine_fit_for_microrheology;
-                obj.FM{i}.show_sine_2;
-                
+                 EMods1 = obj.FM{i}.EModMicro1;
+                 EMods2 = obj.FM{i}.EModMicro2;
+                 EMods1(:,all(EMods1 == 0))=[];
+                 EMods2(:,all(EMods2 == 0))=[];
+                 
+                 frequencies = cell2mat(obj.FM{1}.SegFrequency);
+                 frequencies = frequencies(frequencies ~= 0);
+                 lf = length(frequencies);
 
+                obj.EMod1.Apex(i,1:lf) = EMods1(obj.FM{i}.RectApexIndex);
+                obj.EMod2.Apex(i,1:lf) = EMods2(obj.FM{i}.RectApexIndex);
+                
+                %Emod1: Storage modulus
+                for j=1:lf
+                    if obj.EMod1.Apex(i,j) > (nanmedian(obj.EMod1.Apex(i,:))+2.5*iqr(obj.EMod1.Apex(i,:))) || ...
+                            obj.EMod1.Apex(i,j) < (nanmedian(obj.EMod1.Apex(i,:))-2.5*iqr(obj.EMod1.Apex(i,:))) || ...
+                            obj.FM{i}.ExclMask(obj.FM{i}.List2Map(obj.FM{i}.RectApexIndex(1),1),obj.FM{i}.List2Map(obj.FM{i}.RectApexIndex(1),2)) == 0
+                        obj.EMod1.Apex(i,j) = NaN;
+                    elseif obj.EMod1.Apex(i,j) < 0
+                        obj.EMod1.Apex(i,j) = NaN;
+                    end
+                end
+                
+                %Emod2: Loss modulus
+                for j=1:lf
+                    if obj.EMod2.Apex(i,j) > (nanmedian(obj.EMod2.Apex(i,:))+2.5*iqr(obj.EMod2.Apex(i,:))) || ...
+                            obj.EMod2.Apex(i,j) < (nanmedian(obj.EMod2.Apex(i,:))-2.5*iqr(obj.EMod2.Apex(i,:))) || ...
+                            obj.FM{i}.ExclMask(obj.FM{i}.List2Map(obj.FM{i}.RectApexIndex(1),1),obj.FM{i}.List2Map(obj.FM{i}.RectApexIndex(1),2)) == 0
+                        obj.EMod2.Apex(i,j) = NaN;
+                    elseif obj.EMod2.Apex(i,j) < 0
+                        obj.EMod2.Apex(i,j) = NaN;
+                    end
+                end
             end
             
+            obj.EMod1.Mean = nanmean(obj.EMod1.Apex,2);
+            obj.EMod1.STD = nanstd(obj.EMod1.Apex,[],2);
+            
+            obj.EMod2.Mean = nanmean(obj.EMod2.Apex,2);
+            obj.EMod2.STD = nanstd(obj.EMod2.Apex,[],2);
            % obj.save_experiment;
             
            % obj.write_to_log_file('','','end')
