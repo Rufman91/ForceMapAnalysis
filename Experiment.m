@@ -902,6 +902,8 @@ classdef Experiment < matlab.mixin.Copyable
             for i=1:NLoop
                  EMods1 = obj.FM{i}.EModMicro1;
                  EMods2 = obj.FM{i}.EModMicro2;
+                 EMods1(:,all(EMods1 == 0))=[];
+                 EMods2(:,all(EMods2 == 0))=[];
                  
                  frequencies = cell2mat(obj.FM{1}.SegFrequency);
                  frequencies = frequencies(frequencies ~= 0);
