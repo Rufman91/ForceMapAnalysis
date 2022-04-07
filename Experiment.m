@@ -1781,21 +1781,21 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
         
         function SMFS_results_structure(obj,ExtVelocityValue,RetVelocityValue,HoldingTimeValue,SubstrateValue,EnvCondValue,ChipCantValue,ChipboxValue,LinkerValue)
             % I all velocities should be selected use input variable: 0
-                       
+
             % Output time and date for the dairy
             datetime('now')
             % Define variables
             IdxArray=[];
-            jj=1;        
+            jj=1;
             DateFormat='yyyy-MM-dd HH-mm-ss-SSS';
             for ii=1:obj.NumForceMaps
-            %% Debugging
-            %for ii=65:117 % for debugging
-                 sprintf('Force map No. %d',ii) % Gives current force map
-            %% Force map selection criteria
-            if ~obj.SMFSFlag.Analysed(ii) || ~obj.SMFSFlag.NumForceCurves(ii)    % Exclude force map if analysis has not been done     
-                continue
-            end  
+                %% Debugging
+                %for ii=65:117 % for debugging
+                sprintf('Force map No. %d',ii) % Gives current force map
+                %% Force map selection criteria
+                if ~obj.SMFSFlag.Analysed(ii) || ~obj.SMFSFlag.NumForceCurves(ii)    % Exclude force map if analysis has not been done
+                    continue
+                end
                 % Parameters
                 if ((round(obj.FM{ii}.ExtendVelocity,8)==ExtVelocityValue || ExtVelocityValue==0) ...
                         && (round(obj.FM{ii}.RetractVelocity,8)==RetVelocityValue || RetVelocityValue==0) ...
@@ -1809,12 +1809,12 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                     IdxArray(jj,1)=ii;
                     % Adjust variable
                     jj=jj+1;
-                end     
+                end
             end
             % If condition to handle an empty index array
             if isempty(IdxArray)
                 return
-            else    
+            else
             end
             % Preallocate
             ConcateArray1=zeros(length(IdxArray)*obj.FM{IdxArray(1)}.NCurves,1);
@@ -1823,7 +1823,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             ConcateArray4=zeros(length(IdxArray)*obj.FM{IdxArray(1)}.NCurves,1);
             ConcateArray5=zeros(length(IdxArray)*obj.FM{IdxArray(1)}.NCurves,1);
             ConcateArray6=zeros(length(IdxArray)*obj.FM{IdxArray(1)}.NCurves,1);
-            ConcateArray7=zeros(length(IdxArray)*obj.FM{IdxArray(1)}.NCurves,1);     
+            ConcateArray7=zeros(length(IdxArray)*obj.FM{IdxArray(1)}.NCurves,1);
             yAdhMaxAppAll=zeros(obj.FM{IdxArray(1)}.NCurves,length(IdxArray));
             FCAnalysedyAdhMaxApp=zeros(1,length(IdxArray));
             yAdhMaxRetAll=zeros(obj.FM{IdxArray(1)}.NCurves,length(IdxArray));
@@ -1838,7 +1838,16 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             FCAnalysedyPullingLength=zeros(1,length(IdxArray));
             ySnapInLengthAll=zeros(obj.FM{IdxArray(1)}.NCurves,length(IdxArray));
             FCAnalysedySnapInLength=zeros(1,length(IdxArray));
-            FCperFM=zeros(length(IdxArray),1);
+            SMFSFlagUncorrupt=zeros(length(IdxArray),1);
+            SMFSFlagSelected=zeros(length(IdxArray),1);
+            SMFSFlagAppMinCrit=zeros(length(IdxArray),1);
+            SMFSFlagRetMinCrit=zeros(length(IdxArray),1);
+            SMFSFlagLengthRequisite=zeros(length(IdxArray),1);
+            SMFSFlagFit=zeros(length(IdxArray),1);
+            SMFSFlagFitLinear=zeros(length(IdxArray),1);
+            SMFSFlagFitSinoidal=zeros(length(IdxArray),1);
+            SMFSFlagSnapIn=zeros(length(IdxArray),1);
+            SMFSFlagPullingLength=zeros(length(IdxArray),1);
             AdhMaxAppMin=zeros(length(IdxArray),1);
             AdhMaxAppMinFc=zeros(length(IdxArray),1);
             AdhMaxAppMax=zeros(length(IdxArray),1);
@@ -1869,11 +1878,11 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             SnapInMaxFc=zeros(length(IdxArray),1);
             % Loop
             for ff=1:length(IdxArray)
-            %% Debugging
-            %for ff=6 % for debugging
-             %sprintf('Index array row No. %d',ff) % Gives current Force curve
+                %% Debugging
+                %for ff=6 % for debugging
+                %sprintf('Index array row No. %d',ff) % Gives current Force curve
                 % Allocate data
-                yAdhMaxApp=obj.FM{IdxArray(ff)}.AdhForceMaxApp;               
+                yAdhMaxApp=obj.FM{IdxArray(ff)}.AdhForceMaxApp;
                 yAdhMaxRet=obj.FM{IdxArray(ff)}.AdhForceMaxRet;
                 yAdhUnbinding=obj.FM{IdxArray(ff)}.AdhForceUnbinding;
                 yAdhEneApp=obj.FM{IdxArray(ff)}.AppAdhEnergy_IdxMethod;
@@ -1891,7 +1900,18 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 FMLinker{ff,1}=obj.FM{IdxArray(ff)}.Linker;
                 FMDate=obj.FM{IdxArray(ff)}.Date;
                 FMTime=obj.FM{IdxArray(ff)}.Time;
-                FCperFM(ff)=nnz(obj.FM{IdxArray(ff)}.SMFSFlag.Selected');   % Gives all force curves used for analysis          
+                TotalNumFc(ff,1)=obj.FM{IdxArray(ff)}.NCurves;
+                % SMFS Flags
+                SMFSFlagUncorrupt(ff,1)=nnz(obj.FM{IdxArray(ff)}.SMFSFlag.Uncorrupt');
+                SMFSFlagSelected(ff,1)=nnz(obj.FM{IdxArray(ff)}.SMFSFlag.Selected');
+                SMFSFlagAppMinCrit(ff,1)=nnz(obj.FM{IdxArray(ff)}.SMFSFlag.AppMinCrit');
+                SMFSFlagRetMinCrit(ff,1)=nnz(obj.FM{IdxArray(ff)}.SMFSFlag.RetMinCrit');
+                SMFSFlagLengthRequisite(ff,1)=nnz(obj.FM{IdxArray(ff)}.SMFSFlag.LengthRequisite');
+                SMFSFlagFit(ff,1)=nnz(obj.FM{IdxArray(ff)}.SMFSFlag.Fit');
+                SMFSFlagFitLinear(ff,1)=nnz(obj.FM{IdxArray(ff)}.SMFSFlag.FitLinear');
+                SMFSFlagFitSinoidal(ff,1)=nnz(obj.FM{IdxArray(ff)}.SMFSFlag.FitSinoidal');
+                SMFSFlagSnapIn(ff,1)=nnz(obj.FM{IdxArray(ff)}.SMFSFlag.SnapIn');
+                SMFSFlagPullingLength(ff,1)=nnz(obj.FM{IdxArray(ff)}.SMFSFlag.PullingLength');
                 %% Concatenate arrays
                 % FCs of each FM in seperate column
                 yAdhMaxAppAll(:,ff)=yAdhMaxApp'.*obj.FM{IdxArray(ff)}.SMFSFlag.Selected';
@@ -1912,8 +1932,8 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 yPullingLengthAll(:,ff)=yPullingLength'.*obj.FM{IdxArray(ff)}.SMFSFlag.Selected';
                 yPullingLengthAll(yPullingLengthAll==0)=nan; % Replace zero entries by nan´s
                 FCAnalysedyPullingLength(1,ff)=nnz(~isnan(yPullingLengthAll(:,ff)));
-                ySnapInLengthAll(:,ff)=ySnapInLength'.*obj.FM{IdxArray(ff)}.SMFSFlag.Selected';  
-                ySnapInLengthAll(ySnapInLengthAll==0)=nan; % Replace zero entries by nan´s  
+                ySnapInLengthAll(:,ff)=ySnapInLength'.*obj.FM{IdxArray(ff)}.SMFSFlag.Selected';
+                ySnapInLengthAll(ySnapInLengthAll==0)=nan; % Replace zero entries by nan´s
                 FCAnalysedySnapInLength(1,ff)=nnz(~isnan(ySnapInLengthAll(:,ff)));
                 % All FCs of all FM in one column
                 if ~isempty(yAdhMaxApp)
@@ -1926,8 +1946,8 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                     ConcateArray1(row_start:row_end,:)=ConcateArray1(row_start:row_end,:).*obj.FM{IdxArray(ff)}.SMFSFlag.Selected'; % Set non-selected force curves from the concatenated arrays to zero
                     ConcateArray1(ConcateArray1==0)=nan; % Replace zero entries by nan´s
                     % Allocate parameters
-                    FMIDArray(row_start:row_end,:)={FMID}; % Allocate the FM ID to each row 
-                    FMIndexArray(row_start:row_end,:)=IdxArray(ff);  
+                    FMIDArray(row_start:row_end,:)={FMID}; % Allocate the FM ID to each row
+                    FMIndexArray(row_start:row_end,:)=IdxArray(ff);
                     FMExtVelocityArray(row_start:row_end,:)=FMExtVelocity(ff,1);
                     FMRetVelocityArray(row_start:row_end,:)=FMRetVelocity(ff,1);
                     FMHoldingTimeArray(row_start:row_end,:)=FMHoldingTime(ff,1);
@@ -1936,11 +1956,11 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                     FMChipCantArray(row_start:row_end,:)=FMChipCant(ff,1);
                     FMChipboxArray(row_start:row_end,:)=FMChipbox(ff,1);
                     FMLinkerArray(row_start:row_end,:)=FMLinker(ff,1);
-                    DateTimeStr=[FMDate,' ',FMTime];                    
+                    DateTimeStr=[FMDate,' ',FMTime];
                     FMDateTimeArray(row_start:row_end,:)=datetime(DateTimeStr,'InputFormat',DateFormat,'Format',DateFormat);
                     FMDateTimeNumberArray(row_start:row_end,:)=datenum(datetime(DateTimeStr,'InputFormat',DateFormat,'Format',DateFormat));
-                else                   
-                end                
+                else
+                end
                 if ~isempty(yAdhMaxRet)
                     % Determine the number of rows per force map
                     ArrayLength=length(yAdhMaxRet); % Define the length of the array
@@ -1950,7 +1970,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                     ConcateArray2(row_start:row_end,:)=yAdhMaxRet'; % Append the new data into the concatenated vector
                     ConcateArray2(row_start:row_end,:)=ConcateArray2(row_start:row_end,:).*obj.FM{IdxArray(ff)}.SMFSFlag.Selected'; % Set non-selected force curves from the concatenated arrays to zero
                     ConcateArray2(ConcateArray2==0)=nan; % Replace zero entries by nan´s
-                else                  
+                else
                 end
                 if ~isempty(yAdhUnbinding)
                     % Determine the number of rows per force map
@@ -1961,7 +1981,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                     ConcateArray3(row_start:row_end,:)=yAdhUnbinding'; % Append the new data into the concatenated vector
                     ConcateArray3(row_start:row_end,:)=ConcateArray3(row_start:row_end,:).*obj.FM{IdxArray(ff)}.SMFSFlag.Selected'; % Set non-selected force curves from the concatenated arrays to zero
                     ConcateArray3(ConcateArray3==0)=nan; % Replace zero entries by nan´s
-                else                  
+                else
                 end
                 if ~isempty(yAdhEneApp)
                     % Determine the number of rows per force map
@@ -1972,7 +1992,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                     ConcateArray4(row_start:row_end,:)=yAdhEneApp'; % Append the new data into the concatenated vector
                     ConcateArray4(row_start:row_end,:)=ConcateArray4(row_start:row_end,:).*obj.FM{IdxArray(ff)}.SMFSFlag.Selected'; % Set non-selected force curves from the concatenated arrays to zero
                     ConcateArray4(ConcateArray4==0)=nan; % Replace zero entries by nan´s
-                else                  
+                else
                 end
                 if ~isempty(yAdhEneRet)
                     % Determine the number of rows per force map
@@ -1983,7 +2003,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                     ConcateArray5(row_start:row_end,:)=yAdhEneRet'; % Append the new data into the concatenated vector
                     ConcateArray5(row_start:row_end,:)=ConcateArray5(row_start:row_end,:).*obj.FM{IdxArray(ff)}.SMFSFlag.Selected'; % Set non-selected force curves from the concatenated arrays to zero
                     ConcateArray5(ConcateArray5==0)=nan; % Replace zero entries by nan´s
-                else                  
+                else
                 end
                 if ~isempty(yPullingLength)
                     % Determine the number of rows per force map
@@ -1994,7 +2014,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                     ConcateArray6(row_start:row_end,:)=yPullingLength'; % Append the new data into the concatenated vector
                     ConcateArray6(row_start:row_end,:)=ConcateArray6(row_start:row_end,:).*obj.FM{IdxArray(ff)}.SMFSFlag.Selected'; % Set non-selected force curves from the concatenated arrays to zero
                     ConcateArray6(ConcateArray6==0)=nan; % Replace zero entries by nan´s
-                else                  
+                else
                 end
                 if ~isempty(ySnapInLength)
                     % Determine the number of rows per force map
@@ -2005,85 +2025,85 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                     ConcateArray7(row_start:row_end,:)=ySnapInLength'; % Append the new data into the concatenated vector
                     ConcateArray7(row_start:row_end,:)=ConcateArray7(row_start:row_end,:).*obj.FM{IdxArray(ff)}.SMFSFlag.Selected'; % Set non-selected force curves from the concatenated arrays to zero
                     ConcateArray7(ConcateArray7==0)=nan; % Replace zero entries by nan´s
-                else                  
-                end  
+                else
+                end
                 % Min max values and location
-            [AdhMaxAppMin(ff,1),AdhMaxAppMinFc(ff,1)]=min(ConcateArray1,[],'omitnan');
-            [AdhMaxAppMax(ff,1),AdhMaxAppMaxFc(ff,1)]=max(ConcateArray1,[],'omitnan');
-            
-            [AdhMaxRetMin(ff,1),AdhMaxRetMinFc(ff,1)]=min(ConcateArray7,[],'omitnan');
-            [AdhMaxRetMax(ff,1),AdhMaxRetMaxFc(ff,1)]=max(ConcateArray7,[],'omitnan');
-            
-            [AdhMaxRetUnbindingMin(ff,1),AdhMaxRetUnbindingMinFc(ff,1)]=min(ConcateArray7,[],'omitnan');
-            [AdhMaxRetUnbindingMax(ff,1),AdhMaxRetUnbindingMaxFc(ff,1)]=max(ConcateArray7,[],'omitnan');
-            
-            [AdhEneAppMin(ff,1),AdhEneAppMinFc(ff,1)]=min(ConcateArray7,[],'omitnan');
-            [AdhEneAppMax(ff,1),AdhEneAppMaxFc(ff,1)]=max(ConcateArray7,[],'omitnan');
-            
-            [AdhEneRetMin(ff,1),AdhEneRetMinFc(ff,1)]=min(ConcateArray7,[],'omitnan');
-            [AdhEneRetMax(ff,1),AdhEneRetMaxFc(ff,1)]=max(ConcateArray7,[],'omitnan');
-            
-            [PullLengthMin(ff,1),PullLengthMinFc(ff,1)]=min(ConcateArray6,[],'omitnan');
-            [PullLengthMax(ff,1),PullLengthMaxFc(ff,1)]=max(ConcateArray6,[],'omitnan');
-            [SnapInMin(ff,1),SnapInMinFc(ff,1)]=min(ConcateArray7,[],'omitnan');
-            [SnapInMax(ff,1),SnapInMaxFc(ff,1)]=max(ConcateArray7,[],'omitnan');
+                [AdhMaxAppMin(ff,1),AdhMaxAppMinFc(ff,1)]=min(ConcateArray1,[],'omitnan');
+                [AdhMaxAppMax(ff,1),AdhMaxAppMaxFc(ff,1)]=max(ConcateArray1,[],'omitnan');
+
+                [AdhMaxRetMin(ff,1),AdhMaxRetMinFc(ff,1)]=min(ConcateArray7,[],'omitnan');
+                [AdhMaxRetMax(ff,1),AdhMaxRetMaxFc(ff,1)]=max(ConcateArray7,[],'omitnan');
+
+                [AdhMaxRetUnbindingMin(ff,1),AdhMaxRetUnbindingMinFc(ff,1)]=min(ConcateArray7,[],'omitnan');
+                [AdhMaxRetUnbindingMax(ff,1),AdhMaxRetUnbindingMaxFc(ff,1)]=max(ConcateArray7,[],'omitnan');
+
+                [AdhEneAppMin(ff,1),AdhEneAppMinFc(ff,1)]=min(ConcateArray7,[],'omitnan');
+                [AdhEneAppMax(ff,1),AdhEneAppMaxFc(ff,1)]=max(ConcateArray7,[],'omitnan');
+
+                [AdhEneRetMin(ff,1),AdhEneRetMinFc(ff,1)]=min(ConcateArray7,[],'omitnan');
+                [AdhEneRetMax(ff,1),AdhEneRetMaxFc(ff,1)]=max(ConcateArray7,[],'omitnan');
+
+                [PullLengthMin(ff,1),PullLengthMinFc(ff,1)]=min(ConcateArray6,[],'omitnan');
+                [PullLengthMax(ff,1),PullLengthMaxFc(ff,1)]=max(ConcateArray6,[],'omitnan');
+                [SnapInMin(ff,1),SnapInMinFc(ff,1)]=min(ConcateArray7,[],'omitnan');
+                [SnapInMax(ff,1),SnapInMaxFc(ff,1)]=max(ConcateArray7,[],'omitnan');
             end
             % Statistics
-                AdhMaxAppMean=mean(ConcateArray1,'omitnan');
-                AdhMaxAppStd=std(ConcateArray1,'omitnan');
-                [AdhMaxAppMin,AdhMaxAppMinIdx]=min(AdhMaxAppMin);
-                [AdhMaxAppMax,AdhMaxAppMaxIdx]=max(AdhMaxAppMax);
-                AdhMaxAppMinFM=IdxArray(AdhMaxAppMinIdx);
-                AdhMaxAppMaxFM=IdxArray(AdhMaxAppMaxIdx);
-                AdhMaxAppMinFc=AdhMaxAppMinFc(AdhMaxAppMinIdx,1)-(AdhMaxAppMinFM-1)*100;
-                AdhMaxAppMaxFc=AdhMaxAppMaxFc(AdhMaxAppMaxIdx,1)-(AdhMaxAppMaxFM-1)*100;
-                AdhMaxRetMean=mean(ConcateArray2,'omitnan');
-                AdhMaxRetStd=std(ConcateArray2,'omitnan');
-                [AdhMaxRetMin,AdhMaxRetMinIdx]=min(AdhMaxRetMin);
-                [AdhMaxRetMax,AdhMaxRetMaxIdx]=max(AdhMaxRetMax);
-                AdhMaxRetMinFM=IdxArray(AdhMaxRetMinIdx);
-                AdhMaxRetMaxFM=IdxArray(AdhMaxRetMaxIdx);
-                AdhMaxRetMinFc=AdhMaxRetMinFc(AdhMaxRetMinIdx,1)-(AdhMaxRetMinFM-1)*100;
-                AdhMaxRetMaxFc=AdhMaxRetMaxFc(AdhMaxRetMaxIdx,1)-(AdhMaxRetMaxFM-1)*100;               
-                AdhMaxRetUnbindingMean=mean(ConcateArray3,'omitnan');
-                AdhMaxRetUnbindingStd=std(ConcateArray3,'omitnan');
-                [AdhMaxRetUnbindingMin,AdhMaxRetUnbindingMinIdx]=min(AdhMaxRetUnbindingMin);
-                [AdhMaxRetUnbindingMax,AdhMaxRetUnbindingMaxIdx]=max(AdhMaxRetUnbindingMax);
-                AdhMaxRetUnbindingMinFM=IdxArray(AdhMaxRetUnbindingMinIdx);
-                AdhMaxRetUnbindingMaxFM=IdxArray(AdhMaxRetUnbindingMaxIdx);
-                AdhMaxRetUnbindingMinFc=AdhMaxRetUnbindingMinFc(AdhMaxRetUnbindingMinIdx,1)-(AdhMaxRetUnbindingMinFM-1)*100;
-                AdhMaxRetUnbindingMaxFc=AdhMaxRetUnbindingMaxFc(AdhMaxRetUnbindingMaxIdx,1)-(AdhMaxRetUnbindingMaxFM-1)*100;
-                AdhEneAppMean=mean(ConcateArray4,'omitnan');
-                AdhEneAppStd=std(ConcateArray4,'omitnan');
-                [AdhEneAppMin,AdhEneAppMinIdx]=min(AdhEneAppMin);
-                [AdhEneAppMax,AdhEneAppMaxIdx]=max(AdhEneAppMax);
-                AdhEneAppMinFM=IdxArray(AdhEneAppMinIdx);
-                AdhEneAppMaxFM=IdxArray(AdhEneAppMaxIdx);
-                AdhEneAppMinFc=AdhEneAppMinFc(AdhEneAppMinIdx,1)-(AdhEneAppMinFM-1)*100;
-                AdhEneAppMaxFc=AdhEneAppMaxFc(AdhEneAppMaxIdx,1)-(AdhEneAppMaxFM-1)*100;
-                AdhEneRetMean=mean(ConcateArray5,'omitnan');
-                AdhEneRetStd=std(ConcateArray5,'omitnan');
-                [AdhEneRetMin,AdhEneRetMinIdx]=min(AdhEneRetMin);
-                [AdhEneRetMax,AdhEneRetMaxIdx]=max(AdhEneRetMax);
-                AdhEneRetMinFM=IdxArray(AdhEneRetMinIdx);
-                AdhEneRetMaxFM=IdxArray(AdhEneRetMaxIdx);
-                AdhEneRetMinFc=AdhEneRetMinFc(AdhEneRetMinIdx,1)-(AdhEneRetMinFM-1)*100;
-                AdhEneRetMaxFc=AdhEneRetMaxFc(AdhEneRetMaxIdx,1)-(AdhEneRetMaxFM-1)*100;              
-                PullLengthMedian=median(ConcateArray6,'omitnan');
-                [PullLengthMin,PullLengthMinIdx]=min(PullLengthMin);
-                [PullLengthMax,PullLengthMaxIdx]=max(PullLengthMax);
-                PullLengthMinFM=IdxArray(PullLengthMinIdx);
-                PullLengthMaxFM=IdxArray(PullLengthMaxIdx);
-                PullLengthMinFc=PullLengthMinFc(PullLengthMinIdx,1)-(PullLengthMinFM-1)*100;
-                PullLengthMaxFc=PullLengthMaxFc(PullLengthMaxIdx,1)-(PullLengthMaxFM-1)*100;                
-                SnapInMedian=median(ConcateArray7,'omitnan');
-                [SnapInMin,SnapInMinIdx]=min(SnapInMin);
-                [SnapInMax,SnapInMaxIdx]=max(SnapInMax);
-                SnapInMinFM=IdxArray(SnapInMinIdx);
-                SnapInMaxFM=IdxArray(SnapInMaxIdx);
-                SnapInMinFc=SnapInMinFc(PullLengthMinIdx,1)-(SnapInMinFM-1)*100;
-                SnapInMaxFc=SnapInMaxFc(PullLengthMaxIdx,1)-(SnapInMaxFM-1)*100;            
-            %% SMFS Results structure 
+            AdhMaxAppMean=mean(ConcateArray1,'omitnan');
+            AdhMaxAppStd=std(ConcateArray1,'omitnan');
+            [AdhMaxAppMin,AdhMaxAppMinIdx]=min(AdhMaxAppMin);
+            [AdhMaxAppMax,AdhMaxAppMaxIdx]=max(AdhMaxAppMax);
+            AdhMaxAppMinFM=IdxArray(AdhMaxAppMinIdx);
+            AdhMaxAppMaxFM=IdxArray(AdhMaxAppMaxIdx);
+            AdhMaxAppMinFc=AdhMaxAppMinFc(AdhMaxAppMinIdx,1)-(AdhMaxAppMinFM-1)*100;
+            AdhMaxAppMaxFc=AdhMaxAppMaxFc(AdhMaxAppMaxIdx,1)-(AdhMaxAppMaxFM-1)*100;
+            AdhMaxRetMean=mean(ConcateArray2,'omitnan');
+            AdhMaxRetStd=std(ConcateArray2,'omitnan');
+            [AdhMaxRetMin,AdhMaxRetMinIdx]=min(AdhMaxRetMin);
+            [AdhMaxRetMax,AdhMaxRetMaxIdx]=max(AdhMaxRetMax);
+            AdhMaxRetMinFM=IdxArray(AdhMaxRetMinIdx);
+            AdhMaxRetMaxFM=IdxArray(AdhMaxRetMaxIdx);
+            AdhMaxRetMinFc=AdhMaxRetMinFc(AdhMaxRetMinIdx,1)-(AdhMaxRetMinFM-1)*100;
+            AdhMaxRetMaxFc=AdhMaxRetMaxFc(AdhMaxRetMaxIdx,1)-(AdhMaxRetMaxFM-1)*100;
+            AdhMaxRetUnbindingMean=mean(ConcateArray3,'omitnan');
+            AdhMaxRetUnbindingStd=std(ConcateArray3,'omitnan');
+            [AdhMaxRetUnbindingMin,AdhMaxRetUnbindingMinIdx]=min(AdhMaxRetUnbindingMin);
+            [AdhMaxRetUnbindingMax,AdhMaxRetUnbindingMaxIdx]=max(AdhMaxRetUnbindingMax);
+            AdhMaxRetUnbindingMinFM=IdxArray(AdhMaxRetUnbindingMinIdx);
+            AdhMaxRetUnbindingMaxFM=IdxArray(AdhMaxRetUnbindingMaxIdx);
+            AdhMaxRetUnbindingMinFc=AdhMaxRetUnbindingMinFc(AdhMaxRetUnbindingMinIdx,1)-(AdhMaxRetUnbindingMinFM-1)*100;
+            AdhMaxRetUnbindingMaxFc=AdhMaxRetUnbindingMaxFc(AdhMaxRetUnbindingMaxIdx,1)-(AdhMaxRetUnbindingMaxFM-1)*100;
+            AdhEneAppMean=mean(ConcateArray4,'omitnan');
+            AdhEneAppStd=std(ConcateArray4,'omitnan');
+            [AdhEneAppMin,AdhEneAppMinIdx]=min(AdhEneAppMin);
+            [AdhEneAppMax,AdhEneAppMaxIdx]=max(AdhEneAppMax);
+            AdhEneAppMinFM=IdxArray(AdhEneAppMinIdx);
+            AdhEneAppMaxFM=IdxArray(AdhEneAppMaxIdx);
+            AdhEneAppMinFc=AdhEneAppMinFc(AdhEneAppMinIdx,1)-(AdhEneAppMinFM-1)*100;
+            AdhEneAppMaxFc=AdhEneAppMaxFc(AdhEneAppMaxIdx,1)-(AdhEneAppMaxFM-1)*100;
+            AdhEneRetMean=mean(ConcateArray5,'omitnan');
+            AdhEneRetStd=std(ConcateArray5,'omitnan');
+            [AdhEneRetMin,AdhEneRetMinIdx]=min(AdhEneRetMin);
+            [AdhEneRetMax,AdhEneRetMaxIdx]=max(AdhEneRetMax);
+            AdhEneRetMinFM=IdxArray(AdhEneRetMinIdx);
+            AdhEneRetMaxFM=IdxArray(AdhEneRetMaxIdx);
+            AdhEneRetMinFc=AdhEneRetMinFc(AdhEneRetMinIdx,1)-(AdhEneRetMinFM-1)*100;
+            AdhEneRetMaxFc=AdhEneRetMaxFc(AdhEneRetMaxIdx,1)-(AdhEneRetMaxFM-1)*100;
+            PullLengthMedian=median(ConcateArray6,'omitnan');
+            [PullLengthMin,PullLengthMinIdx]=min(PullLengthMin);
+            [PullLengthMax,PullLengthMaxIdx]=max(PullLengthMax);
+            PullLengthMinFM=IdxArray(PullLengthMinIdx);
+            PullLengthMaxFM=IdxArray(PullLengthMaxIdx);
+            PullLengthMinFc=PullLengthMinFc(PullLengthMinIdx,1)-(PullLengthMinFM-1)*100;
+            PullLengthMaxFc=PullLengthMaxFc(PullLengthMaxIdx,1)-(PullLengthMaxFM-1)*100;
+            SnapInMedian=median(ConcateArray7,'omitnan');
+            [SnapInMin,SnapInMinIdx]=min(SnapInMin);
+            [SnapInMax,SnapInMaxIdx]=max(SnapInMax);
+            SnapInMinFM=IdxArray(SnapInMinIdx);
+            SnapInMaxFM=IdxArray(SnapInMaxIdx);
+            SnapInMinFc=SnapInMinFc(PullLengthMinIdx,1)-(SnapInMinFM-1)*100;
+            SnapInMaxFc=SnapInMaxFc(PullLengthMaxIdx,1)-(SnapInMaxFM-1)*100;
+            %% SMFS Results structure
             % Check entry
             if ~isempty(obj.SMFSResults)
                 jj=length(obj.SMFSResults)+1;
@@ -2091,13 +2111,13 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 jj=1;
             end
             % Debugging
-            % jj=1                         
+            % jj=1
             % Allocate data
             obj.SMFSResults{jj,1}.Concatenate(1).FMID=FMIDArray;
             obj.SMFSResults{jj,1}.Concatenate(1).FMIndex=FMIndexArray;
             obj.SMFSResults{jj,1}.Concatenate(1).FMExtVelocity=FMExtVelocityArray;
             obj.SMFSResults{jj,1}.Concatenate(1).FMRetVelocity=FMRetVelocityArray;
-            obj.SMFSResults{jj,1}.Concatenate(1).FMHoldingTime=FMHoldingTimeArray;                   
+            obj.SMFSResults{jj,1}.Concatenate(1).FMHoldingTime=FMHoldingTimeArray;
             obj.SMFSResults{jj,1}.Concatenate(1).FMSubstrate=FMSubstrateArray;
             obj.SMFSResults{jj,1}.Concatenate(1).FMEnvCond=FMEnvCondArray;
             obj.SMFSResults{jj,1}.Concatenate(1).FMChipCant=FMChipCantArray;
@@ -2105,6 +2125,26 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             obj.SMFSResults{jj,1}.Concatenate(1).FMLinker=FMLinkerArray;
             obj.SMFSResults{jj,1}.Concatenate(1).FMDateTime=FMDateTimeArray;
             obj.SMFSResults{jj,1}.Concatenate(1).FMDateTimeNumber=FMDateTimeNumberArray;
+            obj.SMFSResults{jj,1}.Flags(1).SMFSFlagUncorrupt=sum(SMFSFlagUncorrupt);
+            obj.SMFSResults{jj,1}.Flags(1).UncorruptPct=(sum(SMFSFlagUncorrupt)/sum(TotalNumFc))*100;
+            obj.SMFSResults{jj,1}.Flags(1).SMFSFlagSelected=sum(SMFSFlagSelected);
+            obj.SMFSResults{jj,1}.Flags(1).SelectedPct=(sum(SMFSFlagSelected)/sum(TotalNumFc))*100;
+            obj.SMFSResults{jj,1}.Flags(1).SMFSFlagAppMinCrit=sum(SMFSFlagAppMinCrit);
+            obj.SMFSResults{jj,1}.Flags(1).AppMinCritPct=(sum(SMFSFlagAppMinCrit)/sum(TotalNumFc))*100;
+            obj.SMFSResults{jj,1}.Flags(1).SMFSFlagRetMinCrit=sum(SMFSFlagRetMinCrit);
+            obj.SMFSResults{jj,1}.Flags(1).RetMinCritPct=(sum(SMFSFlagRetMinCrit)/sum(TotalNumFc))*100;
+            obj.SMFSResults{jj,1}.Flags(1).SMFSFlagLengthRequisite=sum(SMFSFlagLengthRequisite);
+            obj.SMFSResults{jj,1}.Flags(1).LengthRequisitePct=(sum(SMFSFlagLengthRequisite)/sum(TotalNumFc))*100;
+            obj.SMFSResults{jj,1}.Flags(1).SMFSFlagFit=sum(SMFSFlagFit);
+            obj.SMFSResults{jj,1}.Flags(1).FitPct=(sum(SMFSFlagFit)/sum(TotalNumFc))*100;
+            obj.SMFSResults{jj,1}.Flags(1).SMFSFlagFitLinear=sum(SMFSFlagFitLinear);
+            obj.SMFSResults{jj,1}.Flags(1).FitLinearPct=(sum(SMFSFlagFitLinear)/sum(TotalNumFc))*100;
+            obj.SMFSResults{jj,1}.Flags(1).SMFSFlagFitSinoidal=sum(SMFSFlagFitSinoidal);
+            obj.SMFSResults{jj,1}.Flags(1).FitSinoidalPct=(sum(SMFSFlagFitSinoidal)/sum(TotalNumFc))*100;
+            obj.SMFSResults{jj,1}.Flags(1).SMFSFlagSnapIn=sum(SMFSFlagSnapIn);
+            obj.SMFSResults{jj,1}.Flags(1).SnapInPct=(sum(SMFSFlagSnapIn)/sum(TotalNumFc))*100;
+            obj.SMFSResults{jj,1}.Flags(1).SMFSFlagPullingLength=sum(SMFSFlagPullingLength);
+            obj.SMFSResults{jj,1}.Flags(1).PullingLengthPct=(sum(SMFSFlagPullingLength)/sum(TotalNumFc))*100;
             obj.SMFSResults{jj,1}.Data(1).FMIndex=IdxArray;
             obj.SMFSResults{jj,1}.Data(1).FMExtVelocity=FMExtVelocity;
             obj.SMFSResults{jj,1}.Data(1).FMRetVelocity=FMRetVelocity;
@@ -2113,21 +2153,28 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             obj.SMFSResults{jj,1}.Data(1).FMChipCant=FMChipCant;
             obj.SMFSResults{jj,1}.Data(1).FMChipbox=FMChipbox;
             obj.SMFSResults{jj,1}.Data(1).FMLinker=FMLinker;
-            obj.SMFSResults{jj,1}.Data(1).SumNumFcAnalysed=sum(FCperFM);
+            obj.SMFSResults{jj,1}.Data(1).TotalNumFc=sum(TotalNumFc);
             obj.SMFSResults{jj,1}.Data(1).SumNumFcAnalysedAdhMaxApp=nnz(~isnan(ConcateArray1));
+            obj.SMFSResults{jj,1}.Data(1).SumNumFcAnalysedAdhMaxAppPct=(nnz(~isnan(ConcateArray1))/sum(TotalNumFc))*100;
             obj.SMFSResults{jj,1}.Data(1).SumNumFcAnalysedAdhMaxRet=nnz(~isnan(ConcateArray2));
+            obj.SMFSResults{jj,1}.Data(1).SumNumFcAnalysedAdhMaxRetPct=(nnz(~isnan(ConcateArray2))/sum(TotalNumFc))*100;
             obj.SMFSResults{jj,1}.Data(1).SumNumFcAnalysedAdhUnbinding=nnz(~isnan(ConcateArray3));
+            obj.SMFSResults{jj,1}.Data(1).SumNumFcAnalysedAdhUnbindingPct=(nnz(~isnan(ConcateArray3))/sum(TotalNumFc))*100;
             obj.SMFSResults{jj,1}.Data(1).SumNumFcAnalysedAdhEneApp=nnz(~isnan(ConcateArray4));
+            obj.SMFSResults{jj,1}.Data(1).SumNumFcAnalysedAdhEneAppPct=(nnz(~isnan(ConcateArray4))/sum(TotalNumFc))*100;
             obj.SMFSResults{jj,1}.Data(1).SumNumFcAnalysedAdhEneRet=nnz(~isnan(ConcateArray5));
+            obj.SMFSResults{jj,1}.Data(1).SumNumFcAnalysedAdhEneRetPct=(nnz(~isnan(ConcateArray5))/sum(TotalNumFc))*100;
             obj.SMFSResults{jj,1}.Data(1).SumNumFcAnalysedyPullingLength=nnz(~isnan(ConcateArray6));
-            obj.SMFSResults{jj,1}.Data(1).SumNumFcAnalysedySnapInLength=nnz(~isnan(ConcateArray7));             
+            obj.SMFSResults{jj,1}.Data(1).SumNumFcAnalysedPullingLengthPct=(nnz(~isnan(ConcateArray6))/sum(TotalNumFc))*100;
+            obj.SMFSResults{jj,1}.Data(1).SumNumFcAnalysedySnapInLength=nnz(~isnan(ConcateArray7));
+            obj.SMFSResults{jj,1}.Data(1).SumNumFcAnalysedySnapInLengthPct=(nnz(~isnan(ConcateArray7))/sum(TotalNumFc))*100;
             obj.SMFSResults{jj,1}.Data(1).NumFcAnalysedAdhMaxApp=FCAnalysedyAdhMaxApp;
             obj.SMFSResults{jj,1}.Data(1).NumFcAnalysedAdhMaxRet=FCAnalysedyAdhMaxRet;
             obj.SMFSResults{jj,1}.Data(1).NumFcAnalysedAdhUnbinding=FCAnalysedyAdhUnbind;
             obj.SMFSResults{jj,1}.Data(1).NumFcAnalysedAdhEneApp=FCAnalysedyAdhEneApp;
             obj.SMFSResults{jj,1}.Data(1).NumFcAnalysedAdhEneRet=FCAnalysedyAdhEneRet;
             obj.SMFSResults{jj,1}.Data(1).NumFcAnalysedyPullingLength=FCAnalysedyPullingLength;
-            obj.SMFSResults{jj,1}.Data(1).NumFcAnalysedySnapInLength=FCAnalysedySnapInLength;             
+            obj.SMFSResults{jj,1}.Data(1).NumFcAnalysedySnapInLength=FCAnalysedySnapInLength;
             obj.SMFSResults{jj,1}.Data(1).AdhMaxApp=yAdhMaxAppAll;
             obj.SMFSResults{jj,1}.Data(1).AdhMaxRet=yAdhMaxRetAll;
             obj.SMFSResults{jj,1}.Data(1).AdhUnbinding=yAdhUnbindingAll;
@@ -2149,7 +2196,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             obj.SMFSResults{jj,1}.Parameters(1).Medium=EnvCondValue;
             obj.SMFSResults{jj,1}.Parameters(1).ChipCantilever=ChipCantValue;
             obj.SMFSResults{jj,1}.Parameters(1).Chipbox=ChipboxValue;
-            obj.SMFSResults{jj,1}.Parameters(1).Linker=LinkerValue;                          
+            obj.SMFSResults{jj,1}.Parameters(1).Linker=LinkerValue;
             obj.SMFSResults{jj,1}.Results(1).AdhMaxAppMean=AdhMaxAppMean;
             obj.SMFSResults{jj,1}.Results(1).AdhMaxAppStd=AdhMaxAppStd;
             obj.SMFSResults{jj,1}.Results(1).AdhMaxAppMin=AdhMaxAppMin;
@@ -2157,7 +2204,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             obj.SMFSResults{jj,1}.Results(1).AdhMaxAppMinFM=AdhMaxAppMinFM;
             obj.SMFSResults{jj,1}.Results(1).AdhMaxAppMaxFM=AdhMaxAppMaxFM;
             obj.SMFSResults{jj,1}.Results(1).AdhMaxAppMinFc=AdhMaxAppMinFc;
-            obj.SMFSResults{jj,1}.Results(1).AdhMaxAppMaxFc=AdhMaxAppMaxFc;                
+            obj.SMFSResults{jj,1}.Results(1).AdhMaxAppMaxFc=AdhMaxAppMaxFc;
             obj.SMFSResults{jj,1}.Results(1).AdhMaxRetMean=AdhMaxRetMean;
             obj.SMFSResults{jj,1}.Results(1).AdhMaxRetStd=AdhMaxRetStd;
             obj.SMFSResults{jj,1}.Results(1).AdhMaxRetMin=AdhMaxRetMin;
@@ -2196,19 +2243,19 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             obj.SMFSResults{jj,1}.Results(1).PullLengthMinFc=PullLengthMinFc;
             obj.SMFSResults{jj,1}.Results(1).PullLengthMax=PullLengthMax;
             obj.SMFSResults{jj,1}.Results(1).PullLengthMaxFM=PullLengthMaxFM;
-            obj.SMFSResults{jj,1}.Results(1).PullLengthMaxFc=PullLengthMaxFc;            
+            obj.SMFSResults{jj,1}.Results(1).PullLengthMaxFc=PullLengthMaxFc;
             obj.SMFSResults{jj,1}.Results(1).SnapInMedian=SnapInMedian;
             obj.SMFSResults{jj,1}.Results(1).SnapInMin=SnapInMin;
             obj.SMFSResults{jj,1}.Results(1).SnapInMinFM=SnapInMinFM;
-            obj.SMFSResults{jj,1}.Results(1).SnapInMinFc=SnapInMinFc;            
+            obj.SMFSResults{jj,1}.Results(1).SnapInMinFc=SnapInMinFc;
             obj.SMFSResults{jj,1}.Results(1).SnapInMax=SnapInMax;
-            obj.SMFSResults{jj,1}.Results(1).SnapInMaxFM=SnapInMaxFM; 
-            obj.SMFSResults{jj,1}.Results(1).SnapInMaxFc=SnapInMaxFc;   
-                       
+            obj.SMFSResults{jj,1}.Results(1).SnapInMaxFM=SnapInMaxFM;
+            obj.SMFSResults{jj,1}.Results(1).SnapInMaxFc=SnapInMaxFc;
+
             obj.SMFSResultsParameters(jj,:)={jj,ExtVelocityValue,RetVelocityValue,HoldingTimeValue,SubstrateValue,EnvCondValue,ChipCantValue,ChipboxValue,LinkerValue};
 
         end
-                
+
         function SMFS_results_gramm_boxplot(obj,ii)
             % x-axis: Holding Time
             % Column: Retraction velocity
