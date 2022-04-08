@@ -2679,12 +2679,12 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             
             h.ColorMode = set_default_color_options();
             
-            set(gcf,'SizeChangedFcn',@(a,b)update_interface)
-            
             h.Fig = figure('Name',sprintf('%s',obj.ExperimentName),...
                 'Units','pixels',...
-                'Position',[200 200 1024 512],...
+                'Position',[200 100 1024 512],...
                 'Color',h.ColorMode(obj.ShowImageSettings.ColorIndex).Background);
+            
+            set(gcf,'SizeChangedFcn',@(a,b)update_interface)
             
             h.Backdrop = uicontrol('style','text',...
                 'String','',...
@@ -6872,7 +6872,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             % a table with numbered map-names in background
             Names = obj.ForceMapNames;
             Fig = figure('Name','Names and corresponding numbers of your Force Maps','Units', 'pixels', 'Position',[100 200 400 800],'Color','w');
-            T = table(Names');
+            T = table(reshape(Names,[],1));
             uitable('Data',T{:,:},'Units', 'Normalized', 'Position',[0, 0, 1, 1]);
             
             for i=1:NGroups
