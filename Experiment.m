@@ -1919,7 +1919,7 @@ classdef Experiment < matlab.mixin.Copyable
             hold on
 
             subplot(2,2,1)
-            boxplot(obj.Dphi.Apex,obj.frequencies)
+            boxchart(obj.Dphi.Apex,obj.frequencies)
             hold on
             plot(obj.Dphi.Mean,'dm')
             title('Phaseshift of all fibrils','FontSize', 18)
@@ -1931,7 +1931,7 @@ classdef Experiment < matlab.mixin.Copyable
             grid minor
 
             subplot(2,2,2)
-            boxplot(obj.LT.Apex,obj.frequencies)
+            boxchart(obj.LT.Apex,obj.frequencies)
             hold on
             plot(obj.LT.Mean,'dm')
             title('Loss Tangent of all fibrils','FontSize', 18)
@@ -1943,7 +1943,7 @@ classdef Experiment < matlab.mixin.Copyable
             grid minor
 
             subplot(2,2,3)
-            boxplot(obj.EMod1.Apex*1e-6,obj.frequencies)
+            boxchart(obj.EMod1.Apex*1e-6,obj.frequencies)
             hold on
             plot(obj.EMod1.Mean*1e-6,'dm')
             title('Storage modulus of all fibrils','FontSize', 18)
@@ -1955,7 +1955,7 @@ classdef Experiment < matlab.mixin.Copyable
             grid minor
 
             subplot(2,2,4)
-            boxplot(obj.EMod2.Apex*1e-6,obj.frequencies)
+            boxchart(obj.EMod2.Apex*1e-6,obj.frequencies)
             hold on
             plot(obj.EMod2.Mean*1e-6,'dm')
             title('Loss modulus of all fibrils','FontSize', 18)
