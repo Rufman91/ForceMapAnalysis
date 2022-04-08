@@ -1929,6 +1929,11 @@ classdef Experiment < matlab.mixin.Copyable
             %drawnow
             grid on
             grid minor
+            
+            l1 = plot(nan, nan, 'dm');
+            l1.LineWidth = 2;
+            legend([l1], {'mean'},'Location','southeast','FontSize', 8)
+            
 
             subplot(2,2,2)
             boxplot(obj.LT.Apex,obj.frequencies)
@@ -1941,6 +1946,11 @@ classdef Experiment < matlab.mixin.Copyable
             %drawnow
             grid on
             grid minor
+            
+            l1 = plot(nan, nan, 'dm');
+            l1.LineWidth = 2;
+            legend([l1], {'mean'},'Location','southeast','FontSize', 8)
+            
 
             subplot(2,2,3)
             boxplot(obj.EMod1.Apex*1e-6,obj.frequencies)
@@ -1953,7 +1963,12 @@ classdef Experiment < matlab.mixin.Copyable
             %drawnow
             grid on
             grid minor
+            
+            l1 = plot(nan, nan, 'dm');
+            l1.LineWidth = 2;
+            legend([l1], {'mean'},'Location','southeast','FontSize', 8)
 
+            
             subplot(2,2,4)
             boxplot(obj.EMod2.Apex*1e-6,obj.frequencies)
             hold on
@@ -1968,7 +1983,7 @@ classdef Experiment < matlab.mixin.Copyable
             
             l1 = plot(nan, nan, 'dm');
             l1.LineWidth = 2;
-            legend([l1], {'mean'},'FontSize', 8)
+            legend([l1], {'mean'},'Location','southeast','FontSize', 8)
 
             
         end
