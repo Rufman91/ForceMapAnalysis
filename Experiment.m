@@ -1921,8 +1921,7 @@ classdef Experiment < matlab.mixin.Copyable
             subplot(2,2,1)
             boxplot(obj.Dphi.Apex,obj.frequencies)
             hold on
-            plot(obj.Dphi.Mean,'x')
-            legend(["","mean"])
+            plot(obj.Dphi.Mean,'dm')
             title('Phaseshift of all fibrils','FontSize', 18)
             xlabel('frequency [Hz]','FontSize', 16)
             ylabel('phaseshift [°]','FontSize', 16)
@@ -1934,7 +1933,7 @@ classdef Experiment < matlab.mixin.Copyable
             subplot(2,2,2)
             boxplot(obj.LT.Apex,obj.frequencies)
             hold on
-            plot(obj.LT.Mean,'x')
+            plot(obj.LT.Mean,'dm')
             title('Loss Tangent of all fibrils','FontSize', 18)
             xlabel('frequency [Hz]','FontSize', 16)
             ylabel('losstangent','FontSize', 16)
@@ -1946,7 +1945,7 @@ classdef Experiment < matlab.mixin.Copyable
             subplot(2,2,3)
             boxplot(obj.EMod1.Apex*1e-6,obj.frequencies)
             hold on
-            plot(obj.EMod1.Mean*1e-6,'x')
+            plot(obj.EMod1.Mean*1e-6,'dm')
             title('Storage modulus of all fibrils','FontSize', 18)
             xlabel('frequency [Hz]','FontSize', 16)
             ylabel('elastic modulus [MPa]','FontSize', 16)
@@ -1958,7 +1957,7 @@ classdef Experiment < matlab.mixin.Copyable
             subplot(2,2,4)
             boxplot(obj.EMod2.Apex*1e-6,obj.frequencies)
             hold on
-            plot(obj.EMod2.Mean*1e-6,'x')
+            plot(obj.EMod2.Mean*1e-6,'dm')
             title('Loss modulus of all fibrils','FontSize', 18)
             xlabel('frequency [Hz]','FontSize', 16)
             ylabel('viscous modulus [MPa]','FontSize', 16)
@@ -1966,6 +1965,11 @@ classdef Experiment < matlab.mixin.Copyable
             %drawnow
             grid on
             grid minor
+            
+            l1 = plot(nan, nan, 'dm');
+            l1.LineWidth = 2;
+            legend([l1], {'mean'},'Location', 'southoutside','FontSize', 8)
+
             
         end
         
