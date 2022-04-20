@@ -4843,7 +4843,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             [Ymultiplier,Yunit,~] = AFMImage.parse_unit_scale(1e+9,'nN',1);
             % Force curve variable
             %Fc=100;
-            Fc=1;
+            Fc=100;
             % Define variables for the figure name
             ExtendVelocityConvert=num2str(obj.ExtendVelocity*1e9);
             RetractVelocityConvert=num2str(obj.RetractVelocity*1e9);
@@ -4877,8 +4877,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             % Plot
             hold on
             grid on
-            %    area(xRet(1:obj.PullingLengthIdx(kk)),yRetLim(1:obj.PullingLengthIdx(kk)),'FaceColor',CS8)
-          %  plot(xApp,yApp,'Color',RGB1,'LineWidth',6);
+            area(xRet(1:obj.PullingLengthIdx(Fc)),yRet(1:obj.PullingLengthIdx(Fc)),'FaceColor',CS5)
+            plot(xApp,yApp,'Color',RGB1,'LineWidth',6);
             plot(xRet,yRet,'Color',RGB2,'LineWidth',6);
             %            Polygon1=plot(PolygonShape1);
             %            Polygon1.FaceColor=CS10;
@@ -4916,8 +4916,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             ax.YLimMode='manual';
             %ax.XLim = [XMin XMax];
             % ax.YLim = [YMin YMax];
-            ax.XLim = [-50 200];
-            ax.YLim = [-0.5 0.5];
+            ax.XLim = [-20 500];
+            ax.YLim = [-0.7 0.2];
             %    ax.YLim = [YMin YMax];
             %% Save figures
             %%% Define the name for the figure title

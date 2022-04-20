@@ -2103,6 +2103,114 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             SnapInMaxFM=IdxArray(SnapInMaxIdx);
             SnapInMinFc=SnapInMinFc(PullLengthMinIdx,1)-(SnapInMinFM-1)*100;
             SnapInMaxFc=SnapInMaxFc(PullLengthMaxIdx,1)-(SnapInMaxFM-1)*100;
+            %% Data selection based on input parameters
+            % Determine unique entries
+            ExtVelocityValues=unique(FMExtVelocity)';
+            RetVelocityValues=unique(FMRetVelocity)';
+            HoldingTimeValues=unique(FMHoldingTime)';
+            SubstrateValues=unique(FMSubstrate)';
+            EnvCondValues=unique(FMEnvCond)';
+            ChipCantValues=unique(FMChipCant)';
+            ChipboxValues=unique(FMChipbox)';
+            LinkerValues=unique(FMLinker)';
+            % Preallocate
+            ExtVelocityFMIdx=zeros(length(FMExtVelocity),length(ExtVelocityValues));
+            ExtVelocityConcateIdx=zeros(length(FMIndexArray),length(ExtVelocityValues));
+            RetVelocityFMIdx=zeros(length(FMRetVelocity),length(RetVelocityValues));
+            RetVelocityConcateIdx=zeros(length(FMIndexArray),length(RetVelocityValues));
+            HoldingTimeFMIdx=zeros(length(FMHoldingTime),length(HoldingTimeValues));
+            HoldingTimeConcateIdx=zeros(length(FMIndexArray),length(HoldingTimeValues));
+            SubstrateFMIdx=zeros(length(FMSubstrate),length(SubstrateValues));
+            SubstrateConcateIdx=zeros(length(FMIndexArray),length(SubstrateValues));
+            EnvCondFMIdx=zeros(length(FMEnvCond),length(EnvCondValues));
+            EnvCondConcateIdx=zeros(length(FMIndexArray),length(EnvCondValues));
+            ChipCantFMIdx=zeros(length(FMChipCant),length(ChipCantValues));
+            ChipCantConcateIdx=zeros(length(FMIndexArray),length(ChipCantValues));
+            ChipboxFMIdx=zeros(length(FMChipbox),length(ChipboxValues));
+            ChipboxConcateIdx=zeros(length(FMIndexArray),length(ChipboxValues));
+            LinkerFMIdx=zeros(length(FMLinker),length(LinkerValues));
+            LinkerConcateIdx=zeros(length(FMIndexArray),length(LinkerValues));
+            for ii=1:length(ExtVelocityValues)
+                [~, Loc] =ismember(FMExtVelocity,ExtVelocityValues(ii)); % Identify the force maps that have the same value
+                Loc=find(Loc); % Use find to get ride of nonzeros
+                FMIdx=IdxArray(Loc); % Identify same entries in the concatenate data of the results table
+                [~, ConcateLoc]=ismember(FMIndexArray,FMIdx); % Identify same entries in the concatenate data of the results table
+                ConcateLoc=find(ConcateLoc); % Use find to get ride of nonzeros
+                % Allocate the data
+                ExtVelocityFMIdx(1:length(Loc),ii)=FMIdx;
+                ExtVelocityConcateIdx(1:length(ConcateLoc),ii)=ConcateLoc;
+            end
+            for ii=1:length(RetVelocityValues)
+                [~, Loc] =ismember(FMRetVelocity,RetVelocityValues(ii)); % Identify the force maps that have the same value
+                Loc=find(Loc); % Use find to get ride of nonzeros
+                FMIdx=IdxArray(Loc); % Identify same entries in the concatenate data of the results table
+                [~, ConcateLoc]=ismember(FMIndexArray,FMIdx); % Identify same entries in the concatenate data of the results table
+                ConcateLoc=find(ConcateLoc); % Use find to get ride of nonzeros
+                % Allocate the data
+                RetVelocityFMIdx(1:length(Loc),ii)=FMIdx;
+                RetVelocityConcateIdx(1:length(ConcateLoc),ii)=ConcateLoc;
+            end
+            for ii=1:length(HoldingTimeValues)
+                [~, Loc] =ismember(FMHoldingTime,HoldingTimeValues(ii)); % Identify the force maps that have the same value
+                Loc=find(Loc); % Use find to get ride of nonzeros
+                FMIdx=IdxArray(Loc); % Identify same entries in the concatenate data of the results table
+                [~, ConcateLoc]=ismember(FMIndexArray,FMIdx); % Identify same entries in the concatenate data of the results table
+                ConcateLoc=find(ConcateLoc); % Use find to get ride of nonzeros
+                % Allocate the data
+                HoldingTimeFMIdx(1:length(Loc),ii)=FMIdx;
+                HoldingTimeConcateIdx(1:length(ConcateLoc),ii)=ConcateLoc;
+            end
+            for ii=1:length(SubstrateValues)
+                [~, Loc] =ismember(FMSubstrate,SubstrateValues(ii)); % Identify the force maps that have the same value
+                Loc=find(Loc); % Use find to get ride of nonzeros
+                FMIdx=IdxArray(Loc); % Identify same entries in the concatenate data of the results table
+                [~, ConcateLoc]=ismember(FMIndexArray,FMIdx); % Identify same entries in the concatenate data of the results table
+                ConcateLoc=find(ConcateLoc); % Use find to get ride of nonzeros
+                % Allocate the data
+                SubstrateFMIdx(1:length(Loc),ii)=FMIdx;
+                SubstrateConcateIdx(1:length(ConcateLoc),ii)=ConcateLoc;
+            end
+            for ii=1:length(EnvCondValues)
+                [~, Loc] =ismember(FMEnvCond,EnvCondValues(ii)); % Identify the force maps that have the same value
+                Loc=find(Loc); % Use find to get ride of nonzeros
+                FMIdx=IdxArray(Loc); % Identify same entries in the concatenate data of the results table
+                [~, ConcateLoc]=ismember(FMIndexArray,FMIdx); % Identify same entries in the concatenate data of the results table
+                ConcateLoc=find(ConcateLoc); % Use find to get ride of nonzeros
+                % Allocate the data
+                EnvCondFMIdx(1:length(Loc),ii)=FMIdx;
+                EnvCondConcateIdx(1:length(ConcateLoc),ii)=ConcateLoc;
+            end
+            for ii=1:length(ChipCantValues)
+                [~, Loc] =ismember(FMChipCant,ChipCantValues(ii)); % Identify the force maps that have the same value
+                Loc=find(Loc); % Use find to get ride of nonzeros
+                FMIdx=IdxArray(Loc); % Identify same entries in the concatenate data of the results table
+                [~, ConcateLoc]=ismember(FMIndexArray,FMIdx); % Identify same entries in the concatenate data of the results table
+                ConcateLoc=find(ConcateLoc); % Use find to get ride of nonzeros
+                % Allocate the data
+                ChipCantFMIdx(1:length(Loc),ii)=FMIdx;
+                ChipCantConcateIdx(1:length(ConcateLoc),ii)=ConcateLoc;
+            end
+            for ii=1:length(ChipboxValues)
+                [~, Loc] =ismember(FMChipbox,ChipboxValues(ii)); % Identify the force maps that have the same value
+                Loc=find(Loc); % Use find to get ride of nonzeros
+                FMIdx=IdxArray(Loc); % Identify same entries in the concatenate data of the results table
+                [~, ConcateLoc]=ismember(FMIndexArray,FMIdx); % Identify same entries in the concatenate data of the results table
+                ConcateLoc=find(ConcateLoc); % Use find to get ride of nonzeros
+                % Allocate the data
+                ChipboxFMIdx(1:length(Loc),ii)=FMIdx;
+                ChipboxConcateIdx(1:length(ConcateLoc),ii)=ConcateLoc;
+            end
+            for ii=1:length(LinkerValues)
+                [~, Loc] =ismember(FMLinker,LinkerValues(ii)); % Identify the force maps that have the same value
+                Loc=find(Loc); % Use find to get ride of nonzeros
+                FMIdx=IdxArray(Loc); % Identify same entries in the concatenate data of the results table
+                [~, ConcateLoc]=ismember(FMIndexArray,FMIdx); % Identify same entries in the concatenate data of the results table
+                ConcateLoc=find(ConcateLoc); % Use find to get ride of nonzeros
+                % Allocate the data
+                LinkerFMIdx(1:length(Loc),ii)=FMIdx;
+                LinkerConcateIdx(1:length(ConcateLoc),ii)=ConcateLoc;
+            end
+
             %% SMFS Results structure
             % Check entry
             if ~isempty(obj.SMFSResults)
@@ -2148,7 +2256,8 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             obj.SMFSResults{jj,1}.Data(1).FMIndex=IdxArray;
             obj.SMFSResults{jj,1}.Data(1).FMExtVelocity=FMExtVelocity;
             obj.SMFSResults{jj,1}.Data(1).FMRetVelocity=FMRetVelocity;
-            obj.SMFSResults{jj,1}.Data(1).FMEnvHoldingTime=FMHoldingTime;
+            obj.SMFSResults{jj,1}.Data(1).FMHoldingTime=FMHoldingTime;
+            obj.SMFSResults{jj,1}.Data(1).FMSubstrate=FMSubstrate;
             obj.SMFSResults{jj,1}.Data(1).FMEnvCond=FMEnvCond;
             obj.SMFSResults{jj,1}.Data(1).FMChipCant=FMChipCant;
             obj.SMFSResults{jj,1}.Data(1).FMChipbox=FMChipbox;
@@ -2197,6 +2306,30 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             obj.SMFSResults{jj,1}.Parameters(1).ChipCantilever=ChipCantValue;
             obj.SMFSResults{jj,1}.Parameters(1).Chipbox=ChipboxValue;
             obj.SMFSResults{jj,1}.Parameters(1).Linker=LinkerValue;
+            obj.SMFSResults{jj,1}.Selection(1).ExtVelocityParameters=ExtVelocityValues;
+            obj.SMFSResults{jj,1}.Selection(1).ExtVelocityFMIdx=ExtVelocityFMIdx;
+            obj.SMFSResults{jj,1}.Selection(1).ExtVelocityConcateIdx=ExtVelocityConcateIdx;
+            obj.SMFSResults{jj,1}.Selection(1).RetVelocityParameters=RetVelocityValues;
+            obj.SMFSResults{jj,1}.Selection(1).RetVelocityFMIdx=RetVelocityFMIdx;
+            obj.SMFSResults{jj,1}.Selection(1).RetVelocityConcateIdx=RetVelocityConcateIdx;
+            obj.SMFSResults{jj,1}.Selection(1).HoldingTimeParameters=HoldingTimeValues;
+            obj.SMFSResults{jj,1}.Selection(1).HoldingTimeFMIdx=HoldingTimeFMIdx;
+            obj.SMFSResults{jj,1}.Selection(1).HoldingTimeConcateIdx=HoldingTimeConcateIdx;
+            obj.SMFSResults{jj,1}.Selection(1).SubstrateParameters=SubstrateValues;
+            obj.SMFSResults{jj,1}.Selection(1).SubstrateFMIdx=SubstrateFMIdx;
+            obj.SMFSResults{jj,1}.Selection(1).SubstrateConcateIdx=SubstrateConcateIdx;
+            obj.SMFSResults{jj,1}.Selection(1).EnvCondParameters=EnvCondValues;
+            obj.SMFSResults{jj,1}.Selection(1).EnvCondFMIdx=EnvCondFMIdx;
+            obj.SMFSResults{jj,1}.Selection(1).EnvCondConcateIdx=EnvCondConcateIdx;
+            obj.SMFSResults{jj,1}.Selection(1).ChipCantParameters=ChipCantValues;
+            obj.SMFSResults{jj,1}.Selection(1).ChipCantFMIdx=ChipCantFMIdx;
+            obj.SMFSResults{jj,1}.Selection(1).ChipCantConcateIdx=ChipCantConcateIdx;
+            obj.SMFSResults{jj,1}.Selection(1).ChipboxParameters=ChipboxValues;
+            obj.SMFSResults{jj,1}.Selection(1).ChipboxFMIdx=ChipboxFMIdx;
+            obj.SMFSResults{jj,1}.Selection(1).ChipboxConcateIdx=ChipboxConcateIdx;
+            obj.SMFSResults{jj,1}.Selection(1).LinkerParameters=LinkerValues;
+            obj.SMFSResults{jj,1}.Selection(1).LinkerFMIdx=LinkerFMIdx;
+            obj.SMFSResults{jj,1}.Selection(1).LinkerConcateIdx=LinkerConcateIdx;
             obj.SMFSResults{jj,1}.Results(1).AdhMaxAppMean=AdhMaxAppMean;
             obj.SMFSResults{jj,1}.Results(1).AdhMaxAppStd=AdhMaxAppStd;
             obj.SMFSResults{jj,1}.Results(1).AdhMaxAppMin=AdhMaxAppMin;
@@ -3870,7 +4003,143 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             close all
         end
         
-                  
+        
+        function SMFS_statistics_hypothesis_tests(obj,ResultsRow)
+            
+            % Allocate data
+            ExtVelocity=obj.SMFSResults{ResultsRow}.Data.FMExtVelocity;
+            RetVelocity=obj.SMFSResults{ResultsRow}.Data.FMRetVelocity;
+            HoldingTime=obj.SMFSResults{ResultsRow}.Data.FMHoldingTime;
+            Substrate=obj.SMFSResults{ResultsRow}.Data.FMSubstrate;
+            Medium=obj.SMFSResults{ResultsRow}.Data.FMEnvCond; 
+            ChipCantilever=obj.SMFSResults{ResultsRow}.Data.FMChipCant;
+            Chipbox=obj.SMFSResults{ResultsRow}.Data.FMChipbox;
+            Linker=obj.SMFSResults{ResultsRow}.Data.FMLinker;
+            % Determine unique entries
+            ExtVelocityValues=unique(ExtVelocity)';
+            RetVelocityValues=unique(RetVelocity)';
+            HoldingTimeValues=unique(HoldingTime)';
+            SubstrateValues=unique(Substrate)';
+            MediumValues=unique(Medium)';
+            ChipCantileverValues=unique(ChipCantilever)';
+            ChipboxValues=unique(Chipbox)';
+            LinkerValues=unique(Linker)';
+% Preallocate
+ExtVelocityFMIdx=zeros(length(ExtVelocity),length(ExtVelocityValues));
+ExtVelocityConcateIdx=zeros(length(obj.SMFSResults{ResultsRow}.Concatenate.FMIndex),length(ExtVelocityValues));
+RetVelocityFMIdx=zeros(length(RetVelocity),length(RetVelocityValues));
+RetVelocityConcateIdx=zeros(length(obj.SMFSResults{ResultsRow}.Concatenate.FMIndex),length(RetVelocityValues));
+HoldingTimeFMIdx=zeros(length(HoldingTime),length(HoldingTimeValues));
+HoldingTimeConcateIdx=zeros(length(obj.SMFSResults{ResultsRow}.Concatenate.FMIndex),length(HoldingTimeValues));
+SubstrateFMIdx=zeros(length(Substrate),length(SubstrateValues));
+SubstrateConcateIdx=zeros(length(obj.SMFSResults{ResultsRow}.Concatenate.FMIndex),length(SubstrateValues));
+MediumFMIdx=zeros(length(Medium),length(MediumValues));
+MediumConcateIdx=zeros(length(obj.SMFSResults{ResultsRow}.Concatenate.FMIndex),length(MediumValues));
+ChipCantileverFMIdx=zeros(length(ChipCantilever),length(ChipCantileverValues));
+ChipCantileverConcateIdx=zeros(length(obj.SMFSResults{ResultsRow}.Concatenate.FMIndex),length(ChipCantileverValues));
+ChipboxFMIdx=zeros(length(Chipbox),length(ChipboxValues));
+ChipboxConcateIdx=zeros(length(obj.SMFSResults{ResultsRow}.Concatenate.FMIndex),length(ChipboxValues));
+LinkerFMIdx=zeros(length(Linker),length(LinkerValues));
+LinkerConcateIdx=zeros(length(obj.SMFSResults{ResultsRow}.Concatenate.FMIndex),length(LinkerValues));
+SMFSResultsDataFMIdx=obj.SMFSResults{ResultsRow}.Data.FMIndex;
+SMFSResultsConcateFMIdx=obj.SMFSResults{ResultsRow}.Concatenate.FMIndex;
+
+for ii=1:length(ExtVelocityValues)
+    [~, Loc] =ismember(ExtVelocity,ExtVelocityValues(ii)); % Identify the force maps that have the same value
+    Loc=find(Loc); % Use find to get ride of nonzeros
+    FMIdx=SMFSResultsDataFMIdx(Loc); % Identify same entries in the concatenate data of the results table
+    [~, ConcateLoc]=ismember(SMFSResultsConcateFMIdx,FMIdx); % Identify same entries in the concatenate data of the results table
+    ConcateLoc=find(ConcateLoc); % Use find to get ride of nonzeros
+    % Allocate the data
+    ExtVelocityFMIdx(1:length(Loc),ii)=FMIdx;
+    ExtVelocityConcateIdx(1:length(ConcateLoc),ii)=ConcateLoc;
+end
+for ii=1:length(RetVelocityValues)
+    [~, Loc] =ismember(RetVelocity,RetVelocityValues(ii)); % Identify the force maps that have the same value
+    Loc=find(Loc); % Use find to get ride of nonzeros
+    FMIdx=SMFSResultsDataFMIdx(Loc); % Identify same entries in the concatenate data of the results table
+    [~, ConcateLoc]=ismember(SMFSResultsConcateFMIdx,FMIdx); % Identify same entries in the concatenate data of the results table
+    ConcateLoc=find(ConcateLoc); % Use find to get ride of nonzeros
+    % Allocate the data
+    RetVelocityFMIdx(1:length(Loc),ii)=FMIdx;
+    RetVelocityConcateIdx(1:length(ConcateLoc),ii)=ConcateLoc;
+end
+for ii=1:length(HoldingTimeValues)
+    [~, Loc] =ismember(HoldingTime,HoldingTimeValues(ii)); % Identify the force maps that have the same value
+    Loc=find(Loc); % Use find to get ride of nonzeros
+    FMIdx=SMFSResultsDataFMIdx(Loc); % Identify same entries in the concatenate data of the results table
+    [~, ConcateLoc]=ismember(SMFSResultsConcateFMIdx,FMIdx); % Identify same entries in the concatenate data of the results table
+    ConcateLoc=find(ConcateLoc); % Use find to get ride of nonzeros
+    % Allocate the data
+    HoldingTimeFMIdx(1:length(Loc),ii)=FMIdx;
+    HoldingTimeConcateIdx(1:length(ConcateLoc),ii)=ConcateLoc;
+end
+for ii=1:length(SubstrateValues)
+    [~, Loc] =ismember(Substrate,SubstrateValues(ii)); % Identify the force maps that have the same value
+    Loc=find(Loc); % Use find to get ride of nonzeros
+    FMIdx=SMFSResultsDataFMIdx(Loc); % Identify same entries in the concatenate data of the results table
+    [~, ConcateLoc]=ismember(SMFSResultsConcateFMIdx,FMIdx); % Identify same entries in the concatenate data of the results table
+    ConcateLoc=find(ConcateLoc); % Use find to get ride of nonzeros
+    % Allocate the data
+    SubstrateFMIdx(1:length(Loc),ii)=FMIdx;
+    SubstrateConcateIdx(1:length(ConcateLoc),ii)=ConcateLoc;
+end
+for ii=1:length(MediumValues)
+    [~, Loc] =ismember(Medium,MediumValues(ii)); % Identify the force maps that have the same value
+    Loc=find(Loc); % Use find to get ride of nonzeros
+    FMIdx=SMFSResultsDataFMIdx(Loc); % Identify same entries in the concatenate data of the results table
+    [~, ConcateLoc]=ismember(SMFSResultsConcateFMIdx,FMIdx); % Identify same entries in the concatenate data of the results table
+    ConcateLoc=find(ConcateLoc); % Use find to get ride of nonzeros
+    % Allocate the data
+    MediumFMIdx(1:length(Loc),ii)=FMIdx;
+    MediumConcateIdx(1:length(ConcateLoc),ii)=ConcateLoc;
+end
+for ii=1:length(ChipCantileverValues)
+    [~, Loc] =ismember(ChipCantilever,ChipCantileverValues(ii)); % Identify the force maps that have the same value
+    Loc=find(Loc); % Use find to get ride of nonzeros
+    FMIdx=SMFSResultsDataFMIdx(Loc); % Identify same entries in the concatenate data of the results table
+    [~, ConcateLoc]=ismember(SMFSResultsConcateFMIdx,FMIdx); % Identify same entries in the concatenate data of the results table
+    ConcateLoc=find(ConcateLoc); % Use find to get ride of nonzeros
+    % Allocate the data
+    ChipCantileverFMIdx(1:length(Loc),ii)=FMIdx;
+    ChipCantileverConcateIdx(1:length(ConcateLoc),ii)=ConcateLoc;
+end
+for ii=1:length(ChipboxValues)
+    [~, Loc] =ismember(Chipbox,ChipboxValues(ii)); % Identify the force maps that have the same value
+    Loc=find(Loc); % Use find to get ride of nonzeros
+    FMIdx=SMFSResultsDataFMIdx(Loc); % Identify same entries in the concatenate data of the results table
+    [~, ConcateLoc]=ismember(SMFSResultsConcateFMIdx,FMIdx); % Identify same entries in the concatenate data of the results table
+    ConcateLoc=find(ConcateLoc); % Use find to get ride of nonzeros
+    % Allocate the data
+    ChipboxFMIdx(1:length(Loc),ii)=FMIdx;
+    ChipboxConcateIdx(1:length(ConcateLoc),ii)=ConcateLoc;
+end
+for ii=1:length(LinkerValues)
+    [~, Loc] =ismember(Linker,LinkerValues(ii)); % Identify the force maps that have the same value
+    Loc=find(Loc); % Use find to get ride of nonzeros
+    FMIdx=SMFSResultsDataFMIdx(Loc); % Identify same entries in the concatenate data of the results table
+    [~, ConcateLoc]=ismember(SMFSResultsConcateFMIdx,FMIdx); % Identify same entries in the concatenate data of the results table
+    ConcateLoc=find(ConcateLoc); % Use find to get ride of nonzeros
+    % Allocate the data
+    LinkerFMIdx(1:length(Loc),ii)=FMIdx;
+    LinkerConcateIdx(1:length(ConcateLoc),ii)=ConcateLoc;
+end
+
+            % 1. Hypothesis testing for nomal distribution using the lillietest
+            % Test all determined parameters
+            SeleData=find(ExtVelocityConcateIdx(:,ii))
+            % Pull-off
+            TestingData=obj.SMFSResults{ResultsRow}.Data.yPullingLengthConcat(SeleData)  
+            
+            [hyp0, p]=lillietest( TestingData);
+
+
+            % 2. Wilcoxon rank sum test
+
+
+        end
+
+
         
         function SMFS_results_gramm_boxplot_ESB(obj,ii)
             
@@ -5590,7 +5859,7 @@ PlotData=obj.SMFSResults{jj}.Data.AdhMaxAppConcat
                 YMax= inf;
             end
             %Fm=163;
-            Fm=65;
+            Fm=513;
             % Figure visibility
             %set(groot,'defaultFigureVisible','off')      
             set(groot,'defaultFigureVisible','on') 
