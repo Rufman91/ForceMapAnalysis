@@ -63,6 +63,8 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
     properties
         SMFSResults
         SMFSResultsParameters
+        SMFSLillie
+        SMFSWilcoxon
     end
     
     methods
@@ -1775,8 +1777,17 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             VarTypes = {'double','double','double','double','string','string','string','string','string'};
             VarNames = {'SMFSResults Idx','Extend velocity','Retraction velocity','Holding time','Substrate','Medium','Chip cantilever number','Chipbox number','Linker'};
             obj.SMFSResultsParameters=table('Size',TableSize,'VariableTypes',VarTypes,'VariableNames',VarNames);
-            
-            
+
+            TableSize=[1 4];
+            VarTypes = {'double','double','double','double'};
+            VarNames = {'SMFSLillie Idx','SMFSResultsParameter Row Num1','Hypothesis','p-value'};
+            obj.SMFSLillie=table('Size',TableSize,'VariableTypes',VarTypes,'VariableNames',VarNames);
+
+            TableSize=[1 5];
+            VarTypes = {'double','double','double','double','double'};
+            VarNames = {'SMFSWilcoxon Idx','SMFSResultsParameter Row Num1','SMFSResultsParameter Row Num2','Hypothesis','p-value'};
+            obj.SMFSWilcoxon=table('Size',TableSize,'VariableTypes',VarTypes,'VariableNames',VarNames);
+                        
         end
         
         function SMFS_results_structure(obj,ExtVelocityValue,RetVelocityValue,HoldingTimeValue,SubstrateValue,EnvCondValue,ChipCantValue,ChipboxValue,LinkerValue)
@@ -3784,7 +3795,6 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             close all
        end
          
-
         function SMFS_results_gramm_plot(obj,ii,IdxShift,FMArg,FMChar)
             % ii - row index in the SMFSResultsParameters table
             % FMShift - force map shift
@@ -4003,145 +4013,190 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             close all
         end
         
-        
         function SMFS_statistics_hypothesis_tests(obj,ResultsRow)
+                                   
+            % Lilliefors test for nomral distribution
+            % Null hypothesis: Testing data is normally distributed 
+            % Alternative hypothesis: Testing data is not normally distributed 
+            % If lillietest result is 1 than the test rejects the null hypothesis at the 5% significance level
+            % Lilliefors test result = 1 -> Data is not normally distributed
+            % If lillietest result is 0 than the test confirms the null hypothesis at the 5% significance level
+            % Lilliefors test result = 0 -> Data is normally distributed
+
+            % Wilcoxon rank sum test 
+            % The Wilcoxon rank sum test is a nonparametric test for two populations when samples are independent. If X and Y are independent samples with different sample sizes, the test statistic which ranksum returns is the rank sum of the first sample.
+            % The Wilcoxon rank sum test is equivalent to the Mann-Whitney U-test. The Mann-Whitney U-test is a nonparametric test for equality of population medians of two independent samples X and Y. 
+            % If the test result is 1, this indicates rejection of the null hypothesis at the 100 * alpha% significance level.
+            % Wilcoxon test result = 1 -> Medians of the tested data are
+            % not equal
+            % If the test result is 0, this indicates a failure to reject the null hypothesis at the 100 * alpha% significance level.
+            % Wilcoxon test result = 0 -> Medians of the tested data are
+            % equal
+
+            % Input variable adaptation
+            if nargin<2
+                ResultsRow=1;
+            end
+            % Output time and date for the dairy
+            datetime('now')
+            % Change into the Folder of Interest
+            cd(obj.ExperimentFolder) % Move into the folder
+            % Create folders for saving the produced figures
+            foldername='SMFS_statistics_hypothesis_tests';    % Defines the folder name
+            mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
+            currpath=fullfile(obj.ExperimentFolder,foldername);
+            cd(currpath);
             
+            % Define general variables
+            LengthResultsParameters=length(obj.SMFSResults); % Read out the number of entries in the SMFSResults structure
+            %% 1a qqplots 
+            % Define variables
+            IdxVar=1;
+            Res=[1 1 2560 1250]; % Define the figure resolution
+            pd = makedist('Normal'); % Define the distribution
+            if obj.SMFSResults{ResultsRow}.Parameters.ExtendVelocity==0
+                ExtVelocityValueStr='All';
+            else
+                ExtVelocityValueStr=num2str(round(obj.SMFSResults{ResultsRow}.Parameters.ExtendVelocity*1e9));
+            end
+            if obj.SMFSResults{ResultsRow}.Parameters.RetractVelocity==0
+                RetVelocityValueStr='All';
+            else
+                RetVelocityValueStr=num2str(round(obj.SMFSResults{ResultsRow}.Parameters.RetractVelocity*1e9));
+            end
+            if obj.SMFSResults{ResultsRow}.Parameters.HoldingTime==-1
+                HoldingTimeValueStr='All';
+            else
+                HoldingTimeValueStr=num2str(obj.SMFSResults{ResultsRow}.Parameters.HoldingTime);
+            end
+            FigNamePt2=strcat(ExtVelocityValueStr,{'_'},RetVelocityValueStr,{'_'},HoldingTimeValueStr,{'_'},obj.SMFSResults{ResultsRow}.Parameters.Substrate,{'_'},obj.SMFSResults{ResultsRow}.Parameters.Medium,{'_'},obj.SMFSResults{ResultsRow}.Parameters.ChipCantilever,{'_'},obj.SMFSResults{ResultsRow}.Parameters.Chipbox,{'_'},obj.SMFSResults{ResultsRow}.Parameters.Linker);
+            FigNamePt2=char(FigNamePt2);
+            %% Figure 2
+            for ii=ResultsRow:LengthResultsParameters 
+            % Define variables
+            FigNamePt1=sprintf('SMFSResultRow%d_',ResultsRow);
+            Plottitle=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ResultsRow,1}.Data(1).FMIndex),obj.SMFSResults{ResultsRow,1}.Data(1).SumNumFcAnalysedAdhMaxRet);
+            NameSuffix2='_MaxAdhesionForceRetract';
             % Allocate data
-            ExtVelocity=obj.SMFSResults{ResultsRow}.Data.FMExtVelocity;
-            RetVelocity=obj.SMFSResults{ResultsRow}.Data.FMRetVelocity;
-            HoldingTime=obj.SMFSResults{ResultsRow}.Data.FMHoldingTime;
-            Substrate=obj.SMFSResults{ResultsRow}.Data.FMSubstrate;
-            Medium=obj.SMFSResults{ResultsRow}.Data.FMEnvCond; 
-            ChipCantilever=obj.SMFSResults{ResultsRow}.Data.FMChipCant;
-            Chipbox=obj.SMFSResults{ResultsRow}.Data.FMChipbox;
-            Linker=obj.SMFSResults{ResultsRow}.Data.FMLinker;
-            % Determine unique entries
-            ExtVelocityValues=unique(ExtVelocity)';
-            RetVelocityValues=unique(RetVelocity)';
-            HoldingTimeValues=unique(HoldingTime)';
-            SubstrateValues=unique(Substrate)';
-            MediumValues=unique(Medium)';
-            ChipCantileverValues=unique(ChipCantilever)';
-            ChipboxValues=unique(Chipbox)';
-            LinkerValues=unique(Linker)';
-% Preallocate
-ExtVelocityFMIdx=zeros(length(ExtVelocity),length(ExtVelocityValues));
-ExtVelocityConcateIdx=zeros(length(obj.SMFSResults{ResultsRow}.Concatenate.FMIndex),length(ExtVelocityValues));
-RetVelocityFMIdx=zeros(length(RetVelocity),length(RetVelocityValues));
-RetVelocityConcateIdx=zeros(length(obj.SMFSResults{ResultsRow}.Concatenate.FMIndex),length(RetVelocityValues));
-HoldingTimeFMIdx=zeros(length(HoldingTime),length(HoldingTimeValues));
-HoldingTimeConcateIdx=zeros(length(obj.SMFSResults{ResultsRow}.Concatenate.FMIndex),length(HoldingTimeValues));
-SubstrateFMIdx=zeros(length(Substrate),length(SubstrateValues));
-SubstrateConcateIdx=zeros(length(obj.SMFSResults{ResultsRow}.Concatenate.FMIndex),length(SubstrateValues));
-MediumFMIdx=zeros(length(Medium),length(MediumValues));
-MediumConcateIdx=zeros(length(obj.SMFSResults{ResultsRow}.Concatenate.FMIndex),length(MediumValues));
-ChipCantileverFMIdx=zeros(length(ChipCantilever),length(ChipCantileverValues));
-ChipCantileverConcateIdx=zeros(length(obj.SMFSResults{ResultsRow}.Concatenate.FMIndex),length(ChipCantileverValues));
-ChipboxFMIdx=zeros(length(Chipbox),length(ChipboxValues));
-ChipboxConcateIdx=zeros(length(obj.SMFSResults{ResultsRow}.Concatenate.FMIndex),length(ChipboxValues));
-LinkerFMIdx=zeros(length(Linker),length(LinkerValues));
-LinkerConcateIdx=zeros(length(obj.SMFSResults{ResultsRow}.Concatenate.FMIndex),length(LinkerValues));
-SMFSResultsDataFMIdx=obj.SMFSResults{ResultsRow}.Data.FMIndex;
-SMFSResultsConcateFMIdx=obj.SMFSResults{ResultsRow}.Concatenate.FMIndex;
+            xData2=obj.SMFSResults{ResultsRow}.Data.AdhMaxRetConcat;
+            % Figure
+            h_fig2=figure(2);
+            h_fig2.Color='white'; % changes the background color of the figure
+            h_fig2.Units='pixel'; % Defines the units
+            h_fig2.OuterPosition=Res;
+            h_fig2.PaperOrientation='landscape';
+            h_fig2.Name=strcat(FigNamePt1,FigNamePt2,NameSuffix2);
+            % The actual plotting 
+            qqplot(xData2,pd)
+            % Title
+            title(Plottitle)
+            % Save the current figure in the current folder            
+            FullName2=strcat(FigNamePt1,FigNamePt2,NameSuffix2);
+            print(h_fig2,FullName2,'-dpng');            
+            %% Figure 3
+            % Define variables
+            Plottitle=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ResultsRow,1}.Data(1).FMIndex),obj.SMFSResults{ResultsRow,1}.Data(1).SumNumFcAnalysedAdhUnbinding); 
+            NameSuffix3='_AdhForceUnbinding';
+            % Allocate data
+            xData3=obj.SMFSResults{ResultsRow}.Data.AdhUnbindingConcat;
+            % Figure
+            h_fig3=figure(3);
+            h_fig3.Color='white'; % changes the background color of the figure
+            h_fig3.Units='pixel'; % Defines the units
+            h_fig3.OuterPosition=Res;
+            h_fig3.PaperOrientation='landscape';
+            h_fig3.Name=strcat(FigNamePt1,FigNamePt2);
+            % The actual plotting 
+            qqplot(xData3,pd)
+            % Title
+            title(Plottitle)
+            % Save the current figure in the current folder
+            FullName3=strcat(FigNamePt1,FigNamePt2,NameSuffix3);
+            print(h_fig3,FullName3,'-dpng');           
+            %% Figure 4
+            % Define variables            
+            Plottitle=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ResultsRow,1}.Data(1).FMIndex),obj.SMFSResults{ResultsRow,1}.Data(1).SumNumFcAnalysedAdhEneApp); 
+            NameSuffix4='_AdhEnergyApproach';
+            % Allocate data
+            xData4=obj.SMFSResults{ResultsRow}.Data.AdhEneAppConcat;
+            % Figure
+            h_fig4=figure(4);
+            h_fig4.Color='white'; % changes the background color of the figure
+            h_fig4.Units='pixel'; % Defines the units
+            h_fig4.OuterPosition=Res;
+            h_fig4.PaperOrientation='landscape';
+            h_fig4.Name=strcat(FigNamePt1,FigNamePt2);
+            % The actual plotting 
+            qqplot(xData4,pd)
+            % Title
+            title(Plottitle)
+            % Save the current figure in the current folder
+            FullName4=strcat(FigNamePt1,FigNamePt2,NameSuffix4);
+            print(h_fig4,FullName4,'-dpng');            
+            %% Figure 5
+            % Define variables
+            Plottitle=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ResultsRow,1}.Data(1).FMIndex),obj.SMFSResults{ResultsRow,1}.Data(1).SumNumFcAnalysedAdhEneRet);
+            NameSuffix5='_AdhEnergyRetract';
+            % Allocate data
+            xData5=obj.SMFSResults{ResultsRow}.Data.AdhEneRetConcat;
+            % Figure
+            h_fig5=figure(5);
+            h_fig5.Color='white'; % changes the background color of the figure
+            h_fig5.Units='pixel'; % Defines the units
+            h_fig5.OuterPosition=Res;
+            h_fig5.PaperOrientation='landscape';
+            h_fig5.Name=strcat(FigNamePt1,FigNamePt2);
+            % The actual plotting 
+            qqplot(xData5,pd)
+            % Title
+            title(Plottitle)
+            % Save the current figure in the current folder
+            FullName5=strcat(FigNamePt1,FigNamePt2,NameSuffix5);
+            print(h_fig5,FullName5,'-dpng');           
+            %% Figure 6            
+            % Define variables
+            Plottitle=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ResultsRow,1}.Data(1).FMIndex),obj.SMFSResults{ResultsRow,1}.Data(1).SumNumFcAnalysedyPullingLength);
+            NameSuffix6='_Pullinglength';
+            % Allocate data
+            xData6=obj.SMFSResults{ResultsRow}.Data.yPullingLengthConcat;
+            % Figure
+            h_fig6=figure(6);
+            h_fig6.Color='white'; % changes the background color of the figure
+            h_fig6.Units='pixel'; % Defines the units
+            h_fig6.OuterPosition=Res;
+            h_fig6.PaperOrientation='landscape';
+            h_fig6.Name=strcat(FigNamePt1,FigNamePt2);
+            % The actual plotting
+            qqplot(xData6,pd)
+            % Title
+            title(Plottitle)
+            % Save figure
+            FullName6=strcat(FigNamePt1,FigNamePt2,NameSuffix6);
+            %%% Save the current figure in the current folder
+            print(h_fig6,FullName6,'-dpng');
 
-for ii=1:length(ExtVelocityValues)
-    [~, Loc] =ismember(ExtVelocity,ExtVelocityValues(ii)); % Identify the force maps that have the same value
-    Loc=find(Loc); % Use find to get ride of nonzeros
-    FMIdx=SMFSResultsDataFMIdx(Loc); % Identify same entries in the concatenate data of the results table
-    [~, ConcateLoc]=ismember(SMFSResultsConcateFMIdx,FMIdx); % Identify same entries in the concatenate data of the results table
-    ConcateLoc=find(ConcateLoc); % Use find to get ride of nonzeros
-    % Allocate the data
-    ExtVelocityFMIdx(1:length(Loc),ii)=FMIdx;
-    ExtVelocityConcateIdx(1:length(ConcateLoc),ii)=ConcateLoc;
-end
-for ii=1:length(RetVelocityValues)
-    [~, Loc] =ismember(RetVelocity,RetVelocityValues(ii)); % Identify the force maps that have the same value
-    Loc=find(Loc); % Use find to get ride of nonzeros
-    FMIdx=SMFSResultsDataFMIdx(Loc); % Identify same entries in the concatenate data of the results table
-    [~, ConcateLoc]=ismember(SMFSResultsConcateFMIdx,FMIdx); % Identify same entries in the concatenate data of the results table
-    ConcateLoc=find(ConcateLoc); % Use find to get ride of nonzeros
-    % Allocate the data
-    RetVelocityFMIdx(1:length(Loc),ii)=FMIdx;
-    RetVelocityConcateIdx(1:length(ConcateLoc),ii)=ConcateLoc;
-end
-for ii=1:length(HoldingTimeValues)
-    [~, Loc] =ismember(HoldingTime,HoldingTimeValues(ii)); % Identify the force maps that have the same value
-    Loc=find(Loc); % Use find to get ride of nonzeros
-    FMIdx=SMFSResultsDataFMIdx(Loc); % Identify same entries in the concatenate data of the results table
-    [~, ConcateLoc]=ismember(SMFSResultsConcateFMIdx,FMIdx); % Identify same entries in the concatenate data of the results table
-    ConcateLoc=find(ConcateLoc); % Use find to get ride of nonzeros
-    % Allocate the data
-    HoldingTimeFMIdx(1:length(Loc),ii)=FMIdx;
-    HoldingTimeConcateIdx(1:length(ConcateLoc),ii)=ConcateLoc;
-end
-for ii=1:length(SubstrateValues)
-    [~, Loc] =ismember(Substrate,SubstrateValues(ii)); % Identify the force maps that have the same value
-    Loc=find(Loc); % Use find to get ride of nonzeros
-    FMIdx=SMFSResultsDataFMIdx(Loc); % Identify same entries in the concatenate data of the results table
-    [~, ConcateLoc]=ismember(SMFSResultsConcateFMIdx,FMIdx); % Identify same entries in the concatenate data of the results table
-    ConcateLoc=find(ConcateLoc); % Use find to get ride of nonzeros
-    % Allocate the data
-    SubstrateFMIdx(1:length(Loc),ii)=FMIdx;
-    SubstrateConcateIdx(1:length(ConcateLoc),ii)=ConcateLoc;
-end
-for ii=1:length(MediumValues)
-    [~, Loc] =ismember(Medium,MediumValues(ii)); % Identify the force maps that have the same value
-    Loc=find(Loc); % Use find to get ride of nonzeros
-    FMIdx=SMFSResultsDataFMIdx(Loc); % Identify same entries in the concatenate data of the results table
-    [~, ConcateLoc]=ismember(SMFSResultsConcateFMIdx,FMIdx); % Identify same entries in the concatenate data of the results table
-    ConcateLoc=find(ConcateLoc); % Use find to get ride of nonzeros
-    % Allocate the data
-    MediumFMIdx(1:length(Loc),ii)=FMIdx;
-    MediumConcateIdx(1:length(ConcateLoc),ii)=ConcateLoc;
-end
-for ii=1:length(ChipCantileverValues)
-    [~, Loc] =ismember(ChipCantilever,ChipCantileverValues(ii)); % Identify the force maps that have the same value
-    Loc=find(Loc); % Use find to get ride of nonzeros
-    FMIdx=SMFSResultsDataFMIdx(Loc); % Identify same entries in the concatenate data of the results table
-    [~, ConcateLoc]=ismember(SMFSResultsConcateFMIdx,FMIdx); % Identify same entries in the concatenate data of the results table
-    ConcateLoc=find(ConcateLoc); % Use find to get ride of nonzeros
-    % Allocate the data
-    ChipCantileverFMIdx(1:length(Loc),ii)=FMIdx;
-    ChipCantileverConcateIdx(1:length(ConcateLoc),ii)=ConcateLoc;
-end
-for ii=1:length(ChipboxValues)
-    [~, Loc] =ismember(Chipbox,ChipboxValues(ii)); % Identify the force maps that have the same value
-    Loc=find(Loc); % Use find to get ride of nonzeros
-    FMIdx=SMFSResultsDataFMIdx(Loc); % Identify same entries in the concatenate data of the results table
-    [~, ConcateLoc]=ismember(SMFSResultsConcateFMIdx,FMIdx); % Identify same entries in the concatenate data of the results table
-    ConcateLoc=find(ConcateLoc); % Use find to get ride of nonzeros
-    % Allocate the data
-    ChipboxFMIdx(1:length(Loc),ii)=FMIdx;
-    ChipboxConcateIdx(1:length(ConcateLoc),ii)=ConcateLoc;
-end
-for ii=1:length(LinkerValues)
-    [~, Loc] =ismember(Linker,LinkerValues(ii)); % Identify the force maps that have the same value
-    Loc=find(Loc); % Use find to get ride of nonzeros
-    FMIdx=SMFSResultsDataFMIdx(Loc); % Identify same entries in the concatenate data of the results table
-    [~, ConcateLoc]=ismember(SMFSResultsConcateFMIdx,FMIdx); % Identify same entries in the concatenate data of the results table
-    ConcateLoc=find(ConcateLoc); % Use find to get ride of nonzeros
-    % Allocate the data
-    LinkerFMIdx(1:length(Loc),ii)=FMIdx;
-    LinkerConcateIdx(1:length(ConcateLoc),ii)=ConcateLoc;
-end
+            %% 1b Hypothesis testing for nomal distribution using the lillietest            
+                TestingData=obj.SMFSResults{ii}.Data.yPullingLengthConcat;
+                [Hyp, p]=lillietest(TestingData);
+                obj.SMFSLillie(IdxVar,:)={IdxVar,ii,Hyp,p};
+                IdxVar=IdxVar+1;
+            end
 
-            % 1. Hypothesis testing for nomal distribution using the lillietest
-            % Test all determined parameters
-            SeleData=find(ExtVelocityConcateIdx(:,ii))
-            % Pull-off
-            TestingData=obj.SMFSResults{ResultsRow}.Data.yPullingLengthConcat(SeleData)  
-            
-            [hyp0, p]=lillietest( TestingData);
-
-
-            % 2. Wilcoxon rank sum test
-
-
+            %% 2. Wilcoxon rank sum test          
+            IdxVar=1;   
+            for ii=ResultsRow:LengthResultsParameters
+                TestingData1=obj.SMFSResults{ii}.Data.yPullingLengthConcat;
+                for jj=ResultsRow:LengthResultsParameters                     
+                TestingData2=obj.SMFSResults{jj}.Data.yPullingLengthConcat;
+                [p,Hyp] = ranksum(TestingData1,TestingData2); 
+                obj.SMFSWilcoxon(IdxVar,:)={IdxVar,ii,jj,Hyp,p};
+                IdxVar=IdxVar+1;
+                end              
+            end
+         close all
         end
 
-
-        
-        function SMFS_results_gramm_boxplot_ESB(obj,ii)
+         function SMFS_results_gramm_boxplot_ESB(obj,ii)
             
             % Input variable adaptation
             if nargin<2
@@ -4345,7 +4400,7 @@ end
 %             %%% Save the current figure in the current folder
 %             print(h_fig1,FullName1,'-dpng');
             
-%             %% Gramm object 2
+%           %% Gramm object 2
 %             % Define variables
 %             FMExtVeloData=obj.SMFSResults{ii}.Concatenate.FMExtVelocity;
 %             FMRetVeloData=obj.SMFSResults{ii}.Concatenate.FMRetVelocity;
