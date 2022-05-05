@@ -160,6 +160,7 @@ classdef ForceMap < matlab.mixin.Copyable
         HertzFit        % HertzFit model generated in the calculate_e_mod_hertz method
         IndDepthHertz
         DZslope
+        DZAppslope
         Stiffness
         IndDepth
         IndentArea
@@ -1127,6 +1128,16 @@ classdef ForceMap < matlab.mixin.Copyable
                     ZCurvePercent = Z(1:length(DCurvePercent));
                     LineFit = polyfit(ZCurvePercent,DCurvePercent,1);
                     obj.DZslope(i) = LineFit(1);
+                    
+                    ZApp = obj.HHApp{i} - obj.CP(i,1);
+                    DApp = (obj.BasedApp{i} - obj.CP(i,2))/obj.SpringConstant;
+                    ZAppmax(i) = max(ZApp);
+                    DAppmax(i) = max(DApp);
+                    DAppCurvePercent = DApp(DApp>=(1-CurvePercent)*DAppmax(i));
+                    ZAppCurvePercent = ZApp(1:length(DAppCurvePercent));
+                    LineFitApp = polyfit(ZAppCurvePercent,DAppCurvePercent,1);
+                    obj.DZAppslope(i) = LineFitApp(1);
+                    
                     Hmax(i) = Zmax(i) - Dmax(i);
                     dD = Dmax(i) - (1-CurvePercent)*Dmax(i);
                     dh = dD*(1./obj.DZslope(i) - 1/(obj.RefSlope));
@@ -4352,7 +4363,7 @@ classdef ForceMap < matlab.mixin.Copyable
                 
                 
                 %Plot
-                figure('Name',sprintf('Filtered curves with Fit %i',i))
+                figure('Name',sprintf('Normalized curves with Fit %i',i))
                 set(gcf,'units','normalized','outerposition',[0 0 1 1])
                 lastseg = obj.NumSegments - 2;
                 hold on
@@ -4389,24 +4400,24 @@ classdef ForceMap < matlab.mixin.Copyable
                         hold on
 
                         subplot(2,1,1)
-                        [MultiplierF,UnitF,~] = AFMImage.parse_unit_scale(range(obj.FilterF{i,FirstFreq}),'N',10);
-                        semilogx(x,obj.FilterF{i,j}*MultiplierF,'-m')
+                        %[MultiplierF,UnitF,~] = AFMImage.parse_unit_scale(range(obj.FilterF{i,FirstFreq}),'N',10);
+                        semilogx(x,obj.FilterF{i,j},'-m')
                         hold on
-                        semilogx(x,ypF*MultiplierF,'-','color',lila)
-                        title(sprintf('Filtered Force over Time incl. Fit Curve %i',i),'FontSize', 18)
+                        semilogx(x,ypF,'-','color',lila)
+                        title(sprintf('Normalized Force over Time incl. Fit Curve %i',i),'FontSize', 18)
                         xlabel('time [s]','FontSize', 16)
-                        ylabel(sprintf('Filtered vDeflection-Force [%s]',UnitF),'FontSize', 16)
+                        ylabel(sprintf('vDeflection-Force'),'FontSize', 16)
                         grid on
                         grid minor
                         
                         subplot(2,1,2)
-                        [MultiplierI,UnitI,~] = AFMImage.parse_unit_scale(range(obj.FilterH{i,FirstFreq}),'m',10);
-                        semilogx(x,obj.FilterH{i,j}*MultiplierI,'-','color', lightblue)
+                        %[MultiplierI,UnitI,~] = AFMImage.parse_unit_scale(range(obj.FilterH{i,FirstFreq}),'m',10);
+                        semilogx(x,obj.FilterH{i,j},'-','color', lightblue)
                         hold on
-                        semilogx(x,ypH*MultiplierI,'-','color',darkblue)
-                        title(sprintf('Filtered Indentation over Time incl. Fit Curve %i',i),'FontSize', 18)
+                        semilogx(x,ypH,'-','color',darkblue)
+                        title(sprintf('Normalized Indentation over Time incl. Fit Curve %i',i),'FontSize', 18)
                         xlabel('time [s]','FontSize', 16)
-                        ylabel(sprintf('Filtered Indentation [%s]',UnitI),'FontSize', 16);
+                        ylabel(sprintf('Indentation'),'FontSize', 16);
                         grid on
                         grid minor
 
@@ -4420,7 +4431,7 @@ classdef ForceMap < matlab.mixin.Copyable
                         l2.LineWidth = 3;
                         l3.LineWidth = 3;
                         l4.LineWidth = 3;
-                        legend([l1, l2, l3, l4], {'filtered force data', 'force fit','filtered indentation data', 'indentation fit'}, 'Location', 'southoutside','FontSize', 14)
+                        legend([l1, l2, l3, l4], {'normalized force data', 'force fit','normalized indentation data', 'indentation fit'}, 'Location', 'southoutside','FontSize', 14)
                        
                         obj.SineVarsF{i,j}(1) = obj.SineVarsF{i,j}(1)*rangeF;
                         obj.SineVarsH{i,j}(1) = obj.SineVarsH{i,j}(1)*rangeH;
