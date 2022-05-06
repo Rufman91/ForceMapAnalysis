@@ -1053,6 +1053,7 @@ classdef ForceMap < matlab.mixin.Copyable
             EMod = zeros(obj.NCurves,1);
             obj.ProjTipArea = TipProjArea;
             obj.DZslope = zeros(obj.NCurves,1);
+            obj.DZAppslope = zeros(obj.NCurves,1);
             obj.Stiffness = zeros(obj.NCurves,1);
             obj.IndDepth = zeros(obj.NCurves,1);
             obj.IndentArea = zeros(obj.NCurves,1);
