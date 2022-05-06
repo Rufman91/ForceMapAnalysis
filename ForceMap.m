@@ -1065,6 +1065,16 @@ classdef ForceMap < matlab.mixin.Copyable
                 ZCurvePercent = Z(1:length(DCurvePercent));
                 LineFit = polyfit(ZCurvePercent,DCurvePercent,1);
                 obj.DZslope(i) = LineFit(1);
+                
+                ZApp = obj.HHApp{i} - obj.CP(i,1);
+                DApp = (obj.BasedApp{i} - obj.CP(i,2))/obj.SpringConstant;
+                ZAppmax(i) = max(ZApp);
+                DAppmax(i) = max(DApp);
+                DAppCurvePercent = DApp(DApp>=(1-CurvePercent)*DAppmax(i));
+                ZAppCurvePercent = ZApp(1:length(DAppCurvePercent));
+                LineFitApp = polyfit(ZAppCurvePercent,DAppCurvePercent,1);
+                obj.DZAppslope(i) = LineFitApp(1);
+                    
                 Hmax(i) = Zmax(i) - Dmax(i);
                 dD = Dmax(i) - (1-CurvePercent)*Dmax(i);
                 dh = dD*(1./obj.DZslope(i) - 1/(obj.RefSlope));
