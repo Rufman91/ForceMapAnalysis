@@ -237,7 +237,9 @@ end
         close(F)
     end
     function open_new_option_window(varargin)
-        InStruct.(FieldNames{varargin{4}}) = ui_set_struct_fields(varargin{3});
+        InStruct.(FieldNames{varargin{4}}) = ui_set_struct_fields(varargin{3},...
+            'NOptsPerPanel',NOptsPerPanel,'PixelsPerLine',PixelsPerLine,...
+            'PixelsPerPanelWidth',PixelsPerPanelWidth);
     end
     function evaluate_new_input(varargin)
         AllowedFcn = varargin{5};
