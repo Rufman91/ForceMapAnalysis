@@ -4367,6 +4367,7 @@ classdef ForceMap < matlab.mixin.Copyable
                     frequencies(j,:) = obj.SegFrequency{j};
                 end
                 FirstFreq = find(frequencies,1,'first');
+                lf = length(frequencies);
                 
                 %Colours 
                 lila = [0.368, 0.058, 0.721];
@@ -4411,7 +4412,13 @@ classdef ForceMap < matlab.mixin.Copyable
                         
                         hold on
 
-                        subplot(2,1,1)
+                        t = tiledlayout(lf,2);
+                        t.TileSpacing = 'none';
+                        
+                        %for k=1:lf
+                        % tile 1 force
+                        nexttile
+                        
                         %[MultiplierF,UnitF,~] = AFMImage.parse_unit_scale(range(obj.FilterF{i,FirstFreq}),'N',10);
                         semilogx(x,obj.FilterF{i,j},'-m')
                         hold on
@@ -4422,7 +4429,8 @@ classdef ForceMap < matlab.mixin.Copyable
                         grid on
                         grid minor
                         
-                        subplot(2,1,2)
+                        nexttile
+                        
                         %[MultiplierI,UnitI,~] = AFMImage.parse_unit_scale(range(obj.FilterH{i,FirstFreq}),'m',10);
                         semilogx(x,obj.FilterH{i,j},'-','color', lightblue)
                         hold on
