@@ -81,7 +81,8 @@ FontSize = round(PixelsPerLine*.3);
 % then up to down. Panels contain up to NOptsPerPanel options
 FieldNames = fieldnames(InStruct);
 FieldNames((contains(FieldNames,'DType'))|...
-    (contains(FieldNames,'Allowed'))) = [];
+    (contains(FieldNames,'Allowed'))|...
+    (contains(FieldNames,'Tooltip'))) = [];
 NFields = length(FieldNames);
 NPanels = ceil(NFields/NOptsPerPanel);
 NRows = ceil(NPanels/4);
