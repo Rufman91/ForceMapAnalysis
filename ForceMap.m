@@ -4414,8 +4414,9 @@ classdef ForceMap < matlab.mixin.Copyable
                         %obj.slopeH = obj.slopeH/rangeH;
                         %obj.interceptF = obj.interceptF/rangeF;
                         %obj.interceptH = obj.interceptH/rangeH;
-                        
+                        y = obj.SegTime{j};
                         x = time(j);
+                        x = cell2mat(x);
                         
                         %Y-values fitted sine of indentation and force:
                          ypF = SVF{i,j}(1)*(sin(2*pi*x.*SVF{i,j}(2) + SVF{i,j}(3)));
