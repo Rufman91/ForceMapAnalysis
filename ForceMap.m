@@ -4439,7 +4439,7 @@ classdef ForceMap < matlab.mixin.Copyable
                         
                         %subplot(2,1,1)
                         ax1 = subplot(121);
-                        plot(time(1),FF{i,1},'-m');
+                        plot(time{1},FF{i,1},'-m');
                         %[MultiplierF,UnitF,~] = AFMImage.parse_unit_scale(range(obj.FilterF{i,FirstFreq}),'N',10);
                         ax2 = subplot(122);
                         plot(x,FF{i,j},'-m');
