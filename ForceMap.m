@@ -4440,9 +4440,10 @@ classdef ForceMap < matlab.mixin.Copyable
                         %subplot(2,1,1)
                         ax1 = subplot(121);
                         plot(time{1},FF{i,1},'-m');
+                        hold on
                         %[MultiplierF,UnitF,~] = AFMImage.parse_unit_scale(range(obj.FilterF{i,FirstFreq}),'N',10);
                         ax2 = subplot(122);
-                        plot(x,FF{i,j},'-m');
+                        plot(time{2},FF{i,2},'-m');
                         %hold on
                         %semilogx(x,ypF,'-','color',lila)
                         %title(sprintf('Normalized Force over Time incl. Fit Curve %i',i),'FontSize', 18)
@@ -4474,16 +4475,16 @@ classdef ForceMap < matlab.mixin.Copyable
 %                         grid minor
                         
                         
-                        l1 = plot(nan, nan, 'm-');
-                        hold on
-                        l2 = plot(nan, nan, '-','color', lila);
-                        l3 = plot(nan, nan, '-', 'color', lightblue);
-                        l4 = plot(nan, nan, '-','color',darkblue);
-                        l1.LineWidth = 3;
-                        l2.LineWidth = 3;
-                        l3.LineWidth = 3;
-                        l4.LineWidth = 3;
-                        legend([l1, l2, l3, l4], {'normalized force data', 'force fit','normalized indentation data', 'indentation fit'}, 'Location', 'southoutside','FontSize', 14)
+%                         l1 = plot(nan, nan, 'm-');
+%                         hold on
+%                         l2 = plot(nan, nan, '-','color', lila);
+%                         l3 = plot(nan, nan, '-', 'color', lightblue);
+%                         l4 = plot(nan, nan, '-','color',darkblue);
+%                         l1.LineWidth = 3;
+%                         l2.LineWidth = 3;
+%                         l3.LineWidth = 3;
+%                         l4.LineWidth = 3;
+%                         legend([l1, l2, l3, l4], {'normalized force data', 'force fit','normalized indentation data', 'indentation fit'}, 'Location', 'southoutside','FontSize', 14)
 
         %                         obj.SineVarsF{i,j}(1) = obj.SineVarsF{i,j}(1)*rangeF;
         %                         obj.SineVarsH{i,j}(1) = obj.SineVarsH{i,j}(1)*rangeH;
