@@ -4410,7 +4410,7 @@ classdef ForceMap < matlab.mixin.Copyable
                 hold on
                 
                 nexttile
-                semilogx(time,FF,'-m')
+                semilogx(time{i},FF{i,1},'-m')
 
                 hold on
                 for j=2:lf
