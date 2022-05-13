@@ -4393,11 +4393,11 @@ classdef ForceMap < matlab.mixin.Copyable
                 figure('Name',sprintf('Normalized curves with Fit %i',i))
                 set(gcf,'units','normalized','outerposition',[0 0 1 1])
                 
-                t = tiledlayout(2,lf);
-                t.TileSpacing = 'none';
+                %t = tiledlayout(2,lf);
+                %t.TileSpacing = 'none';
                 
-                n = 2*lf;
-                h = gobjects(1,n);
+                %n = 2*lf;
+                %h = gobjects(1,n);
                         
 
                 hold on
@@ -4414,7 +4414,6 @@ classdef ForceMap < matlab.mixin.Copyable
                         %obj.slopeH = obj.slopeH/rangeH;
                         %obj.interceptF = obj.interceptF/rangeF;
                         %obj.interceptH = obj.interceptH/rangeH;
-                        y = obj.SegTime{j};
                         x = time(j);
                         x = cell2mat(x);
                         
@@ -4429,64 +4428,58 @@ classdef ForceMap < matlab.mixin.Copyable
 
 
                         
-                        %for k=1:lf
-                        % tile 1 force
-                        nexttile
-                        
+                        subplot(2,2,1)
                         %[MultiplierF,UnitF,~] = AFMImage.parse_unit_scale(range(obj.FilterF{i,FirstFreq}),'N',10);
-                        h(j) = semilogx(x,FF{i,j},'-m');
+                        semilogx(x,FF{i,j},'-m');
                         hold on
                         semilogx(x,ypF,'-','color',lila)
                         title(sprintf('Normalized Force over Time incl. Fit Curve %i',i),'FontSize', 18)
                         xlabel('time [s]','FontSize', 16)
-                        if j == 1
-                            ylabel(sprintf('vDeflection-Force'),'FontSize', 16)
-                        else
-                            gca.YAxis.Visible = 'off';
-                        end
+                        ylabel(sprintf('vDeflection-Force'),'FontSize', 16)
                         grid on
                         grid minor
                         
-                        nexttile
                         
+                        subplot(2,2,2)
                         %[MultiplierI,UnitI,~] = AFMImage.parse_unit_scale(range(obj.FilterH{i,FirstFreq}),'m',10);
-%                         semilogx(x,obj.FilterH{i,j},'-','color', lightblue)
-%                         hold on
-%                         semilogx(x,ypH,'-','color',darkblue)
-%                         title(sprintf('Normalized Indentation over Time incl. Fit Curve %i',i),'FontSize', 18)
-%                         xlabel('time [s]','FontSize', 16)
-%                         ylabel(sprintf('Indentation'),'FontSize', 16);
-%                         grid on
-%                         grid minor
+                        semilogx(x,FH{i,j},'-','color', lightblue)
+                        hold on
+                        semilogx(x,ypH,'-','color',darkblue)
+                        title(sprintf('Normalized Indentation over Time incl. Fit Curve %i',i),'FontSize', 18)
+                        xlabel('time [s]','FontSize', 16)
+                        ylabel(sprintf('Indentation'),'FontSize', 16);
+                        grid on
+                        grid minor
                         
+                        
+                        l1 = plot(nan, nan, 'm-');
+                        hold on
+                        l2 = plot(nan, nan, '-','color', lila);
+                        l3 = plot(nan, nan, '-', 'color', lightblue);
+                        l4 = plot(nan, nan, '-','color',darkblue);
+                        l1.LineWidth = 3;
+                        l2.LineWidth = 3;
+                        l3.LineWidth = 3;
+                        l4.LineWidth = 3;
+                        legend([l1, l2, l3, l4], {'normalized force data', 'force fit','normalized indentation data', 'indentation fit'}, 'Location', 'southoutside','FontSize', 14)
+
+        %                         obj.SineVarsF{i,j}(1) = obj.SineVarsF{i,j}(1)*rangeF;
+        %                         obj.SineVarsH{i,j}(1) = obj.SineVarsH{i,j}(1)*rangeH;
+        %                         obj.slopeF = obj.slopeF*rangeF;
+        %                         obj.slopeH = obj.slopeH*rangeH;
+        %                         obj.interceptF = obj.interceptF*rangeF;
+        %                         obj.interceptH = obj.interceptH*rangeH;
+
+                        k = obj.RectApexIndex;
+                        if DirectoryPath~=0
+                           whereToStore=fullfile(DirectoryPath,['filtered_force_indentation_fit_curve_' num2str(i) '.svg']);
+                           saveas(gcf, whereToStore);
+                        end
                         
                       
                         
                 end
                 
-                l1 = plot(nan, nan, 'm-');
-                hold on
-                l2 = plot(nan, nan, '-','color', lila);
-                l3 = plot(nan, nan, '-', 'color', lightblue);
-                l4 = plot(nan, nan, '-','color',darkblue);
-                l1.LineWidth = 3;
-                l2.LineWidth = 3;
-                l3.LineWidth = 3;
-                l4.LineWidth = 3;
-                legend([l1, l2, l3, l4], {'normalized force data', 'force fit','normalized indentation data', 'indentation fit'}, 'Location', 'southoutside','FontSize', 14)
-
-%                         obj.SineVarsF{i,j}(1) = obj.SineVarsF{i,j}(1)*rangeF;
-%                         obj.SineVarsH{i,j}(1) = obj.SineVarsH{i,j}(1)*rangeH;
-%                         obj.slopeF = obj.slopeF*rangeF;
-%                         obj.slopeH = obj.slopeH*rangeH;
-%                         obj.interceptF = obj.interceptF*rangeF;
-%                         obj.interceptH = obj.interceptH*rangeH;
-
-                k = obj.RectApexIndex;
-                if DirectoryPath~=0
-                   whereToStore=fullfile(DirectoryPath,['filtered_force_indentation_fit_curve_' num2str(i) '.svg']);
-                   saveas(gcf, whereToStore);
-                end
 
             end
         end
