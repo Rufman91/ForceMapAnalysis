@@ -4378,6 +4378,13 @@ classdef ForceMap < matlab.mixin.Copyable
                 %Plot
                 figure('Name',sprintf('Normalized curves with Fit %i',i))
                 set(gcf,'units','normalized','outerposition',[0 0 1 1])
+                
+                t = tiledlayout(2,lf);
+                t.TileSpacing = 'none';
+                
+                n = 2*lf;
+                h = gobjects(1,n);
+                        
                 lastseg = obj.NumSegments - 2;
                 hold on
                 for j=FirstFreq:lastseg
@@ -4412,34 +4419,37 @@ classdef ForceMap < matlab.mixin.Copyable
                         
                         hold on
 
-                        t = tiledlayout(lf,2);
-                        t.TileSpacing = 'none';
+
                         
                         %for k=1:lf
                         % tile 1 force
                         nexttile
                         
                         %[MultiplierF,UnitF,~] = AFMImage.parse_unit_scale(range(obj.FilterF{i,FirstFreq}),'N',10);
-                        semilogx(x,obj.FilterF{i,j},'-m')
+                        h(j) = semilogx(x,obj.FilterF{i,j},'-m');
                         hold on
                         semilogx(x,ypF,'-','color',lila)
                         title(sprintf('Normalized Force over Time incl. Fit Curve %i',i),'FontSize', 18)
                         xlabel('time [s]','FontSize', 16)
-                        ylabel(sprintf('vDeflection-Force'),'FontSize', 16)
+                        if j = FirstFreq
+                            ylabel(sprintf('vDeflection-Force'),'FontSize', 16)
+                        else
+                            set(gca,'yticks',[])
+                        end
                         grid on
                         grid minor
                         
                         nexttile
                         
                         %[MultiplierI,UnitI,~] = AFMImage.parse_unit_scale(range(obj.FilterH{i,FirstFreq}),'m',10);
-                        semilogx(x,obj.FilterH{i,j},'-','color', lightblue)
-                        hold on
-                        semilogx(x,ypH,'-','color',darkblue)
-                        title(sprintf('Normalized Indentation over Time incl. Fit Curve %i',i),'FontSize', 18)
-                        xlabel('time [s]','FontSize', 16)
-                        ylabel(sprintf('Indentation'),'FontSize', 16);
-                        grid on
-                        grid minor
+%                         semilogx(x,obj.FilterH{i,j},'-','color', lightblue)
+%                         hold on
+%                         semilogx(x,ypH,'-','color',darkblue)
+%                         title(sprintf('Normalized Indentation over Time incl. Fit Curve %i',i),'FontSize', 18)
+%                         xlabel('time [s]','FontSize', 16)
+%                         ylabel(sprintf('Indentation'),'FontSize', 16);
+%                         grid on
+%                         grid minor
 
 
                         l1 = plot(nan, nan, 'm-');
