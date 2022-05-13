@@ -4367,6 +4367,7 @@ classdef ForceMap < matlab.mixin.Copyable
                     frequencies(j,:) = obj.SegFrequency{j};
                 end
                 FirstFreq = find(frequencies,1,'first');
+                frequencies = frequencies(frequencies ~= 0);
                 lf = length(frequencies);
                 
                 %Colours 
