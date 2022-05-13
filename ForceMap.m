@@ -4439,23 +4439,23 @@ classdef ForceMap < matlab.mixin.Copyable
                         
                         subplot(2,1,1)
                         %[MultiplierF,UnitF,~] = AFMImage.parse_unit_scale(range(obj.FilterF{i,FirstFreq}),'N',10);
-                        plot(x,FF{i,j},'-m');
+                        semilogx(x,FF{i,j},'-m');
                         hold on
-                        plot(x,ypF,'-','color',lila)
+                        semilogx(x,ypF,'-','color',lila)
                         title(sprintf('Normalized Force over Time incl. Fit Curve %i',i),'FontSize', 18)
                         xlabel('time [s]','FontSize', 16)
                         ylabel(sprintf('vDeflection-Force'),'FontSize', 16)
-                        xticks(10:5:150)
-                        set(gca,'xscale','log')
+                        xticks(10:1:150)
+                        %set(gca,'xscale','log')
                         grid on
                         grid minor
                         
                         
                         subplot(2,1,2)
                         %[MultiplierI,UnitI,~] = AFMImage.parse_unit_scale(range(obj.FilterH{i,FirstFreq}),'m',10);
-                        plot(x,FH{i,j},'-','color', lightblue)
+                        semilogx(x,FH{i,j},'-','color', lightblue)
                         hold on
-                        plot(x,ypH,'-','color',darkblue)
+                        semilogx(x,ypH,'-','color',darkblue)
                         title(sprintf('Normalized Indentation over Time incl. Fit Curve %i',i),'FontSize', 18)
                         xlabel('time [s]','FontSize', 16)
                         ylabel(sprintf('Indentation'),'FontSize', 16);
