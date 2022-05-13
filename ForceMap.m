@@ -4409,7 +4409,7 @@ classdef ForceMap < matlab.mixin.Copyable
                         
 
                 hold on
-                for j=1:lf
+                for j=2:lf
                     
 
                         % Divide data through their range
@@ -4437,31 +4437,41 @@ classdef ForceMap < matlab.mixin.Copyable
 
 
                         
-                        subplot(2,1,1)
+                        %subplot(2,1,1)
+                        ax1 = subplot(121);
+                        plot(time(1),FF{i,1},'-m');
                         %[MultiplierF,UnitF,~] = AFMImage.parse_unit_scale(range(obj.FilterF{i,FirstFreq}),'N',10);
-                        semilogx(x,FF{i,j},'-m');
-                        hold on
-                        semilogx(x,ypF,'-','color',lila)
-                        title(sprintf('Normalized Force over Time incl. Fit Curve %i',i),'FontSize', 18)
-                        xlabel('time [s]','FontSize', 16)
-                        ylabel(sprintf('vDeflection-Force'),'FontSize', 16)
-                        xticks(10:0.1:150)
-                        xticklabels({'10','100','150'})
+                        ax2 = subplot(122);
+                        plot(x,FF{i,j},'-m');
+                        %hold on
+                        %semilogx(x,ypF,'-','color',lila)
+                        %title(sprintf('Normalized Force over Time incl. Fit Curve %i',i),'FontSize', 18)
+                        %xlabel('time [s]','FontSize', 16)
+                        %ylabel(sprintf('vDeflection-Force'),'FontSize', 16)
+                        %xticks(10:0.1:150)
+                        %xticklabels({'10','100','150'})
                         %set(gca,'xscale','log')
-                        grid on
-                        grid minor
+                        %grid on
+                        %grid minor
+                        set(ax1,'units','normalized','position',[0.1 0.1 0.4 0.8]);
+                        set(ax2,'units','normalized','position',[0.5 0.1 0.4 0.8]);
+                        set(ax1,'xscale','log','xlim',[10 20],'yticklabel','');
                         
-                        
-                        subplot(2,1,2)
-                        %[MultiplierI,UnitI,~] = AFMImage.parse_unit_scale(range(obj.FilterH{i,FirstFreq}),'m',10);
-                        semilogx(x,FH{i,j},'-','color', lightblue)
-                        hold on
-                        semilogx(x,ypH,'-','color',darkblue)
-                        title(sprintf('Normalized Indentation over Time incl. Fit Curve %i',i),'FontSize', 18)
-                        xlabel('time [s]','FontSize', 16)
-                        ylabel(sprintf('Indentation'),'FontSize', 16);
-                        grid on
-                        grid minor
+                        set([ax1 ax2],'ylim',[-1.5 1.5],'ytick',-1.5:0.5:1.5,'box','off');
+                        set(ax1,'yticklabel','');
+                        uistack(ax2,'top');
+                        grid(ax1,'on');
+                        grid(ax2,'on');
+%                         subplot(2,1,2)
+%                         %[MultiplierI,UnitI,~] = AFMImage.parse_unit_scale(range(obj.FilterH{i,FirstFreq}),'m',10);
+%                         semilogx(x,FH{i,j},'-','color', lightblue)
+%                         hold on
+%                         semilogx(x,ypH,'-','color',darkblue)
+%                         title(sprintf('Normalized Indentation over Time incl. Fit Curve %i',i),'FontSize', 18)
+%                         xlabel('time [s]','FontSize', 16)
+%                         ylabel(sprintf('Indentation'),'FontSize', 16);
+%                         grid on
+%                         grid minor
                         
                         
                         l1 = plot(nan, nan, 'm-');
