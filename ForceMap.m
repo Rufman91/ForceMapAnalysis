@@ -4363,8 +4363,24 @@ classdef ForceMap < matlab.mixin.Copyable
                 
                 %Identify position of first modulation for Multiplier later
                 frequencies = zeros(obj.NumSegments,1);
+                FilterF = zeros(obj.NumSegments,1);
+                FilterH = zeros(obj.NumSegments,1);
+                Time = zeros(obj.NumSegments,1);
                 for j=1:obj.NumSegments
                     frequencies(j,:) = obj.SegFrequency{j};
+                    FilterF(j,:) = obj.FilterF{i,j};
+                    FilterH(j,:) = obj.FilterH{i,j};
+                    Time(j,:) = obj.SegTime{j};
+                    
+                end
+                for j=1:obj.NumSegments                    
+                    if obj.SegFrequency{j} == 0
+                        
+                        FilterF(:,j)=[];
+                        FilterH(:,j)=[];
+                        Time(:,j)=[];
+                        
+                    end
                 end
                 FirstFreq = find(frequencies,1,'first');
                 frequencies = frequencies(frequencies ~= 0);
@@ -4393,7 +4409,7 @@ classdef ForceMap < matlab.mixin.Copyable
                     
                     if obj.SegFrequency{j} > 0
                         
-                        x= obj.SegTime{j};
+                        
                         
                         % Divide data through their range
                         rangeF = range(obj.BasedForce{i,j});
@@ -4411,11 +4427,7 @@ classdef ForceMap < matlab.mixin.Copyable
                          ypF = obj.SineVarsF{i,j}(1)*(sin(2*pi*x.*obj.SineVarsF{i,j}(2) + obj.SineVarsF{i,j}(3)));
                          ypH = obj.SineVarsH{i,j}(1)*(sin(2*pi*x.*obj.SineVarsH{i,j}(2) + obj.SineVarsH{i,j}(3)));
                             
-                        
-                        if obj.SegFrequency{j} == 0
-                            obj.FilterF{i,j} = zeros(length(x),1);
-                            obj.FilterH{i,j} = zeros(length(x),1);
-                        end
+                       
 
                         
                         hold on
