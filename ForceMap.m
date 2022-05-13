@@ -4431,7 +4431,7 @@ classdef ForceMap < matlab.mixin.Copyable
                         semilogx(x,ypF,'-','color',lila)
                         title(sprintf('Normalized Force over Time incl. Fit Curve %i',i),'FontSize', 18)
                         xlabel('time [s]','FontSize', 16)
-                        if j = FirstFreq
+                        if j == FirstFreq
                             ylabel(sprintf('vDeflection-Force'),'FontSize', 16)
                         else
                             set(gca,'yticks',[])
