@@ -4429,8 +4429,8 @@ classdef ForceMap < matlab.mixin.Copyable
                         %Y-values fitted sine of indentation and force:
                          ypF = SVF{i,j}(1)*(sin(2*pi*x.*SVF{i,j}(2) + SVF{i,j}(3)));
                          ypH = SVH{i,j}(1)*(sin(2*pi*x.*SVH{i,j}(2) + SVH{i,j}(3)));
-                            
-                       
+                           
+                        e = time{1}(end);
 
                         
                         hold on
@@ -4455,9 +4455,9 @@ classdef ForceMap < matlab.mixin.Copyable
                         %grid minor
                         set(ax1,'units','normalized','position',[0.1 0.1 0.4 0.8]);
                         set(ax2,'units','normalized','position',[0.5 0.1 0.4 0.8]);
-                        set(ax1,'xscale','log','xlim',[10 20],'yticklabel','');
+                        set(ax1,'xscale','log','xlim',[10 e],'yticklabel','');
                         
-                        set([ax1 ax2],'ylim',[-1.5 1.5],'ytick',-1.5:0.5:1.5,'box','off');
+                        set([ax1 ax2],'box','off');
                         set(ax1,'yticklabel','');
                         uistack(ax2,'top');
                         grid(ax1,'on');
