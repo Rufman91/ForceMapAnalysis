@@ -4445,7 +4445,7 @@ classdef ForceMap < matlab.mixin.Copyable
                         title(sprintf('Normalized Force over Time incl. Fit Curve %i',i),'FontSize', 18)
                         xlabel('time [s]','FontSize', 16)
                         ylabel(sprintf('vDeflection-Force'),'FontSize', 16)
-                        xticks(10:10:140)
+                        xticks(10:5:150)
                         set(gca,'xscale','log')
                         grid on
                         grid minor
