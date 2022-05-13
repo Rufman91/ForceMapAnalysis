@@ -4363,28 +4363,25 @@ classdef ForceMap < matlab.mixin.Copyable
                 
                 %Identify position of first modulation for Multiplier later
                  frequencies = zeros(obj.NumSegments,1);
-                 FilterF = zeros(obj.NumSegments,1);
-                 FilterH = zeros(obj.NumSegments,1);
-                 Time = zeros(obj.NumSegments,1);
+                 Time = obj.SegTime;
                  for j=1:obj.NumSegments
                      frequencies(j,:) = obj.SegFrequency{j};
+                     
+                     if obj.SegFrequency{j} == 0
+                        Time(:,j)=[];
+                    end
                  end
                 %frequencies = cell2mat(obj.SegFrequency);
                 FF = obj.FilterF;
+                FH = obj.FilterH;
+                SVF = obj.SineVarsF;
+                SVH = obj.SineVarsH;
                 empty_fields = cellfun(@isempty,FF);
-                FF(:,empty_fields(1,:))=[]; 
+                FF(:,empty_fields(1,:))=[];
+                FH(:,empty_fields(1,:))=[];
+                SVF(:,empty_fields(1,:))=[];
+                SVH(:,empty_fields(1,:))=[];
 
-                Time = cell2mat(obj.SegTime{j});
-                for j=1:obj.NumSegments                    
-                    if obj.SegFrequency{j} == 0
-                        
-                        FilterF(:,j)=[];
-                        FilterH(:,j)=[];
-                        Time(:,j)=[];
-                        
-                    end
-                end
-                FirstFreq = find(frequencies,1,'first');
                 frequencies = frequencies(frequencies ~= 0);
                 lf = length(frequencies);
                 
@@ -4404,18 +4401,14 @@ classdef ForceMap < matlab.mixin.Copyable
                 n = 2*lf;
                 h = gobjects(1,n);
                         
-                lastseg = obj.NumSegments - 2;
+
                 hold on
-                for j=FirstFreq:lastseg
+                for j=1:lf
                     
-                    
-                    if obj.SegFrequency{j} > 0
-                        
-                        
-                        
+
                         % Divide data through their range
-                        rangeF = range(obj.BasedForce{i,j});
-                        rangeH = range(obj.Indentation{i,j});
+                        %rangeF = range(obj.BasedForce{i,j});
+                        %rangeH = range(obj.Indentation{i,j});
                         
                         %obj.SineVarsF{i,j}(1) = obj.SineVarsF{i,j}(1)/rangeF;
                         %obj.SineVarsH{i,j}(1) = obj.SineVarsH{i,j}(1)/rangeH;
@@ -4426,7 +4419,7 @@ classdef ForceMap < matlab.mixin.Copyable
                         
                         
                         %Y-values fitted sine of indentation and force:
-                         ypF = obj.SineVarsF{i,j}(1)*(sin(2*pi*x.*obj.SineVarsF{i,j}(2) + obj.SineVarsF{i,j}(3)));
+                         ypF = SVF{i,j}(1)*(sin(2*pi*x.*SVF{i,j}(2) + SVF{i,j}(3)));
                          ypH = obj.SineVarsH{i,j}(1)*(sin(2*pi*x.*obj.SineVarsH{i,j}(2) + obj.SineVarsH{i,j}(3)));
                             
                        
@@ -4465,38 +4458,36 @@ classdef ForceMap < matlab.mixin.Copyable
 %                         ylabel(sprintf('Indentation'),'FontSize', 16);
 %                         grid on
 %                         grid minor
+                        
+                        
+                      
+                        
+                end
+                
+                l1 = plot(nan, nan, 'm-');
+                hold on
+                l2 = plot(nan, nan, '-','color', lila);
+                l3 = plot(nan, nan, '-', 'color', lightblue);
+                l4 = plot(nan, nan, '-','color',darkblue);
+                l1.LineWidth = 3;
+                l2.LineWidth = 3;
+                l3.LineWidth = 3;
+                l4.LineWidth = 3;
+                legend([l1, l2, l3, l4], {'normalized force data', 'force fit','normalized indentation data', 'indentation fit'}, 'Location', 'southoutside','FontSize', 14)
 
-
-                        l1 = plot(nan, nan, 'm-');
-                        hold on
-                        l2 = plot(nan, nan, '-','color', lila);
-                        l3 = plot(nan, nan, '-', 'color', lightblue);
-                        l4 = plot(nan, nan, '-','color',darkblue);
-                        l1.LineWidth = 3;
-                        l2.LineWidth = 3;
-                        l3.LineWidth = 3;
-                        l4.LineWidth = 3;
-                        legend([l1, l2, l3, l4], {'normalized force data', 'force fit','normalized indentation data', 'indentation fit'}, 'Location', 'southoutside','FontSize', 14)
-                       
 %                         obj.SineVarsF{i,j}(1) = obj.SineVarsF{i,j}(1)*rangeF;
 %                         obj.SineVarsH{i,j}(1) = obj.SineVarsH{i,j}(1)*rangeH;
 %                         obj.slopeF = obj.slopeF*rangeF;
 %                         obj.slopeH = obj.slopeH*rangeH;
 %                         obj.interceptF = obj.interceptF*rangeF;
 %                         obj.interceptH = obj.interceptH*rangeH;
-                        
-                        k = obj.RectApexIndex;
-                        if DirectoryPath~=0
-                           whereToStore=fullfile(DirectoryPath,['filtered_force_indentation_fit_curve_' num2str(i) '.svg']);
-                           saveas(gcf, whereToStore);
-                        end
 
-                        
-                        
-                       
-                    end
-                        
+                k = obj.RectApexIndex;
+                if DirectoryPath~=0
+                   whereToStore=fullfile(DirectoryPath,['filtered_force_indentation_fit_curve_' num2str(i) '.svg']);
+                   saveas(gcf, whereToStore);
                 end
+
             end
         end
         
