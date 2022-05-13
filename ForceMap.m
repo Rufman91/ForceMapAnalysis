@@ -4443,7 +4443,9 @@ classdef ForceMap < matlab.mixin.Copyable
                         hold on
                         %[MultiplierF,UnitF,~] = AFMImage.parse_unit_scale(range(obj.FilterF{i,FirstFreq}),'N',10);
                         ax2 = subplot(122);
-                        plot(time{2},FF{i,2},'-m');
+                        for j=2:lf
+                            plot(time{j},FF{i,j},'-m');
+                        end
                         %hold on
                         %semilogx(x,ypF,'-','color',lila)
                         %title(sprintf('Normalized Force over Time incl. Fit Curve %i',i),'FontSize', 18)
@@ -4456,10 +4458,10 @@ classdef ForceMap < matlab.mixin.Copyable
                         %grid minor
                         set(ax1,'units','normalized','position',[0.1 0.1 0.4 0.8]);
                         set(ax2,'units','normalized','position',[0.5 0.1 0.4 0.8]);
-                        set(ax1,'xscale','log','xlim',[10 e],'yticklabel','');
+                        set(ax1,'xscale','log','xlim',[10 e]);
                         
                         set([ax1 ax2],'box','off');
-                        set(ax1,'yticklabel','');
+                        set(ax2,'yticklabel','');
                         uistack(ax2,'top');
                         grid(ax1,'on');
                         grid(ax2,'on');
