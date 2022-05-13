@@ -4446,7 +4446,7 @@ classdef ForceMap < matlab.mixin.Copyable
                         xlabel('time [s]','FontSize', 16)
                         ylabel(sprintf('vDeflection-Force'),'FontSize', 16)
                         xticks(10:10:140)
-                        %set(gca,'xscale','log')
+                        set(gca,'xscale','log')
                         grid on
                         grid minor
                         
