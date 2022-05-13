@@ -4410,7 +4410,7 @@ classdef ForceMap < matlab.mixin.Copyable
                 hold on
                 
                 nexttile
-                semilogx(time{1},FF{i,1},'-m')
+                semilogx(time,FF,'-m')
 
                 hold on
                 for j=2:lf
@@ -4444,7 +4444,7 @@ classdef ForceMap < matlab.mixin.Copyable
                         
                         %subplot(2,1,1)
                         nexttile
-                        h(j) = plot(time{j},FF{i,j},'-m');
+                        plot(time{j},FF{i,j},'-m');
                         hold on
                         %[MultiplierF,UnitF,~] = AFMImage.parse_unit_scale(range(obj.FilterF{i,FirstFreq}),'N',10);
 %                         ax2 = subplot(122);
