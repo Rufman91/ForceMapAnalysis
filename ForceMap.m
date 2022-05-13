@@ -4434,7 +4434,7 @@ classdef ForceMap < matlab.mixin.Copyable
                         if j == FirstFreq
                             ylabel(sprintf('vDeflection-Force'),'FontSize', 16)
                         else
-                            set(gca,'yticks',[])
+                            gca.YAxis.Visible = 'off';
                         end
                         grid on
                         grid minor
