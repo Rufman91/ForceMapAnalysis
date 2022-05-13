@@ -4415,10 +4415,11 @@ classdef ForceMap < matlab.mixin.Copyable
                         %obj.interceptF = obj.interceptF/rangeF;
                         %obj.interceptH = obj.interceptH/rangeH;
                         
+                        x = time(j);
                         
                         %Y-values fitted sine of indentation and force:
                          ypF = SVF{i,j}(1)*(sin(2*pi*x.*SVF{i,j}(2) + SVF{i,j}(3)));
-                         ypH = obj.SineVarsH{i,j}(1)*(sin(2*pi*x.*obj.SineVarsH{i,j}(2) + obj.SineVarsH{i,j}(3)));
+                         ypH = SVH{i,j}(1)*(sin(2*pi*x.*SVH{i,j}(2) + SVH{i,j}(3)));
                             
                        
 
@@ -4432,12 +4433,12 @@ classdef ForceMap < matlab.mixin.Copyable
                         nexttile
                         
                         %[MultiplierF,UnitF,~] = AFMImage.parse_unit_scale(range(obj.FilterF{i,FirstFreq}),'N',10);
-                        h(j) = semilogx(x,obj.FilterF{i,j},'-m');
+                        h(j) = semilogx(x,FF{i,j},'-m');
                         hold on
                         semilogx(x,ypF,'-','color',lila)
                         title(sprintf('Normalized Force over Time incl. Fit Curve %i',i),'FontSize', 18)
                         xlabel('time [s]','FontSize', 16)
-                        if j == FirstFreq
+                        if j == 1
                             ylabel(sprintf('vDeflection-Force'),'FontSize', 16)
                         else
                             gca.YAxis.Visible = 'off';
