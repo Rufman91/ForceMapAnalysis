@@ -4383,6 +4383,14 @@ classdef ForceMap < matlab.mixin.Copyable
                 frequencies = frequencies(frequencies ~= 0);
                 lf = length(frequencies);
                 
+                maxfreq = max(frequencies);
+                minfreq = min(frequencies);
+                faktor = maxfreq/minfreq;
+                
+%                 if faktor > 10
+%                             
+%                 end
+                
                 %Colours 
                 lila = [0.368, 0.058, 0.721];
                 lightblue = [0.101, 0.701, 0.976];
@@ -4417,6 +4425,7 @@ classdef ForceMap < matlab.mixin.Copyable
                         x = time(j);
                         x = cell2mat(x);
                         
+                        
                         %Y-values fitted sine of indentation and force:
                          ypF = SVF{i,j}(1)*(sin(2*pi*x.*SVF{i,j}(2) + SVF{i,j}(3)));
                          ypH = SVH{i,j}(1)*(sin(2*pi*x.*SVH{i,j}(2) + SVH{i,j}(3)));
@@ -4428,23 +4437,24 @@ classdef ForceMap < matlab.mixin.Copyable
 
 
                         
-                        subplot(2,2,1)
+                        subplot(2,1,1)
                         %[MultiplierF,UnitF,~] = AFMImage.parse_unit_scale(range(obj.FilterF{i,FirstFreq}),'N',10);
-                        semilogx(x,FF{i,j},'-m');
+                        plot(x,FF{i,j},'-m');
                         hold on
-                        semilogx(x,ypF,'-','color',lila)
+                        plot(x,ypF,'-','color',lila)
                         title(sprintf('Normalized Force over Time incl. Fit Curve %i',i),'FontSize', 18)
                         xlabel('time [s]','FontSize', 16)
                         ylabel(sprintf('vDeflection-Force'),'FontSize', 16)
+                        set(gca,'xscale','log')
                         grid on
                         grid minor
                         
                         
-                        subplot(2,2,2)
+                        subplot(2,1,2)
                         %[MultiplierI,UnitI,~] = AFMImage.parse_unit_scale(range(obj.FilterH{i,FirstFreq}),'m',10);
-                        semilogx(x,FH{i,j},'-','color', lightblue)
+                        plot(x,FH{i,j},'-','color', lightblue)
                         hold on
-                        semilogx(x,ypH,'-','color',darkblue)
+                        plot(x,ypH,'-','color',darkblue)
                         title(sprintf('Normalized Indentation over Time incl. Fit Curve %i',i),'FontSize', 18)
                         xlabel('time [s]','FontSize', 16)
                         ylabel(sprintf('Indentation'),'FontSize', 16);
