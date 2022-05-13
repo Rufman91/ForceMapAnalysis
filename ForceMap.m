@@ -4366,12 +4366,14 @@ classdef ForceMap < matlab.mixin.Copyable
                  FilterF = zeros(obj.NumSegments,1);
                  FilterH = zeros(obj.NumSegments,1);
                  Time = zeros(obj.NumSegments,1);
-%                 for j=1:obj.NumSegments
-%                     frequencies(j,:) = obj.SegFrequency{j};
-%                 end
-                frequencies = cell2mat(obj.SegFrequency);
-                FilterF = cell2mat(obj.FilterF);
-                FilterH = cell2mat(obj.FilterH);
+                 for j=1:obj.NumSegments
+                     frequencies(j,:) = obj.SegFrequency{j};
+                 end
+                %frequencies = cell2mat(obj.SegFrequency);
+                FF = obj.FilterF;
+                empty_fields = cellfun(@isempty,FF);
+                FF(:,empty_fields(1,:))=[]; 
+
                 Time = cell2mat(obj.SegTime{j});
                 for j=1:obj.NumSegments                    
                     if obj.SegFrequency{j} == 0
