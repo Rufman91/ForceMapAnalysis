@@ -4363,9 +4363,9 @@ classdef ForceMap < matlab.mixin.Copyable
                 
                 %Identify position of first modulation for Multiplier later
                 frequencies = zeros(obj.NumSegments,1);
-                FilterF = zeros(obj.NumSegments,1);
-                FilterH = zeros(obj.NumSegments,1);
-                Time = zeros(obj.NumSegments,1);
+                FilterF = zeros(1,obj.NumSegments);
+                FilterH = zeros(1,obj.NumSegments);
+                Time = zeros(1,obj.NumSegments);
                 for j=1:obj.NumSegments
                     frequencies(j,:) = obj.SegFrequency{j};
                     FilterF(j,:) = obj.FilterF{i,j};
