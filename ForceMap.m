@@ -4543,7 +4543,7 @@ classdef ForceMap < matlab.mixin.Copyable
 
                 hold on
                 ax4 = subplot(222);
-                plot(time(2),FH{i,2}*range(BH{i,2}),'-m');
+                plot(time{2},FH{i,2}*range(BH{i,2}),'-m');
 %                 for j=2:lf
 %                      % Divide data through their range
 %                         rangeF = range(BF{i,j});
