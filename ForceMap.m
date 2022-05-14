@@ -4442,7 +4442,7 @@ classdef ForceMap < matlab.mixin.Copyable
                         x = cell2mat(x);
                         
                         x1 = 0.95*time{2}(1);
-                        x2 = 1.15*time{2}(end);
+                        x2 = 1.15*time{lf}(end);
                         
                         
                         
