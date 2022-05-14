@@ -4445,7 +4445,7 @@ classdef ForceMap < matlab.mixin.Copyable
                         x = cell2mat(x);
                         
                         x1 = 0.95*time{2}(1);
-                        x2 = 1.5*time{lf}(end);
+                        x2 = 1.25*time{lf}(end);
                         
                         
                         
@@ -4453,15 +4453,10 @@ classdef ForceMap < matlab.mixin.Copyable
                          ypF = SVF{i,j}(1)*(sin(2*pi*x.*SVF{i,j}(2) + SVF{i,j}(3)));
                          ypH = SVH{i,j}(1)*(sin(2*pi*x.*SVH{i,j}(2) + SVH{i,j}(3)));
                            
-                        
-
-                        
-                            
-                            
+ 
                         hold on
 
 
-                        
                         %subplot(2,1,1)
                         %nexttile
                         plot(x,FF{i,j}*rangeF,'-m');
@@ -4519,11 +4514,11 @@ classdef ForceMap < matlab.mixin.Copyable
                 end
                 
                 set(ax1,'units','normalized','position',[0.1 0.4 0.3 0.3]);
-                set(ax2,'units','normalized','position',[0.4 0.4 0.7 0.3]);
+                set(ax2,'units','normalized','position',[0.4 0.4 0.6 0.3]);
                 set(ax1,'xscale','log','xlim',[a e]);
                 set(ax2,'xlim',[x1 x2],'ytick',[],'yticklabel','');
 
-                set([ax1 ax2],'box','off');
+                set([ax1 ax2]);
                 set(ax2,'yticklabel','');
                 uistack(ax2,'top');
                 title(sprintf('Normalized Force over Time incl. Fit Curve %i',i),'FontSize', 18)
