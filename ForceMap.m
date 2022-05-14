@@ -4429,7 +4429,7 @@ classdef ForceMap < matlab.mixin.Copyable
                         if j == 1
                             
                             x = time(1);
-                            x =cell2mat(1);
+                            x =cell2mat(x);
                             x = log(x);
                         else
                             x = time(j);
