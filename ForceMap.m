@@ -4516,7 +4516,7 @@ classdef ForceMap < matlab.mixin.Copyable
                 set(ax2,'units','normalized','position',[0.35 0.6 0.7 0.3]);
                 set(ax1,'xscale','log','xlim',[a e]);
                 set(ax2,'xlim',[x1 x2],'ytick',[],'yticklabel','','YColor','none');
-                axis([-1  1  a  150])
+                %axis([-1  1  a  150])
 
                 set([ax1 ax2],'box','off');
                 set(ax2,'yticklabel','','box','on');
@@ -4543,30 +4543,30 @@ classdef ForceMap < matlab.mixin.Copyable
 
                 ax4 = subplot(224);
                 plot(time{2},FH{i,2}*range(BH{i,2}),'-m');
-%                 for j=2:lf
-%                      % Divide data through their range
-%                         rangeF = range(BF{i,j});
-%                         rangeH = range(BH{i,j});
-%                       
-%                         x = time(j);
-%                         x = cell2mat(x);
-%                         
-%                         x1 = 0.95*time{2}(1);
-%                         x2 = 1.25*time{lf}(end);
-%                         
-% 
-%                         %Y-values fitted sine of indentation and force:
-%                          ypF = SVF{i,j}(1)*(sin(2*pi*x.*SVF{i,j}(2) + SVF{i,j}(3)));
-%                          ypH = SVH{i,j}(1)*(sin(2*pi*x.*SVH{i,j}(2) + SVH{i,j}(3)));
-%                            
-%  
-%                         hold on
-% 
-%                         plot(x,FH{i,2}*rangeH,'-m');
-%                         hold on
-%                         plot(x,ypF,'-','color',lila)
-%                         
-%                 end
+                for j=2:lf
+                     % Divide data through their range
+                        rangeF = range(BF{i,j});
+                        rangeH = range(BH{i,j});
+                      
+                        x = time(j);
+                        x = cell2mat(x);
+                        
+                        x1 = 0.95*time{2}(1);
+                        x2 = 1.25*time{lf}(end);
+                        
+
+                        %Y-values fitted sine of indentation and force:
+                         ypF = SVF{i,j}(1)*(sin(2*pi*x.*SVF{i,j}(2) + SVF{i,j}(3)));
+                         ypH = SVH{i,j}(1)*(sin(2*pi*x.*SVH{i,j}(2) + SVH{i,j}(3)));
+                           
+ 
+                        hold on
+
+                        plot(x,FH{i,j}*rangeH,'-','color', lightblue);
+                        hold on
+                        plot(x,ypH,'-','color',darkblue)
+                        
+                end
 
                 set(ax3,'units','normalized','position',[0.05 0.1 0.3 0.3]);
                 set(ax4,'units','normalized','position',[0.35 0.1 0.7 0.3]);
