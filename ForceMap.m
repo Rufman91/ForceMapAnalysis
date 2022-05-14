@@ -4361,6 +4361,140 @@ classdef ForceMap < matlab.mixin.Copyable
             
             for i=1:obj.NCurves
                 
+                %
+                 frequencies = zeros(obj.NumSegments,1);
+                 time = obj.SegTime;
+                 for j=1:obj.NumSegments
+                     frequencies(j,:) = obj.SegFrequency{j};
+                     
+                 end
+
+                FF = obj.FilterF;
+                FH = obj.FilterH;
+                SVF = obj.SineVarsF;
+                SVH = obj.SineVarsH;
+                BF = obj.BasedForce;
+                BH = obj.Indentation;
+                
+                empty_fields = cellfun(@isempty,FF);
+                FF(:,empty_fields(1,:))=[];
+                FH(:,empty_fields(1,:))=[];
+                SVF(:,empty_fields(1,:))=[];
+                SVH(:,empty_fields(1,:))=[];
+
+                time = time(frequencies ~= 0);
+                BF = BF(:,frequencies ~= 0);
+                BH = BH(:,frequencies ~= 0);
+                frequencies = frequencies(frequencies ~= 0);
+                lf = length(frequencies);
+                
+                
+                %Colours 
+                lila = [0.368, 0.058, 0.721];
+                lightblue = [0.101, 0.701, 0.976];
+                darkblue = [0.109, 0.078, 0.941];
+                
+                
+                %Plot
+                figure('Name',sprintf('Normalized curves with Fit %i',i))
+                set(gcf,'units','normalized','outerposition',[0 0 1 1])
+                
+                
+                hold on
+                
+                for j=1:lf
+                    
+
+                        % Divide data through their range
+                        rangeF = range(BF{i,j});
+                        rangeH = range(BH{i,j});
+                        
+                        %obj.SineVarsF{i,j}(1) = obj.SineVarsF{i,j}(1)/rangeF;
+                        %obj.SineVarsH{i,j}(1) = obj.SineVarsH{i,j}(1)/rangeH;
+                        %obj.slopeF = obj.slopeF/rangeF;
+                        %obj.slopeH = obj.slopeH/rangeH;
+                        %obj.interceptF = obj.interceptF/rangeF;
+                        %obj.interceptH = obj.interceptH/rangeH;
+                        
+                        
+                        x = time(j);
+                        x = cell2mat(x);
+                        
+                        
+                        %Y-values fitted sine of indentation and force:
+                         ypF = SVF{i,j}(1)*(sin(2*pi*x.*SVF{i,j}(2) + SVF{i,j}(3)));
+                         ypH = SVH{i,j}(1)*(sin(2*pi*x.*SVH{i,j}(2) + SVH{i,j}(3)));
+                           
+
+                        %Subplot for Force + Fit
+                        subplot(2,1,1)
+                        semilogx(x,FF{i,j},'-m')
+                        hold on
+                        semilogx(x,ypF,'-','color',lila)
+                        title(sprintf('Normalized Force over Time incl. Fit Curve %i',i),'FontSize', 18)
+                        xlabel('time [s]','FontSize', 16)
+                        ylabel(sprintf('vDeflection-Force'),'FontSize', 16)
+                        grid on
+                        grid minor
+                        
+                        
+                        %Subplot for Indentation + Fit
+                        subplot(2,1,2)
+                        semilogx(x,FH{i,j},'-','color', lightblue)
+                        hold on
+                        semilogx(x,ypH,'-','color',darkblue)
+                        title(sprintf('Normalized Indentation over Time incl. Fit Curve %i',i),'FontSize', 18)
+                        xlabel('time [s]','FontSize', 16)
+                        ylabel(sprintf('Indentation'),'FontSize', 16);
+                        grid on
+                        grid minor
+                        
+                        
+                        l1 = plot(nan, nan, 'm-');
+                        hold on
+                        l2 = plot(nan, nan, '-','color', lila);
+                        l3 = plot(nan, nan, '-', 'color', lightblue);
+                        l4 = plot(nan, nan, '-','color',darkblue);
+                        l1.LineWidth = 3;
+                        l2.LineWidth = 3;
+                        l3.LineWidth = 3;
+                        l4.LineWidth = 3;
+                        legend([l1, l2, l3, l4], {'normalized force data', 'force fit','normalized indentation data', 'indentation fit'}, 'Location', 'southoutside','FontSize', 14)
+
+        %                         obj.SineVarsF{i,j}(1) = obj.SineVarsF{i,j}(1)*rangeF;
+        %                         obj.SineVarsH{i,j}(1) = obj.SineVarsH{i,j}(1)*rangeH;
+        %                         obj.slopeF = obj.slopeF*rangeF;
+        %                         obj.slopeH = obj.slopeH*rangeH;
+        %                         obj.interceptF = obj.interceptF*rangeF;
+        %                         obj.interceptH = obj.interceptH*rangeH;
+
+
+                        % Save
+                        k = obj.RectApexIndex;
+                        if DirectoryPath~=0
+                           whereToStore=fullfile(DirectoryPath,['filtered_force_indentation_fit_curve_' num2str(i) '.svg']);
+                           saveas(gcf, whereToStore);
+                        end
+                      
+                        
+                end
+                
+
+            end
+        end
+        
+        function show_sine_special(obj)
+            % this function is to display the filtered force and
+            % indentation data and the respective fits to see the quality
+            % of the fit
+            
+            close all
+            DirectoryPath = uigetdir();
+            k=1;
+            
+            
+            for i=1:obj.NCurves
+                
                 %Identify position of first modulation for Multiplier later
                  frequencies = zeros(obj.NumSegments,1);
                  time = obj.SegTime;
@@ -4521,11 +4655,20 @@ classdef ForceMap < matlab.mixin.Copyable
                 set([ax1 ax2],'box','on');
                 set(ax2,'ytick',[],'yticklabel','','box','on');
                 uistack(ax2,'top');
-                %title(sprintf('Normalized Force over Time incl. Fit Curve %i',i),'Position',[0.4 1.0],'FontSize', 18)
-                xlabel('time [s]','FontSize', 16)
+                
+                Ylm =[-1 1];                          % get x, y axis limits 
+                Xlm = [a x2];                          % so can position relative instead of absolute
+                Xlb = mean(Xlim);                    % set horizontally at midpoint
+                Ylb = 0.99*Ylim(1);                  % and just 1% below minimum y value
+                TitleFit = title(sprintf('Normalized Force over Time incl. Fit Curve %i',i),'FontSize', 18);
+                set(TitleFit,'Position',[Xlb Ylb],'VerticalAlignment','top','HorizontalAlignment','center')
+                hXLbl = xlabel('time [s]','FontSize', 16);
+                set(hXLbl,'Position',[Xlb Ylb],'VerticalAlignment','top','HorizontalAlignment','center')
                 ylabel(ax1, sprintf('vDeflection-Force'),'FontSize', 16)
                 grid(ax1,'on');
                 grid(ax2,'on');
+                
+                
                 
                 
                 %indentation
@@ -4576,6 +4719,21 @@ classdef ForceMap < matlab.mixin.Copyable
                 set(ax4,'yticklabel','','box','on');
                 uistack(ax4,'top');
                 
+                
+                % Legend
+                l1 = plot(nan, nan, 'm-');
+                hold on
+                l2 = plot(nan, nan, '-','color', lila);
+                l3 = plot(nan, nan, '-', 'color', lightblue);
+                l4 = plot(nan, nan, '-','color',darkblue);
+                l1.LineWidth = 3;
+                l2.LineWidth = 3;
+                l3.LineWidth = 3;
+                l4.LineWidth = 3;
+                legend([l1, l2, l3, l4], {'normalized force data', 'force fit','normalized indentation data', 'indentation fit'}, 'Location', 'southoutside','FontSize', 14)
+
+                
+                % Save
                 k = obj.RectApexIndex;
                 if DirectoryPath~=0
                    whereToStore=fullfile(DirectoryPath,['filtered_force_indentation_fit_curve_' num2str(i) '.svg']);
