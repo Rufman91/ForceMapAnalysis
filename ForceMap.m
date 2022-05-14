@@ -4426,7 +4426,7 @@ classdef ForceMap < matlab.mixin.Copyable
                 hold on
                 semilogx(x,ypF1,'-','color',lila)
 
-                hold on
+
                 ax2 = subplot(222);
                 for j=2:lf
                     
@@ -4453,8 +4453,6 @@ classdef ForceMap < matlab.mixin.Copyable
                          ypF = SVF{i,j}(1)*(sin(2*pi*x.*SVF{i,j}(2) + SVF{i,j}(3)));
                          ypH = SVH{i,j}(1)*(sin(2*pi*x.*SVH{i,j}(2) + SVH{i,j}(3)));
                            
- 
-                        hold on
 
 
                         %subplot(2,1,1)
@@ -4537,11 +4535,11 @@ classdef ForceMap < matlab.mixin.Copyable
                 a = 0.95*time{1}(1);
                 ypH1 = SVH{i,1}(1)*(sin(2*pi*x.*SVH{i,1}(2) + SVH{i,1}(3)));
 
-                semilogx(x,FH{i,1}*range(BH{i,1}),'-m');
+                semilogx(x,FH{i,1}*range(BH{i,1}),'-','color', lightblue);
                 hold on
-                semilogx(x,ypH1,'-','color',lila)
+                semilogx(x,ypH1,'-','color',darkblue)
 
-                hold on
+
                 ax4 = subplot(224);
                 plot(time{2},FH{i,2}*range(BH{i,2}),'-m');
 %                 for j=2:lf
