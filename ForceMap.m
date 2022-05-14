@@ -4414,8 +4414,8 @@ classdef ForceMap < matlab.mixin.Copyable
                 ax1 = subplot(121);
                 x = time(1);
                 x =cell2mat(x);
-                e = 1.1*time{1}(end);
-                a = 0.9*time{1}(1);
+                e = 1.05*time{1}(end);
+                a = 0.95*time{1}(1);
                 %x = exp(x);
                 semilogx(x,FF{i,1},'-m');
 
@@ -4507,8 +4507,8 @@ classdef ForceMap < matlab.mixin.Copyable
                         
                 end
                 
-                set(ax1,'units','normalized','position',[0.1 0.1 0.4 0.8]);
-                set(ax2,'units','normalized','position',[0.5 0.1 0.4 0.8]);
+                set(ax1,'units','normalized','position',[0.1 0.3 0.3 0.5]);
+                set(ax2,'units','normalized','position',[0.5 0.3 0.7 0.5]);
                 set(ax1,'xscale','log','xlim',[a e]);
                 set(ax2,'yticklabel','');
 
