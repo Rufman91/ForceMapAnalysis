@@ -4418,8 +4418,8 @@ classdef ForceMap < matlab.mixin.Copyable
                 ax1 = subplot(221);
                 x = time(1);
                 x =cell2mat(x);
-                e = 1.05*time{1}(end);
-                a = 0.95*time{1}(1);
+                e = 1.025*time{1}(end);
+                a = 0.97*time{1}(1);
                 ypF1 = SVF{i,1}(1)*(sin(2*pi*x.*SVF{i,1}(2) + SVF{i,1}(3)));
                 %x = exp(x);
                 semilogx(x,FF{i,1}*range(BF{i,1}),'-m');
@@ -4445,7 +4445,7 @@ classdef ForceMap < matlab.mixin.Copyable
                         x = cell2mat(x);
                         
                         x1 = 0.95*time{2}(1);
-                        x2 = 1.1*time{lf}(end);
+                        x2 = 1.05*time{lf}(end);
                         
                         
                         
@@ -4513,7 +4513,7 @@ classdef ForceMap < matlab.mixin.Copyable
                 
                 
                 set(ax1,'units','normalized','position',[0.05 0.6 0.3 0.3]);
-                set(ax2,'units','normalized','position',[0.35 0.6 0.5 0.3]);
+                set(ax2,'units','normalized','position',[0.35 0.6 0.65 0.3]);
                 set(ax1,'xscale','log','xlim',[a e]);
                 set(ax2,'xlim',[x1 x2],'ytick',[],'yticklabel','','YColor','none');
                 %axis([-1  1  a  150])
@@ -4532,8 +4532,7 @@ classdef ForceMap < matlab.mixin.Copyable
                 ax3 = subplot(223);
                 x = time(1);
                 x =cell2mat(x);
-                e = 1.05*time{1}(end);
-                a = 0.95*time{1}(1);
+
                 ypH1 = SVH{i,1}(1)*(sin(2*pi*x.*SVH{i,1}(2) + SVH{i,1}(3)));
 
                 semilogx(x,FH{i,1}*range(BH{i,1}),'-','color', lightblue);
@@ -4552,7 +4551,7 @@ classdef ForceMap < matlab.mixin.Copyable
                         x = cell2mat(x);
                         
                         x1 = 0.95*time{2}(1);
-                        x2 = 1.25*time{lf}(end);
+                        x2 = 1.05*time{lf}(end);
                         
 
                         %Y-values fitted sine of indentation and force:
@@ -4569,7 +4568,7 @@ classdef ForceMap < matlab.mixin.Copyable
                 end
 
                 set(ax3,'units','normalized','position',[0.05 0.1 0.3 0.3]);
-                set(ax4,'units','normalized','position',[0.35 0.1 0.5 0.3]);
+                set(ax4,'units','normalized','position',[0.35 0.1 0.65 0.3]);
                 set(ax3,'xscale','log','xlim',[a e]);
                 set(ax4,'xlim',[x1 x2],'ytick',[],'yticklabel','','YColor','none');
 
