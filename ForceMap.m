@@ -4420,8 +4420,11 @@ classdef ForceMap < matlab.mixin.Copyable
                 x =cell2mat(x);
                 e = 1.05*time{1}(end);
                 a = 0.95*time{1}(1);
+                ypF1 = SVF{i,1}(1)*(sin(2*pi*x.*SVF{i,1}(2) + SVF{i,1}(3)));
                 %x = exp(x);
                 semilogx(x,FF{i,1}*range(BF{i,1}),'-m');
+                hold on
+                semilogx(x,ypF1,'-','color',lila)
 
                 hold on
                 ax2 = subplot(122);
@@ -4442,7 +4445,7 @@ classdef ForceMap < matlab.mixin.Copyable
                         x = cell2mat(x);
                         
                         x1 = 0.95*time{2}(1);
-                        x2 = 1.15*time{lf}(end);
+                        x2 = 1.5*time{lf}(end);
                         
                         
                         
@@ -4469,7 +4472,7 @@ classdef ForceMap < matlab.mixin.Copyable
 %                             plot(time{j},FF{i,j},'-m');
 %                         end
                         %hold on
-                        %plot(x,ypF,'-','color',lila)
+                        plot(x,ypF,'-','color',lila)
                         %title(sprintf('Normalized Force over Time incl. Fit Curve %i',i),'FontSize', 18)
                         %xlabel('time [s]','FontSize', 16)
                         %ylabel(sprintf('vDeflection-Force'),'FontSize', 16)
@@ -4523,9 +4526,9 @@ classdef ForceMap < matlab.mixin.Copyable
                 set([ax1 ax2],'box','off');
                 set(ax2,'yticklabel','');
                 uistack(ax2,'top');
-%                 title(sprintf('Normalized Force over Time incl. Fit Curve %i',i),'FontSize', 18)
-%                 xlabel('time [s]','FontSize', 16)
-%                 ylabel(sprintf('vDeflection-Force'),'FontSize', 16)
+                title(sprintf('Normalized Force over Time incl. Fit Curve %i',i),'FontSize', 18)
+                xlabel('time [s]','FontSize', 16)
+                ylabel(sprintf('vDeflection-Force'),'FontSize', 16)
                 grid(ax1,'on');
                 grid(ax2,'on');
                 
