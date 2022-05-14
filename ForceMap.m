@@ -4401,19 +4401,19 @@ classdef ForceMap < matlab.mixin.Copyable
                 figure('Name',sprintf('Normalized curves with Fit %i',i))
                 set(gcf,'units','normalized','outerposition',[0 0 1 1])
                 
-                t = tiledlayout(1,lf);
-                t.TileSpacing = 'none';
+                %t = tiledlayout(1,lf);
+                %t.TileSpacing = 'none';
                 
-                n = 1*lf;
-                h = gobjects(2,n);
+                %n = 1*lf;
+                %h = gobjects(2,n);
                 
-                hold on
+                %hold on
                 
-                nexttile
-                semilogx(time{1},FF{i,1},'-m')
+                %nexttile
+                %semilogx(time{1},FF{i,1},'-m')
 
                 hold on
-                for j=2:lf
+                for j=1:lf
                     
 
                         % Divide data through their range
@@ -4426,8 +4426,15 @@ classdef ForceMap < matlab.mixin.Copyable
                         %obj.slopeH = obj.slopeH/rangeH;
                         %obj.interceptF = obj.interceptF/rangeF;
                         %obj.interceptH = obj.interceptH/rangeH;
-                        x = time(j);
-                        x = cell2mat(x);
+                        if j == 1
+                            
+                            x = time(1);
+                            x =cell2mat(1);
+                            x = log(x);
+                        else
+                            x = time(j);
+                            x = cell2mat(x);
+                        end
                         
                         
                         %Y-values fitted sine of indentation and force:
@@ -4442,9 +4449,9 @@ classdef ForceMap < matlab.mixin.Copyable
 
 
                         
-                        %subplot(2,1,1)
-                        nexttile
-                        plot(time{j},FF{i,j},'-m');
+                        subplot(2,1,1)
+                        %nexttile
+                        plot(x,FF{i,j},'-m');
                         hold on
                         %[MultiplierF,UnitF,~] = AFMImage.parse_unit_scale(range(obj.FilterF{i,FirstFreq}),'N',10);
 %                         ax2 = subplot(122);
@@ -4452,15 +4459,15 @@ classdef ForceMap < matlab.mixin.Copyable
 %                             plot(time{j},FF{i,j},'-m');
 %                         end
                         %hold on
-                        %semilogx(x,ypF,'-','color',lila)
-                        %title(sprintf('Normalized Force over Time incl. Fit Curve %i',i),'FontSize', 18)
-                        %xlabel('time [s]','FontSize', 16)
-                        %ylabel(sprintf('vDeflection-Force'),'FontSize', 16)
+                        plot(x,ypF,'-','color',lila)
+                        title(sprintf('Normalized Force over Time incl. Fit Curve %i',i),'FontSize', 18)
+                        xlabel('time [s]','FontSize', 16)
+                        ylabel(sprintf('vDeflection-Force'),'FontSize', 16)
                         %xticks(10:0.1:150)
                         %xticklabels({'10','100','150'})
                         %set(gca,'xscale','log')
-                        %grid on
-                        %grid minor
+                        grid on
+                        grid minor
 %                         set(ax1,'units','normalized','position',[0.1 0.1 0.4 0.8]);
 %                         set(ax2,'units','normalized','position',[0.5 0.1 0.4 0.8]);
 %                         set(ax1,'xscale','log','xlim',[a e]);
