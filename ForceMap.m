@@ -4570,7 +4570,7 @@ classdef ForceMap < matlab.mixin.Copyable
                 set(ax3,'units','normalized','position',[0.05 0.1 0.3 0.3]);
                 set(ax4,'units','normalized','position',[0.35 0.1 0.7 0.3]);
                 set(ax3,'xscale','log','xlim',[a e]);
-                set(ax4,'xlim',[x1 x2],'ytick',[],'yticklabel','','YColor','none');
+                set(ax4,'xlim',[x1 150],'ytick',[],'yticklabel','','YColor','none');
 
                 set([ax3 ax4],'box','off');
                 set(ax4,'yticklabel','','box','on');
