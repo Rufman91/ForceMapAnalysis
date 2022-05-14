@@ -4520,7 +4520,7 @@ classdef ForceMap < matlab.mixin.Copyable
                 set([ax1 ax2],'box','off');
                 set(ax2,'yticklabel','','box','on');
                 uistack(ax2,'top');
-                title(sprintf('Normalized Force over Time incl. Fit Curve %i',i),'FontSize', 18)
+                title(sprintf('Normalized Force over Time incl. Fit Curve %i',i),'Position',[0.4 1.0],'FontSize', 18)
                 xlabel('time [s]','FontSize', 16)
                 ylabel(ax1, sprintf('vDeflection-Force'),'FontSize', 16)
                 grid(ax1,'on');
