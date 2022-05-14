@@ -4415,7 +4415,7 @@ classdef ForceMap < matlab.mixin.Copyable
                 
                 %nexttile
                 %semilogx(time{1},FF{i,1},'-m')
-                ax1 = subplot(121);
+                ax1 = subplot(221);
                 x = time(1);
                 x =cell2mat(x);
                 e = 1.05*time{1}(end);
@@ -4427,7 +4427,7 @@ classdef ForceMap < matlab.mixin.Copyable
                 semilogx(x,ypF1,'-','color',lila)
 
                 hold on
-                ax2 = subplot(122);
+                ax2 = subplot(222);
                 for j=2:lf
                     
 
@@ -4530,7 +4530,7 @@ classdef ForceMap < matlab.mixin.Copyable
                 
                 
                 %indentation
-                ax3 = subplot(221);
+                ax3 = subplot(223);
                 x = time(1);
                 x =cell2mat(x);
                 e = 1.05*time{1}(end);
@@ -4542,7 +4542,7 @@ classdef ForceMap < matlab.mixin.Copyable
                 semilogx(x,ypH1,'-','color',lila)
 
                 hold on
-                ax4 = subplot(222);
+                ax4 = subplot(224);
                 plot(time{2},FH{i,2}*range(BH{i,2}),'-m');
 %                 for j=2:lf
 %                      % Divide data through their range
@@ -4568,6 +4568,15 @@ classdef ForceMap < matlab.mixin.Copyable
 %                         plot(x,ypF,'-','color',lila)
 %                         
 %                 end
+
+                set(ax3,'units','normalized','position',[0.1 0.1 0.3 0.3]);
+                set(ax4,'units','normalized','position',[0.4 0.1 0.7 0.3]);
+                set(ax3,'xscale','log','xlim',[a e]);
+                set(ax4,'xlim',[x1 x2],'ytick',[],'yticklabel','','YColor','none');
+
+                set([ax3 ax4],'box','off');
+                set(ax4,'yticklabel','','box','on');
+                uistack(ax4,'top');
                 
                 k = obj.RectApexIndex;
                 if DirectoryPath~=0
