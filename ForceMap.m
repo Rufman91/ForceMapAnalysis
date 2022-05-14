@@ -4382,8 +4382,8 @@ classdef ForceMap < matlab.mixin.Copyable
                 SVH(:,empty_fields(1,:))=[];
 
                 time = time(frequencies ~= 0);
-                BF = BF(frequencies ~= 0);
-                BH = BH(frequencies ~= 0);
+                BF = BF(:,frequencies ~= 0);
+                BH = BH(:,frequencies ~= 0);
                 frequencies = frequencies(frequencies ~= 0);
                 lf = length(frequencies);
                 
