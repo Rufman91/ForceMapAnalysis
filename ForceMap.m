@@ -4422,9 +4422,9 @@ classdef ForceMap < matlab.mixin.Copyable
                 a = 0.97*time{1}(1);
                 ypF1 = SVF{i,1}(1)*(sin(2*pi*x.*SVF{i,1}(2) + SVF{i,1}(3)));
                 %x = exp(x);
-                semilogx(x,FF{i,1}*range(BF{i,1}),'-m');
+                plot(x,FF{i,1}*range(BF{i,1}),'-m');
                 hold on
-                semilogx(x,ypF1,'-','color',lila)
+                plot(x,ypF1,'-','color',lila)
 
 
                 ax2 = subplot(222);
@@ -4513,13 +4513,13 @@ classdef ForceMap < matlab.mixin.Copyable
                 
                 
                 set(ax1,'units','normalized','position',[0.05 0.6 0.3 0.3]);
-                set(ax2,'units','normalized','position',[0.35 0.6 0.55 0.3]);
+                set(ax2,'units','normalized','position',[0.35 0.6 0.59 0.3]);
                 set(ax1,'xscale','log','xlim',[a e]);
                 set(ax2,'xlim',[x1 x2],'ytick',[],'yticklabel','','YColor','none');
                 %axis([-1  1  a  150])
 
                 set([ax1 ax2],'box','on');
-                set(ax2,'yticklabel','','box','on');
+                set(ax2,'ytick',[],'yticklabel','','box','on');
                 uistack(ax2,'top');
                 %title(sprintf('Normalized Force over Time incl. Fit Curve %i',i),'Position',[0.4 1.0],'FontSize', 18)
                 xlabel('time [s]','FontSize', 16)
