@@ -4513,12 +4513,12 @@ classdef ForceMap < matlab.mixin.Copyable
                 
                 
                 set(ax1,'units','normalized','position',[0.05 0.6 0.3 0.3]);
-                set(ax2,'units','normalized','position',[0.35 0.6 0.65 0.3]);
+                set(ax2,'units','normalized','position',[0.35 0.6 0.55 0.3]);
                 set(ax1,'xscale','log','xlim',[a e]);
                 set(ax2,'xlim',[x1 x2],'ytick',[],'yticklabel','','YColor','none');
                 %axis([-1  1  a  150])
 
-                set([ax1 ax2],'box','off');
+                set([ax1 ax2],'box','on');
                 set(ax2,'yticklabel','','box','on');
                 uistack(ax2,'top');
                 %title(sprintf('Normalized Force over Time incl. Fit Curve %i',i),'Position',[0.4 1.0],'FontSize', 18)
@@ -4568,7 +4568,7 @@ classdef ForceMap < matlab.mixin.Copyable
                 end
 
                 set(ax3,'units','normalized','position',[0.05 0.1 0.3 0.3]);
-                set(ax4,'units','normalized','position',[0.35 0.1 0.65 0.3]);
+                set(ax4,'units','normalized','position',[0.35 0.1 0.55 0.3]);
                 set(ax3,'xscale','log','xlim',[a e]);
                 set(ax4,'xlim',[x1 x2],'ytick',[],'yticklabel','','YColor','none');
 
