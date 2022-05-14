@@ -4421,7 +4421,7 @@ classdef ForceMap < matlab.mixin.Copyable
                 e = 1.05*time{1}(end);
                 a = 0.95*time{1}(1);
                 %x = exp(x);
-                semilogx(x,FF{i,1},'-m');
+                semilogx(x,FF{i,1}*range(BF{i,1}),'-m');
 
                 hold on
                 ax2 = subplot(122);
