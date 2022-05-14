@@ -4373,6 +4373,8 @@ classdef ForceMap < matlab.mixin.Copyable
                 FH = obj.FilterH;
                 SVF = obj.SineVarsF;
                 SVH = obj.SineVarsH;
+                BF = obj.BasedForce;
+                BH = obj.Indentation;
                 empty_fields = cellfun(@isempty,FF);
                 FF(:,empty_fields(1,:))=[];
                 FH(:,empty_fields(1,:))=[];
@@ -4380,6 +4382,8 @@ classdef ForceMap < matlab.mixin.Copyable
                 SVH(:,empty_fields(1,:))=[];
 
                 time = time(frequencies ~= 0);
+                BF = BF(frequencies ~= 0);
+                BH = BH(frequencies ~= 0);
                 frequencies = frequencies(frequencies ~= 0);
                 lf = length(frequencies);
                 
@@ -4425,8 +4429,8 @@ classdef ForceMap < matlab.mixin.Copyable
                     
 
                         % Divide data through their range
-                        %rangeF = range(obj.BasedForce{i,j});
-                        %rangeH = range(obj.Indentation{i,j});
+                        rangeF = range(BF{i,j});
+                        rangeH = range(BH{i,j});
                         
                         %obj.SineVarsF{i,j}(1) = obj.SineVarsF{i,j}(1)/rangeF;
                         %obj.SineVarsH{i,j}(1) = obj.SineVarsH{i,j}(1)/rangeH;
@@ -4436,6 +4440,10 @@ classdef ForceMap < matlab.mixin.Copyable
                         %obj.interceptH = obj.interceptH/rangeH;
                         x = time(j);
                         x = cell2mat(x);
+                        
+                        x1 = 0.95*time{2}(1);
+                        x2 = 1.15*time{2}(end);
+                        
                         
                         
                         %Y-values fitted sine of indentation and force:
@@ -4453,7 +4461,7 @@ classdef ForceMap < matlab.mixin.Copyable
                         
                         %subplot(2,1,1)
                         %nexttile
-                        plot(x,FF{i,j},'-m');
+                        plot(x,FF{i,j}*rangeF,'-m');
                         hold on
                         %[MultiplierF,UnitF,~] = AFMImage.parse_unit_scale(range(obj.FilterF{i,FirstFreq}),'N',10);
 %                         ax2 = subplot(122);
@@ -4510,7 +4518,7 @@ classdef ForceMap < matlab.mixin.Copyable
                 set(ax1,'units','normalized','position',[0.1 0.4 0.3 0.3]);
                 set(ax2,'units','normalized','position',[0.4 0.4 0.7 0.3]);
                 set(ax1,'xscale','log','xlim',[a e]);
-                set(ax2,'yticklabel','');
+                set(ax2,'xlim',[x1 x2],'ytick',[],'yticklabel','');
 
                 set([ax1 ax2],'box','off');
                 set(ax2,'yticklabel','');
