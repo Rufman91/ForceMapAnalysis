@@ -4430,11 +4430,11 @@ classdef ForceMap < matlab.mixin.Copyable
                             
                             x = time(1);
                             x =cell2mat(x);
-                            
+                            x = log10(x);
                         else
                             x = time(j);
                             x = cell2mat(x);
-                            x = log10(x);
+                            
                         end
                         
                         
@@ -4452,7 +4452,7 @@ classdef ForceMap < matlab.mixin.Copyable
                         
                         subplot(2,1,1)
                         %nexttile
-                        plot(x,FF{i,j},'-m');
+                        semilogx(x,FF{i,j},'-m');
                         hold on
                         %[MultiplierF,UnitF,~] = AFMImage.parse_unit_scale(range(obj.FilterF{i,FirstFreq}),'N',10);
 %                         ax2 = subplot(122);
