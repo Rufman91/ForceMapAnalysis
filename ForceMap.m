@@ -4513,8 +4513,9 @@ classdef ForceMap < matlab.mixin.Copyable
                         
                 end
                 
-                set(ax1,'units','normalized','position',[0.1 0.4 0.3 0.3]);
-                set(ax2,'units','normalized','position',[0.4 0.4 0.6 0.3]);
+                
+                set(ax1,'units','normalized','position',[0.1 0.6 0.3 0.3]);
+                set(ax2,'units','normalized','position',[0.4 0.6 0.7 0.3]);
                 set(ax1,'xscale','log','xlim',[a e]);
                 set(ax2,'xlim',[x1 x2],'ytick',[],'yticklabel','','YColor','none');
 
@@ -4526,6 +4527,47 @@ classdef ForceMap < matlab.mixin.Copyable
                 ylabel(ax1, sprintf('vDeflection-Force'),'FontSize', 16)
                 grid(ax1,'on');
                 grid(ax2,'on');
+                
+                
+                %indentation
+                ax3 = subplot(221);
+                x = time(1);
+                x =cell2mat(x);
+                e = 1.05*time{1}(end);
+                a = 0.95*time{1}(1);
+                ypH1 = SVH{i,1}(1)*(sin(2*pi*x.*SVH{i,1}(2) + SVH{i,1}(3)));
+
+                semilogx(x,FH{i,1}*range(BH{i,1}),'-m');
+                hold on
+                semilogx(x,ypH1,'-','color',lila)
+
+                hold on
+                ax4 = subplot(222);
+                plot(time(2),FH{i,2}*range(BH{i,2}),'-m');
+%                 for j=2:lf
+%                      % Divide data through their range
+%                         rangeF = range(BF{i,j});
+%                         rangeH = range(BH{i,j});
+%                       
+%                         x = time(j);
+%                         x = cell2mat(x);
+%                         
+%                         x1 = 0.95*time{2}(1);
+%                         x2 = 1.25*time{lf}(end);
+%                         
+% 
+%                         %Y-values fitted sine of indentation and force:
+%                          ypF = SVF{i,j}(1)*(sin(2*pi*x.*SVF{i,j}(2) + SVF{i,j}(3)));
+%                          ypH = SVH{i,j}(1)*(sin(2*pi*x.*SVH{i,j}(2) + SVH{i,j}(3)));
+%                            
+%  
+%                         hold on
+% 
+%                         plot(x,FH{i,2}*rangeH,'-m');
+%                         hold on
+%                         plot(x,ypF,'-','color',lila)
+%                         
+%                 end
                 
                 k = obj.RectApexIndex;
                 if DirectoryPath~=0
