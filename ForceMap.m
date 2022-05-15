@@ -4732,7 +4732,7 @@ classdef ForceMap < matlab.mixin.Copyable
                 l2.LineWidth = 3;
                 l3.LineWidth = 3;
                 l4.LineWidth = 3;
-                legend([l1, l2, l3, l4], {'normalized force data', 'force fit','normalized indentation data', 'indentation fit'}, 'Location', 'southoutside','FontSize', 10)
+                legend([l1, l2, l3, l4], {'normalized force data', 'force fit','normalized indentation data', 'indentation fit'}, 'Position',[Xlb 0.15 0.15 0.0869]','FontSize', 10)
 
                 
                 % Save
