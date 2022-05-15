@@ -4538,6 +4538,7 @@ classdef ForceMap < matlab.mixin.Copyable
                 %Plot
                 figure('Name',sprintf('Normalized curves with Fit %i',i))
                 set(gcf,'units','normalized','outerposition',[0 0 1 1])
+                set(gcf,'Resize','off')
                 
                 %t = tiledlayout(1,lf);
                 %t.TileSpacing = 'none';
@@ -4552,8 +4553,8 @@ classdef ForceMap < matlab.mixin.Copyable
                 ax1 = subplot(221);
                 x = time(1);
                 x =cell2mat(x);
-                e = 1.025*time{1}(end);
-                a = 0.97*time{1}(1);
+                e = 1.01*time{1}(end);
+                a = 0.99*time{1}(1);
                 ypF1 = SVF{i,1}(1)*(sin(2*pi*x.*SVF{i,1}(2) + SVF{i,1}(3)));
                 %x = exp(x);
                 plot(x,FF{i,1}*range(BF{i,1}),'-m');
