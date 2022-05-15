@@ -4409,8 +4409,8 @@ classdef ForceMap < matlab.mixin.Copyable
                         rangeF = range(BF{i,j});
                         rangeH = range(BH{i,j});
                         
-                        %obj.SineVarsF{i,j}(1) = obj.SineVarsF{i,j}(1)/rangeF;
-                        %obj.SineVarsH{i,j}(1) = obj.SineVarsH{i,j}(1)/rangeH;
+                        SVF{i,j}(1) = SVF{i,j}(1)/rangeF;
+                        SVH{i,j}(1) = SVH{i,j}(1)/rangeH;
                         %obj.slopeF = obj.slopeF/rangeF;
                         %obj.slopeH = obj.slopeH/rangeH;
                         %obj.interceptF = obj.interceptF/rangeF;
@@ -4646,8 +4646,8 @@ classdef ForceMap < matlab.mixin.Copyable
                 end
                 
                 
-                set(ax1,'units','normalized','position',[0.05 0.6 0.3 0.3]);
-                set(ax2,'units','normalized','position',[0.35 0.6 0.59 0.3]);
+                set(ax1,'units','normalized','position',[0.05 0.65 0.3 0.25]);
+                set(ax2,'units','normalized','position',[0.35 0.65 0.59 0.25]);
                 set(ax1,'xscale','log','xlim',[a e]);
                 set(ax2,'xlim',[x1 x2],'ytick',[],'yticklabel','','YColor','none');
                 %axis([-1  1  a  150])
@@ -4678,9 +4678,9 @@ classdef ForceMap < matlab.mixin.Copyable
 
                 ypH1 = SVH{i,1}(1)*(sin(2*pi*x.*SVH{i,1}(2) + SVH{i,1}(3)));
 
-                semilogx(x,FH{i,1}*range(BH{i,1}),'-','color', lightblue);
+                plot(x,FH{i,1}*range(BH{i,1}),'-','color', lightblue);
                 hold on
-                semilogx(x,ypH1,'-','color',darkblue)
+                plot(x,ypH1,'-','color',darkblue)
 
 
                 ax4 = subplot(224);
@@ -4710,14 +4710,16 @@ classdef ForceMap < matlab.mixin.Copyable
                         
                 end
 
-                set(ax3,'units','normalized','position',[0.05 0.1 0.3 0.3]);
-                set(ax4,'units','normalized','position',[0.35 0.1 0.55 0.3]);
+                set(ax3,'units','normalized','position',[0.05 0.15 0.3 0.25]);
+                set(ax4,'units','normalized','position',[0.35 0.15 0.59 0.25]);
                 set(ax3,'xscale','log','xlim',[a e]);
                 set(ax4,'xlim',[x1 x2],'ytick',[],'yticklabel','','YColor','none');
 
                 set([ax3 ax4],'box','off');
                 set(ax4,'yticklabel','','box','on');
                 uistack(ax4,'top');
+                grid(ax3,'on');
+                grid(ax4,'on');
                 
                 
                 % Legend
