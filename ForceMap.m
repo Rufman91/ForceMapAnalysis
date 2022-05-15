@@ -4656,8 +4656,8 @@ classdef ForceMap < matlab.mixin.Copyable
                 set(ax2,'ytick',[],'yticklabel','','box','on');
                 uistack(ax2,'top');
                 
-                Ylm =[-1 1];                          % get x, y axis limits 
-                Xlm = [a x2];                          % so can position relative instead of absolute
+                Ylim =[-1 1];                          % get x, y axis limits 
+                Xlim = [a x2];                          % so can position relative instead of absolute
                 Xlb = mean(Xlim);                    % set horizontally at midpoint
                 Ylb = 0.99*Ylim(1);                  % and just 1% below minimum y value
                 TitleFit = title(sprintf('Normalized Force over Time incl. Fit Curve %i',i),'FontSize', 18);
