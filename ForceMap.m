@@ -4710,8 +4710,8 @@ classdef ForceMap < matlab.mixin.Copyable
                         
                 end
 
-                set(ax3,'units','normalized','position',[0.05 0.15 0.3 0.25]);
-                set(ax4,'units','normalized','position',[0.35 0.15 0.59 0.25]);
+                set(ax3,'units','normalized','position',[0.05 0.30 0.3 0.25]);
+                set(ax4,'units','normalized','position',[0.35 0.30 0.59 0.25]);
                 set(ax3,'xscale','log','xlim',[a e]);
                 set(ax4,'xlim',[x1 x2],'ytick',[],'yticklabel','','YColor','none');
 
@@ -4732,7 +4732,7 @@ classdef ForceMap < matlab.mixin.Copyable
                 l2.LineWidth = 3;
                 l3.LineWidth = 3;
                 l4.LineWidth = 3;
-                legend([l1, l2, l3, l4], {'normalized force data', 'force fit','normalized indentation data', 'indentation fit'}, 'Location', 'southoutside','FontSize', 14)
+                legend([l1, l2, l3, l4], {'normalized force data', 'force fit','normalized indentation data', 'indentation fit'}, 'Location', 'southoutside','FontSize', 10)
 
                 
                 % Save
