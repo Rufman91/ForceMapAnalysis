@@ -1180,14 +1180,16 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             obj.CPFlag.HardSurface = 1;
         end
         
-        function E = calculate_e_mod_hertz(obj,CPType,TipShape,LowerCurvePercent,...
-                UpperCurvePercent,AllowXShift,CorrectSensitivity,UseTipData,...
+        function E = calculate_e_mod_hertz(obj,CPType,TipShape,LowerCurveFraction,...
+                UpperCurveFraction,AllowXShift,CorrectSensitivity,UseTipData,...
                 UseTopology,TipObject,DataWeightByDistanceBool,...
-                SortHeightDataForFit,FitDegreeForSneddonPolySurf)
-%                 E = calculate_e_mod_hertz(obj,CPType,TipShape,LowerCurvePercent,...
-%                 UpperCurvePercent,AllowXShift,CorrectSensitivity,UseTipData,...
+                SortHeightDataForFit,FitDegreeForSneddonPolySurf,...
+                LowerForceCutoff,UpperForceCutoff)
+%                 E = calculate_e_mod_hertz(obj,CPType,TipShape,LowerCurveFraction,...
+%                 UpperCurveFraction,AllowXShift,CorrectSensitivity,UseTipData,...
 %                 UseTopology,TipObject,DataWeightByDistanceBool,...
-%                 SortHeightDataForFit)
+%                 SortHeightDataForFit,FitDegreeForSneddonPolySurf,...
+%                 LowerForceCutoff,UpperForceCutoff)
 
             if nargin < 5
                 AllowXShift = false;
@@ -1195,7 +1197,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 UseTipData = false;
             end
             
-            if isequal(lower(TipShape),'parabolic')
+            if isequal(lower(TipShape),'parabolic') || isequal(lower(TipShape),'spheric approx.')
                 if AllowXShift
                     FitFunction = 'a*(x+b)^(3/2)';
                 else
@@ -1253,16 +1255,26 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                     end
                     tip_h{i} = (HHApp{i} - CP(i,1)) - force{i}/obj.SpringConstant;
                     tip_h{i}(tip_h{i} < 0) = [];
+                    force{i}(1:(length(force{i})-length(tip_h{i}))) = [];
                     if length(tip_h{i}) < 2
                         continue
                     end
                     Max{i} = max(tip_h{i});
                     obj.IndentationDepth(iRange(i)) = Max{i}(1);
+                    
+                    % Apply absolute force cut offs
+                    if ~isempty(UpperForceCutoff)
+                        tip_h{i}(force{i}>UpperForceCutoff) = [];
+                        force{i}(force{i}>UpperForceCutoff) = [];
+                    end
+                    if ~isempty(LowerForceCutoff)
+                        tip_h{i}(force{i}<LowerForceCutoff) = [];
+                        force{i}(force{i}<LowerForceCutoff) = [];
+                    end
                     % delete everything below curve_percent of the maximum
                     % force
-                    force{i}(1:(length(force{i})-length(tip_h{i}))) = [];
-                    force{i}(force{i}<(LowerCurvePercent)*max(force{i})) = [];
-                    force{i}(force{i}>(UpperCurvePercent)*max(force{i})) = [];
+                    force{i}(force{i}<(LowerCurveFraction)*max(force{i})) = [];
+                    force{i}(force{i}>(UpperCurveFraction)*max(force{i})) = [];
                     tip_h{i}(1:(length(tip_h{i})-length(force{i}))) = [];
                     RangeF{i} = range(force{i});
                     RangeTH{i} = range(tip_h{i});
@@ -5019,6 +5031,9 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             obj.ScanAngle = str2double(tline(where+1:end));
             obj.ScanAngle = obj.ScanAngle*180/pi;
             
+            obj.HHType = 'capacitiveSensorHeight';  
+            obj.read_in_rescaling_constants(FileDirectoryShared)
+            
             %   Setpoint
             clear tline where;
             frewind(FileID);
@@ -5050,13 +5065,11 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                     % Restore initial conditions
                     frewind(FileID); % Move file position indicator back to beginning of the open file
                 end                
-            end                        
-            obj.HHType = 'capacitiveSensorHeight';           
+            end                                 
             
             fclose(FileIDShared);
             fclose(FileID);
             
-            obj.read_in_rescaling_constants(FileDirectoryShared)
             
 %             if obj.PythonLoaderFlag
 %                 rmdir(TempFolder,'s');
