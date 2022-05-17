@@ -7261,6 +7261,16 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             
         end
         
+        function set_force_map_analysis_options(obj)
+            
+            if isempty(obj.ForceMapAnalysisOptions)
+                obj.ForceMapAnalysisOptions = set_default_fma_options;
+            end
+            
+            obj.ForceMapAnalysisOptions = ui_set_struct_fields(obj.ForceMapAnalysisOptions);
+            
+        end
+        
     end
     methods(Static)
         % Static auxilary methods mainly for tip deconvolution (code by Orestis Andriotis)
