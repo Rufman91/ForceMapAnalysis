@@ -53,7 +53,7 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle
             current = what;
             
             if nargin > 1
-                obj.Folder = [DataFolder regexprep(obj.Name,'[.]','')];
+                obj.Folder = [DataFolder regexprep(obj.Name,'[.]','') obj.ID];
             end
             
             warning('off')

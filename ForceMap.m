@@ -4740,7 +4740,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             obj.Date=strrep(obj.Date,'.','-'); % Remove dots in obj.Date
             obj.Time=strrep(obj.Time,'.','-'); % Remove dots in obj.Time
             
-            obj.Folder = [DataFolder replace(obj.Name,'.','')];
+            obj.Folder = [DataFolder replace(obj.Name,'.','') '-' obj.ID];
             obj.DataStoreFolder = TempFolder;
             
         end

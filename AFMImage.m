@@ -89,7 +89,7 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             obj.Name = obj.parse_file_name(ImageFullFile);
             obj.ID = TempID;
             
-            obj.Folder = [DataFolder replace(obj.Name,'.','')];
+            obj.Folder = [DataFolder replace(obj.Name,'.','') obj.ID];
             
             % get OS and use appropriate fitting system command
             obj.check_for_new_host
