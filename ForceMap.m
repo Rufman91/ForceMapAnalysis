@@ -4573,7 +4573,7 @@ classdef ForceMap < matlab.mixin.Copyable
                     [MultiplierF,UnitF,~] = AFMImage.parse_unit_scale(range(BF{i,j}),'N',10);
                     semilogx(time{j},FF{i,j}*rangeF*MultiplierF,'-m')
                     hold on
-                    semilogx(x,ypF,'-','color',lila)
+                    semilogx(x,ypF*MultiplierF,'-','color',lila)
                     set(gca, 'YColor', 'm')
                     xlabel('time [s]','FontSize', 16)
                     ylabel(sprintf('vDeflection-Force [%s]',UnitF),'FontSize', 16)
@@ -4583,7 +4583,7 @@ classdef ForceMap < matlab.mixin.Copyable
                     [MultiplierI,UnitI,~] = AFMImage.parse_unit_scale(range(BF{i,j}),'m',10);
                     semilogx(x,FH{i,j}*rangeH*MultiplierI,'-','color', lightblue);
                     hold on
-                    semilogx(x,ypH,'-','color',darkblue)
+                    semilogx(x,ypH*MultiplierI,'-','color',darkblue)
                     set(gca, 'YColor', lightblue)
                     title(sprintf('Force and Indentation over Time incl. Fit Curve %i',i),'FontSize', 18)
                     ylabel(sprintf('Indentation [%s]',UnitI),'FontSize', 16);
@@ -4740,8 +4740,7 @@ classdef ForceMap < matlab.mixin.Copyable
                 l2.LineWidth = 3;
                 l3.LineWidth = 3;
                 l4.LineWidth = 3;
-                legend([l1, l2, l3, l4], {'normalized force data', 'force fit','normalized indentation data', 'indentation fit'}, 'Position',[Xlb 0.15 0.15 0.0869]','FontSize', 10)
-
+                legend([l1, l2, l3, l4], {'normalized force data', 'force fit','normalized indentation data', 'indentation fit'}, 'Location', 'southoutside','FontSize', 12)
                  
                 % Save
                 k = obj.RectApexIndex;
