@@ -4575,8 +4575,8 @@ classdef ForceMap < matlab.mixin.Copyable
                     hold on
                     semilogx(x,ypF*MultiplierF,'-','color',lila)
                     set(gca, 'YColor', 'm')
-                    xlabel('time [s]','FontSize', 16)
-                    ylabel(sprintf('vDeflection-Force [%s]',UnitF),'FontSize', 16)
+                    xlabel('time [s]','FontSize', 14)
+                    ylabel(sprintf('vDeflection-Force [%s]',UnitF),'FontSize', 14)
                         
                         
                     yyaxis right
@@ -4585,8 +4585,8 @@ classdef ForceMap < matlab.mixin.Copyable
                     hold on
                     semilogx(x,ypH*MultiplierI,'-','color',darkblue)
                     set(gca, 'YColor', lightblue)
-                    title(sprintf('%i [Hz]',frequencies(j)),'FontSize', 18)
-                    ylabel(sprintf('Indentation [%s]',UnitI),'FontSize', 16);
+                    title(sprintf('Curve %i, %.1f [Hz]',i,Freq),'FontSize', 16)
+                    ylabel(sprintf('Indentation [%s]',UnitI),'FontSize', 14);
                     grid on
                     grid minor
 
