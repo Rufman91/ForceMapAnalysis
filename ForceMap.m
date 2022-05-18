@@ -4585,7 +4585,7 @@ classdef ForceMap < matlab.mixin.Copyable
                     hold on
                     semilogx(x,ypH*MultiplierI,'-','color',darkblue)
                     set(gca, 'YColor', lightblue)
-                    title(sprintf('Force and Indentation over Time incl. Fit Curve %i',i),'FontSize', 18)
+                    title(sprintf('%i [Hz]',j),'FontSize', 18)
                     ylabel(sprintf('Indentation [%s]',UnitI),'FontSize', 16);
                     grid on
                     grid minor
@@ -4729,7 +4729,11 @@ classdef ForceMap < matlab.mixin.Copyable
 %                 grid(ax3,'on');
 %                 grid(ax4,'on');
 %                 
-%                 
+%                
+                % Title
+                 title(sprintf('Force and Indentation over Time incl. Fit Curve %i',i),'FontSize', 18)
+                 
+                 
                 % Legend
                 l1 = plot(nan, nan, 'm-');
                 hold on
