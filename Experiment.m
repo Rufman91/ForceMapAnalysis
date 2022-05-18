@@ -1922,9 +1922,9 @@ classdef Experiment < matlab.mixin.Copyable
             boxplot(obj.Dphi.Apex,obj.frequencies)
             hold on
             plot(obj.Dphi.Mean,'dm')
-            title('Phaseshift of all fibrils','FontSize', 18)
+            title('Phase shift of all fibrils','FontSize', 18)
             xlabel('frequency [Hz]','FontSize', 16)
-            ylabel('phaseshift [°]','FontSize', 16)
+            ylabel('phase shift [°]','FontSize', 16)
             %legend show
             %drawnow
             grid on
@@ -1941,7 +1941,7 @@ classdef Experiment < matlab.mixin.Copyable
             plot(obj.LT.Mean,'dm')
             title('Loss Tangent of all fibrils','FontSize', 18)
             xlabel('frequency [Hz]','FontSize', 16)
-            ylabel('losstangent','FontSize', 16)
+            ylabel('loss tangent','FontSize', 16)
             %legend show
             %drawnow
             grid on
@@ -1958,7 +1958,7 @@ classdef Experiment < matlab.mixin.Copyable
             plot(obj.EMod1.Mean*1e-6,'dm')
             title('Storage modulus of all fibrils','FontSize', 18)
             xlabel('frequency [Hz]','FontSize', 16)
-            ylabel('elastic modulus [MPa]','FontSize', 16)
+            ylabel('storage modulus [MPa]','FontSize', 16)
             %legend show
             %drawnow
             grid on
@@ -1975,7 +1975,7 @@ classdef Experiment < matlab.mixin.Copyable
             plot(obj.EMod2.Mean*1e-6,'dm')
             title('Loss modulus of all fibrils','FontSize', 18)
             xlabel('frequency [Hz]','FontSize', 16)
-            ylabel('viscous modulus [MPa]','FontSize', 16)
+            ylabel('loss modulus [MPa]','FontSize', 16)
             %legend show
             %drawnow
             grid on

@@ -4296,9 +4296,9 @@ classdef ForceMap < matlab.mixin.Copyable
             %hold on
             boxplot(Dphi,frequencies)
             %ylim([-270 270])
-            title('Phaseshift of all curves','FontSize', 18)
+            title('Phase shift of all curves','FontSize', 18)
             xlabel('frequency [Hz]','FontSize', 16)
-            ylabel('phaseshift [°]','FontSize', 16)
+            ylabel('phase shift [°]','FontSize', 16)
             %legend show
             %drawnow
             grid on
@@ -4310,7 +4310,7 @@ classdef ForceMap < matlab.mixin.Copyable
             boxplot(losstangent,frequencies)
             title('Loss Tangent of all curves','FontSize', 18)
             xlabel('frequency [Hz]','FontSize', 16)
-            ylabel('losstangent','FontSize', 16)
+            ylabel('loss tangent','FontSize', 16)
             %legend show
             %drawnow
             grid on
@@ -4323,7 +4323,7 @@ classdef ForceMap < matlab.mixin.Copyable
             boxplot(emodmicro1*1e-6, frequencies)
             title('Storage modulus','FontSize', 18)
             xlabel('frequency [Hz]','FontSize', 16)
-            ylabel('elastic modulus [MPa]','FontSize', 16)
+            ylabel('storage modulus [MPa]','FontSize', 16)
             %legend show
             %drawnow
             grid on
@@ -4335,7 +4335,7 @@ classdef ForceMap < matlab.mixin.Copyable
             boxplot(emodmicro2*1e-6,frequencies)
             title('Loss modulus','FontSize', 18)
             xlabel('frequency [Hz]','FontSize', 16)
-            ylabel('viscous modulus [MPa]','FontSize', 16)
+            ylabel('loss modulus [MPa]','FontSize', 16)
             %legend show
             %drawnow
             grid on
@@ -4535,72 +4535,79 @@ classdef ForceMap < matlab.mixin.Copyable
                 darkblue = [0.109, 0.078, 0.941];
                 
                 
+                
+                
                 %Plot
                 figure('Name',sprintf('Normalized curves with Fit %i',i))
                 set(gcf,'units','normalized','outerposition',[0 0 1 1])
-                set(gcf,'Resize','off')
+                %set(gcf,'Resize','off')
                 
-                %t = tiledlayout(1,lf);
-                %t.TileSpacing = 'none';
+                t = tiledlayout(2,2);
+                t.TileSpacing = 'none';
                 
                 %n = 1*lf;
                 %h = gobjects(2,n);
                 
                 hold on
                 
-                %nexttile
-                %semilogx(time{1},FF{i,1},'-m')
-                ax1 = subplot(221);
-                x = time(1);
-                x =cell2mat(x);
-                e = 1.01*time{1}(end);
-                a = 0.99*time{1}(1);
-                ypF1 = SVF{i,1}(1)*(sin(2*pi*x.*SVF{i,1}(2) + SVF{i,1}(3)));
-                %x = exp(x);
-                plot(x,FF{i,1}*range(BF{i,1}),'-m');
-                hold on
-                plot(x,ypF1,'-','color',lila)
-
-
-                ax2 = subplot(222);
-                for j=2:lf
+                for j = 1:lf
                     
+                    x = time(j);
+                    x =cell2mat(x);
+                    a = 0.99*time{j}(1);
+                    e = 1.01*time{j}(end);
+                    
+                    % range of data
+                    rangeF = range(BF{i,j});
+                    rangeH = range(BH{i,j});
+                    
+                    %Y-values fitted sine of indentation and force:
+                     ypF = SVF{i,j}(1)*(sin(2*pi*x.*SVF{i,j}(2) + SVF{i,j}(3)));
+                     ypH = SVH{i,j}(1)*(sin(2*pi*x.*SVH{i,j}(2) + SVH{i,j}(3)));
+                    
+                    
+                    
+                    nexttile
+                    
+                    yyaxis left
+                    [MultiplierF,UnitF,~] = AFMImage.parse_unit_scale(range(BF{i,j}),'N',10);
+                    semilogx(time{j},FF{i,j}*rangeF*MultiplierF,'-m')
+                    hold on
+                    semilogx(x,ypF,'-','color',lila)
+                    set(gca, 'YColor', 'm')
+                    xlabel('time [s]','FontSize', 16)
+                    ylabel(sprintf('vDeflection-Force [%s]',UnitF),'FontSize', 16)
+                        
+                        
+                    yyaxis right
+                    [MultiplierI,UnitI,~] = AFMImage.parse_unit_scale(range(BF{i,j}),'m',10);
+                    semilogx(x,FH{i,j}*rangeH*MultiplierI,'-','color', lightblue);
+                    hold on
+                    semilogx(x,ypH,'-','color',darkblue)
+                    set(gca, 'YColor', lightblue)
+                    title(sprintf('Force and Indentation over Time incl. Fit Curve %i',i),'FontSize', 18)
+                    ylabel(sprintf('Indentation [%s]',UnitI),'FontSize', 16);
+                    grid on
+                    grid minor
 
-                        % Divide data through their range
-                        rangeF = range(BF{i,j});
-                        rangeH = range(BH{i,j});
+
+                end
                         
-                        %obj.SineVarsF{i,j}(1) = obj.SineVarsF{i,j}(1)/rangeF;
-                        %obj.SineVarsH{i,j}(1) = obj.SineVarsH{i,j}(1)/rangeH;
-                        %obj.slopeF = obj.slopeF/rangeF;
-                        %obj.slopeH = obj.slopeH/rangeH;
-                        %obj.interceptF = obj.interceptF/rangeF;
-                        %obj.interceptH = obj.interceptH/rangeH;
-                        x = time(j);
-                        x = cell2mat(x);
-                        
-                        x1 = 0.95*time{2}(1);
-                        x2 = 1.05*time{lf}(end);
-                        
-                        
-                        
-                        %Y-values fitted sine of indentation and force:
-                         ypF = SVF{i,j}(1)*(sin(2*pi*x.*SVF{i,j}(2) + SVF{i,j}(3)));
-                         ypH = SVH{i,j}(1)*(sin(2*pi*x.*SVH{i,j}(2) + SVH{i,j}(3)));
+
                            
 
 
                         %subplot(2,1,1)
                         %nexttile
-                        plot(x,FF{i,j}*rangeF,'-m');
-                        hold on
+                        %plot(x,FF{i,j}*rangeF,'-m');
+                        %hold on
                         %[MultiplierF,UnitF,~] = AFMImage.parse_unit_scale(range(obj.FilterF{i,FirstFreq}),'N',10);
 %                         ax2 = subplot(122);
 %                         for j=2:lf
 %                             plot(time{j},FF{i,j},'-m');
 %                         end
                         %hold on
-                        plot(x,ypF,'-','color',lila)
+                        %plot(x,ypF,'-','color',lila)
                         %title(sprintf('Normalized Force over Time incl. Fit Curve %i',i),'FontSize', 18)
                         %xlabel('time [s]','FontSize', 16)
                         %ylabel(sprintf('vDeflection-Force'),'FontSize', 16)
@@ -4644,85 +4651,85 @@ classdef ForceMap < matlab.mixin.Copyable
                         
                       
                         
-                end
+                %end
                 
                 
-                set(ax1,'units','normalized','position',[0.05 0.65 0.3 0.25]);
-                set(ax2,'units','normalized','position',[0.35 0.65 0.59 0.25]);
-                set(ax1,'xscale','log','xlim',[a e]);
-                set(ax2,'xlim',[x1 x2],'ytick',[],'yticklabel','','YColor','none');
-                %axis([-1  1  a  150])
-
-                set([ax1 ax2],'box','on');
-                set(ax2,'ytick',[],'yticklabel','','box','on');
-                uistack(ax2,'top');
+%                 set(ax1,'units','normalized','position',[0.05 0.65 0.3 0.25]);
+%                 set(ax2,'units','normalized','position',[0.35 0.65 0.59 0.25]);
+%                 set(ax1,'xscale','log','xlim',[a e]);
+%                 set(ax2,'xlim',[x1 x2],'ytick',[],'yticklabel','','YColor','none');
+%                 %axis([-1  1  a  150])
+% 
+%                 set([ax1 ax2],'box','on');
+%                 set(ax2,'ytick',[],'yticklabel','','box','on');
+%                 uistack(ax2,'top');
                 
-                Ylim =[-1 1];                          % get x, y axis limits 
-                Xlim = [a x2];                          % so can position relative instead of absolute
-                Xlb = mean(Xlim);                    % set horizontally at midpoint
-                Ylb = 0.99*Ylim(1);                  % and just 1% below minimum y value
-                TitleFit = title(sprintf('Normalized Force over Time incl. Fit Curve %i',i),'FontSize', 18);
-                set(TitleFit,'Position',[Xlb Ylb],'VerticalAlignment','top','HorizontalAlignment','center')
-                hXLbl = xlabel('time [s]','FontSize', 16);
-                set(hXLbl,'Position',[Xlb Ylb],'VerticalAlignment','top','HorizontalAlignment','center')
-                ylabel(ax1, sprintf('vDeflection-Force'),'FontSize', 16)
-                grid(ax1,'on');
-                grid(ax2,'on');
+%                 Ylim =[-1 1];                          % get x, y axis limits 
+%                 Xlim = [a x2];                          % so can position relative instead of absolute
+%                 Xlb = mean(Xlim);                    % set horizontally at midpoint
+%                 Ylb = 0.99*Ylim(1);                  % and just 1% below minimum y value
+%                 TitleFit = title(sprintf('Normalized Force over Time incl. Fit Curve %i',i),'FontSize', 18);
+%                 set(TitleFit,'Position',[Xlb Ylb],'VerticalAlignment','top','HorizontalAlignment','center')
+%                 hXLbl = xlabel('time [s]','FontSize', 16);
+%                 set(hXLbl,'Position',[Xlb Ylb],'VerticalAlignment','top','HorizontalAlignment','center')
+%                 ylabel(ax1, sprintf('vDeflection-Force'),'FontSize', 16)
+%                 grid(ax1,'on');
+%                 grid(ax2,'on');
                 
                 
                 
                 
                 %indentation
-                ax3 = subplot(223);
-                x = time(1);
-                x =cell2mat(x);
-
-                ypH1 = SVH{i,1}(1)*(sin(2*pi*x.*SVH{i,1}(2) + SVH{i,1}(3)));
-
-                plot(x,FH{i,1}*range(BH{i,1}),'-','color', lightblue);
-                hold on
-                plot(x,ypH1,'-','color',darkblue)
-
-
-                ax4 = subplot(224);
-                plot(time{2},FH{i,2}*range(BH{i,2}),'-m');
-                for j=2:lf
-                     % Divide data through their range
-                        rangeF = range(BF{i,j});
-                        rangeH = range(BH{i,j});
-                      
-                        x = time(j);
-                        x = cell2mat(x);
-                        
-                        x1 = 0.95*time{2}(1);
-                        x2 = 1.05*time{lf}(end);
-                        
-
-                        %Y-values fitted sine of indentation and force:
-                         ypF = SVF{i,j}(1)*(sin(2*pi*x.*SVF{i,j}(2) + SVF{i,j}(3)));
-                         ypH = SVH{i,j}(1)*(sin(2*pi*x.*SVH{i,j}(2) + SVH{i,j}(3)));
-                           
- 
-                        hold on
-
-                        plot(x,FH{i,j}*rangeH,'-','color', lightblue);
-                        hold on
-                        plot(x,ypH,'-','color',darkblue)
-                        
-                end
-
-                set(ax3,'units','normalized','position',[0.05 0.30 0.3 0.25]);
-                set(ax4,'units','normalized','position',[0.35 0.30 0.59 0.25]);
-                set(ax3,'xscale','log','xlim',[a e]);
-                set(ax4,'xlim',[x1 x2],'ytick',[],'yticklabel','','YColor','none');
-
-                set([ax3 ax4],'box','off');
-                set(ax4,'yticklabel','','box','on');
-                uistack(ax4,'top');
-                grid(ax3,'on');
-                grid(ax4,'on');
-                
-                
+%                 ax3 = subplot(223);
+%                 x = time(1);
+%                 x =cell2mat(x);
+% 
+%                 ypH1 = SVH{i,1}(1)*(sin(2*pi*x.*SVH{i,1}(2) + SVH{i,1}(3)));
+% 
+%                 plot(x,FH{i,1}*range(BH{i,1}),'-','color', lightblue);
+%                 hold on
+%                 plot(x,ypH1,'-','color',darkblue)
+% 
+% 
+%                 ax4 = subplot(224);
+%                 plot(time{2},FH{i,2}*range(BH{i,2}),'-m');
+%                 for j=2:lf
+%                      % Divide data through their range
+%                         rangeF = range(BF{i,j});
+%                         rangeH = range(BH{i,j});
+%                       
+%                         x = time(j);
+%                         x = cell2mat(x);
+%                         
+%                         x1 = 0.95*time{2}(1);
+%                         x2 = 1.05*time{lf}(end);
+%                         
+% 
+%                         %Y-values fitted sine of indentation and force:
+%                          ypF = SVF{i,j}(1)*(sin(2*pi*x.*SVF{i,j}(2) + SVF{i,j}(3)));
+%                          ypH = SVH{i,j}(1)*(sin(2*pi*x.*SVH{i,j}(2) + SVH{i,j}(3)));
+%                            
+%  
+%                         hold on
+% 
+%                         plot(x,FH{i,j}*rangeH,'-','color', lightblue);
+%                         hold on
+%                         plot(x,ypH,'-','color',darkblue)
+%                         
+%                 end
+% 
+%                 set(ax3,'units','normalized','position',[0.05 0.30 0.3 0.25]);
+%                 set(ax4,'units','normalized','position',[0.35 0.30 0.59 0.25]);
+%                 set(ax3,'xscale','log','xlim',[a e]);
+%                 set(ax4,'xlim',[x1 x2],'ytick',[],'yticklabel','','YColor','none');
+% 
+%                 set([ax3 ax4],'box','off');
+%                 set(ax4,'yticklabel','','box','on');
+%                 uistack(ax4,'top');
+%                 grid(ax3,'on');
+%                 grid(ax4,'on');
+%                 
+%                 
                 % Legend
                 l1 = plot(nan, nan, 'm-');
                 hold on
@@ -4735,7 +4742,7 @@ classdef ForceMap < matlab.mixin.Copyable
                 l4.LineWidth = 3;
                 legend([l1, l2, l3, l4], {'normalized force data', 'force fit','normalized indentation data', 'indentation fit'}, 'Position',[Xlb 0.15 0.15 0.0869]','FontSize', 10)
 
-                
+                 
                 % Save
                 k = obj.RectApexIndex;
                 if DirectoryPath~=0
