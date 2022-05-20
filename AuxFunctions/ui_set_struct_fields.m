@@ -44,10 +44,16 @@ p.PartialMatching = true;
 validInStruct = @(x)true;
 addRequired(p,"InStruct",validInStruct);
 
+FieldNames = fieldnames(InStruct);
+FieldNames((contains(FieldNames,'DType'))|...
+    (contains(FieldNames,'Allowed'))|...
+    (contains(FieldNames,'Tooltip'))) = [];
+NFields = length(FieldNames);
+
 % NameValue inputs
 defaultTitle = 'Options';
 defaultMessage = '';
-defaultNOptsPerPanel = 5;
+defaultNOptsPerPanel = max(5,ceil(NFields/4));
 defaultPixelsPerLine = 40;
 defaultPixelsPerPanelWidth = 400;
 validTitle = @(x)ischar(x);
@@ -151,7 +157,7 @@ for i=1:NRows
             % Determine the position of the ui element
             TwoElementSpacer = .45/NColumns;
             CurrentLeft = (j-1+.1)/NColumns;
-            CurrentBottom = 1 - (i+.25)/NLines - (k-1)*NRows/NLines;
+            CurrentBottom = 1 - 1/NLines - (i-1)*NOptsPerPanel/NLines - (k-1)/NLines;
             CurrentWidth = .35/NColumns;
             CurrentHeight = .5/NLines;
             CurrentTextPosition = [CurrentLeft CurrentBottom CurrentWidth CurrentHeight];
@@ -237,8 +243,16 @@ end
         close(F)
     end
     function open_new_option_window(varargin)
+        SubFieldNames = fieldnames(InStruct.(FieldNames{varargin{4}}));
+        SubFieldNames((contains(SubFieldNames,'DType'))|...
+            (contains(SubFieldNames,'Allowed'))|...
+            (contains(SubFieldNames,'Tooltip'))) = [];
+        SubNFields = length(SubFieldNames);
+        
+        SubNOptsPerPanel = max(NOptsPerPanel,ceil(SubNFields/4));
+        
         InStruct.(FieldNames{varargin{4}}) = ui_set_struct_fields(varargin{3},...
-            'NOptsPerPanel',NOptsPerPanel,'PixelsPerLine',PixelsPerLine,...
+            'NOptsPerPanel',SubNOptsPerPanel,'PixelsPerLine',PixelsPerLine,...
             'PixelsPerPanelWidth',PixelsPerPanelWidth);
     end
     function evaluate_new_input(varargin)
