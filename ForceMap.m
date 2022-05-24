@@ -4571,7 +4571,7 @@ classdef ForceMap < matlab.mixin.Copyable
                     
                     yyaxis left
                     [MultiplierF,UnitF,~] = AFMImage.parse_unit_scale(range(BF{i,j}),'N',10);
-                    semilogx(time{j},FF{i,j}*rangeF*MultiplierF,'--m')
+                    semilogx(time{j},FF{i,j}*rangeF*MultiplierF,':m')
                     hold on
                     semilogx(x,ypF*MultiplierF,'-m')
                     set(gca, 'YColor', 'm')
@@ -4581,7 +4581,7 @@ classdef ForceMap < matlab.mixin.Copyable
                         
                     yyaxis right
                     [MultiplierI,UnitI,~] = AFMImage.parse_unit_scale(range(BF{i,j}),'m',10);
-                    semilogx(x,FH{i,j}*rangeH*MultiplierI,'--','color', lightblue);
+                    semilogx(x,FH{i,j}*rangeH*MultiplierI,':','color', lightblue);
                     hold on
                     semilogx(x,ypH*MultiplierI,'-','color',lightblue)
                     set(gca, 'YColor', lightblue)
@@ -4735,10 +4735,10 @@ classdef ForceMap < matlab.mixin.Copyable
                  
                  
                 % Legend
-                l1 = plot(nan, nan, 'm--');
+                l1 = plot(nan, nan, 'm:');
                 hold on
                 l2 = plot(nan, nan, '-m');
-                l3 = plot(nan, nan, '--', 'color', lightblue);
+                l3 = plot(nan, nan, ':', 'color', lightblue);
                 l4 = plot(nan, nan, '-','color',lightblue);
                 l1.LineWidth = 3;
                 l2.LineWidth = 3;
