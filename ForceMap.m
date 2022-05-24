@@ -4571,9 +4571,9 @@ classdef ForceMap < matlab.mixin.Copyable
                     
                     yyaxis left
                     [MultiplierF,UnitF,~] = AFMImage.parse_unit_scale(range(BF{i,j}),'N',10);
-                    semilogx(time{j},FF{i,j}*rangeF*MultiplierF,'-m')
+                    semilogx(time{j},FF{i,j}*rangeF*MultiplierF,':m')
                     hold on
-                    semilogx(x,ypF*MultiplierF,'-','color',lila)
+                    semilogx(x,ypF*MultiplierF,'-m')
                     set(gca, 'YColor', 'm')
                     xlabel('time [s]','FontSize', 14)
                     ylabel(sprintf('vDeflection-Force [%s]',UnitF),'FontSize', 14)
@@ -4581,9 +4581,9 @@ classdef ForceMap < matlab.mixin.Copyable
                         
                     yyaxis right
                     [MultiplierI,UnitI,~] = AFMImage.parse_unit_scale(range(BF{i,j}),'m',10);
-                    semilogx(x,FH{i,j}*rangeH*MultiplierI,'-','color', lightblue);
+                    semilogx(x,FH{i,j}*rangeH*MultiplierI,':','color', lightblue);
                     hold on
-                    semilogx(x,ypH*MultiplierI,'-','color',darkblue)
+                    semilogx(x,ypH*MultiplierI,'-','color',lightblue)
                     set(gca, 'YColor', lightblue)
                     title(sprintf('Curve %i, %.1f [Hz]',i,frequencies(j)),'FontSize', 16)
                     ylabel(sprintf('Indentation [%s]',UnitI),'FontSize', 14);
