@@ -429,7 +429,8 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             Angle = MinObj(3);
             [Overlay1,Overlay2,OverlayMask1,OverlayMask2] = AFMImage.overlay_two_images(Channel1,Channel2,ShiftPixX,ShiftPixY,Angle,Mask1,Mask2);
             imshowpair(OverlayMask1,OverlayMask2)
-            title(sprintf('%i,%i,%.3f',ShiftPixX,ShiftPixY,Angle));
+            title({sprintf('X:%i,Y:%i,Angle:%.3f',ShiftPixX,ShiftPixY,Angle),...
+                sprintf('Objective Function score:%.5f',ClusterMin(1))});
             subplot(2,2,2)
             MinObj = ClusterResults{2}.XAtMinObjective.Variables;
             ShiftPixX = MinObj(1);
@@ -437,7 +438,8 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             Angle = MinObj(3);
             [Overlay1,Overlay2,OverlayMask1,OverlayMask2] = AFMImage.overlay_two_images(Channel1,Channel2,ShiftPixX,ShiftPixY,Angle,Mask1,Mask2);
             imshowpair(OverlayMask1,OverlayMask2)
-            title(sprintf('%i,%i,%.3f',ShiftPixX,ShiftPixY,Angle));
+            title({sprintf('X:%i,Y:%i,Angle:%.3f',ShiftPixX,ShiftPixY,Angle),...
+                sprintf('Objective Function score:%.5f',ClusterMin(2))});
             subplot(2,2,3)
             MinObj = ClusterResults{3}.XAtMinObjective.Variables;
             ShiftPixX = MinObj(1);
@@ -445,7 +447,8 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             Angle = MinObj(3);
             [Overlay1,Overlay2,OverlayMask1,OverlayMask2] = AFMImage.overlay_two_images(Channel1,Channel2,ShiftPixX,ShiftPixY,Angle,Mask1,Mask2);
             imshowpair(OverlayMask1,OverlayMask2)
-            title(sprintf('%i,%i,%.3f',ShiftPixX,ShiftPixY,Angle));
+            title({sprintf('X:%i,Y:%i,Angle:%.3f',ShiftPixX,ShiftPixY,Angle),...
+                sprintf('Objective Function score:%.5f',ClusterMin(3))});
             subplot(2,2,4)
             MinObj = ClusterResults{4}.XAtMinObjective.Variables;
             ShiftPixX = MinObj(1);
@@ -453,7 +456,8 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             Angle = MinObj(3);
             [Overlay1,Overlay2,OverlayMask1,OverlayMask2] = AFMImage.overlay_two_images(Channel1,Channel2,ShiftPixX,ShiftPixY,Angle,Mask1,Mask2);
             imshowpair(OverlayMask1,OverlayMask2)
-            title(sprintf('%i,%i,%.3f',ShiftPixX,ShiftPixY,Angle));
+            title({sprintf('X:%i,Y:%i,Angle:%.3f',ShiftPixX,ShiftPixY,Angle),...
+                sprintf('Objective Function score:%.5f',ClusterMin(4))});
             
             drawnow
             
