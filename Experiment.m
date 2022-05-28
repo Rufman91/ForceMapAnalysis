@@ -61,6 +61,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
     
     % SMFS related
     properties
+        SMFSFMParameters
         SMFSResults
         SMFSResultsParameters
         SMFSLillieAdhMaxApp
@@ -1346,7 +1347,45 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
         end
         
         %% SMFS section
-        function SMFS_flag_num_fc(obj,SetNumFcValue)
+               
+        function SMFS_initialize_arrays(obj)
+            
+            TableSize=[1 13];
+            VarTypes = {'double','string','string','string','string','double','double','double','string','string','string','string','string'};
+            VarNames = {'FM row number','FM ID','Name','Date','Time','Extend velocity','Retraction velocity','Holding time','Linker','Substrate','Medium','Chip cantilever number','Chipbox number'};
+            obj.SMFSFMParameters=table('Size',TableSize,'VariableTypes',VarTypes,'VariableNames',VarNames);
+           
+            TableSize=[1 9];
+            VarTypes = {'double','double','double','double','string','string','string','string','string'};
+            VarNames = {'SMFSResults Idx','Extend velocity','Retraction velocity','Holding time','Substrate','Medium','Chip cantilever number','Chipbox number','Linker'};
+            obj.SMFSResultsParameters=table('Size',TableSize,'VariableTypes',VarTypes,'VariableNames',VarNames);
+
+            TableSize=[1 5];
+            VarTypes = {'double','double','double','double','double'};
+            VarNames = {'SMFSLillie Idx','SMFSResultsParameter Row Num1','Sum force-curves tested','Hypothesis','p-value'};
+            obj.SMFSLillieAdhMaxApp=table('Size',TableSize,'VariableTypes',VarTypes,'VariableNames',VarNames);
+            obj.SMFSLillieAdhMaxRet=table('Size',TableSize,'VariableTypes',VarTypes,'VariableNames',VarNames);
+            obj.SMFSLillieAdhUnbinding=table('Size',TableSize,'VariableTypes',VarTypes,'VariableNames',VarNames);
+            obj.SMFSLillieAdhEneApp=table('Size',TableSize,'VariableTypes',VarTypes,'VariableNames',VarNames);
+            obj.SMFSLillieAdhEneRet=table('Size',TableSize,'VariableTypes',VarTypes,'VariableNames',VarNames);
+            obj.SMFSLilliePullingLength=table('Size',TableSize,'VariableTypes',VarTypes,'VariableNames',VarNames);
+            obj.SMFSLillieSnapInLength=table('Size',TableSize,'VariableTypes',VarTypes,'VariableNames',VarNames);
+
+            TableSize=[1 7];
+            VarTypes = {'double','double','double','double','double','double','double'};
+            VarNames = {'SMFSWilcoxon Idx','SMFSResultsParameter Row Num1','Sum force-curves tested Row Num1','SMFSResultsParameter Row Num2','Sum force-curves tested Row Num2','Hypothesis','p-value'};
+            obj.SMFSWilcoxonAdhMaxApp=table('Size',TableSize,'VariableTypes',VarTypes,'VariableNames',VarNames);
+            obj.SMFSWilcoxonAdhMaxRet=table('Size',TableSize,'VariableTypes',VarTypes,'VariableNames',VarNames);
+            obj.SMFSWilcoxonAdhUnbinding=table('Size',TableSize,'VariableTypes',VarTypes,'VariableNames',VarNames);
+            obj.SMFSWilcoxonAdhEneApp=table('Size',TableSize,'VariableTypes',VarTypes,'VariableNames',VarNames);
+            obj.SMFSWilcoxonAdhEneRet=table('Size',TableSize,'VariableTypes',VarTypes,'VariableNames',VarNames);
+            obj.SMFSWilcoxonPullingLength=table('Size',TableSize,'VariableTypes',VarTypes,'VariableNames',VarNames);
+            obj.SMFSWilcoxonSnapInLength=table('Size',TableSize,'VariableTypes',VarTypes,'VariableNames',VarNames);
+        end
+        
+
+        function SMFS_properties_parameters(obj,SetNumFcValue)
+    %    function SMFS_flag_num_fc(obj,SetNumFcValue)
             % function SMFS_flag_num_fc(obj,SetNumFcValue)
             %
             % Descritpion: 
@@ -1356,32 +1395,34 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             % obj ... <VARIABLE DESCRIPTION>
             % SetNumFcValue ... The variable defines the set number of force curves per force map
             
-%             %% Function preamble
-%             p = inputParser;
-%             p.FunctionName = "SMFS_flag_num_fc";
-%             p.CaseSensitive = false;
-%             p.PartialMatching = true;
-%             
-%             % Required inputs
-%             validobj = @(x)true;
-%             validSetNumFcValue = @(x)true;
-%             addRequired(p,"obj",validobj);
-%             addRequired(p,"SetNumFcValue",validSetNumFcValue);
-%             
-%             parse(p,obj,SetNumFcValue,varargin{:});
-%             
-%             % Assign parsing results to named variables
-%             obj = p.Results.obj;
-%             SetNumFcValue = p.Results.SetNumFcValue;
             
             %% Function body
-            for ii=1:obj.NumForceMaps
-                if obj.FM{ii}.NCurves==SetNumFcValue
-                    obj.SMFSFlag.NumForceCurves(ii)=1;
-                else
-                    obj.SMFSFlag.NumForceCurves(ii)=0;
-                end
+            h = waitbar(0,'setting up','Units','normalized','Position',[0.4 0.3 0.2 0.1]);
+            NLoop = length(obj.ForceMapNames);
+            if sum(obj.SMFSFlag.PropertiesParameters) >= 1
+                KeepFlagged = questdlg(sprintf('Some maps have been processed already.\nDo you want to skip them and keep old results?'),...
+                    'Processing Options',...
+                    'Yes',...
+                    'No',...
+                    'No');
+            else
+                KeepFlagged = 'No';
             end
+            for Fm=1:obj.NumForceMaps
+                 if isequal(KeepFlagged,'Yes') && obj.SMFSFlag.PropertiesParameters(Fm) == 1
+                    continue
+                 end
+                waitbar(Fm/NLoop,h,sprintf('Preprocessing ForceMap %i/%i\nProcessing force curves',Fm,NLoop));  
+                obj.FM{Fm}.fc_measurement_prop
+                if obj.FM{Fm}.NCurves==SetNumFcValue
+                    obj.SMFSFlag.NumForceCurves(Fm)=1;
+                else
+                    obj.SMFSFlag.NumForceCurves(Fm)=0;
+                end                
+                obj.SMFSFMParameters(Fm,:)={Fm,obj.FM{Fm}.ID,obj.FM{Fm}.Name,obj.FM{Fm}.Date,obj.FM{Fm}.Time,obj.FM{Fm}.ExtendVelocity,obj.FM{Fm}.RetractVelocity,obj.FM{Fm}.HoldingTime,obj.FM{Fm}.Linker,obj.FM{Fm}.Substrate,obj.FM{Fm}.EnvCond,obj.FM{Fm}.ChipCant,obj.FM{Fm}.Chipbox};
+                waitbar(Fm/NLoop,h,sprintf('Preprocessing ForceMap %i/%i\nWrapping Up And Saving',Fm,NLoop));
+            end
+            close(h);
         end
 
         
@@ -1392,7 +1433,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             
             % Output time and date for the dairy
             datetime('now')
-            
+            % Dialog box
             h = waitbar(0,'setting up','Units','normalized','Position',[0.4 0.3 0.2 0.1]);
             NLoop = length(obj.ForceMapNames);
             if sum(obj.SMFSFlag.Preprocessed) >= 1
@@ -1410,27 +1451,31 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             % Change into the Folder of Interest
             cd(obj.ExperimentFolder) % Move into the folder
             % Create folders for saving the produced figures
-            foldername='SMFS_preprocessing';    % for debugging                
+            foldername='SMFS_preprocessing';               
             mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
             currpath=fullfile(obj.ExperimentFolder,foldername);
-            cd(currpath);
-            
+            cd(currpath);           
             % force map loop
-            for ii=1:obj.NumForceMaps   
-            %for ii=309  % debugging
-                if isequal(KeepFlagged,'Yes') && obj.SMFSFlag.Preprocessed(ii) == 1
-                    continue
+            %for Fm=1:obj.NumForceMaps   
+            for Fm=731:obj.NumForceMaps  % debugging
+                if isequal(KeepFlagged,'Yes') && obj.SMFSFlag.Preprocessed(Fm) == 1
+                    KeepFlagged = questdlg(sprintf('Some maps have been processed already.\nDo you want to skip them and keep old results?'),...
+                    'Processing Options',...
+                    'Yes',...
+                    'No',...
+                    'No');
+                else
+                    KeepFlagged = 'No';
                 end
-                waitbar(ii/NLoop,h,sprintf('Preprocessing ForceMap %i/%i\nProcessing force curves',ii,NLoop));            
-                obj.FM{ii}.fc_measurement_prop
-                obj.FM{ii}.fc_sinoidal_fit
-                obj.FM{ii}.fc_linear_fit
-                obj.FM{ii}.fc_TipHeight_calculation
-                obj.FM{ii}.fc_estimate_cp_hardsurface
-                waitbar(ii/NLoop,h,sprintf('Preprocessing ForceMap %i/%i\nWrapping Up And Saving',ii,NLoop));
-                                
-                
-                obj.SMFSFlag.Preprocessed(ii) = 1;
+                waitbar(Fm/NLoop,h,sprintf('Preprocessing ForceMap %i/%i\nProcessing force curves',Fm,NLoop));            
+                obj.FM{Fm}.fc_sensitivity_correction
+                obj.FM{Fm}.fc_sinoidal_fit
+                obj.FM{Fm}.fc_linear_fit
+                obj.FM{Fm}.fc_TipHeight_calculation
+                obj.FM{Fm}.fc_estimate_cp_hardsurface
+                waitbar(Fm/NLoop,h,sprintf('Preprocessing ForceMap %i/%i\nWrapping Up And Saving',Fm,NLoop));
+                % Set flag
+                obj.SMFSFlag.Preprocessed(Fm) = 1;
             end
             close(h);
         end
@@ -1458,22 +1503,22 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             end
                         
             % Loop over the imported force maps
-            for ii=1:obj.NumForceMaps
-            % for ii=29:31 % Debugging
-                if isequal(KeepFlagged,'Yes') && ~obj.SMFSFlag.Preprocessed(ii)
+            %for Fm=1:obj.NumForceMaps
+             for Fm=731:obj.NumForceMaps % Debugging
+                if isequal(KeepFlagged,'Yes') && ~obj.SMFSFlag.Preprocessed(Fm)
                     continue
                 end   
-                waitbar(ii/NLoop,h,sprintf('Preprocessing ForceMap %i/%i\nProcessing force curves',ii,NLoop));
-                waitbar(ii/NLoop,h,sprintf('Preprocessing ForceMap %i/%i\nWrapping Up And Saving',ii,NLoop));
-                sprintf('Force Map No. %d of %d',ii,obj.NumForceMaps) % Gives current Force Map Position               
-                obj.FM{ii}.fc_xLimit_idx
-                obj.FM{ii}.fc_selection_threshold
-                    if nnz(obj.FM{ii}.SMFSFlag.RetMinCrit)<20 % Only if more than 20 force curves fulfil the citeria the whole force map is considered successfully functionalized
-                        obj.SMFSFlag.SelectFM(ii)=0;
+                waitbar(Fm/NLoop,h,sprintf('Preprocessing ForceMap %i/%i\nProcessing force curves',Fm,NLoop));
+                waitbar(Fm/NLoop,h,sprintf('Preprocessing ForceMap %i/%i\nWrapping Up And Saving',Fm,NLoop));
+                sprintf('Force Map No. %d of %d',Fm,obj.NumForceMaps) % Gives current Force Map Position               
+                obj.FM{Fm}.fc_xLimit_idx
+                obj.FM{Fm}.fc_selection_threshold
+                    if nnz(obj.FM{Fm}.SMFSFlag.RetMinCrit)<20 % Only if more than 20 force curves fulfil the citeria the whole force map is considered successfully functionalized
+                        obj.SMFSFlag.SelectFM(Fm)=0;
                     else
-                        obj.SMFSFlag.SelectFM(ii)=1;
+                        obj.SMFSFlag.SelectFM(Fm)=1;
                     end
-                    obj.SMFSFlag.Presorted(ii) = 1;
+                    obj.SMFSFlag.Presorted(Fm) = 1;
             end
             close(h);
         end
@@ -1505,14 +1550,16 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             cd(currpath); 
             
             % Loop over the imported force maps
-            %for ii=1:obj.NumForceMaps
-            for ii=151:163 % Debugging
-           
+            for fm=1:obj.NumForceMaps
+            %for ii=151:163 % Debugging
+                if ~obj.SMFSFlag.Preprocessed(fm)
+                    continue
+                end
                % Command window output
-               sprintf('Force Map No. %d of %d',ii,obj.NumForceMaps) % Gives current Force Map Position
+               sprintf('Force Map No. %d of %d',fm,obj.NumForceMaps) % Gives current Force Map Position
                % Run the chosen functions
             %   obj.FM{ii}.fc_visual_selection_all(XMin,XMax,YMin,YMax);  
-                obj.FM{ii}.fc_visual_selection_flag_Uncorrupt(XMin,XMax,YMin,YMax,NumFcMax,Res)
+                obj.FM{fm}.fc_visual_selection_flag_Uncorrupt(XMin,XMax,YMin,YMax,NumFcMax,Res)
                %obj.save_experiment;        % Save immediately after each force curve
             end    
         end
@@ -1538,26 +1585,26 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             set(groot,'defaultFigureVisible','off')      
             % set(groot,'defaultFigureVisible','on') 
             %% Loop
-            %for hh=1:obj.NumForceMaps
-            for hh=151:163 % Debugging    
-            if isequal(KeepFlagged,'Yes') && ~obj.SMFSFlag.Preprocessed(hh)
+            %for Fm=1:obj.NumForceMaps
+            for Fm=233:obj.NumForceMaps % Debugging    
+            if isequal(KeepFlagged,'Yes') && ~obj.SMFSFlag.Preprocessed(Fm)
                     continue
             end   
-               waitbar(hh/NLoop,h,sprintf('Preprocessing ForceMap %i/%i\nProcessing force curves',hh,NLoop));
-               waitbar(hh/NLoop,h,sprintf('Preprocessing ForceMap %i/%i\nWrapping Up And Saving',hh,NLoop));
-               sprintf('Force Map No. %d of %d',hh,obj.NumForceMaps) % Gives current Force Map Position   
+               waitbar(Fm/NLoop,h,sprintf('Preprocessing ForceMap %i/%i\nProcessing force curves',Fm,NLoop));
+               waitbar(Fm/NLoop,h,sprintf('Preprocessing ForceMap %i/%i\nWrapping Up And Saving',Fm,NLoop));
+               sprintf('Force Map No. %d of %d',Fm,obj.NumForceMaps) % Gives current Force Map Position   
                % Print force curves containing label for the pulling length
                % and colored area for the adhesion energy                              
                % Snap-in
-               obj.FM{hh}.fc_snap_in_length_MAD
+               obj.FM{Fm}.fc_snap_in_length_MAD
                % Pulling length
-               obj.FM{hh}.fc_pulling_length_MAD
+               obj.FM{Fm}.fc_pulling_length_MAD
                % Maximum adhesion force
-               obj.FM{hh}.fc_adh_force_max
+               obj.FM{Fm}.fc_adh_force_max
                % Adhesion energy
-               obj.FM{hh}.fc_adhesion_energy_idxlength    
+               obj.FM{Fm}.fc_adhesion_energy_idxlength    
                % Flag
-               obj.SMFSFlag.Analysed(hh) = 1;
+               obj.SMFSFlag.Analysed(Fm) = 1;
             end
             close(h);
         end
@@ -1679,11 +1726,12 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             
             % Loop over the imported force maps
             %for ii=1:obj.NumForceMaps
-             for ii=557:560 % Debugging
+            % for Fm=557:560 % Debugging
+            for Fm=185 % Debugging
                % Command window output
-               sprintf('Force Map No. %d of %d',ii,obj.NumForceMaps) % Gives current Force Map Position
+               sprintf('Force Map No. %d of %d',Fm,obj.NumForceMaps) % Gives current Force Map Position
                % Run the chosen functions
-               obj.FM{ii}.fc_print_raw(XMin,XMax,YMin,YMax);     
+               obj.FM{Fm}.fc_print_raw(XMin,XMax,YMin,YMax);     
             end    
         end
                          
@@ -1719,8 +1767,8 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             datetime('now')
             
             % Loop over the imported force maps
-             for ii=1:obj.NumForceMaps
-             % for ii=1:43
+             % for ii=1:obj.NumForceMaps
+             for ii=25:36
                  % Needed function               
                 %if ~obj.SMFSFlag(ii)     % Selects all flagged 1 force maps
                 %if obj.SMFSFlag(ii)     % Selects all flagged 0 force maps
@@ -1764,56 +1812,20 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
         
         
         function SMFS_analysis_flag_status(obj)
-            
-         
-            % Loop over the imported force maps
-            
-            %for ii=464:obj.NumForceMaps % Debugging
-            
+                        
             % Find not processed force maps
             obj.SMFSFlagDown.Preprocessed=find(~obj.SMFSFlag.Preprocessed);
             obj.SMFSFlagDown.Presorted=find(~obj.SMFSFlag.Presorted);
             obj.SMFSFlagDown.SelectFM=find(~obj.SMFSFlag.SelectFM);
             obj.SMFSFlagDown.Analysed=find(~obj.SMFSFlag.Analysed);
             obj.SMFSFlagDown.NumForceCurves=find(~obj.SMFSFlag.NumForceCurves);
-            for ii=1:obj.NumForceMaps
-            obj.FM{ii}.fc_flag_status          
+            for Fm=1:obj.NumForceMaps
+            obj.FM{Fm}.fc_flag_status          
             end
         end
-        
-        function SMFS_initialize_arrays(obj)
-            
-           
-            TableSize=[1 9];
-            VarTypes = {'double','double','double','double','string','string','string','string','string'};
-            VarNames = {'SMFSResults Idx','Extend velocity','Retraction velocity','Holding time','Substrate','Medium','Chip cantilever number','Chipbox number','Linker'};
-            obj.SMFSResultsParameters=table('Size',TableSize,'VariableTypes',VarTypes,'VariableNames',VarNames);
-
-            TableSize=[1 5];
-            VarTypes = {'double','double','double','double','double'};
-            VarNames = {'SMFSLillie Idx','SMFSResultsParameter Row Num1','Sum force-curves tested','Hypothesis','p-value'};
-            obj.SMFSLillieAdhMaxApp=table('Size',TableSize,'VariableTypes',VarTypes,'VariableNames',VarNames);
-            obj.SMFSLillieAdhMaxRet=table('Size',TableSize,'VariableTypes',VarTypes,'VariableNames',VarNames);
-            obj.SMFSLillieAdhUnbinding=table('Size',TableSize,'VariableTypes',VarTypes,'VariableNames',VarNames);
-            obj.SMFSLillieAdhEneApp=table('Size',TableSize,'VariableTypes',VarTypes,'VariableNames',VarNames);
-            obj.SMFSLillieAdhEneRet=table('Size',TableSize,'VariableTypes',VarTypes,'VariableNames',VarNames);
-            obj.SMFSLilliePullingLength=table('Size',TableSize,'VariableTypes',VarTypes,'VariableNames',VarNames);
-            obj.SMFSLillieSnapInLength=table('Size',TableSize,'VariableTypes',VarTypes,'VariableNames',VarNames);
-
-            TableSize=[1 7];
-            VarTypes = {'double','double','double','double','double','double','double'};
-            VarNames = {'SMFSWilcoxon Idx','SMFSResultsParameter Row Num1','Sum force-curves tested Row Num1','SMFSResultsParameter Row Num2','Sum force-curves tested Row Num2','Hypothesis','p-value'};
-            obj.SMFSWilcoxonAdhMaxApp=table('Size',TableSize,'VariableTypes',VarTypes,'VariableNames',VarNames);
-            obj.SMFSWilcoxonAdhMaxRet=table('Size',TableSize,'VariableTypes',VarTypes,'VariableNames',VarNames);
-            obj.SMFSWilcoxonAdhUnbinding=table('Size',TableSize,'VariableTypes',VarTypes,'VariableNames',VarNames);
-            obj.SMFSWilcoxonAdhEneApp=table('Size',TableSize,'VariableTypes',VarTypes,'VariableNames',VarNames);
-            obj.SMFSWilcoxonAdhEneRet=table('Size',TableSize,'VariableTypes',VarTypes,'VariableNames',VarNames);
-            obj.SMFSWilcoxonPullingLength=table('Size',TableSize,'VariableTypes',VarTypes,'VariableNames',VarNames);
-            obj.SMFSWilcoxonSnapInLength=table('Size',TableSize,'VariableTypes',VarTypes,'VariableNames',VarNames);
-        end
-        
+ 
         function SMFS_results_structure(obj,ChipboxValue,ChipCantValue,LinkerValue,SubstrateValue,EnvCondValue,ExtVelocityValue,RetVelocityValue,HoldingTimeValue)
-          
+
             % If all velocities should be selected use input variable: 0
             % If all holding times should be selected use input variable:
             % -1
@@ -1884,34 +1896,34 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             SMFSFlagFitSinoidal=zeros(length(IdxArray),1);
             SMFSFlagSnapIn=zeros(length(IdxArray),1);
             SMFSFlagPullingLength=zeros(length(IdxArray),1);
-            AdhMaxAppMin=zeros(length(IdxArray),1);
-            AdhMaxAppMinFc=zeros(length(IdxArray),1);
-            AdhMaxAppMax=zeros(length(IdxArray),1);
-            AdhMaxAppMaxFc=zeros(length(IdxArray),1);
-            AdhMaxRetMin=zeros(length(IdxArray),1);
-            AdhMaxRetMinFc=zeros(length(IdxArray),1);
-            AdhMaxRetMax=zeros(length(IdxArray),1);
-            AdhMaxRetMaxFc=zeros(length(IdxArray),1);
-            AdhMaxRetUnbindingMin=zeros(length(IdxArray),1);
-            AdhMaxRetUnbindingMinFc=zeros(length(IdxArray),1);
-            AdhMaxRetUnbindingMax=zeros(length(IdxArray),1);
-            AdhMaxRetUnbindingMaxFc=zeros(length(IdxArray),1);
-            AdhEneAppMin=zeros(length(IdxArray),1);
-            AdhEneAppMinFc=zeros(length(IdxArray),1);
-            AdhEneAppMax=zeros(length(IdxArray),1);
-            AdhEneAppMaxFc=zeros(length(IdxArray),1);
-            AdhEneRetMin=zeros(length(IdxArray),1);
-            AdhEneRetMinFc=zeros(length(IdxArray),1);
-            AdhEneRetMax=zeros(length(IdxArray),1);
-            AdhEneRetMaxFc=zeros(length(IdxArray),1);
-            PullLengthMin=zeros(length(IdxArray),1);
-            PullLengthMinFc=zeros(length(IdxArray),1);
-            PullLengthMax=zeros(length(IdxArray),1);
-            PullLengthMaxFc=zeros(length(IdxArray),1);
-            SnapInMin=zeros(length(IdxArray),1);
-            SnapInMinFc=zeros(length(IdxArray),1);
-            SnapInMax=zeros(length(IdxArray),1);
-            SnapInMaxFc=zeros(length(IdxArray),1);
+            AdhMaxAppMinArray=zeros(length(IdxArray),1);
+            AdhMaxAppMinFcArray=zeros(length(IdxArray),1);
+            AdhMaxAppMaxArray=zeros(length(IdxArray),1);
+            AdhMaxAppMaxFcArray=zeros(length(IdxArray),1);
+            AdhMaxRetMinArray=zeros(length(IdxArray),1);
+            AdhMaxRetMinFcArray=zeros(length(IdxArray),1);
+            AdhMaxRetMaxArray=zeros(length(IdxArray),1);
+            AdhMaxRetMaxFcArray=zeros(length(IdxArray),1);
+            AdhMaxRetUnbindingMinArray=zeros(length(IdxArray),1);
+            AdhMaxRetUnbindingMinFcArray=zeros(length(IdxArray),1);
+            AdhMaxRetUnbindingMaxArray=zeros(length(IdxArray),1);
+            AdhMaxRetUnbindingMaxFcArray=zeros(length(IdxArray),1);
+            AdhEneAppMinArray=zeros(length(IdxArray),1);
+            AdhEneAppMinFcArray=zeros(length(IdxArray),1);
+            AdhEneAppMaxArray=zeros(length(IdxArray),1);
+            AdhEneAppMaxFcArray=zeros(length(IdxArray),1);
+            AdhEneRetMinArray=zeros(length(IdxArray),1);
+            AdhEneRetMinFcArray=zeros(length(IdxArray),1);
+            AdhEneRetMaxArray=zeros(length(IdxArray),1);
+            AdhEneRetMaxFcArray=zeros(length(IdxArray),1);
+            PullLengthMinArray=zeros(length(IdxArray),1);
+            PullLengthMinFcArray=zeros(length(IdxArray),1);
+            PullLengthMaxArray=zeros(length(IdxArray),1);
+            PullLengthMaxFcArray=zeros(length(IdxArray),1);
+            SnapInMinArray=zeros(length(IdxArray),1);
+            SnapInMinFcArray=zeros(length(IdxArray),1);
+            SnapInMaxArray=zeros(length(IdxArray),1);
+            SnapInMaxFcArray=zeros(length(IdxArray),1);
             % Loop
             for ff=1:length(IdxArray)
                 %% Debugging
@@ -2064,81 +2076,94 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 else
                 end
                 % Min max values and location
-                [AdhMaxAppMin(ff,1),AdhMaxAppMinFc(ff,1)]=min(ConcateArray1,[],'omitnan');
-                [AdhMaxAppMax(ff,1),AdhMaxAppMaxFc(ff,1)]=max(ConcateArray1,[],'omitnan');
+                if ff==1
+                    [AdhMaxAppMinArray(ff,1),AdhMaxAppMinFcArray(ff,1)]=min(ConcateArray1(1:100),[],'omitnan');
+                    [AdhMaxAppMaxArray(ff,1),AdhMaxAppMaxFcArray(ff,1)]=max(ConcateArray1(1:100),[],'omitnan');
+                    [AdhMaxRetMinArray(ff,1),AdhMaxRetMinFcArray(ff,1)]=min(ConcateArray2(1:100),[],'omitnan');
+                    [AdhMaxRetMaxArray(ff,1),AdhMaxRetMaxFcArray(ff,1)]=max(ConcateArray2(1:100),[],'omitnan');
+                    [AdhMaxRetUnbindingMinArray(ff,1),AdhMaxRetUnbindingMinFcArray(ff,1)]=min(ConcateArray3(1:100),[],'omitnan');
+                    [AdhMaxRetUnbindingMaxArray(ff,1),AdhMaxRetUnbindingMaxFcArray(ff,1)]=max(ConcateArray3(1:100),[],'omitnan');
+                    [AdhEneAppMinArray(ff,1),AdhEneAppMinFcArray(ff,1)]=min(ConcateArray4(1:100),[],'omitnan');
+                    [AdhEneAppMaxArray(ff,1),AdhEneAppMaxFcArray(ff,1)]=max(ConcateArray4(1:100),[],'omitnan');
+                    [AdhEneRetMinArray(ff,1),AdhEneRetMinFcArray(ff,1)]=min(ConcateArray5(1:100),[],'omitnan');
+                    [AdhEneRetMaxArray(ff,1),AdhEneRetMaxFcArray(ff,1)]=max(ConcateArray5(1:100),[],'omitnan');
+                    [PullLengthMinArray(ff,1),PullLengthMinFcArray(ff,1)]=min(ConcateArray6(1:100),[],'omitnan');
+                    [PullLengthMaxArray(ff,1),PullLengthMaxFcArray(ff,1)]=max(ConcateArray6(1:100),[],'omitnan');
+                    [SnapInMinArray(ff,1),SnapInMinFcArray(ff,1)]=min(ConcateArray7(1:100),[],'omitnan');
+                    [SnapInMaxArray(ff,1),SnapInMaxFcArray(ff,1)]=max(ConcateArray7(1:100),[],'omitnan');
+                else
+                    [AdhMaxAppMinArray(ff,1),AdhMaxAppMinFcArray(ff,1)]=min(ConcateArray1(((ff-1)*100)+1:ff*100),[],'omitnan');
+                    [AdhMaxAppMaxArray(ff,1),AdhMaxAppMaxFcArray(ff,1)]=max(ConcateArray1(((ff-1)*100)+1:ff*100),[],'omitnan');
+                    [AdhMaxRetMinArray(ff,1),AdhMaxRetMinFcArray(ff,1)]=min(ConcateArray2(((ff-1)*100)+1:ff*100),[],'omitnan');
+                    [AdhMaxRetMaxArray(ff,1),AdhMaxRetMaxFcArray(ff,1)]=max(ConcateArray2(((ff-1)*100)+1:ff*100),[],'omitnan');
+                    [AdhMaxRetUnbindingMinArray(ff,1),AdhMaxRetUnbindingMinFcArray(ff,1)]=min(ConcateArray3(((ff-1)*100)+1:ff*100),[],'omitnan');
+                    [AdhMaxRetUnbindingMaxArray(ff,1),AdhMaxRetUnbindingMaxFcArray(ff,1)]=max(ConcateArray3(((ff-1)*100)+1:ff*100),[],'omitnan');
+                    [AdhEneAppMinArray(ff,1),AdhEneAppMinFcArray(ff,1)]=min(ConcateArray4(((ff-1)*100)+1:ff*100),[],'omitnan');
+                    [AdhEneAppMaxArray(ff,1),AdhEneAppMaxFcArray(ff,1)]=max(ConcateArray4(((ff-1)*100)+1:ff*100),[],'omitnan');
+                    [AdhEneRetMinArray(ff,1),AdhEneRetMinFcArray(ff,1)]=min(ConcateArray5(((ff-1)*100)+1:ff*100),[],'omitnan');
+                    [AdhEneRetMaxArray(ff,1),AdhEneRetMaxFcArray(ff,1)]=max(ConcateArray5(((ff-1)*100)+1:ff*100),[],'omitnan');
+                    [PullLengthMinArray(ff,1),PullLengthMinFcArray(ff,1)]=min(ConcateArray6(((ff-1)*100)+1:ff*100),[],'omitnan');
+                    [PullLengthMaxArray(ff,1),PullLengthMaxFcArray(ff,1)]=max(ConcateArray6(((ff-1)*100)+1:ff*100),[],'omitnan');
+                    [SnapInMinArray(ff,1),SnapInMinFcArray(ff,1)]=min(ConcateArray7(((ff-1)*100)+1:ff*100),[],'omitnan');
+                    [SnapInMaxArray(ff,1),SnapInMaxFcArray(ff,1)]=max(ConcateArray7(((ff-1)*100)+1:ff*100),[],'omitnan');
+                end
 
-                [AdhMaxRetMin(ff,1),AdhMaxRetMinFc(ff,1)]=min(ConcateArray7,[],'omitnan');
-                [AdhMaxRetMax(ff,1),AdhMaxRetMaxFc(ff,1)]=max(ConcateArray7,[],'omitnan');
-
-                [AdhMaxRetUnbindingMin(ff,1),AdhMaxRetUnbindingMinFc(ff,1)]=min(ConcateArray7,[],'omitnan');
-                [AdhMaxRetUnbindingMax(ff,1),AdhMaxRetUnbindingMaxFc(ff,1)]=max(ConcateArray7,[],'omitnan');
-
-                [AdhEneAppMin(ff,1),AdhEneAppMinFc(ff,1)]=min(ConcateArray7,[],'omitnan');
-                [AdhEneAppMax(ff,1),AdhEneAppMaxFc(ff,1)]=max(ConcateArray7,[],'omitnan');
-
-                [AdhEneRetMin(ff,1),AdhEneRetMinFc(ff,1)]=min(ConcateArray7,[],'omitnan');
-                [AdhEneRetMax(ff,1),AdhEneRetMaxFc(ff,1)]=max(ConcateArray7,[],'omitnan');
-
-                [PullLengthMin(ff,1),PullLengthMinFc(ff,1)]=min(ConcateArray6,[],'omitnan');
-                [PullLengthMax(ff,1),PullLengthMaxFc(ff,1)]=max(ConcateArray6,[],'omitnan');
-                [SnapInMin(ff,1),SnapInMinFc(ff,1)]=min(ConcateArray7,[],'omitnan');
-                [SnapInMax(ff,1),SnapInMaxFc(ff,1)]=max(ConcateArray7,[],'omitnan');
             end
             % Statistics
             AdhMaxAppMean=mean(ConcateArray1,'omitnan');
             AdhMaxAppStd=std(ConcateArray1,'omitnan');
-            [AdhMaxAppMin,AdhMaxAppMinIdx]=min(AdhMaxAppMin);
-            [AdhMaxAppMax,AdhMaxAppMaxIdx]=max(AdhMaxAppMax);
+            [AdhMaxAppMin,AdhMaxAppMinIdx]=min(AdhMaxAppMinArray);
+            [AdhMaxAppMax,AdhMaxAppMaxIdx]=max(AdhMaxAppMaxArray);
             AdhMaxAppMinFM=IdxArray(AdhMaxAppMinIdx);
             AdhMaxAppMaxFM=IdxArray(AdhMaxAppMaxIdx);
-            AdhMaxAppMinFc=AdhMaxAppMinFc(AdhMaxAppMinIdx,1)-(AdhMaxAppMinFM-1)*100;
-            AdhMaxAppMaxFc=AdhMaxAppMaxFc(AdhMaxAppMaxIdx,1)-(AdhMaxAppMaxFM-1)*100;
+            AdhMaxAppMinFc=AdhMaxAppMinFcArray(AdhMaxAppMinIdx,1);
+            AdhMaxAppMaxFc=AdhMaxAppMaxFcArray(AdhMaxAppMaxIdx,1);
             AdhMaxRetMean=mean(ConcateArray2,'omitnan');
             AdhMaxRetStd=std(ConcateArray2,'omitnan');
-            [AdhMaxRetMin,AdhMaxRetMinIdx]=min(AdhMaxRetMin);
-            [AdhMaxRetMax,AdhMaxRetMaxIdx]=max(AdhMaxRetMax);
+            [AdhMaxRetMin,AdhMaxRetMinIdx]=min(AdhMaxRetMinArray);
+            [AdhMaxRetMax,AdhMaxRetMaxIdx]=max(AdhMaxRetMaxArray);
             AdhMaxRetMinFM=IdxArray(AdhMaxRetMinIdx);
             AdhMaxRetMaxFM=IdxArray(AdhMaxRetMaxIdx);
-            AdhMaxRetMinFc=AdhMaxRetMinFc(AdhMaxRetMinIdx,1)-(AdhMaxRetMinFM-1)*100;
-            AdhMaxRetMaxFc=AdhMaxRetMaxFc(AdhMaxRetMaxIdx,1)-(AdhMaxRetMaxFM-1)*100;
+            AdhMaxRetMinFc=AdhMaxRetMinFcArray(AdhMaxRetMinIdx,1);
+            AdhMaxRetMaxFc=AdhMaxRetMaxFcArray(AdhMaxRetMaxIdx,1);
             AdhMaxRetUnbindingMean=mean(ConcateArray3,'omitnan');
             AdhMaxRetUnbindingStd=std(ConcateArray3,'omitnan');
-            [AdhMaxRetUnbindingMin,AdhMaxRetUnbindingMinIdx]=min(AdhMaxRetUnbindingMin);
-            [AdhMaxRetUnbindingMax,AdhMaxRetUnbindingMaxIdx]=max(AdhMaxRetUnbindingMax);
+            [AdhMaxRetUnbindingMin,AdhMaxRetUnbindingMinIdx]=min(AdhMaxRetUnbindingMinArray);
+            [AdhMaxRetUnbindingMax,AdhMaxRetUnbindingMaxIdx]=max(AdhMaxRetUnbindingMaxArray);
             AdhMaxRetUnbindingMinFM=IdxArray(AdhMaxRetUnbindingMinIdx);
             AdhMaxRetUnbindingMaxFM=IdxArray(AdhMaxRetUnbindingMaxIdx);
-            AdhMaxRetUnbindingMinFc=AdhMaxRetUnbindingMinFc(AdhMaxRetUnbindingMinIdx,1)-(AdhMaxRetUnbindingMinFM-1)*100;
-            AdhMaxRetUnbindingMaxFc=AdhMaxRetUnbindingMaxFc(AdhMaxRetUnbindingMaxIdx,1)-(AdhMaxRetUnbindingMaxFM-1)*100;
+            AdhMaxRetUnbindingMinFc=AdhMaxRetUnbindingMinFcArray(AdhMaxRetUnbindingMinIdx,1);
+            AdhMaxRetUnbindingMaxFc=AdhMaxRetUnbindingMaxFcArray(AdhMaxRetUnbindingMaxIdx,1);
             AdhEneAppMean=mean(ConcateArray4,'omitnan');
             AdhEneAppStd=std(ConcateArray4,'omitnan');
-            [AdhEneAppMin,AdhEneAppMinIdx]=min(AdhEneAppMin);
-            [AdhEneAppMax,AdhEneAppMaxIdx]=max(AdhEneAppMax);
+            [AdhEneAppMin,AdhEneAppMinIdx]=min(AdhEneAppMinArray);
+            [AdhEneAppMax,AdhEneAppMaxIdx]=max(AdhEneAppMaxArray);
             AdhEneAppMinFM=IdxArray(AdhEneAppMinIdx);
             AdhEneAppMaxFM=IdxArray(AdhEneAppMaxIdx);
-            AdhEneAppMinFc=AdhEneAppMinFc(AdhEneAppMinIdx,1)-(AdhEneAppMinFM-1)*100;
-            AdhEneAppMaxFc=AdhEneAppMaxFc(AdhEneAppMaxIdx,1)-(AdhEneAppMaxFM-1)*100;
+            AdhEneAppMinFc=AdhEneAppMinFcArray(AdhEneAppMinIdx,1);
+            AdhEneAppMaxFc=AdhEneAppMaxFcArray(AdhEneAppMaxIdx,1);
             AdhEneRetMean=mean(ConcateArray5,'omitnan');
             AdhEneRetStd=std(ConcateArray5,'omitnan');
-            [AdhEneRetMin,AdhEneRetMinIdx]=min(AdhEneRetMin);
-            [AdhEneRetMax,AdhEneRetMaxIdx]=max(AdhEneRetMax);
+            [AdhEneRetMin,AdhEneRetMinIdx]=min(AdhEneRetMinArray);
+            [AdhEneRetMax,AdhEneRetMaxIdx]=max(AdhEneRetMaxArray);
             AdhEneRetMinFM=IdxArray(AdhEneRetMinIdx);
             AdhEneRetMaxFM=IdxArray(AdhEneRetMaxIdx);
-            AdhEneRetMinFc=AdhEneRetMinFc(AdhEneRetMinIdx,1)-(AdhEneRetMinFM-1)*100;
-            AdhEneRetMaxFc=AdhEneRetMaxFc(AdhEneRetMaxIdx,1)-(AdhEneRetMaxFM-1)*100;
+            AdhEneRetMinFc=AdhEneRetMinFcArray(AdhEneRetMinIdx,1);
+            AdhEneRetMaxFc=AdhEneRetMaxFcArray(AdhEneRetMaxIdx,1);
             PullLengthMedian=median(ConcateArray6,'omitnan');
-            [PullLengthMin,PullLengthMinIdx]=min(PullLengthMin);
-            [PullLengthMax,PullLengthMaxIdx]=max(PullLengthMax);
+            [PullLengthMin,PullLengthMinIdx]=min(PullLengthMinArray);
+            [PullLengthMax,PullLengthMaxIdx]=max(PullLengthMaxArray);
             PullLengthMinFM=IdxArray(PullLengthMinIdx);
             PullLengthMaxFM=IdxArray(PullLengthMaxIdx);
-            PullLengthMinFc=PullLengthMinFc(PullLengthMinIdx,1)-(PullLengthMinFM-1)*100;
-            PullLengthMaxFc=PullLengthMaxFc(PullLengthMaxIdx,1)-(PullLengthMaxFM-1)*100;
+            PullLengthMinFc=PullLengthMinFcArray(PullLengthMinIdx,1);
+            PullLengthMaxFc=PullLengthMaxFcArray(PullLengthMaxIdx,1);
             SnapInMedian=median(ConcateArray7,'omitnan');
-            [SnapInMin,SnapInMinIdx]=min(SnapInMin);
-            [SnapInMax,SnapInMaxIdx]=max(SnapInMax);
+            [SnapInMin,SnapInMinIdx]=min(SnapInMinArray);
+            [SnapInMax,SnapInMaxIdx]=max(SnapInMaxArray);
             SnapInMinFM=IdxArray(SnapInMinIdx);
             SnapInMaxFM=IdxArray(SnapInMaxIdx);
-            SnapInMinFc=SnapInMinFc(PullLengthMinIdx,1)-(SnapInMinFM-1)*100;
-            SnapInMaxFc=SnapInMaxFc(PullLengthMaxIdx,1)-(SnapInMaxFM-1)*100;
+            SnapInMinFc=SnapInMinFcArray(PullLengthMinIdx,1);
+            SnapInMaxFc=SnapInMaxFcArray(PullLengthMaxIdx,1);
             %% Data selection based on input parameters
             % Determine unique entries
             ExtVelocityValues=unique(FMExtVelocity)';
@@ -2368,59 +2393,86 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             obj.SMFSResults{jj,1}.Selection(1).LinkerConcateIdx=LinkerConcateIdx;
             obj.SMFSResults{jj,1}.Results(1).AdhMaxAppMean=AdhMaxAppMean;
             obj.SMFSResults{jj,1}.Results(1).AdhMaxAppStd=AdhMaxAppStd;
+            obj.SMFSResults{jj,1}.Results(1).AdhMaxAppMinArray=AdhMaxAppMinArray;
             obj.SMFSResults{jj,1}.Results(1).AdhMaxAppMin=AdhMaxAppMin;
+            obj.SMFSResults{jj,1}.Results(1).AdhMaxAppMaxArray=AdhMaxAppMaxArray;
             obj.SMFSResults{jj,1}.Results(1).AdhMaxAppMax=AdhMaxAppMax;
             obj.SMFSResults{jj,1}.Results(1).AdhMaxAppMinFM=AdhMaxAppMinFM;
             obj.SMFSResults{jj,1}.Results(1).AdhMaxAppMaxFM=AdhMaxAppMaxFM;
+            obj.SMFSResults{jj,1}.Results(1).AdhMaxAppMinFcArray=AdhMaxAppMinFcArray;
             obj.SMFSResults{jj,1}.Results(1).AdhMaxAppMinFc=AdhMaxAppMinFc;
+            obj.SMFSResults{jj,1}.Results(1).AdhMaxAppMaxFcArray=AdhMaxAppMaxFcArray;
             obj.SMFSResults{jj,1}.Results(1).AdhMaxAppMaxFc=AdhMaxAppMaxFc;
             obj.SMFSResults{jj,1}.Results(1).AdhMaxRetMean=AdhMaxRetMean;
             obj.SMFSResults{jj,1}.Results(1).AdhMaxRetStd=AdhMaxRetStd;
+            obj.SMFSResults{jj,1}.Results(1).AdhMaxRetMinArray=AdhMaxRetMinArray;
             obj.SMFSResults{jj,1}.Results(1).AdhMaxRetMin=AdhMaxRetMin;
+            obj.SMFSResults{jj,1}.Results(1).AdhMaxRetMaxArray=AdhMaxRetMaxArray;
             obj.SMFSResults{jj,1}.Results(1).AdhMaxRetMax=AdhMaxRetMax;
             obj.SMFSResults{jj,1}.Results(1).AdhMaxRetMinFM=AdhMaxRetMinFM;
             obj.SMFSResults{jj,1}.Results(1).AdhMaxRetMaxFM=AdhMaxRetMaxFM;
+            obj.SMFSResults{jj,1}.Results(1).AdhMaxRetMinFcArray=AdhMaxRetMinFcArray;
             obj.SMFSResults{jj,1}.Results(1).AdhMaxRetMinFc=AdhMaxRetMinFc;
+            obj.SMFSResults{jj,1}.Results(1).AdhMaxRetMaxFcArray=AdhMaxRetMaxFcArray;
             obj.SMFSResults{jj,1}.Results(1).AdhMaxRetMaxFc=AdhMaxRetMaxFc;
             obj.SMFSResults{jj,1}.Results(1).AdhMaxRetUnbindingMean=AdhMaxRetUnbindingMean;
             obj.SMFSResults{jj,1}.Results(1).AdhMaxRetUnbindingStd=AdhMaxRetUnbindingStd;
+            obj.SMFSResults{jj,1}.Results(1).AdhMaxRetUnbindingMinArray=AdhMaxRetUnbindingMinArray;
             obj.SMFSResults{jj,1}.Results(1).AdhMaxRetUnbindingMin=AdhMaxRetUnbindingMin;
+            obj.SMFSResults{jj,1}.Results(1).AdhMaxRetUnbindingMaxArray=AdhMaxRetUnbindingMaxArray;
             obj.SMFSResults{jj,1}.Results(1).AdhMaxRetUnbindingMax=AdhMaxRetUnbindingMax;
             obj.SMFSResults{jj,1}.Results(1).AdhMaxRetUnbindingMinFM=AdhMaxRetUnbindingMinFM;
             obj.SMFSResults{jj,1}.Results(1).AdhMaxRetUnbindingMaxFM=AdhMaxRetUnbindingMaxFM;
+            obj.SMFSResults{jj,1}.Results(1).AdhMaxRetUnbindingMinFcArray=AdhMaxRetUnbindingMinFcArray;
             obj.SMFSResults{jj,1}.Results(1).AdhMaxRetUnbindingMinFc=AdhMaxRetUnbindingMinFc;
+            obj.SMFSResults{jj,1}.Results(1).AdhMaxRetUnbindingMaxFcArray=AdhMaxRetUnbindingMaxFcArray;
             obj.SMFSResults{jj,1}.Results(1).AdhMaxRetUnbindingMaxFc=AdhMaxRetUnbindingMaxFc;
             obj.SMFSResults{jj,1}.Results(1).AdhEneAppMean=AdhEneAppMean;
             obj.SMFSResults{jj,1}.Results(1).AdhEneAppStd=AdhEneAppStd;
+            obj.SMFSResults{jj,1}.Results(1).AdhEneAppMinArray=AdhEneAppMinArray;
             obj.SMFSResults{jj,1}.Results(1).AdhEneAppMin=AdhEneAppMin;
+            obj.SMFSResults{jj,1}.Results(1).AdhEneAppMaxArray=AdhEneAppMaxArray;
             obj.SMFSResults{jj,1}.Results(1).AdhEneAppMax=AdhEneAppMax;
             obj.SMFSResults{jj,1}.Results(1).AdhEneAppMinFM=AdhEneAppMinFM;
             obj.SMFSResults{jj,1}.Results(1).AdhEneAppMaxFM=AdhEneAppMaxFM;
+            obj.SMFSResults{jj,1}.Results(1).AdhEneAppMinFcArray=AdhEneAppMinFcArray;
             obj.SMFSResults{jj,1}.Results(1).AdhEneAppMinFc=AdhEneAppMinFc;
+            obj.SMFSResults{jj,1}.Results(1).AdhEneAppMaxFcArray=AdhEneAppMaxFcArray;
             obj.SMFSResults{jj,1}.Results(1).AdhEneAppMaxFc=AdhEneAppMaxFc;
             obj.SMFSResults{jj,1}.Results(1).AdhEneRetMean=AdhEneRetMean;
             obj.SMFSResults{jj,1}.Results(1).AdhEneRetStd=AdhEneRetStd;
+            obj.SMFSResults{jj,1}.Results(1).AdhEneRetMinArray=AdhEneRetMinArray;
             obj.SMFSResults{jj,1}.Results(1).AdhEneRetMin=AdhEneRetMin;
+            obj.SMFSResults{jj,1}.Results(1).AdhEneRetMaxArray=AdhEneRetMaxArray;
             obj.SMFSResults{jj,1}.Results(1).AdhEneRetMax=AdhEneRetMax;
             obj.SMFSResults{jj,1}.Results(1).AdhEneRetMinFM=AdhEneRetMinFM;
             obj.SMFSResults{jj,1}.Results(1).AdhEneRetMaxFM=AdhEneRetMaxFM;
+            obj.SMFSResults{jj,1}.Results(1).AdhEneRetMinFcArray=AdhEneRetMinFcArray;
             obj.SMFSResults{jj,1}.Results(1).AdhEneRetMinFc=AdhEneRetMinFc;
+            obj.SMFSResults{jj,1}.Results(1).AdhEneRetMaxFcArray=AdhEneRetMaxFcArray;
             obj.SMFSResults{jj,1}.Results(1).AdhEneRetMaxFc=AdhEneRetMaxFc;
             obj.SMFSResults{jj,1}.Results(1).PullLengthMedian=PullLengthMedian;
+            obj.SMFSResults{jj,1}.Results(1).PullLengthMinArray=PullLengthMinArray;
             obj.SMFSResults{jj,1}.Results(1).PullLengthMin=PullLengthMin;
             obj.SMFSResults{jj,1}.Results(1).PullLengthMinFM=PullLengthMinFM;
+            obj.SMFSResults{jj,1}.Results(1).PullLengthMinFcArray=PullLengthMinFcArray;
             obj.SMFSResults{jj,1}.Results(1).PullLengthMinFc=PullLengthMinFc;
+            obj.SMFSResults{jj,1}.Results(1).PullLengthMaxArray=PullLengthMaxArray;
             obj.SMFSResults{jj,1}.Results(1).PullLengthMax=PullLengthMax;
             obj.SMFSResults{jj,1}.Results(1).PullLengthMaxFM=PullLengthMaxFM;
+            obj.SMFSResults{jj,1}.Results(1).PullLengthMaxFcArray=PullLengthMaxFcArray;
             obj.SMFSResults{jj,1}.Results(1).PullLengthMaxFc=PullLengthMaxFc;
             obj.SMFSResults{jj,1}.Results(1).SnapInMedian=SnapInMedian;
+            obj.SMFSResults{jj,1}.Results(1).SnapInMinArray=SnapInMinArray;
             obj.SMFSResults{jj,1}.Results(1).SnapInMin=SnapInMin;
             obj.SMFSResults{jj,1}.Results(1).SnapInMinFM=SnapInMinFM;
+            obj.SMFSResults{jj,1}.Results(1).SnapInMinFcArray=SnapInMinFcArray;
             obj.SMFSResults{jj,1}.Results(1).SnapInMinFc=SnapInMinFc;
+            obj.SMFSResults{jj,1}.Results(1).SnapInMaxArray=SnapInMaxArray;
             obj.SMFSResults{jj,1}.Results(1).SnapInMax=SnapInMax;
             obj.SMFSResults{jj,1}.Results(1).SnapInMaxFM=SnapInMaxFM;
+            obj.SMFSResults{jj,1}.Results(1).SnapInMaxFcArray=SnapInMaxFcArray;
             obj.SMFSResults{jj,1}.Results(1).SnapInMaxFc=SnapInMaxFc;
-
             obj.SMFSResultsParameters(jj,:)={jj,ExtVelocityValue,RetVelocityValue,HoldingTimeValue,SubstrateValue,EnvCondValue,ChipCantValue,ChipboxValue,LinkerValue};
 
         end
@@ -2830,7 +2882,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             GenNameSuffix3='_Pt3';
             GenNameSuffix4='_Pt4';
             GenNameSuffix5='_Pt5';
-            MarkerStyle={'d' 's' 'v' 'h'};
+            MarkerStyle={'d' 's' 'v' 'o'};
             MarkerSize=10;     
             %% Gramm object 2
             % Define variables
@@ -6514,27 +6566,46 @@ PlotData=obj.SMFSResults{jj}.Data.AdhMaxAppConcat
         end
              
 
-        function SMFS_fine_figure(obj,XMin,XMax,YMin,YMax,Fm,Fc)
+        function SMFS_fine_figure(obj,XMin,XMax,YMin,YMax,FmoI,FcoI,ii)
+       %     function SMFS_fine_figure(obj,XMin,XMax,YMin,YMax,Fm,Fc)
             % Function to plot individual fine figures for publication
-            if nargin < 2
+            % ii... Row entry of obj.SMFSResults
+            if nargin < 3
                 XMin= -inf;
                 XMax= inf;
                 YMin= -inf;
                 YMax= inf;
             end            
-            %Fm=1;
+          
             % Figure visibility
-            %set(groot,'defaultFigureVisible','off')      
-            set(groot,'defaultFigureVisible','on') 
+            set(groot,'defaultFigureVisible','off')      
+            % set(groot,'defaultFigureVisible','on') 
+            % Set figure position
+            set(groot,'defaultFigurePaperPositionMode','auto')
             % Change into the Folder of Interest
             cd(obj.ExperimentFolder) % Move into the folder
             % Create folders for saving the produced figures
-            foldername='SMFS_fine_figure';    % Defines the folder name
+            foldername='SMFS_fine_figure_pr';    % Defines the folder name
+          %  foldername='SMFS_fine_figure_SMFSResultsRow9';    % Defines the folder name
             mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
             currpath=fullfile(obj.ExperimentFolder,foldername);
             cd(currpath);
-            % Load FM function           
+            % Load FM function  
+            for Fm=1:length(obj.SMFSResults{ii}.Data.FMIndex)
+            %for Fm=182:obj.NumForceMaps
+            %for Fm=1:195
+            %for Fm=FmoI  % debugging
+                if ~obj.SMFSFlag.Preprocessed(Fm)
+                    continue
+                end
+                for Fc=1:100
+               % for Fc=FcoI
+                    if ~obj.FM{Fm}.SMFSFlag.Uncorrupt(Fc) || ~obj.FM{Fm}.SMFSFlag.Selected(Fc) || ~obj.FM{Fm}.SMFSFlag.RetMinCrit(Fc) || ~obj.FM{Fm}.SMFSFlag.LengthRequisite(Fc)     % Condition if FM Flag Selected has been set: Exclude corrupted force curves or force curves showing no snap-in from the analysis 
+                    continue
+                    end       
             obj.FM{Fm}.fc_fine_figure(XMin,XMax,YMin,YMax,Fm,Fc)
+                end
+            end
         end
         
 
@@ -6637,7 +6708,7 @@ PlotData=obj.SMFSResults{jj}.Data.AdhMaxAppConcat
             close all
         end
                 
-        function SMFS_fine_figure3(obj,ii)
+        function SMFS_fine_figure3a(obj,ii)
             % x-axis: Date and Time
             % Lightness: Retraction velocity
             % Color: Approach velocity
@@ -6654,7 +6725,7 @@ PlotData=obj.SMFSResults{jj}.Data.AdhMaxAppConcat
             % Change into the Folder of Interest
             cd(obj.ExperimentFolder) % Move into the folder
             % Create folders for saving the produced figures
-            foldername='SMFS_fine_figure3';    % Defines the folder name
+            foldername='SMFS_fine_figure3a';    % Defines the folder name
             mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
             currpath=fullfile(obj.ExperimentFolder,foldername);
             cd(currpath);
@@ -6693,8 +6764,9 @@ PlotData=obj.SMFSResults{jj}.Data.AdhMaxAppConcat
             FigNamePt2=strcat(ExtVelocityValueStr,{'_'},RetVelocityValueStr,{'_'},HoldingTimeValueStr,{'_'},obj.SMFSResults{ii}.Parameters.Substrate,{'_'},obj.SMFSResults{ii}.Parameters.Medium,{'_'},obj.SMFSResults{ii}.Parameters.ChipCantilever,{'_'},obj.SMFSResults{ii}.Parameters.Chipbox,{'_'},obj.SMFSResults{ii}.Parameters.Linker);
             FigNamePt2=char(FigNamePt2);
             FigNamePt3='_Boxplot2';
-            MarkerStyle={'d' 's' 'v' 'h'};
+            MarkerStyle={'d' 's' 'v' 'o'};
             MarkerSize=12;
+            BaseSize=32;
             Plottitle=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ii,1}.Data(1).FMIndex),obj.SMFSResults{ii,1}.Data(1).SumNumFcAnalysedAdhMaxRet);
             %% Gramm object 2
             % Define variables
@@ -6712,13 +6784,13 @@ PlotData=obj.SMFSResults{jj}.Data.AdhMaxAppConcat
             % Set options
             g2.axe_property('xlim',[xDataMin xDataMax]) % Set x limit
             g2.set_point_options('markers',MarkerStyle,'base_size',MarkerSize)
-            g2.set_title(Plottitle) %Set figure title
+     %       g2.set_title(Plottitle) %Set figure title
             g2.set_names('x',LegendxAxis,'y',LegendyAxis2,'color',LegendColor,'lightness',LightnessName)
             g2.set_color_options('map','hcl',...
                 'n_color',6,...
                 'n_lightness',6,...
                 'legend','expand')
-            g2.set_text_options("base_size",25)
+            g2.set_text_options("base_size",BaseSize)
             g2.set_layout_options("legend",0) % Hide legend
             % g2.set_layout_options("legend",1) % Show legend
             % Figure
@@ -6752,13 +6824,13 @@ PlotData=obj.SMFSResults{jj}.Data.AdhMaxAppConcat
             % Set options
             g5.axe_property('xlim',[xDataMin xDataMax]) % Set x limit
             g5.set_point_options('markers',MarkerStyle,'base_size',MarkerSize)
-            g5.set_title(Plottitle) %Set figure title
+   %         g5.set_title(Plottitle) %Set figure title
             g5.set_names('x',LegendxAxis,'y',LegendyAxis5,'color',LegendColor,'lightness',LightnessName)
             g5.set_color_options('map','hcl',...
                 'n_color',6,...
                 'n_lightness',6,...
                 'legend','expand')
-            g5.set_text_options("base_size",25)
+            g5.set_text_options("base_size",BaseSize)
             g5.set_layout_options("legend",0) % Hide legend
             % g5.set_layout_options("legend",1) % Show legend
             % Figure
@@ -6800,6 +6872,191 @@ PlotData=obj.SMFSResults{jj}.Data.AdhMaxAppConcat
                 'n_color',6,...
                 'n_lightness',6,...
                 'legend','expand')
+            g6.set_text_options("base_size",BaseSize)
+            g6.set_layout_options("legend",0) % Hide legend
+            % g6.set_layout_options("legend",1) % Show legend
+            % Figure
+            h_fig6=figure(6);
+            h_fig6.Color='white'; % changes the background color of the figure
+            h_fig6.Units='pixel'; % Defines the units
+            h_fig6.OuterPosition=Res;
+            h_fig6.PaperOrientation='landscape';
+            h_fig6.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,NameSuffix6);
+            % The actual plotting
+            g6.draw()
+            % Save figure
+            FullName6=strcat(FigNamePt1,FigNamePt2,FigNamePt3,NameSuffix6);
+            %%% Save the current figure in the current folder
+            print(h_fig6,FullName6,'-r1200','-dpng');
+            g6.export('file_name',FullName6,file_type='pdf',width=42,height=29.7,units='centimeters');
+
+            % House keeping
+            close all
+        end
+
+
+        function SMFS_fine_figure3b(obj,ii)
+            % Same as SMFS_fine_figure3a but on y-axis the maximum values
+            % are plotted
+
+            % Input variable adaptation
+            if nargin<2
+                ii=1;
+            end
+            ColorBrewerMap1=[[253 174 97]./255; % Ochreish
+                [116 173 209]./255]; % Steel blueish
+
+            % Output time and date for the dairy
+            datetime('now')
+            % Change into the Folder of Interest
+            cd(obj.ExperimentFolder) % Move into the folder
+            % Create folders for saving the produced figures
+            foldername='SMFS_fine_figure3b';    % Defines the folder name
+            mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
+            currpath=fullfile(obj.ExperimentFolder,foldername);
+            cd(currpath);
+            %% General variables 1
+            LegendxAxis='Force map index';
+            xData=obj.SMFSResults{ii}.Data.FMIndex;
+            xDataMin=xData(1);
+            xDataMax=xData(end);
+            LimitLength1=[0 310]; %
+            LimitLength2=[310 463]; %
+            Res=[1 1 2560 1250]; % Define the figure resolution
+            LegendColor='Approach velocity (m/s)';
+            LightnessName='Retraction velocity (m/s)';
+            FMExtVeloData=obj.SMFSResults{ii}.Data.FMExtVelocity;
+            FMRetVeloData=obj.SMFSResults{ii}.Data.FMRetVelocity;
+            ColorData=FMExtVeloData;
+            LightnessData=FMRetVeloData;
+            MarkerData=obj.SMFSResults{ii}.Data.FMHoldingTime;
+            if obj.SMFSResults{ii}.Parameters.ExtendVelocity==0
+                ExtVelocityValueStr='All';
+            else
+                ExtVelocityValueStr=num2str(round(obj.SMFSResults{ii}.Parameters.ExtendVelocity*1e9));
+            end
+            if obj.SMFSResults{ii}.Parameters.RetractVelocity==0
+                RetVelocityValueStr='All';
+            else
+                RetVelocityValueStr=num2str(round(obj.SMFSResults{ii}.Parameters.RetractVelocity*1e9));
+            end
+            if obj.SMFSResults{ii}.Parameters.HoldingTime==-1
+                HoldingTimeValueStr='All';
+            else
+                HoldingTimeValueStr=num2str(obj.SMFSResults{ii}.Parameters.HoldingTime);
+            end
+            % General names
+            FigNamePt1=sprintf('SMFSResultRow%d_',ii);
+            FigNamePt2=strcat(ExtVelocityValueStr,{'_'},RetVelocityValueStr,{'_'},HoldingTimeValueStr,{'_'},obj.SMFSResults{ii}.Parameters.Substrate,{'_'},obj.SMFSResults{ii}.Parameters.Medium,{'_'},obj.SMFSResults{ii}.Parameters.ChipCantilever,{'_'},obj.SMFSResults{ii}.Parameters.Chipbox,{'_'},obj.SMFSResults{ii}.Parameters.Linker);
+            FigNamePt2=char(FigNamePt2);
+            FigNamePt3='_Boxplot2';
+            MarkerStyle={'d' 's' 'v' 'o'};
+            MarkerSize=12;
+            Plottitle=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ii,1}.Data(1).FMIndex),obj.SMFSResults{ii,1}.Data(1).SumNumFcAnalysedAdhMaxRet);
+            %% Gramm object 2
+            % Define variables
+            LegendyAxis2='Adhesion force (nN)';
+            NameSuffix2='_MaxAdhesionForceRetract';
+            % Allocate data
+            yData2=obj.SMFSResults{ii}.Results.AdhMaxRetMinArray*-1e9;
+            % Create a gramm object
+            g2=gramm('x',xData,'y',yData2,...
+                'color',ColorData,...
+                'lightness',LightnessData,...
+                'marker',MarkerData);
+            % Plot data
+            g2.stat_summary('geom','point','setylim',true);
+            % Set options
+            g2.axe_property('xlim',[xDataMin xDataMax]) % Set x limit
+            g2.set_point_options('markers',MarkerStyle,'base_size',MarkerSize)
+            g2.set_title(Plottitle) %Set figure title
+            g2.set_names('x',LegendxAxis,'y',LegendyAxis2,'color',LegendColor,'lightness',LightnessName)
+            g2.set_color_options('map','hcl',...
+                'n_color',6,...
+                'n_lightness',6,...
+                'legend','expand')
+            g2.set_text_options("base_size",25)
+            g2.set_layout_options("legend",0) % Hide legend
+            % g2.set_layout_options("legend",1) % Show legend
+            % Figure
+            h_fig2=figure(2);
+            h_fig2.Color='white'; % changes the background color of the figure
+            h_fig2.Units='pixel'; % Defines the units
+            h_fig2.OuterPosition=Res;
+            h_fig2.PaperOrientation='landscape';
+            h_fig2.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,NameSuffix2);
+            % The actual plotting
+            g2.draw()
+            % Save figure
+            FullName2=strcat(FigNamePt1,FigNamePt2,FigNamePt3,NameSuffix2);
+            %%% Save the current figure in the current folder
+            print(h_fig2,FullName2,'-dpng');
+            g2.export('file_name',FullName2,file_type='pdf',width=42,height=29.7,units='centimeters');
+
+            %% Gramm object 5
+            % Define variables
+            LegendyAxis5='Adhesion energy (aJ)';
+            NameSuffix5='_AdhEnergyRetract';
+            % Allocate data
+            yData5=obj.SMFSResults{ii}.Results.AdhEneRetMinArray*-1e18;
+            % Create a gramm object
+            g5=gramm('x',xData,'y',yData5,...
+                'color',ColorData,...
+                'lightness',LightnessData,...
+                'marker',MarkerData);
+            % Plot data
+            g5.stat_summary('geom','point','setylim',true);
+            % Set options
+            g5.axe_property('xlim',[xDataMin xDataMax]) % Set x limit
+            g5.set_point_options('markers',MarkerStyle,'base_size',MarkerSize)
+            g5.set_title(Plottitle) %Set figure title
+            g5.set_names('x',LegendxAxis,'y',LegendyAxis5,'color',LegendColor,'lightness',LightnessName)
+            g5.set_color_options('map','hcl',...
+                'n_color',6,...
+                'n_lightness',6,...
+                'legend','expand')
+            g5.set_text_options("base_size",25)
+            g5.set_layout_options("legend",0) % Hide legend
+            % g5.set_layout_options("legend",1) % Show legend
+            % Figure
+            h_fig5=figure(5);
+            h_fig5.Color='white'; % changes the background color of the figure
+            h_fig5.Units='pixel'; % Defines the units
+            h_fig5.OuterPosition=Res;
+            h_fig5.PaperOrientation='landscape';
+            h_fig5.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,NameSuffix5);
+            % The actual plotting
+            g5.draw()
+            % Save figure
+            FullName5=strcat(FigNamePt1,FigNamePt2,FigNamePt3,NameSuffix5);
+            %%% Save the current figure in the current folder
+            print(h_fig5,FullName5,'-dpng');
+            g5.export('file_name',FullName5,file_type='pdf',width=42,height=29.7,units='centimeters');
+
+            %% Gramm object 6
+            % Define variables
+            LegendyAxis6='Pull-off length (nm)';
+            NameSuffix6='_Pullinglength';
+            % Allocate data
+            yData6=obj.SMFSResults{ii}.Results.PullLengthMaxArray*1e9;
+            % Create a gramm object
+            g6=gramm('x',xData,'y',yData6,...
+                'color',ColorData,...
+                'lightness',LightnessData,...
+                'marker',MarkerData);
+            % Plot data
+            g6.geom_polygon('y',{LimitLength1;LimitLength2},'color',ColorBrewerMap1);
+            % g6.stat_summary('geom',{'points','point'});
+            g6.stat_summary('geom','point','setylim',true);
+            % Set options
+            g6.axe_property('xlim',[xDataMin xDataMax]) % Set x limit
+            g6.set_point_options('markers',MarkerStyle,'base_size',MarkerSize)
+            %   g6.set_title(Plottitle) %Set figure title
+            g6.set_names('x',LegendxAxis,'y',LegendyAxis6,'color',LegendColor,'lightness',LightnessName)
+            g6.set_color_options('map','hcl',...
+                'n_color',6,...
+                'n_lightness',6,...
+                'legend','expand')
             g6.set_text_options("base_size",25)
             g6.set_layout_options("legend",0) % Hide legend
             % g6.set_layout_options("legend",1) % Show legend
@@ -6822,6 +7079,7 @@ PlotData=obj.SMFSResults{jj}.Data.AdhMaxAppConcat
             close all
         end
 
+
         function SMFS_fine_figure4(obj,ii)
             % x-axis: Date and Time
             % Lightness: Retraction velocity
@@ -6843,6 +7101,9 @@ PlotData=obj.SMFSResults{jj}.Data.AdhMaxAppConcat
             CBM2_Color1=[[215 48 39]./255; % Redish
                 [215 48 39]./255;
                 [215 48 39]./255];
+            CBM2_Color6=[[118 42 131]./255; % Violetish
+                [118 42 131]./255;
+                [118 42 131]./255];
             % Output time and date for the dairy
             datetime('now')
             % Change into the Folder of Interest
@@ -6860,6 +7121,8 @@ PlotData=obj.SMFSResults{jj}.Data.AdhMaxAppConcat
             LimitLength1=[0 310]; %
             LimitLength2=[310 463]; %
             Res=[1 1 2560 1250]; % Define the figure resolution
+            FigSize=[1 1 18 14];
+            PaperSize=[18 14];
             LegendColor='Approach velocity (m/s)';
             LightnessName='Retraction velocity (m/s)';
             FMExtVeloData=obj.SMFSResults{ii}.Concatenate.FMExtVelocity;
@@ -6881,17 +7144,20 @@ PlotData=obj.SMFSResults{jj}.Data.AdhMaxAppConcat
             else
                 HoldingTimeValueStr=num2str(obj.SMFSResults{ii}.Parameters.HoldingTime);
             end
-
+            % Set figure position
+            set(groot,'defaultFigurePaperPositionMode','manual')
             % General names
             FigNamePt1=sprintf('SMFSResultRow%d_',ii);
             FigNamePt2=strcat(ExtVelocityValueStr,{'_'},RetVelocityValueStr,{'_'},HoldingTimeValueStr,{'_'},obj.SMFSResults{ii}.Parameters.Substrate,{'_'},obj.SMFSResults{ii}.Parameters.Medium,{'_'},obj.SMFSResults{ii}.Parameters.ChipCantilever,{'_'},obj.SMFSResults{ii}.Parameters.Chipbox,{'_'},obj.SMFSResults{ii}.Parameters.Linker);
             FigNamePt2=char(FigNamePt2);
-            FigNamePt3='_Boxplot2';
-            MarkerStyle61={'d' 's' 'v' 'h'};
-            MarkerStyle={'d' 's' 'v' 'h'};
-            MarkerSize=12;
-            MarkerSize2=9;
-            TextBaseSize=15;
+            FigNamePt3='_FineFig4';
+            MarkerStyle61={'d' 's' 'v' 'o'};
+            MarkerStyle621={'d'};
+            MarkerStyle622={'v'};
+            MarkerStyle623={'o'};
+            MarkerSize=5;
+            MarkerSize2=3;
+            TextBaseSize=7;
             Plottitle=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ii,1}.Data(1).FMIndex),obj.SMFSResults{ii,1}.Data(1).SumNumFcAnalysedAdhMaxRet);
             %             %% Gramm object 2
             %             % Define variables
@@ -6982,15 +7248,19 @@ PlotData=obj.SMFSResults{jj}.Data.AdhMaxAppConcat
             % Figure
             h_fig6=figure(6);
             h_fig6.Color='white'; % changes the background color of the figure
-            h_fig6.Units='pixel'; % Defines the units
-            h_fig6.OuterPosition=Res;
+            h_fig6.Units='centimeters'; % Defines the units
+         %   h_fig6.Units='pixel'; % Defines the units
+         %   h_fig6.OuterPosition=Res;
+            h_fig6.OuterPosition=FigSize;
             h_fig6.PaperOrientation='landscape';
             h_fig6.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,NameSuffix6);
+            h_fig6.PaperUnits='centimeters';
+            h_fig6.PaperSize=PaperSize;
             % Create the uipanels, the 'Position' property is what will allow to create different sizes (it works the same as the corresponding argument in subplot() )
             p61 = uipanel('Position',[0 0.5 1 0.5],'Parent',h_fig6,'BackgroundColor',[1 1 1],'BorderType','none');
             p621 = uipanel('Position',[0.0 0.0 0.33 0.5],'Parent',h_fig6,'BackgroundColor',[1 1 1],'BorderType','none');
-            p622 = uipanel('Position',[0.33 0.0 0.33 0.5],'Parent',h_fig6,'BackgroundColor',[1 1 1],'BorderType','none');
-            p623 = uipanel('Position',[0.66 0.0 0.33 0.5],'Parent',h_fig6,'BackgroundColor',[1 1 1],'BorderType','none');
+            p622 = uipanel('Position',[0.3 0.0 0.33 0.5],'Parent',h_fig6,'BackgroundColor',[1 1 1],'BorderType','none');
+            p623 = uipanel('Position',[0.6 0.0 0.33 0.5],'Parent',h_fig6,'BackgroundColor',[1 1 1],'BorderType','none');
             % Create a gramm object 6 1
             g61=gramm('x',xData,'y',yData61,...
                 'color',ColorData621,...
@@ -7001,7 +7271,7 @@ PlotData=obj.SMFSResults{jj}.Data.AdhMaxAppConcat
             % Set options
             g61.set_parent(p61)
             g61.axe_property('xlim',[xDataMin xDataMax]) % Set x limit
-            g61.set_point_options('markers',MarkerStyle,'base_size',MarkerSize)
+            g61.set_point_options('markers',MarkerStyle61,'base_size',MarkerSize)
             %   g61.set_title(Plottitle) %Set figure title
             g61.set_names('x',LegendxAxis,'y',LegendyAxis6,'color',LegendColor,'lightness',LightnessName)
             g61.set_color_options('map',ColorBrewerMap2,...
@@ -7064,7 +7334,7 @@ PlotData=obj.SMFSResults{jj}.Data.AdhMaxAppConcat
                 'n_color',3,...
                 'legend','expand')
             %g621.set_point_options('markers',MarkerStyle,'base_size',MarkerSize2)
-            g621.set_point_options('base_size',MarkerSize2)
+            g621.set_point_options('markers',MarkerStyle621,'base_size',MarkerSize2)
             g621.set_layout_options("legend",0) % Hide legend
             % g621.set_layout_options("legend",1) % Show legend
             % The actual plotting
@@ -7107,12 +7377,12 @@ PlotData=obj.SMFSResults{jj}.Data.AdhMaxAppConcat
             % Set options
             g622.set_parent(p622)
             % g622.set_title(Plottitle) %Set figure title
-            g622.set_names('x',LegendxAxis622,'y',LegendyAxis6,'color',LegendColor)
+            g622.set_names('x',LegendxAxis622,'color',LegendColor)
             g622.set_text_options("base_size",TextBaseSize)
             g622.set_color_options('map',CBM2_Color1,...
                 'n_color',3,...
                 'legend','expand')
-            g622.set_point_options('markers',MarkerStyle,'base_size',MarkerSize2)
+            g622.set_point_options('markers',MarkerStyle622,'base_size',MarkerSize2)
             g622.set_layout_options("legend",0) % Hide legend
             % g622.set_layout_options("legend",1) % Show legend
             % The actual plotting
@@ -7120,7 +7390,7 @@ PlotData=obj.SMFSResults{jj}.Data.AdhMaxAppConcat
 
             % Gramm object 6 2 3
             IdxShift623=1
-            FMoI623=112
+            FMoI623=115
             % Define variables
             LegendxAxis623='Force-distance curve number';
             % Determine neighboring force maps based
@@ -7157,10 +7427,10 @@ PlotData=obj.SMFSResults{jj}.Data.AdhMaxAppConcat
             % g623.set_title(Plottitle) %Set figure title
             g623.set_names('x',LegendxAxis623,'y',LegendyAxis6,'color',LegendColor)
             g623.set_text_options("base_size",TextBaseSize)
-            g623.set_color_options('map',CBM2_Color1,...
+            g623.set_color_options('map',CBM2_Color6,...
                 'n_color',3,...
                 'legend','expand')
-            g623.set_point_options('markers',MarkerStyle,'base_size',MarkerSize2)
+            g623.set_point_options('markers',MarkerStyle622,'base_size',MarkerSize2)
             g623.set_layout_options("legend",0) % Hide legend
             % g623.set_layout_options("legend",1) % Show legend
             % The actual plotting
@@ -7169,7 +7439,7 @@ PlotData=obj.SMFSResults{jj}.Data.AdhMaxAppConcat
             % Save figure
             FullName6=strcat(FigNamePt1,FigNamePt2,FigNamePt3,NameSuffix6);
             %%% Save the current figure in the current folder
-            print(h_fig6,FullName6,'-r1200','-dpng');
+            print(h_fig6,FullName6,'-r600','-dpdf');
             %g61.export('file_name',FullName6,file_type='pdf',width=42,height=29.7,units='centimeters');
 
             % House keeping
@@ -7177,10 +7447,8 @@ PlotData=obj.SMFSResults{jj}.Data.AdhMaxAppConcat
         end
 
 
-
-
-
-
+       
+      
     
         function SMFS_statistics(obj)
            
@@ -7315,9 +7583,9 @@ PlotData=obj.SMFSResults{jj}.Data.AdhMaxAppConcat
         
          function SMFS_initialize_flags(obj)
              
-             obj.initialize_flags
-             for ii=1:obj.NumForceMaps
-                  obj.FM{ii}.initialize_flags
+          %   obj.initialize_flags
+             for Fm=1:obj.NumForceMaps
+                  obj.FM{Fm}.initialize_flags
              end
          end
          
@@ -7326,24 +7594,11 @@ PlotData=obj.SMFSResults{jj}.Data.AdhMaxAppConcat
             % Function to quickly loop over all force maps for testing and
             % debugging
             
-            % Figure visibility
-            %set(groot,'defaultFigureVisible','off')      
-      %       set(groot,'defaultFigureVisible','on')  
-
-%       NFM = obj.NumForceMaps;
-%                
-%             obj.SMFSFlagDown.NumForceCurves = false(NFM,1);
-%                 obj.SMFSFlag.NumForceCurves = false(NFM,1);
-%             
-      %       for ii=1:obj.NumForceMaps
-                 
-              %    IdxArray(ii,1)=obj.FM{ii}.ExtendVelocity
-            % end  
-            
-             %for ii=1:obj.NumForceMaps
-            for ii=1:441
-             obj.FM{ii}.Chipbox='XXX';
-%      
+             for fm=1:obj.NumForceMaps
+            %  for fm=1
+                obj.FM{fm}.fc_sensitivity_corr
+                obj.FM{fm}.fc_TipHeight_calculation
+                obj.FM{fm}.fc_estimate_cp_hardsurface
 %              %  obj.FM{ii}.fc_testing
 %           %    obj.FM{ii}.initialize_flags       
 %            %  obj.FM{ii}.fc_snap_in_length_MAD
@@ -9205,6 +9460,7 @@ PlotData=obj.SMFSResults{jj}.Data.AdhMaxAppConcat
                 
             NFM = obj.NumForceMaps;
                 obj.SMFSFlagDown.SelectFM = false(NFM,1);
+                obj.SMFSFlagDown.PropertiesParameters = false(NFM,1);
                 obj.SMFSFlagDown.Preprocessed = false(NFM,1);
                 obj.SMFSFlagDown.Presorted = false(NFM,1);
                 obj.SMFSFlagDown.Analysed = false(NFM,1);
@@ -9221,6 +9477,7 @@ PlotData=obj.SMFSResults{jj}.Data.AdhMaxAppConcat
                 obj.SPMFlag.Grouping = false;
                 % SMFSFlag
                 obj.SMFSFlag.SelectFM = false(NFM,1);
+                obj.SMFSFlag.PropertiesParameters = false(NFM,1);               
                 obj.SMFSFlag.Preprocessed = false(NFM,1);
                 obj.SMFSFlag.Analysed = false(NFM,1);
                 obj.SMFSFlag.Presorted = false(NFM,1);
