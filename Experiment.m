@@ -23,6 +23,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
         ShowImageSettings = Experiment.set_default_show_image_settings()
         ForceMapAnalysisOptions = Experiment.set_default_fma_options()
         GrammOptions = Experiment.set_default_gramm_options()
+        CustomCantileverTipOptions = set_custom_cantilever_tip_options()
         FM                  % Cellarray containing Force/QI Maps
         NumForceMaps
         ForceMapNames      
@@ -321,6 +322,64 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             obj.CantileverTipFlag = 1;
             obj.CantileverTipNames{1} = TempFile;
             obj.NumCantileverTips = obj.NumCantileverTips + 1;
+            
+        end
+        
+        function create_custom_cantilever_tip(obj,varargin)
+            % function create_custom_cantilever_tip(obj,varargin)
+            %
+            % <FUNCTION DESCRIPTION HERE>
+            %
+            %
+            % Required inputs
+            % obj ... Experiment object
+            %
+            % Name-Value pairs
+            % "OpenUIOptions" ... Logical; decide whether to open ui to
+            %                   change tip shape options
+            % "SaveExperiment" ... Logical; save Experiment after
+            %                   completion
+            
+            p = inputParser;
+            p.FunctionName = "create_custom_cantilever_tip";
+            p.CaseSensitive = false;
+            p.PartialMatching = true;
+            
+            % Required inputs
+            validobj = @(x)true;
+            addRequired(p,"obj",validobj);
+            
+            % NameValue inputs
+            defaultOpenUIOptions = true;
+            defaultSaveExperiment = true;
+            validOpenUIOptions = @(x)islogical(x);
+            validSaveExperiment = @(x)islogical(x);
+            addParameter(p,"OpenUIOptions",defaultOpenUIOptions,validOpenUIOptions);
+            addParameter(p,"SaveExperiment",defaultSaveExperiment,validSaveExperiment);
+            
+            parse(p,obj,varargin{:});
+            
+            % Assign parsing results to named variables
+            obj = p.Results.obj;
+            OpenUIOptions = p.Results.OpenUIOptions;
+            SaveExperiment = p.Results.SaveExperiment;
+            
+            if OpenUIOptions
+                obj.CustomCantileverTipOptions = ui_set_struct_fields(obj.CustomCantileverTipOptions);
+            end
+            
+            
+            
+            % Adjust Experiment properties and save if wanted
+            obj.CantileverTipFolders{end+1} = TempPath;
+            obj.CantileverTips{end+1} = tgt1_dummy;
+            obj.CantileverTipFlag = 1;
+            obj.CantileverTipNames{1} = TempFile;
+            obj.NumCantileverTips = obj.NumCantileverTips + 1;
+            
+            if SaveExperiment
+                obj.save_experiment
+            end
             
         end
         
@@ -8079,6 +8138,45 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 'TooltipSubplots','Subplots/Faceting and multiple figures'...
                 );
                 
+            
+        end
+        
+        function CustomCantileverTipOptions = set_custom_cantilever_tip_options()
+            
+            ParaboloidOptions = struct(...
+                'Radius',40e-9,...
+                'TooltipRadius','Radius R in meters relating to the parabola of revolution z=x^2*a with a=1/(2R)'...
+                );
+            
+            SphereOptions = struct(...
+                'Radius',10e-6...
+                );
+            
+            PyramidOptions = struct(...
+                'FrontHalfAngle',20,...
+                'TooltipFrontHalfAngle','Half angle of the front facing pyramid side in degrees',...
+                'BackHalfAngle',25,...
+                'TooltipBackHalfAngle','Half angle of the back facing pyramid side in degrees',...
+                'SideHalfAngle',25,...
+                'TooltipSideHalfAngle','Half angle of the two side facing pyramid sides in degrees'...
+                );
+            
+            CustomCantileverTipOptions = struct(...
+                'TipType','Paraboloid',...
+                'AllowedTipType',{{'Paraboloid','Sphere',...
+                'Pyramid'}},...
+                'TipRadius',10e-9,...
+                'TooltipTipRadius','Determines realistic rounding of the tip by tapering the original form into a paraboloid of given radius in meters. A radius of 0 leaves the original shape unchanged',...
+                'TipHeight',1000e-9,...
+                'TooltipTipHeight','Determines the overall height of the tip',...
+                'TipTilt',10,...
+                'TooltipTipTilt','Overall tilt of the chosen shape in degrees. Tilt is usually determined by the angle the cantilever is mounted at',...
+                'ImageResolution',512,...
+                'TooltipImageResolution','Chosen width in pixels for resulting square image',...
+                'ParaboloidOptions',ParaboloidOptions,...
+                'SphereOptions',SphereOptions,...
+                'PyramidOptions',PyramidOptions...
+                );
             
         end
         

@@ -2428,5 +2428,44 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             CutOff = Thresholds(MaxIndex);
             
         end
+        
+        function OutChannel = create_custom_paraboloid_height_topography(TipRadius,TipHeight,TipTilt,Radius)
+            % function OutChannel = create_custom_paraboloid_height_topography(TipRadius,TipHeight,TipTilt,Radius)
+            %
+            % <FUNCTION DESCRIPTION HERE>
+            %
+            %
+            % Required inputs
+            % TipRadius ... <VARIABLE DESCRIPTION>
+            % TipHeight ... <VARIABLE DESCRIPTION>
+            % TipTilt ... <VARIABLE DESCRIPTION>
+            % Radius ... <VARIABLE DESCRIPTION>
+            
+            p = inputParser;
+            p.FunctionName = "create_custom_paraboloid_height_topography";
+            p.CaseSensitive = false;
+            p.PartialMatching = true;
+            
+            % Required inputs
+            validTipRadius = @(x)true;
+            validTipHeight = @(x)true;
+            validTipTilt = @(x)true;
+            validRadius = @(x)true;
+            addRequired(p,"TipRadius",validTipRadius);
+            addRequired(p,"TipHeight",validTipHeight);
+            addRequired(p,"TipTilt",validTipTilt);
+            addRequired(p,"Radius",validRadius);
+            
+            parse(p,TipRadius,TipHeight,TipTilt,Radius);
+            
+            % Assign parsing results to named variables
+            TipRadius = p.Results.TipRadius;
+            TipHeight = p.Results.TipHeight;
+            TipTilt = p.Results.TipTilt;
+            Radius = p.Results.Radius;
+            
+            
+            
+        end
     end
 end
