@@ -23,7 +23,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
         ShowImageSettings = Experiment.set_default_show_image_settings()
         ForceMapAnalysisOptions = Experiment.set_default_fma_options()
         GrammOptions = Experiment.set_default_gramm_options()
-        CustomCantileverTipOptions = set_custom_cantilever_tip_options()
+        CustomCantileverTipOptions = Experiment.set_custom_cantilever_tip_options()
         FM                  % Cellarray containing Force/QI Maps
         NumForceMaps
         ForceMapNames      
