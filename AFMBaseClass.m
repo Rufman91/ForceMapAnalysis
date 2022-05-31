@@ -1451,6 +1451,71 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle
             end
         end
         
+        function OutChannel = resize_channel_to_padded_same_size_per_pixel_square_image(InChannel,varargin)
+            % function OutChannel = resize_channel_to_padded_same_size_per_pixel_square_image(InChannel,varargin)
+            %
+            % <FUNCTION DESCRIPTION HERE>
+            %
+            %
+            % Required inputs
+            % InChannel ... <VARIABLE DESCRIPTION>
+            %
+            % Name-Value pairs
+            % "PaddingType" ... <NAMEVALUE DESCRIPTION>
+            % "TargetResolution" ... <NAMEVALUE DESCRIPTION>
+            
+            p = inputParser;
+            p.FunctionName = "resize_channel_to_padded_same_size_per_pixel_square_image";
+            p.CaseSensitive = false;
+            p.PartialMatching = true;
+            
+            % Required inputs
+            validInChannel = @(x)true;
+            addRequired(p,"InChannel",validInChannel);
+            
+            % NameValue inputs
+            defaultPaddingType = 'Min';
+            defaultTargetResolution = max(InChannel.NumPixelsX,InChannel.NumPixelsY);
+            validPaddingType = @(x)any(validatestring(x,{'Min','Max','Zero'}));
+            validTargetResolution = @(x)true;
+            addParameter(p,"PaddingType",defaultPaddingType,validPaddingType);
+            addParameter(p,"TargetResolution",defaultTargetResolution,validTargetResolution);
+            
+            parse(p,InChannel,varargin{:});
+            
+            % Assign parsing results to named variables
+            InChannel = p.Results.InChannel;
+            PaddingType = p.Results.PaddingType;
+            TargetResolution = p.Results.TargetResolution;
+            
+            % First, equalize the size-per-pixel relation
+            OutChannel = AFMBaseClass.resize_channel_to_same_size_per_pixel(InChannel);
+            
+            if isequal(lower(PaddingType),'min')
+                PaddingValue = min(OutChannel.Image,[],'all');
+            elseif isequal(lower(PaddingType),'max')
+                PaddingValue = max(OutChannel.Image,[],'all');
+            elseif isequal(lower(PaddingType),'zero')
+                PaddingValue = 0;
+            end
+            
+            %Padd the side wih less pixels
+            if OutChannel.NumPixelsX < OutChannel.NumPixelsY
+                PixelDiff = OutChannel.NumPixelsY - OutChannel.NumPixelsX;
+                OutChannel.Image(:,end+1:end+PixelDiff) = PaddingValue;
+                OutChannel.NumPixelsX = OutChannel.NumPixelsY;
+                OutChannel.ScanSizeX = OutChannel.ScanSizeY;
+            else
+                PixelDiff = OutChannel.NumPixelsX - OutChannel.NumPixelsY;
+                OutChannel.Image(end+1:end+PixelDiff,:) = PaddingValue;
+                OutChannel.NumPixelsY = OutChannel.NumPixelsX;
+                OutChannel.ScanSizeY = OutChannel.ScanSizeX;
+            end
+            
+            OutChannel = AFMBaseClass.resize_channel(OutChannel,[],TargetResolution,true);
+            
+        end
+        
     end
     methods (Static)
         % Static auxiliary methods

@@ -1267,7 +1267,7 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             end
         end
         
-        function [OutChannel,GridX,GridY,ProjLength] = project_height_image_to_tilted_surface(InChannel,PolarAngle,AzimuthalAngle,ResMultiplier,UpscaleMult)
+        function [OutChannel,GridX,GridY,ProjLength] = project_height_image_to_tilted_surface(InChannel,PolarAngle,AzimuthalAngle,ResMultiplier,UpscaleMult,MaskThreshold)
             % Creates an alternative projection of a list of points in
             % space X,Y,Z, quantizes them onto a grid, choosing the closest
             % point to the surface, should multiple points fall into a
@@ -1280,7 +1280,7 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             InChannel.NumPixelsX = size(InChannel.Image,1);
             InChannel.NumPixelsY = size(InChannel.Image,2);
             
-            [X,Y,Z] = AFMImage.convert_masked_to_point_cloud(InChannel,AFMImage.mask_background_by_threshold(InChannel.Image,50,0));
+            [X,Y,Z] = AFMImage.convert_masked_to_point_cloud(InChannel,~AFMImage.mask_background_by_threshold(InChannel.Image,MaskThreshold,'off'));
             
             u1 = [ cos(PolarAngle)*cos(AzimuthalAngle) ; cos(PolarAngle)*sin(AzimuthalAngle) ; -sin(PolarAngle) ];
             u2 = [ -sin(AzimuthalAngle) ; cos(AzimuthalAngle) ; 0 ];
@@ -2429,8 +2429,8 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             
         end
         
-        function OutChannel = create_custom_paraboloid_height_topography(TipRadius,TipHeight,TipTilt,Radius)
-            % function OutChannel = create_custom_paraboloid_height_topography(TipRadius,TipHeight,TipTilt,Radius)
+        function [OutChannel1,OutChannel2] = create_custom_paraboloid_height_topography(TipRadius,TipHeight,TipTilt,Radius,ImageResolution)
+            % function OutChannel = create_custom_paraboloid_height_topography(TipRadius,TipHeight,TipTilt,Radius,ImageResolution)
             %
             % <FUNCTION DESCRIPTION HERE>
             %
@@ -2440,6 +2440,7 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             % TipHeight ... <VARIABLE DESCRIPTION>
             % TipTilt ... <VARIABLE DESCRIPTION>
             % Radius ... <VARIABLE DESCRIPTION>
+            % ImageResolution ... 
             
             p = inputParser;
             p.FunctionName = "create_custom_paraboloid_height_topography";
@@ -2451,12 +2452,14 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             validTipHeight = @(x)true;
             validTipTilt = @(x)true;
             validRadius = @(x)true;
+            validImageResolution = @(x)true;
             addRequired(p,"TipRadius",validTipRadius);
             addRequired(p,"TipHeight",validTipHeight);
             addRequired(p,"TipTilt",validTipTilt);
             addRequired(p,"Radius",validRadius);
+            addRequired(p,"ImageResolution",validImageResolution);
             
-            parse(p,TipRadius,TipHeight,TipTilt,Radius);
+            parse(p,TipRadius,TipHeight,TipTilt,Radius,ImageResolution);
             
             % Assign parsing results to named variables
             TipRadius = p.Results.TipRadius;
@@ -2464,7 +2467,42 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             TipTilt = p.Results.TipTilt;
             Radius = p.Results.Radius;
             
+            a = 1/(2*Radius);
+            RMax = sqrt(TipHeight./a);
+            [X,Y] = ndgrid(-RMax:2*RMax/(ImageResolution-1):RMax);
+            z = @(x,y)(sqrt(x.^2+y.^2)>RMax).*0 + (sqrt(x.^2+y.^2)<=RMax).*(TipHeight - (x.^2+y.^2).*a);
             
+            Height = z(X,Y);
+            
+            %TODO TipRadius
+            if ~(TipRadius == 0 || TipRadius == Radius)
+                Height
+            end
+            
+            OutChannel1.Image = Height;
+            OutChannel1.Name = 'Custom Tip Height';
+            OutChannel1.Unit = 'm';
+            OutChannel1.NumPixelsX = ImageResolution;
+            OutChannel1.NumPixelsY = ImageResolution;
+            OutChannel1.ScanSizeX = 2.*RMax;
+            OutChannel1.ScanSizeY = 2.*RMax;
+            OutChannel1.OriginX = 0;
+            OutChannel1.OriginY = 0;
+            OutChannel1.ScanAngle = 0;
+            
+            OutChannel1 = AFMImage.project_height_image_to_tilted_surface(OutChannel1,TipTilt,0,1,8,.1);
+            OutChannel1 = AFMBaseClass.resize_channel_to_padded_same_size_per_pixel_square_image(OutChannel1,'PaddingType','Min','TargetResolution',ImageResolution);
+            
+            OutChannel2.Image = OutChannel1.Image - max(OutChannel1.Image,[],'all');
+            OutChannel2.Name = 'Custom Tip Deconvoluted Height';
+            OutChannel2.Unit = 'm';
+            OutChannel2.NumPixelsX = ImageResolution;
+            OutChannel2.NumPixelsY = ImageResolution;
+            OutChannel2.ScanSizeX = 2.*RMax;
+            OutChannel2.ScanSizeY = 2.*RMax;
+            OutChannel2.OriginX = 0;
+            OutChannel2.OriginY = 0;
+            OutChannel2.ScanAngle = 0;
             
         end
     end
