@@ -1438,13 +1438,13 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle
                 return
             elseif SizePerPixelX > SizePerPixelY
                 NewNumPixels = round(InChannel.ScanSizeX*InChannel.NumPixelsY/InChannel.ScanSizeY);
-                OutChannel.Image = imresize(InChannel.Image,[InChannel.NumPixelsY NewNumPixels]);
+                OutChannel.Image = imresize(InChannel.Image,[InChannel.NumPixelsY NewNumPixels],'bilinear');
                 OutChannel.NumPixelsX = NewNumPixels;
                 XMultiplier = OutChannel.NumPixelsX/InChannel.NumPixelsX;
                 YMultiplier = 1;
             elseif SizePerPixelY > SizePerPixelX
                 NewNumPixels = round(InChannel.ScanSizeY*InChannel.NumPixelsX/InChannel.ScanSizeX);
-                OutChannel.Image = imresize(InChannel.Image,[NewNumPixels InChannel.NumPixelsX]);
+                OutChannel.Image = imresize(InChannel.Image,[NewNumPixels InChannel.NumPixelsX],'bilinear');
                 OutChannel.NumPixelsY = NewNumPixels;
                 YMultiplier = OutChannel.NumPixelsY/InChannel.NumPixelsY;
                 XMultiplier = 1;
@@ -1513,6 +1513,67 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle
             end
             
             OutChannel = AFMBaseClass.resize_channel(OutChannel,[],TargetResolution,true);
+            
+        end
+        
+        function OutChannel = resize_channels_to_same_physical_size_per_pixel(InChannel1,InChannel2,varargin)
+            % function OutChannel = resize_channels_to_same_physical_size_per_pixel(InChannel1,InChannel2,varargin)
+            %
+            % <FUNCTION DESCRIPTION HERE>
+            %
+            %
+            % Required inputs
+            % InChannel1 ... <VARIABLE DESCRIPTION>
+            % InChannel2 ... <VARIABLE DESCRIPTION>
+            %
+            % Name-Value pairs
+            % "KeepResolution" ... <NAMEVALUE DESCRIPTION>
+            % "PaddingType" ... <NAMEVALUE DESCRIPTION>
+            
+            p = inputParser;
+            p.FunctionName = "resize_channels_to_same_physical_size_per_pixel";
+            p.CaseSensitive = false;
+            p.PartialMatching = true;
+            
+            % Required inputs
+            validInChannel1 = @(x)true;
+            validInChannel2 = @(x)true;
+            addRequired(p,"InChannel1",validInChannel1);
+            addRequired(p,"InChannel2",validInChannel2);
+            
+            % NameValue inputs
+            defaultKeepResolution = true;
+            defaultPaddingType = 'min';
+            validKeepResolution = @(x)true;
+            validPaddingType = @(x)any(validatestring(x,{'Min','Max','Zero'}));
+            addParameter(p,"KeepResolution",defaultKeepResolution,validKeepResolution);
+            addParameter(p,"PaddingType",defaultPaddingType,validPaddingType);
+            
+            parse(p,InChannel1,InChannel2,varargin{:});
+            
+            % Assign parsing results to named variables
+            InChannel1 = p.Results.InChannel1;
+            InChannel2 = p.Results.InChannel2;
+            KeepResolution = p.Results.KeepResolution;
+            PaddingType = p.Results.PaddingType;
+            
+            SizePerPixelX1 = InChannel1.ScanSizeX/InChannel1.NumPixelsX;
+            SizePerPixelY1 = InChannel1.ScanSizeY/InChannel1.NumPixelsY;
+            SizePerPixelX2 = InChannel2.ScanSizeX/InChannel2.NumPixelsX;
+            SizePerPixelY2 = InChannel2.ScanSizeY/InChannel2.NumPixelsY;
+            
+            MultiplicatorX = SizePerPixelX2/SizePerPixelX1;
+            MultiplicatorY = SizePerPixelY2/SizePerPixelY1;
+            
+            
+            
+            InChannel2.Image = imresize(InChannel2.Image,[NewResY NewResX],'bilinear');
+            
+            InChannel2.Image = padarray(InChannel2.Image,[PadY PadX],PaddingValue,'both');
+             
+            if ~KeepResolution
+                InChannel
+            end
             
         end
         
