@@ -1516,8 +1516,8 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle
             
         end
         
-        function OutChannel = resize_channels_to_same_physical_size_per_pixel(InChannel1,InChannel2,varargin)
-            % function OutChannel = resize_channels_to_same_physical_size_per_pixel(InChannel1,InChannel2,varargin)
+        function [OutChannel1,OutChannel2] = resize_channels_to_same_physical_size_per_pixel(InChannel1,InChannel2,varargin)
+            % function [OutChannel1,OutChannel2] = resize_channels_to_same_physical_size_per_pixel(InChannel1,InChannel2,varargin)
             %
             % <FUNCTION DESCRIPTION HERE>
             %
@@ -1557,6 +1557,9 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle
             KeepResolution = p.Results.KeepResolution;
             PaddingType = p.Results.PaddingType;
             
+            InChannel1 = AFMBaseClass.resize_channel_to_padded_same_size_per_pixel_square_image(InChannel1);
+            InChannel2 = AFMBaseClass.resize_channel_to_padded_same_size_per_pixel_square_image(InChannel2);
+            
             SizePerPixelX1 = InChannel1.ScanSizeX/InChannel1.NumPixelsX;
             SizePerPixelY1 = InChannel1.ScanSizeY/InChannel1.NumPixelsY;
             SizePerPixelX2 = InChannel2.ScanSizeX/InChannel2.NumPixelsX;
@@ -1565,11 +1568,46 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle
             MultiplicatorX = SizePerPixelX2/SizePerPixelX1;
             MultiplicatorY = SizePerPixelY2/SizePerPixelY1;
             
+            if isequal(lower(PaddingType),'min')
+                PaddingValue1 = min(InChannel1.Image,[],'all');
+                PaddingValue2 = min(InChannel2.Image,[],'all');
+            elseif isequal(lower(PaddingType),'max')
+                PaddingValue1 = max(InChannel1.Image,[],'all');
+                PaddingValue2 = max(InChannel2.Image,[],'all');
+            elseif isequal(lower(PaddingType),'zero')
+                PaddingValue1 = 0;
+                PaddingValue2 = 0;
+            end
             
+            OutChannel1 = InChannel1;
+            OutChannel2 = InChannel2;
             
-            InChannel2.Image = imresize(InChannel2.Image,[NewResY NewResX],'bilinear');
+            % X Direction
+            if MultiplicatorX==1
+                % Just take it as it is
+            elseif MultiplicatorX<1
+                NewX = round(OutChannel2.NumPixelsX.*MultiplicatorX);
+                NewX = NewX + rem(NewX,2);
+                OutChannel2.Image = imresize(OutChannel2.Image,[OutChannel2.NumPixelsY NewX],'bilinear');
+                OutChannel2.NumPixelsX = NewX;
+                PadX = (InChannel2.NumPixelsX - NewX)/2;
+                OutChannel2.Image = padarray(OutChannel2.Image,[0 PadX],PaddingValue2,'both');
+                OutChannel2.NumPixelsX = NewX + 2*PadX;
+                % Y Direction
+                NewY = round(OutChannel2.NumPixelsY.*MultiplicatorY);
+                NewY = NewY + rem(NewY,2);
+                OutChannel2.Image = imresize(OutChannel2.Image,[NewY OutChannel2.NumPixelsX],'bilinear');
+                OutChannel2.NumPixelsY = NewY;
+                PadY = (InChannel2.NumPixelsY - NewY)/2;
+                OutChannel2.Image = padarray(OutChannel2.Image,[PadY 0],PaddingValue2,'both');
+                OutChannel2.NumPixelsY = NewY + 2*PadY;
+            elseif MultiplicatorX>1
+                [OutChannel2,OutChannel1] = AFMBaseClass.resize_channels_to_same_physical_size_per_pixel(...
+                    InChannel2,InChannel1,...
+                    'PaddingType',PaddingType,...
+                    'KeepResolution',KeepResolution);
+            end
             
-            InChannel2.Image = padarray(InChannel2.Image,[PadY PadX],PaddingValue,'both');
              
             if ~KeepResolution
                 InChannel
