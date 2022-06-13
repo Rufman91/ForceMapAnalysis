@@ -4846,17 +4846,22 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 
                 GroupingOption = 'lightness'; %'color','lightness','size','marker','linestyle'
                 Group = ResultIndex;
-                Y = Value;
+                [MultiplierY,UnitY,~] = ...
+                    AFMImage.parse_unit_scale(range(Value),h.ResultStruct.Results(1).Unit,1);
+                ScaledValue = Value.*MultiplierY;
+                Y = ScaledValue;
                 X = SegmentName;
                 g(1,1) = gramm('x',X,'y',Y,GroupingOption,Group);
+                
+                YName = [h.ResultStruct.Results(1).ChannelType ' [' UnitY ']'];
                 
                 %Averages with confidence interval
                 g(1,1).stat_summary('geom',{'bar','black_errorbar'});
                 g(1,1).set_title('stat_summary()');
                 
                 %These functions can be called on arrays of gramm objects
-                g.set_names('x','Origin','y','Horsepower','color','# Cyl');
-                g.set_title('Visualization of Y~X relationships with X as categorical variable');
+                g.set_names('x','Fibril','y',YName,'color','# Cyl');
+                g.set_title(obj.ExperimentName);
                 
                 g(1,1).set_color_options('map','brewer_1');
                 

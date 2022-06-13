@@ -1398,14 +1398,12 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle
             close(h);
         end
         
-        function OutChannel = resize_channel(InChannel,Multiplicator,TargetRes,TransformToSquare)
+        function OutChannel = resize_channel(InChannel,TargetRes,TransformToSquare)
             
-            if nargin < 4
+            if nargin < 3
                 TransformToSquare = false;
             end
-            if nargin == 3
-                Multiplicator = TargetRes/InChannel.NumPixelsX;
-            end
+            
             OutChannel = InChannel;
             
             if ~TransformToSquare
@@ -1512,7 +1510,7 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle
                 OutChannel.ScanSizeY = OutChannel.ScanSizeX;
             end
             
-            OutChannel = AFMBaseClass.resize_channel(OutChannel,[],TargetResolution,true);
+            OutChannel = AFMBaseClass.resize_channel(OutChannel,TargetResolution,true);
             
         end
         
@@ -1529,6 +1527,7 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle
             % Name-Value pairs
             % "KeepResolution" ... <NAMEVALUE DESCRIPTION>
             % "PaddingType" ... <NAMEVALUE DESCRIPTION>
+            % "EquateResolution" ... <NAMEVALUE DESCRIPTION>
             
             p = inputParser;
             p.FunctionName = "resize_channels_to_same_physical_size_per_pixel";
@@ -1544,10 +1543,13 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle
             % NameValue inputs
             defaultKeepResolution = true;
             defaultPaddingType = 'min';
+            defaultEquateResolution = false;
             validKeepResolution = @(x)true;
             validPaddingType = @(x)any(validatestring(x,{'Min','Max','Zero'}));
+            validEquateResolution = @(x)true;
             addParameter(p,"KeepResolution",defaultKeepResolution,validKeepResolution);
             addParameter(p,"PaddingType",defaultPaddingType,validPaddingType);
+            addParameter(p,"EquateResolution",defaultEquateResolution,validEquateResolution);
             
             parse(p,InChannel1,InChannel2,varargin{:});
             
@@ -1556,9 +1558,19 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle
             InChannel2 = p.Results.InChannel2;
             KeepResolution = p.Results.KeepResolution;
             PaddingType = p.Results.PaddingType;
+            EquateResolution = p.Results.EquateResolution;
+            
             
             InChannel1 = AFMBaseClass.resize_channel_to_padded_same_size_per_pixel_square_image(InChannel1);
             InChannel2 = AFMBaseClass.resize_channel_to_padded_same_size_per_pixel_square_image(InChannel2);
+            
+            if EquateResolution
+                if InChannel1.NumPixelsX >= InChannel2.NumPixelsX
+                    InChannel2 = AFMBaseClass.resize_channel(InChannel2,InChannel1.NumPixelsX);
+                else
+                    InChannel1 = AFMBaseClass.resize_channel(InChannel1,InChannel2.NumPixelsX);
+                end
+            end
             
             SizePerPixelX1 = InChannel1.ScanSizeX/InChannel1.NumPixelsX;
             SizePerPixelY1 = InChannel1.ScanSizeY/InChannel1.NumPixelsY;
@@ -1593,6 +1605,7 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle
                 PadX = (InChannel2.NumPixelsX - NewX)/2;
                 OutChannel2.Image = padarray(OutChannel2.Image,[0 PadX],PaddingValue2,'both');
                 OutChannel2.NumPixelsX = NewX + 2*PadX;
+                OutChannel2.ScanSizeX = OutChannel2.ScanSizeX*OutChannel2.NumPixelsX/NewX;
                 % Y Direction
                 NewY = round(OutChannel2.NumPixelsY.*MultiplicatorY);
                 NewY = NewY + rem(NewY,2);
@@ -1601,6 +1614,7 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle
                 PadY = (InChannel2.NumPixelsY - NewY)/2;
                 OutChannel2.Image = padarray(OutChannel2.Image,[PadY 0],PaddingValue2,'both');
                 OutChannel2.NumPixelsY = NewY + 2*PadY;
+                OutChannel2.ScanSizeY = OutChannel2.ScanSizeY*OutChannel2.NumPixelsY/NewY;
             elseif MultiplicatorX>1
                 [OutChannel2,OutChannel1] = AFMBaseClass.resize_channels_to_same_physical_size_per_pixel(...
                     InChannel2,InChannel1,...

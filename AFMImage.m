@@ -1267,7 +1267,7 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             end
         end
         
-        function [OutChannel,GridX,GridY,ProjLength] = project_height_image_to_tilted_surface(InChannel,PolarAngle,AzimuthalAngle,ResMultiplier,UpscaleMult,MaskThreshold)
+        function [OutChannel,GridX,GridY,ProjLength] = project_height_channel_to_tilted_surface(InChannel,PolarAngle,AzimuthalAngle,ResMultiplier,UpscaleMult,MaskThreshold)
             % Creates an alternative projection of a list of points in
             % space X,Y,Z, quantizes them onto a grid, choosing the closest
             % point to the surface, should multiple points fall into a
@@ -2429,8 +2429,8 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             
         end
         
-        function [OutChannel1,OutChannel2] = create_custom_paraboloid_height_topography(TipRadius,TipHeight,TipTilt,Radius,ImageResolution)
-            % function [OutChannel1,OutChannel2] = create_custom_paraboloid_height_topography(TipRadius,TipHeight,TipTilt,Radius,ImageResolution)
+        function [OutChannel1,OutChannel2] = create_custom_paraboloid_height_topography(TipRadius,TipHeight,TipTilt,Radius,ImageResolution,varargin)
+            % function [OutChannel1,OutChannel2] = create_custom_paraboloid_height_topography(TipRadius,TipHeight,TipTilt,Radius,ImageResolution,varargin)
             %
             % <FUNCTION DESCRIPTION HERE>
             %
@@ -2440,7 +2440,14 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             % TipHeight ... <VARIABLE DESCRIPTION>
             % TipTilt ... <VARIABLE DESCRIPTION>
             % Radius ... <VARIABLE DESCRIPTION>
-            % ImageResolution ... 
+            % ImageResolution ... <VARIABLE DESCRIPTION>
+            %
+            % Name-Value pairs
+            % "StartFraction" ... <NAMEVALUE DESCRIPTION>
+            % "EndFraction" ... <NAMEVALUE DESCRIPTION>
+            % "FuseMethod" ... <NAMEVALUE DESCRIPTION>
+            % "HeightDifference" ... <NAMEVALUE DESCRIPTION>
+            % "TipApexChannel" ... <NAMEVALUE DESCRIPTION>
             
             p = inputParser;
             p.FunctionName = "create_custom_paraboloid_height_topography";
@@ -2459,13 +2466,37 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             addRequired(p,"Radius",validRadius);
             addRequired(p,"ImageResolution",validImageResolution);
             
-            parse(p,TipRadius,TipHeight,TipTilt,Radius,ImageResolution);
+            % NameValue inputs
+            defaultStartFraction = [];
+            defaultEndFraction = [];
+            defaultFuseMethod = [];
+            defaultHeightDifference = [];
+            defaultTipApexChannel = [];
+            validStartFraction = @(x)true;
+            validEndFraction = @(x)true;
+            validFuseMethod = @(x)true;
+            validHeightDifference = @(x)true;
+            validTipApexChannel = @(x)true;
+            addParameter(p,"StartFraction",defaultStartFraction,validStartFraction);
+            addParameter(p,"EndFraction",defaultEndFraction,validEndFraction);
+            addParameter(p,"FuseMethod",defaultFuseMethod,validFuseMethod);
+            addParameter(p,"HeightDifference",defaultHeightDifference,validHeightDifference);
+            addParameter(p,"TipApexChannel",defaultTipApexChannel,validTipApexChannel);
+            
+            parse(p,TipRadius,TipHeight,TipTilt,Radius,ImageResolution,varargin{:});
             
             % Assign parsing results to named variables
             TipRadius = p.Results.TipRadius;
             TipHeight = p.Results.TipHeight;
             TipTilt = p.Results.TipTilt;
             Radius = p.Results.Radius;
+            ImageResolution = p.Results.ImageResolution;
+            StartFraction = p.Results.StartFraction;
+            EndFraction = p.Results.EndFraction;
+            FuseMethod = p.Results.FuseMethod;
+            HeightDifference = p.Results.HeightDifference;
+            TipApexChannel = p.Results.TipApexChannel;
+
             
             a = 1/(2*Radius);
             RMax = sqrt(TipHeight./a);
@@ -2486,21 +2517,18 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             OutChannel1.ScanAngle = 0;
             
             %TipRadius modelling
-            if ~(TipRadius == 0 || TipRadius == Radius)
-                TipChannel = AFMImage.create_custom_paraboloid_height_topography(0,TipHeight,0,TipRadius,ImageResolution);
-                [OutChannel1,TipChannel] = AFMBaseClass.resize_channels_to_same_physical_size_per_pixel(OutChannel1,TipChannel);
-                StartFraction = .8 ;%(TipHeight-2*TipRadius)/TipHeight;
-                EndFraction = .95 ;%(TipHeight-1*TipRadius)/TipHeight;
-                FuseMethod = 'linear';
-                Height = AFMImage.gradually_fuse_height_topographies(OutChannel1.Image,TipChannel.Image,...
+            if ~(TipRadius == 0 || TipRadius == Radius) || ~isempty(TipApexChannel)
+                if isempty(TipApexChannel)
+                    TipApexChannel = AFMImage.create_custom_paraboloid_height_topography(0,TipHeight+HeightDifference,0,TipRadius,ImageResolution);
+                end
+                OutChannel1 = AFMImage.gradually_fuse_height_topographies(OutChannel1,TipApexChannel,...
                     'StartFraction',StartFraction,...
                     'EndFraction',EndFraction,...
-                    'FuseMethod',FuseMethod);
+                    'FuseMethod',FuseMethod,...
+                    'HeightDifference',HeightDifference);
             end
             
-            OutChannel1.Image = Height;
-            
-            OutChannel1 = AFMImage.project_height_image_to_tilted_surface(OutChannel1,TipTilt,0,1,8,.1);
+            OutChannel1 = AFMImage.project_height_channel_to_tilted_surface(OutChannel1,TipTilt,0,1,8,.1);
             OutChannel1 = AFMBaseClass.resize_channel_to_padded_same_size_per_pixel_square_image(OutChannel1,'PaddingType','Min','TargetResolution',ImageResolution);
             OutChannel1.Image = OutChannel1.Image - min(OutChannel1.Image,[],'all');
             
@@ -2517,20 +2545,21 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             
         end
         
-        function OutImage = gradually_fuse_height_topographies(Image1,Image2,varargin)
-            % function OutImage = gradually_fuse_height_topographies(Image1,Image2,varargin)
+        function [OutChannel1,OutChannel2] = gradually_fuse_height_topographies(InChannel1,InChannel2,varargin)
+            % function [OutChannel1,OutChannel2] = gradually_fuse_height_topographies(InChannel1,InChannel2,varargin)
             %
             % <FUNCTION DESCRIPTION HERE>
             %
             %
             % Required inputs
-            % Image1 ... <VARIABLE DESCRIPTION>
-            % Image2 ... <VARIABLE DESCRIPTION>
+            % InChannel1 ... <VARIABLE DESCRIPTION>
+            % InChannel2 ... <VARIABLE DESCRIPTION>
             %
             % Name-Value pairs
             % "StartFraction" ... <NAMEVALUE DESCRIPTION>
             % "EndFraction" ... <NAMEVALUE DESCRIPTION>
             % "FuseMethod" ... <NAMEVALUE DESCRIPTION>
+            % "HeightDifference" ... <NAMEVALUE DESCRIPTION>
             
             p = inputParser;
             p.FunctionName = "gradually_fuse_height_topographies";
@@ -2538,35 +2567,49 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             p.PartialMatching = true;
             
             % Required inputs
-            validImage1 = @(x)true;
-            validImage2 = @(x)true;
-            addRequired(p,"Image1",validImage1);
-            addRequired(p,"Image2",validImage2);
+            validInChannel1 = @(x)true;
+            validInChannel2 = @(x)true;
+            addRequired(p,"InChannel1",validInChannel1);
+            addRequired(p,"InChannel2",validInChannel2);
             
             % NameValue inputs
-            defaultStartFraction = .8;
-            defaultEndFraction = 1;
-            defaultFuseMethod = 'linear';
+            defaultStartFraction = [];
+            defaultEndFraction = [];
+            defaultFuseMethod = [];
+            defaultHeightDifference = [];
             validStartFraction = @(x)true;
             validEndFraction = @(x)true;
-            validFuseMethod = @(x)any(validatestring(x,{'linear','quadratic','sqrt'}));
+            validFuseMethod = @(x)true;
+            validHeightDifference = @(x)true;
             addParameter(p,"StartFraction",defaultStartFraction,validStartFraction);
             addParameter(p,"EndFraction",defaultEndFraction,validEndFraction);
             addParameter(p,"FuseMethod",defaultFuseMethod,validFuseMethod);
+            addParameter(p,"HeightDifference",defaultHeightDifference,validHeightDifference);
             
-            parse(p,Image1,Image2,varargin{:});
+            parse(p,InChannel1,InChannel2,varargin{:});
             
             % Assign parsing results to named variables
-            Image1 = p.Results.Image1;
-            Image2 = p.Results.Image2;
+            InChannel1 = p.Results.InChannel1;
+            InChannel2 = p.Results.InChannel2;
             StartFraction = p.Results.StartFraction;
             EndFraction = p.Results.EndFraction;
             FuseMethod = p.Results.FuseMethod;
+            HeightDifference = p.Results.HeightDifference;
             
-            StartHeight = min(Image1,[],'all') + range(Image1,'all')*StartFraction;
-            EndHeight = min(Image1,[],'all') + range(Image1,'all')*EndFraction;
-            StartHeight = max(StartHeight,min(Image1,[],'all'));
-            EndHeight = max(EndHeight,StartHeight+.1.*range(Image1,'all'));
+            
+            [InChannel1,InChannel2] = AFMBaseClass.resize_channels_to_same_physical_size_per_pixel(InChannel1,InChannel2,'EquateResolution',true);
+            
+            % Position Images to desired height difference;
+            Max1 = max(InChannel1.Image,[],'all');
+            Max2 = max(InChannel2.Image,[],'all');
+            
+            InChannel1.Image = InChannel1.Image - Max1;
+            InChannel2.Image = InChannel2.Image - Max2 + HeightDifference;
+            
+            StartHeight = min(InChannel1.Image,[],'all') + range(InChannel1.Image,'all')*StartFraction;
+            EndHeight = min(InChannel1.Image,[],'all') + range(InChannel1.Image,'all')*EndFraction;
+            StartHeight = max(StartHeight,min(InChannel1.Image,[],'all'));
+            EndHeight = max(EndHeight,StartHeight+.1.*range(InChannel1.Image,'all'));
             
             if isequal(lower(FuseMethod),'linear')
                 WeightImage1 = @(x)(x<StartHeight) + ~(x<StartHeight | x>EndHeight).*(1-(x-StartHeight)./(EndHeight-StartHeight));
@@ -2579,7 +2622,12 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 WeightImage2 = @(x)(1-WeightImage1(x));
             end
             
-            OutImage = Image1.*WeightImage1(Image1) + Image2.*WeightImage2(Image1);
+            OutImage = InChannel1.Image.*WeightImage1(InChannel1.Image) + max(InChannel1.Image,InChannel2.Image).*WeightImage2(InChannel1.Image);
+            InChannel1.Image = OutImage + Max1;
+            
+            OutChannel1 = InChannel1;
+            OutChannel2 = InChannel2;
+            
         end
     end
 end
