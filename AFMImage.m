@@ -1267,18 +1267,95 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             end
         end
         
-        function [OutChannel,GridX,GridY,ProjLength] = project_height_channel_to_tilted_surface(InChannel,PolarAngle,AzimuthalAngle,ResMultiplier,UpscaleMult,MaskThreshold)
+        function [OutChannel,GridX,GridY,ProjLength] = project_height_channel_to_tilted_surface(InChannel,PolarAngle,AzimuthalAngle,varargin)
+            % function [OutChannel,GridX,GridY,ProjLength] = project_height_channel_to_tilted_surface(InChannel,PolarAngle,AzimuthalAngle,varargin)
+            %
             % Creates an alternative projection of a list of points in
             % space X,Y,Z, quantizes them onto a grid, choosing the closest
             % point to the surface, should multiple points fall into a
             % pixel.
+            %
+            %
+            % Required inputs
+            % InChannel ... <VARIABLE DESCRIPTION>
+            % PolarAngle ... <VARIABLE DESCRIPTION>
+            % AzimuthalAngle ... <VARIABLE DESCRIPTION>
+            %
+            % Name-Value pairs
+            % "MaskThreshold" ... <NAMEVALUE DESCRIPTION>
+            % "ResolutionThreshold" ... <NAMEVALUE DESCRIPTION>
+            
+            p = inputParser;
+            p.FunctionName = "project_height_channel_to_tilted_surface";
+            p.CaseSensitive = false;
+            p.PartialMatching = true;
+            
+            % Required inputs
+            validInChannel = @(x)isstruct(x);
+            validPolarAngle = @(x)true;
+            validAzimuthalAngle = @(x)true;
+            addRequired(p,"InChannel",validInChannel);
+            addRequired(p,"PolarAngle",validPolarAngle);
+            addRequired(p,"AzimuthalAngle",validAzimuthalAngle);
+            
+            % NameValue inputs
+            defaultMaskThreshold = -1;
+            defaultResolutionThreshold = 40000;
+            validMaskThreshold = @(x)true;
+            validResolutionThreshold = @(x)true;
+            addParameter(p,"MaskThreshold",defaultMaskThreshold,validMaskThreshold);
+            addParameter(p,"ResolutionThreshold",defaultResolutionThreshold,validResolutionThreshold);
+            
+            parse(p,InChannel,PolarAngle,AzimuthalAngle,varargin{:});
+            
+            % Assign parsing results to named variables
+            InChannel = p.Results.InChannel;
+            PolarAngle = p.Results.PolarAngle;
+            AzimuthalAngle = p.Results.AzimuthalAngle;
+            MaskThreshold = p.Results.MaskThreshold;
+            ResolutionThreshold = p.Results.ResolutionThreshold;
+            
+            
+            % Figure out the maximum jump between image points and resize
+            % such that turning the image by PolarAngle will result in a
+            % point cloud with high enough point density so it can be
+            % projected correctly.
+            Image = InChannel.Image;
+            DiffX = diff(Image,1,2);
+            DiffY = diff(Image,1,1);
+            MaxDiff = max(max(abs(DiffX),[],'all'),max(abs(DiffY),[],'all'));
+            SizePerPixelX = InChannel.ScanSizeX/InChannel.NumPixelsX;
+            SizePerPixelY = InChannel.ScanSizeY/InChannel.NumPixelsY;
+            MaxSampleDistance = sqrt(SizePerPixelX^2 + SizePerPixelY^2);
+            MinScaleMult = sqrt(MaxDiff^2 + MaxSampleDistance^2)/MaxSampleDistance;
+            SmallerNumPix = min(InChannel.NumPixelsX,InChannel.NumPixelsY);
+            MinScaleMult = ceil(MinScaleMult*SmallerNumPix)/SmallerNumPix;
+            
+            UpscaleMult = 20;%max(1,MinScaleMult);
+            
+            % Ask the user for consent if new image dimensions exceed a
+            % certain threshhold ResolutionThreshold
+            ExpectedRes = sqrt(InChannel.NumPixelsX*InChannel.NumPixelsY)*UpscaleMult;
+            if ExpectedRes >= ResolutionThreshold
+                answer = questdlg(['The needed upscaling resolution of ' num2str(ExpectedRes) ' exceeds the threshold of ' num2str(ResolutionThreshold) '. This will lead to long computation times. Continue?'],...
+                    'Excessive computation warning',...
+                    'Continue', ...
+                    'Abort','Abort');
+                % Handle response
+                switch answer
+                    case 'Continue'
+                        disp('Continuing process')
+                    case 'Abort'
+                        error('Aborted due to exceeded threshold')
+                end
+            end
             
             % Upscale to UpscaleMult*ResMultiplier in order to get enough points to
             % fill all pixels in the endresult
             
-            InChannel.Image = imresize(InChannel.Image,UpscaleMult*ResMultiplier);
-            InChannel.NumPixelsX = size(InChannel.Image,1);
-            InChannel.NumPixelsY = size(InChannel.Image,2);
+            InChannel.Image = imresize(InChannel.Image,UpscaleMult);
+            InChannel.NumPixelsX = size(InChannel.Image,2);
+            InChannel.NumPixelsY = size(InChannel.Image,1);
             
             [X,Y,Z] = AFMImage.convert_masked_to_point_cloud(InChannel,~AFMImage.mask_background_by_threshold(InChannel.Image,MaskThreshold,'off'));
             
@@ -1351,10 +1428,10 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 ResMultiplier = 1;
             end
             
-            DummyScaled = imresize(InChannel.Image,ResMultiplier);
+            DummyScaled = imresize(InChannel.Image,ResMultiplier,'bilinear');
             OutChannel = InChannel;
-            OutChannel.NumPixelsX = size(DummyScaled,1);
-            OutChannel.NumPixelsY = size(DummyScaled,2);
+            OutChannel.NumPixelsX = size(DummyScaled,2);
+            OutChannel.NumPixelsY = size(DummyScaled,1);
             OutChannel.ScanSizeX = range(X);
             OutChannel.ScanSizeY = range(Y);
             
@@ -1365,14 +1442,14 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             XQ = floor((X-min(X)).*XMult) + 1;
             YQ = floor((Y-min(Y)).*YMult) + 1;
             
-            I = zeros(OutChannel.NumPixelsX,OutChannel.NumPixelsY);
+            I = zeros(OutChannel.NumPixelsY,OutChannel.NumPixelsX);
             for i=1:length(XQ)
-                if I(XQ(i),YQ(i)) < Z(i)
-                    I(XQ(i),YQ(i)) = Z(i);
+                if I(YQ(i),XQ(i)) < Z(i)
+                    I(YQ(i),XQ(i)) = Z(i);
                 end
             end
             
-            I(I==0) = min(Z);
+            I(I==0) = -min(Z);
             
             OutChannel.Image = I;
         end
@@ -2528,7 +2605,9 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                     'HeightDifference',HeightDifference);
             end
             
-            OutChannel1 = AFMImage.project_height_channel_to_tilted_surface(OutChannel1,TipTilt,0,1,8,.1);
+            if mod(TipTilt,2*pi) ~= 0
+                OutChannel1 = AFMImage.project_height_channel_to_tilted_surface(OutChannel1,TipTilt,0,'MaskThreshold',.1);
+            end
             OutChannel1 = AFMBaseClass.resize_channel_to_padded_same_size_per_pixel_square_image(OutChannel1,'PaddingType','Min','TargetResolution',ImageResolution);
             OutChannel1.Image = OutChannel1.Image - min(OutChannel1.Image,[],'all');
             
@@ -2629,5 +2708,132 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             OutChannel2 = InChannel2;
             
         end
+        
+        function [Fig,Surf] = plot_surf_channel_to_scale(Channel)
+            % function [Fig,Surf] = plot_surf_channel_to_scale(Channel)
+            %
+            % <FUNCTION DESCRIPTION HERE>
+            %
+            %
+            % Required inputs
+            % Channel ... <VARIABLE DESCRIPTION>
+            
+            p = inputParser;
+            p.FunctionName = "plot_surf_channel_to_scale";
+            p.CaseSensitive = false;
+            p.PartialMatching = true;
+            
+            % Required inputs
+            validChannel = @(x)isstruct(x);
+            addRequired(p,"Channel",validChannel);
+            
+            parse(p,Channel);
+            
+            % Assign parsing results to named variables
+            Channel = p.Results.Channel;
+            
+            Fig = figure('Color','w');
+            
+            Surf = surf(Channel.Image);
+            
+            AspectRangeX = Channel.ScanSizeX;
+            AspectRangeY = Channel.ScanSizeY;
+            AspectRangeZ = range(Channel.Image,'all');
+            
+            Surf.Parent.XLim = [0 Channel.NumPixelsX];
+            Surf.Parent.YLim = [0 Channel.NumPixelsY];
+            Surf.Parent.ZLim = [min(Channel.Image,[],'all') max(Channel.Image,[],'all')];
+            
+            Surf.Parent.PlotBoxAspectRatio = [AspectRangeX AspectRangeY AspectRangeZ];
+            
+        end
+        
+        function [Fig,Mesh] = plot_mesh_channel_to_scale(Channel)
+            % function [Fig,Surf] = plot_mesh_channel_to_scale(Channel)
+            %
+            % <FUNCTION DESCRIPTION HERE>
+            %
+            %
+            % Required inputs
+            % Channel ... <VARIABLE DESCRIPTION>
+            
+            p = inputParser;
+            p.FunctionName = "plot_mesh_channel_to_scale";
+            p.CaseSensitive = false;
+            p.PartialMatching = true;
+            
+            % Required inputs
+            validChannel = @(x)isstruct(x);
+            addRequired(p,"Channel",validChannel);
+            
+            parse(p,Channel);
+            
+            % Assign parsing results to named variables
+            Channel = p.Results.Channel;
+            
+            Fig = figure('Color','w');
+            
+            Mesh = mesh(Channel.Image);
+            
+            AspectRangeX = Channel.ScanSizeX;
+            AspectRangeY = Channel.ScanSizeY;
+            AspectRangeZ = range(Channel.Image,'all');
+            
+            Mesh.Parent.XLim = [0 Channel.NumPixelsX];
+            Mesh.Parent.YLim = [0 Channel.NumPixelsY];
+            Mesh.Parent.ZLim = [min(Channel.Image,[],'all') max(Channel.Image,[],'all')];
+            
+            Mesh.Parent.PlotBoxAspectRatio = [AspectRangeX AspectRangeY AspectRangeZ];
+            
+        end
+        
+        function [Fig,Scatter] = plot_scatter3_point_cloud_to_scale(X,Y,Z)
+            % function [Fig,Scatter] = plot_scatter3_point_cloud_to_scale(X,Y,Z)
+            %
+            % <FUNCTION DESCRIPTION HERE>
+            %
+            %
+            % Required inputs
+            % X ... <VARIABLE DESCRIPTION>
+            % Y ... <VARIABLE DESCRIPTION>
+            % Z ... <VARIABLE DESCRIPTION>
+            
+            p = inputParser;
+            p.FunctionName = "plot_scatter3_point_cloud_to_scale";
+            p.CaseSensitive = false;
+            p.PartialMatching = true;
+            
+            % Required inputs
+            validX = @(x)true;
+            validY = @(x)true;
+            validZ = @(x)true;
+            addRequired(p,"X",validX);
+            addRequired(p,"Y",validY);
+            addRequired(p,"Z",validZ);
+            
+            parse(p,X,Y,Z);
+            
+            % Assign parsing results to named variables
+            X = p.Results.X;
+            Y = p.Results.Y;
+            Z = p.Results.Z;
+            
+            
+            Fig = figure('Color','w');
+            
+            Scatter = scatter3(X,Y,Z);
+            
+            AspectRangeX = range(X);
+            AspectRangeY = range(Y);
+            AspectRangeZ = range(Z);
+            
+            Scatter.Parent.XLim = [min(X) max(X)];
+            Scatter.Parent.YLim = [min(Y) max(Y)];
+            Scatter.Parent.ZLim = [min(Z) max(Z)];
+            
+            Scatter.Parent.PlotBoxAspectRatio = [AspectRangeX AspectRangeY AspectRangeZ];
+            
+        end
+        
     end
 end
