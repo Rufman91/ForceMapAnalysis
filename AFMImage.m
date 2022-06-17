@@ -176,7 +176,7 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             
             h = waitbar(1/3,'Calculating projected tip area');
             
-            obj.ProjectedTipArea = AFMImage.calculate_projected_area_histcumsum(obj.Channel(end),1e-9);
+            obj.ProjectedTipArea = AFMImage.calculate_projected_area_histcumsum(obj.Channel(end),StepSize);
             
             waitbar(2/3,h,'Calculating depth dependent tip radius');
             
@@ -2979,6 +2979,7 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             
             ProjectedArea(end+1) = 0;
             ProjectedArea = flip(ProjectedArea);
+            ProjectedArea = ProjectedArea';
             
         end
         
