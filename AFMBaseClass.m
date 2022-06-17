@@ -1629,6 +1629,39 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle
             
         end
         
+        function OutChannel = crop_channel_by_value_range(InChannel,MinValue,MaxValue)
+            
+            if nargin < 3
+                MaxValue = max(InChannel.Image,[],'all');
+            end
+            if nargin < 2
+                OutChannel = InChannel;
+                return
+            end
+            
+            Mask = (InChannel.Image <= MaxValue) & (InChannel.Image >= MinValue);
+            
+            XCumSum = cumsum(Mask,2);
+            YCumSum = cumsum(Mask,1);
+            
+            MinX = 0;
+            MinY = 0;
+            MaxX = 0;
+            MaxY = 0;
+            
+            
+            Positions = [MinX MinY MaxX MaxY];
+            
+            OutChannel = AFMBaseClass.crop_channel(InChannel,Positions);
+            
+        end
+        
+        function OutChannel = crop_channel(InChannel,Positions)
+            
+            OutChannel = InChannel;
+            
+        end
+        
     end
     methods (Static)
         % Static auxiliary methods

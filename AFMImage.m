@@ -176,7 +176,7 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             
             h = waitbar(1/3,'Calculating projected tip area');
             
-            obj.ProjectedTipArea = obj.calculate_projected_area(obj.Channel(end).Image,PixelSizeX,PixelSizeY,StepSize);
+            obj.ProjectedTipArea = AFMImage.calculate_projected_area_histcumsum(obj.Channel(end),1e-9);
             
             waitbar(2/3,h,'Calculating depth dependent tip radius');
             
@@ -1323,15 +1323,16 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             Image = InChannel.Image;
             DiffX = diff(Image,1,2);
             DiffY = diff(Image,1,1);
-            MaxDiff = max(max(abs(DiffX),[],'all'),max(abs(DiffY),[],'all'));
+            MaxDiff = sqrt(max(abs(DiffX),[],'all')^2 + max(abs(DiffY),[],'all')^2);
             SizePerPixelX = InChannel.ScanSizeX/InChannel.NumPixelsX;
             SizePerPixelY = InChannel.ScanSizeY/InChannel.NumPixelsY;
+            MinSampleDistance = min(SizePerPixelX,SizePerPixelY);
             MaxSampleDistance = sqrt(SizePerPixelX^2 + SizePerPixelY^2);
-            MinScaleMult = sqrt(MaxDiff^2 + MaxSampleDistance^2)/MaxSampleDistance;
+            MinScaleMult = sqrt((MaxDiff)^2 + MaxSampleDistance^2)/MinSampleDistance;
             SmallerNumPix = min(InChannel.NumPixelsX,InChannel.NumPixelsY);
             MinScaleMult = ceil(MinScaleMult*SmallerNumPix)/SmallerNumPix;
             
-            UpscaleMult = 20;%max(1,MinScaleMult);
+            UpscaleMult = max(1,MinScaleMult);
             
             % Ask the user for consent if new image dimensions exceed a
             % certain threshhold ResolutionThreshold
@@ -1449,7 +1450,7 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 end
             end
             
-            I(I==0) = -min(Z);
+            I(I==0) = min(Z);
             
             OutChannel.Image = I;
         end
@@ -2506,20 +2507,22 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             
         end
         
-        function [OutChannel1,OutChannel2] = create_custom_paraboloid_height_topography(TipRadius,TipHeight,TipTilt,Radius,ImageResolution,varargin)
-            % function [OutChannel1,OutChannel2] = create_custom_paraboloid_height_topography(TipRadius,TipHeight,TipTilt,Radius,ImageResolution,varargin)
+        function [OutChannel1,OutChannel2] = create_custom_height_topography(Shape,varargin)
+            % function [OutChannel1,OutChannel2] = create_custom_height_topography(Shape,varargin)
             %
             % <FUNCTION DESCRIPTION HERE>
             %
             %
             % Required inputs
-            % TipRadius ... <VARIABLE DESCRIPTION>
-            % TipHeight ... <VARIABLE DESCRIPTION>
-            % TipTilt ... <VARIABLE DESCRIPTION>
-            % Radius ... <VARIABLE DESCRIPTION>
-            % ImageResolution ... <VARIABLE DESCRIPTION>
+            % Shape ... <VARIABLE DESCRIPTION>
             %
             % Name-Value pairs
+            % "TipRadius" ... <NAMEVALUE DESCRIPTION>
+            % "TipHeight" ... <NAMEVALUE DESCRIPTION>
+            % "TipTilt" ... <NAMEVALUE DESCRIPTION>
+            % "Radius" ... <NAMEVALUE DESCRIPTION>
+            % "HalfAngle" ... <NAMEVALUE DESCRIPTION>
+            % "ImageResolution" ... <NAMEVALUE DESCRIPTION>
             % "StartFraction" ... <NAMEVALUE DESCRIPTION>
             % "EndFraction" ... <NAMEVALUE DESCRIPTION>
             % "FuseMethod" ... <NAMEVALUE DESCRIPTION>
@@ -2527,76 +2530,92 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             % "TipApexChannel" ... <NAMEVALUE DESCRIPTION>
             
             p = inputParser;
-            p.FunctionName = "create_custom_paraboloid_height_topography";
+            p.FunctionName = "create_custom_height_topography";
             p.CaseSensitive = false;
             p.PartialMatching = true;
             
             % Required inputs
-            validTipRadius = @(x)true;
-            validTipHeight = @(x)true;
-            validTipTilt = @(x)true;
-            validRadius = @(x)true;
-            validImageResolution = @(x)true;
-            addRequired(p,"TipRadius",validTipRadius);
-            addRequired(p,"TipHeight",validTipHeight);
-            addRequired(p,"TipTilt",validTipTilt);
-            addRequired(p,"Radius",validRadius);
-            addRequired(p,"ImageResolution",validImageResolution);
+            validShape = @(x)true;
+            addRequired(p,"Shape",validShape);
             
             % NameValue inputs
+            defaultTipRadius = [];
+            defaultTipHeight = [];
+            defaultTipTilt = [];
+            defaultRadius = [];
+            defaultHalfAngle = [];
+            defaultImageResolution = [];
             defaultStartFraction = [];
             defaultEndFraction = [];
             defaultFuseMethod = [];
             defaultHeightDifference = [];
             defaultTipApexChannel = [];
+            validTipRadius = @(x)true;
+            validTipHeight = @(x)true;
+            validTipTilt = @(x)true;
+            validRadius = @(x)true;
+            validHalfAngle = @(x)true;
+            validImageResolution = @(x)true;
             validStartFraction = @(x)true;
             validEndFraction = @(x)true;
             validFuseMethod = @(x)true;
             validHeightDifference = @(x)true;
             validTipApexChannel = @(x)true;
+            addParameter(p,"TipRadius",defaultTipRadius,validTipRadius);
+            addParameter(p,"TipHeight",defaultTipHeight,validTipHeight);
+            addParameter(p,"TipTilt",defaultTipTilt,validTipTilt);
+            addParameter(p,"Radius",defaultRadius,validRadius);
+            addParameter(p,"HalfAngle",defaultHalfAngle,validHalfAngle);
+            addParameter(p,"ImageResolution",defaultImageResolution,validImageResolution);
             addParameter(p,"StartFraction",defaultStartFraction,validStartFraction);
             addParameter(p,"EndFraction",defaultEndFraction,validEndFraction);
             addParameter(p,"FuseMethod",defaultFuseMethod,validFuseMethod);
             addParameter(p,"HeightDifference",defaultHeightDifference,validHeightDifference);
             addParameter(p,"TipApexChannel",defaultTipApexChannel,validTipApexChannel);
             
-            parse(p,TipRadius,TipHeight,TipTilt,Radius,ImageResolution,varargin{:});
+            parse(p,Shape,varargin{:});
             
             % Assign parsing results to named variables
+            Shape = p.Results.Shape;
             TipRadius = p.Results.TipRadius;
             TipHeight = p.Results.TipHeight;
             TipTilt = p.Results.TipTilt;
             Radius = p.Results.Radius;
+            HalfAngle = p.Results.HalfAngle;
             ImageResolution = p.Results.ImageResolution;
             StartFraction = p.Results.StartFraction;
             EndFraction = p.Results.EndFraction;
             FuseMethod = p.Results.FuseMethod;
             HeightDifference = p.Results.HeightDifference;
             TipApexChannel = p.Results.TipApexChannel;
-
             
-            a = 1/(2*Radius);
-            RMax = sqrt(TipHeight./a);
-            [X,Y] = ndgrid(-RMax:2*RMax/(ImageResolution-1):RMax);
-            z = @(x,y)(sqrt(x.^2+y.^2)>RMax).*0 + (sqrt(x.^2+y.^2)<=RMax).*(TipHeight - (x.^2+y.^2).*a);
             
-            Height = z(X,Y);
             
-            OutChannel1.Image = Height;
-            OutChannel1.Name = 'Custom Tip Height';
-            OutChannel1.Unit = 'm';
-            OutChannel1.NumPixelsX = ImageResolution;
-            OutChannel1.NumPixelsY = ImageResolution;
-            OutChannel1.ScanSizeX = 2.*RMax;
-            OutChannel1.ScanSizeY = 2.*RMax;
-            OutChannel1.OriginX = 0;
-            OutChannel1.OriginY = 0;
-            OutChannel1.ScanAngle = 0;
+            
+            % create desired shape
+            switch lower(Shape)
+                case 'paraboloid'
+                    OutChannel1 = AFMImage.create_paraboloid_height_topography(TipHeight,Radius,ImageResolution);
+                case 'halfsphere'
+                    OutChannel1 = AFMImage.create_halfsphere_height_topography(TipHeight,Radius,ImageResolution);
+                case 'cylinder'
+                    OutChannel1 = AFMImage.create_cylinder_height_topography(TipHeight,Radius,ImageResolution);
+                case 'cone'
+                    OutChannel1 = AFMImage.create_cone_height_topography(TipHeight,HalfAngle,ImageResolution);
+                otherwise
+                    warning([Shape ' is not a valid shape'])
+                    return
+            end
+            
             
             %TipRadius modelling
-            if ~(TipRadius == 0 || TipRadius == Radius) || ~isempty(TipApexChannel)
+            if ~(isempty(TipRadius) || TipRadius == 0) || ~isempty(TipApexChannel)
                 if isempty(TipApexChannel)
-                    TipApexChannel = AFMImage.create_custom_paraboloid_height_topography(0,TipHeight+HeightDifference,0,TipRadius,ImageResolution);
+                    TipApexChannel = AFMImage.create_custom_height_topography('paraboloid',...
+                        'TipHeight',TipHeight+HeightDifference,...
+                        'TipTilt',0,...
+                        'Radius',TipRadius,...
+                        'ImageResolution',ImageResolution);
                 end
                 OutChannel1 = AFMImage.gradually_fuse_height_topographies(OutChannel1,TipApexChannel,...
                     'StartFraction',StartFraction,...
@@ -2611,16 +2630,10 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             OutChannel1 = AFMBaseClass.resize_channel_to_padded_same_size_per_pixel_square_image(OutChannel1,'PaddingType','Min','TargetResolution',ImageResolution);
             OutChannel1.Image = OutChannel1.Image - min(OutChannel1.Image,[],'all');
             
+            OutChannel2 = OutChannel1;
+            
             OutChannel2.Image = OutChannel1.Image - max(OutChannel1.Image,[],'all');
             OutChannel2.Name = 'Custom Tip Shifted Height';
-            OutChannel2.Unit = 'm';
-            OutChannel2.NumPixelsX = ImageResolution;
-            OutChannel2.NumPixelsY = ImageResolution;
-            OutChannel2.ScanSizeX = 2.*RMax;
-            OutChannel2.ScanSizeY = 2.*RMax;
-            OutChannel2.OriginX = 0;
-            OutChannel2.OriginY = 0;
-            OutChannel2.ScanAngle = 0;
             
         end
         
@@ -2675,6 +2688,7 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             FuseMethod = p.Results.FuseMethod;
             HeightDifference = p.Results.HeightDifference;
             
+            InChannel2 = AFMBaseClass.crop_channel_by_value_range(InChannel2);
             
             [InChannel1,InChannel2] = AFMBaseClass.resize_channels_to_same_physical_size_per_pixel(InChannel1,InChannel2,'EquateResolution',true);
             
@@ -2707,6 +2721,94 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             OutChannel1 = InChannel1;
             OutChannel2 = InChannel2;
             
+        end
+        
+        function OutChannel = create_paraboloid_height_topography(TipHeight,Radius,ImageResolution)
+            
+            a = 1/(2*Radius);
+            RMax = sqrt(TipHeight./a);
+            [X,Y] = ndgrid(-RMax:2*RMax/(ImageResolution-1):RMax);
+            z = @(x,y)(sqrt(x.^2+y.^2)>RMax).*0 + (sqrt(x.^2+y.^2)<=RMax).*(TipHeight - (x.^2+y.^2).*a);
+            
+            Height = z(X,Y);
+            
+            OutChannel.Image = Height;
+            OutChannel.Name = 'Custom Tip Height';
+            OutChannel.Unit = 'm';
+            OutChannel.NumPixelsX = ImageResolution;
+            OutChannel.NumPixelsY = ImageResolution;
+            OutChannel.ScanSizeX = 2.*RMax;
+            OutChannel.ScanSizeY = 2.*RMax;
+            OutChannel.OriginX = 0;
+            OutChannel.OriginY = 0;
+            OutChannel.ScanAngle = 0;
+        end
+        
+        function OutChannel = create_halfsphere_height_topography(TipHeight,Radius,ImageResolution)
+            
+            if TipHeight >= Radius
+                RMax = Radius;
+            else
+                RMax = sqrt(Radius^2 - (Radius-TipHeight)^2);
+            end
+            Diff = max(0,TipHeight - Radius);
+            [X,Y] = ndgrid(-RMax:2*RMax/(ImageResolution-1):RMax);
+            z = @(x,y)(sqrt(x.^2+y.^2)>RMax).*0 + (sqrt(x.^2+y.^2)<=RMax).*(sqrt(Radius^2 - (x.^2+y.^2)) - sqrt(Radius^2 - RMax^2) + Diff);
+            
+            Height = z(X,Y);
+            
+            OutChannel.Image = Height;
+            OutChannel.Name = 'Custom Tip Height';
+            OutChannel.Unit = 'm';
+            OutChannel.NumPixelsX = ImageResolution;
+            OutChannel.NumPixelsY = ImageResolution;
+            OutChannel.ScanSizeX = 2.*RMax;
+            OutChannel.ScanSizeY = 2.*RMax;
+            OutChannel.OriginX = 0;
+            OutChannel.OriginY = 0;
+            OutChannel.ScanAngle = 0;
+        end
+        
+        function OutChannel = create_cylinder_height_topography(TipHeight,Radius,ImageResolution)
+            
+            RMax = Radius;
+            
+            [X,Y] = ndgrid(-RMax:2*RMax/(ImageResolution-1):RMax);
+            z = @(x,y)(sqrt(x.^2+y.^2)>RMax).*0 + (sqrt(x.^2+y.^2)<=RMax).*(TipHeight);
+            
+            Height = z(X,Y);
+            
+            OutChannel.Image = Height;
+            OutChannel.Name = 'Custom Tip Height';
+            OutChannel.Unit = 'm';
+            OutChannel.NumPixelsX = ImageResolution;
+            OutChannel.NumPixelsY = ImageResolution;
+            OutChannel.ScanSizeX = 2.*RMax;
+            OutChannel.ScanSizeY = 2.*RMax;
+            OutChannel.OriginX = 0;
+            OutChannel.OriginY = 0;
+            OutChannel.ScanAngle = 0;
+        end
+        
+        function OutChannel = create_cone_height_topography(TipHeight,ConeHalfAngle,ImageResolution)
+            
+            RMax = TipHeight*tan(ConeHalfAngle);
+            
+            [X,Y] = ndgrid(-RMax:2*RMax/(ImageResolution-1):RMax);
+            z = @(x,y)(sqrt(x.^2+y.^2)>RMax).*0 + (sqrt(x.^2+y.^2)<=RMax).*(TipHeight - sqrt(x.^2+y.^2).*tan(pi/2-ConeHalfAngle));
+            
+            Height = z(X,Y);
+            
+            OutChannel.Image = Height;
+            OutChannel.Name = 'Custom Tip Height';
+            OutChannel.Unit = 'm';
+            OutChannel.NumPixelsX = ImageResolution;
+            OutChannel.NumPixelsY = ImageResolution;
+            OutChannel.ScanSizeX = 2.*RMax;
+            OutChannel.ScanSizeY = 2.*RMax;
+            OutChannel.OriginX = 0;
+            OutChannel.OriginY = 0;
+            OutChannel.ScanAngle = 0;
         end
         
         function [Fig,Surf] = plot_surf_channel_to_scale(Channel)
@@ -2832,6 +2934,51 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             Scatter.Parent.ZLim = [min(Z) max(Z)];
             
             Scatter.Parent.PlotBoxAspectRatio = [AspectRangeX AspectRangeY AspectRangeZ];
+            
+        end
+        
+        function ProjectedArea = calculate_projected_area_histcumsum(InChannel,BinSize)
+            % function ProjecedArea = calculate_projected_area_histcumsum(InChannel,BinSize)
+            %
+            % <FUNCTION DESCRIPTION HERE>
+            %
+            %
+            % Required inputs
+            % InChannel ... <VARIABLE DESCRIPTION>
+            % BinSize ... <VARIABLE DESCRIPTION>
+            
+            p = inputParser;
+            p.FunctionName = "calculate_projected_area_histcumsum";
+            p.CaseSensitive = false;
+            p.PartialMatching = true;
+            
+            % Required inputs
+            validInChannel = @(x)true;
+            validBinSize = @(x)true;
+            addRequired(p,"InChannel",validInChannel);
+            addRequired(p,"BinSize",validBinSize);
+            
+            parse(p,InChannel,BinSize);
+            
+            % Assign parsing results to named variables
+            InChannel = p.Results.InChannel;
+            BinSize = p.Results.BinSize;
+            
+            AreaPerPixel = (InChannel.ScanSizeX/InChannel.NumPixelsX)*(InChannel.ScanSizeY/InChannel.NumPixelsY);
+            
+            Min = min(InChannel.Image,[],'all');
+            Max = max(InChannel.Image,[],'all');
+            
+            Edges = Min:BinSize:Max;
+            
+            VecImage = reshape(InChannel.Image,1,[]);
+            
+            HistCounts = histcounts(VecImage,Edges);
+            
+            ProjectedArea = cumsum(HistCounts,'reverse').*AreaPerPixel;
+            
+            ProjectedArea(end+1) = 0;
+            ProjectedArea = flip(ProjectedArea);
             
         end
         
