@@ -4782,6 +4782,9 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                         Results(i) = [];
                         close(Waitbar)
                         continue
+                    elseif isempty(TempChannel)
+                        close(Waitbar)
+                        continue
                     end
                     if h.ResultStruct.SelectedSegmentIndex{Ind(min(i,2))}(1) == 0 &&...
                         length(h.ResultStruct.SelectedSegmentIndex{Ind(min(i,2))}) == 1
