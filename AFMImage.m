@@ -2540,15 +2540,15 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             
             % NameValue inputs
             defaultTipRadius = [];
-            defaultTipHeight = [];
-            defaultTipTilt = [];
-            defaultRadius = [];
-            defaultHalfAngle = [];
-            defaultImageResolution = [];
-            defaultStartFraction = [];
-            defaultEndFraction = [];
-            defaultFuseMethod = [];
-            defaultHeightDifference = [];
+            defaultTipHeight = 1000e-9;
+            defaultTipTilt = 0;
+            defaultRadius = 20e-9;
+            defaultHalfAngle = 15;
+            defaultImageResolution = 256;
+            defaultStartFraction = .8;
+            defaultEndFraction = .99;
+            defaultFuseMethod = 'linear';
+            defaultHeightDifference = 0;
             defaultTipApexChannel = [];
             validTipRadius = @(x)true;
             validTipHeight = @(x)true;
