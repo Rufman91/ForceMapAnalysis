@@ -4308,6 +4308,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                     h.ColorMode(obj.ShowImageSettings.ColorIndex).Profile1,...
                     'Parent',varargin{1}.Parent,...
                     'LineWidth',obj.ShowImageSettings.ProfileLineWidth);
+                
                 addlistener(h.VolumeStruct.Point,'MovingROI',@draw_volume_information);
                 addlistener(h.VolumeStruct.Point,'ROIMoved',@draw_volume_information);
                 
@@ -4367,6 +4368,16 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 h.VolumeStruct.ListIndex = ...
                     h.Class{h.VolumeStruct.Index}.Map2List(...
                     h.VolumeStruct.MapIndex(2),h.VolumeStruct.MapIndex(1));
+                
+                
+                if h.FVM(7).Value
+                    PointValue = h.Image{h.VolumeStruct.Index}...
+                        (h.VolumeStruct.Point.Position(2),h.VolumeStruct.Point.Position(1));
+                    [ScalingFactor,Unit] = AFMImage.parse_unit_scale(PointValue,h.BaseUnit{h.VolumeStruct.Index},1);
+                    Scaled = ScalingFactor*PointValue;
+                    PointLabel = [num2str(Scaled) ' ' Unit];
+                    h.VolumeStruct.Point.Label = PointLabel;
+                end
                 
                 try
                     delete(h.ImAx(3));
