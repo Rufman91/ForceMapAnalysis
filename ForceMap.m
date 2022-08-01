@@ -47,6 +47,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
         RetractVelocity
         Sensitivity
         RefSlopeCorrectedSensitivity
+        AdaptiveSensitivity
         SpringConstant
         Setpoint
         RescalingConstants
@@ -345,8 +346,12 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             f = figure('Name','Curve Selection','Position',[10000 10000 1200 900]);
             movegui(f);
             for i=1:obj.NCurves
-                [App,HHApp] = obj.get_force_curve_data(i,0,0,0);
-                [Ret,HHRet] = obj.get_force_curve_data(i,1,0,0);
+                [App,HHApp] = obj.get_force_curve_data(i,'AppRetSwitch',0,...
+                    'BaselineCorrection',0,'TipHeightCorrection',0,...
+                    'Sensitivity','original','Unit','N');
+                [Ret,HHRet] = obj.get_force_curve_data(i,'AppRetSwitch',1,...
+                    'BaselineCorrection',0,'TipHeightCorrection',0,...
+                    'Sensitivity','original','Unit','N');
                 dlgtitle = sprintf('Curve selection %i/%i',i,obj.NCurves);
                 plottitle = sprintf('Curve Nr. %i',i);
                 plot(HHApp,App,HHRet,Ret);
@@ -383,13 +388,17 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             
             for i=1:obj.NCurves
                 if AppRetSwitch==0 || AppRetSwitch==2
-                    [App,HHApp] = obj.get_force_curve_data(i,0,0,0);
+                    [App,HHApp] = obj.get_force_curve_data(i,'AppRetSwitch',0,...
+                    'BaselineCorrection',0,'TipHeightCorrection',0,...
+                    'Sensitivity','original','Unit','N');
                     if (length(App) < Thresh) || (length(HHApp) < Thresh)
                         obj.SelectedCurves(i) = 0;
                     end
                 end
                 if AppRetSwitch==1 || AppRetSwitch==2
-                    [Ret,HHRet] = obj.get_force_curve_data(i,1,0,0);
+                    [Ret,HHRet] = obj.get_force_curve_data(i,'AppRetSwitch',1,...
+                    'BaselineCorrection',0,'TipHeightCorrection',0,...
+                    'Sensitivity','original','Unit','N');
                     if (length(Ret) < Thresh) || (length(HHRet) < Thresh)
                         obj.SelectedCurves(i) = 0;
                     end
@@ -411,7 +420,9 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             Range = find(obj.SelectedCurves);
             h = waitbar(0,'Setting up...');
             for i=Range'
-                [AppForce,HHApp] = obj.get_force_curve_data(i,0,0,0);
+                [AppForce,HHApp] = obj.get_force_curve_data(i,'AppRetSwitch',0,...
+                    'BaselineCorrection',0,'TipHeightCorrection',0,...
+                    'Sensitivity','original','Unit','N');
                 
                 prog = i/obj.NCurves;
                 waitbar(prog,h,'processing baseline fits...');
@@ -449,8 +460,12 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             
             for i=Range'
                 waitbar(i/obj.NCurves,h,'Refined Base and Tilt...');
-                [App,HHApp] = obj.get_force_curve_data(i,0,1,0);
-                [Ret,HHRet] = obj.get_force_curve_data(i,1,1,0);
+                [App,HHApp] = obj.get_force_curve_data(i,'AppRetSwitch',0,...
+                    'BaselineCorrection',1,'TipHeightCorrection',0,...
+                    'Sensitivity','original','Unit','N');
+                [Ret,HHRet] = obj.get_force_curve_data(i,'AppRetSwitch',1,...
+                    'BaselineCorrection',1,'TipHeightCorrection',0,...
+                    'Sensitivity','original','Unit','N');
                 CP = obj.CP(i,:);
                 
                 Cutoff = CP(1) - (1-FractionBeforeCP)*(CP(1) - min(HHApp));
@@ -529,8 +544,12 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             SnapIn = zeros(obj.NCurves,1);
             for i=Range'
                 waitbar(i/obj.NCurves,h,'Finding contact point for Snap-In curve...');
-                [App,HHApp] = obj.get_force_curve_data(i,0,1,0);
-                [Ret,HHRet] = obj.get_force_curve_data(i,1,1,0);
+                [App,HHApp] = obj.get_force_curve_data(i,'AppRetSwitch',0,...
+                    'BaselineCorrection',1,'TipHeightCorrection',0,...
+                    'Sensitivity','original','Unit','N');
+                [Ret,HHRet] = obj.get_force_curve_data(i,'AppRetSwitch',1,...
+                    'BaselineCorrection',1,'TipHeightCorrection',0,...
+                    'Sensitivity','original','Unit','N');
                 AboveZeroBool = zeros(length(App),1);
                 AboveZeroBool(find(App>0)) = 1;
                 k = 0;
@@ -604,7 +623,9 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             obj.CP_RoV = CP_RoV;
             for i=Range'
                 prog = i/obj.NCurves;
-                [App,HHApp] = obj.get_force_curve_data(i,0,1,0);
+                [App,HHApp] = obj.get_force_curve_data(i,'AppRetSwitch',0,...
+                    'BaselineCorrection',1,'TipHeightCorrection',0,...
+                    'Sensitivity','original','Unit','N');
                 waitbar(prog,h,'applying ratio of variances method...');
                 obj.RoV{i} = zeros(length(App),1);
                 SmoothedApp = smoothdata(App);
@@ -641,7 +662,9 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             TipRadius = obj.TipRadius;
             PoissonR = obj.PoissonR;
             for i=Range'
-                [Based,THApp] = obj.get_force_curve_data(i,0,1,1);
+                [Based,THApp] = obj.get_force_curve_data(i,'AppRetSwitch',0,...
+                    'BaselineCorrection',1,'TipHeightCorrection',1,...
+                    'Sensitivity','original','Unit','N');
                 smoothx = smoothdata(THApp);
                 smoothy = smoothdata(Based);
                 Rsquare = 2*ones(length(Based),1);
@@ -676,7 +699,9 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             obj.CP_Combo = zeros(obj.NCurves,2);
             obj.CPComboCurve = cell(obj.NCurves,1);
             for i=Range'
-                [App,HHApp] = obj.get_force_curve_data(i,0,1,1);
+                [App,HHApp] = obj.get_force_curve_data(i,'AppRetSwitch',0,...
+                    'BaselineCorrection',1,'TipHeightCorrection',1,...
+                    'Sensitivity','original','Unit','N');
                 obj.CPComboCurve{i} = obj.RoV{i}.*obj.GoF{i};
                 [~,CPidx] = max(obj.CPComboCurve{i});
                 obj.CP_Combo(i,:) = [HHApp(CPidx) App(CPidx)];
@@ -798,7 +823,9 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                             iRange = find(obj.SelectedCurves);
                             k = 1;
                             for i=iRange'
-                                [App,HHApp] = obj.get_force_curve_data(i,0,1,0);
+                                [App,HHApp] = obj.get_force_curve_data(i,'AppRetSwitch',0,...
+                    'BaselineCorrection',1,'TipHeightCorrection',0,...
+                    'Sensitivity','original','Unit','N');
                                 obj.CP_CNN(i,1) = Ypredicted(k,1)*range(HHApp)+min(HHApp);
                                 obj.CP_CNN(i,2) = Ypredicted(k,2)*range(App)+min(App);
                                 obj.CP(i,1) = obj.CP_CNN(i,1);
@@ -831,7 +858,9 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                             iRange = find(obj.SelectedCurves);
                             k = 1;
                             for i=iRange'
-                                [App,HHApp] = obj.get_force_curve_data(i,0,1,0);
+                                [App,HHApp] = obj.get_force_curve_data(i,'AppRetSwitch',0,...
+                    'BaselineCorrection',1,'TipHeightCorrection',0,...
+                    'Sensitivity','original','Unit','N');
                                 obj.CP_MonteCarlo(:,1,i) = obj.YDropPred(:,1,k)*range(HHApp)+min(HHApp);
                                 obj.CP_MonteCarlo(:,2,i) = obj.YDropPred(:,2,k)*range(App)+min(App);
                                 obj.CP(i,1) = mean(obj.CP_MonteCarlo(:,1,i));
@@ -861,7 +890,9 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                             iRange = find(obj.SelectedCurves);
                             k = 1;
                             for i=iRange'
-                                [App,HHApp] = obj.get_force_curve_data(i,0,1,0);
+                                [App,HHApp] = obj.get_force_curve_data(i,'AppRetSwitch',0,...
+                    'BaselineCorrection',1,'TipHeightCorrection',0,...
+                    'Sensitivity','original','Unit','N');
                                 obj.CP_CNNZoom(i,1) = Ypredicted(k,1)*range(HHApp)+min(HHApp);
                                 obj.CP_CNNZoom(i,2) = Ypredicted(k,2)*range(App)+min(App);
                                 obj.CP(i,1) = obj.CP_CNNZoom(i,1);
@@ -889,7 +920,9 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                             iRange = find(obj.SelectedCurves);
                             k = 1;
                             for i=iRange'
-                                [App,HHApp] = ZoomObj.get_force_curve_data(i,0,1,0);
+                                [App,HHApp] = ZoomObj.get_force_curve_data(i,'AppRetSwitch',0,...
+                    'BaselineCorrection',1,'TipHeightCorrection',0,...
+                    'Sensitivity','original','Unit','N');
                                 obj.CP_CNNZoom(i,1) = Ypredicted(k,1)*range(HHApp)+min(HHApp);
                                 obj.CP_CNNZoom(i,2) = Ypredicted(k,2)*range(App)+min(App);
                                 obj.CP(i,1) = obj.CP_CNNZoom(i,1);
@@ -916,7 +949,9 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                             iRange = find(obj.SelectedCurves);
                             k = 1;
                             for i=iRange'
-                                [App,HHApp] = obj.get_force_curve_data(i,0,1,0);
+                                [App,HHApp] = obj.get_force_curve_data(i,'AppRetSwitch',0,...
+                    'BaselineCorrection',1,'TipHeightCorrection',0,...
+                    'Sensitivity','original','Unit','N');
                                 obj.CP_CNNZoom(i,1) = Ypredicted(k,1)*range(HHApp)+min(HHApp);
                                 obj.CP_CNNZoom(i,2) = Ypredicted(k,2)*range(App)+min(App);
                                 obj.CP(i,1) = obj.CP_CNNZoom(i,1);
@@ -944,7 +979,9 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                             iRange = find(obj.SelectedCurves);
                             k = 1;
                             for i=iRange'
-                                [App,HHApp] = ZoomObj.get_force_curve_data(i,0,1,0);
+                                [App,HHApp] = ZoomObj.get_force_curve_data(i,'AppRetSwitch',0,...
+                    'BaselineCorrection',1,'TipHeightCorrection',0,...
+                    'Sensitivity','original','Unit','N');
                                 obj.CP_CNNZoom(i,1) = Ypredicted(k,1)*range(HHApp)+min(HHApp{i});
                                 obj.CP_CNNZoom(i,2) = Ypredicted(k,2)*range(App)+min(App);
                                 obj.CP(i,1) = obj.CP_CNNZoom(i,1);
@@ -970,7 +1007,9 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                             iRange = find(obj.SelectedCurves);
                             k = 1;
                             for i=iRange'
-                                [App,HHApp] = obj.get_force_curve_data(i,0,1,0);
+                                [App,HHApp] = obj.get_force_curve_data(i,'AppRetSwitch',0,...
+                    'BaselineCorrection',1,'TipHeightCorrection',0,...
+                    'Sensitivity','original','Unit','N');
                                 obj.CP_CNNZoom(i,1) = Ypredicted(k,1)*range(HHApp)+min(HHApp);
                                 obj.CP_CNNZoom(i,2) = Ypredicted(k,2)*range(App)+min(App);
                                 obj.CP(i,1) = obj.CP_CNNZoom(i,1);
@@ -1003,7 +1042,9 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                             k = 1;
                             for i=iRange'
                                 for j=1:NumPasses
-                                    [App,HHApp] = ZoomCell{j}.get_force_curve_data(i,0,1,0);
+                                    [App,HHApp] = ZoomCell{j}.get_force_curve_data(i,'AppRetSwitch',0,...
+                    'BaselineCorrection',1,'TipHeightCorrection',0,...
+                    'Sensitivity','original','Unit','N');
                                     TempCP(i,1,j) = Ypredicted(k+length(iRange)*(j-1),1)*range(HHApp)+min(HHApp);
                                     TempCP(i,2,j) = Ypredicted(k+length(iRange)*(j-1),2)*range(App)+min(App);
                                 end
@@ -1040,8 +1081,12 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             % Oliver-Pharr analysis
             iRange = find(obj.SelectedCurves);
             for i=iRange'
-                [App,HHApp] = obj.get_force_curve_data(i,0,1,0);
-                [Ret,HHRet] = obj.get_force_curve_data(i,1,1,0);
+                [App,HHApp] = obj.get_force_curve_data(i,'AppRetSwitch',0,...
+                    'BaselineCorrection',1,'TipHeightCorrection',0,...
+                    'Sensitivity','original','Unit','N');
+                [Ret,HHRet] = obj.get_force_curve_data(i,'AppRetSwitch',1,...
+                    'BaselineCorrection',1,'TipHeightCorrection',0,...
+                    'Sensitivity','original','Unit','N');
                 try
                 load = zeros(length(App),2);
                 unload = zeros(length(Ret),2);
@@ -1095,8 +1140,12 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             end
             while sum(jRange==j)
                 %                 fig.WindowState = 'fullscreen';
-                [App,HHApp] = obj.get_force_curve_data(j,0,1,0);
-                [Ret,HHRet] = obj.get_force_curve_data(j,1,1,0);
+                [App,HHApp] = obj.get_force_curve_data(j,'AppRetSwitch',0,...
+                    'BaselineCorrection',1,'TipHeightCorrection',0,...
+                    'Sensitivity','original','Unit','N');
+                [Ret,HHRet] = obj.get_force_curve_data(j,'AppRetSwitch',1,...
+                    'BaselineCorrection',1,'TipHeightCorrection',0,...
+                    'Sensitivity','original','Unit','N');
                 plot(HHApp,App);
                 plottitle = sprintf('Curve Nr.%i/%i\n Click or click and drag the point to the contact point\n Click the red area to exclude the current curve from further analysis\n Click the green area to go back one curve',j,obj.NCurves);
                 title(plottitle);
@@ -1170,7 +1219,9 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             % surfaces
             
             for i=1:obj.NCurves
-                [App,HHApp] = obj.get_force_curve_data(i,0,1,0);
+                [App,HHApp] = obj.get_force_curve_data(i,'AppRetSwitch',0,...
+                    'BaselineCorrection',1,'TipHeightCorrection',0,...
+                    'Sensitivity','original','Unit','N');
                 obj.CP_HardSurface(i,1) = HHApp(end) - App(end)/obj.SpringConstant;
                 obj.CP_HardSurface(i,2) = 0;
                 %% Debugging
@@ -1245,7 +1296,9 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                     CP = obj.CP(iRange(1:BatchSize),:);
                 end
                 for i=1:BatchSize
-                    [App{i},HHApp{i}] = obj.get_force_curve_data(iRange(i),0,1,0);
+                    [App{i},HHApp{i}] = obj.get_force_curve_data(iRange(i),'AppRetSwitch',0,...
+                    'BaselineCorrection',1,'TipHeightCorrection',0,...
+                    'Sensitivity','original','Unit','N');
                     if SortHeightDataForFit
                         HHApp{i} = sort(HHApp{i},'ascend');
                     end
@@ -1454,7 +1507,9 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             iRange = find(obj.SelectedCurves);
             IndentationDepth = zeros(obj.NCurves,1);
             for i=iRange'
-                [App{i},HHApp{i}] = obj.get_force_curve_data(iRange(i),0,1,0);
+                [App{i},HHApp{i}] = obj.get_force_curve_data(iRange(i),'AppRetSwitch',0,...
+                    'BaselineCorrection',1,'TipHeightCorrection',0,...
+                    'Sensitivity','original','Unit','N');
                 force{i} = App{i} - CP(i,2);
                 if CorrectSensitivity
                     force{i} = force{i}.*obj.RefSlopeCorrectedSensitivity/obj.Sensitivity;
@@ -1489,7 +1544,9 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             obj.IndentationDepthOliverPharr = zeros(obj.NCurves,1);
             obj.IndentArea = zeros(obj.NCurves,1);
             for i=Range'
-                [Ret,HHRet] = obj.get_force_curve_data(i,1,1,0);
+                [Ret,HHRet] = obj.get_force_curve_data(i,'AppRetSwitch',1,...
+                    'BaselineCorrection',1,'TipHeightCorrection',0,...
+                    'Sensitivity','original','Unit','N');
                 Z = HHRet - obj.CP(i,1);
                 D = (Ret - obj.CP(i,2))/obj.SpringConstant;
                 Zmax(i) = max(Z);
@@ -1584,7 +1641,9 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             Range = find(obj.SelectedCurves);
             MaxAdhesionForce = zeros(obj.NCurves,1);
             for i=Range'
-                [Ret,HHRet] = obj.get_force_curve_data(i,1,1,0);
+                [Ret,HHRet] = obj.get_force_curve_data(i,'AppRetSwitch',1,...
+                    'BaselineCorrection',1,'TipHeightCorrection',0,...
+                    'Sensitivity','original','Unit','N');
                 Force = Ret - obj.CP(i,2);
                 TipHeight = (HHRet - obj.CP(i,1)) - Force/obj.SpringConstant;
                 MaxAdhesionForce(i) = -min(Force);
@@ -1618,8 +1677,12 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             AdhesionEnergy = zeros(obj.NCurves,1);
             AdhesionLength = zeros(obj.NCurves,1);
             for i=Range'
-                [App,HHApp] = obj.get_force_curve_data(i,0,1,0);
-                [Ret,HHRet] = obj.get_force_curve_data(i,1,1,0);
+                [App,HHApp] = obj.get_force_curve_data(i,'AppRetSwitch',0,...
+                    'BaselineCorrection',1,'TipHeightCorrection',0,...
+                    'Sensitivity','original','Unit','N');
+                [Ret,HHRet] = obj.get_force_curve_data(i,'AppRetSwitch',1,...
+                    'BaselineCorrection',1,'TipHeightCorrection',0,...
+                    'Sensitivity','original','Unit','N');
                 AppForce = App - obj.CP(i,2);
                 AppTipHeight = (HHApp - obj.CP(i,1)) - AppForce/obj.SpringConstant;
                 RetForce = flipud(Ret) - obj.CP(i,2);
@@ -1711,8 +1774,12 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             Range = find(obj.SelectedCurves);
             PeakIndentationAngle = zeros(obj.NCurves,1);
             for i=Range'
-                [App,HHApp] = obj.get_force_curve_data(i,0,1,0);
-                [Ret,HHRet] = obj.get_force_curve_data(i,1,1,0);
+                [App,HHApp] = obj.get_force_curve_data(i,'AppRetSwitch',0,...
+                    'BaselineCorrection',1,'TipHeightCorrection',0,...
+                    'Sensitivity','original','Unit','N');
+                [Ret,HHRet] = obj.get_force_curve_data(i,'AppRetSwitch',1,...
+                    'BaselineCorrection',1,'TipHeightCorrection',0,...
+                    'Sensitivity','original','Unit','N');
                 AppForce = App - obj.CP(i,2);
                 AppHeadHeight = (HHApp - obj.CP(i,1));% - AppForce/obj.SpringConstant;
                 RetForce = Ret - obj.CP(i,2);
@@ -1787,8 +1854,12 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             DissipatedEnergy = zeros(obj.NCurves,1);
             ElasticEnergy = zeros(obj.NCurves,1);
             for i=Range'
-                [App,HHApp] = obj.get_force_curve_data(i,0,1,0);
-                [Ret,HHRet] = obj.get_force_curve_data(i,1,1,0);
+                [App,HHApp] = obj.get_force_curve_data(i,'AppRetSwitch',0,...
+                    'BaselineCorrection',1,'TipHeightCorrection',0,...
+                    'Sensitivity','original','Unit','N');
+                [Ret,HHRet] = obj.get_force_curve_data(i,'AppRetSwitch',1,...
+                    'BaselineCorrection',1,'TipHeightCorrection',0,...
+                    'Sensitivity','original','Unit','N');
                 AppForce = App - obj.CP(i,2);
                 AppTipHeight = (HHApp - obj.CP(i,1)) - AppForce/obj.SpringConstant;
                 RetForce = Ret - obj.CP(i,2);
@@ -2009,7 +2080,9 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             imgorsize = cell(sum(obj.SelectedCurves),1);
             h = waitbar(0,'Setting up...');
             for i=Range'
-                [App,~] = obj.get_force_curve_data(i,0,1,0);
+                [App,~] = obj.get_force_curve_data(i,'AppRetSwitch',0,...
+                    'BaselineCorrection',1,'TipHeightCorrection',0,...
+                    'Sensitivity','original','Unit','N');
                 prog = i/obj.NCurves;
                 waitbar(prog,h,'Converting force curves to images...');
                 norm =  round(normalize(App,'range',[1 imres]));
@@ -4176,7 +4249,9 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                             Image = zeros(ImgSizeFinal,ImgSizeFinal,'single');
                         end
                         
-                        [App,HHApp] = objcell{i}.get_force_curve_data(j,0,1,0);
+                        [App,HHApp] = objcell{i}.get_force_curve_data(j,'AppRetSwitch',0,...
+                    'BaselineCorrection',1,'TipHeightCorrection',0,...
+                    'Sensitivity','original','Unit','N');
                         Points(:,1) = HHApp(floor(n*length(HHApp))+1:end);
                         Points(:,2) = App(floor(n*length(App))+1:end);
                         Points(:,1) = (Points(:,1)-min(Points(:,1)))/range(Points(:,1))*(ImgSize-1);
@@ -4277,7 +4352,9 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             for i=Range'
                 if (Mask(obj.List2Map(i,1),obj.List2Map(i,2)) == 1) &&...
                         (obj.ExclMask(obj.List2Map(i,1),obj.List2Map(i,2)) == 1)
-                    [Force,Height] = obj.get_force_curve_data(i,AppRetSwitch,1,0);
+                    [Force,Height] = obj.get_force_curve_data(i,'AppRetSwitch',AppRetSwitch,...
+                    'BaselineCorrection',1,'TipHeightCorrection',0,...
+                    'Sensitivity','original','Unit','N');
                     Z = Height - obj.CP(i,1);
                     D = (Force - obj.CP(i,2))/obj.SpringConstant;
                     Dmax = max(D);
@@ -4302,6 +4379,77 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             obj.RefSlope = exp(Gaussian.mu+Gaussian.sigma^2/2);
             obj.RefSlopeCorrectedSensitivity = obj.Sensitivity/obj.RefSlope;
             obj.HasRefSlope = true;
+        end
+        
+        function calculate_adaptive_sensitivity_from_area(obj,varargin)
+            % function calculate_adaptive_sensitivity_from_area(obj,varargin)
+            %
+            % <FUNCTION DESCRIPTION HERE>
+            %
+            %
+            % Required inputs
+            % obj ... <VARIABLE DESCRIPTION>
+            %
+            % Name-Value pairs
+            % "Mask" ... <NAMEVALUE DESCRIPTION>
+            % "AppRetSwitch" ... <NAMEVALUE DESCRIPTION>
+            % "MovingWindowSize" ... <NAMEVALUE DESCRIPTION>
+            % "FitRangeMode" ... <NAMEVALUE DESCRIPTION>
+            % "FitRangeLowerFraction" ... <NAMEVALUE DESCRIPTION>
+            % "FitRangeUpperFraction" ... <NAMEVALUE DESCRIPTION>
+            % "FitRangeLowerValue" ... <NAMEVALUE DESCRIPTION>
+            % "FitRangeUpperValue" ... <NAMEVALUE DESCRIPTION>
+            
+            p = inputParser;
+            p.FunctionName = "calculate_adaptive_sensitivity_from_area";
+            p.CaseSensitive = false;
+            p.PartialMatching = true;
+            
+            % Required inputs
+            validobj = @(x)true;
+            addRequired(p,"obj",validobj);
+            
+            % NameValue inputs
+            defaultMask = ones(size(obj.Channel(1).Image));
+            defaultAppRetSwitch = 0;
+            defaultMovingWindowSize = obj.NumPixelsX;
+            defaultFitRangeMode = 'ValueHorizontal';
+            defaultFitRangeLowerFraction = 0;
+            defaultFitRangeUpperFraction = 0.25;
+            defaultFitRangeLowerValue = 0;
+            defaultFitRangeUpperValue = 4e-9;
+            validMask = @(x)isequal(size(x),size(obj.Channel(1).Image));
+            validAppRetSwitch = @(x)x==0|x==1|islogical(x);
+            validMovingWindowSize = @(x)x<=obj.NCurves;
+            validFitRangeMode = @(x)any(validatestring(x,{'ValueHorizontal','FractionHorizontal','ValueVertical','FractionVertical'}));
+            validFitRangeLowerFraction = @(x)(0<=x)&&(x<=1);
+            validFitRangeUpperFraction = @(x)(0<=x)&&(x<=1);
+            validFitRangeLowerValue = @(x)true;
+            validFitRangeUpperValue = @(x)true;
+            addParameter(p,"Mask",defaultMask,validMask);
+            addParameter(p,"AppRetSwitch",defaultAppRetSwitch,validAppRetSwitch);
+            addParameter(p,"MovingWindowSize",defaultMovingWindowSize,validMovingWindowSize);
+            addParameter(p,"FitRangeMode",defaultFitRangeMode,validFitRangeMode);
+            addParameter(p,"FitRangeLowerFraction",defaultFitRangeLowerFraction,validFitRangeLowerFraction);
+            addParameter(p,"FitRangeUpperFraction",defaultFitRangeUpperFraction,validFitRangeUpperFraction);
+            addParameter(p,"FitRangeLowerValue",defaultFitRangeLowerValue,validFitRangeLowerValue);
+            addParameter(p,"FitRangeUpperValue",defaultFitRangeUpperValue,validFitRangeUpperValue);
+            
+            parse(p,obj,varargin{:});
+            
+            % Assign parsing results to named variables
+            obj = p.Results.obj;
+            Mask = p.Results.Mask;
+            AppRetSwitch = p.Results.AppRetSwitch;
+            MovingWindowSize = p.Results.MovingWindowSize;
+            FitRangeMode = p.Results.FitRangeMode;
+            FitRangeLowerFraction = p.Results.FitRangeLowerFraction;
+            FitRangeUpperFraction = p.Results.FitRangeUpperFraction;
+            FitRangeLowerValue = p.Results.FitRangeLowerValue;
+            FitRangeUpperValue = p.Results.FitRangeUpperValue;
+            
+            
+            
         end
         
         function set_reference_slope_to_user_input(obj)
@@ -4426,7 +4574,9 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             
             Max = zeros(obj.NCurves,1);
             for i=1:obj.NCurves
-                [~,HHApp] = obj.get_force_curve_data(i,0,0,0);
+                [~,HHApp] = obj.get_force_curve_data(i,'AppRetSwitch',0,...
+                    'BaselineCorrection',0,'TipHeightCorrection',0,...
+                    'Sensitivity','original','Unit','N');
                 Max(i) = -max(HHApp);
             end
             TempHeightMap = obj.convert_data_list_to_map(Max);
@@ -4644,7 +4794,9 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             
             iRange = find(obj.SelectedCurves)';
             for i=iRange
-                [App,HHApp] = obj.get_force_curve_data(i,0,1,0);
+                [App,HHApp] = obj.get_force_curve_data(i,'AppRetSwitch',0,...
+                    'BaselineCorrection',1,'TipHeightCorrection',0,...
+                    'Sensitivity','original','Unit','N');
                 CutOff = min(HHApp) + range(HHApp(HHApp<=obj.CP_CNNZoom(i,1)))*ZoomFactor;
                 HHApp(HHApp<CutOff) = [];
                 App(1:(end-length(HHApp))) = [];
@@ -5206,63 +5358,115 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             end
         end
         
-        function [OutForce,OutHeight] = get_force_curve_data(obj,CurveNumber,AppRetSwitch,isBased,isTipHeightCorrected)
-            % [OutForce,OutHeight] = get_force_curve_data(obj,CurveNumber,AppRetSwitch,isBased,isTipHeightCorrected)
+        function [OutvDef,OutHeight] = get_force_curve_data(obj,CurveNumber,varargin)
+            % function [OutvDef,OutHeight] = get_force_curve_data(obj,CurveNumber,varargin)
+            %
+            % Get channel data from connected file container or class property and apply
+            % several corrections/operations to it. 
+            %
+            %
+            % Required inputs
+            % obj ... ForceMap instance
             % CurveNumber ... Index of curve to be loaded (counting from 1 to obj.NCurves)
-            % AppRetSwitch ... 0 for approach curve, 1 for retract curve
-            % isBased ... bool for base and tilt subtraction
-            % isTipHeightCorrected ... bool to decide if OutHeight is
+            %
+            % Name-Value pairs
+            % "AppRetSwitch" ... 0 for approach curve, 1 for retract curve
+            % "BaselineCorrection" ... logical for base and tilt subtraction
+            % "TipHeightCorrection" ... logical to decide if OutHeight is
             %                           HeadHeight (=0) or TipHeight (=1)
+            % "Sensitivity" ... type of sensitivity value:
+            %                   'original','corrected','adaptive'
+            % "Unit" ... conversion unit of OutvDef: 'N','m','V'
+            
+            p = inputParser;
+            p.FunctionName = "get_force_curve_data";
+            p.CaseSensitive = false;
+            p.PartialMatching = true;
+            
+            % Required inputs
+            validobj = @(x)true;
+            validCurveNumber = @(x)true;
+            addRequired(p,"obj",validobj);
+            addRequired(p,"CurveNumber",validCurveNumber);
+            
+            % NameValue inputs
+            defaultAppRetSwitch = 0;
+            defaultBaselineCorrection = false;
+            defaultTipHeightCorrection = false;
+            defaultSensitivity = 'original';
+            defaultUnit = 'N';
+            validAppRetSwitch = @(x)x==0|x==1|islogical(x);
+            validBaselineCorrection = @(x)x==0|x==1|islogical(x);
+            validTipHeightCorrection = @(x)x==0|x==1|islogical(x);
+            validSensitivity = @(x)any(validatestring(x,{'original','corrected','adaptive'}));
+            validUnit = @(x)any(validatestring(x,{'N','m','V'}));
+            addParameter(p,"AppRetSwitch",defaultAppRetSwitch,validAppRetSwitch);
+            addParameter(p,"BaselineCorrection",defaultBaselineCorrection,validBaselineCorrection);
+            addParameter(p,"TipHeightCorrection",defaultTipHeightCorrection,validTipHeightCorrection);
+            addParameter(p,"Sensitivity",defaultSensitivity,validSensitivity);
+            addParameter(p,"Unit",defaultUnit,validUnit);
+            
+            parse(p,obj,CurveNumber,varargin{:});
+            
+            % Assign parsing results to named variables
+            obj = p.Results.obj;
+            CurveNumber = p.Results.CurveNumber;
+            AppRetSwitch = p.Results.AppRetSwitch;
+            BaselineCorrection = p.Results.BaselineCorrection;
+            TipHeightCorrection = p.Results.TipHeightCorrection;
+            Sensitivity = p.Results.Sensitivity;
+            Unit = p.Results.Unit;
+            
             
             if CurveNumber > obj.NCurves
                 error('Requested curve index (%i) is bigger than maximum number of curves (%i)',CurveNumber,obj.NCurves);
             end
-            if (isBased || isTipHeightCorrected) && ~obj.BaseAndTiltFlag
+            if (BaselineCorrection || TipHeightCorrection) && ~obj.BaseAndTiltFlag
                 error('No Base and Tilt data found');
             end
             if isempty(obj.BigDataFlag) || ~obj.BigDataFlag
-                if AppRetSwitch==0 && isBased==0 && isTipHeightCorrected==0
-                    OutForce = obj.App{CurveNumber};
+                if AppRetSwitch==0 && BaselineCorrection==0 && TipHeightCorrection==0
+                    OutvDef = obj.App{CurveNumber};
                     OutHeight = obj.HHApp{CurveNumber};
-                elseif AppRetSwitch==1 && isBased==0 && isTipHeightCorrected==0
-                    OutForce = obj.Ret{CurveNumber};
+                elseif AppRetSwitch==1 && BaselineCorrection==0 && TipHeightCorrection==0
+                    OutvDef = obj.Ret{CurveNumber};
                     OutHeight = obj.HHRet{CurveNumber};
-                elseif AppRetSwitch==0 && isBased==1 && isTipHeightCorrected==0
-                    OutForce = obj.App{CurveNumber};
-                    OutHeight = obj.HHApp{CurveNumber};
-                    FittedApp = polyval(obj.Basefit{CurveNumber},OutHeight);
-                    OutForce = OutForce - FittedApp;
-                elseif AppRetSwitch==1 && isBased==1 && isTipHeightCorrected==0
-                    OutForce = obj.Ret{CurveNumber};
-                    OutHeight = obj.HHRet{CurveNumber};
-                    FittedRet = polyval(obj.Basefit{CurveNumber},OutHeight);
-                    OutForce = OutForce - FittedRet;
-                elseif AppRetSwitch==0 && isBased==0 && isTipHeightCorrected==1
-                    OutForce = obj.App{CurveNumber};
+                elseif AppRetSwitch==0 && BaselineCorrection==1 && TipHeightCorrection==0
+                    OutvDef = obj.App{CurveNumber};
                     OutHeight = obj.HHApp{CurveNumber};
                     FittedApp = polyval(obj.Basefit{CurveNumber},OutHeight);
-                    OutForce = OutForce - FittedApp;
-                    OutHeight = OutHeight - OutForce./obj.SpringConstant;
-                    OutForce = obj.App{CurveNumber};
-                elseif AppRetSwitch==1 && isBased==0 && isTipHeightCorrected==1
-                    OutForce = obj.Ret{CurveNumber};
+                    OutvDef = OutvDef - FittedApp;
+                elseif AppRetSwitch==1 && BaselineCorrection==1 && TipHeightCorrection==0
+                    OutvDef = obj.Ret{CurveNumber};
                     OutHeight = obj.HHRet{CurveNumber};
                     FittedRet = polyval(obj.Basefit{CurveNumber},OutHeight);
-                    OutForce = OutForce - FittedRet;
-                    OutHeight = OutHeight - OutForce./obj.SpringConstant;
-                    OutForce = obj.Ret{CurveNumber};
-                elseif AppRetSwitch==0 && isBased==1 && isTipHeightCorrected==1
-                    OutForce = obj.App{CurveNumber};
+                    OutvDef = OutvDef - FittedRet;
+                elseif AppRetSwitch==0 && BaselineCorrection==0 && TipHeightCorrection==1
+                    OutvDef = obj.App{CurveNumber};
                     OutHeight = obj.HHApp{CurveNumber};
                     FittedApp = polyval(obj.Basefit{CurveNumber},OutHeight);
-                    OutForce = OutForce - FittedApp;
-                    OutHeight = OutHeight - OutForce./obj.SpringConstant;
-                elseif AppRetSwitch==1 && isBased==1 && isTipHeightCorrected==1
-                    OutForce = obj.Ret{CurveNumber};
+                    OutvDef = OutvDef - FittedApp;
+                    OutHeight = OutHeight - OutvDef./obj.SpringConstant;
+                    OutvDef = obj.App{CurveNumber};
+                elseif AppRetSwitch==1 && BaselineCorrection==0 && TipHeightCorrection==1
+                    OutvDef = obj.Ret{CurveNumber};
                     OutHeight = obj.HHRet{CurveNumber};
                     FittedRet = polyval(obj.Basefit{CurveNumber},OutHeight);
-                    OutForce = OutForce - FittedRet;
-                    OutHeight = OutHeight - OutForce./obj.SpringConstant;
+                    OutvDef = OutvDef - FittedRet;
+                    OutHeight = OutHeight - OutvDef./obj.SpringConstant;
+                    OutvDef = obj.Ret{CurveNumber};
+                elseif AppRetSwitch==0 && BaselineCorrection==1 && TipHeightCorrection==1
+                    OutvDef = obj.App{CurveNumber};
+                    OutHeight = obj.HHApp{CurveNumber};
+                    FittedApp = polyval(obj.Basefit{CurveNumber},OutHeight);
+                    OutvDef = OutvDef - FittedApp;
+                    OutHeight = OutHeight - OutvDef./obj.SpringConstant;
+                elseif AppRetSwitch==1 && BaselineCorrection==1 && TipHeightCorrection==1
+                    OutvDef = obj.Ret{CurveNumber};
+                    OutHeight = obj.HHRet{CurveNumber};
+                    FittedRet = polyval(obj.Basefit{CurveNumber},OutHeight);
+                    OutvDef = OutvDef - FittedRet;
+                    OutHeight = OutHeight - OutvDef./obj.SpringConstant;
                 end
                 return
             end
@@ -5296,9 +5500,9 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 end
                 if obj.PythonLoaderFlag
                     TempHeight = obj.load_single_curve_channel_data_with_python(string(CurveNumber-1),string(AppRetSwitch),obj.HHType);
-                    OutForce = obj.load_single_curve_channel_data_with_python(string(CurveNumber-1),string(AppRetSwitch),'vDeflection');
+                    OutvDef = obj.load_single_curve_channel_data_with_python(string(CurveNumber-1),string(AppRetSwitch),'vDeflection');
                 else
-                    [TempHeight,OutForce,SC,Sens]=...
+                    [TempHeight,OutvDef,SC,Sens]=...
                         obj.writedata(HeaderFileDirectory,SegmentHeaderFileDirectory,...
                         HeightDataDirectory,vDefDataDirectory,obj.HHType);
                 end
@@ -5310,37 +5514,56 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 end
                 
                 OutHeight = -TempHeight;
-                OutForce = OutForce.*obj.SpringConstant;
+                OutvDef = OutvDef.*obj.SpringConstant;
                 
-                if AppRetSwitch==0 && isBased==0 && isTipHeightCorrected==0
-                elseif AppRetSwitch==1 && isBased==0 && isTipHeightCorrected==0
-                elseif AppRetSwitch==0 && isBased==1 && isTipHeightCorrected==0
+                if AppRetSwitch==0 && BaselineCorrection==0 && TipHeightCorrection==0
+                elseif AppRetSwitch==1 && BaselineCorrection==0 && TipHeightCorrection==0
+                elseif AppRetSwitch==0 && BaselineCorrection==1 && TipHeightCorrection==0
                     FittedApp = polyval(obj.Basefit{CurveNumber},OutHeight);
-                    OutForce = OutForce - FittedApp;
-                elseif AppRetSwitch==1 && isBased==1 && isTipHeightCorrected==0
+                    OutvDef = OutvDef - FittedApp;
+                elseif AppRetSwitch==1 && BaselineCorrection==1 && TipHeightCorrection==0
                     FittedRet = polyval(obj.Basefit{CurveNumber},OutHeight);
-                    OutForce = OutForce - FittedRet;
-                elseif AppRetSwitch==0 && isBased==0 && isTipHeightCorrected==1
-                    TempApp = OutForce;
+                    OutvDef = OutvDef - FittedRet;
+                elseif AppRetSwitch==0 && BaselineCorrection==0 && TipHeightCorrection==1
+                    TempApp = OutvDef;
                     FittedApp = polyval(obj.Basefit{CurveNumber},OutHeight);
-                    OutForce = OutForce - FittedApp;
-                    OutHeight = OutHeight - OutForce./obj.SpringConstant;
-                    OutForce = TempApp;
-                elseif AppRetSwitch==1 && isBased==0 && isTipHeightCorrected==1
-                    TempRet = OutForce;
+                    OutvDef = OutvDef - FittedApp;
+                    OutHeight = OutHeight - OutvDef./obj.SpringConstant;
+                    OutvDef = TempApp;
+                elseif AppRetSwitch==1 && BaselineCorrection==0 && TipHeightCorrection==1
+                    TempRet = OutvDef;
                     FittedRet = polyval(obj.Basefit{CurveNumber},OutHeight);
-                    OutForce = OutForce - FittedRet;
-                    OutHeight = OutHeight - OutForce./obj.SpringConstant;
-                    OutForce = TempRet;
-                elseif AppRetSwitch==0 && isBased==1 && isTipHeightCorrected==1
+                    OutvDef = OutvDef - FittedRet;
+                    OutHeight = OutHeight - OutvDef./obj.SpringConstant;
+                    OutvDef = TempRet;
+                elseif AppRetSwitch==0 && BaselineCorrection==1 && TipHeightCorrection==1
                     FittedApp = polyval(obj.Basefit{CurveNumber},OutHeight);
-                    OutForce = OutForce - FittedApp;
-                    OutHeight = OutHeight - OutForce./obj.SpringConstant;
-                elseif AppRetSwitch==1 && isBased==1 && isTipHeightCorrected==1
+                    OutvDef = OutvDef - FittedApp;
+                    OutHeight = OutHeight - OutvDef./obj.SpringConstant;
+                elseif AppRetSwitch==1 && BaselineCorrection==1 && TipHeightCorrection==1
                     FittedRet = polyval(obj.Basefit{CurveNumber},OutHeight);
-                    OutForce = OutForce - FittedRet;
-                    OutHeight = OutHeight - OutForce./obj.SpringConstant;
+                    OutvDef = OutvDef - FittedRet;
+                    OutHeight = OutHeight - OutvDef./obj.SpringConstant;
                 end
+                
+                if ~isequal(Unit,'V')
+                    switch Sensitivity
+                        case 'original'
+                        case 'corrected'
+                            OutvDef = OutvDef./obj.Sensitivity.*obj.RefSlopeCorrectedSensitivity;
+                        case 'adaptive'
+                            OutvDef = OutvDef./obj.Sensitivity.*obj.AdaptiveSensitivity(CurveNumber);
+                    end
+                end
+                switch Unit
+                    case 'N'
+                    case 'm'
+                        OutvDef = OutvDef./obj.SpringConstant;
+                    case 'V'
+                        OutvDef = OutvDef./(obj.SpringConstant*obj.Sensitivity);
+                end
+                
+                
             catch
                 disp(sprintf('Curve Nr. %i seems to be corrupted. Replacing with next non corrupted curve instead',CurveNumber))
                 obj.CorruptedCurves(CurveNumber) = true;
@@ -5352,7 +5575,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                         error('All force curves seem to be corrupted');
                     end
                 end
-                [OutForce,OutHeight] = obj.get_force_curve_data(mod(CurveNumber+k-1,obj.NCurves)+1,AppRetSwitch,isBased,isTipHeightCorrected);
+                [OutvDef,OutHeight] = obj.get_force_curve_data(mod(CurveNumber+k-1,obj.NCurves)+1,AppRetSwitch,BaselineCorrection,TipHeightCorrection);
             end
         end
         
@@ -5448,8 +5671,12 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             
             if OnOffBool && obj.BigDataFlag
                 for i=1:obj.NCurves
-                    [obj.App{i},obj.HHApp{i}] = obj.get_force_curve_data(i,0,0,0);
-                    [obj.Ret{i},obj.HHRet{i}] = obj.get_force_curve_data(i,1,0,0);
+                    [obj.App{i},obj.HHApp{i}] = obj.get_force_curve_data(i,'AppRetSwitch',0,...
+                    'BaselineCorrection',0,'TipHeightCorrection',0,...
+                    'Sensitivity','original','Unit','N');
+                    [obj.Ret{i},obj.HHRet{i}] = obj.get_force_curve_data(i,'AppRetSwitch',1,...
+                    'BaselineCorrection',0,'TipHeightCorrection',0,...
+                    'Sensitivity','original','Unit','N');
                 end
                 obj.BigDataFlag = 0;
             elseif ~OnOffBool
@@ -5557,11 +5784,19 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             end
             
             try
-                [AppY,AppX] = obj.get_force_curve_data(k,0,1,0);
-                [RetY,RetX] = obj.get_force_curve_data(k,1,1,0);
+                [AppY,AppX] = obj.get_force_curve_data(k,'AppRetSwitch',0,...
+                    'BaselineCorrection',1,'TipHeightCorrection',0,...
+                    'Sensitivity','original','Unit','N');
+                [RetY,RetX] = obj.get_force_curve_data(k,'AppRetSwitch',1,...
+                    'BaselineCorrection',1,'TipHeightCorrection',0,...
+                    'Sensitivity','original','Unit','N');
             catch
-                [AppY,AppX] = obj.get_force_curve_data(k,0,0,0);
-                [RetY,RetX] = obj.get_force_curve_data(k,1,0,0);
+                [AppY,AppX] = obj.get_force_curve_data(k,'AppRetSwitch',0,...
+                    'BaselineCorrection',0,'TipHeightCorrection',0,...
+                    'Sensitivity','original','Unit','N');
+                [RetY,RetX] = obj.get_force_curve_data(k,'AppRetSwitch',1,...
+                    'BaselineCorrection',0,'TipHeightCorrection',0,...
+                    'Sensitivity','original','Unit','N');
             end
             
             
@@ -5871,8 +6106,12 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 end
                 title('Height Map with Apex Points');
                 
-                [AppY,AppX] = obj.get_force_curve_data(k,0,1,0);
-                [RetY,RetX] = obj.get_force_curve_data(k,1,1,0);
+                [AppY,AppX] = obj.get_force_curve_data(k,'AppRetSwitch',0,...
+                    'BaselineCorrection',1,'TipHeightCorrection',0,...
+                    'Sensitivity','original','Unit','N');
+                [RetY,RetX] = obj.get_force_curve_data(k,'AppRetSwitch',1,...
+                    'BaselineCorrection',1,'TipHeightCorrection',0,...
+                    'Sensitivity','original','Unit','N');
                 
                 [MultiplierX,UnitX,~] = AFMImage.parse_unit_scale(range(RetX),'m',10);
                 [MultiplierY,UnitY,~] = AFMImage.parse_unit_scale(range(RetY./obj.SpringConstant),'m',5);
@@ -5985,8 +6224,12 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 end
                 title('Height Map with Apex Points');
                 
-                [AppY,AppX] = obj.get_force_curve_data(k,0,1,1);
-                [RetY,RetX] = obj.get_force_curve_data(k,1,1,1);
+                [AppY,AppX] = obj.get_force_curve_data(k,'AppRetSwitch',0,...
+                    'BaselineCorrection',1,'TipHeightCorrection',1,...
+                    'Sensitivity','original','Unit','N');
+                [RetY,RetX] = obj.get_force_curve_data(k,'AppRetSwitch',1,...
+                    'BaselineCorrection',1,'TipHeightCorrection',1,...
+                    'Sensitivity','original','Unit','N');
                 
                 subplot(2,2,2)
                 
@@ -6096,8 +6339,12 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 
                 subplot(2,3,2)
                 
-                [App,HHApp] = obj.get_force_curve_data(m,0,1,0);
-                [Ret,HHRet] = obj.get_force_curve_data(m,1,1,0);
+                [App,HHApp] = obj.get_force_curve_data(m,'AppRetSwitch',0,...
+                    'BaselineCorrection',1,'TipHeightCorrection',0,...
+                    'Sensitivity','original','Unit','N');
+                [Ret,HHRet] = obj.get_force_curve_data(m,'AppRetSwitch',1,...
+                    'BaselineCorrection',1,'TipHeightCorrection',0,...
+                    'Sensitivity','original','Unit','N');
                 
                 [MultiplierX,UnitX,~] = AFMImage.parse_unit_scale(range(HHRet),'m',10);
                 [MultiplierY,UnitY,~] = AFMImage.parse_unit_scale(range(Ret./obj.SpringConstant),'m',5);
@@ -6206,8 +6453,12 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 
                 subplot(2,2,2)
                 
-                [AppY,AppX] = obj.get_force_curve_data(m,0,1,1);
-                [RetY,RetX] = obj.get_force_curve_data(m,1,1,1);
+                [AppY,AppX] = obj.get_force_curve_data(m,'AppRetSwitch',0,...
+                    'BaselineCorrection',1,'TipHeightCorrection',1,...
+                    'Sensitivity','original','Unit','N');
+                [RetY,RetX] = obj.get_force_curve_data(m,'AppRetSwitch',1,...
+                    'BaselineCorrection',1,'TipHeightCorrection',1,...
+                    'Sensitivity','original','Unit','N');
                 
                 % Determine X-Range for HertzModel
                 X = AppX - obj.CP(m,1);
