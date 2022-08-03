@@ -4399,6 +4399,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             % "FitRangeUpperFraction" ... <NAMEVALUE DESCRIPTION>
             % "FitRangeLowerValue" ... <NAMEVALUE DESCRIPTION>
             % "FitRangeUpperValue" ... <NAMEVALUE DESCRIPTION>
+            % "Verbose" ... <NAMEVALUE DESCRIPTION>
             
             p = inputParser;
             p.FunctionName = "calculate_adaptive_sensitivity_from_area";
@@ -4418,14 +4419,16 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             defaultFitRangeUpperFraction = 0.25;
             defaultFitRangeLowerValue = 0;
             defaultFitRangeUpperValue = 4e-9;
+            defaultVerbose = false;
             validMask = @(x)isequal(size(x),size(obj.Channel(1).Image));
             validAppRetSwitch = @(x)x==0|x==1|islogical(x);
             validMovingWindowSize = @(x)x<=obj.NCurves;
             validFitRangeMode = @(x)any(validatestring(x,{'ValueHorizontal','FractionHorizontal','ValueVertical','FractionVertical'}));
             validFitRangeLowerFraction = @(x)(0<=x)&&(x<=1);
             validFitRangeUpperFraction = @(x)(0<=x)&&(x<=1);
-            validFitRangeLowerValue = @(x)true;
-            validFitRangeUpperValue = @(x)true;
+            validFitRangeLowerValue = @(x)isscalar(x);
+            validFitRangeUpperValue = @(x)isscalar(x);
+            validVerbose = @(x)islogical(x);
             addParameter(p,"Mask",defaultMask,validMask);
             addParameter(p,"AppRetSwitch",defaultAppRetSwitch,validAppRetSwitch);
             addParameter(p,"MovingWindowSize",defaultMovingWindowSize,validMovingWindowSize);
@@ -4434,6 +4437,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             addParameter(p,"FitRangeUpperFraction",defaultFitRangeUpperFraction,validFitRangeUpperFraction);
             addParameter(p,"FitRangeLowerValue",defaultFitRangeLowerValue,validFitRangeLowerValue);
             addParameter(p,"FitRangeUpperValue",defaultFitRangeUpperValue,validFitRangeUpperValue);
+            addParameter(p,"Verbose",defaultVerbose,validVerbose);
             
             parse(p,obj,varargin{:});
             
@@ -4447,8 +4451,90 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             FitRangeUpperFraction = p.Results.FitRangeUpperFraction;
             FitRangeLowerValue = p.Results.FitRangeLowerValue;
             FitRangeUpperValue = p.Results.FitRangeUpperValue;
+            Verbose = p.Results.Verbose;
             
             
+            Range = find(obj.SelectedCurves & ~obj.CorruptedCurves);
+            isCalibrationCurve = false(obj.NCurves,1);
+            DZSlopes = ones(obj.NCurves,1);
+            
+            % first, calculate all the DZ-Slopes
+            for i=Range'
+                [vDef,Height] = obj.get_force_curve_data(i,'AppRetSwitch',AppRetSwitch,...
+                    'BaselineCorrection',1,'TipHeightCorrection',0,...
+                    'Sensitivity','original','Unit','m');
+                switch FitRangeMode
+                    case 'ValueHorizontal'
+                        UValue = max(Height) - FitRangeLowerValue;
+                        LValue = max(Height) - FitRangeUpperValue;
+                        FitHeight = Height(Height>=LValue & Height<=UValue);
+                        FitvDef = vDef(Height>=LValue & Height<=UValue);
+                    case 'ValueVertical'
+                        FitHeight = Height(vDef>=FitRangeLowerValue & vDef<=FitRangeUpperValue);
+                        FitvDef = vDef(vDef>=FitRangeLowerValue & vDef<=FitRangeUpperValue);
+                    case 'FractionHorizontal'
+                        RangeHeight = range(Height);
+                        FitHeight = Height(Height>=FitRangeLowerValue*RangeHeight & Height<=FitRangeUpperValue*RangeHeight);
+                        FitvDef = vDef(Height>=FitRangeLowerValue*RangeHeight & Height<=FitRangeUpperValue*RangeHeight);
+                    case 'FractionVertical'
+                        RangevDef = range(vDef);
+                        FitHeight = Height(vDef>=FitRangeLowerValue*RangevDef & vDef<=FitRangeUpperValue*RangevDef);
+                        FitvDef = vDef(vDef>=FitRangeLowerValue*RangevDef & vDef<=FitRangeUpperValue*RangevDef);
+                end
+                Params(i,:) = polyfit(FitHeight,FitvDef,1);
+                DZSlopes(i) = Params(i,1);
+                
+                if (Mask(obj.List2Map(i,1),obj.List2Map(i,2)) == 1) &&...
+                        (obj.ExclMask(obj.List2Map(i,1),obj.List2Map(i,2)) == 1)
+                    isCalibrationCurve(i) = true;
+                end
+            end
+            CalibrationCurveIndizes = find(isCalibrationCurve);
+            
+            if Verbose 
+                BackgroundImage = obj.convert_data_list_to_map(isCalibrationCurve).*.2;
+                F = figure('Color','w');
+            end
+            
+            % Calculate median slope inside sliding window around current
+            % point. The sliding window does not shrink below
+            % MovingWindowSize/2 around the boundaries.
+            LowerWindow = floor((MovingWindowSize-1)/2)+1;
+            UpperWindow = ceil((MovingWindowSize-1)/2);
+            for i=Range'
+                TempLowerIndex = CalibrationCurveIndizes(CalibrationCurveIndizes <= i);
+                TempUpperIndex = CalibrationCurveIndizes(CalibrationCurveIndizes > i);
+                DiffLow = max(LowerWindow - length(TempLowerIndex),0);
+                DiffUp = max(UpperWindow - length(TempUpperIndex),0);
+                LowerIndizes = TempLowerIndex(max(1,end+1-(DiffUp + LowerWindow - DiffLow)):end);
+                UpperIndizes = TempUpperIndex(1:min(end,(DiffLow + UpperWindow - DiffUp)));
+                WindowIndizes = [LowerIndizes' UpperIndizes'];
+                WindowSlopes = DZSlopes(WindowIndizes);
+                AdaptiveMedianRefSlope(i) = median(WindowSlopes);
+                if Verbose
+                    CurrentWindowList = zeros(obj.NCurves,1);
+                    CurrentWindowList(WindowIndizes) = .8;
+                    CurrentWindowImage = obj.convert_data_list_to_map(CurrentWindowList);
+                    CurrentCombinedImage = BackgroundImage + CurrentWindowImage;
+                    gcf = F;
+                    subplot(2,2,1:2)
+                    imshow(CurrentCombinedImage,[]);
+                    subplot(2,2,3)
+                    title('Adaptive Median Slope')
+                    plot(AdaptiveMedianRefSlope(1:i))
+                    ylim([0 2])
+                    subplot(2,2,4)
+                    plot(Height,vDef,Height,polyval(Params(i,:),Height))
+                    legend({'Data','Slope'})
+                    title(['Current Point: ' num2str(i) '    CurrentSlope: ' num2str(AdaptiveMedianRefSlope(i))])
+                    drawnow
+                    if length(WindowIndizes) ~= MovingWindowSize
+                        disp(['Something went wrong! Length of Window: ' num2str(length(WindowIndizes))])
+                    end
+                end
+            end
+            
+            obj.AdaptiveSensitivity = obj.Sensitivity./AdaptiveMedianRefSlope;
             
         end
         
@@ -5575,7 +5661,10 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                         error('All force curves seem to be corrupted');
                     end
                 end
-                [OutvDef,OutHeight] = obj.get_force_curve_data(mod(CurveNumber+k-1,obj.NCurves)+1,AppRetSwitch,BaselineCorrection,TipHeightCorrection);
+                [OutvDef,OutHeight] = obj.get_force_curve_data(mod(CurveNumber+k-1,obj.NCurves)+1,...
+                    'AppRetSwitch',AppRetSwitch,'BaselineCorrection',BaselineCorrection,...
+                    'TipHeightCorrection',TipHeightCorrection,'Sensitivity',Sensitivity,...
+                    'Unit',Unit);
             end
         end
         
