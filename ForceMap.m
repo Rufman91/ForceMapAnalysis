@@ -2006,7 +2006,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             elseif isempty(ext42)==0
                 obj.Linker='short'; % short linker
             else
-                  obj.Linker='amino'; 
+                obj.Linker='';
+                %obj.Linker='amino'; 
                 %obj.Linker='naked';                 
                 %obj.Linker='long';
                 %obj.Linker='short';
@@ -2470,7 +2471,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 RetIdx2=find(RetCond2,1,'first'); % Read out the index of the first cell that fulfil the argument
                 % Allocate data
                 obj.AppIdx1(Fc)=AppIdx1;    % 200 nm index of approach data
-                obj.RetIdx1(Fc)=RetIdx1;    % 50 nm index of retraction data
+                obj.RetIdx1(Fc)=RetIdx1;    % 20 nm index of retraction data
                 obj.RetIdx2(Fc)=RetIdx2;    % 300 nm index of retraction data
             end     
               %% Appendix
@@ -4932,6 +4933,136 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             yRet=obj.BasedRet{Fc}/Ymultiplier;
             yAppLim=obj.yAppLim{Fc}/Ymultiplier;
             yRetLim=obj.yRetLim{Fc}/Ymultiplier;
+            TheoretCollLength1=310;
+            TheoretCollLength2=463;
+            %      xPolygon1=[-10 1000 1000 -10];
+            %      yPolygon1=[0 0 -14e-3 -14e-3];
+            %      yPolygon2=[-14e-3 -14e-3 -0.9 -0.9];
+            %      PolygonShape1=polyshape(xPolygon1,yPolygon1);
+            %      PolygonShape2=polyshape(xPolygon1,yPolygon2);
+            %
+            %% Figure
+            % h_fig=figure(ii);
+            h_fig=figure(1);
+            h_fig.Color='white'; % changes the background color of the figure
+            h_fig.Units='normalized'; % Defines the units
+            h_fig.OuterPosition=[0 0 1 1];% changes the size of the to the whole screen
+            %h_fig.Units='pixel'; % Defines the units
+            %h_fig.OuterPosition=res;
+            h_fig.PaperOrientation='landscape';
+            h_fig.Name=figname;
+            % Plot
+            hold on
+             grid on
+             if obj.PullingLengthIdx(Fc)
+             area(xRet(1:obj.PullingLengthIdx(Fc)),yRetLim(1:obj.PullingLengthIdx(Fc)),'FaceColor',CS5)
+             else 
+             end
+             if obj.SnapInIdx(Fc)
+             area(xApp(obj.SnapInIdx(Fc):end),yAppLim(obj.SnapInIdx(Fc):end),'FaceColor',CS7)
+             else
+            end    
+            plot(xApp,yApp,'Color',RGB1,'LineWidth',6);
+            plot(xRet,yRet,'Color',RGB2,'LineWidth',6);
+            xlineLabel={'310 nm','463 nm'};
+            xline([TheoretCollLength1,TheoretCollLength2],'--',xlineLabel,'LabelOrientation','horizontal','FontSize',32,'LineWidth',6);
+            %            Polygon1=plot(PolygonShape1);
+            %            Polygon1.FaceColor=CS10;
+            %            Polygon1.EdgeColor='none';            
+            % Legend
+            % le=legend(' Adhesion energy',' Approach data',' Retraction data','Location','best');
+            % le.FontSize = 48;
+            % le.EdgeColor='w';
+            %le.Box = 'off';
+            %%% Axes
+            ax = gca; % current axes
+            ax.FontSize = 46;
+            ax.LineWidth = 5;
+            %   ax.XTick=0:100:400;
+            % ax.XTickLabel=[];
+            %    ax.YTick=-0.3:0.1:0.2;
+            % ax.YTickLabel=[];
+            ax.XLabel.String = 'Tip-Substrate separation (nm)';
+            ax.XLabel.FontSize = 46;
+            ax.YLabel.String = 'Force (nN)';
+            ax.YLabel.FontSize = 46;
+            ax.YLimMode='manual';
+            ax.XLim = [XMin XMax];
+            ax.YLim = [YMin YMax];
+            % Title
+            ax.Title.String=sprintf('Force map %d Force-distance curve %d',Fm,Fc);
+            ax.Subtitle.String=strcat(obj.Date,{' '},obj.Time,{' '},obj.ID);
+            ax.Subtitle.FontSize = 32;
+%            ax.Title.Color=HEX8DB600;
+%             ti=title(sprintf('Force map %d Force-distance curve %d',Fm,Fc));
+%             ti.Units='normalized'; % Set units to 'normalized'
+%             ti.Position=[0.5,0.95]; % Position the subplot title within the subplot
+            %% Save figures
+            %%% Define the name for the figure title
+            partname=sprintf('-ForceCurve%d',Fc);
+            % fullname=sprintf('%s%s',figname,partname);
+            fullname=sprintf('%s%s',figname,partname);
+            %%% Save the current figure in the current folder
+            print(gcf,fullname,'-dpng');
+            % House keeping
+            close all
+        end
+
+        function fc_fine_figure_publication(obj,XMin,XMax,YMin,YMax,Fm,Fc)
+           % function fc_fine_figure(obj,XMin,XMax,YMin,YMax,ii)
+
+            if nargin < 2
+                XMin= -inf;
+                XMax= inf;
+                YMin= -inf;
+                YMax= inf;
+            end
+
+            % Define RGB colours
+            % Define variables
+            HEX8DB600=[141 182 0]./255; % Apple green
+            HEXCE1620=[206 22 32]./255; % Fire Engine Red
+            HEX8F00FF=[143 0 255]./255; % Violet
+            RGB1=[0 26 255]./255;  % Blue
+            RGB2=[255 119 0]./255; % Orange
+            RGB7=[255 230 0]./255; % Yellow
+            RGB8=[80 200 204]./255; % Turquoise
+            RGB10=[200 0 255]./255; % Violet
+            RGB11=[200 255 150]./255; % Light Green
+            RGB12=[185 230 254]./255; % Light Blue
+            RGB13=[200 0 0]./255; % Red
+            RGB_A4=[66 255 0]./255; % Green
+            CS1=[165 0 38]./255; % Dark reddish
+            CS2=[215 48 39]./255; % Light reddish
+            CS3=[244 109 67]./255; % Orangish
+            CS4=[253 174 97]./255; % Ochreish
+            CS5=[254 224 144]./255; % Yellowish
+            CS6=[224 243 248]./255; % Pastel blueish
+            CS7=[171 217 233]./255; % Light blueish
+            CS8=[116 173 209]./255; % Steel blueish
+            CS9=[69 117 180]./255; % Distant blueish
+            CS10=[49 54 149]./255; % Pale ultramarineish
+            Res=[1 1 2560 1440]; % Define the figure resolution
+            % Parse unit scale function
+            [Xmultiplier,Xunit,~] = AFMImage.parse_unit_scale(1e+9,'nm',1);
+            [Ymultiplier,Yunit,~] = AFMImage.parse_unit_scale(1e+9,'nN',1);
+            % Define variables for the figure name         
+            ExtendVelocityConvert=num2str(round(obj.ExtendVelocity,8)*1e9);
+            RetractVelocityConvert=num2str(round(obj.RetractVelocity,8)*1e9);
+            HoldingTimeConvert=num2str(round(obj.HoldingTime,2));
+            FcNumConvert=num2str(Fc);
+            % Classification criteria
+            figname=strcat(obj.Date,{'_'},obj.Time,{'_'},obj.ID,{'_'},'Fc',FcNumConvert,{'_'},obj.Substrate,{'_'},obj.EnvCond,{'_'},obj.Linker,{'_'},obj.Chipbox,{'_'},obj.ChipCant,{'_'},ExtendVelocityConvert,{'_'},RetractVelocityConvert,{'_'},HoldingTimeConvert);
+            figname=char(figname);
+            %% Allocate data       
+            xApp=(obj.THApp{Fc}-obj.CP_HardSurface(Fc))/-Xmultiplier; % Retraction x-data (m): Vertical tip height data corrected by the determined contact point using the hard surface method
+            xRet=(obj.THRet{Fc}-obj.CP_HardSurface(Fc))/-Xmultiplier; % Retraction x-data (m): Vertical tip height data corrected by the determined contact point using the hard surface method
+            yApp=obj.BasedApp{Fc}/Ymultiplier;
+            yRet=obj.BasedRet{Fc}/Ymultiplier;
+            yAppLim=obj.yAppLim{Fc}/Ymultiplier;
+            yRetLim=obj.yRetLim{Fc}/Ymultiplier;
+            TheoretCollLength1=310;
+            TheoretCollLength2=463;
             %      xPolygon1=[-10 1000 1000 -10];
             %      yPolygon1=[0 0 -14e-3 -14e-3];
             %      yPolygon2=[-14e-3 -14e-3 -0.9 -0.9];
@@ -4961,6 +5092,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
              end    
             plot(xApp,yApp,'Color',RGB1,'LineWidth',6);
             plot(xRet,yRet,'Color',RGB2,'LineWidth',6);
+%            xlineLabel={'310 nm','463 nm'};
+%            xline([TheoretCollLength1,TheoretCollLength2],'--',xlineLabel,'LabelOrientation','horizontal','FontSize',32,'LineWidth',6);
             %            Polygon1=plot(PolygonShape1);
             %            Polygon1.FaceColor=CS10;
             %            Polygon1.EdgeColor='none';            
@@ -4971,22 +5104,24 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             %le.Box = 'off';
             %%% Axes
             ax = gca; % current axes
-            ax.FontSize = 48;
+            ax.FontSize = 46;
             ax.LineWidth = 5;
             %   ax.XTick=0:100:400;
             % ax.XTickLabel=[];
             %    ax.YTick=-0.3:0.1:0.2;
             % ax.YTickLabel=[];
             ax.XLabel.String = 'Tip-Substrate separation (nm)';
-            ax.XLabel.FontSize = 52;
-            ax.YLabel.String = 'Adhesion force (nN)';
-            ax.YLabel.FontSize = 52;
+            ax.XLabel.FontSize = 46;
+            ax.YLabel.String = 'Force (nN)';
+            ax.YLabel.FontSize = 46;
             ax.YLimMode='manual';
             ax.XLim = [XMin XMax];
             ax.YLim = [YMin YMax];
             % Title
-        %    ax.Title.String='Native phase';
-        %    ax.Title.Color=HEX8DB600;
+%             ax.Title.String=sprintf('Force map %d Force-distance curve %d',Fm,Fc);
+%             ax.Subtitle.String=strcat(obj.Date,{' '},obj.Time,{' '},obj.ID);
+%             ax.Subtitle.FontSize = 32;
+%            ax.Title.Color=HEX8DB600;
 %             ti=title(sprintf('Force map %d Force-distance curve %d',Fm,Fc));
 %             ti.Units='normalized'; % Set units to 'normalized'
 %             ti.Position=[0.5,0.95]; % Position the subplot title within the subplot
