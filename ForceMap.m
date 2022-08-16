@@ -1235,7 +1235,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 UpperCurveFraction,AllowXShift,CorrectSensitivity,UseTipData,...
                 UseTopology,TipObject,DataWeightByDistanceBool,...
                 SortHeightDataForFit,FitDegreeForSneddonPolySurf,...
-                LowerForceCutoff,UpperForceCutoff)
+                LowerForceCutoff,UpperForceCutoff,...
+                SensitivityCorrectionMethod)
 %                 E = calculate_e_mod_hertz(obj,CPType,TipShape,LowerCurveFraction,...
 %                 UpperCurveFraction,AllowXShift,CorrectSensitivity,UseTipData,...
 %                 UseTopology,TipObject,DataWeightByDistanceBool,...
@@ -1296,16 +1297,31 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                     CP = obj.CP(iRange(1:BatchSize),:);
                 end
                 for i=1:BatchSize
-                    [App{i},HHApp{i}] = obj.get_force_curve_data(iRange(i),'AppRetSwitch',0,...
-                    'BaselineCorrection',1,'TipHeightCorrection',0,...
-                    'Sensitivity','original','Unit','N');
+                    
+                    if CorrectSensitivity
+                        if isequal(SensitivityCorrectionMethod,'Adaptive')
+                            [App{i},HHApp{i}] = obj.get_force_curve_data(iRange(i),...
+                                'AppRetSwitch',0,...
+                                'BaselineCorrection',1,...
+                                'TipHeightCorrection',0,...
+                                'Sensitivity','adaptive',...
+                                'Unit','N');
+                        else
+                            [App{i},HHApp{i}] = obj.get_force_curve_data(iRange(i),'AppRetSwitch',0,...
+                                'BaselineCorrection',1,'TipHeightCorrection',0,...
+                                'Sensitivity','corrected',...
+                                'Unit','N');
+                        end
+                    else
+                        [App{i},HHApp{i}] = obj.get_force_curve_data(iRange(i),'AppRetSwitch',0,...
+                            'BaselineCorrection',1,'TipHeightCorrection',0,...
+                            'Sensitivity','original',...
+                            'Unit','N');
+                    end
                     if SortHeightDataForFit
                         HHApp{i} = sort(HHApp{i},'ascend');
                     end
                     force{i} = App{i} - CP(i,2);
-                    if CorrectSensitivity
-                        force{i} = force{i}.*obj.RefSlopeCorrectedSensitivity/obj.Sensitivity;
-                    end
                     tip_h{i} = (HHApp{i} - CP(i,1)) - force{i}/obj.SpringConstant;
                     tip_h{i}(tip_h{i} < 0) = [];
                     force{i}(1:(length(force{i})-length(tip_h{i}))) = [];
@@ -4415,8 +4431,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             defaultAppRetSwitch = 0;
             defaultMovingWindowSize = obj.NumPixelsX;
             defaultFitRangeMode = 'ValueHorizontal';
-            defaultFitRangeLowerFraction = 0;
-            defaultFitRangeUpperFraction = 0.25;
+            defaultFitRangeLowerFraction = 0.75;
+            defaultFitRangeUpperFraction = 1;
             defaultFitRangeLowerValue = 0;
             defaultFitRangeUpperValue = 4e-9;
             defaultVerbose = false;
@@ -4474,12 +4490,14 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                         FitvDef = vDef(vDef>=FitRangeLowerValue & vDef<=FitRangeUpperValue);
                     case 'FractionHorizontal'
                         RangeHeight = range(Height);
-                        FitHeight = Height(Height>=FitRangeLowerValue*RangeHeight & Height<=FitRangeUpperValue*RangeHeight);
-                        FitvDef = vDef(Height>=FitRangeLowerValue*RangeHeight & Height<=FitRangeUpperValue*RangeHeight);
+                        FitHeight = Height((Height-min(Height))>=FitRangeLowerFraction*RangeHeight &...
+                            (Height-min(Height))<=FitRangeUpperFraction*RangeHeight);
+                        FitvDef = vDef((Height-min(Height))>=FitRangeLowerFraction*RangeHeight &...
+                            (Height-min(Height))<=FitRangeUpperFraction*RangeHeight);
                     case 'FractionVertical'
-                        RangevDef = range(vDef);
-                        FitHeight = Height(vDef>=FitRangeLowerValue*RangevDef & vDef<=FitRangeUpperValue*RangevDef);
-                        FitvDef = vDef(vDef>=FitRangeLowerValue*RangevDef & vDef<=FitRangeUpperValue*RangevDef);
+                        MaxvDef = max(vDef);
+                        FitHeight = Height(vDef>=FitRangeLowerFraction*MaxvDef & vDef<=FitRangeUpperFraction*MaxvDef);
+                        FitvDef = vDef(vDef>=FitRangeLowerFraction*MaxvDef & vDef<=FitRangeUpperFraction*MaxvDef);
                 end
                 Params(i,:) = polyfit(FitHeight,FitvDef,1);
                 DZSlopes(i) = Params(i,1);
@@ -4494,6 +4512,19 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             if Verbose 
                 BackgroundImage = obj.convert_data_list_to_map(isCalibrationCurve).*.2;
                 F = figure('Color','w');
+            end
+            
+            if MovingWindowSize == obj.NCurves
+            % Fit the log-Gaussian
+            DZslopeCleaned = DZSlopes;
+            DZslopeCleaned(DZslopeCleaned <= 0) = [];
+            DZslopeCleaned = exp(rmoutliers(log(DZslopeCleaned),'quartiles'));
+            Gaussian = fitdist(DZslopeCleaned','Lognormal');
+            % Expected value of a lognormal is exp(mu + sigma^2/2)
+            obj.RefSlope = exp(Gaussian.mu+Gaussian.sigma^2/2);
+            obj.RefSlopeCorrectedSensitivity = obj.Sensitivity/obj.RefSlope;
+            obj.HasRefSlope = true;
+            return
             end
             
             % Calculate median slope inside sliding window around current
@@ -4517,20 +4548,44 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                     CurrentWindowImage = obj.convert_data_list_to_map(CurrentWindowList);
                     CurrentCombinedImage = BackgroundImage + CurrentWindowImage;
                     gcf = F;
-                    subplot(2,2,1:2)
+                    subplot(2,2,1)
                     imshow(CurrentCombinedImage,[]);
+                    subplot(2,2,2)
+                    histogram(WindowSlopes)
+                    hold on
+                    plot(AdaptiveMedianRefSlope(i),MovingWindowSize)
+                    hold off
                     subplot(2,2,3)
                     title('Adaptive Median Slope')
                     plot(AdaptiveMedianRefSlope(1:i))
                     ylim([0 2])
                     subplot(2,2,4)
-                    plot(Height,vDef,Height,polyval(Params(i,:),Height))
-                    legend({'Data','Slope'})
+                    [vDef,Height] = obj.get_force_curve_data(i,'AppRetSwitch',AppRetSwitch,...
+                        'BaselineCorrection',1,'TipHeightCorrection',0,...
+                        'Sensitivity','original','Unit','m');
+                    switch FitRangeMode
+                        case 'ValueHorizontal'
+                            UValue = max(Height) - FitRangeLowerValue;
+                            LValue = max(Height) - FitRangeUpperValue;
+                            FitHeight = Height(Height>=LValue & Height<=UValue);
+                            FitvDef = vDef(Height>=LValue & Height<=UValue);
+                        case 'ValueVertical'
+                            FitHeight = Height(vDef>=FitRangeLowerValue & vDef<=FitRangeUpperValue);
+                            FitvDef = vDef(vDef>=FitRangeLowerValue & vDef<=FitRangeUpperValue);
+                        case 'FractionHorizontal'
+                            RangeHeight = range(Height);
+                            FitHeight = Height(Height>=FitRangeLowerValue*RangeHeight & Height<=FitRangeUpperValue*RangeHeight);
+                            FitvDef = vDef(Height>=FitRangeLowerValue*RangeHeight & Height<=FitRangeUpperValue*RangeHeight);
+                        case 'FractionVertical'
+                            MaxvDef = range(vDef);
+                            FitHeight = Height(vDef>=FitRangeLowerValue*MaxvDef & vDef<=FitRangeUpperValue*MaxvDef);
+                            FitvDef = vDef(vDef>=FitRangeLowerValue*MaxvDef & vDef<=FitRangeUpperValue*MaxvDef);
+                    end
+                    plot(Height,vDef,FitHeight,FitvDef,FitHeight,polyval(Params(i,:),FitHeight))
+                    xlim([max(FitHeight)-range(FitHeight)*2 max(FitHeight)])
+                    legend({'Data','Fit Data','Fitted Slope'})
                     title(['Current Point: ' num2str(i) '    CurrentSlope: ' num2str(AdaptiveMedianRefSlope(i))])
                     drawnow
-                    if length(WindowIndizes) ~= MovingWindowSize
-                        disp(['Something went wrong! Length of Window: ' num2str(length(WindowIndizes))])
-                    end
                 end
             end
             
@@ -5553,6 +5608,22 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                     FittedRet = polyval(obj.Basefit{CurveNumber},OutHeight);
                     OutvDef = OutvDef - FittedRet;
                     OutHeight = OutHeight - OutvDef./obj.SpringConstant;
+                end
+                if ~isequal(Unit,'V')
+                    switch Sensitivity
+                        case 'original'
+                        case 'corrected'
+                            OutvDef = OutvDef./obj.Sensitivity.*obj.RefSlopeCorrectedSensitivity;
+                        case 'adaptive'
+                            OutvDef = OutvDef./obj.Sensitivity.*obj.AdaptiveSensitivity(CurveNumber);
+                    end
+                end
+                switch Unit
+                    case 'N'
+                    case 'm'
+                        OutvDef = OutvDef./obj.SpringConstant;
+                    case 'V'
+                        OutvDef = OutvDef./(obj.SpringConstant*obj.Sensitivity);
                 end
                 return
             end
