@@ -7119,6 +7119,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 obj.ReferenceSlopeFlag.FromArea = false;
                 obj.ReferenceSlopeFlag.AutomaticFibril = false;
                 obj.ReferenceSlopeFlag.Automatic = false;
+                obj.ReferenceSlopeFlag.Adaptive = false;
                 if obj.NumReferenceForceMaps > 0
                     obj.ReferenceSlopeFlag.FromRefFM = true;
                 end

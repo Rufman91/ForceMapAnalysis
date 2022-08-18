@@ -4516,10 +4516,10 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             
             if MovingWindowSize == obj.NCurves
             % Fit the log-Gaussian
-            DZslopeCleaned = DZSlopes;
+            DZslopeCleaned = DZSlopes(CalibrationCurveIndizes);
             DZslopeCleaned(DZslopeCleaned <= 0) = [];
             DZslopeCleaned = exp(rmoutliers(log(DZslopeCleaned),'quartiles'));
-            Gaussian = fitdist(DZslopeCleaned','Lognormal');
+            Gaussian = fitdist(DZslopeCleaned,'Lognormal');
             % Expected value of a lognormal is exp(mu + sigma^2/2)
             obj.RefSlope = exp(Gaussian.mu+Gaussian.sigma^2/2);
             obj.RefSlopeCorrectedSensitivity = obj.Sensitivity/obj.RefSlope;
