@@ -1002,6 +1002,8 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle
                 Polyline = drawpolyline(Ax.Parent,'Position',obj.Segment(i).ROIObject.Position);
                 FirstMask = Polyline.createMask;
                 TempMask = FirstMask;
+                [TempRow,TempCol] = find(FirstMask == 1);
+                SegmentPixelIndizes{i} = [TempRow TempCol];
                 PixelDil = 1;
                 while PixelDil <= floor(WidthLocalWindowPixels)
                     Dilated = imdilate(FirstMask,strel('disk',PixelDil));
@@ -1045,6 +1047,7 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle
                 LocalWidthHalfProminence = zeros(length(SegmentPositions(:,1)),1);
                 LocalArea = zeros(length(SegmentPositions(:,1)),1);
                 LocalWidthBase = zeros(length(SegmentPositions(:,1)),1);
+                LocalPosition = zeros(length(SegmentPositions(:,1)),2);
                 for j=1:length(SegmentPositions(:,1))
                     PerpendicularVector(j,:) = [LocalDirectionVector(j,2) -LocalDirectionVector(j,1)]/norm(LocalDirectionVector(j,:));
                     WindowStart =SegmentPositions(j,:) + PerpendicularVector(j,:).*WidthLocalWindowPixels/2;
@@ -1127,6 +1130,7 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle
                         LocalWidthHalfProminence(j) = nan;
                         LocalArea(j) = nan;
                         LocalWidthBase(j) = nan;
+                        LocalPosition(j,:) = [nan nan];
                         continue
                     end
                     % find out local area
@@ -1166,11 +1170,19 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle
                         LocalWidthBase(j) = nan;
                     end
                     
+                    % Find corresponding Pixel by distance
+                    DistanceVector = SegmentPixelIndizes{i} - [LocalPosition(j,2) LocalPosition(j,1)];
+                    Distances = vecnorm(DistanceVector,2,2);
+                    [~,IndexOfClosest] = min(Distances);
+                    TempCorrespondingPixelIndex(j,:) = SegmentPixelIndizes{i}(IndexOfClosest,:);
+                    
                     % Write down results
                     LocalHeight(j) = Heights(WinnerIndex);
                     LocalProminence(j) = Prom(WinnerIndex);
                     LocalWidthHalfHeight(j) = TempWidthHalfHeight(WinnerIndex);
                     LocalWidthHalfProminence(j) = TempWidthHalfProm(WinnerIndex);
+                    LocalPosition(j,1) = LocalX(WinnerIndex);
+                    LocalPosition(j,2) = LocalY(WinnerIndex);
                 end
                 % find out overall segment pathlength
                 for m=size(SegmentPositions,1):-1:1
@@ -1242,16 +1254,37 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle
                 obj.Segment(i).Mean_AspectRatioBaseHeight = nanmean(LocalHeight./LocalWidthBase);
                 Struct(k).Median_AspectRatioBaseHeight = nanmedian(LocalHeight./LocalWidthBase);
                 obj.Segment(i).Median_AspectRatioBaseHeight = nanmedian(LocalHeight./LocalWidthBase);
-                Struct(k).AreaDerivedDiameter = sqrt(LocalArea/pi).*2;
-                obj.Segment(i).AreaDerivedDiameter = sqrt(LocalArea/pi).*2;
-                Struct(k).Mean_AreaDerivedDiameter = nanmean(sqrt(LocalArea/pi).*2);
-                obj.Segment(i).Mean_AreaDerivedDiameter = nanmean(sqrt(LocalArea/pi).*2);
-                Struct(k).Median_AreaDerivedDiameter = nanmedian(sqrt(LocalArea/pi).*2);
-                obj.Segment(i).Median_AreaDerivedDiameter = nanmedian(sqrt(LocalArea/pi).*2);
+                Struct(k).AreaDerivedDiameter = real(sqrt(LocalArea/pi).*2);
+                obj.Segment(i).AreaDerivedDiameter = real(sqrt(LocalArea/pi).*2);
+                Struct(k).Mean_AreaDerivedDiameter = nanmean(real(sqrt(LocalArea/pi).*2));
+                obj.Segment(i).Mean_AreaDerivedDiameter = nanmean(real(sqrt(LocalArea/pi).*2));
+                Struct(k).Median_AreaDerivedDiameter = nanmedian(real(sqrt(LocalArea/pi).*2));
+                obj.Segment(i).SegmentPixelIndex = SegmentPixelIndizes{i};
+                Struct(k).SegmentPixelIndex = SegmentPixelIndizes{i};
+                obj.Segment(i).CorrespondingPixelIndex = TempCorrespondingPixelIndex;
+                Struct(k).CorrespondingPixelIndex = TempCorrespondingPixelIndex;
+                TempCorrespondingPixelIndex = [];
+                
+                LocalPositionRealWorld = [SegmentPositions(:,1).*Channel.ScanSizeX/Channel.NumPixelsX ...
+                    SegmentPositions(:,2).*Channel.ScanSizeY/Channel.NumPixelsY];
+                RelativePixel(1) = 0;
+                RelativeRealWorld(1) = 0;
+                RelativePixel(2:length(SegmentPositions)) = cumsum(vecnorm(...
+                    SegmentPositions(2:end,:) - SegmentPositions(1:end-1,:),2,2));
+                RelativeRealWorld(2:length(SegmentPositions)) = cumsum(vecnorm(...
+                    LocalPositionRealWorld(2:end,:) - LocalPositionRealWorld(1:end-1,:),2,2));
+                obj.Segment(i).RelativePixelPosition = RelativePixel;
+                Struct(k).RelativePixelPosition = RelativePixel;
+                obj.Segment(i).RelativePosition = RelativeRealWorld;
+                Struct(k).RelativePosition = RelativeRealWorld;
+                
+                RelativePixel = [];
+                RelativeRealWorld = [];
+                
                 k = k + 1;
             end
             
-            % Now for some tedious data handling. Life is pain            
+            % Now for some tedious data shoveling. Life is pain            
             if isempty(Struct)
                 close(h)
                 return
