@@ -2531,7 +2531,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
         end
         
      
-        function fc_snap_in_length_MAD(obj)
+        function fc_snap_in_length_MAD(obj,SelectedFlagStatus)
             % Fct determines the snap-in length using a moving median absolute deviation
 
             % Preallocate
@@ -2546,14 +2546,20 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             %% Loop over all force curves
             for Fc=1:obj.NCurves
                 % Debugging
-                %for Fc=74 % for debugging
+                %for Fc=74
                 sprintf('Force curve No. %d',Fc) % Gives current
                 % Force curve for debugging
                 %% Force curve selection criteria
-                % if ~obj.SMFSFlag.Uncorrupt(jj) || ~obj.SMFSFlag.AppMinCrit(jj)     % Condition before the first analysis: Exclude corrupted force curves or force curves showing no snap-in from the analysis
-                if ~obj.SMFSFlag.Uncorrupt(Fc) || ~obj.SMFSFlag.Selected(Fc) || ~obj.SMFSFlag.AppMinCrit(Fc)     % Condition if FM Flag Selected has been set: Exclude corrupted force curves or force curves showing no snap-in from the analysis
-                    continue
+                switch SelectedFlagStatus
+                case 'Pre'
+                if ~obj.SMFSFlag.Uncorrupt(Fc) || ~obj.SMFSFlag.AppMinCrit(Fc)     % Condition before the first analysis: Exclude corrupted force curves or force curves showing no snap-in from the analysis
+                continue
                 end
+                case 'Post'
+                if ~obj.SMFSFlag.Uncorrupt(Fc) || ~obj.SMFSFlag.Selected(Fc) || ~obj.SMFSFlag.AppMinCrit(Fc)     % Condition if FM Flag Selected has been set: Exclude corrupted force curves or force curves showing no snap-in from the analysis
+                continue
+                end
+                end                   
                 % Allocate data
                 xApp=obj.THApp{Fc}-obj.CP_HardSurface(Fc);
                 yApp=obj.BasedApp{Fc};
@@ -2649,7 +2655,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             obj.FMSnapInMax=max(obj.SnapInLength);
         end
 
-        function fc_pulling_length_MAD(obj)
+        function fc_pulling_length_MAD(obj,SelectedFlagStatus)
             
             % Preallocate
             obj.PullingLengthIdx=zeros(1,obj.NCurves);
@@ -2663,12 +2669,18 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             %% Loop over all force curves
             for Fc=1:obj.NCurves
             % Debugging
-            %for jj=7 % for debugging
+            %for fc=7
                 % sprintf('Force curve No. %d',jj) % Gives current Force curve
                 %% Force curve selection criteria
-               % if ~obj.SMFSFlag.Uncorrupt(jj) || ~obj.SMFSFlag.RetMinCrit(jj)     % Exclude corrupted force curves from the analysis
+                switch SelectedFlagStatus
+                case 'Pre'
+                if ~obj.SMFSFlag.Uncorrupt(Fc) || ~obj.SMFSFlag.RetMinCrit(Fc)     % Condition before the first analysis: Exclude corrupted force curves or force curves showing no snap-in from the analysis
+                continue
+                end
+                case 'Post'
                 if ~obj.SMFSFlag.Uncorrupt(Fc) || ~obj.SMFSFlag.Selected(Fc) || ~obj.SMFSFlag.RetMinCrit(Fc)     % Condition if FM Flag Selected has been set: Exclude corrupted force curves or force curves showing no snap-in from the analysis
-                    continue
+                continue
+                end
                 end
                 % Allocate data
                 xRet=obj.THRet{Fc}-obj.CP_HardSurface(Fc);
@@ -2767,7 +2779,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             obj.FMPullingLengthMax=max(obj.PullingLength);
         end
                 
-        function fc_adh_force_max(obj)
+        function fc_adh_force_max(obj,SelectedFlagStatus)
             % Function to find the maximum adhesion force value in the
             % approach and retraction data of a force curve
             
@@ -2790,10 +2802,16 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
              sprintf('Force curve No. %d',Fc) % Gives current Force curve
             % for debugging
             %% Force curve selection criteria
-            % if ~obj.SMFSFlag.Uncorrupt(kk) || ~obj.SMFSFlag.RetMinCrit(kk) || ~obj.SMFSFlag.LengthRequisite(kk)  % Exclude corrupted force curves from the analysis     
-            if ~obj.SMFSFlag.Uncorrupt(Fc) || ~obj.SMFSFlag.Selected(Fc) || ~obj.SMFSFlag.RetMinCrit(Fc) || ~obj.SMFSFlag.LengthRequisite(Fc)     % Condition if FM Flag Selected has been set: Exclude corrupted force curves or force curves showing no snap-in from the analysis 
+                switch SelectedFlagStatus
+                case 'Pre'
+                if ~obj.SMFSFlag.Uncorrupt(Fc) || ~obj.SMFSFlag.RetMinCrit(Fc) || ~obj.SMFSFlag.LengthRequisite(Fc)    % Condition before the first analysis: Exclude corrupted force curves or force curves showing no snap-in from the analysis
                 continue
-            end            
+                end
+                case 'Post'
+                if ~obj.SMFSFlag.Uncorrupt(Fc) || ~obj.SMFSFlag.Selected(Fc) || ~obj.SMFSFlag.RetMinCrit(Fc) || ~obj.SMFSFlag.LengthRequisite(Fc)    % Condition if FM Flag Selected has been set: Exclude corrupted force curves or force curves showing no snap-in from the analysis
+                continue
+                end
+                end                   
             % Allocate data
             xApp=obj.THApp{Fc}-obj.CP_HardSurface(Fc);
             xRet=obj.THRet{Fc}-obj.CP_HardSurface(Fc);            
@@ -2857,7 +2875,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
         close all
         end
        
-        function fc_adhesion_energy_idxlength(obj)
+        function fc_adhesion_energy_idxlength(obj,SelectedFlagStatus)
             % Determine the adhesion energy using the previous defined pulling length index
                 % Preallocate
                 obj.yAppLim=cell(1,obj.NCurves);
@@ -2870,12 +2888,18 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 limit1=0;   % Define the limit
             %% Loop over all force curves
                 for Fc=1:obj.NCurves
-                %for ii=97 % % For debugging and testing
+                %for Fc=97 % % For debugging and testing
                 %% Force curve selection criteria
-               % if ~obj.SMFSFlag.Uncorrupt(kk) || ~obj.SMFSFlag.RetMinCrit(kk) || ~obj.SMFSFlag.LengthRequisite(kk)    % Exclude corrupted force curves from the analysis     
-                if ~obj.SMFSFlag.Uncorrupt(Fc) || ~obj.SMFSFlag.Selected(Fc) || ~obj.SMFSFlag.RetMinCrit(Fc) || ~obj.SMFSFlag.LengthRequisite(Fc)     % Condition if FM Flag Selected has been set: Exclude corrupted force curves or force curves showing no snap-in from the analysis 
+                switch SelectedFlagStatus
+                case 'Pre'
+                if ~obj.SMFSFlag.Uncorrupt(Fc) || ~obj.SMFSFlag.RetMinCrit(Fc) || ~obj.SMFSFlag.LengthRequisite(Fc)    % Condition before the first analysis: Exclude corrupted force curves or force curves showing no snap-in from the analysis
                 continue
-                end                 
+                end
+                case 'Post'
+                if ~obj.SMFSFlag.Uncorrupt(Fc) || ~obj.SMFSFlag.Selected(Fc) || ~obj.SMFSFlag.RetMinCrit(Fc) || ~obj.SMFSFlag.LengthRequisite(Fc)    % Condition if FM Flag Selected has been set: Exclude corrupted force curves or force curves showing no snap-in from the analysis
+                continue
+                end
+                end         
                 % Allocate data
                 xRet=obj.THRet{Fc}-obj.CP_HardSurface(Fc); % Retraction x-data (m): Vertical tip height data corrected by the determined contact point using the hard surface method 
                 xApp=obj.THApp{Fc}-obj.CP_HardSurface(Fc); % Retraction x-data (m): Vertical tip height data corrected by the determined contact point using the hard surface method 
@@ -2969,7 +2993,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
 %             legend('Approach data','Retraction data, y-data corrected, limits included','Adhesion force based on Retraction data, y-data corrected','Pulling length position','Adhesion force based on Retraction data, y-data corrected, limits included')    
         end
         
-        function fc_print_analysed(obj,XMin,XMax,YMin,YMax,NumFcMax,NumFcUncorrupt,Res) % fc ... force curve
+        function fc_print_analysed(obj,XMin,XMax,YMin,YMax,NumFcMax) % fc ... force curve
             % fc_print_adhenergy_pulllength: A function to plot all selected force curves of a
             % force map including adhesion energy and pulling length in
             % each force curve
@@ -2978,7 +3002,6 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 XMax= inf;
                 YMin= -inf;
                 YMax= inf;
-                Res=[1 1 2560 1440]; % Define the figure resolution
             end
             % Define variables
             RGB1=[0 26 255]./255;  % Blue
@@ -2988,7 +3011,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             RGB10=[200 0 255]./255; % Violet
             RGB11=[200 255 150]./255; % Light Green
             RGB12=[185 230 254]./255; % Light Blue
-            RGB13=[200 0 0]./255; % Red            
+            RGB13=[200 0 0]./255; % Red    
+            Res=[1 1 2560 1440]; % Define the figure resolution
             % Define variables for the figure name
             ExtendVelocityConvert=num2str(round(obj.ExtendVelocity*1e9));
             RetractVelocityConvert=num2str(round(obj.RetractVelocity*1e9));
@@ -2996,12 +3020,15 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             % Classification criteria
             figname=strcat(obj.Date,{'_'},obj.Time,{'_'},obj.ID,{'_'},obj.Substrate,{'_'},obj.EnvCond,{'_'},obj.Linker,{'_'},obj.Chipbox,{'_'},obj.ChipCant,{'_'},ExtendVelocityConvert,{'_'},RetractVelocityConvert,{'_'},HoldingTimeConvert);
             figname=char(figname);
+            % Parse unit scale function
+            [Xmultiplier,Xunit,~] = AFMImage.parse_unit_scale(1e+9,'nm',1);
+            [Ymultiplier,Yunit,~] = AFMImage.parse_unit_scale(1e+9,'nN',1);
             %% Define variables for the plot loop
             mm=ceil(sqrt(NumFcMax)); % Variable defines the tiledlayout and thereby the tile arrangement
             nn=mm; % Variable defines the tiledlayout and thereby the tile arrangement
             ww=1; % Variable used to loop through the flag based while loop
             DiffFc=0; % Variable to correct for differences of the variables between the plot loop and flag based while loop
-            NumFcUncorrupt=nnz(obj.SMFSFlag.Uncorrupt.*obj.SMFSFlag.RetMinCrit.*obj.SMFSFlag.LengthRequisite); % Determine the number of force curves that could been analysed
+            NumFcUncorrupt=nnz(obj.SMFSFlag.Selected.*obj.SMFSFlag.Uncorrupt.*obj.SMFSFlag.RetMinCrit.*obj.SMFSFlag.LengthRequisite); % Determine the number of force curves that could been analysed
             NumFigures=ceil(NumFcUncorrupt/NumFcMax);
             if NumFigures==0     % If condition is fulfilled stop function and return to calling function
                 return
@@ -3050,7 +3077,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                             ww=qq+DiffFc;
                         end
                         % Flag based while loop
-                        while ~obj.SMFSFlag.Uncorrupt(ww) || ~obj.SMFSFlag.RetMinCrit(ww) || ~obj.SMFSFlag.LengthRequisite(ww) || ~obj.SMFSFlag.Selected(ww)  % Stay in the while loop as long as the entry is zero
+                        while ~obj.SMFSFlag.Selected(ww) || ~obj.SMFSFlag.Uncorrupt(ww) || ~obj.SMFSFlag.RetMinCrit(ww) || ~obj.SMFSFlag.LengthRequisite(ww) || ~obj.SMFSFlag.Selected(ww)  % Stay in the while loop as long as the entry is zero
                             ww=ww+1;                            
                             if ww>qq
                                 DiffFc=ww-qq;
@@ -3063,10 +3090,12 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                                 break
                         end
                         %% Allocate data
-                        xApp=obj.THApp{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc);
-                        xRet=obj.THRet{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc);            
-                        yApp=obj.BasedApp{qq+DiffFc};
-                        yRet=obj.BasedRet{qq+DiffFc};                 
+                        xApp=(obj.THApp{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc))/-Xmultiplier; % Retraction x-data (m): Vertical tip height data corrected by the determined contact point using the hard surface method
+                        xRet=(obj.THRet{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc))/-Xmultiplier; % Retraction x-data (m): Vertical tip height data corrected by the determined contact point using the hard surface method
+                        yApp=obj.BasedApp{qq+DiffFc}/Ymultiplier;
+                        yRet=obj.BasedRet{qq+DiffFc}/Ymultiplier;    
+                        yRetLim=obj.yRetLim{qq+DiffFc}/Ymultiplier;
+                        yAppLim=obj.yAppLim{qq+DiffFc}/Ymultiplier;                 
                         % if condition with flag based while loop variable
                         % ww > plot loop variable qq
                         if ww>qq
@@ -3076,8 +3105,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                                 if obj.SMFSFlag.PullingLength(qq+DiffFc)==1 && obj.SMFSFlag.SnapIn(qq+DiffFc)==1 % Force curve posses pulling length and snap-in variables
                                     grid on
                                     hold on
-                                    area(xRet(1:obj.PullingLengthIdx(qq+DiffFc)),obj.yRetLim{qq+DiffFc}(1:obj.PullingLengthIdx(qq+DiffFc)),'FaceColor',RGB11)
-                                    area(xApp(obj.SnapInIdx(qq+DiffFc):end),obj.yAppLim{qq+DiffFc}(obj.SnapInIdx(qq+DiffFc):end),'FaceColor',RGB7)
+                                    area(xRet(1:obj.PullingLengthIdx(qq+DiffFc)),yRetLim(1:obj.PullingLengthIdx(qq+DiffFc)),'FaceColor',RGB11)
+                                    area(xApp(obj.SnapInIdx(qq+DiffFc):end),yAppLim(obj.SnapInIdx(qq+DiffFc):end),'FaceColor',RGB7)
                                     plot(xApp,yApp,'Color',RGB1);
                                     plot(xRet,yRet,'Color',RGB2);
                                     plot(xRet(obj.PullingLengthIdx(qq+DiffFc)),yRet(obj.PullingLengthIdx(qq+DiffFc)),'d','MarkerSize',14,'MarkerFaceColor',RGB8,'MarkerEdgeColor',RGB8)
@@ -3088,7 +3117,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                                 elseif obj.SMFSFlag.PullingLength(qq+DiffFc)==1 && obj.SMFSFlag.SnapIn(qq+DiffFc)==0 % Force curve posses pulling length variables but no snap-in variables
                                     grid on
                                     hold on
-                                    area(xRet(1:obj.PullingLengthIdx(qq+DiffFc)),obj.yRetLim{qq+DiffFc}(1:obj.PullingLengthIdx(qq+DiffFc)),'FaceColor',RGB11)
+                                    area(xRet(1:obj.PullingLengthIdx(qq+DiffFc)),yRetLim(1:obj.PullingLengthIdx(qq+DiffFc)),'FaceColor',RGB11)
                                     plot(xApp,yApp,'Color',RGB1);
                                     plot(xRet,yRet,'Color',RGB2);
                                     plot(xRet(obj.PullingLengthIdx(qq+DiffFc)),yRet(obj.PullingLengthIdx(qq+DiffFc)),'d','MarkerSize',14,'MarkerFaceColor',RGB8,'MarkerEdgeColor',RGB8)
@@ -3113,8 +3142,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                                 if obj.SMFSFlag.PullingLength(qq+DiffFc)==1 && obj.SMFSFlag.SnapIn(qq+DiffFc)==1 % Force curve posses pulling length and snap-in variables
                                     grid on
                                     hold on
-                                    area(xRet(1:obj.PullingLengthIdx(qq+DiffFc)),obj.yRetLim{qq+DiffFc}(1:obj.PullingLengthIdx(qq+DiffFc)),'FaceColor',RGB11)
-                                    area(xApp(obj.SnapInIdx(qq+DiffFc):end),obj.yAppLim{qq+DiffFc}(obj.SnapInIdx(qq+DiffFc):end),'FaceColor',RGB7)
+                                    area(xRet(1:obj.PullingLengthIdx(qq+DiffFc)),yRetLim(1:obj.PullingLengthIdx(qq+DiffFc)),'FaceColor',RGB11)
+                                    area(xApp(obj.SnapInIdx(qq+DiffFc):end),yAppLim(obj.SnapInIdx(qq+DiffFc):end),'FaceColor',RGB7)
                                     plot(xApp,yApp,'Color',RGB1);
                                     plot(xRet,yRet,'Color',RGB2);
                                     plot(xRet(obj.PullingLengthIdx(qq+DiffFc)),yRet(obj.PullingLengthIdx(qq+DiffFc)),'d','MarkerSize',14,'MarkerFaceColor',RGB8,'MarkerEdgeColor',RGB8)
@@ -3125,7 +3154,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                                 elseif obj.SMFSFlag.PullingLength(qq+DiffFc)==1 && obj.SMFSFlag.SnapIn(qq+DiffFc)==0 % Force curve posses pulling length variables but no snap-in variables
                                     grid on
                                     hold on
-                                    area(xRet(1:obj.PullingLengthIdx(qq+DiffFc)),obj.yRetLim{qq+DiffFc}(1:obj.PullingLengthIdx(qq+DiffFc)),'FaceColor',RGB11)
+                                    area(xRet(1:obj.PullingLengthIdx(qq+DiffFc)),yRetLim(1:obj.PullingLengthIdx(qq+DiffFc)),'FaceColor',RGB11)
                                     plot(xApp,yApp,'Color',RGB1);
                                     plot(xRet,yRet,'Color',RGB2);
                                     plot(xRet(obj.PullingLengthIdx(qq+DiffFc)),yRet(obj.PullingLengthIdx(qq+DiffFc)),'d','MarkerSize',14,'MarkerFaceColor',RGB8,'MarkerEdgeColor',RGB8)
@@ -3176,17 +3205,19 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                             if ww<qq+DiffFc
                                 ww=qq+DiffFc;
                             end
-                            while ~obj.SMFSFlag.Uncorrupt(ww) || ~obj.SMFSFlag.RetMinCrit(ww) || ~obj.SMFSFlag.LengthRequisite(ww)    % Stay in the while loop as long as the entry is zero
+                            while ~obj.SMFSFlag.Selected(ww) || ~obj.SMFSFlag.Uncorrupt(ww) || ~obj.SMFSFlag.RetMinCrit(ww) || ~obj.SMFSFlag.LengthRequisite(ww)    % Stay in the while loop as long as the entry is zero
                                 ww=ww+1;
                                 if ww>qq
                                     DiffFc=ww-qq;
                                 end
                             end
                             %% Allocate data
-                            xApp=obj.THApp{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc);
-                            xRet=obj.THRet{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc);            
-                            yApp=obj.BasedApp{qq+DiffFc};
-                            yRet=obj.BasedRet{qq+DiffFc};        
+                            xApp=(obj.THApp{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc))/-Xmultiplier; % Retraction x-data (m): Vertical tip height data corrected by the determined contact point using the hard surface method
+                            xRet=(obj.THRet{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc))/-Xmultiplier; % Retraction x-data (m): Vertical tip height data corrected by the determined contact point using the hard surface method
+                            yApp=obj.BasedApp{qq+DiffFc}/Ymultiplier;
+                            yRet=obj.BasedRet{qq+DiffFc}/Ymultiplier;    
+                            yRetLim=obj.yRetLim{qq+DiffFc}/Ymultiplier;
+                            yAppLim=obj.yAppLim{qq+DiffFc}/Ymultiplier;     
                             if ww>qq
                                 ax=nexttile;
                                 ax.XLim = [XMin XMax];
@@ -3194,8 +3225,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                                     if obj.SMFSFlag.PullingLength(qq+DiffFc)==1 && obj.SMFSFlag.SnapIn(qq+DiffFc)==1 % Force curve posses pulling length and snap-in variables
                                         grid on
                                         hold on
-                                        area(xRet(1:obj.PullingLengthIdx(qq+DiffFc)),obj.yRetLim{qq+DiffFc}(1:obj.PullingLengthIdx(qq+DiffFc)),'FaceColor',RGB11)
-                                        area(xApp(obj.SnapInIdx(qq+DiffFc):end),obj.yAppLim{qq+DiffFc}(obj.SnapInIdx(qq+DiffFc):end),'FaceColor',RGB7)
+                                        area(xRet(1:obj.PullingLengthIdx(qq+DiffFc)),yRetLim(1:obj.PullingLengthIdx(qq+DiffFc)),'FaceColor',RGB11)
+                                        area(xApp(obj.SnapInIdx(qq+DiffFc):end),yAppLim(obj.SnapInIdx(qq+DiffFc):end),'FaceColor',RGB7)
                                         plot(xApp,yApp,'Color',RGB1);
                                         plot(xRet,yRet,'Color',RGB2);
                                         plot(xRet(obj.PullingLengthIdx(qq+DiffFc)),yRet(obj.PullingLengthIdx(qq+DiffFc)),'d','MarkerSize',14,'MarkerFaceColor',RGB8,'MarkerEdgeColor',RGB8)
@@ -3206,7 +3237,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                                     elseif obj.SMFSFlag.PullingLength(qq+DiffFc)==1 && obj.SMFSFlag.SnapIn(qq+DiffFc)==0 % Force curve posses pulling length variables but no snap-in variables
                                         grid on
                                         hold on
-                                        area(xRet(1:obj.PullingLengthIdx(qq+DiffFc)),obj.yRetLim{qq+DiffFc}(1:obj.PullingLengthIdx(qq+DiffFc)),'FaceColor',RGB11)
+                                        area(xRet(1:obj.PullingLengthIdx(qq+DiffFc)),yRetLim(1:obj.PullingLengthIdx(qq+DiffFc)),'FaceColor',RGB11)
                                         plot(xApp,yApp,'Color',RGB1);
                                         plot(xRet,yRet,'Color',RGB2);
                                         plot(xRet(obj.PullingLengthIdx(qq+DiffFc)),yRet(obj.PullingLengthIdx(qq+DiffFc)),'d','MarkerSize',14,'MarkerFaceColor',RGB8,'MarkerEdgeColor',RGB8)
@@ -3231,8 +3262,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                                     if obj.SMFSFlag.PullingLength(qq+DiffFc)==1 && obj.SMFSFlag.SnapIn(qq+DiffFc)==1 % Force curve posses pulling length and snap-in variables
                                         grid on
                                         hold on
-                                        area(xRet(1:obj.PullingLengthIdx(qq+DiffFc)),obj.yRetLim{qq+DiffFc}(1:obj.PullingLengthIdx(qq+DiffFc)),'FaceColor',RGB11)
-                                        area(xApp(obj.SnapInIdx(qq+DiffFc):end),obj.yAppLim{qq+DiffFc}(obj.SnapInIdx(qq+DiffFc):end),'FaceColor',RGB7)
+                                        area(xRet(1:obj.PullingLengthIdx(qq+DiffFc)),yRetLim(1:obj.PullingLengthIdx(qq+DiffFc)),'FaceColor',RGB11)
+                                        area(xApp(obj.SnapInIdx(qq+DiffFc):end),yAppLim(obj.SnapInIdx(qq+DiffFc):end),'FaceColor',RGB7)
                                         plot(xApp,yApp,'Color',RGB1);
                                         plot(xRet,yRet,'Color',RGB2);
                                         plot(xRet(obj.PullingLengthIdx(qq+DiffFc)),yRet(obj.PullingLengthIdx(qq+DiffFc)),'d','MarkerSize',14,'MarkerFaceColor',RGB8,'MarkerEdgeColor',RGB8)
@@ -3243,7 +3274,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                                     elseif obj.SMFSFlag.PullingLength(qq+DiffFc)==1 && obj.SMFSFlag.SnapIn(qq+DiffFc)==0 % Force curve posses pulling length variables but no snap-in variables
                                         grid on
                                         hold on
-                                        area(xRet(1:obj.PullingLengthIdx(qq+DiffFc)),obj.yRetLim{qq+DiffFc}(1:obj.PullingLengthIdx(qq+DiffFc)),'FaceColor',RGB11)
+                                        area(xRet(1:obj.PullingLengthIdx(qq+DiffFc)),yRetLim(1:obj.PullingLengthIdx(qq+DiffFc)),'FaceColor',RGB11)
                                         plot(xApp,yApp,'Color',RGB1);
                                         plot(xRet,yRet,'Color',RGB2);
                                         plot(xRet(obj.PullingLengthIdx(qq+DiffFc)),yRet(obj.PullingLengthIdx(qq+DiffFc)),'d','MarkerSize',14,'MarkerFaceColor',RGB8,'MarkerEdgeColor',RGB8)
@@ -3289,17 +3320,19 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                             if ww<qq+DiffFc
                                 ww=qq+DiffFc;
                             end
-                            while ~obj.SMFSFlag.Uncorrupt(ww) || ~obj.SMFSFlag.RetMinCrit(ww) || ~obj.SMFSFlag.LengthRequisite(ww)    % Stay in the while loop as long as the entry is zero
+                            while ~obj.SMFSFlag.Selected(ww) || ~obj.SMFSFlag.Uncorrupt(ww) || ~obj.SMFSFlag.RetMinCrit(ww) || ~obj.SMFSFlag.LengthRequisite(ww)    % Stay in the while loop as long as the entry is zero
                                 ww=ww+1;
                                 if ww>qq
                                     DiffFc=ww-qq;
                                 end
                             end
                             %% Allocate data
-                            xApp=obj.THApp{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc);
-                            xRet=obj.THRet{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc);            
-                            yApp=obj.BasedApp{qq+DiffFc};
-                            yRet=obj.BasedRet{qq+DiffFc};         
+                        xApp=(obj.THApp{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc))/-Xmultiplier; % Retraction x-data (m): Vertical tip height data corrected by the determined contact point using the hard surface method
+                        xRet=(obj.THRet{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc))/-Xmultiplier; % Retraction x-data (m): Vertical tip height data corrected by the determined contact point using the hard surface method
+                        yApp=obj.BasedApp{qq+DiffFc}/Ymultiplier;
+                        yRet=obj.BasedRet{qq+DiffFc}/Ymultiplier;    
+                        yRetLim=obj.yRetLim{qq+DiffFc}/Ymultiplier;
+                        yAppLim=obj.yAppLim{qq+DiffFc}/Ymultiplier;    
                             if ww>qq
                                 ax=nexttile;
                                 ax.XLim = [XMin XMax];
@@ -3307,8 +3340,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                                     if obj.SMFSFlag.PullingLength(qq+DiffFc)==1 && obj.SMFSFlag.SnapIn(qq+DiffFc)==1 % Force curve posses pulling length and snap-in variables
                                         grid on
                                         hold on
-                                        area(xRet(1:obj.PullingLengthIdx(qq+DiffFc)),obj.yRetLim{qq+DiffFc}(1:obj.PullingLengthIdx(qq+DiffFc)),'FaceColor',RGB11)
-                                        area(xApp(obj.SnapInIdx(qq+DiffFc):end),obj.yAppLim{qq+DiffFc}(obj.SnapInIdx(qq+DiffFc):end),'FaceColor',RGB7)
+                                        area(xRet(1:obj.PullingLengthIdx(qq+DiffFc)),yRetLim(1:obj.PullingLengthIdx(qq+DiffFc)),'FaceColor',RGB11)
+                                        area(xApp(obj.SnapInIdx(qq+DiffFc):end),yAppLim(obj.SnapInIdx(qq+DiffFc):end),'FaceColor',RGB7)
                                         plot(xApp,yApp,'Color',RGB1);
                                         plot(xRet,yRet,'Color',RGB2);
                                         plot(xRet(obj.PullingLengthIdx(qq+DiffFc)),yRet(obj.PullingLengthIdx(qq+DiffFc)),'d','MarkerSize',14,'MarkerFaceColor',RGB8,'MarkerEdgeColor',RGB8)
@@ -3319,7 +3352,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                                     elseif obj.SMFSFlag.PullingLength(qq+DiffFc)==1 && obj.SMFSFlag.SnapIn(qq+DiffFc)==0 % Force curve posses pulling length variables but no snap-in variables
                                         grid on
                                         hold on
-                                        area(xRet(1:obj.PullingLengthIdx(qq+DiffFc)),obj.yRetLim{qq+DiffFc}(1:obj.PullingLengthIdx(qq+DiffFc)),'FaceColor',RGB11)
+                                        area(xRet(1:obj.PullingLengthIdx(qq+DiffFc)),yRetLim(1:obj.PullingLengthIdx(qq+DiffFc)),'FaceColor',RGB11)
                                         plot(xApp,yApp,'Color',RGB1);
                                         plot(xRet,yRet,'Color',RGB2);
                                         plot(xRet(obj.PullingLengthIdx(qq+DiffFc)),yRet(obj.PullingLengthIdx(qq+DiffFc)),'d','MarkerSize',14,'MarkerFaceColor',RGB8,'MarkerEdgeColor',RGB8)
@@ -3345,8 +3378,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                                     if obj.SMFSFlag.PullingLength(qq+DiffFc)==1 && obj.SMFSFlag.SnapIn(qq+DiffFc)==1 % Force curve posses pulling length and snap-in variables
                                         grid on
                                         hold on
-                                        area(xRet(1:obj.PullingLengthIdx(qq+DiffFc)),obj.yRetLim{qq+DiffFc}(1:obj.PullingLengthIdx(qq+DiffFc)),'FaceColor',RGB11)
-                                        area(xApp(obj.SnapInIdx(qq+DiffFc):end),obj.yAppLim{qq+DiffFc}(obj.SnapInIdx(qq+DiffFc):end),'FaceColor',RGB7)
+                                        area(xRet(1:obj.PullingLengthIdx(qq+DiffFc)),yRetLim(1:obj.PullingLengthIdx(qq+DiffFc)),'FaceColor',RGB11)
+                                        area(xApp(obj.SnapInIdx(qq+DiffFc):end),yAppLim(obj.SnapInIdx(qq+DiffFc):end),'FaceColor',RGB7)
                                         plot(xApp,yApp,'Color',RGB1);
                                         plot(xRet,yRet,'Color',RGB2);
                                         plot(xRet(obj.PullingLengthIdx(qq+DiffFc)),yRet(obj.PullingLengthIdx(qq+DiffFc)),'d','MarkerSize',14,'MarkerFaceColor',RGB8,'MarkerEdgeColor',RGB8)
@@ -3357,7 +3390,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                                     elseif obj.SMFSFlag.PullingLength(qq+DiffFc)==1 && obj.SMFSFlag.SnapIn(qq+DiffFc)==0 % Force curve posses pulling length variables but no snap-in variables
                                         grid on
                                         hold on
-                                        area(xRet(1:obj.PullingLengthIdx(qq+DiffFc)),obj.yRetLim{qq+DiffFc}(1:obj.PullingLengthIdx(qq+DiffFc)),'FaceColor',RGB11)
+                                        area(xRet(1:obj.PullingLengthIdx(qq+DiffFc)),yRetLim(1:obj.PullingLengthIdx(qq+DiffFc)),'FaceColor',RGB11)
                                         plot(xApp,yApp,'Color',RGB1);
                                         plot(xRet,yRet,'Color',RGB2);
                                         plot(xRet(obj.PullingLengthIdx(qq+DiffFc)),yRet(obj.PullingLengthIdx(qq+DiffFc)),'d','MarkerSize',14,'MarkerFaceColor',RGB8,'MarkerEdgeColor',RGB8)
@@ -3602,7 +3635,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
         end
         
        
-        function fc_visual_selection_flag_Uncorrupt(obj,XMin,XMax,YMin,YMax,NumFcMax,Res) % fc ... force curve
+        function fc_visual_selection_flag_Uncorrupt(obj,XMin,XMax,YMin,YMax,NumFcMax) % fc ... force curve
             % fc_print_adhenergy_pulllength: A function to plot all selected force curves of a
             % force map including adhesion energy and pulling length in
             % each force curve
@@ -3631,6 +3664,9 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             DataShareStartRet=0.07; % 7 %
             DataShareEndRet=0.02; % 2 %
            % NumFcMax=25;
+            % Parse unit scale function
+            [Xmultiplier,Xunit,~] = AFMImage.parse_unit_scale(1e+9,'nm',1);
+            [Ymultiplier,Yunit,~] = AFMImage.parse_unit_scale(1e+9,'nN',1);
             % Define variables for the figure name
             ExtendVelocityConvert=num2str(round(obj.ExtendVelocity*1e9));
             RetractVelocityConvert=num2str(round(obj.RetractVelocity*1e9));
@@ -3699,10 +3735,10 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                         % Save the indeces of plotted force curves
                         IdxFcPlot(ww)=ww;
                         %% Allocate data
-                        xApp=obj.THApp{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc);
-                        xRet=obj.THRet{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc);
-                        yApp=obj.BasedApp{qq+DiffFc};
-                        yRet=obj.BasedRet{qq+DiffFc};
+                        xApp=(obj.THApp{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc))/-Xmultiplier; % Retraction x-data (m): Vertical tip height data corrected by the determined contact point using the hard surface method
+                        xRet=(obj.THRet{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc))/-Xmultiplier; % Retraction x-data (m): Vertical tip height data corrected by the determined contact point using the hard surface method
+                        yApp=obj.BasedApp{qq+DiffFc}/Ymultiplier;
+                        yRet=obj.BasedRet{qq+DiffFc}/Ymultiplier;
                         % Determine indices
                         IdxStartApp=round(length(yApp)*DataShareStartApp);
                         IdxEndApp=round(length(yApp)*DataShareEndApp);
@@ -3783,10 +3819,10 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                             % Save the indeces of plotted force curves
                             IdxFcPlot(ww)=ww;
                             %% Allocate data
-                            xApp=obj.THApp{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc);
-                            xRet=obj.THRet{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc);
-                            yApp=obj.BasedApp{qq+DiffFc};
-                            yRet=obj.BasedRet{qq+DiffFc};
+                        xApp=(obj.THApp{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc))/-Xmultiplier; % Retraction x-data (m): Vertical tip height data corrected by the determined contact point using the hard surface method
+                        xRet=(obj.THRet{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc))/-Xmultiplier; % Retraction x-data (m): Vertical tip height data corrected by the determined contact point using the hard surface method
+                        yApp=obj.BasedApp{qq+DiffFc}/Ymultiplier;
+                        yRet=obj.BasedRet{qq+DiffFc}/Ymultiplier;
                             % Determine indices
                             IdxStartApp=round(length(yApp)*DataShareStartApp);
                             IdxEndApp=round(length(yApp)*DataShareEndApp);
@@ -3863,10 +3899,10 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                             % Save the indeces of plotted force curves
                             IdxFcPlot(ww)=ww;
                             %% Allocate data
-                            xApp=obj.THApp{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc);
-                            xRet=obj.THRet{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc);
-                            yApp=obj.BasedApp{qq+DiffFc};
-                            yRet=obj.BasedRet{qq+DiffFc};
+                        xApp=(obj.THApp{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc))/-Xmultiplier; % Retraction x-data (m): Vertical tip height data corrected by the determined contact point using the hard surface method
+                        xRet=(obj.THRet{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc))/-Xmultiplier; % Retraction x-data (m): Vertical tip height data corrected by the determined contact point using the hard surface method
+                        yApp=obj.BasedApp{qq+DiffFc}/Ymultiplier;
+                        yRet=obj.BasedRet{qq+DiffFc}/Ymultiplier;
                             % Determine indices
                             IdxStartApp=round(length(yApp)*DataShareStartApp);
                             IdxEndApp=round(length(yApp)*DataShareEndApp);
@@ -4024,7 +4060,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             close all        
         end
         
-        function fc_visual_selection_analysed(obj,XMin,XMax,YMin,YMax,NumFcMax,Res) % fc ... force curve
+        function fc_visual_selection_analysed(obj,XMin,XMax,YMin,YMax,NumFcMax) % fc ... force curve
             % fc_print_adhenergy_pulllength: A function to plot all selected force curves of a
             % force map including adhesion energy and pulling length in
             % each force curve
@@ -4034,7 +4070,6 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 YMin= -inf;
                 YMax= inf;
                 NumFcMax=25;
-                Res=[1 1 2560 1440]; % Define the figure resolution
             end
             % Define variables
             RGB1=[0 26 255]./255;  % Blue
@@ -4043,7 +4078,12 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             RGB8=[80 200 204]./255; % Turquoise
             RGB10=[200 0 255]./255; % Violet
             RGB11=[200 255 150]./255; % Light Green
-            RGB13=[200 0 0]./255; % Red            
+            RGB13=[200 0 0]./255; % Red     
+            Res=[1 1 2560 1440]; % Define the figure resolution
+            % NumFcMax=25;
+            % Parse unit scale function
+            [Xmultiplier,Xunit,~] = AFMImage.parse_unit_scale(1e+9,'nm',1);
+            [Ymultiplier,Yunit,~] = AFMImage.parse_unit_scale(1e+9,'nN',1);
             % Define variables for the figure name
             ExtendVelocityConvert=num2str(round(obj.ExtendVelocity*1e9));
             RetractVelocityConvert=num2str(round(obj.RetractVelocity*1e9));
@@ -4101,6 +4141,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                     end
                     %% Plot loop
                     for qq=qq:obj.NCurves % Loop over all force curves in the force map
+                        % Debugging
+                    %for qq=5
                         if ww<qq+DiffFc
                             ww=qq+DiffFc;
                         end
@@ -4114,10 +4156,12 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                         % Save the indeces of plotted force curves
                         IdxFcPlot(ww)=ww;
                         %% Allocate data
-                        xApp=obj.THApp{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc);
-                        xRet=obj.THRet{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc);            
-                        yApp=obj.BasedApp{qq+DiffFc};
-                        yRet=obj.BasedRet{qq+DiffFc};                 
+                        xApp=(obj.THApp{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc))/-Xmultiplier; % Retraction x-data (m): Vertical tip height data corrected by the determined contact point using the hard surface method
+                        xRet=(obj.THRet{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc))/-Xmultiplier; % Retraction x-data (m): Vertical tip height data corrected by the determined contact point using the hard surface method
+                        yApp=obj.BasedApp{qq+DiffFc}/Ymultiplier;
+                        yRet=obj.BasedRet{qq+DiffFc}/Ymultiplier;    
+                        yRetLim=obj.yRetLim{qq+DiffFc}/Ymultiplier;
+                        yAppLim=obj.yAppLim{qq+DiffFc}/Ymultiplier;
                         % if condition with flag based while loop variable
                         % ww > plot loop variable qq
                         if ww>qq
@@ -4127,8 +4171,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                                 if obj.SMFSFlag.PullingLength(qq+DiffFc)==1 && obj.SMFSFlag.SnapIn(qq+DiffFc)==1 % Force curve posses pulling length and snap-in variables
                                     grid on
                                     hold on
-                                    area(xRet(1:obj.PullingLengthIdx(qq+DiffFc)),obj.yRetLim{qq+DiffFc}(1:obj.PullingLengthIdx(qq+DiffFc)),'FaceColor',RGB11)
-                                    area(xApp(obj.SnapInIdx(qq+DiffFc):end),obj.yAppLim{qq+DiffFc}(obj.SnapInIdx(qq+DiffFc):end),'FaceColor',RGB7)
+                                    area(xRet(1:obj.PullingLengthIdx(qq+DiffFc)),yRetLim(1:obj.PullingLengthIdx(qq+DiffFc)),'FaceColor',RGB11)
+                                    area(xApp(obj.SnapInIdx(qq+DiffFc):end),yAppLim(obj.SnapInIdx(qq+DiffFc):end),'FaceColor',RGB7)
                                     plot(xApp,yApp,'Color',RGB1);
                                     plot(xRet,yRet,'Color',RGB2);
                                     plot(xRet(obj.PullingLengthIdx(qq+DiffFc)),yRet(obj.PullingLengthIdx(qq+DiffFc)),'d','MarkerSize',14,'MarkerFaceColor',RGB8,'MarkerEdgeColor',RGB8)
@@ -4139,7 +4183,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                                 elseif obj.SMFSFlag.PullingLength(qq+DiffFc)==1 && obj.SMFSFlag.SnapIn(qq+DiffFc)==0 % Force curve posses pulling length variables but no snap-in variables
                                     grid on
                                     hold on
-                                    area(xRet(1:obj.PullingLengthIdx(qq+DiffFc)),obj.yRetLim{qq+DiffFc}(1:obj.PullingLengthIdx(qq+DiffFc)),'FaceColor',RGB11)
+                                    area(xRet(1:obj.PullingLengthIdx(qq+DiffFc)),yRetLim(1:obj.PullingLengthIdx(qq+DiffFc)),'FaceColor',RGB11)
                                     plot(xApp,yApp,'Color',RGB1);
                                     plot(xRet,yRet,'Color',RGB2);
                                     plot(xRet(obj.PullingLengthIdx(qq+DiffFc)),yRet(obj.PullingLengthIdx(qq+DiffFc)),'d','MarkerSize',14,'MarkerFaceColor',RGB8,'MarkerEdgeColor',RGB8)
@@ -4164,8 +4208,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                                 if obj.SMFSFlag.PullingLength(qq+DiffFc)==1 && obj.SMFSFlag.SnapIn(qq+DiffFc)==1 % Force curve posses pulling length and snap-in variables
                                     grid on
                                     hold on
-                                    area(xRet(1:obj.PullingLengthIdx(qq+DiffFc)),obj.yRetLim{qq+DiffFc}(1:obj.PullingLengthIdx(qq+DiffFc)),'FaceColor',RGB11)
-                                    area(xApp(obj.SnapInIdx(qq+DiffFc):end),obj.yAppLim{qq+DiffFc}(obj.SnapInIdx(qq+DiffFc):end),'FaceColor',RGB7)
+                                    area(xRet(1:obj.PullingLengthIdx(qq+DiffFc)),yRetLim(1:obj.PullingLengthIdx(qq+DiffFc)),'FaceColor',RGB11)
+                                    area(xApp(obj.SnapInIdx(qq+DiffFc):end),yAppLim(obj.SnapInIdx(qq+DiffFc):end),'FaceColor',RGB7)
                                     plot(xApp,yApp,'Color',RGB1);
                                     plot(xRet,yRet,'Color',RGB2);
                                     plot(xRet(obj.PullingLengthIdx(qq+DiffFc)),yRet(obj.PullingLengthIdx(qq+DiffFc)),'d','MarkerSize',14,'MarkerFaceColor',RGB8,'MarkerEdgeColor',RGB8)
@@ -4176,7 +4220,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                                 elseif obj.SMFSFlag.PullingLength(qq+DiffFc)==1 && obj.SMFSFlag.SnapIn(qq+DiffFc)==0 % Force curve posses pulling length variables but no snap-in variables
                                     grid on
                                     hold on
-                                    area(xRet(1:obj.PullingLengthIdx(qq+DiffFc)),obj.yRetLim{qq+DiffFc}(1:obj.PullingLengthIdx(qq+DiffFc)),'FaceColor',RGB11)
+                                    area(xRet(1:obj.PullingLengthIdx(qq+DiffFc)),yRetLim(1:obj.PullingLengthIdx(qq+DiffFc)),'FaceColor',RGB11)
                                     plot(xApp,yApp,'Color',RGB1);
                                     plot(xRet,yRet,'Color',RGB2);
                                     plot(xRet(obj.PullingLengthIdx(qq+DiffFc)),yRet(obj.PullingLengthIdx(qq+DiffFc)),'d','MarkerSize',14,'MarkerFaceColor',RGB8,'MarkerEdgeColor',RGB8)
@@ -4233,10 +4277,12 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                             % Save the indeces of plotted force curves
                             IdxFcPlot(ww)=ww;
                             %% Allocate data
-                            xApp=obj.THApp{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc);
-                            xRet=obj.THRet{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc);            
-                            yApp=obj.BasedApp{qq+DiffFc};
-                            yRet=obj.BasedRet{qq+DiffFc};        
+                        xApp=(obj.THApp{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc))/-Xmultiplier; % Retraction x-data (m): Vertical tip height data corrected by the determined contact point using the hard surface method
+                        xRet=(obj.THRet{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc))/-Xmultiplier; % Retraction x-data (m): Vertical tip height data corrected by the determined contact point using the hard surface method
+                        yApp=obj.BasedApp{qq+DiffFc}/Ymultiplier;
+                        yRet=obj.BasedRet{qq+DiffFc}/Ymultiplier;   
+                        yRetLim=obj.yRetLim{qq+DiffFc}/Ymultiplier;
+                        yAppLim=obj.yAppLim{qq+DiffFc}/Ymultiplier;
                             if ww>qq
                                 ax=nexttile;
                                 ax.XLim = [XMin XMax];
@@ -4244,8 +4290,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                                     if obj.SMFSFlag.PullingLength(qq+DiffFc)==1 && obj.SMFSFlag.SnapIn(qq+DiffFc)==1 % Force curve posses pulling length and snap-in variables
                                         grid on
                                         hold on
-                                        area(xRet(1:obj.PullingLengthIdx(qq+DiffFc)),obj.yRetLim{qq+DiffFc}(1:obj.PullingLengthIdx(qq+DiffFc)),'FaceColor',RGB11)
-                                        area(xApp(obj.SnapInIdx(qq+DiffFc):end),obj.yAppLim{qq+DiffFc}(obj.SnapInIdx(qq+DiffFc):end),'FaceColor',RGB7)
+                                        area(xRet(1:obj.PullingLengthIdx(qq+DiffFc)),yRetLim(1:obj.PullingLengthIdx(qq+DiffFc)),'FaceColor',RGB11)
+                                        area(xApp(obj.SnapInIdx(qq+DiffFc):end),yAppLim(obj.SnapInIdx(qq+DiffFc):end),'FaceColor',RGB7)
                                         plot(xApp,yApp,'Color',RGB1);
                                         plot(xRet,yRet,'Color',RGB2);
                                         plot(xRet(obj.PullingLengthIdx(qq+DiffFc)),yRet(obj.PullingLengthIdx(qq+DiffFc)),'d','MarkerSize',14,'MarkerFaceColor',RGB8,'MarkerEdgeColor',RGB8)
@@ -4256,7 +4302,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                                     elseif obj.SMFSFlag.PullingLength(qq+DiffFc)==1 && obj.SMFSFlag.SnapIn(qq+DiffFc)==0 % Force curve posses pulling length variables but no snap-in variables
                                         grid on
                                         hold on
-                                        area(xRet(1:obj.PullingLengthIdx(qq+DiffFc)),obj.yRetLim{qq+DiffFc}(1:obj.PullingLengthIdx(qq+DiffFc)),'FaceColor',RGB11)
+                                        area(xRet(1:obj.PullingLengthIdx(qq+DiffFc)),yRetLim(1:obj.PullingLengthIdx(qq+DiffFc)),'FaceColor',RGB11)
                                         plot(xApp,yApp,'Color',RGB1);
                                         plot(xRet,yRet,'Color',RGB2);
                                         plot(xRet(obj.PullingLengthIdx(qq+DiffFc)),yRet(obj.PullingLengthIdx(qq+DiffFc)),'d','MarkerSize',14,'MarkerFaceColor',RGB8,'MarkerEdgeColor',RGB8)
@@ -4281,8 +4327,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                                     if obj.SMFSFlag.PullingLength(qq+DiffFc)==1 && obj.SMFSFlag.SnapIn(qq+DiffFc)==1 % Force curve posses pulling length and snap-in variables
                                         grid on
                                         hold on
-                                        area(xRet(1:obj.PullingLengthIdx(qq+DiffFc)),obj.yRetLim{qq+DiffFc}(1:obj.PullingLengthIdx(qq+DiffFc)),'FaceColor',RGB11)
-                                        area(xApp(obj.SnapInIdx(qq+DiffFc):end),obj.yAppLim{qq+DiffFc}(obj.SnapInIdx(qq+DiffFc):end),'FaceColor',RGB7)
+                                        area(xRet(1:obj.PullingLengthIdx(qq+DiffFc)),yRetLim(1:obj.PullingLengthIdx(qq+DiffFc)),'FaceColor',RGB11)
+                                        area(xApp(obj.SnapInIdx(qq+DiffFc):end),yAppLim(obj.SnapInIdx(qq+DiffFc):end),'FaceColor',RGB7)
                                         plot(xApp,yApp,'Color',RGB1);
                                         plot(xRet,yRet,'Color',RGB2);
                                         plot(xRet(obj.PullingLengthIdx(qq+DiffFc)),yRet(obj.PullingLengthIdx(qq+DiffFc)),'d','MarkerSize',14,'MarkerFaceColor',RGB8,'MarkerEdgeColor',RGB8)
@@ -4293,7 +4339,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                                     elseif obj.SMFSFlag.PullingLength(qq+DiffFc)==1 && obj.SMFSFlag.SnapIn(qq+DiffFc)==0 % Force curve posses pulling length variables but no snap-in variables
                                         grid on
                                         hold on
-                                        area(xRet(1:obj.PullingLengthIdx(qq+DiffFc)),obj.yRetLim{qq+DiffFc}(1:obj.PullingLengthIdx(qq+DiffFc)),'FaceColor',RGB11)
+                                        area(xRet(1:obj.PullingLengthIdx(qq+DiffFc)),yRetLim(1:obj.PullingLengthIdx(qq+DiffFc)),'FaceColor',RGB11)
                                         plot(xApp,yApp,'Color',RGB1);
                                         plot(xRet,yRet,'Color',RGB2);
                                         plot(xRet(obj.PullingLengthIdx(qq+DiffFc)),yRet(obj.PullingLengthIdx(qq+DiffFc)),'d','MarkerSize',14,'MarkerFaceColor',RGB8,'MarkerEdgeColor',RGB8)
@@ -4348,10 +4394,12 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                             % Save the indeces of plotted force curves
                             IdxFcPlot(ww)=ww;
                             %% Allocate data
-                            xApp=obj.THApp{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc);
-                            xRet=obj.THRet{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc);            
-                            yApp=obj.BasedApp{qq+DiffFc};
-                            yRet=obj.BasedRet{qq+DiffFc};         
+                        xApp=(obj.THApp{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc))/-Xmultiplier; % Retraction x-data (m): Vertical tip height data corrected by the determined contact point using the hard surface method
+                        xRet=(obj.THRet{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc))/-Xmultiplier; % Retraction x-data (m): Vertical tip height data corrected by the determined contact point using the hard surface method
+                        yApp=obj.BasedApp{qq+DiffFc}/Ymultiplier;
+                        yRet=obj.BasedRet{qq+DiffFc}/Ymultiplier; 
+                        yRetLim=obj.yRetLim{qq+DiffFc}/Ymultiplier;
+                        yAppLim=obj.yAppLim{qq+DiffFc}/Ymultiplier;
                             if ww>qq
                                 ax=nexttile;
                                 ax.XLim = [XMin XMax];
@@ -4359,8 +4407,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                                     if obj.SMFSFlag.PullingLength(qq+DiffFc)==1 && obj.SMFSFlag.SnapIn(qq+DiffFc)==1 % Force curve posses pulling length and snap-in variables
                                         grid on
                                         hold on
-                                        area(xRet(1:obj.PullingLengthIdx(qq+DiffFc)),obj.yRetLim{qq+DiffFc}(1:obj.PullingLengthIdx(qq+DiffFc)),'FaceColor',RGB11)
-                                        area(xApp(obj.SnapInIdx(qq+DiffFc):end),obj.yAppLim{qq+DiffFc}(obj.SnapInIdx(qq+DiffFc):end),'FaceColor',RGB7)
+                                        area(xRet(1:obj.PullingLengthIdx(qq+DiffFc)),yRetLim(1:obj.PullingLengthIdx(qq+DiffFc)),'FaceColor',RGB11)
+                                        area(xApp(obj.SnapInIdx(qq+DiffFc):end),yAppLim(obj.SnapInIdx(qq+DiffFc):end),'FaceColor',RGB7)
                                         plot(xApp,yApp,'Color',RGB1);
                                         plot(xRet,yRet,'Color',RGB2);
                                         plot(xRet(obj.PullingLengthIdx(qq+DiffFc)),yRet(obj.PullingLengthIdx(qq+DiffFc)),'d','MarkerSize',14,'MarkerFaceColor',RGB8,'MarkerEdgeColor',RGB8)
@@ -4371,7 +4419,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                                     elseif obj.SMFSFlag.PullingLength(qq+DiffFc)==1 && obj.SMFSFlag.SnapIn(qq+DiffFc)==0 % Force curve posses pulling length variables but no snap-in variables
                                         grid on
                                         hold on
-                                        area(xRet(1:obj.PullingLengthIdx(qq+DiffFc)),obj.yRetLim{qq+DiffFc}(1:obj.PullingLengthIdx(qq+DiffFc)),'FaceColor',RGB11)
+                                        area(xRet(1:obj.PullingLengthIdx(qq+DiffFc)),yRetLim(1:obj.PullingLengthIdx(qq+DiffFc)),'FaceColor',RGB11)
                                         plot(xApp,yApp,'Color',RGB1);
                                         plot(xRet,yRet,'Color',RGB2);
                                         plot(xRet(obj.PullingLengthIdx(qq+DiffFc)),yRet(obj.PullingLengthIdx(qq+DiffFc)),'d','MarkerSize',14,'MarkerFaceColor',RGB8,'MarkerEdgeColor',RGB8)
@@ -4397,8 +4445,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                                     if obj.SMFSFlag.PullingLength(qq+DiffFc)==1 && obj.SMFSFlag.SnapIn(qq+DiffFc)==1 % Force curve posses pulling length and snap-in variables
                                         grid on
                                         hold on
-                                        area(xRet(1:obj.PullingLengthIdx(qq+DiffFc)),obj.yRetLim{qq+DiffFc}(1:obj.PullingLengthIdx(qq+DiffFc)),'FaceColor',RGB11)
-                                        area(xApp(obj.SnapInIdx(qq+DiffFc):end),obj.yAppLim{qq+DiffFc}(obj.SnapInIdx(qq+DiffFc):end),'FaceColor',RGB7)
+                                        area(xRet(1:obj.PullingLengthIdx(qq+DiffFc)),yRetLim(1:obj.PullingLengthIdx(qq+DiffFc)),'FaceColor',RGB11)
+                                        area(xApp(obj.SnapInIdx(qq+DiffFc):end),yAppLim(obj.SnapInIdx(qq+DiffFc):end),'FaceColor',RGB7)
                                         plot(xApp,yApp,'Color',RGB1);
                                         plot(xRet,yRet,'Color',RGB2);
                                         plot(xRet(obj.PullingLengthIdx(qq+DiffFc)),yRet(obj.PullingLengthIdx(qq+DiffFc)),'d','MarkerSize',14,'MarkerFaceColor',RGB8,'MarkerEdgeColor',RGB8)
@@ -4409,7 +4457,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                                     elseif obj.SMFSFlag.PullingLength(qq+DiffFc)==1 && obj.SMFSFlag.SnapIn(qq+DiffFc)==0 % Force curve posses pulling length variables but no snap-in variables
                                         grid on
                                         hold on
-                                        area(xRet(1:obj.PullingLengthIdx(qq+DiffFc)),obj.yRetLim{qq+DiffFc}(1:obj.PullingLengthIdx(qq+DiffFc)),'FaceColor',RGB11)
+                                        area(xRet(1:obj.PullingLengthIdx(qq+DiffFc)),yRetLim(1:obj.PullingLengthIdx(qq+DiffFc)),'FaceColor',RGB11)
                                         plot(xApp,yApp,'Color',RGB1);
                                         plot(xRet,yRet,'Color',RGB2);
                                         plot(xRet(obj.PullingLengthIdx(qq+DiffFc)),yRet(obj.PullingLengthIdx(qq+DiffFc)),'d','MarkerSize',14,'MarkerFaceColor',RGB8,'MarkerEdgeColor',RGB8)
@@ -4626,7 +4674,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
         end
         
         
-        function fc_print_fitted(obj,XMin,XMax,YMin,YMax) % fc ... force curve
+        function fc_print_fitted(obj,XMin,XMax,YMin,YMax,Flags) % fc ... force curve
             % fc_print_raw: A function to simply plot all force curves of a
             % force map without any selection taking place
             
@@ -4645,6 +4693,9 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             DataShareStartRet=0.07; % 7 %
             DataShareEndRet=0.02; % 2 %
             NumFcMax=25;
+            % Parse unit scale function
+            [Xmultiplier,Xunit,~] = AFMImage.parse_unit_scale(1e+9,'nm',1);
+            [Ymultiplier,Yunit,~] = AFMImage.parse_unit_scale(1e+9,'nN',1);
             % Define variables for the figure name
             ExtendVelocityConvert=num2str(obj.ExtendVelocity*1e9);
             RetractVelocityConvert=num2str(obj.RetractVelocity*1e9);
@@ -4658,7 +4709,11 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             ww=1; % Variable used to loop through the flag based while loop
             DiffFc=0; % Variable to correct for differences of the variables between the plot loop and flag based while loop
             NumFcUncorrupt=nnz(obj.SMFSFlag.Uncorrupt.*obj.SMFSFlag.RetMinCrit.*obj.SMFSFlag.LengthRequisite); % Determine the number of force curves that could been analysed
+            if strcmpi(Flags,'Presorted')
             NumFigures=ceil(NumFcUncorrupt/NumFcMax);
+            elseif strcmpi(Flags,'Fit')
+            NumFigures=4;
+            end
             if NumFigures==0     % If condition is fulfilled stop function and return to calling function
                 return
             end
@@ -4696,6 +4751,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                             ww=qq+DiffFc;
                         end
                         % Flag based while loop
+                        if strcmpi(Flags,'Presorted')
                         while ~obj.SMFSFlag.Uncorrupt(ww) || ~obj.SMFSFlag.RetMinCrit(ww) || ~obj.SMFSFlag.LengthRequisite(ww)   % Stay in the while loop as long as the entry is zero
                             ww=ww+1;
                             if ww>qq
@@ -4703,10 +4759,10 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                             end
                         end
                         % Allocate data
-                        xApp=obj.HHApp{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc); % Retraction x-data (m): Vertical tip height data corrected by the determined contact point using the hard surface method
-                        xRet=obj.HHRet{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc); % Retraction x-data (m): Vertical tip height data corrected by the determined contact point using the hard surface method
-                        yApp=obj.BasedApp{qq+DiffFc};
-                        yRet=obj.BasedRet{qq+DiffFc};
+                        xApp=(obj.THApp{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc))/-Xmultiplier; % Retraction x-data (m): Vertical tip height data corrected by the determined contact point using the hard surface method
+                        xRet=(obj.THRet{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc))/-Xmultiplier; % Retraction x-data (m): Vertical tip height data corrected by the determined contact point using the hard surface method
+                        yApp=obj.BasedApp{qq+DiffFc}/Ymultiplier;
+                        yRet=obj.BasedRet{qq+DiffFc}/Ymultiplier;
                         % Determine indices
                         IdxStartApp=round(length(yApp)*DataShareStartApp);
                         IdxEndApp=round(length(yApp)*DataShareEndApp);
@@ -4728,6 +4784,41 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                         ti.Position=[0.5,0.95]; % Position the subplot title within the subplot
                         if qq == NumFcMax*kk
                             break
+                        end
+                        elseif strcmpi(Flags,'Fit')
+                        while ~obj.SMFSFlag.Fit(ww)   % Stay in the while loop as long as the entry is zero
+                            ww=ww+1;
+                            if ww>qq
+                                DiffFc=ww-qq;
+                            end
+                        end
+                        % Allocate data
+                        xApp=(obj.THApp{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc))/-Xmultiplier; % Retraction x-data (m): Vertical tip height data corrected by the determined contact point using the hard surface method
+                        xRet=(obj.THRet{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc))/-Xmultiplier; % Retraction x-data (m): Vertical tip height data corrected by the determined contact point using the hard surface method
+                        yApp=obj.BasedApp{qq+DiffFc}/Ymultiplier;
+                        yRet=obj.BasedRet{qq+DiffFc}/Ymultiplier;
+                        % Determine indices
+                        IdxStartApp=round(length(yApp)*DataShareStartApp);
+                        IdxEndApp=round(length(yApp)*DataShareEndApp);
+                        IdxStartRet=round(length(yRet)-length(yRet)*DataShareStartRet);
+                        IdxEndRet=round(length(yRet)-length(yRet)*DataShareEndRet);
+                        % Plot tile
+                        ax=nexttile;
+                        ax.XLim = [XMin XMax];
+                        ax.YLim = [YMin YMax];
+                        hold on
+                        grid on
+                        plot(xApp,yApp,'Color',RGB1);
+                        plot(xRet,yRet,'Color',RGB2);
+                        plot(xApp(IdxStartApp:IdxEndApp),yApp(IdxStartApp:IdxEndApp),'Color',RGB13);
+                        plot(xRet(IdxStartRet:IdxEndRet),yRet(IdxStartRet:IdxEndRet),'Color','k');
+                        % Title for each Subplot
+                        ti=title(sprintf('%i',qq+DiffFc),'Color','k');
+                        ti.Units='normalized'; % Set units to 'normalized'
+                        ti.Position=[0.5,0.95]; % Position the subplot title within the subplot
+                        if qq == NumFcMax*kk
+                            break
+                        end
                         end
                     end
                 else % Remainder exisiting
@@ -4796,6 +4887,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                             if ww<qq+DiffFc
                                 ww=qq+DiffFc;
                             end
+                            if strcmpi(Flags,'Presorted')
                             while ~obj.SMFSFlag.Uncorrupt(ww) || ~obj.SMFSFlag.RetMinCrit(ww) || ~obj.SMFSFlag.LengthRequisite(ww)    % Stay in the while loop as long as the entry is zero
                                 ww=ww+1;
                                 if ww>qq
@@ -4803,10 +4895,10 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                                 end
                             end
                             % Allocate data
-                            xApp=obj.HHApp{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc); % Retraction x-data (m): Vertical tip height data corrected by the determined contact point using the hard surface method
-                            xRet=obj.HHRet{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc); % Retraction x-data (m): Vertical tip height data corrected by the determined contact point using the hard surface method
-                            yApp=obj.BasedApp{qq+DiffFc};
-                            yRet=obj.BasedRet{qq+DiffFc};
+                        xApp=(obj.THApp{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc))/-Xmultiplier; % Retraction x-data (m): Vertical tip height data corrected by the determined contact point using the hard surface method
+                        xRet=(obj.THRet{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc))/-Xmultiplier; % Retraction x-data (m): Vertical tip height data corrected by the determined contact point using the hard surface method
+                        yApp=obj.BasedApp{qq+DiffFc}/Ymultiplier;
+                        yRet=obj.BasedRet{qq+DiffFc}/Ymultiplier;
                             % Determine indices
                             IdxStartApp=round(length(yApp)*DataShareStartApp);
                             IdxEndApp=round(length(yApp)*DataShareEndApp);
@@ -4829,7 +4921,42 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                             if qq == NumFcUncorrupt
                                 break
                             end
-                        end
+                            elseif strcmpi(Flags,'Fit')
+                            while ~obj.SMFSFlag.Fit(ww)    % Stay in the while loop as long as the entry is zero
+                                ww=ww+1;
+                                if ww>qq
+                                    DiffFc=ww-qq;
+                                end
+                            end
+                            % Allocate data
+                        xApp=(obj.THApp{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc))/-Xmultiplier; % Retraction x-data (m): Vertical tip height data corrected by the determined contact point using the hard surface method
+                        xRet=(obj.THRet{qq+DiffFc}-obj.CP_HardSurface(qq+DiffFc))/-Xmultiplier; % Retraction x-data (m): Vertical tip height data corrected by the determined contact point using the hard surface method
+                        yApp=obj.BasedApp{qq+DiffFc}/Ymultiplier;
+                        yRet=obj.BasedRet{qq+DiffFc}/Ymultiplier;
+                            % Determine indices
+                            IdxStartApp=round(length(yApp)*DataShareStartApp);
+                            IdxEndApp=round(length(yApp)*DataShareEndApp);
+                            IdxStartRet=round(length(yRet)-length(yRet)*DataShareStartRet);
+                            IdxEndRet=round(length(yRet)-length(yRet)*DataShareEndRet);
+                            % Plot tile
+                            ax=nexttile;
+                            ax.XLim = [XMin XMax];
+                            ax.YLim = [YMin YMax];
+                            hold on
+                            grid on
+                            plot(xApp,yApp,'Color',RGB1);
+                            plot(xRet,yRet,'Color',RGB2);
+                            plot(xApp(IdxStartApp:IdxEndApp),yApp(IdxStartApp:IdxEndApp),'Color',RGB13);
+                            plot(xRet(IdxStartRet:IdxEndRet),yRet(IdxStartRet:IdxEndRet),'Color','k');
+                            % Title for each Subplot
+                            ti=title(sprintf('%i',qq+DiffFc),'Color','k');
+                            ti.Units='normalized'; % Set units to 'normalized'
+                            ti.Position=[0.5,0.95]; % Position the subplot title within the subplot
+                            if qq == NumFcUncorrupt
+                                break
+                            end
+                            end
+                         end
                     end                   
                 end
                 %% Save figures
