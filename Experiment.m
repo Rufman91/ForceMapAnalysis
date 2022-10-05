@@ -774,7 +774,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                     continue
                 end
                 waitbar(i/NLoop,h,sprintf('Preprocessing ForceMap %i/%i\nFitting Base Lines',i,NLoop));
-                obj.FM{i}.base_and_tilt('linear');
+                obj.FM{i}.base_and_tilt();
                 waitbar(i/NLoop,h,sprintf('Preprocessing ForceMap %i/%i\nWrapping Up And Saving',i,NLoop));
                 
                 obj.FMFlag.Preprocessed(i) = 1;
@@ -785,7 +785,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             close(h);
         end
         
-        function force_map_analysis_fibril(obj,CPOption,EModOption,BaseLineCorrectBool,TemporaryLoadInBool,UseTipInHertzBool)
+        function force_map_analysis_fibril(obj,CPOption,EModOption,TemporaryLoadIn,UseTipInHertz)
             % force_map_analysis_fibril(obj,CPOption,EModOption)
             %
             % CPOption = 'Snap-In' ... Preferred Option for data with
@@ -815,19 +815,14 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             % Oliver-Pharr-like method (O. Andriotis 2014)
             % EModOption = 'Both'   ... 'Oliver' and 'Hertz'
             
-            if nargin < 4
-                BaseLineCorrectBool = false;
-                TemporaryLoadInBool = true;
-                UseTipInHertzBool = true;
-            elseif nargin < 5
-                TemporaryLoadInBool = true;
-                UseTipInHertzBool = true;
+            if nargin < 5
+                TemporaryLoadIn = true;
+                UseTipInHertz = true;
             end
             
             obj.write_to_log_file('Analysis Function','force_map_analysis_fibril()','start')
             obj.write_to_log_file('Contact Point Option',CPOption)
             obj.write_to_log_file('EMod Option',EModOption)
-            obj.write_to_log_file('BaseLineCorrectBool',BaseLineCorrectBool)
             
             h = waitbar(0,'setting up','Units','normalized','Position',[0.4 0.3 0.2 0.1]);
             NLoop = length(obj.ForceMapNames);
@@ -876,7 +871,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             obj.write_to_log_file('Reference Slope Option',RefSlopeOption)
             
             % Deconvoluting cantilever tip(s)
-            if isequal(lower(EModOption),'oliver') || isequal(lower(EModOption),'both') || UseTipInHertzBool
+            if isequal(lower(EModOption),'oliver') || isequal(lower(EModOption),'both') || UseTipInHertz
                 if obj.NumCantileverTips == 0
                     if isequal(class(obj.CantileverTips{1}),'AFMImage')
                         obj.NumCantileverTips = length(obj.CantileverTips);
@@ -917,7 +912,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 if ~obj.KeepPythonFilesOpen && obj.PythonLoaderFlag && obj.BigDataFlag
                     obj.load_python_files_to_memory(i,[])
                 end
-                if TemporaryLoadInBool && obj.BigDataFlag
+                if TemporaryLoadIn && obj.BigDataFlag
                     obj.FM{i}.temporary_data_load_in(true);
                 end
                 
@@ -930,26 +925,17 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 obj.FM{i}.unselect_curves_by_fraction_of_max_data_points(Thresh,AppRetSwitch)
                 
                 waitbar(i/NLoop,h,sprintf('Processing Fibril %i/%i\nFitting Base Line',i,NLoop));
-                if ~obj.FM{i}.BaseAndTiltFlag
-                    obj.FM{i}.base_and_tilt('linear');
-                end
-                if i == 1
-                    obj.write_to_log_file('Baseline and Tilt option','linear')
+                if ~obj.FM{i}.BaseAndTiltFlag || ~obj.ForceMapAnalysisOptions.KeepProcessedData
+                    obj.FM{i}.base_and_tilt(obj.ForceMapAnalysisOptions.BaselineCorrection);
+                    if i == 1
+                        obj.write_to_log_file('Baseline and Tilt option','linear')
+                    end
                 end
                 
                 obj.FM{i}.calculate_fib_diam();
                 
                 % contact point estimation happens here
                 waitbar(i/NLoop,h,sprintf('Processing Fibril %i/%i\nFinding Contact Point',i,NLoop));
-                if BaseLineCorrectBool
-                    if ~obj.FM{i}.CPFlag.CNN
-                        obj.cp_option_converter('Fast',i);
-                    end
-                    FractionBeforeCP = .7;
-                    obj.FM{i}.base_and_tilt_using_cp(FractionBeforeCP)
-                    obj.write_to_log_file('FractionBeforeCP',FractionBeforeCP);
-                end
-                
                 if ~obj.FM{i}.CPFlag.CNNZoomSweep
                 obj.cp_option_converter(CPOption,i);
                 end
@@ -966,10 +952,10 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                         CorrectSens = false;
                     end
                     AllowXShift = true;
-                    if UseTipInHertzBool
-                        obj.FM{i}.calculate_e_mod_hertz(CPOption,'parabolic',0,1,AllowXShift,CorrectSens,UseTipInHertzBool,0,obj.CantileverTips{obj.WhichTip(i)});
+                    if UseTipInHertz
+                        obj.FM{i}.calculate_e_mod_hertz(CPOption,'parabolic',0,1,AllowXShift,CorrectSens,UseTipInHertz,0,obj.CantileverTips{obj.WhichTip(i)});
                     else
-                        obj.FM{i}.calculate_e_mod_hertz(CPOption,'parabolic',0,1,AllowXShift,CorrectSens,UseTipInHertzBool,0);
+                        obj.FM{i}.calculate_e_mod_hertz(CPOption,'parabolic',0,1,AllowXShift,CorrectSens,UseTipInHertz,0);
                     end
                     if i == 1
                         obj.write_to_log_file('Hertzian Tip-Shape','parabolic')
@@ -1002,7 +988,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                     end
                 end
                 
-                if TemporaryLoadInBool && obj.BigDataFlag
+                if TemporaryLoadIn && obj.BigDataFlag
                     obj.FM{i}.temporary_data_load_in(false);
                     if i < NLoop
 %                         obj.save_experiment;
@@ -1054,7 +1040,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             obj.write_to_log_file('','','end')
         end
         
-        function force_map_analysis_general(obj,CPOption,EModOption,BaseLineCorrectBool,TemporaryLoadInBool,UseTipInHertzBool,TiltCorrectionBool)
+        function force_map_analysis_general(obj,CPOption,EModOption,TemporaryLoadIn,UseTipInHertz,TiltCorrection)
             % force_map_analysis_general(obj,CPOption,EModOption)
             %
             % CPOption = 'Snap-In' ... Preferred Option for data with
@@ -1086,34 +1072,29 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             if nargin < 2
                 CPOption = obj.ForceMapAnalysisOptions.ContactPointOption;
                 EModOption = obj.ForceMapAnalysisOptions.EModOption.Type;
-                BaseLineCorrectBool = obj.ForceMapAnalysisOptions.BaseLineCorrectBool;
-                TemporaryLoadInBool = obj.ForceMapAnalysisOptions.TemporaryLoadInBool;
-                UseTipInHertzBool = obj.ForceMapAnalysisOptions.EModOption.Hertz.UseTipInHertz;
-                TiltCorrectionBool = obj.ForceMapAnalysisOptions.TiltCorrectionBool;
+                TemporaryLoadIn = obj.ForceMapAnalysisOptions.TemporaryLoadIn;
+                UseTipInHertz = obj.ForceMapAnalysisOptions.EModOption.Hertz.UseTipInHertz;
+                TiltCorrection = obj.ForceMapAnalysisOptions.BaselineCorrection.TiltCorrection;
                 obj.ReferenceSlopeFlag.Options = obj.ForceMapAnalysisOptions.SensitivityCorrection;
             elseif nargin < 4
-                BaseLineCorrectBool = false;
-                TemporaryLoadInBool = true;
-                UseTipInHertzBool = true;
-                TiltCorrectionBool = true;
+                TemporaryLoadIn = true;
+                UseTipInHertz = true;
+                TiltCorrection = true;
             elseif nargin < 5
-                TemporaryLoadInBool = true;
-                UseTipInHertzBool = true;
-                TiltCorrectionBool = true;
+                UseTipInHertz = true;
+                TiltCorrection = true;
             elseif nargin < 6
-                UseTipInHertzBool = true;
-                TiltCorrectionBool = true;
+                TiltCorrection = true;
             end
             
             obj.write_to_log_file('Analysis Function','force_map_analysis_general()','start')
             obj.write_to_log_file('Contact Point Option',CPOption)
             obj.write_to_log_file('EMod Option',EModOption)
-            obj.write_to_log_file('BaseLineCorrectBool',BaseLineCorrectBool)
             
             h = waitbar(0,'setting up','Units','normalized','Position',[0.4 0.3 0.2 0.1]);
             NLoop = obj.NumForceMaps;
             if nargin < 2
-                if obj.ForceMapAnalysisOptions.KeepProcessedDataBool
+                if obj.ForceMapAnalysisOptions.KeepProcessedData
                     KeepFlagged = 'Yes';
                 else
                     KeepFlagged = 'No';
@@ -1155,7 +1136,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             obj.write_to_log_file('Reference Slope Option',RefSlopeOption)
             
             % Deconvoluting cantilever tip(s)
-            if isequal(lower(EModOption),'oliver') || isequal(lower(EModOption),'both') || UseTipInHertzBool
+            if isequal(lower(EModOption),'oliver') || isequal(lower(EModOption),'both') || UseTipInHertz
                 if obj.NumCantileverTips == 0
                     if isequal(class(obj.CantileverTips{1}),'AFMImage')
                         obj.NumCantileverTips = length(obj.CantileverTips);
@@ -1196,7 +1177,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 if ~obj.KeepPythonFilesOpen && obj.PythonLoaderFlag && obj.BigDataFlag
                     obj.load_python_files_to_memory(i,[])
                 end
-                if TemporaryLoadInBool && obj.BigDataFlag
+                if TemporaryLoadIn && obj.BigDataFlag
                     obj.FM{i}.temporary_data_load_in(true);
                 end
                 
@@ -1209,27 +1190,16 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 obj.FM{i}.unselect_curves_by_fraction_of_max_data_points(Thresh,AppRetSwitch)
                 
                 waitbar(i/NLoop,h,sprintf('Processing ForceMap %i/%i\nFitting Base Line',i,NLoop));
-                if ~obj.FM{i}.BaseAndTiltFlag
-                    obj.FM{i}.base_and_tilt('linear',TiltCorrectionBool);
-                if i == 1
-                    obj.write_to_log_file('Baseline and Tilt option','linear')
-                end
+                if ~obj.FM{i}.BaseAndTiltFlag || ~obj.ForceMapAnalysisOptions.KeepProcessedData
+                    obj.FM{i}.base_and_tilt(obj.ForceMapAnalysisOptions.BaselineCorrection);
+                    if i == 1
+                        obj.write_to_log_file('Baseline and Tilt option','linear')
+                    end
                 end
                 
                 % contact point estimation happens here
                 waitbar(i/NLoop,h,sprintf('Processing ForceMap %i/%i\nFinding Contact Point',i,NLoop));
-                if BaseLineCorrectBool
-                    if ~obj.FM{i}.CPFlag.CNN
-                        obj.cp_option_converter('Fast',i);
-                    end
-                    FractionBeforeCP = obj.ForceMapAnalysisOptions.BaseLineCorrectFractionBeforeCP;
-                    obj.FM{i}.base_and_tilt_using_cp(FractionBeforeCP)
-                    obj.write_to_log_file('FractionBeforeCP',FractionBeforeCP);
-                end
-                
-                if ~obj.FM{i}.CPFlag.CNNZoomSweep || ~isequal(CPOption,'ZoomSweep')
                 obj.cp_option_converter(CPOption,i);
-                end
                 
                 % reference slope calculation happens here
                 waitbar(i/NLoop,h,sprintf('Processing ForceMap %i/%i\nProcessing and calculating Reference Slope',i,NLoop));
@@ -1243,14 +1213,14 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                         CorrectSens = false;
                     end
                     AllowXShift = obj.ForceMapAnalysisOptions.EModOption.Hertz.AllowXShift;
-                    if UseTipInHertzBool
+                    if UseTipInHertz
                         obj.FM{i}.calculate_e_mod_hertz(CPOption,...
                             obj.ForceMapAnalysisOptions.EModOption.Hertz.TipShape,...
                             obj.ForceMapAnalysisOptions.EModOption.Hertz.LowerCurveFraction,...
                             obj.ForceMapAnalysisOptions.EModOption.Hertz.UpperCurveFraction,...
                             AllowXShift,...
                             obj.ForceMapAnalysisOptions.EModOption.Hertz.CorrectSensitivity,...
-                            UseTipInHertzBool,...
+                            UseTipInHertz,...
                             obj.ForceMapAnalysisOptions.EModOption.Hertz.UseTopology,...
                             obj.CantileverTips{obj.WhichTip(i)},...
                             obj.ForceMapAnalysisOptions.EModOption.Hertz.WeighPointsByInverseDistance,...
@@ -1266,14 +1236,14 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                             obj.ForceMapAnalysisOptions.EModOption.Hertz.UpperCurveFraction,...
                             AllowXShift,...
                             obj.ForceMapAnalysisOptions.EModOption.Hertz.CorrectSensitivity,...
-                            UseTipInHertzBool,...
+                            UseTipInHertz,...
                             obj.ForceMapAnalysisOptions.EModOption.Hertz.UseTopology,...
                             [],...
                             obj.ForceMapAnalysisOptions.EModOption.Hertz.WeighPointsByInverseDistance,...
                             obj.ForceMapAnalysisOptions.SortHeightDataForFit,...
                             obj.ForceMapAnalysisOptions.EModOption.Hertz.FitDegreeForSneddonPolySurf,...
-                            obj.ForceMapAnalysisOptions.EModOption.Hertz.LowerForceCutoff,...
-                            obj.ForceMapAnalysisOptions.EModOption.Hertz.UpperForceCutoff,...
+                            obj.ForceMapAnalysisOptions.EModOption.Hertz.LowerForceCutOff,...
+                            obj.ForceMapAnalysisOptions.EModOption.Hertz.UpperForceCutOff,...
                             obj.ForceMapAnalysisOptions.SensitivityCorrection.SensitivityCorrectionMethod);
                     end
                     if i == 1
@@ -1307,7 +1277,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 
                 waitbar(i/NLoop,h,sprintf('Processing ForceMap %i/%i\nWrapping Up And Saving',i,NLoop));
                 
-                if TemporaryLoadInBool && obj.BigDataFlag
+                if TemporaryLoadIn && obj.BigDataFlag
                     obj.FM{i}.temporary_data_load_in(false);
                     if (i < NLoop &&...
                             obj.ForceMapAnalysisOptions.SaveAfterEachMap) ||...
@@ -4577,8 +4547,16 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                     elseif length(FitCoeffValues) == 2
                         Fit = cfit(FitFunction,FitCoeffValues(1),FitCoeffValues(2));
                     end
-                    X3 = HHApp(HHApp >= 0);
-                    Y3 = feval(Fit,X3);
+                    if ~obj.ShowImageSettings.ContactPointShifted
+                        CP = h.Class{h.VolumeStruct.Index}.CP(h.VolumeStruct.ListIndex,:);
+                        X3 = HHApp(HHApp - CP(1) >= 0) - CP(1);
+                        Y3 = feval(Fit,X3);
+                        X3 = X3 + CP(1);
+                        Y3 = Y3 + CP(2);
+                    else
+                        X3 = HHApp(HHApp >= 0);
+                        Y3 = feval(Fit,X3);
+                    end
                 else
                     X3 = [];
                     Y3 = [];
@@ -8267,16 +8245,29 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 'OliverPharr',OliverPharr,...
                 'Hertz',Hertz);
             
+            BaselineCorrection = struct(...
+                'BaselineCorrectionMethod','Automatic',...
+                'AllowedBaselineCorrectionMethod',{{'Automatic',...
+                'FromFixedRange'}},...
+                'TiltCorrection',true,...
+                'FitRangeMode','FractionHorizontal',...
+                'AllowedFitRangeMode',{{'ValueHorizontal',...
+                'ValueVertical','FractionHorizontal','FractionVertical'}},...
+                'FitRangeLowerValue',0,...
+                'FitRangeUpperValue',4e-9,...
+                'FitRangeLowerFraction',0,...
+                'FitRangeUpperFraction',.5...
+                );
+                
+            
             FMAOptions = struct('ContactPointOption','Old',...
                 'AllowedContactPointOption',{{'Old','ZoomSweep','Fast','RoV','GoF','Combo','manual'}},...
                 'EModOption',EModOption,...
                 'SensitivityCorrection',SensitivityCorrection,...
-                'BaseLineCorrectBool',false,...
-                'BaseLineCorrectFractionBeforeCP',.7,...
-                'TemporaryLoadInBool',true,...
-                'TiltCorrectionBool',true,...
+                'BaselineCorrection',BaselineCorrection,...
+                'TemporaryLoadIn',true,...
                 'ReferenceAppRetSwitch',0,...
-                'KeepProcessedDataBool',false,...
+                'KeepProcessedData',false,...
                 'SkipAreaExclusion',true,...
                 'UnselectCurveFragmentsThreshold',1/2,...
                 'UnselectCurveFragmentsAppRetSwitch',2,...

@@ -407,29 +407,55 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             end
         end
         
-        function base_and_tilt(obj,RunMode,TiltCorrectionBool)
+        function base_and_tilt(obj,Options)
             % subtract baseline and tilt from the forcecurve by fitting a function to
             % the non contact domain the function tries to fit a non-affine-linear
             % function. If the linear fit is too bad, the function tries a 9th grade
             % polynomial fit instead
             
-            if nargin < 3
-                TiltCorrectionBool = true;
+            if nargin<2
+                DefOpts = Experiment.set_default_fma_options;
+                Options = DefOpts.BaselineCorrection;
             end
             
             Range = find(obj.SelectedCurves);
             h = waitbar(0,'Setting up...');
             for i=Range'
-                [AppForce,HHApp] = obj.get_force_curve_data(i,'AppRetSwitch',0,...
+                [vDef,Height] = obj.get_force_curve_data(i,'AppRetSwitch',0,...
                     'BaselineCorrection',0,'TipHeightCorrection',0,...
                     'Sensitivity','original','Unit','N');
                 
                 prog = i/obj.NCurves;
                 waitbar(prog,h,'processing baseline fits...');
                 try
-                    [ncd , ncidx] = ForceMap.no_contact_domain(AppForce);
-                    Params = polyfit(HHApp(1:length(ncd)),ncd,1);
-                    if TiltCorrectionBool
+                    if isequal(Options.BaselineCorrectionMethod,'Automatic')
+                        [ncd , ncidx] = ForceMap.no_contact_domain(vDef);
+                        Params = polyfit(Height(1:length(ncd)),ncd,1);
+                    elseif isequal(Options.BaselineCorrectionMethod,'FromFixedRange')
+                        
+                        switch Options.FitRangeMode
+                            case 'ValueHorizontal'
+                                UValue = max(Height) - Options.FitRangeLowerValue;
+                                LValue = max(Height) - Options.FitRangeUpperValue;
+                                FitHeight = Height(Height>=LValue & Height<=UValue);
+                                FitvDef = vDef(Height>=LValue & Height<=UValue);
+                            case 'ValueVertical'
+                                FitHeight = Height(vDef>=Options.FitRangeLowerValue & vDef<=Options.FitRangeUpperValue);
+                                FitvDef = vDef(vDef>=Options.FitRangeLowerValue & vDef<=Options.FitRangeUpperValue);
+                            case 'FractionHorizontal'
+                                RangeHeight = range(Height);
+                                FitHeight = Height((Height-min(Height))>=Options.FitRangeLowerFraction*RangeHeight &...
+                                    (Height-min(Height))<=Options.FitRangeUpperFraction*RangeHeight);
+                                FitvDef = vDef((Height-min(Height))>=Options.FitRangeLowerFraction*RangeHeight &...
+                                    (Height-min(Height))<=Options.FitRangeUpperFraction*RangeHeight);
+                            case 'FractionVertical'
+                                MaxvDef = max(vDef);
+                                FitHeight = Height(vDef>=Options.FitRangeLowerFraction*MaxvDef & vDef<=Options.FitRangeUpperFraction*MaxvDef);
+                                FitvDef = vDef(vDef>=Options.FitRangeLowerFraction*MaxvDef & vDef<=Options.FitRangeUpperFraction*MaxvDef);
+                        end
+                        Params = polyfit(FitHeight,FitvDef,1);
+                    end
+                    if Options.TiltCorrection
                         obj.Basefit{i} = Params;
                     else
                         obj.Basefit{i} = [0 Params(2)];
