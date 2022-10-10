@@ -312,19 +312,6 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             
         end
         
-        function add_dummy_tip_data(obj)
-            
-            [TempFile,TempPath] = uigetfile('*.mat');
-            load(fullfile(TempPath,TempFile));
-            %TempObj = get(TempStruct,TempFile)
-            obj.CantileverTipFolders{end+1} = TempPath;
-            obj.CantileverTips{end+1} = tgt1_dummy;
-            obj.CantileverTipFlag = 1;
-            obj.CantileverTipNames{1} = TempFile;
-            obj.NumCantileverTips = obj.NumCantileverTips + 1;
-            
-        end
-        
         function create_custom_cantilever_tip(obj,varargin)
             % function create_custom_cantilever_tip(obj,varargin)
             %
@@ -626,6 +613,34 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             end
             
         end
+        
+        function add_dummy_cantilever_tip_data(obj,Preprocessing)
+            
+            if nargin <2
+                Preprocessing = true;
+            end
+            
+            SourceFile = which("TGT-1_MSCT-F-Box33-Nr10-fit-2022.05.13-09.50.09.883.jpk-qi-image");
+            
+            Tip = AFMImage(SourceFile,obj.ExperimentFolder,'ArtificialAFMImage-1',Preprocessing);
+            
+            if isempty(obj.NumCantileverTips) || obj.NumCantileverTips == 0
+                obj.CantileverTips{1} = Tip;
+                obj.NumCantileverTips = 1;
+            else
+                obj.CantileverTips{end+1} = Tip;
+                obj.NumCantileverTips = obj.NumCantileverTips + 1;
+            end
+        end
+        
+        function create_artificial_cantilever_tip(obj)
+            
+            obj.add_dummy_cantilever_tip_data(false)
+            
+            
+            
+        end
+        
     end
     methods(Static)
         % Static methods related with Experiment-file handling
@@ -8625,6 +8640,12 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             
             OutPath = strrep(InPath,'/',filesep);
             OutPath = strrep(InPath,'\',filesep);
+            
+        end
+        
+        function load_empty_afmimage(SourceFile,TargetPath)
+            
+            FullFile = which()
             
         end
         

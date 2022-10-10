@@ -68,7 +68,7 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
     methods
         % Main methods of the class
         
-        function obj = AFMImage(ImageFullFile,DataFolder,TempID)
+        function obj = AFMImage(ImageFullFile,DataFolder,TempID,Preprocess)
             % Constructor of the class. Extracts Header properties as well
             % as all available channel-data
             
@@ -80,6 +80,9 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             if nargin == 1
                 TempID = 'AFMImage detached from Experiment-class 1';
                 DataFolder = 'ThisNeedsNoFolder';
+            end
+            if nargin < 4
+                Preprocess = true;
             end
             
             obj. CMap = obj.define_afm_color_map(0);
@@ -104,7 +107,9 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             
             obj.construct_list_to_map_relations();
             
-            obj.preprocess_image
+            if Preprocess
+                obj.preprocess_image
+            end
             
         end
         
