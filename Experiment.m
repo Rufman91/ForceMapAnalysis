@@ -1143,6 +1143,8 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 RefSlopeOption = 'FromArea';
             elseif obj.ReferenceSlopeFlag.Adaptive
                 RefSlopeOption = 'Adaptive';
+            elseif obj.ReferenceSlopeFlag.KeepOriginal
+                RefSlopeOption = 'KeepOriginal';
             elseif obj.ReferenceSlopeFlag.AutomaticFibril
                 RefSlopeOption = 'AutomaticFibril';
             elseif obj.ReferenceSlopeFlag.Automatic
@@ -7229,7 +7231,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 SkipGUIBool = false;
             end
             
-            Methods = false(6,1);
+            Methods = false(7,1);
             if ~SkipGUIBool
                 Methods(DefaultOption) = true;
                 [ChosenMethod, AppRetSwitch] = obj.reference_slope_parser_gui(Methods);
@@ -7244,6 +7246,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             obj.ReferenceSlopeFlag.FromArea = Methods(4);
             obj.ReferenceSlopeFlag.AutomaticFibril = Methods(5);
             obj.ReferenceSlopeFlag.Automatic = Methods(6);
+            obj.ReferenceSlopeFlag.KeepOriginal = Methods(7);
             
             if SkipGUIBool
                 obj.ReferenceSlopeFlag.(...
@@ -7256,6 +7259,11 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             if obj.ReferenceSlopeFlag.SetAllToValue
                 GetValue = inputdlg('To which value should the reference slopes be set?','Choose a value',1);
                 Value = str2double(GetValue{1});
+                for i=1:obj.NumForceMaps
+                    obj.FM{i}.set_reference_slope_to_value(Value)
+                end
+            elseif obj.ReferenceSlopeFlag.KeepOriginal
+                Value = 1;
                 for i=1:obj.NumForceMaps
                     obj.FM{i}.set_reference_slope_to_value(Value)
                 end
@@ -7727,6 +7735,12 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             end
         end
         
+        function reset_selected_and_corrupted_flags(obj)
+            for i=1:obj.NumForceMaps
+                obj.FM{i}.reset_selected_and_corrupted_flags()
+            end
+        end
+        
         function load_python_files_to_memory(obj,IndexVector,RefIndexVector)
             
             if nargin < 2
@@ -7872,6 +7886,8 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
         end
         
         function [Out, AppRetSwitch] = reference_slope_parser_gui(Methods)
+            % THIS FUNCTION IS DEPRECATED
+            
             % Create figure
             left = 0.3;
             bottom = 0.4;
@@ -8340,7 +8356,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             SensitivityCorrection = struct(...
                 'SensitivityCorrectionMethod','Automatic',...
                 'AllowedSensitivityCorrectionMethod',{{'Automatic',...
-                'Adaptive','AutomaticFibril','FromArea',...
+                'KeepOriginal','Adaptive','AutomaticFibril','FromArea',...
                 'SetAllToValue','UserInput','FromRefFM'}},...
                 'FitRangeMode','ValueHorizontal',...
                 'AllowedFitRangeMode',{{'ValueHorizontal',...

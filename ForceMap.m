@@ -107,6 +107,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
         Man_CP          % manually chosen contact point
         CP_HardSurface  % Detract cantilever deflection for CP estimation
         CP_None         % Fills the CP and CP_None properties with zeros
+        CP_CurveOrigin  % Assums the start of the force curve as cp
         CPFlag          % Struct containing booleans to indicate if a certain CP-type has been estimated
         
     end
