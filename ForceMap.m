@@ -1351,7 +1351,9 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                     end
                     force{i} = App{i} - CP(i,2);
                     tip_h{i} = (HHApp{i} - CP(i,1)) - force{i}/obj.SpringConstant;
-                    tip_h{i}(tip_h{i} < 0) = [];
+                    if ~isequal(CPType,'None')
+                        tip_h{i}(tip_h{i} < 0) = [];
+                    end
                     force{i}(1:(length(force{i})-length(tip_h{i}))) = [];
                     if length(tip_h{i}) < 2
                         continue
