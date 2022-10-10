@@ -1259,6 +1259,26 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             obj.CPFlag.HardSurface = 1;
         end
         
+        
+        function estimate_cp_curve_origin(obj)
+            % contact point estimation for force curves assuming the curve
+            % starts at contact point (this is useful in very
+            % range-restricted hertz fits)
+            
+            for i=1:obj.NCurves
+                [App,HHApp] = obj.get_force_curve_data(i,'AppRetSwitch',0,...
+                    'BaselineCorrection',1,'TipHeightCorrection',0,...
+                    'Sensitivity','original','Unit','N');
+                obj.CP_CurveOrigin(i,1) = HHApp(1);
+                obj.CP_CurveOrigin(i,2) = App(1);
+                %% Debugging
+                % plot(HHApp,App);
+                % drawpoint('Position',[obj.CP_HardSurface(i,1) obj.CP_HardSurface(i,2)]);
+            end
+            obj.CP = obj.CP_CurveOrigin;
+            obj.CPFlag.CurveOrigin = 1;
+        end
+        
         function E = calculate_e_mod_hertz(obj,CPType,TipShape,LowerCurveFraction,...
                 UpperCurveFraction,AllowXShift,CorrectSensitivity,UseTipData,...
                 UseTopology,TipObject,DataWeightByDistanceBool,...

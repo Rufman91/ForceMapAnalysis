@@ -1588,22 +1588,46 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             if RefFM == false
                 if isequal(lower(CPOption),'snap-in')
                     obj.FM{i}.estimate_cp_snap_in();
+                    if obj.ForceMapAnalysisOptions.ContactPointJustXAxis
+                        obj.FM{i}.CP(:,2) = 0;
+                        obj.FM{i}.CP_SnapIn(:,2) = 0;
+                    end
                 end
                 if isequal(lower(CPOption),'none')
                     obj.FM{i}.CP_None = zeros(obj.FM{i}.NCurves,2);
                     obj.FM{i}.CP = obj.FM{i}.CP_None;
+                    if obj.ForceMapAnalysisOptions.ContactPointJustXAxis
+                        obj.FM{i}.CP(:,2) = 0;
+                        obj.FM{i}.CP_None(:,2) = 0;
+                    end
                 end
                 if isequal(lower(CPOption),'rov')
                     obj.FM{i}.estimate_cp_rov();
+                    if obj.ForceMapAnalysisOptions.ContactPointJustXAxis
+                        obj.FM{i}.CP(:,2) = 0;
+                        obj.FM{i}.CP_RoV(:,2) = 0;
+                    end
                 end
                 if isequal(lower(CPOption),'hardsurface')
                     obj.FM{i}.estimate_cp_hardsurface();
+                    if obj.ForceMapAnalysisOptions.ContactPointJustXAxis
+                        obj.FM{i}.CP(:,2) = 0;
+                        obj.FM{i}.CP_HardSurface(:,2) = 0;
+                    end
                 end
                 if isequal(lower(CPOption),'gof')
                     obj.FM{i}.estimate_cp_gof();
+                    if obj.ForceMapAnalysisOptions.ContactPointJustXAxis
+                        obj.FM{i}.CP(:,2) = 0;
+                        obj.FM{i}.CP_GoF(:,2) = 0;
+                    end
                 end
                 if isequal(lower(CPOption),'old')
                     obj.FM{i}.estimate_cp_old();
+                    if obj.ForceMapAnalysisOptions.ContactPointJustXAxis
+                        obj.FM{i}.CP(:,2) = 0;
+                        obj.FM{i}.CP_Old(:,2) = 0;
+                    end
                 end
                 if isequal(lower(CPOption),'combo')
                     if obj.FM{i}.CPFlag.RoV == 0
@@ -1613,67 +1637,151 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                         obj.FM{i}.estimate_cp_gof();
                     end
                     obj.FM{i}.estimate_cp_combined();
+                    if obj.ForceMapAnalysisOptions.ContactPointJustXAxis
+                        obj.FM{i}.CP(:,2) = 0;
+                        obj.FM{i}.CP_Combo(:,2) = 0;
+                    end
                 end
                 if isequal(lower(CPOption),'manual')
                     obj.FM{i}.estimate_cp_manually;
+                    if obj.ForceMapAnalysisOptions.ContactPointJustXAxis
+                        obj.FM{i}.CP(:,2) = 0;
+                    end
                 end
                 if isequal(lower(CPOption),'fast')
                     obj.FM{i}.estimate_cp_cnn(obj.CP_CNN,'Fast');
+                    if obj.ForceMapAnalysisOptions.ContactPointJustXAxis
+                        obj.FM{i}.CP(:,2) = 0;
+                    end
                 end
                 if isequal(lower(CPOption),'dropout')
                     obj.FM{i}.estimate_cp_cnn(obj.DropoutNet,'Dropout',NumPasses);
+                    if obj.ForceMapAnalysisOptions.ContactPointJustXAxis
+                        obj.FM{i}.CP(:,2) = 0;
+                        obj.FM{i}.CP_Dropout(:,2) = 0;
+                    end
                 end
                 if isequal(lower(CPOption),'zoom')
                     obj.FM{i}.estimate_cp_cnn(obj.CP_CNN,'Zoom');
+                    if obj.ForceMapAnalysisOptions.ContactPointJustXAxis
+                        obj.FM{i}.CP(:,2) = 0;
+                    end
                 end
                 if isequal(lower(CPOption),'zoomdropout')
                     obj.FM{i}.estimate_cp_cnn(obj.CP_CNN,'zoomdropout',NumPasses);
+                    if obj.ForceMapAnalysisOptions.ContactPointJustXAxis
+                        obj.FM{i}.CP(:,2) = 0;
+                    end
                 end
                 if isequal(lower(CPOption),'zoomsweep')
                     obj.FM{i}.estimate_cp_cnn(obj.CP_CNN,'Zoomsweep',NumPasses);
+                    if obj.ForceMapAnalysisOptions.ContactPointJustXAxis
+                        obj.FM{i}.CP(:,2) = 0;
+                    end
+                end
+                if isequal(lower(CPOption),'curveorigin')
+                    obj.FM{i}.estimate_cp_curve_origin();
+                    if obj.ForceMapAnalysisOptions.ContactPointJustXAxis
+                        obj.FM{i}.CP(:,2) = 0;
+                        obj.FM{i}.CP_CurveOrigin(:,2) = 0;
+                    end
                 end
             elseif RefFM == true
                 if isequal(lower(CPOption),'snap-in')
                     obj.FM{i}.estimate_cp_snap_in();
+                    if obj.ForceMapAnalysisOptions.ContactPointJustXAxis
+                        obj.FM{i}.CP(:,2) = 0;
+                        obj.FM{i}.CP_SnapIn(:,2) = 0;
+                    end
                 end
                 if isequal(lower(CPOption),'none')
                     obj.FM{i}.CP_None = zeros(obj.FM{i}.NCurves,2);
                     obj.FM{i}.CP = obj.FM{i}.CP_None;
+                    if obj.ForceMapAnalysisOptions.ContactPointJustXAxis
+                        obj.FM{i}.CP(:,2) = 0;
+                        obj.FM{i}.CP_None(:,2) = 0;
+                    end
                 end
                 if isequal(lower(CPOption),'hardsurface')
                     obj.FM{i}.estimate_cp_hardsurface();
+                    if obj.ForceMapAnalysisOptions.ContactPointJustXAxis
+                        obj.FM{i}.CP(:,2) = 0;
+                        obj.FM{i}.CP_HardSurface(:,2) = 0;
+                    end
                 end
                 if isequal(lower(CPOption),'rov')
                     obj.RefFM{i}.estimate_cp_rov();
+                    if obj.ForceMapAnalysisOptions.ContactPointJustXAxis
+                        obj.FM{i}.CP(:,2) = 0;
+                        obj.FM{i}.CP_RoV(:,2) = 0;
+                    end
                 end
                 if isequal(lower(CPOption),'gof')
                     obj.RefFM{i}.estimate_cp_gof();
+                    if obj.ForceMapAnalysisOptions.ContactPointJustXAxis
+                        obj.FM{i}.CP(:,2) = 0;
+                        obj.FM{i}.CP_GoF(:,2) = 0;
+                    end
                 end
                 if isequal(lower(CPOption),'old')
                     obj.RefFM{i}.estimate_cp_old();
+                    if obj.ForceMapAnalysisOptions.ContactPointJustXAxis
+                        obj.FM{i}.CP(:,2) = 0;
+                        obj.FM{i}.CP_Old(:,2) = 0;
+                    end
                 end
                 if isequal(lower(CPOption),'combo')
                     obj.RefFM{i}.estimate_cp_rov();
                     obj.RefFM{i}.estimate_cp_gof();
                     obj.RefFM{i}.estimate_cp_combined();
+                    if obj.ForceMapAnalysisOptions.ContactPointJustXAxis
+                        obj.FM{i}.CP(:,2) = 0;
+                        obj.FM{i}.CP_Combo(:,2) = 0;
+                    end
                 end
                 if isequal(lower(CPOption),'manual')
                     obj.RefFM{i}.estimate_cp_manually;
+                    if obj.ForceMapAnalysisOptions.ContactPointJustXAxis
+                        obj.FM{i}.CP(:,2) = 0;
+                    end
                 end
                 if isequal(lower(CPOption),'fast')
                     obj.RefFM{i}.estimate_cp_cnn(obj.CP_CNN,'Fast');
+                    if obj.ForceMapAnalysisOptions.ContactPointJustXAxis
+                        obj.FM{i}.CP(:,2) = 0;
+                    end
                 end
                 if isequal(lower(CPOption),'dropout')
                     obj.RefFM{i}.estimate_cp_cnn(obj.DropoutNet,'Dropout',NumPasses);
+                    if obj.ForceMapAnalysisOptions.ContactPointJustXAxis
+                        obj.FM{i}.CP(:,2) = 0;
+                        obj.FM{i}.CP_Dropout(:,2) = 0;
+                    end
                 end
                 if isequal(lower(CPOption),'zoom')
                     obj.RefFM{i}.estimate_cp_cnn(obj.CP_CNN,'Zoom');
+                    if obj.ForceMapAnalysisOptions.ContactPointJustXAxis
+                        obj.FM{i}.CP(:,2) = 0;
+                    end
                 end
                 if isequal(lower(CPOption),'zoomdropout')
                     obj.RefFM{i}.estimate_cp_cnn(obj.CP_CNN,'zoomdropout',NumPasses);
+                    if obj.ForceMapAnalysisOptions.ContactPointJustXAxis
+                        obj.FM{i}.CP(:,2) = 0;
+                    end
                 end
                 if isequal(lower(CPOption),'zoomsweep')
                     obj.RefFM{i}.estimate_cp_cnn(obj.CP_CNN,'Zoomsweep',NumPasses);
+                    if obj.ForceMapAnalysisOptions.ContactPointJustXAxis
+                        obj.FM{i}.CP(:,2) = 0;
+                    end
+                end
+                if isequal(lower(CPOption),'curveorigin')
+                    obj.FM{i}.estimate_cp_curve_origin();
+                    if obj.ForceMapAnalysisOptions.ContactPointJustXAxis
+                        obj.FM{i}.CP(:,2) = 0;
+                        obj.FM{i}.CP_CurveOrigin(:,2) = 0;
+                    end
                 end
             end
                 
@@ -8244,6 +8352,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 'MovingWindowSize',512,...
                 'TooltipMovingWindowSize','Only for Senitivity Correction Method "Adaptive"',...
                 'AppRetSwitch',false,...
+                'DTypeAppRetSwitch','logical',...
                 'SetAllToValue',1 ...
                 );
             
@@ -8255,7 +8364,9 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 'AllowedTipShape',{{'parabolic','spheric approx.'}},...
                 'FitDegreeForSneddonPolySurf',10,...
                 'CorrectSensitivity',true,...
+                'DTypeCorrectSensitivity','logical',...
                 'AllowXShift',true,...
+                'DTypeAllowXShift','logical',...
                 'UpperForceCutOff',[],...
                 'TooltipUpperForceCutOff','Set the lower absolute y-limit in Newtons [N] for the portion of the curve that should be considered for fitting.',...
                 'LowerForceCutOff',0,...
@@ -8265,8 +8376,11 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 'UpperCurveFraction',1,...
                 'TooltipUpperCurveFraction','Set the upper fraction y-limit for the portion of the curve that should be considered for fitting. This applies to the curve AFTER the ForceCutOffs.',...
                 'UseTipInHertz',true,...
+                'DTypeTipInHertz','logical',...
                 'UseTopology',false,...
-                'WeighPointsByInverseDistance',false);
+                'DTypeUseTopology','logical',...
+                'WeighPointsByInverseDistance',false,...
+                'DTypeWeighPointsByInverseDistance','logical');
             
             EModOption = struct(...
                 'Type','Hertz',...
@@ -8279,6 +8393,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 'AllowedBaselineCorrectionMethod',{{'Automatic',...
                 'FromFixedRange'}},...
                 'TiltCorrection',true,...
+                'DTypeTiltCorrection','logical',...
                 'FitRangeMode','FractionHorizontal',...
                 'AllowedFitRangeMode',{{'ValueHorizontal',...
                 'ValueVertical','FractionHorizontal','FractionVertical'}},...
@@ -8290,18 +8405,26 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 
             
             FMAOptions = struct('ContactPointOption','Old',...
-                'AllowedContactPointOption',{{'Old','ZoomSweep','Fast','RoV','GoF','Combo','manual','None','HardSurface'}},...
+                'ContactPointJustXAxis',false,...
+                'DTypeContactPointJustXAxis','logical',...
+                'AllowedContactPointOption',{{'Old','ZoomSweep','Fast','RoV','GoF','Combo','manual','HardSurface','CurveOrigin','None'}},...
                 'EModOption',EModOption,...
                 'SensitivityCorrection',SensitivityCorrection,...
                 'BaselineCorrection',BaselineCorrection,...
                 'TemporaryLoadIn',true,...
+                'DTypeTemporaryLoadIn','logical',...
                 'ReferenceAppRetSwitch',0,...
                 'KeepProcessedData',false,...
+                'DTypeKeepProcessedData','logical',...
                 'SkipAreaExclusion',true,...
+                'DTypeSkipAreaExclusion','logical',...
                 'UnselectCurveFragmentsThreshold',1/2,...
                 'UnselectCurveFragmentsAppRetSwitch',2,...
                 'SaveWhenFinished',true,...
+                'DTypeSaveWhenFinished','logical',...
                 'SaveAfterEachMap',false,...
+                'DTypeSaveAfterEachMap','logical',...
+                'DTypeSortHeightDataForFit','logical',...
                 'SortHeightDataForFit',true);
             
         end
