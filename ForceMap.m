@@ -106,6 +106,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
         CP_Old          % contact point estimation from old script 'A_nIAFM_analysis_main'
         Man_CP          % manually chosen contact point
         CP_HardSurface  % Detract cantilever deflection for CP estimation
+        CP_None         % Fills the CP and CP_None properties with zeros
         CPFlag          % Struct containing booleans to indicate if a certain CP-type has been estimated
         
     end
@@ -1254,6 +1255,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 % plot(HHApp,App);
                 % drawpoint('Position',[obj.CP_HardSurface(i,1) obj.CP_HardSurface(i,2)]);
             end
+            obj.CP = obj.CP_HardSurface;
             obj.CPFlag.HardSurface = 1;
         end
         

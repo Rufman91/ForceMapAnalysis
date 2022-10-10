@@ -1589,8 +1589,15 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 if isequal(lower(CPOption),'snap-in')
                     obj.FM{i}.estimate_cp_snap_in();
                 end
+                if isequal(lower(CPOption),'none')
+                    obj.FM{i}.CP_None = zeros(obj.FM{i}.NCurves,2);
+                    obj.FM{i}.CP = obj.FM{i}.CP_None;
+                end
                 if isequal(lower(CPOption),'rov')
                     obj.FM{i}.estimate_cp_rov();
+                end
+                if isequal(lower(CPOption),'hardsurface')
+                    obj.FM{i}.estimate_cp_hardsurface();
                 end
                 if isequal(lower(CPOption),'gof')
                     obj.FM{i}.estimate_cp_gof();
@@ -1628,6 +1635,13 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             elseif RefFM == true
                 if isequal(lower(CPOption),'snap-in')
                     obj.FM{i}.estimate_cp_snap_in();
+                end
+                if isequal(lower(CPOption),'none')
+                    obj.FM{i}.CP_None = zeros(obj.FM{i}.NCurves,2);
+                    obj.FM{i}.CP = obj.FM{i}.CP_None;
+                end
+                if isequal(lower(CPOption),'hardsurface')
+                    obj.FM{i}.estimate_cp_hardsurface();
                 end
                 if isequal(lower(CPOption),'rov')
                     obj.RefFM{i}.estimate_cp_rov();
@@ -8276,7 +8290,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 
             
             FMAOptions = struct('ContactPointOption','Old',...
-                'AllowedContactPointOption',{{'Old','ZoomSweep','Fast','RoV','GoF','Combo','manual'}},...
+                'AllowedContactPointOption',{{'Old','ZoomSweep','Fast','RoV','GoF','Combo','manual','None','HardSurface'}},...
                 'EModOption',EModOption,...
                 'SensitivityCorrection',SensitivityCorrection,...
                 'BaselineCorrection',BaselineCorrection,...
