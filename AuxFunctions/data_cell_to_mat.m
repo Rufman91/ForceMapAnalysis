@@ -19,7 +19,7 @@ NRows = max(VecSizes);
 OutMat = nan(NRows,L);
 
 for i=1:L
-    OutMat(:,i) = InCell{i};
+    OutMat(1:length(InCell{i}),i) = InCell{i};
 end
 
 end
