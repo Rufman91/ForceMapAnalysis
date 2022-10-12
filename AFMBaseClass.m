@@ -788,13 +788,13 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle
                 [Seg1,Seg2] = AFMBaseClass.proximity_map_two_segmentation_elements(OriginalSeg,MatchedSeg);
                 Seg1.ProximityMap.Names = {obj.Name TargetObject.Name};
                 Seg2.ProximityMap.Names = {obj.Name TargetObject.Name};
-                if isfield(obj.Segment(i),'ProximityMap')
+                if isfield(obj.Segment(i),'ProximityMap') && ~isempty(obj.Segment(i).ProximityMap)
                     obj.Segment(i).ProximityMap(end+1) = Seg1.ProximityMap;
                 else
                     obj.Segment(i).ProximityMap = Seg1.ProximityMap;
                 end
                 
-                if isfield(TargetObject.Segment(i),'ProximityMap')
+                if isfield(TargetObject.Segment(i),'ProximityMap') && ~isempty(TargetObject.Segment(i).ProximityMap)
                     TargetObject.Segment(MatchedIndex).ProximityMap(end+1) = Seg2.ProximityMap;
                 else
                     TargetObject.Segment(MatchedIndex).ProximityMap = Seg2.ProximityMap;
