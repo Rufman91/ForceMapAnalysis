@@ -143,6 +143,11 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
         HertzFitType
         HertzFitCoeffNames
         HertzFitValues
+        HertzFitSSE
+        HertzFitRSquare
+        HertzFitDFE
+        HertzFitAdjRSquare
+        HertzFitRMSE
         SnapIn
         MaxAdhesionForce
         AdhesionEnergy
@@ -1298,6 +1303,12 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 UseTipData = false;
             end
             
+            obj.HertzFitSSE = zeros(1,obj.NCurves);
+            obj.HertzFitRSquare = zeros(1,obj.NCurves);
+            obj.HertzFitDFE = zeros(1,obj.NCurves);
+            obj.HertzFitAdjRSquare = zeros(1,obj.NCurves);
+            obj.HertzFitRMSE = zeros(1,obj.NCurves);
+            
             if isequal(lower(TipShape),'parabolic') || isequal(lower(TipShape),'spheric approx.')
                 if AllowXShift
                     FitFunction = 'a*(x+b)^(3/2)';
@@ -1427,7 +1438,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                         f = fittype(FitFunction,'options',s);
                     end
                     try
-                        Hertzfit{i} = fit(tip_h{i},...
+                        [Hertzfit{i},GoF{i}] = fit(tip_h{i},...
                             force{i},f);
                     catch
                         Hertzfit{i} = nan;
@@ -1505,6 +1516,11 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                         catch
                         end
                         obj.HertzFitValues{iRange(i)} = coeffvalues(Hertzfit{i});
+                        obj.HertzFitSSE(iRange(i)) = GoF{i}.sse;
+                        obj.HertzFitRSquare(iRange(i)) = GoF{i}.rsquare;
+                        obj.HertzFitDFE(iRange(i)) = GoF{i}.dfe;
+                        obj.HertzFitAdjRSquare(iRange(i)) = GoF{i}.adjrsquare;
+                        obj.HertzFitRMSE(iRange(i)) = GoF{i}.rmse;
                     catch
                         obj.SelectedCurves(iRange(i)) = 0;
                         warning('on','all');
@@ -1560,6 +1576,16 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 obj.Channel(end+1) = Channel;
             else
                 obj.Channel(Index) = Channel;
+            end
+            
+            % Write to Channel
+            RSquareMap = obj.convert_data_list_to_map(obj.HertzFitRSquare);
+            RSquare = obj.create_standard_channel(RSquareMap,'Hertz Fit RSquare','');
+            [~,Index] = obj.get_channel('Hertz Fit RSquare');
+            if isempty(Index)
+                obj.Channel(end+1) = RSquare;
+            else
+                obj.Channel(Index) = RSquare;
             end
             
             if AllowXShift
