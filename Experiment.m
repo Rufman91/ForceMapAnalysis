@@ -1471,6 +1471,131 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             end
         end
         
+        function Table = compile_experiment_content_to_table_sqldatabase(obj)
+            
+            % Cycle through ALL the contents of FM,I,CantileverTips and
+            % create an entry of every single Pixel with columns being
+            % every possible property with special rules for some properties
+            % that are derived from 'characterize_fiber_like_polyline_segments'
+            % or 'create_overlay_group'
+            
+            h = waitbar(0,'setting up...','Name','Compiling SQL Table');
+            
+            % Collect all the Column Categories:
+            ColumnNames = [];
+            TempColumnTypes = [];
+            BlackList = {'FileVersion',...
+                'DataStoreFolder',...
+                'RawDataFilePath',...
+                'OpenZipFile',...
+                'Folder',...
+                'HostOS',...
+                'HostName',...
+                };
+            ExProps = {'FM','I','CantileverTips'};
+            LoopNumber = [obj.NumForceMaps obj.NumAFMImages obj.NumCantileverTips];
+            k = 1;
+            for j=1:3
+                if LoopNumber(j) == 0
+                    continue
+                end
+                NPixels = obj.(ExProps{j}){1}.NumPixelsX.*obj.(ExProps{j}){1}.NumPixelsY;
+                if NPixels > 0
+                    PropertyStruct = obj.(ExProps{j}){1};
+                    PropertyNames = fieldnames(PropertyStruct);
+                    for i=1:length(PropertyNames)
+                        if (isfloat(PropertyStruct.(PropertyNames{i})) ||...
+                                isinteger(PropertyStruct.(PropertyNames{i})) ||...
+                                ischar(PropertyStruct.(PropertyNames{i})) ||...
+                                islogical(PropertyStruct.(PropertyNames{i})) ||...
+                                isstring(PropertyStruct.(PropertyNames{i})))
+                            if ((isfloat(PropertyStruct.(PropertyNames{i})) ||...
+                                    isinteger(PropertyStruct.(PropertyNames{i})) ||...
+                                    islogical(PropertyStruct.(PropertyNames{i}))) &&...
+                                    ~(isequal(size(PropertyStruct.(PropertyNames{i})),[1 NPixels]) ||...
+                                    isequal(size(PropertyStruct.(PropertyNames{i})),[NPixels 1]) ||...
+                                    isequal(size(PropertyStruct.(PropertyNames{i})),[1 1]))...
+                                    )
+                                continue
+                            end
+                            if any(strcmp(PropertyNames{i},BlackList))
+                                continue
+                            end
+                            ColumnNames{k} = PropertyNames{i};
+                            TempColumnTypes{k} = class(PropertyStruct.(PropertyNames{i}));
+                            k = k + 1;
+                        end
+                    end
+                end
+            end
+            
+            % Delete non unique entries. This will require shared property
+            % names between subclasses to be of the same type across
+            % AFMImage and ForceMap
+            [ColumnNames,iPre] = unique(ColumnNames);
+            ColumnTypes = TempColumnTypes(iPre);
+            
+            % replace some of the types
+            ColumnTypes = strrep(ColumnTypes,'single','singlenan');
+            ColumnTypes = strrep(ColumnTypes,'double','doublenan');
+            ColumnTypes = strrep(ColumnTypes,'char','string');
+            
+            % Preallocate the Table
+            LoopNumber = [obj.NumForceMaps obj.NumAFMImages obj.NumCantileverTips];
+            NumRowsTable = 0;
+            for i=1:3
+                if LoopNumber(i) == 0
+                    continue
+                end
+                for j=1:LoopNumber(i)
+                    NumRowsTable = NumRowsTable + ...
+                        obj.(ExProps{i}){j}.NumPixelsX.*obj.(ExProps{i}){j}.NumPixelsY;
+                end
+            end
+            Table = table('Size',[NumRowsTable length(ColumnNames)],'VariableTypes',ColumnTypes,'VariableNames',ColumnNames);
+            
+            % Now loop over all the Classes and all their points and fill
+            % up the Table
+            m = 1;
+            Barcounter = 1;
+            for i=1:3
+                if LoopNumber(i) == 0
+                    continue
+                end
+                for j=1:LoopNumber(i)
+                    waitbar(Barcounter/sum(LoopNumber),h,sprintf('writing Class %i/%i...',Barcounter,sum(LoopNumber)))
+                    for k=1:(obj.(ExProps{i}){j}.NumPixelsX.*obj.(ExProps{i}){j}.NumPixelsY)
+                        for l=1:length(ColumnNames)
+                            if isprop(obj.(ExProps{i}){j},ColumnNames{l})
+                                %TODO: optimize this shit
+                                try
+                                    if length(obj.(ExProps{i}){j}.(ColumnNames{l})) <= 1 &&...
+                                            ~isequal(ColumnTypes{l},'string')
+                                        Table{m,l} = obj.(ExProps{i}){j}.(ColumnNames{l});
+                                    elseif isequal(ColumnTypes{l},'string')
+                                        Table{m,l} = string(obj.(ExProps{i}){j}.(ColumnNames{l}));
+                                    else
+                                        Table{m,l} = obj.(ExProps{i}){j}.(ColumnNames{l})(k);
+                                    end
+                                catch ME
+                                    i
+                                    j
+                                    k
+                                    l
+                                    m
+                                    rethrow(ME)
+                                end
+                            end
+                        end
+                        m = m + 1;
+                    end
+                    Barcounter = Barcounter + 1;
+                end
+            end
+            
+            
+        end
+        
         function image_analysis_base_on_even_background(obj,UpperLim,NIter)
             
             if nargin < 2
@@ -2875,6 +3000,20 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
         
         function show_image(obj)
             % TODO: implement ui elements for customization
+            
+            % Check if all FMAOptions are given. Else let user know how to
+            % reset them
+            [ContainsSame,IsSame] = check_structs_for_same_fields_recursively(obj.ShowImageSettings,Experiment.set_default_show_image_settings);
+            if ~ContainsSame
+                disp(sprintf('\n'))
+                warning(sprintf(['Cannot run "show image"!\n'...
+                    'Your ShowImageSettings do not contain all the necessary information!\n'...
+                    'Most likely the settings have been updated and you need to reset and reapply your settings; try:\n\n'...
+                    '>> E.ShowImageSettings = Experiment.set_default_show_image_settings;\n\n'...
+                    'and then choose your desired settings again by calling\n\n'...
+                    '>> E.show_image\n']));
+                return
+            end
             
             h.ColorMode = set_default_color_options();
             
@@ -7867,7 +8006,9 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
         
         function set_gramm_options(obj)
             
-            if isempty(obj.GrammOptions)
+            if isempty(obj.GrammOptions) || ...
+                    ~check_structs_for_same_fields_recursively(...
+                    obj.GrammOptions,Experiment.set_default_gramm_options)
                 obj.GrammOptions = Experiment.set_default_gramm_options;
             end
             
