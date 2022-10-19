@@ -1119,6 +1119,10 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 return
             end
             
+            if obj.ForceMapAnalysisOptions.ResetFlagsSelectedAndCorrupted
+                obj.reset_selected_and_corrupted_flags();
+            end
+            
             obj.write_to_log_file('Analysis Function','force_map_analysis_general()','start')
             obj.write_to_log_file('Contact Point Option',CPOption)
             obj.write_to_log_file('EMod Option',EModOption)
