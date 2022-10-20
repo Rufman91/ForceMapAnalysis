@@ -703,10 +703,15 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 end
             end
             
+            CombinedName = strcat(Names{:});
+            
             for i=1:length(varargin)
                 varargin{i}.OverlayGroup.hasOverlayGroup = true;
                 varargin{i}.OverlayGroup.Size = length(varargin);
                 varargin{i}.OverlayGroup.Names = Names;
+                varargin{i}.OverlayGroupName = CombinedName;
+                varargin{i}.OverlayGroupIndex = i;
+                varargin{i}.hasOverlayGroup = true;
             end
             
         end

@@ -37,7 +37,12 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle
                             'SubSegmentName',[],...
                             'ROIObject',[],...
                             'ProximityMap',[])
+        SegmentName
+        SubSegmentName
         OverlayGroup
+        OverlayGroupName
+        OverlayGroupIndex
+        hasOverlayGroup
     end
     
     methods
