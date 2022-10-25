@@ -158,6 +158,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
         IndentationDepth
         IndentationDepthHertz
         DZslope
+        DZSlopeCorrected
         Stiffness
         IndentationDepthOliverPharr
         IndentArea
@@ -1290,7 +1291,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 UseTopology,TipObject,DataWeightByDistanceBool,...
                 SortHeightDataForFit,FitDegreeForSneddonPolySurf,...
                 LowerForceCutoff,UpperForceCutoff,...
-                SensitivityCorrectionMethod)
+                SensitivityCorrectionMethod,...
+                KeepOldResults)
 %                 E = calculate_e_mod_hertz(obj,CPType,TipShape,LowerCurveFraction,...
 %                 UpperCurveFraction,AllowXShift,CorrectSensitivity,UseTipData,...
 %                 UseTopology,TipObject,DataWeightByDistanceBool,...
@@ -1301,6 +1303,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 AllowXShift = false;
                 CorrectSensitivity = false;
                 UseTipData = false;
+                KeepOldResults = false;
             end
             
             obj.HertzFitSSE = zeros(1,obj.NCurves);
@@ -1546,47 +1549,21 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             
             % Write to Channel
             EModMap = obj.create_standard_channel(obj.EModMapHertz(:,:,1),'E-Mod Hertz','Pa');
-            [~,Index] = obj.get_channel('E-Mod Hertz');
-            if isempty(Index)
-                obj.Channel(end+1) = EModMap;
-            else
-                obj.Channel(Index) = EModMap;
-            end
+            obj.add_channel(EModMap,~KeepOldResults)
             
             EModLog = obj.create_standard_channel(log(obj.EModMapHertz(:,:,1)),'E-Mod Hertz (log)','Pa');
-            [~,Index] = obj.get_channel('E-Mod Hertz (log)');
-            if isempty(Index)
-                obj.Channel(end+1) = EModLog;
-            else
-                obj.Channel(Index) = EModLog;
-            end
+            obj.add_channel(EModLog,~KeepOldResults)
             
-            % Write to Channel
             Channel = obj.create_standard_channel(IndDepMap,'Indentation Depth','m');
-            [~,Index] = obj.get_channel('Indentation Depth');
-            if isempty(Index)
-                obj.Channel(end+1) = Channel;
-            else
-                obj.Channel(Index) = Channel;
-            end
-            % Write to Channel
-            Channel = obj.create_standard_channel(IndDepMapHertz,'Indentation Depth Hertz','m');
-            [~,Index] = obj.get_channel('Indentation Depth Hertz');
-            if isempty(Index)
-                obj.Channel(end+1) = Channel;
-            else
-                obj.Channel(Index) = Channel;
-            end
+            obj.add_channel(Channel,~KeepOldResults)
             
-            % Write to Channel
+            Channel = obj.create_standard_channel(IndDepMapHertz,'Indentation Depth Hertz','m');
+            obj.add_channel(Channel,~KeepOldResults)
+            
             RSquareMap = obj.convert_data_list_to_map(obj.HertzFitRSquare);
             RSquare = obj.create_standard_channel(RSquareMap,'Hertz Fit RSquare','');
-            [~,Index] = obj.get_channel('Hertz Fit RSquare');
-            if isempty(Index)
-                obj.Channel(end+1) = RSquare;
-            else
-                obj.Channel(Index) = RSquare;
-            end
+            obj.add_channel(RSquare,~KeepOldResults)
+            
             
             if AllowXShift
                 obj.CPFlag.HertzFitted = 1;
@@ -1619,7 +1596,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             obj.IndentationDepth = IndentationDepth;
         end
         
-        function EMod = calculate_e_mod_oliverpharr(obj,TipProjArea,CurvePercent)
+        function EMod = calculate_e_mod_oliverpharr(obj,TipProjArea,CurvePercent,KeepOldResults)
             
             if nargin < 3
                 CurvePercent = 0.75;
@@ -1686,50 +1663,22 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             
             % Write to Channel
             EModMap = obj.create_standard_channel(obj.EModMapOliverPharr(:,:,1),'E-Mod OliverPharr','Pa');
-            [~,Index] = obj.get_channel('E-Mod OliverPharr');
-            if isempty(Index)
-                obj.Channel(end+1) = EModMap;
-            else
-                obj.Channel(Index) = EModMap;
-            end
+            obj.add_channel(EModMap,~KeepOldResults)
             
             EModLog = obj.create_standard_channel(log(obj.EModMapOliverPharr(:,:,1)),'E-Mod OliverPharr (log)','Pa');
-            [~,Index] = obj.get_channel('E-Mod OliverPharr (log)');
-            if isempty(Index)
-                obj.Channel(end+1) = EModLog;
-            else
-                obj.Channel(Index) = EModLog;
-            end
+            obj.add_channel(EModLog,~KeepOldResults)
             
-            % Write to Channel
             Channel = obj.create_standard_channel(IndDepthMapOP,'Indentation Depth Oliver-Pharr','m');
-            [~,Index] = obj.get_channel('Indentation Depth Oliver-Pharr');
-            if isempty(Index)
-                obj.Channel(end+1) = Channel;
-            else
-                obj.Channel(Index) = Channel;
-            end
+            obj.add_channel(Channel,~KeepOldResults)
             
-            % Write to Channel
             Channel = obj.create_standard_channel(IndDepthMap,'Indentation Depth','m');
-            [~,Index] = obj.get_channel('Indentation Depth');
-            if isempty(Index)
-                obj.Channel(end+1) = Channel;
-            else
-                obj.Channel(Index) = Channel;
-            end
+            obj.add_channel(Channel,~KeepOldResults)
             
-            % Write to Channel
             Channel = obj.create_standard_channel(DZMap,'DZ-Slope','m/m');
-            [~,Index] = obj.get_channel('DZ-Slope');
-            if isempty(Index)
-                obj.Channel(end+1) = Channel;
-            else
-                obj.Channel(Index) = Channel;
-            end
+            obj.add_channel(Channel,~KeepOldResults)
         end
         
-        function MaxAdhesionForce = calculate_adhesion_force(obj)
+        function MaxAdhesionForce = calculate_adhesion_force(obj,KeepOldResults)
             
             Range = find(obj.SelectedCurves);
             MaxAdhesionForce = zeros(obj.NCurves,1);
@@ -1744,23 +1693,14 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             
             obj.MaxAdhesionForce = MaxAdhesionForce;
             
-            for i=1:obj.NumPixelsX
-                for j=1:obj.NumPixelsY
-                    MaxAdhesionForceMap(i,j) = obj.MaxAdhesionForce(obj.Map2List(i,j));
-                end
-            end
             
             % Write to Channel
+            MaxAdhesionForceMap = obj.convert_data_list_to_map(obj.MaxAdhesionForce);
             Channel = obj.create_standard_channel(MaxAdhesionForceMap,'Maximum Adhesion Force','N');
-            [~,Index] = obj.get_channel('Maximum Adhesion Force');
-            if isempty(Index)
-                obj.Channel(end+1) = Channel;
-            else
-                obj.Channel(Index) = Channel;
-            end
+            obj.add_channel(Channel,~KeepOldResults)
         end
         
-        function [AdhesionEnergy,AdhesionLength] = calculate_adhesion_energy_and_length(obj,ThresholdMult)
+        function [AdhesionEnergy,AdhesionLength] = calculate_adhesion_energy_and_length(obj,ThresholdMult,KeepOldResults)
             
             if nargin < 2
                 ThresholdMult = 2;
@@ -1822,43 +1762,22 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             obj.AdhesionEnergy = AdhesionEnergy;
             obj.AdhesionLength = AdhesionLength;
             
-            for i=1:obj.NumPixelsX
-                for j=1:obj.NumPixelsY
-                    AEMap(i,j) = obj.AdhesionEnergy(obj.Map2List(i,j));
-                    ALMap(i,j) = obj.AdhesionLength(obj.Map2List(i,j));
-                end
-            end
             
             % Write to Channel
+            AEMap = obj.convert_data_list_to_map(obj.AdhesionEnergy);
             Channel1 = obj.create_standard_channel(AEMap,'Adhesion Energy','J');
-            [~,Index] = obj.get_channel('Adhesion Energy');
-            if isempty(Index)
-                obj.Channel(end+1) = Channel1;
-            else
-                obj.Channel(Index) = Channel1;
-            end
-            
+            obj.add_channel(Channel1,~KeepOldResults)
             
             CoulombConstant = 1.602176634e-19;
-            % Write to Channel
             Channel1 = obj.create_standard_channel(AEMap./CoulombConstant,'Adhesion eV-Energy','eV');
-            [~,Index] = obj.get_channel('Adhesion eV-Energy');
-            if isempty(Index)
-                obj.Channel(end+1) = Channel1;
-            else
-                obj.Channel(Index) = Channel1;
-            end
+            obj.add_channel(Channel1,~KeepOldResults)
             
+            ALMap = obj.convert_data_list_to_map(obj.AdhesionLength);
             Channel2 = obj.create_standard_channel(ALMap,'Adhesion Length','m');
-            [~,Index] = obj.get_channel('Adhesion Length');
-            if isempty(Index)
-                obj.Channel(end+1) = Channel2;
-            else
-                obj.Channel(Index) = Channel2;
-            end
+            obj.add_channel(Channel2,~KeepOldResults)
         end
         
-        function PeakIndentationAngle = calculate_peak_indentation_angle(obj,FitPortion)
+        function PeakIndentationAngle = calculate_peak_indentation_angle(obj,FitPortion,KeepOldResults)
             
             if nargin < 2
                 FitPortion = .5;
@@ -1925,23 +1844,14 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             
             obj.PeakIndentationAngle = PeakIndentationAngle;
             
-            for i=1:obj.NumPixelsX
-                for j=1:obj.NumPixelsY
-                    PIAMap(i,j) = obj.PeakIndentationAngle(obj.Map2List(i,j));
-                end
-            end
             
             % Write to Channel
+            PIAMap = obj.convert_data_list_to_map(obj.PeakIndentationAngle);
             Channel = obj.create_standard_channel(PIAMap,'Peak Indentation Angle','Degrees');
-            [~,Index] = obj.get_channel('Peak Indentation Angle');
-            if isempty(Index)
-                obj.Channel(end+1) = Channel;
-            else
-                obj.Channel(Index) = Channel;
-            end
+            obj.add_channel(Channel,~KeepOldResults)
         end
         
-        function [DissipatedEnergy,ElasticEnergy] = calculate_dissipated_and_elastic_energy(obj)
+        function [DissipatedEnergy,ElasticEnergy] = calculate_dissipated_and_elastic_energy(obj,KeepOldResults)
             
             Range = find(obj.SelectedCurves);
             DissipatedEnergy = zeros(obj.NCurves,1);
@@ -1978,79 +1888,143 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             
             obj.DissipatedEnergy = DissipatedEnergy;
             
-            for i=1:obj.NumPixelsX
-                for j=1:obj.NumPixelsY
-                    DEMap(i,j) = obj.DissipatedEnergy(obj.Map2List(i,j));
-                end
-            end
+            DEMap = obj.convert_data_list_to_map(obj.DissipatedEnergy);
             
             % Write to Channel
             Channel = obj.create_standard_channel(DEMap,'Dissipated Energy','J');
-            [~,Index] = obj.get_channel('Dissipated Energy');
-            if isempty(Index)
-                obj.Channel(end+1) = Channel;
-            else
-                obj.Channel(Index) = Channel;
-            end
+            obj.add_channel(Channel,~KeepOldResults)
             
             DEMap = DEMap./CoulombConstant;
-            
-            % Write to Channel
             Channel = obj.create_standard_channel(DEMap,'Dissipated eV-Energy','eV');
-            [~,Index] = obj.get_channel('Dissipated eV-Energy');
-            if isempty(Index)
-                obj.Channel(end+1) = Channel;
-            else
-                obj.Channel(Index) = Channel;
-            end
+            obj.add_channel(Channel,~KeepOldResults)
             
             obj.ElasticEnergy = ElasticEnergy;
             
-            for i=1:obj.NumPixelsX
-                for j=1:obj.NumPixelsY
-                    EEMap(i,j) = obj.ElasticEnergy(obj.Map2List(i,j));
-                end
-            end
-            
-            % Write to Channel
+            EEMap = obj.convert_data_list_to_channel(obj.ElasticEnergy);
             Channel = obj.create_standard_channel(EEMap,'Elastic Energy','J');
-            [~,Index] = obj.get_channel('Elastic Energy');
-            if isempty(Index)
-                obj.Channel(end+1) = Channel;
-            else
-                obj.Channel(Index) = Channel;
-            end
-            
+            obj.add_channel(Channel,~KeepOldResults)
             
             EEMap = EEMap./CoulombConstant;
-            
-            % Write to Channel
             Channel = obj.create_standard_channel(EEMap,'Elastic eV-Energy','eV');
-            [~,Index] = obj.get_channel('Elastic eV-Energy');
-            if isempty(Index)
-                obj.Channel(end+1) = Channel;
-            else
-                obj.Channel(Index) = Channel;
-            end
+            obj.add_channel(Channel,~KeepOldResults)
             
-            % Write to Channel
             Channel = obj.create_standard_channel(100.*EEMap./(DEMap+EEMap),'Elastic Fraction','%');
-            [~,Index] = obj.get_channel('Elastic Fraction');
-            if isempty(Index)
-                obj.Channel(end+1) = Channel;
-            else
-                obj.Channel(Index) = Channel;
-            end
+            obj.add_channel(Channel,~KeepOldResults)
             
-            
-            % Write to Channel
             Channel = obj.create_standard_channel(100.*DEMap./(DEMap+EEMap),'Inelastic Fraction','%');
-            [~,Index] = obj.get_channel('Inelastic Fraction');
-            if isempty(Index)
-                obj.Channel(end+1) = Channel;
-            else
-                obj.Channel(Index) = Channel;
+            obj.add_channel(Channel,~KeepOldResults)
+        end
+        
+        function DZslopeCorrected = calculate_corrected_dzslopes(obj,varargin)
+            % function DZslopeCorrected = calculate_corrected_dzslopes(obj,varargin)
+            %
+            % Calculates DZ-Slopes based on SensitivityCorrectionMethod's
+            % corrected sensitivity
+            %
+            %
+            % Required inputs
+            % obj ... ForceMap instance
+            %
+            % Name-Value pairs
+            % "FitRangeMode" ... <NAMEVALUE DESCRIPTION>
+            % "FitRangeLowerFraction" ... <NAMEVALUE DESCRIPTION>
+            % "FitRangeUpperFraction" ... <NAMEVALUE DESCRIPTION>
+            % "FitRangeLowerValue" ... <NAMEVALUE DESCRIPTION>
+            % "FitRangeUpperValue" ... <NAMEVALUE DESCRIPTION>
+            % "AppRetSwitch" ... <NAMEVALUE DESCRIPTION>
+            % "SensitivityCorrectionMethod" ... <NAMEVALUE DESCRIPTION>
+            % "KeepOldResults"
+            
+            p = inputParser;
+            p.FunctionName = "calculate_corrected_dzslopes";
+            p.CaseSensitive = false;
+            p.PartialMatching = true;
+            
+            % Required inputs
+            validobj = @(x)true;
+            addRequired(p,"obj",validobj);
+            
+            % NameValue inputs
+            defaultAppRetSwitch = 0;
+            defaultFitRangeMode = 'ValueHorizontal';
+            defaultFitRangeLowerFraction = 0.75;
+            defaultFitRangeUpperFraction = 1;
+            defaultFitRangeLowerValue = 0;
+            defaultFitRangeUpperValue = 4e-9;
+            defaultKeepOldResults = false;
+            defaultSensitivityCorrectionMethod = 'corrected';
+            validAppRetSwitch = @(x)x==0|x==1|islogical(x);
+            validFitRangeMode = @(x)any(validatestring(x,{'ValueHorizontal','FractionHorizontal','ValueVertical','FractionVertical'}));
+            validSensitivityCorrectionMethod = @(x)any(validatestring(x,{'corrected','adaptive','original'}));
+            validFitRangeLowerFraction = @(x)(0<=x)&&(x<=1);
+            validFitRangeUpperFraction = @(x)(0<=x)&&(x<=1);
+            validFitRangeLowerValue = @(x)isscalar(x);
+            validFitRangeUpperValue = @(x)isscalar(x);
+            validKeepOldResults = @(x)islogical(x);
+            addParameter(p,"FitRangeMode",defaultFitRangeMode,validFitRangeMode);
+            addParameter(p,"FitRangeLowerFraction",defaultFitRangeLowerFraction,validFitRangeLowerFraction);
+            addParameter(p,"FitRangeUpperFraction",defaultFitRangeUpperFraction,validFitRangeUpperFraction);
+            addParameter(p,"FitRangeLowerValue",defaultFitRangeLowerValue,validFitRangeLowerValue);
+            addParameter(p,"FitRangeUpperValue",defaultFitRangeUpperValue,validFitRangeUpperValue);
+            addParameter(p,"AppRetSwitch",defaultAppRetSwitch,validAppRetSwitch);
+            addParameter(p,"SensitivityCorrectionMethod",defaultSensitivityCorrectionMethod,validSensitivityCorrectionMethod);
+            addParameter(p,"KeepOldResults",defaultKeepOldResults,validKeepOldResults);
+            parse(p,obj,varargin{:});
+            
+            % Assign parsing results to named variables
+            obj = p.Results.obj;
+            FitRangeMode = p.Results.FitRangeMode;
+            FitRangeLowerFraction = p.Results.FitRangeLowerFraction;
+            FitRangeUpperFraction = p.Results.FitRangeUpperFraction;
+            FitRangeLowerValue = p.Results.FitRangeLowerValue;
+            FitRangeUpperValue = p.Results.FitRangeUpperValue;
+            AppRetSwitch = p.Results.AppRetSwitch;
+            SensitivityCorrectionMethod = p.Results.SensitivityCorrectionMethod;
+            KeepOldResults = p.Results.KeepOldResults;
+            
+            
+            DZslopeCorrected = ones(obj.NCurves,1)*NaN;
+            
+            Range = find(obj.SelectedCurves);
+            
+            % first, calculate all the DZ-Slopes
+            for i=Range'
+                [vDef,Height] = obj.get_force_curve_data(i,'AppRetSwitch',AppRetSwitch,...
+                    'BaselineCorrection',1,'TipHeightCorrection',0,...
+                    'Sensitivity',SensitivityCorrectionMethod,'Unit','m');
+                switch FitRangeMode
+                    case 'ValueHorizontal'
+                        UValue = max(Height) - FitRangeLowerValue;
+                        LValue = max(Height) - FitRangeUpperValue;
+                        FitHeight = Height(Height>=LValue & Height<=UValue);
+                        FitvDef = vDef(Height>=LValue & Height<=UValue);
+                    case 'ValueVertical'
+                        FitHeight = Height(vDef>=FitRangeLowerValue & vDef<=FitRangeUpperValue);
+                        FitvDef = vDef(vDef>=FitRangeLowerValue & vDef<=FitRangeUpperValue);
+                    case 'FractionHorizontal'
+                        RangeHeight = range(Height);
+                        FitHeight = Height((Height-min(Height))>=FitRangeLowerFraction*RangeHeight &...
+                            (Height-min(Height))<=FitRangeUpperFraction*RangeHeight);
+                        FitvDef = vDef((Height-min(Height))>=FitRangeLowerFraction*RangeHeight &...
+                            (Height-min(Height))<=FitRangeUpperFraction*RangeHeight);
+                    case 'FractionVertical'
+                        MaxvDef = max(vDef);
+                        FitHeight = Height(vDef>=FitRangeLowerFraction*MaxvDef & vDef<=FitRangeUpperFraction*MaxvDef);
+                        FitvDef = vDef(vDef>=FitRangeLowerFraction*MaxvDef & vDef<=FitRangeUpperFraction*MaxvDef);
+                end
+                Params(i,:) = polyfit(FitHeight,FitvDef,1);
+                DZslopeCorrected(i) = Params(i,1);
             end
+            
+            % Convert to map and write to Channel
+            Map = obj.convert_data_list_to_map(DZslopeCorrected);
+            Channel = obj.create_standard_channel(Map,...
+                sprintf('Corrected %s DZ-Slope',SensitivityCorrectionMethod),...
+                'm/m');
+            obj.add_channel(obj,Channel,~KeepOldResults);
+            
+            % Assign property
+            obj.DZslopeCorrected = DZslopeCorrected;            
         end
         
         function manual_exclusion(obj)

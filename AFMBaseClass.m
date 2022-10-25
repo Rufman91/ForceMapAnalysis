@@ -39,6 +39,34 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle
                             'ProximityMap',[])
         SegmentName
         SubSegmentName
+        SubSegmentFullName
+        FiberSegment_Area
+        FiberSegment_AreaDerviedDiameter
+        FiberSegment_Height
+        FiberSegment_WidthHalfHeight
+        FiberSegment_Prominence
+        FiberSegment_WidthHalfProminence
+        FiberSegment_WidthBase
+        FiberSegment_AspectRatioHalfHeight
+        FiberSegment_AspectRatioBaseHeight
+        FiberSegment_Area_Mean
+        FiberSegment_AreaDerviedDiameter_Mean
+        FiberSegment_Height_Mean
+        FiberSegment_WidthHalfHeight_Mean
+        FiberSegment_Prominence_Mean
+        FiberSegment_WidthHalfProminence_Mean
+        FiberSegment_WidthBase_Mean
+        FiberSegment_AspectRatioHalfHeight_Mean
+        FiberSegment_AspectRatioBaseHeight_Mean
+        FiberSegment_Area_Median
+        FiberSegment_AreaDerviedDiameter_Median
+        FiberSegment_Height_Median
+        FiberSegment_WidthHalfHeight_Median
+        FiberSegment_Prominence_Median
+        FiberSegment_WidthHalfProminence_Median
+        FiberSegment_WidthBase_Median
+        FiberSegment_AspectRatioHalfHeight_Median
+        FiberSegment_AspectRatioBaseHeight_Median
         OverlayGroup
         OverlayGroupName
         OverlayGroupIndex
@@ -310,6 +338,32 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle
             OutChannel.NumPixelsY = obj.NumPixelsY;
             OutChannel.OriginX = obj.OriginX;
             OutChannel.OriginY = obj.OriginY;
+            
+        end
+        
+        function add_channel(obj,Channel,ReplaceSameNamed)
+            
+            if nargin < 3
+                ReplaceSameNamed = false;
+            end
+            
+            % Write to Channel
+            [~,Index] = obj.get_channel(Channel.Name);
+            if isempty(Index)
+                obj.Channel(end+1) = Channel;
+            else
+                if ~ReplaceSameNamed
+                    if ~isempty(regexp(Channel.Name(end-4:end),'.\(\d\d\)','once'))
+                        OriginalName = Channel.Name(1:end-5);
+                        Channel.Name = sprintf('%s (%s)',OriginalName,sprintf('%02i',str2num(Channel.Name(end-2:end-1))+1));
+                    else
+                        Channel.Name = sprintf('%s (%s)',Channel.Name,sprintf('%02i',1));
+                    end
+                    obj.add_channel(Channel,false);
+                else
+                    obj.Channel(Index) = Channel;
+                end
+            end
             
         end
         
