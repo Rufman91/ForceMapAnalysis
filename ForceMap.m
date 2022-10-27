@@ -148,6 +148,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
         HertzFitDFE
         HertzFitAdjRSquare
         HertzFitRMSE
+        HertzFitPredictiveRSquare
         SnapIn
         MaxAdhesionForce
         AdhesionEnergy
@@ -1564,11 +1565,74 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             RSquare = obj.create_standard_channel(RSquareMap,'Hertz Fit RSquare','');
             obj.add_channel(RSquare,~KeepOldResults)
             
-            
             if AllowXShift
                 obj.CPFlag.HertzFitted = 1;
             end
             
+        end
+        
+        function calculate_predictive_rsquare_hertz(obj,CorrectSensitivity,...
+                SensitivityCorrectionMethod,AllowXShift,SortHeightData,KeepOldResults)
+            
+            Range = find(obj.SelectedCurves);
+            PredictiveRSquare = ones(obj.NCurves,1).*NaN;
+            
+            FitFunction = fittype(obj.HertzFitType);
+            
+            for i=Range'
+                if CorrectSensitivity
+                    if isequal(SensitivityCorrectionMethod,'Adaptive')
+                        [App,HHApp] = obj.get_force_curve_data(i,...
+                            'AppRetSwitch',0,...
+                            'BaselineCorrection',1,...
+                            'TipHeightCorrection',1,...
+                            'Sensitivity','adaptive',...
+                            'Unit','N');
+                    else
+                        [App,HHApp] = obj.get_force_curve_data(i,'AppRetSwitch',0,...
+                            'BaselineCorrection',1,'TipHeightCorrection',1,...
+                            'Sensitivity','corrected',...
+                            'Unit','N');
+                    end
+                else
+                    [App,HHApp] = obj.get_force_curve_data(i,'AppRetSwitch',0,...
+                        'BaselineCorrection',1,'TipHeightCorrection',1,...
+                        'Sensitivity','original',...
+                        'Unit','N');
+                end
+                % Trim everything below CP_Hertz
+                FitCoeffValues = obj.HertzFitValues{i};
+                if length(FitCoeffValues) == 1
+                    Fit = cfit(FitFunction,FitCoeffValues);
+                    FitCoeffValues(2) = 0;
+                elseif length(FitCoeffValues) == 2
+                    Fit = cfit(FitFunction,FitCoeffValues(1),FitCoeffValues(2));
+                end
+                if SortHeightData
+                    HHApp = sort(HHApp,'ascend');
+                end
+                X = HHApp - obj.CP(i,1);
+                Y = App - obj.CP(i,2);
+                X(X<0-FitCoeffValues(2)) = [];
+                Y(1:end-length(X)) = [];
+                YFitted = feval(Fit,X);
+                % Now calculate the RSquare
+                YMean = mean(Y);
+                L = length(Y);
+                SSTot = sum((Y - YMean).^2);
+                SSRes = sum((Y - YFitted).^2);
+                PredictiveRSquare(i) = 1 - SSRes./SSTot;
+                %Debug
+%                 plot(X,Y,'bx',X,YFitted,'r-')
+%                 title(sprintf('R-Square = %f   SSRes = %e   SSTot = %e',PredictiveRSquare(i),SSRes,SSTot))
+%                 drawnow
+            end
+            
+            obj.HertzFitPredictiveRSquare = PredictiveRSquare;
+            
+            PredictiveRSquareMap = obj.convert_data_list_to_map(obj.HertzFitPredictiveRSquare);
+            PredictiveRSquareChannel = obj.create_standard_channel(PredictiveRSquareMap,'Hertz Fit Predictive RSquare','-');
+            obj.add_channel(PredictiveRSquareChannel,~KeepOldResults)
         end
         
         function calculate_indentation_depth_from_chosen_cp(obj,CPVector)
