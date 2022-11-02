@@ -2085,7 +2085,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             Channel = obj.create_standard_channel(Map,...
                 sprintf('Corrected %s DZ-Slope',SensitivityCorrectionMethod),...
                 'm/m');
-            obj.add_channel(obj,Channel,~KeepOldResults);
+            obj.add_channel(Channel,~KeepOldResults);
             
             % Assign property
             obj.DZslopeCorrected = DZslopeCorrected;            
