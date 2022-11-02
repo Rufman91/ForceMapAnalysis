@@ -1964,7 +1964,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             
             obj.ElasticEnergy = ElasticEnergy;
             
-            EEMap = obj.convert_data_list_to_channel(obj.ElasticEnergy);
+            EEMap = obj.convert_data_list_to_map(obj.ElasticEnergy);
             Channel = obj.create_standard_channel(EEMap,'Elastic Energy','J');
             obj.add_channel(Channel,~KeepOldResults)
             
