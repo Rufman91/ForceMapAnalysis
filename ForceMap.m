@@ -2088,7 +2088,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             obj.add_channel(Channel,~KeepOldResults);
             
             % Assign property
-            obj.DZslopeCorrected = DZslopeCorrected;            
+            obj.DZSlopeCorrected = DZslopeCorrected;            
         end
         
         function manual_exclusion(obj)
