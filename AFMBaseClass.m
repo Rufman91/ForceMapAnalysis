@@ -41,7 +41,7 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle
         SubSegmentName
         SubSegmentFullName
         FiberSegment_Area
-        FiberSegment_AreaDerviedDiameter
+        FiberSegment_AreaDerivedDiameter
         FiberSegment_Height
         FiberSegment_WidthHalfHeight
         FiberSegment_Prominence
@@ -49,24 +49,27 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle
         FiberSegment_WidthBase
         FiberSegment_AspectRatioHalfHeight
         FiberSegment_AspectRatioBaseHeight
-        FiberSegment_Area_Mean
-        FiberSegment_AreaDerviedDiameter_Mean
-        FiberSegment_Height_Mean
-        FiberSegment_WidthHalfHeight_Mean
-        FiberSegment_Prominence_Mean
-        FiberSegment_WidthHalfProminence_Mean
-        FiberSegment_WidthBase_Mean
-        FiberSegment_AspectRatioHalfHeight_Mean
-        FiberSegment_AspectRatioBaseHeight_Mean
-        FiberSegment_Area_Median
-        FiberSegment_AreaDerviedDiameter_Median
-        FiberSegment_Height_Median
-        FiberSegment_WidthHalfHeight_Median
-        FiberSegment_Prominence_Median
-        FiberSegment_WidthHalfProminence_Median
-        FiberSegment_WidthBase_Median
-        FiberSegment_AspectRatioHalfHeight_Median
-        FiberSegment_AspectRatioBaseHeight_Median
+        FiberSegment_Mean_Area
+        FiberSegment_Mean_AreaDerivedDiameter
+        FiberSegment_Mean_Height
+        FiberSegment_Mean_WidthHalfHeight
+        FiberSegment_Mean_Prominence
+        FiberSegment_Mean_WidthHalfProminence
+        FiberSegment_Mean_WidthBase
+        FiberSegment_Mean_AspectRatioHalfHeight
+        FiberSegment_Mean_AspectRatioBaseHeight
+        FiberSegment_Median_Area
+        FiberSegment_Median_AreaDerivedDiameter
+        FiberSegment_Median_Height
+        FiberSegment_Median_WidthHalfHeight
+        FiberSegment_Median_Prominence
+        FiberSegment_Median_WidthHalfProminence
+        FiberSegment_Median_WidthBase
+        FiberSegment_Median_AspectRatioHalfHeight
+        FiberSegment_Median_AspectRatioBaseHeight
+        FiberSegment_RelativePixelPosition
+        FiberSegment_RelativePosition
+        FiberSegment_SegmentLength
         OverlayGroup
         OverlayGroupName
         OverlayGroupIndex
@@ -1061,7 +1064,7 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle
                 Polyline = drawpolyline(Ax.Parent,'Position',obj.Segment(i).ROIObject.Position);
                 FirstMask = Polyline.createMask;
                 TempMask = FirstMask;
-                [TempRow,TempCol] = find(FirstMask == 1);
+                [TempCol,TempRow] = find(FirstMask == 1);
                 SegmentPixelIndizes{i} = [TempRow TempCol];
                 PixelDil = 1;
                 while PixelDil <= floor(WidthLocalWindowPixels)
@@ -1229,12 +1232,6 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle
                         LocalWidthBase(j) = nan;
                     end
                     
-                    % Find corresponding Pixel by distance
-                    DistanceVector = SegmentPixelIndizes{i} - [LocalPosition(j,2) LocalPosition(j,1)];
-                    Distances = vecnorm(DistanceVector,2,2);
-                    [~,IndexOfClosest] = min(Distances);
-                    TempCorrespondingPixelIndex(j,:) = SegmentPixelIndizes{i}(IndexOfClosest,:);
-                    
                     % Write down results
                     LocalHeight(j) = Heights(WinnerIndex);
                     LocalProminence(j) = Prom(WinnerIndex);
@@ -1242,6 +1239,14 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle
                     LocalWidthHalfProminence(j) = TempWidthHalfProm(WinnerIndex);
                     LocalPosition(j,1) = LocalX(WinnerIndex);
                     LocalPosition(j,2) = LocalY(WinnerIndex);
+                    
+                    % Find corresponding Pixel by distance
+%                     DistanceVector = SegmentPixelIndizes{i} - [LocalPosition(j,1) LocalPosition(j,2)];
+                    DistanceVector = SegmentPixelIndizes{i} - [obj.Segment(i).ROIObject.Position(j,1) obj.Segment(i).ROIObject.Position(j,2)];
+                    Distances = vecnorm(DistanceVector,2,2);
+                    [~,IndexOfClosest] = min(Distances);
+                    TempCorrespondingPixelIndex(j,:) = SegmentPixelIndizes{i}(IndexOfClosest,:);
+                    
                 end
                 % find out overall segment pathlength
                 for m=size(SegmentPositions,1):-1:1
@@ -1318,10 +1323,11 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle
                 Struct(k).Mean_AreaDerivedDiameter = nanmean(real(sqrt(LocalArea/pi).*2));
                 obj.Segment(i).Mean_AreaDerivedDiameter = nanmean(real(sqrt(LocalArea/pi).*2));
                 Struct(k).Median_AreaDerivedDiameter = nanmedian(real(sqrt(LocalArea/pi).*2));
-                obj.Segment(i).SegmentPixelIndex = SegmentPixelIndizes{i};
+                obj.Segment(i).Median_AreaDerivedDiameter = nanmedian(real(sqrt(LocalArea/pi).*2));
                 Struct(k).SegmentPixelIndex = SegmentPixelIndizes{i};
-                obj.Segment(i).CorrespondingPixelIndex = TempCorrespondingPixelIndex;
+                obj.Segment(i).SegmentPixelIndex = SegmentPixelIndizes{i};
                 Struct(k).CorrespondingPixelIndex = TempCorrespondingPixelIndex;
+                obj.Segment(i).CorrespondingPixelIndex = TempCorrespondingPixelIndex;
                 TempCorrespondingPixelIndex = [];
                 
                 LocalPositionRealWorld = [SegmentPositions(:,1).*Channel.ScanSizeX/Channel.NumPixelsX ...
@@ -1332,10 +1338,10 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle
                     SegmentPositions(2:end,:) - SegmentPositions(1:end-1,:),2,2));
                 RelativeRealWorld(2:length(SegmentPositions)) = cumsum(vecnorm(...
                     LocalPositionRealWorld(2:end,:) - LocalPositionRealWorld(1:end-1,:),2,2));
-                obj.Segment(i).RelativePixelPosition = RelativePixel;
-                Struct(k).RelativePixelPosition = RelativePixel;
-                obj.Segment(i).RelativePosition = RelativeRealWorld;
-                Struct(k).RelativePosition = RelativeRealWorld;
+                obj.Segment(i).RelativePixelPosition = reshape(RelativePixel,[],1);
+                Struct(k).RelativePixelPosition = reshape(RelativePixel,[],1);
+                obj.Segment(i).RelativePosition = reshape(RelativeRealWorld,[],1);
+                Struct(k).RelativePosition = reshape(RelativeRealWorld,[],1);
                 
                 RelativePixel = [];
                 RelativeRealWorld = [];
@@ -1900,6 +1906,116 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle
                 k=k+1;
             end
             
+        end
+        
+        function map_segment_properties_to_image_pixels(obj,PoolingMethod)
+            
+            if nargin < 2
+                PoolingMethod = 'Median';
+            end
+            
+            NumSegments = length(obj.Segment);
+            
+            FieldsList = {'Height','WidthHalfHeight',...
+                'Prominence','WidthHalfProminence',...
+                'SegmentLength','Mean_WidthHalfHeight',...
+                'Median_WidthHalfHeight','Mean_Height',...
+                'Median_Height','Mean_WidthHalfProminence',...
+                'Median_WidthHalfProminence','Mean_Prominence',...
+                'Median_Prominence','Area','Mean_Area','Median_Area',...
+                'WidthBase','Mean_WidthBase','Median_WidthBase',...
+                'AspectRatioHalfHeight','Mean_AspectRatioHalfHeight',...
+                'Median_AspectRatioHalfHeight','AspectRatioBaseHeight',...
+                'Mean_AspectRatioBaseHeight','Median_AspectRatioBaseHeight',...
+                'AreaDerivedDiameter','Mean_AreaDerivedDiameter',...
+                'Median_AreaDerivedDiameter',...
+                'RelativePixelPosition','RelativePosition'};
+            
+            switch PoolingMethod
+                case 'Mean'
+                    PoolingFcn = @(x)nanmean(x);
+                case 'Median'
+                    PoolingFcn = @(x)nanmedian(x);
+                case 'Max'
+                    PoolingFcn = @(x)nanmax(x);
+                case 'Min'
+                    PoolingFcn = @(x)nanmin(x);
+            end
+            
+            h = waitbar(0,'setting up...',...
+                    'Name',obj.Name);
+            % initialize object properties
+            obj.SegmentName = cell(obj.NumPixelsX*obj.NumPixelsY,1);
+            obj.SubSegmentName = cell(obj.NumPixelsX*obj.NumPixelsY,1);
+            obj.SubSegmentFullName = cell(obj.NumPixelsX*obj.NumPixelsY,1);
+            [obj.SegmentName(:)] = {''};
+            [obj.SubSegmentName(:)] = {''};
+            [obj.SubSegmentFullName(:)] = {''};
+            for i=1:length(FieldsList)
+                for j=1:length(obj.Segment)
+                    if ~isfield(obj.Segment(j),FieldsList{i}) || isempty(obj.Segment(j).(FieldsList{i}))
+                        continue
+                    elseif isnumeric(obj.Segment(j).(FieldsList{i}))
+                        obj.(['FiberSegment_' FieldsList{i}]) = ones(obj.NumPixelsX*obj.NumPixelsY,1).*NaN;
+                    else
+                        obj.(['FiberSegment_' FieldsList{i}]) = cell(obj.NumPixelsX*obj.NumPixelsY,1);
+                        [obj.(['FiberSegment_' FieldsList{i}])(:)] = {''};
+                    end
+                end
+            end
+            
+            % skip non polyline segments
+            for i=1:NumSegments
+                waitbar(i/NumSegments,h,obj.Segment(i).Name,...
+                    'Name',obj.Name)
+                if ~isfield(obj.Segment(i),'SegmentPixelIndex') ||...
+                        ~isfield(obj.Segment(i),'ROIObject') ||...
+                        ~isfield(obj.Segment(i),'CorrespondingPixelIndex') ||...
+                        isempty(obj.Segment(i).SegmentPixelIndex) ||...
+                        isempty(obj.Segment(i).ROIObject) ||...
+                        isempty(obj.Segment(i).CorrespondingPixelIndex) ||...
+                        ~isequal(obj.Segment(i).Type,'polyline')
+                    continue
+                end
+                CorrespondingPixelIndex = obj.Segment(i).CorrespondingPixelIndex;
+                SegLength = size(CorrespondingPixelIndex,1);
+                Processed = false(SegLength,1);
+                while ~all(Processed)
+                    Unprocessed = find(Processed == 0);
+                    FirstUnprocessed = Unprocessed(1);
+                    CurrentPixel = CorrespondingPixelIndex(FirstUnprocessed,:);
+                    Indizes = find(CorrespondingPixelIndex(:,1) == CurrentPixel(1) &...
+                        CorrespondingPixelIndex(:,2) == CurrentPixel(2));
+                    % Pool data by PoolingMethod and assign to
+                    % corresponding image pixel
+                    for j=1:length(FieldsList)
+                        if length(obj.Segment(i).(FieldsList{j})) == SegLength
+                            Values = obj.Segment(i).(FieldsList{j});
+                            PooledValue = PoolingFcn(Values);
+                        elseif size(obj.Segment(i).(FieldsList{j})) == size([1])
+                            PooledValue = obj.Segment(i).(FieldsList{j});
+                        else
+                            PooledValue = NaN;
+                        end
+                        try
+                        obj.(['FiberSegment_' FieldsList{j}])...
+                            (obj.Map2List(CurrentPixel(1),CurrentPixel(2))) = PooledValue;
+                        catch
+                            warning("Couldn't assign property")
+                            i
+                            j
+                        end
+                    end
+                    obj.SegmentName{obj.Map2List(CurrentPixel(1),CurrentPixel(2))} =...
+                        obj.Segment(i).Name;
+                    obj.SubSegmentName{obj.Map2List(CurrentPixel(1),CurrentPixel(2))} =...
+                        obj.Segment(i).SubSegmentName;
+                    obj.SubSegmentFullName{obj.Map2List(CurrentPixel(1),CurrentPixel(2))} =...
+                        [obj.Segment(i).Name '-' obj.Segment(i).SubSegmentName];
+                    Processed(Indizes) = true;
+                end
+            end
+            close(h)
         end
         
     end

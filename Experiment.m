@@ -1596,7 +1596,9 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                                 isinteger(PropertyStruct.(PropertyNames{i})) ||...
                                 ischar(PropertyStruct.(PropertyNames{i})) ||...
                                 islogical(PropertyStruct.(PropertyNames{i})) ||...
-                                isstring(PropertyStruct.(PropertyNames{i})))
+                                isstring(PropertyStruct.(PropertyNames{i})) ||...
+                                (iscellstr(PropertyStruct.(PropertyNames{i})) &&...
+                                length(PropertyStruct.(PropertyNames{i}))==NPixels))
                             if ((isfloat(PropertyStruct.(PropertyNames{i})) ||...
                                     isinteger(PropertyStruct.(PropertyNames{i})) ||...
                                     islogical(PropertyStruct.(PropertyNames{i}))) &&...
@@ -1670,6 +1672,9 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                                 elseif isequal(ColumnTypes{k},'string') &&...
                                         ~isempty(obj.(ExProps{i}){j}.(ColumnNames{k}))
                                     Table{m:m+NumPixels-1,k} = string(obj.(ExProps{i}){j}.(ColumnNames{k}));
+                                elseif isequal(ColumnTypes{k},'cell') &&...
+                                        length(obj.(ExProps{i}){j}.(ColumnNames{k})) == NumPixels
+                                    Table(m:m+NumPixels-1,k) = [obj.(ExProps{i}){j}.(ColumnNames{k})];
                                 else
                                     Table{m:m+NumPixels-1,k} = reshape(obj.(ExProps{i}){j}.(ColumnNames{k}),[],1);
                                 end
@@ -8114,6 +8119,17 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             end
             
             obj.GrammOptions = ui_set_struct_fields(obj.GrammOptions);
+            
+        end
+        
+        function map_segment_properties_to_image_pixels(obj,PoolingMethod)
+            
+            for i=1:obj.NumForceMaps
+                obj.FM{i}.map_segment_properties_to_image_pixels(PoolingMethod);
+            end
+            for i=1:obj.NumAFMImages
+                obj.I{i}.map_segment_properties_to_image_pixels(PoolingMethod);
+            end
             
         end
         
