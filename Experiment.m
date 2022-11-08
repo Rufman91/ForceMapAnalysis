@@ -7513,6 +7513,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             obj.ReferenceSlopeFlag.AutomaticFibril = Methods(5);
             obj.ReferenceSlopeFlag.Automatic = Methods(6);
             obj.ReferenceSlopeFlag.KeepOriginal = Methods(7);
+            obj.ReferenceSlopeFlag.Adaptive = false;
             
             if SkipGUIBool
                 obj.ReferenceSlopeFlag.(...
@@ -7850,6 +7851,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 obj.ReferenceSlopeFlag.FromArea = false;
                 obj.ReferenceSlopeFlag.AutomaticFibril = false;
                 obj.ReferenceSlopeFlag.Automatic = false;
+                obj.ReferenceSlopeFlag.Adaptive = false;
                 if obj.NumReferenceForceMaps > 0
                     obj.ReferenceSlopeFlag.FromRefFM = true;
                 end

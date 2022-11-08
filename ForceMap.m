@@ -158,6 +158,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
         PeakIndentationAngle
         IndentationDepth
         IndentationDepthHertz
+        IndentationDepthHertzFitRange
         DZslope
         DZSlopeCorrected
         Stiffness
@@ -1340,6 +1341,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             obj.EModHertz = zeros(obj.NCurves,1);
             obj.IndentationDepth = zeros(obj.NCurves,1);
             obj.IndentationDepthHertz = zeros(obj.NCurves,1);
+            obj.IndentationDepthHertzFitRange = zeros(obj.NCurves,1);
             while ~isempty(iRange')
                 NumWorkers = 8;
                 BatchSize = min(NumWorkers,length(iRange));
@@ -1411,6 +1413,9 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                     force{i}(force{i}<(LowerCurveFraction)*max(force{i})) = [];
                     force{i}(force{i}>(UpperCurveFraction)*max(force{i})) = [];
                     tip_h{i}(1:(length(tip_h{i})-length(force{i}))) = [];
+                    % Allocate the maximum indentation for later
+                    % calculation of max indent. depth of fitrange
+                    MaxFitRange{i} = max(tip_h{i});
                     RangeF{i} = range(force{i});
                     RangeTH{i} = range(tip_h{i});
                     force{i} = force{i}/RangeF{i};
@@ -1511,6 +1516,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                             % Not sure about this one
                             % obj.IndentationDepth(i) = obj.IndentationDepth(i) + Hertzfit.b;
                             obj.IndentationDepthHertz(iRange(i)) = Max{i}(1)+Hertzfit{i}.b;
+                            obj.IndentationDepthHertzFitRange(iRange(i)) = MaxFitRange{i}(1)+Hertzfit{i}.b;
                         end
                         warning('on','all');
                         %                         obj.HertzFit{iRange(i)} = Hertzfit{i};
@@ -1545,6 +1551,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                     obj.EModMapHertz(i,j,1) = obj.EModHertz(obj.Map2List(i,j));
                     IndDepMap(i,j) = obj.IndentationDepth(obj.Map2List(i,j));
                     IndDepMapHertz(i,j) = obj.IndentationDepthHertz(obj.Map2List(i,j));
+                    IndDepMapHertzFitRange(i,j) = obj.IndentationDepthHertzFitRange(obj.Map2List(i,j));
                 end
             end
             
@@ -1559,6 +1566,9 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             obj.add_channel(Channel,~KeepOldResults)
             
             Channel = obj.create_standard_channel(IndDepMapHertz,'Indentation Depth Hertz','m');
+            obj.add_channel(Channel,~KeepOldResults)
+            
+            Channel = obj.create_standard_channel(IndDepMapHertzFitRange,'Indentation Depth Hertz Fit Range','m');
             obj.add_channel(Channel,~KeepOldResults)
             
             RSquareMap = obj.convert_data_list_to_map(obj.HertzFitRSquare);
@@ -2024,7 +2034,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             validFitRangeUpperFraction = @(x)(0<=x)&&(x<=1);
             validFitRangeLowerValue = @(x)isscalar(x);
             validFitRangeUpperValue = @(x)isscalar(x);
-            validKeepOldResults = @(x)islogical(x);
+            validKeepOldResults = @(x)true;
             addParameter(p,"FitRangeMode",defaultFitRangeMode,validFitRangeMode);
             addParameter(p,"FitRangeLowerFraction",defaultFitRangeLowerFraction,validFitRangeLowerFraction);
             addParameter(p,"FitRangeUpperFraction",defaultFitRangeUpperFraction,validFitRangeUpperFraction);
@@ -2082,8 +2092,13 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             
             % Convert to map and write to Channel
             Map = obj.convert_data_list_to_map(DZslopeCorrected);
+            if isequal(lower(SensitivityCorrectionMethod),'corrected')
+                NameModifier = 'global';
+            else
+                NameModifier = SensitivityCorrectionMethod;
+            end
             Channel = obj.create_standard_channel(Map,...
-                sprintf('Corrected %s DZ-Slope',SensitivityCorrectionMethod),...
+                sprintf('Corrected %s DZ-Slope',NameModifier),...
                 'm/m');
             obj.add_channel(Channel,~KeepOldResults);
             
