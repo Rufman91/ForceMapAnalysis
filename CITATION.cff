@@ -1,10 +1,14 @@
 cff-version: 1.0
 message: "If you use this software, please cite it as below."
 authors:
-  - family-names: Rufin, Rohatschek
-    given-names: Manuel, Andreas
-    orcid: https://orcid.org/0000-0003-0322-0095
+  - family-names: "Rufin"
+    given-names: "Manuel"
+    orcid: "https://orcid.org/0000-0003-0322-0095"
+  - family-names: "Rohatschek"
+    given-names: "Andreas"
+    orcid: "https://orcid.org/0000-0003-2214-4331"
 title: "Force Map Analysis"
 version: 1.0
-doi: \
+doi: 
 date-released: 2020-10-15
+url: "https://github.com/Rufman91/ForceMapAnalysis/"
