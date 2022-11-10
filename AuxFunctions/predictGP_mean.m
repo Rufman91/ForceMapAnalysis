@@ -1,5 +1,4 @@
 function [mu_star,sigma_star] = predictGP_mean(X,X_star,sigma,lambda,F,noise)
-% [mu_star,sigma_star] = predictGP_mean(X,X_star,sigma,lambda,F,noise)
 FMean = mean(F);
 FSTD = std(F);
 FNorm = (F - FMean)/(FSTD+1e-10);
