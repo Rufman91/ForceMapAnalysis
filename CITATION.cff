@@ -1,4 +1,4 @@
-cff-version: 1.0
+cff-version: v0.9
 message: "If you use this software, please cite it as below."
 authors:
   - family-names: "Rufin"
@@ -9,6 +9,6 @@ authors:
     orcid: "https://orcid.org/0000-0003-2214-4331"
 title: "Force Map Analysis"
 version: 1.0
-doi: 
-date-released: 2020-10-15
+doi: "https://zenodo.org/badge/latestdoi/256498583"
+date-released: 2022-11-10
 url: "https://github.com/Rufman91/ForceMapAnalysis/"
