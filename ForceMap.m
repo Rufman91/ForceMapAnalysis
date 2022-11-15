@@ -2106,6 +2106,25 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             obj.DZSlopeCorrected = DZslopeCorrected;            
         end
         
+        function create_and_level_height_map_by_current_cp(obj,KeepOldResults)
+            
+            Map = obj.convert_data_list_to_map(-obj.CP(:,1));
+            
+            for i=1:obj.NumPixelsX
+                Map(i,:) = AFMImage.replace_points_of_certain_value_in_line(Map(i,:),0);
+            end
+            
+            for i=1:5
+                Map = AFMImage.subtract_line_fit_vertical_rov(Map,.2,0);
+            end
+            
+            Map = AFMImage.find_and_replace_outlier_lines(Map,10);
+            
+            % Write to Channel
+            Channel = obj.create_standard_channel(Map,'Contact Height','m');
+            obj.add_channel(Channel,~KeepOldResults)
+        end
+        
         function manual_exclusion(obj)
             
             CheckSum = 100;
@@ -4902,27 +4921,6 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 obj.Channel(Index) = Processed;
             end
             
-        end
-        
-        function create_and_level_height_map_by_current_cp(obj)
-            
-            Map = obj.convert_data_list_to_map(-obj.CP(:,1));
-            
-            for i=1:obj.NumPixelsX
-                Map(i,:) = AFMImage.replace_points_of_certain_value_in_line(Map(i,:),0);
-            end
-            
-            for i=1:5
-                Map = AFMImage.subtract_line_fit_vertical_rov(Map,.2,0);
-            end
-            
-            Map = AFMImage.find_and_replace_outlier_lines(Map,10);
-            
-            % Write to Channel
-            obj.delete_channel('Contact Height')
-            Chan = obj.create_standard_channel(Map,'Contact Height','m');
-            
-            obj.Channel(end+1) = Chan;
         end
         
         function create_fibril_mask(obj,MaskParam)
