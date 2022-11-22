@@ -1,4 +1,4 @@
-classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle
+classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & dynamicprops
     % This a baseclass for the classes AFMImage and ForceMap to inherit
     % shared methods and properties from
     
@@ -256,6 +256,17 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle
                 for j=1:obj.NumPixelsY
                     Map(i,j) = List(obj.Map2List(i,j));
                 end
+            end
+            
+        end
+        
+        function List = convert_map_to_data_list(obj,Map)
+            
+            NPixels = obj.NumPixelsX*obj.NumPixelsY;
+            List = zeros(NPixels,1);
+            
+            for i=1:NPixels
+                List(i) = Map(obj.List2Map(i,1),obj.List2Map(i,2));
             end
             
         end
@@ -1435,6 +1446,8 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle
                 v.close
             end
             
+            obj.map_segment_properties_to_image_pixels('Median');
+            
             OutStructAll = Struct;
             close(h)
         end
@@ -1986,11 +1999,18 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle
                     CurrentPixel = CorrespondingPixelIndex(FirstUnprocessed,:);
                     Indizes = find(CorrespondingPixelIndex(:,1) == CurrentPixel(1) &...
                         CorrespondingPixelIndex(:,2) == CurrentPixel(2));
+                    if CurrentPixel(1) < 1 ||...
+                            CurrentPixel(1) > obj.NumPixelsX ||...
+                            CurrentPixel(2) < 1 ||...
+                            CurrentPixel(2) > obj.NumPixelsY
+                        Processed(Indizes) = true;
+                        continue
+                    end
                     % Pool data by PoolingMethod and assign to
                     % corresponding image pixel
                     for j=1:length(FieldsList)
                         if length(obj.Segment(i).(FieldsList{j})) == SegLength
-                            Values = obj.Segment(i).(FieldsList{j});
+                            Values = obj.Segment(i).(FieldsList{j})(Indizes);
                             PooledValue = PoolingFcn(Values);
                         elseif size(obj.Segment(i).(FieldsList{j})) == size([1])
                             PooledValue = obj.Segment(i).(FieldsList{j});
@@ -2016,6 +2036,46 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle
                 end
             end
             close(h)
+        end
+        
+        function [DynPropNames,ChannelNames] = write_unrolled_channels_to_dynamic_properties(obj)
+            % unrolls all images in Channel struct into nx1 lists and
+            % assigns them to dynamic properties derived from the Channel
+            % name
+            
+            ChannelNames = {obj.Channel.Name};
+            DynPropNames = genvarname(ChannelNames);
+            
+            for i=1:length(DynPropNames)
+                if obj.NumPixelsX*obj.NumPixelsY ~=...
+                        obj.Channel(i).NumPixelsX*obj.Channel(i).NumPixelsY
+                    continue
+                end
+                if ~isprop(obj,DynPropNames{i})
+                    mp = obj.addprop(DynPropNames{i});
+                    mp.Description = 'DynamicProperty';
+                else
+                   mp = findprop(obj,DynPropNames{i});
+                   if ~isequal(mp.Description,'DynamicProperty')
+                       warning("You're trying to overwrite a static class property. Try renaming your Channels. Skipping this one...")
+                       continue
+                   end
+                end
+                List = obj.convert_map_to_data_list(obj.Channel(i).Image);
+                obj.(DynPropNames{i}) = List;
+            end
+            
+        end
+        
+        function delete_all_dynamic_properties(obj)
+            
+            PropertyNames = fieldnames(obj);
+            for i=1:length(PropertyNames)
+                mp = findprop(obj,PropertyNames{i});
+                if isequal(mp.Description,'DynamicProperty')
+                    delete(mp);
+                end
+            end
         end
         
     end

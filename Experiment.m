@@ -1569,6 +1569,8 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             
             h = waitbar(0,'setting up...','Name','Compiling SQL Table');
             
+            obj.write_unrolled_channels_to_dynamic_properties(true);
+            
             % Collect all the Column Categories:
             ColumnNames = [];
             TempColumnTypes = [];
@@ -8133,6 +8135,58 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 obj.I{i}.map_segment_properties_to_image_pixels(PoolingMethod);
             end
             
+        end
+        
+        function [DynPropNames,ChannelNames] = write_unrolled_channels_to_dynamic_properties(obj,ShowWaitbar)
+            % Wrapper function for AFMBaseClass Method with same name
+            
+            if nargin < 3
+                ShowWaitbar = true;
+            end
+            
+            ExProps = {'FM','I','CantileverTips'};
+            LoopNumber = [obj.NumForceMaps obj.NumAFMImages obj.NumCantileverTips];
+            LoopSum = sum(LoopNumber);
+            if ShowWaitbar
+                h = waitbar(0,'Writing Channels to temporary properties...');
+            end
+            k = 1;
+            for i=1:3
+                if LoopNumber(i) == 0
+                    continue
+                end
+                for j=1:LoopNumber(i)
+                if ShowWaitbar
+                    waitbar(k/LoopSum,h,sprintf('Writing Channels in Class %i/%i',k,LoopSum))
+                end
+                    [DynPropNames,ChannelNames] = obj.(ExProps{i}){j}.write_unrolled_channels_to_dynamic_properties;
+                    k = k + 1;
+                end
+            end
+            
+            ChannelNames = unique(ChannelNames);
+            
+            if ShowWaitbar
+                close(h)
+            end
+        end
+        
+        function delete_all_dynamic_properties(obj)
+            % Wrapper function for AFMBaseClass Method with same name
+            
+            ExProps = {'FM','I','CantileverTips'};
+            LoopNumber = [obj.NumForceMaps obj.NumAFMImages obj.NumCantileverTips];
+            LoopSum = sum(LoopNumber);
+            for i=1:3
+                if LoopNumber(i) == 0
+                    continue
+                end
+                for j=1:LoopNumber(i)
+                    obj.(ExProps{i}){j}.delete_all_dynamic_properties;
+                end
+            end
+            
+            warning('All temporary dynamic class properties deleted')
         end
         
     end

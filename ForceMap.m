@@ -1,4 +1,4 @@
-classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBaseClass
+classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dynamicprops & AFMBaseClass
     % The force map class represents a single jpk force map file and
     % contains all necessary functions to process the forcecurves.
     % General naming convention for this class is:
@@ -1556,10 +1556,10 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             end
             
             % Write to Channel
-            EModMap = obj.create_standard_channel(obj.EModMapHertz(:,:,1),'E-Mod Hertz','Pa');
+            EModMap = obj.create_standard_channel(obj.EModMapHertz(:,:,1),'Indentation Modulus Hertz','Pa');
             obj.add_channel(EModMap,~KeepOldResults)
             
-            EModLog = obj.create_standard_channel(log(obj.EModMapHertz(:,:,1)),'E-Mod Hertz (log)','Pa');
+            EModLog = obj.create_standard_channel(log(obj.EModMapHertz(:,:,1)),'Indentation Modulus Hertz (log)','Pa');
             obj.add_channel(EModLog,~KeepOldResults)
             
             Channel = obj.create_standard_channel(IndDepMap,'Indentation Depth','m');
@@ -1736,10 +1736,10 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             end
             
             % Write to Channel
-            EModMap = obj.create_standard_channel(obj.EModMapOliverPharr(:,:,1),'E-Mod OliverPharr','Pa');
+            EModMap = obj.create_standard_channel(obj.EModMapOliverPharr(:,:,1),'Indentation Modulus OliverPharr','Pa');
             obj.add_channel(EModMap,~KeepOldResults)
             
-            EModLog = obj.create_standard_channel(log(obj.EModMapOliverPharr(:,:,1)),'E-Mod OliverPharr (log)','Pa');
+            EModLog = obj.create_standard_channel(log(obj.EModMapOliverPharr(:,:,1)),'Indentation Modulus OliverPharr (log)','Pa');
             obj.add_channel(EModLog,~KeepOldResults)
             
             Channel = obj.create_standard_channel(IndDepthMapOP,'Indentation Depth Oliver-Pharr','m');
@@ -6306,7 +6306,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
                 end
             end
             imshow(EM)
-            title('E-Modulus Map')
+            title('Indentation Modulus Map')
         end
         
         function show_height_map(obj)
@@ -6332,7 +6332,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
         end
         
         function show_e_mod_map(obj)
-            Title = sprintf('E-Mod Map of %s',obj.Name);
+            Title = sprintf('Indentation Modulus Map of %s',obj.Name);
             figure('Name',Title);
             subplot(2,2,1)
             Lower = nanmean(obj.EModMapHertz,'all')-1.5*nanstd(obj.EModMapHertz,0,'all');
