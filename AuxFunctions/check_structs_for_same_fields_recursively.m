@@ -2,7 +2,7 @@ function [ContainsSame,IsSame] = check_structs_for_same_fields_recursively(Check
 % [ContainsSame,IsSame] = check_structs_for_same_fields_recursively(CheckedStruct,ComparedStruct,FirstCall)
 %
 % this function checks wheter two structs have the same shape and whether
-% they contain the same fields and additionally also if the are the same
+% they contain the same fields and additionally also if they are the same
 % structs from a shape and field perspective. This function does NOT check
 % whether the VALUES of the structs are the same EXCEPT if the value is 
 % itself a struct; then it will recursively call itself on that struct.
