@@ -2,24 +2,24 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
     
     properties
         % Essential properties for File and subclass management
-        ExperimentName      % Shows name of the experiment
-        ExperimentFolder    % Shows Folder where Experiment is saved
-        HostOS              % Shows the current operating system
-        HostName            % Shows the current Host (User of running machine)
-        BigDataFlag         % Determines how Experiment loads ForceMap objects. If true, 
+        ExperimentName = ''      % Shows name of the experiment
+        ExperimentFolder = ''    % Shows Folder where Experiment is saved
+        HostOS = ''              % Shows the current operating system
+        HostName = ''            % Shows the current Host (User of running machine)
+        BigDataFlag = true         % Determines how Experiment loads ForceMap objects. If true, 
                             % force voluime data are not loaded into RAM
                             % but read from unpacked jpk data container
-        PythonLoaderFlag    % All ForceMap objects raw data are loaded by the 
+        PythonLoaderFlag = true    % All ForceMap objects raw data are loaded by the 
                             % Python.zipfile module. This avoids the giant
                             % folder structures that get built in
                             % BigData-mode, while keeping load on memory
                             % AND disk relatively low and the programm
                             % almost as quick as in original
                             % 'all-data-to-memory'-mode
-        KeepPythonFilesOpen % Decides whether to preload all PythonLoader Files into memory
+        KeepPythonFilesOpen = false % Decides whether to preload all PythonLoader Files into memory
                             % all the time
         FractionedSaveFiles = true
-        CurrentLogFile
+        CurrentLogFile = ''
         ShowImageSettings = Experiment.set_default_show_image_settings()
         ForceMapAnalysisOptions = Experiment.set_default_fma_options()
         GrammOptions = Experiment.set_default_gramm_options()

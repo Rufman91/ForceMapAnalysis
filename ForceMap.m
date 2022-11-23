@@ -23,49 +23,49 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
         % Properties shared for the whole Force Map. All data is given SI
         % units otherwise it would be stated separately 
         
-        Date            % date when the force map was detected
-        Time            % time when the force map was detected
-        FileVersion     % Version of jpk-force-map file
-        DataStoreFolder % 
-        RawDataFilePath
-        OpenZipFile
-        BigDataFlag     % If true, unpack data container into Experiment subfolder
+        Date = ''            % date when the force map was detected
+        Time = ''            % time when the force map was detected
+        FileVersion = ''     % Version of jpk-force-map file
+        DataStoreFolder = '' % 
+        RawDataFilePath = ''
+        OpenZipFile = []
+        BigDataFlag = true     % If true, unpack data container into Experiment subfolder
                         % and always load force volume data from there
-        PythonLoaderFlag
-        KeepPythonFilesOpen % Decides whether to preload all PythonLoader Files into memory
+        PythonLoaderFlag = true
+        KeepPythonFilesOpen = false % Decides whether to preload all PythonLoader Files into memory
                             % all the time
         FractionOfMaxRAM = 1/5 % Specifies how much of MaxRAM space can be taken for certain partitioned calculations 
-        NCurves         % number of curves on the force map
-        MaxPointsPerCurve
+        NCurves = []         % number of curves on the force map
+        MaxPointsPerCurve = []
         HoldingTime = 0
-        NumSegments
-        ExtendTime
-        RetractTime
-        ExtendZLength
-        RetractZLength
-        ExtendVelocity        % Approach  velocity as defined in the force map settings
-        RetractVelocity
-        Sensitivity
-        RefSlopeCorrectedSensitivity
-        AdaptiveSensitivity
-        SpringConstant
-        Setpoint
-        RescalingConstants
-        DBanding        % Fourieranalysis-based estimate of DBanding perdiod (only available with sufficient resolution)
-        RefSlope        % Refernce slope as determined from the upper curve slope from data from very hard      
+        NumSegments = []
+        ExtendTime = []
+        RetractTime = []
+        ExtendZLength = []
+        RetractZLength = []
+        ExtendVelocity = []        % Approach  velocity as defined in the force map settings
+        RetractVelocity = []
+        Sensitivity = []
+        RefSlopeCorrectedSensitivity = []
+        AdaptiveSensitivity = []
+        SpringConstant = []
+        Setpoint = []
+        RescalingConstants = []
+        DBanding = []        % Fourieranalysis-based estimate of DBanding perdiod (only available with sufficient resolution)
+        RefSlope = []        % Refernce slope as determined from the upper curve slope from data from very hard      
         % surfaces (mica,glass), either from glass parts beneath the specimen or from
         % separate reference force maps
-        PixApp          % maximum number of measured points during approach
-        PixRet          % maximum number of measured points during retraction
-        SelectedCurves  % logical vector of length NCurves with 0s for excluded and 1s for included curves. gets initialized with ones
-        StashedSelectedCurves % In some calculations, SelectedCurves is changed temporarily inside a method.
+        PixApp = []          % maximum number of measured points during approach
+        PixRet = []          % maximum number of measured points during retraction
+        SelectedCurves = []  % logical vector of length NCurves with 0s for excluded and 1s for included curves. gets initialized with ones
+        StashedSelectedCurves = [] % In some calculations, SelectedCurves is changed temporarily inside a method.
                               % Actual Selction is stored and then restored from here
-        CorruptedCurves % Curves that cant be loaded
+        CorruptedCurves = [] % Curves that cant be loaded
         TipRadius = 8  % (nominal, if not otherwise calculated) tip radius in nm for the chosen type of tip model
         PoissonR = 0.5  % standard Poisson ratio for most mechanical models
-        Medium
-        FibrilFlag
-        FibPot
+        Medium = ''
+        FibrilFlag = []
+        FibPot = []
     end
     properties
         % Curve data Properties
@@ -74,109 +74,109 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
         Ret = {}        % retraction force data in Newton
         HHApp = {}      % capacitive-sensor-height approach data in meters
         HHRet = {}      % capacitive-sensor-height retract data in meters
-        HHType          % Type of Head Height.(Default is capacitiveSensorHeight; switches to measuredHeight, if default does'nt exist)
+        HHType = ''          % Type of Head Height.(Default is capacitiveSensorHeight; switches to measuredHeight, if default does'nt exist)
         THApp = {}      % vertical tip height approach data in meters
         THRet = {}      % vertical tip height retract data in meters
         BasedApp = {}   % approach force data with subtracted base line and tilt in Newton
         BasedRet = {}   % retraction force data with subtracted base line and tilt in Newton
-        BaseAndTiltFlag
+        BaseAndTiltFlag = false
     end
     properties
         % Properties related to Contact Point (CP) estimation
         
         RoV = {}        % ratio of variance curve for CP estiamation
         GoF = {}        % goodness of fit curve for each selected curve
-        CP              % chosen contact point (CP) for every selected curve, which is then used in E module fitting
-        CP_SnapIn       % Prefered CP-method for data with snap-in-effect (most data from air)
-        CP_HertzFitted  % Computed from the 0-Point of the fit calculated in Hertz-Sneddon model with AllowXShift = true
-        CP_RoV          % CP estimated with the ratio of variance method
-        CP_GoF          % CP estimated with the goodness of fit method
-        CP_Combo        % CP estimated with a combination of the GoF and RoV methods
-        CPComboCurve    % combination of the various metrics for contact point estimation
-        CP_CNN          % CP estimated with a conv. neural network in a single pass
-        CP_CNNZoom      % CP estimated with a conv. neural network, first estimate CP, then zoom into the curve for more accurate pred
-        CP_Dropout      % CP estimated with a conv. neural network in multiple Monte Carlo Dropout passes
-        CP_CNNZoomSweep % CP estimated with a conv. neural network, sweep over several magnifications and take mean (or median?) estimate
-        CP_MonteCarlo   % All predictions from the multiple inference steps done in
+        CP = []              % chosen contact point (CP) for every selected curve, which is then used in E module fitting
+        CP_SnapIn = []       % Prefered CP-method for data with snap-in-effect (most data from air)
+        CP_HertzFitted = []  % Computed from the 0-Point of the fit calculated in Hertz-Sneddon model with AllowXShift = true
+        CP_RoV = []          % CP estimated with the ratio of variance method
+        CP_GoF = []          % CP estimated with the goodness of fit method
+        CP_Combo = []        % CP estimated with a combination of the GoF and RoV methods
+        CPComboCurve = []    % combination of the various metrics for contact point estimation
+        CP_CNN = []          % CP estimated with a conv. neural network in a single pass
+        CP_CNNZoom = []      % CP estimated with a conv. neural network, first estimate CP, then zoom into the curve for more accurate pred
+        CP_Dropout = []      % CP estimated with a conv. neural network in multiple Monte Carlo Dropout passes
+        CP_CNNZoomSweep = [] % CP estimated with a conv. neural network, sweep over several magnifications and take mean (or median?) estimate
+        CP_MonteCarlo = []   % All predictions from the multiple inference steps done in
         % the monte carlo method
-        CP_MonteCarlo_STD % Standard deviation of CP_MonteCarlo
-        MiniBatchSize % Optimal MiniBatchSize for CNN-prediction for current system environment
+        CP_MonteCarlo_STD = [] % Standard deviation of CP_MonteCarlo
+        MiniBatchSize = [] % Optimal MiniBatchSize for CNN-prediction for current system environment
         DeltaE = {}     %
-        YDropPred       % Contains the Dropoutpredictions for every curve in the forcemap
-        CP_Old          % contact point estimation from old script 'A_nIAFM_analysis_main'
-        Man_CP          % manually chosen contact point
-        CP_HardSurface  % Detract cantilever deflection for CP estimation
-        CP_None         % Fills the CP and CP_None properties with zeros
-        CP_CurveOrigin  % Assums the start of the force curve as cp
-        CPFlag          % Struct containing booleans to indicate if a certain CP-type has been estimated
+        YDropPred = []       % Contains the Dropoutpredictions for every curve in the forcemap
+        CP_Old = []          % contact point estimation from old script 'A_nIAFM_analysis_main'
+        Man_CP = []          % manually chosen contact point
+        CP_HardSurface = []  % Detract cantilever deflection for CP estimation
+        CP_None = []         % Fills the CP and CP_None properties with zeros
+        CP_CurveOrigin = []  % Assums the start of the force curve as cp
+        CPFlag = []          % Struct containing booleans to indicate if a certain CP-type has been estimated
         
     end
     properties
         % Properties related to topological calculations, such as mapping and masking and visualisation
         
-        HeightMap       % height profile map taken from the maximum head-height from approach max(hhapp)
-        EModMapHertz    % E modulus profile map. same ordering as HeightMap
-        EModMapOliverPharr % """"
+        HeightMap = []       % height profile map taken from the maximum head-height from approach max(hhapp)
+        EModMapHertz = []    % E modulus profile map. same ordering as HeightMap
+        EModMapOliverPharr = [] % """"
         FibDiam = []    % Estimated fibril diameter
-        FibDiamSTD      % Estimated fibril diameter std
-        FibMask         % Logical mask marking the whole fibril
-        BackgroundMask  % Logical mask marking the glass/mica/even-substrate background
-        RefSlopeMask    % Logical mask marking the areas to consider for reference slope calculation
-        ExclMask        % Manually chosen areas that are to be excluded for calculations of fibril EMod, FibDiam, DBanding etc.
-        Apex            % Value of highest pixel in each profile
-        RectApex        % Value of rectified apex location in each profile
-        ApexIndex       % Index of highest pixel in each profile (List indexing!)
-        RectApexIndex   % Index of rectified apex location in each profile (List indexing!)
-        hasOverlay = 0
+        FibDiamSTD = []      % Estimated fibril diameter std
+        FibMask = []         % Logical mask marking the whole fibril
+        BackgroundMask = []  % Logical mask marking the glass/mica/even-substrate background
+        RefSlopeMask = []    % Logical mask marking the areas to consider for reference slope calculation
+        ExclMask = []        % Manually chosen areas that are to be excluded for calculations of fibril EMod, FibDiam, DBanding etc.
+        Apex = []            % Value of highest pixel in each profile
+        RectApex = []        % Value of rectified apex location in each profile
+        ApexIndex = []       % Index of highest pixel in each profile (List indexing!)
+        RectApexIndex = []   % Index of rectified apex location in each profile (List indexing!)
+        hasOverlay = false
     end
     properties
         % Properties related to EMod calculations
         
         Basefit = {}    % fit model used for the baseline fit in the base_and_tilt method
-        Baseline
-        TrueZero
-        EModHertz       % List of reduced smaple E-Modulus based on a the Hertz-Sneddon model
-        EModOliverPharr % List of reduced sample E-Modulus based on the Oliver-Pharr method
-        FibrilEModOliverPharr
-        FibrilEModHertz
-        HertzFit        % HertzFit model generated in the calculate_e_mod_hertz method
-        HertzFitType
-        HertzFitCoeffNames
-        HertzFitValues
-        HertzFitSSE
-        HertzFitRSquare
-        HertzFitDFE
-        HertzFitAdjRSquare
-        HertzFitRMSE
-        HertzFitPredictiveRSquare
-        SnapIn
-        MaxAdhesionForce
-        AdhesionEnergy
-        AdhesionLength
-        DissipatedEnergy
-        ElasticEnergy
-        PeakIndentationAngle
-        IndentationDepth
-        IndentationDepthHertz
-        IndentationDepthHertzFitRange
-        DZslope
-        DZSlopeCorrected
-        Stiffness
-        IndentationDepthOliverPharr
-        IndentArea
-        ProjTipArea
-        HasRefSlope
+        Baseline = []
+        TrueZero = []
+        EModHertz = []       % List of reduced smaple E-Modulus based on a the Hertz-Sneddon model
+        EModOliverPharr = [] % List of reduced sample E-Modulus based on the Oliver-Pharr method
+        FibrilEModOliverPharr = []
+        FibrilEModHertz = []
+        HertzFit = []        % HertzFit model generated in the calculate_e_mod_hertz method
+        HertzFitType = ''
+        HertzFitCoeffNames = ''
+        HertzFitValues = []
+        HertzFitSSE = []
+        HertzFitRSquare = []
+        HertzFitDFE = []
+        HertzFitAdjRSquare = []
+        HertzFitRMSE = []
+        HertzFitPredictiveRSquare = []
+        SnapIn = []
+        MaxAdhesionForce = []
+        AdhesionEnergy = []
+        AdhesionLength = []
+        DissipatedEnergy = []
+        ElasticEnergy = []
+        PeakIndentationAngle = []
+        IndentationDepth = []
+        IndentationDepthHertz = []
+        IndentationDepthHertzFitRange = []
+        DZslope = []
+        DZSlopeCorrected = []
+        Stiffness = []
+        IndentationDepthOliverPharr = []
+        IndentArea = []
+        ProjTipArea = []
+        HasRefSlope = false
     end
     properties
         % auxiliary properties to facilitate comparing different methods of
         % CP estimation
-        NeuralNetAccelerator
-        EModOliverPharr_CNN
-        EModOliverPharr_Old
-        EModOliverPharr_RoV
-        EModHertz_CNN
-        EModHertz_Old
-        EModHertz_RoV
+        NeuralNetAccelerator = ''
+        EModOliverPharr_CNN = []
+        EModOliverPharr_Old = []
+        EModOliverPharr_RoV = []
+        EModHertz_CNN = []
+        EModHertz_Old = []
+        EModHertz_RoV = []
     end
     properties
         % SMFS related 

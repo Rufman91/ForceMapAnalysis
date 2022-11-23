@@ -8,61 +8,61 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & dynam
    
     properties
         % File and Header properties
-        ImagingType
-        FileVersion
-        DateTime
-        NumChannels
+        ImagingType = ''
+        FileVersion = ''
+        DateTime = ''
+        NumChannels = []
     end
     properties
         % Image Data Properties. All dimensions in SI-units, Angles in
         % degrees
-        IGain
-        PGain
-        RelativeSetpoint
-        DriveAmplitude
-        DriveFrequency
-        PhaseShift
-        LineRate
-        TipVelocity
-        Sensitivity
-        SpringConstant
+        IGain = []
+        PGain = []
+        RelativeSetpoint = []
+        DriveAmplitude = []
+        DriveFrequency = []
+        PhaseShift = []
+        LineRate = []
+        TipVelocity = []
+        Sensitivity = []
+        SpringConstant = []
     end
     properties
         % Additional properties needed during (ErrorSignal)channel readout
-        Baseline_Raw
-        Bline_adjust
-        SetP_V
-        Raw
-        SetP_m
-        SetP_N
-        Baseline_N
+        Baseline_Raw = []
+        Bline_adjust = []
+        SetP_V = []
+        Raw = []
+        SetP_m = []
+        SetP_N = []
+        Baseline_N = []
     end
     properties
         % Properties related to Image processing/segmenting/classification
-        MaskBackground
+        MaskBackground = []
     end
     properties
         % Properties related to cantilever data
-        TipPolyFitParams
-        ErodedTip
-        DepthDependendTipRadius
-        ProjectedTipArea
+        TipPolyFitParams = []
+        ErodedTip = []
+        DepthDependendTipRadius = []
+        ProjectedTipArea = []
     end
     properties
         % All the Flags
-        hasSensitivity
-        hasSpringConstant
-        hasHeight
-        hasHeightMeasured
-        hasErrorSignal
-        hasLateralDeflection
-        hasLockInAmplitude
-        hasLockInPhase
-        hasVerticalDeflection
-        hasProcessed
-        hasBackgroundMask
-        hasOverlay
-        hasDeconvolutedCantileverTip
+        hasSensitivity = false
+        hasSpringConstant = false
+        hasHeight = false
+        hasHeightMeasured = false
+        hasErrorSignal = false
+        hasLateralDeflection = false
+        hasLockInAmplitude = false
+        hasLockInPhase = false
+        hasVerticalDeflection = false
+        hasProcessed = false
+        hasBackgroundMask = false
+        hasOverlay = false
+        hasDeconvolutedCantileverTip = false
     end
     
     methods

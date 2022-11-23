@@ -3,21 +3,21 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
     % shared methods and properties from
     
     properties
-        Name
-        Folder
-        ID
-        HostOS          % Operating System
-        HostName        % Name of hosting system
+        Name = ''
+        Folder = ''
+        ID = ''
+        HostOS = ''         % Operating System
+        HostName = ''       % Name of hosting system
         FileType = 'Image'
-        ScanSizeX           % Size of imaged window in X-direction
-        ScanSizeY           % Size of imaged window in Y-direction
+        ScanSizeX = []          % Size of imaged window in X-direction
+        ScanSizeY = []           % Size of imaged window in Y-direction
         ScanAngle = 0   % in degrees (°)
-        NumPixelsX
-        NumPixelsY
+        NumPixelsX = []
+        NumPixelsY = []
         OriginX = 0
         OriginY = 0
-        List2Map        % An R->RxR ((k)->(i,j)) mapping of indices to switch between the two representations
-        Map2List        % An RxR->R ((i,j)->(k))mapping of indices to switch between the two representations
+        List2Map = []        % An R->RxR ((k)->(i,j)) mapping of indices to switch between the two representations
+        Map2List = []      % An RxR->R ((i,j)->(k))mapping of indices to switch between the two representations
     end
     properties
         % All possible image channels. The Channels are all part of the
@@ -37,43 +37,43 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
                             'SubSegmentName',[],...
                             'ROIObject',[],...
                             'ProximityMap',[])
-        SegmentName
-        SubSegmentName
-        SubSegmentFullName
-        FiberSegment_Area
-        FiberSegment_AreaDerivedDiameter
-        FiberSegment_Height
-        FiberSegment_WidthHalfHeight
-        FiberSegment_Prominence
-        FiberSegment_WidthHalfProminence
-        FiberSegment_WidthBase
-        FiberSegment_AspectRatioHalfHeight
-        FiberSegment_AspectRatioBaseHeight
-        FiberSegment_Mean_Area
-        FiberSegment_Mean_AreaDerivedDiameter
-        FiberSegment_Mean_Height
-        FiberSegment_Mean_WidthHalfHeight
-        FiberSegment_Mean_Prominence
-        FiberSegment_Mean_WidthHalfProminence
-        FiberSegment_Mean_WidthBase
-        FiberSegment_Mean_AspectRatioHalfHeight
-        FiberSegment_Mean_AspectRatioBaseHeight
-        FiberSegment_Median_Area
-        FiberSegment_Median_AreaDerivedDiameter
-        FiberSegment_Median_Height
-        FiberSegment_Median_WidthHalfHeight
-        FiberSegment_Median_Prominence
-        FiberSegment_Median_WidthHalfProminence
-        FiberSegment_Median_WidthBase
-        FiberSegment_Median_AspectRatioHalfHeight
-        FiberSegment_Median_AspectRatioBaseHeight
-        FiberSegment_RelativePixelPosition
-        FiberSegment_RelativePosition
-        FiberSegment_SegmentLength
-        OverlayGroup
-        OverlayGroupName
-        OverlayGroupIndex
-        hasOverlayGroup
+        SegmentName = ''
+        SubSegmentName = ''
+        SubSegmentFullName = ''
+        FiberSegment_Area = []
+        FiberSegment_AreaDerivedDiameter = []
+        FiberSegment_Height = []
+        FiberSegment_WidthHalfHeight = []
+        FiberSegment_Prominence = []
+        FiberSegment_WidthHalfProminence = []
+        FiberSegment_WidthBase = []
+        FiberSegment_AspectRatioHalfHeight = []
+        FiberSegment_AspectRatioBaseHeight = []
+        FiberSegment_Mean_Area = []
+        FiberSegment_Mean_AreaDerivedDiameter = []
+        FiberSegment_Mean_Height = []
+        FiberSegment_Mean_WidthHalfHeight = []
+        FiberSegment_Mean_Prominence = []
+        FiberSegment_Mean_WidthHalfProminence = []
+        FiberSegment_Mean_WidthBase = []
+        FiberSegment_Mean_AspectRatioHalfHeight = []
+        FiberSegment_Mean_AspectRatioBaseHeight = []
+        FiberSegment_Median_Area = []
+        FiberSegment_Median_AreaDerivedDiameter = []
+        FiberSegment_Median_Height = []
+        FiberSegment_Median_WidthHalfHeight = []
+        FiberSegment_Median_Prominence = []
+        FiberSegment_Median_WidthHalfProminence = []
+        FiberSegment_Median_WidthBase = []
+        FiberSegment_Median_AspectRatioHalfHeight = []
+        FiberSegment_Median_AspectRatioBaseHeight = []
+        FiberSegment_RelativePixelPosition = []
+        FiberSegment_RelativePosition = []
+        FiberSegment_SegmentLength = []
+        OverlayGroup = ''
+        OverlayGroupName = ''
+        OverlayGroupIndex = []
+        hasOverlayGroup = false
     end
     
     methods
