@@ -1246,7 +1246,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                     continue
                 end
                 
-                waitbar(i/NLoop,h,sprintf('Processing Fibril %i/%i\nReading out data...',i,NLoop));
+                waitbar(i/NLoop,h,sprintf('Processing Force Map %i/%i\nReading out data...',i,NLoop));
                 
                 if ~obj.KeepPythonFilesOpen && obj.PythonLoaderFlag && obj.BigDataFlag
                     obj.load_python_files_to_memory(i,[])
@@ -1255,7 +1255,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                     obj.FM{i}.temporary_data_load_in(true);
                 end
                 
-                waitbar(i/NLoop,h,sprintf('Processing Fibril %i/%i\nCreating and levelling Height Map',i,NLoop));
+                waitbar(i/NLoop,h,sprintf('Processing Force Map %i/%i\nCreating and levelling Height Map',i,NLoop));
                 obj.FM{i}.create_and_level_height_map
                 obj.FM{i}.create_automatic_background_mask(1)
                 
@@ -1263,7 +1263,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 AppRetSwitch = obj.ForceMapAnalysisOptions.UnselectCurveFragmentsAppRetSwitch;
                 obj.FM{i}.unselect_curves_by_fraction_of_max_data_points(Thresh,AppRetSwitch)
                 
-                waitbar(i/NLoop,h,sprintf('Processing ForceMap %i/%i\nFitting Base Line',i,NLoop));
+                waitbar(i/NLoop,h,sprintf('Processing Force Map %i/%i\nFitting Base Line',i,NLoop));
                 if ~obj.FM{i}.BaseAndTiltFlag || ~obj.ForceMapAnalysisOptions.SkipAlreadyProcessedData
                     obj.FM{i}.base_and_tilt(obj.ForceMapAnalysisOptions.BaselineCorrection);
                     if i == 1
@@ -1272,14 +1272,14 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 end
                 
                 % contact point estimation happens here
-                waitbar(i/NLoop,h,sprintf('Processing ForceMap %i/%i\nFinding Contact Point',i,NLoop));
+                waitbar(i/NLoop,h,sprintf('Processing Force Map %i/%i\nFinding Contact Point',i,NLoop));
                 obj.cp_option_converter(CPOption,i);
                 
                 % reference slope calculation happens here
-                waitbar(i/NLoop,h,sprintf('Processing ForceMap %i/%i\nProcessing and calculating Reference Slope',i,NLoop));
+                waitbar(i/NLoop,h,sprintf('Processing Force Map %i/%i\nProcessing and calculating Reference Slope',i,NLoop));
                 obj.reference_slope_calculator(i);
                 
-                waitbar(i/NLoop,h,sprintf('Processing Fibril %i/%i\nCalculating E-Modulus',i,NLoop));
+                waitbar(i/NLoop,h,sprintf('Processing Force Map %i/%i\nCalculating E-Modulus',i,NLoop));
                 if isequal(lower(EModOption),'hertz') || isequal(lower(EModOption),'both') || isequal(lower(EModOption),'hertzcorrected')
                     if isequal(lower(EModOption),'hertzcorrected') || isequal(lower(EModOption),'both')
                         CorrectSens = true;
@@ -1401,7 +1401,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                     );
                 end
                 
-                waitbar(i/NLoop,h,sprintf('Processing ForceMap %i/%i\nWrapping Up And Saving',i,NLoop));
+                waitbar(i/NLoop,h,sprintf('Processing Force Map %i/%i\nWrapping Up And Saving',i,NLoop));
                 
                 if TemporaryLoadIn && obj.BigDataFlag
                     obj.FM{i}.temporary_data_load_in(false);
@@ -1665,8 +1665,12 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                     for k=1:length(ColumnNames)
                         if isprop(obj.(ExProps{i}){j},ColumnNames{k})
                             try
-                                if isempty(obj.(ExProps{i}){j}.(ColumnNames{k}))
+                                if isempty(obj.(ExProps{i}){j}.(ColumnNames{k})) && ~isequal(ColumnTypes{k},'cell')
                                     continue
+                                elseif isempty(obj.(ExProps{i}){j}.(ColumnNames{k})) && isequal(ColumnTypes{k},'cell')
+                                    DefaultCell = cell(NumPixels,1);
+                                    [DefaultCell] = {''};
+                                    Table(m:m+NumPixels-1,k) = DefaultCell;
                                 elseif length(obj.(ExProps{i}){j}.(ColumnNames{k})) <= 1 &&...
                                         ~isequal(ColumnTypes{k},'string') &&...
                                         ~isempty(obj.(ExProps{i}){j}.(ColumnNames{k}))
@@ -1689,7 +1693,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                             end
                         end
                     end
-                    m = m + NumPixels - 1;
+                    m = m + NumPixels;
                     Barcounter = Barcounter + 1;
                 end
             end
