@@ -1665,8 +1665,12 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                     for k=1:length(ColumnNames)
                         if isprop(obj.(ExProps{i}){j},ColumnNames{k})
                             try
-                                if isempty(obj.(ExProps{i}){j}.(ColumnNames{k})) 
+                                if isempty(obj.(ExProps{i}){j}.(ColumnNames{k})) && ~isequal(ColumnTypes{k},'cell')
                                     continue
+                                elseif isempty(obj.(ExProps{i}){j}.(ColumnNames{k})) && isequal(ColumnTypes{k},'cell')
+                                    DefaultCell = cell(NumPixels,1);
+                                    [DefaultCell] = {''};
+                                    Table(m:m+NumPixels-1,k) = DefaultCell;
                                 elseif length(obj.(ExProps{i}){j}.(ColumnNames{k})) <= 1 &&...
                                         ~isequal(ColumnTypes{k},'string') &&...
                                         ~isempty(obj.(ExProps{i}){j}.(ColumnNames{k}))
@@ -1689,7 +1693,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                             end
                         end
                     end
-                    m = m + NumPixels - 1;
+                    m = m + NumPixels;
                     Barcounter = Barcounter + 1;
                 end
             end
