@@ -136,8 +136,8 @@ for m = 1:E.NumForceMaps
         BkgFlatArea = BkgFlat.Area*pxSize^2;
 
         % centrosome height + indentation on the flat area
-        ChannelContact = E.FM{m}.get_channel('Contact Height');
-        CsFlatHeight = ChannelContact.Image.*AngleCsBW;
+%         ChannelContact = E.FM{m}.get_channel('Contact Height');
+        CsFlatHeight = ChannelHeight.Image.*AngleCsBW;
         CsFlatHeight(CsFlatHeight==0)=NaN;
         CsFlatInden = ChannelInden.Image.*AngleCsBW;
         CsFlatInden(CsFlatInden==0)=NaN;
