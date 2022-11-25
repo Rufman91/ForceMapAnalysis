@@ -1,11 +1,11 @@
 % centrosome AFM data analysis: angle deconvolution to identify areas from
-% which E modulus values are extracted
+% which indentation modulus values are extracted
 % post-processing step after having evaluated the quality of the fits and
-% senitivity correction method using E.show_image
+% sensitivity correction method using E.show_image
 % Julia Garcia Baucells 2022
 
-clear
-E = Experiment.load;
+% clear
+% E = Experiment.load;
 cd(E.ExperimentFolder)
 
 format long g;
@@ -47,7 +47,7 @@ for m = 1:E.NumForceMaps
         figure('name', 'Indentation Depth','visible',show_fig); hold on
         imagesc(CsInden); axis image; colorbar
         CsInden(CsInden==0)=NaN;
-        CsIndenAvrg = nanmean(CsInden(:));
+        CsIndenAvrg = mean(CsInden(:), 'omitnan');
 
         % tip radius at this identation depth
         TipAreaFX = E.CantileverTips{1}.ProjectedTipArea;
@@ -113,12 +113,12 @@ for m = 1:E.NumForceMaps
         hold on
         imagesc(AngleBkgBW); axis image; title('glass')
 
-        % get E-Mod Hertz data
-        ChannelEModHertz = E.FM{m}.get_channel('E-Mod Hertz');
+        % get Indentation Modulus Hertz data
+        ChannelEModHertz = E.FM{m}.get_channel('Indentation Modulus Hertz');
         % centrosome
         CsEModHertz = ChannelEModHertz.Image.*AngleCsBW;
         CsEModHertz(CsEModHertz==0)=NaN;
-        figure('name', 'E-Mod Hertz')
+        figure('name', 'Indentation Modulus Hertz')
         subplot(1,2,1)
         hold on
         imagesc(CsEModHertz*1e-3); axis image; colorbar; title('centrosome') % kPa

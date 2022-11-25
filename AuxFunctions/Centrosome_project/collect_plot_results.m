@@ -1,7 +1,7 @@
 % code that travels through the folders containing colloidal-probe in the 
 % name, enters, loads the experiment, goes into the folders of each 
 % processed centrosome and loads the .mat file where the post-processing
-% results are, plots the results in a spread plot
+% results are, plotting
 % Julia Garcia Baucells 2022
 
 format long g;
@@ -63,11 +63,11 @@ for n = 1:length(sample_idx)
             counter(n) = counter(n) + 1;
             CsEModHertz_data{n, counter(n)} = CsEModHertz(:);
             BkgEModHertz_data{n, counter(n)} = BkgEModHertz(:);
-            CsEModHertz_mean{n, counter(n)} = nanmean(CsEModHertz(:));
-            CsHeight_mean{n,counter(n)} = nanmean(CsFlatHeight(:));
-            CsInden_mean{n, counter(n)} = nanmean(CsFlatInden(:));
+            CsEModHertz_mean{n, counter(n)} = mean(CsEModHertz(:), 'omitnan');
+            CsHeight_mean{n,counter(n)} = mean(CsFlatHeight(:),'omitnan');
+            CsInden_mean{n, counter(n)} = mean(CsFlatInden(:),'omitnan');
             CsRadius_data{n, counter(n)} = CsRadius;
-            CsAspectRatio{n,counter(n)} = nanmean((CsRadius*2)./CsFlatHeight(:)); % nanmean(CsFlatHeight(:))./(CsRadius*2)
+            CsAspectRatio{n,counter(n)} = mean((CsRadius*2)./CsFlatHeight(:), 'omitnan'); % nanmean(CsFlatHeight(:))./(CsRadius*2)
             AngleThr{n,counter(n)} = T2;
             CsFlatArea_data{n, counter(n)} = CsFlatArea;
         end
