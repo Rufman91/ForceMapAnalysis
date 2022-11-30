@@ -5361,7 +5361,63 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             function draw_result_plots()
                 
                 h.ResultStruct.Gramm = get_and_assign_result_data();
-                
+%                 
+%                 T = obj.compile_experiment_content_to_table_sqldatabase;
+%                 
+%                 % Table filtering and sorting
+%                 
+%                 rows = contains(T.SegmentName,'Snapped');% & T.FiberSegment_SegmentLength > 8e-6;
+%                 
+%                 SubT = T(rows,:);
+%                 
+%                 SortBy = 'FiberSegment_RelativePosition';
+%                 Order = 'ascend';
+%                 XColumn = 'Processed';
+%                 YColumn = 'Processed';
+%                 CColumn = 'Name';
+%                 FColumn = 'SubSegmentFullName';
+%                 
+%                 ST = sortrows(SubT,SortBy,Order);
+%                 
+%                 X = ST{:,XColumn};
+%                 Y = ST{:,YColumn};
+%                 C = ST{:,CColumn};
+%                 Facets = ST{:,FColumn};
+%                 
+%                 XName = ST.Properties.VariableDescriptions{XColumn};
+%                 YName = ST.Properties.VariableDescriptions{YColumn};
+%                 CName = ST.Properties.VariableDescriptions{CColumn};
+%                 FName = ST.Properties.VariableDescriptions{FColumn};
+%                 XUnit = ST.Properties.VariableUnits {XColumn};
+%                 YUnit = ST.Properties.VariableUnits{YColumn};
+%                 CUnit = ST.Properties.VariableUnits{CColumn};
+%                 FUnit = ST.Properties.VariableUnits{FColumn};
+%                 XText = [XName ' [' XUnit ']'];
+%                 YText = [YName ' [' YUnit ']'];
+%                 CText = [CName ' [' CUnit ']'];
+%                 FText = [FName ' [' FUnit ']'];
+%                 
+%                 if isstring(X) || iscell(X)
+%                     X = categorical(X);
+%                 end
+%                 if isstring(Y) || iscell(Y)
+%                     Y = categorical(Y);
+%                 end
+%                 if isstring(C) || iscell(C)
+%                     C = categorical(C);
+%                 end
+%                 if isstring(Facets) || iscell(Facets)
+%                     Facets = categorical(Facets);
+%                 end
+%                 
+%                 GrammStruct.X = X;
+%                 GrammStruct.Y = Y;
+%                 GrammStruct.Group = C;
+%                 GrammStruct.Facets = Facets;
+%                 GrammStruct.UnitX = XText;
+%                 GrammStruct.UnitY = YText;
+%                 
+%                 h.ResultStruct.Gramm = GrammStruct;
                 % draw gramm plot
                 h.ResultStruct.GrammFig = draw_gramm_plot(h.ResultStruct.Gramm);
             end
@@ -5505,7 +5561,6 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             end
             
             function g = draw_gramm_plot(GrammStruct,GrammObject)
-                
                 
                 X = GrammStruct.X;
                 Y = GrammStruct.Y;
