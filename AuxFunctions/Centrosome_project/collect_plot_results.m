@@ -42,10 +42,10 @@ clear TF; clear counter;
 counter(1:length(sample_idx)) = 0; 
 for n = 1:length(sample_idx)
     ii = sample_idx(n);
-    path2 = char(strcat(path1,'/',cellstr(FileNames(ii,1)),'/','E'));
+    path2 = char(strcat(path1,'/',cellstr(FileNames(ii,1)),'/','ZoomSweepFast'));
     cd(path2); % go inside date folder
 
-    load('E.mat')
+    load('ZoomSweepFast.mat')
     if isfile('Exclude.txt')
         fileID = fopen('Exclude.txt', 'r');
         datacell = textscan(fileID, '%f', 'Delimiter',' ', 'CollectOutput', 1);
@@ -62,12 +62,11 @@ for n = 1:length(sample_idx)
             load('Processed.mat')
             counter(n) = counter(n) + 1;
             CsEModHertz_data{n, counter(n)} = CsEModHertz(:);
-            BkgEModHertz_data{n, counter(n)} = BkgEModHertz(:);
             CsEModHertz_mean{n, counter(n)} = mean(CsEModHertz(:), 'omitnan');
             CsHeight_mean{n,counter(n)} = mean(CsFlatHeight(:),'omitnan');
             CsInden_mean{n, counter(n)} = mean(CsFlatInden(:),'omitnan');
             CsRadius_data{n, counter(n)} = CsRadius;
-            CsAspectRatio{n,counter(n)} = mean((CsRadius*2)./CsFlatHeight(:), 'omitnan'); % nanmean(CsFlatHeight(:))./(CsRadius*2)
+            CsAspectRatio{n,counter(n)} = mean(CsFlatHeight(:),'omitnan')/(CsRadius*2); 
             AngleThr{n,counter(n)} = T2;
             CsFlatArea_data{n, counter(n)} = CsFlatArea;
         end
@@ -83,56 +82,55 @@ for i = 1:length(sample_idx)
     CsEModHertz_linear{i,1} = [];
     BkgEModHertz_linear{i,1} = [];
     for j = 1:counter(i)
-        plotSpread({CsEModHertz_data{i,j},BkgEModHertz_data{i,j}} , 'spreadWidth', 0.5, 'xNames', {'Centrosome', 'Background'}, ...
+        plotSpread(CsEModHertz_data{i,j}.*1e-3, 'spreadWidth', 0.5, 'xNames', {'Centrosome'}, ...
             'distributionColors', colors(i,:));
         hold on
         CsEModHertz_linear{i} = cat(1, CsEModHertz_linear{i,1}, CsEModHertz_data{i,j}(:));
-        BkgEModHertz_linear{i} = cat(1, BkgEModHertz_linear{i,1}, BkgEModHertz_data{i,j}(:));
     end
 end
 for i = 1:length(sample_idx)
-    data_mean = cat(2,nanmean(CsEModHertz_linear{i,1}), nanmean(BkgEModHertz_linear{i,1}));
-    beeswarm([1,2], data_mean, 'dot_size', 5, 'MarkerEdgeColor','k', 'MarkerFaceColor', colors(i,:));
+    data_mean = mean(CsEModHertz_linear{i,1}, 'omitnan').*1e-3;
+    beeswarm(1, data_mean, 'dot_size', 5, 'MarkerEdgeColor','k', 'MarkerFaceColor', colors(i,:));
 end
-ylabel('Indentation modulus [Pa]'); box on; set(gca,'FontSize', 16, 'Linewidth', 1.5);
-ylim([0, 4.5*1e6])
+ylabel('Indentation modulus [kPa]'); box on; set(gca,'FontSize', 16, 'Linewidth', 1.5);
+ylim([0, 500]); 
 
 figure('name', 'Mechanics geometrical dependence'); hold on
 box on; set(gca,'FontSize', 16, 'Linewidth', 1.5);
 color_map = hot(sum(counter));
 for i = 1:length(sample_idx)
     for j = 1:counter(i)
-        plotSpread({CsEModHertz_data{i,j},[]} , 'spreadWidth', 0.5, 'xNames', {'Centrosome stiffness', 'Centrosome aspect ratio'}, ...
+        plotSpread({CsEModHertz_data{i,j}.*1e-3,[]} , 'spreadWidth', 0.5, 'xNames', {'Centrosome stiffness', 'Centrosome aspect ratio'}, ...
             'distributionColors', [0.5 0.5 0.5]);
         hold on
     end
     for j = 1:counter(i)
         clr_counter = j + sum(counter(1:i-1));
         CsAspectRatio_l(clr_counter) = CsAspectRatio{i,j};
-        CsEModHertz_mean_l(clr_counter) = CsEModHertz_mean{i,j};
+        CsEModHertz_mean_l(clr_counter) = CsEModHertz_mean{i,j}.*1e-3;
 
         yyaxis left
-        data_mean_left = cat(2, CsEModHertz_mean{i,j},NaN);
+        data_mean_left = cat(2, CsEModHertz_mean{i,j}.*1e-3,NaN);
         beeswarm([1,2], data_mean_left, 'dot_size', 5, 'MarkerEdgeColor','k', 'MarkerFaceColor', color_map(clr_counter,:));
-        ylabel('Indentation modulus [Pa]')
-        ylim([0, 3*1e5])
+        ylabel('Indentation modulus [kPa]')
+        ylim([0, 500])
 
         yyaxis right
         data_mean_right = cat(2, NaN, CsAspectRatio{i,j});
         beeswarm([1,2], data_mean_right, 'dot_size', 5, 'MarkerEdgeColor','k', 'MarkerFaceColor', color_map(clr_counter,:));
         ylabel('Aspect ratio');
-        ylim([0,8]) % ylim([0,0.6]) 
+        ylim([0.1,0.4]) 
     end
 end
 % paired-sample t-test
-[h1,p2] = ttest2(CsAspectRatio_l,CsEModHertz_mean_l); % mean data
+[h1,p1] = ttest2(CsAspectRatio_l,CsEModHertz_mean_l); % mean data
 
 
 [B,I] = sort(CsEModHertz_mean_l); 
 % color_mapv1 = summer(sum(counter));
 color_map = zeros(sum(counter), 3); 
 stiff = 5; 
-medium = 3; 
+medium = 8; 
 for z = 0:(stiff-1)
     color_map(I(end-z),:) = [0.8500 0.3250 0.0980]; % stiff
 end 
@@ -157,17 +155,16 @@ for i = 1:length(sample_idx)
         CsHeight_mean_l(clr_counter) = CsHeight_mean{i,j};
         CsEModHertz_mean_l(clr_counter) = CsEModHertz_mean{i,j};
 
-
         data_mean_left = cat(2, CsEModHertz_mean{i,j}.*1e-3,NaN);
         beeswarm([1,2], data_mean_left, 'dot_size', 5, 'MarkerEdgeColor','k', 'MarkerFaceColor', color_map(clr_counter,:));
         ylabel('Indentation modulus [kPa]')
-        ylim([0, 3*1e2]) % 3*1e5
+        ylim([0, 500]) 
 
         yyaxis right
         data_mean_right = cat(2, NaN, CsHeight_mean{i,j}.*1e9);
         beeswarm([1,2], data_mean_right, 'dot_size', 5, 'MarkerEdgeColor','k', 'MarkerFaceColor', color_map(clr_counter,:));
         ylabel('Centrosome height [nm]');
-        ylim([0,800])
+        ylim([0,400])
     end
 end
 % paired-sample t-test
@@ -178,26 +175,26 @@ box on; set(gca,'FontSize', 16, 'Linewidth', 1.5);
 color_map = hot(sum(counter));
 for i = 1:length(sample_idx)
     for j = 1:counter(i)
-        plotSpread({CsEModHertz_data{i,j},[]} , 'spreadWidth', 0.5, 'xNames', {'Centrosome stiffness', 'Centrosome size'}, ...
+        plotSpread({CsEModHertz_data{i,j}*1e-3,[]} , 'spreadWidth', 0.5, 'xNames', {'Centrosome stiffness', 'Centrosome size'}, ...
             'distributionColors', [0.5 0.5 0.5]);
         hold on
     end
     for j = 1:counter(i)
         clr_counter = j + sum(counter(1:i-1));
         CsRadius_data_l(clr_counter) = CsRadius_data{i,j};
-        CsEModHertz_mean_l(clr_counter) = CsEModHertz_mean{i,j};
+        CsEModHertz_mean_l(clr_counter) = CsEModHertz_mean{i,j}*1e-3;
 
         yyaxis left
-        data_mean_left = cat(2, CsEModHertz_mean{i,j},NaN);
+        data_mean_left = cat(2, CsEModHertz_mean{i,j}*1e-3,NaN);
         beeswarm([1,2], data_mean_left, 'dot_size', 5, 'MarkerEdgeColor','k', 'MarkerFaceColor', color_map(clr_counter,:));
         ylabel('Indentation modulus [Pa]')
-        ylim([0, 3*1e5])
+        ylim([0, 500])
 
         yyaxis right
-        data_mean_right = cat(2, NaN, CsRadius_data{i,j});
+        data_mean_right = cat(2, NaN, CsRadius_data{i,j}*1e9);
         beeswarm([1,2], data_mean_right, 'dot_size', 5, 'MarkerEdgeColor','k', 'MarkerFaceColor', color_map(clr_counter,:));
-        ylabel('Centrosome radius [m]');
-        ylim([0,1.5e-6])
+        ylabel('Centrosome radius [nm]');
+        ylim([0,1200])
     end
 end
 % paired-sample t-test
@@ -216,38 +213,38 @@ for i = 1:length(sample_idx)
         CsRadius_data_l(clr_counter) = CsRadius_data{i,j};
 
         yyaxis left
-        data_mean_left = cat(2, CsRadius_data{i,j},NaN);
+        data_mean_left = cat(2, CsRadius_data{i,j}.*1e9,NaN);
         beeswarm([1,2], data_mean_left, 'dot_size', 5, 'MarkerEdgeColor','k', 'MarkerFaceColor', color_map(clr_counter,:));
-        ylabel('Centrosome radius [m]');
-        ylim([0,1.5e-6])
+        ylabel('Centrosome radius [nm]');
+        ylim([0,1200])
 
         yyaxis right
         data_mean_right = cat(2, NaN, (CsInden_mean{i,j}./CsHeight_mean{i,j})*100);
         beeswarm([1,2], data_mean_right, 'dot_size', 5, 'MarkerEdgeColor','k', 'MarkerFaceColor', color_map(clr_counter,:));
         ylabel('Compression [%]');
-        ylim([20,60])
+        ylim([10,70])
     end
 end
 % paired-sample t-test
 [h4,p4] = ttest2(Compression_data_l,CsRadius_data_l); % mean data
 
-figure('name', 'Angle threshold'); hold on
-box on; set(gca,'FontSize', 16, 'Linewidth', 1.5);
-for i = 1:length(sample_idx)
-    for j = 1:counter(i)
-         clr_counter = j + sum(counter(1:i-1)); 
-         yyaxis left
-         data_mean_left = {AngleThr{i,j},[]};
-         plotSpread(data_mean_left,  'spreadWidth', 0.5,'xNames', {'Angle threshold', 'Flat area'}, ...
-                'distributionMarkers',{'o','o'},'distributionColors', color_map(clr_counter,:));
-         ylabel('Angle [rad]')
-         yyaxis right
-         data_mean_right = {[],CsFlatArea_data{i,j}}; 
-                plotSpread(data_mean_right,  'spreadWidth', 0.5,'xNames', {'Angle threshold', 'Flat area'}, ...
-                'distributionMarkers',{'o','o'},'distributionColors', color_map(clr_counter,:));
-         ylabel('Area [m^2]')
-    end
-end
+% figure('name', 'Angle threshold'); hold on
+% box on; set(gca,'FontSize', 16, 'Linewidth', 1.5);
+% for i = 1:length(sample_idx)
+%     for j = 1:counter(i)
+%          clr_counter = j + sum(counter(1:i-1)); 
+%          yyaxis left
+%          data_mean_left = {AngleThr{i,j},[]};
+%          plotSpread(data_mean_left,  'spreadWidth', 0.5,'xNames', {'Angle threshold', 'Flat area'}, ...
+%                 'distributionMarkers',{'o','o'},'distributionColors', color_map(clr_counter,:));
+%          ylabel('Angle [rad]')
+%          yyaxis right
+%          data_mean_right = {[],CsFlatArea_data{i,j}}; 
+%                 plotSpread(data_mean_right,  'spreadWidth', 0.5,'xNames', {'Angle threshold', 'Flat area'}, ...
+%                 'distributionMarkers',{'o','o'},'distributionColors', color_map(clr_counter,:));
+%          ylabel('Area [m^2]')
+%     end
+% end
 
 figure('name', 'Measured height and indentation depth'); hold on
 box on; set(gca,'FontSize', 16, 'Linewidth', 1.5);
@@ -259,8 +256,8 @@ for i = 1:length(sample_idx)
          data_mean_left = {CsInden_mean{i,j},CsHeight_mean{i,j}, []};
          plotSpread(data_mean_left,  'spreadWidth', 0.5,'xNames', {'Indentation depth', 'Centrosome height', 'Compression'}, ...
                 'distributionMarkers',{'o','o','o'},'distributionColors', color_map(clr_counter,:));
-         plot([1,2], [CsInden_mean{i,j},CsHeight_mean{i,j}], 'LineWidth',0.5, 'Color', color_map(clr_counter,:));
-         ylabel('Height [m]');
+         plot([1,2], [CsInden_mean{i,j}*1e9,CsHeight_mean{i,j}*1e9], 'LineWidth',0.5, 'Color', color_map(clr_counter,:));
+         ylabel('Height [nm]');
 
          yyaxis right
          data_mean_right = {[],[],(CsInden_mean{i,j}./CsHeight_mean{i,j})*100};

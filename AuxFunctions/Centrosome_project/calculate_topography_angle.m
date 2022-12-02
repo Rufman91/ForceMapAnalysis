@@ -10,7 +10,6 @@ function [PlaneAngle] = calculate_topography_angle(arr)
 
 % read data from excel file (Desktop)
 % arr = xlsread('Step_scan01_ex.xls');
-
 x=arr(:,1);
 y=arr(:,2);
 z=arr(:,3);
