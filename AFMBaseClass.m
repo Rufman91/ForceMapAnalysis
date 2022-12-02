@@ -126,7 +126,7 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
                     set(obj,PropertyNames{i},LoadStruct.TempProp);
                 catch
                     if MetaProperties(i).HasDefault
-                        set(obj,PropertyNames{i},MetaProperties.DefaultValue);
+                        set(obj,PropertyNames{i},MetaProperties(i).DefaultValue);
                     else
                         set(obj,PropertyNames{i},[]);
                     end
