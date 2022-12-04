@@ -4,10 +4,11 @@
 % sensitivity correction method using E.show_image
 % Julia Garcia Baucells 2022
 
-% clear
-% E = Experiment.load;
+clear
+E = Experiment.load;
 cd(E.ExperimentFolder)
 
+dbstop in angle_deconvolution_analysis.m at 177
 format long g;
 format compact;
 workspace;  % make sure the workspace panel is showing
@@ -30,6 +31,15 @@ if choice == 1
 else 
     datavalues = 0; 
 end
+
+msg = "Do you want to apply the UpperForceCutOff?";
+opts = ["Yes" "No"];
+choice = menu(msg,opts);
+if choice == 1
+    s2 = ' (01)'; 
+else 
+    s2 = ''; 
+end 
 
 for m = 1:E.NumForceMaps
     if ismember(m, datavalues) 
@@ -136,7 +146,7 @@ for m = 1:E.NumForceMaps
         set(gca,'FontSize', 16, 'Linewidth', 1.5); 
 
         % get indentation modulus Hertz data 
-        ChannelEModHertz = E.FM{m}.get_channel('Indentation Modulus Hertz');
+        ChannelEModHertz = E.FM{m}.get_channel(strcat('Indentation Modulus Hertz',s2));
         % from centrosome's flat region
         CsEModHertz = ChannelEModHertz.Image.*AngleCsBW.*QFits;
         CsEModHertz(CsEModHertz==0)=NaN;
@@ -151,16 +161,17 @@ for m = 1:E.NumForceMaps
         CsFlatArea = CsFlatProps.Area*pxSize^2;
 
         % centrosome height (contact height) & indentation on the flat area
-        ChannelContact = E.FM{m}.get_channel('Contact Height');
+        ChannelContact = E.FM{m}.get_channel(strcat('Contact Height',s2));
         CsFlatHeight = ChannelContact.Image.*AngleCsBW.*QFits;
         CsFlatHeight(CsFlatHeight==0) = NaN;
         
+        ChannelIndenDepth = E.FM{m}.get_channel(strcat('Indentation Depth Hertz',s2));
         CsFlatInden = ChannelIndenDepth.Image.*AngleCsBW.*QFits;
         CsFlatInden(CsFlatInden==0) = NaN;
 
         % save 
         cd(E.ForceMapFolders{m,1})
-        filename = 'Processed';
+        filename = strcat('Processed',s2);
         save(filename,'T2','CsArea','CsRadius','CsEModHertz','CsFlatArea','CsFlatHeight','CsFlatInden')
 
         cd ..

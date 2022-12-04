@@ -7,10 +7,7 @@
 format long g;
 format compact;
 workspace;  % make sure the workspace panel is showing
-% dbstop in collect_plot_results.m at 123
-dbstop in collect_plot_results.m at 162
-% dbstop in collect_plot_results.m at 184
-% dbstop in collect_plot_results.m at 213
+dbstop in collect_plot_results.m at 174
 
 close all
 clear
@@ -22,6 +19,15 @@ addpath('internal functions');
 DirOutput = dir(path1);
 FileNames = {DirOutput.name}';
 NumberFolders = numel(FileNames);
+
+msg = "Do you want to apply the UpperForceCutOff?";
+opts = ["Yes" "No"];
+choice = menu(msg,opts);
+if choice == 1
+    s2 = ' (01)'; 
+else 
+    s2 = ''; 
+end 
 
 % filter out unwanted folders
 pat = 'colloidal-probe';
@@ -59,7 +65,7 @@ for n = 1:length(sample_idx)
             % skip evaluation round
         else
             cd(obj.ForceMapFolders{i,1})
-            load('Processed.mat')
+            load(strcat('Processed',s2,'.mat'))
             counter(n) = counter(n) + 1;
             CsEModHertz_data{n, counter(n)} = CsEModHertz(:);
             CsEModHertz_mean{n, counter(n)} = mean(CsEModHertz(:), 'omitnan');
