@@ -7,7 +7,8 @@
 format long g;
 format compact;
 workspace;  % make sure the workspace panel is showing
-dbstop in collect_plot_results.m at 174
+dbstop in collect_plot_results.m at 130
+dbstop in collect_plot_results.m at 175
 
 close all
 clear
@@ -104,18 +105,18 @@ ylim([0, 500]);
 figure('name', 'Mechanics geometrical dependence'); hold on
 box on; set(gca,'FontSize', 16, 'Linewidth', 1.5);
 color_map = hot(sum(counter));
+
 for i = 1:length(sample_idx)
     for j = 1:counter(i)
-        plotSpread({CsEModHertz_data{i,j}.*1e-3,[]} , 'spreadWidth', 0.5, 'xNames', {'Centrosome stiffness', 'Centrosome aspect ratio'}, ...
-            'distributionColors', [0.5 0.5 0.5]);
-        hold on
-    end
-    for j = 1:counter(i)
         clr_counter = j + sum(counter(1:i-1));
+        yyaxis left
+        plotSpread({CsEModHertz_data{i,j}.*1e-3,[]} , 'spreadWidth', 0.5, 'xNames', {'Centrosome stiffness', 'Centrosome aspect ratio'}, ...
+            'distributionColors', color_map(clr_counter,:));
+        hold on
+
         CsAspectRatio_l(clr_counter) = CsAspectRatio{i,j};
         CsEModHertz_mean_l(clr_counter) = CsEModHertz_mean{i,j}.*1e-3;
 
-        yyaxis left
         data_mean_left = cat(2, CsEModHertz_mean{i,j}.*1e-3,NaN);
         beeswarm([1,2], data_mean_left, 'dot_size', 5, 'MarkerEdgeColor','k', 'MarkerFaceColor', color_map(clr_counter,:));
         ylabel('Indentation modulus [kPa]')
@@ -208,7 +209,7 @@ end
 
 figure('name', 'Compression size dependence'); hold on
 box on; set(gca,'FontSize', 16, 'Linewidth', 1.5);
-color_map = hot(sum(counter));
+color_map = lines(sum(counter));
 for i = 1:length(sample_idx)
      plotSpread({[],[]} , 'spreadWidth', 0.5, 'xNames', {'Centrosome size', 'Compression'}, ...
             'distributionColors', [0.5 0.5 0.5]);
@@ -254,12 +255,12 @@ end
 
 figure('name', 'Measured height and indentation depth'); hold on
 box on; set(gca,'FontSize', 16, 'Linewidth', 1.5);
-color_map = summer(sum(counter));
+color_map = lines(sum(counter));
 for i = 1:length(sample_idx)
     for j = 1:counter(i)
          clr_counter = j + sum(counter(1:i-1)); 
          yyaxis left
-         data_mean_left = {CsInden_mean{i,j},CsHeight_mean{i,j}, []};
+         data_mean_left = {CsInden_mean{i,j}*1e9,CsHeight_mean{i,j}*1e9, []};
          plotSpread(data_mean_left,  'spreadWidth', 0.5,'xNames', {'Indentation depth', 'Centrosome height', 'Compression'}, ...
                 'distributionMarkers',{'o','o','o'},'distributionColors', color_map(clr_counter,:));
          plot([1,2], [CsInden_mean{i,j}*1e9,CsHeight_mean{i,j}*1e9], 'LineWidth',0.5, 'Color', color_map(clr_counter,:));
@@ -269,6 +270,6 @@ for i = 1:length(sample_idx)
          data_mean_right = {[],[],(CsInden_mean{i,j}./CsHeight_mean{i,j})*100};
          plotSpread(data_mean_right,  'spreadWidth', 0.5,'xNames',{'Indentation depth', 'Centrosome height', 'Compression'}, ...
                 'distributionMarkers',{'o','o','o'},'distributionColors', color_map(clr_counter,:));
-         ylabel('% Compression');
+         ylabel('% Compression'); ylim([0, 60])
     end
 end

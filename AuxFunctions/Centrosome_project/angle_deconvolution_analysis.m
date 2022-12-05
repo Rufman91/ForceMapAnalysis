@@ -8,7 +8,7 @@ clear
 E = Experiment.load;
 cd(E.ExperimentFolder)
 
-dbstop in angle_deconvolution_analysis.m at 177
+dbstop in angle_deconvolution_analysis.m at 175
 format long g;
 format compact;
 workspace;  % make sure the workspace panel is showing
@@ -36,8 +36,10 @@ msg = "Do you want to apply the UpperForceCutOff?";
 opts = ["Yes" "No"];
 choice = menu(msg,opts);
 if choice == 1
+    s1 = ' Fit Range'; 
     s2 = ' (01)'; 
 else 
+    S1 = ''; 
     s2 = ''; 
 end 
 
@@ -165,7 +167,7 @@ for m = 1:E.NumForceMaps
         CsFlatHeight = ChannelContact.Image.*AngleCsBW.*QFits;
         CsFlatHeight(CsFlatHeight==0) = NaN;
         
-        ChannelIndenDepth = E.FM{m}.get_channel(strcat('Indentation Depth Hertz',s2));
+        ChannelIndenDepth = E.FM{m}.get_channel(strcat('Indentation Depth Hertz',s1,s2));
         CsFlatInden = ChannelIndenDepth.Image.*AngleCsBW.*QFits;
         CsFlatInden(CsFlatInden==0) = NaN;
 
