@@ -57,15 +57,16 @@ Height = Position(4);
 Width = Position(3);
 
 if isequal(Arrangement,'Vertical')
-    ListPos(4) = Height/10;
-    EditPos(4) = Height*9/10;
+    ListPos(4) = Height*9/10;
+    EditPos(4) = Height/10;
     EditPos(2) = Position(2) + ListPos(4);
 elseif isequal(Arrangement,'Horizontal')
-    ListPos(4) = Height/10;
+    ListPos(4) = Height*9/10;
     EditPos(4) = Height/10;
     ListPos(3) = Width/2;
     EditPos(3) = Width/2;
     ListPos(1) = Position(1) + EditPos(3);
+    EditPos(2) = Position(2) + ListPos(4) - EditPos(4);
 end
 
 Editbox = uicontrol(Parent,...
@@ -81,7 +82,7 @@ Listbox = uicontrol(Parent,...
     'Position',ListPos);
 
 
-set(Editbox,'KeyPressFcn',{@update_suggestion_list,Listbox})
+set(Editbox,'KeyPressFcn',{@update_suggestion_list,MatchCase,Listbox,ACDictionary})
 set(Listbox,'Callback',{@autofill_edit_field_from_list,Editbox})
 
 end
