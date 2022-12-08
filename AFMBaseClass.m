@@ -1256,7 +1256,11 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
                     DistanceVector = SegmentPixelIndizes{i} - [obj.Segment(i).ROIObject.Position(j,1) obj.Segment(i).ROIObject.Position(j,2)];
                     Distances = vecnorm(DistanceVector,2,2);
                     [~,IndexOfClosest] = min(Distances);
-                    TempCorrespondingPixelIndex(j,:) = SegmentPixelIndizes{i}(IndexOfClosest,:);
+                    try
+                        TempCorrespondingPixelIndex(j,:) = SegmentPixelIndizes{i}(IndexOfClosest,:);
+                    catch ME
+                        warning(ME.message)
+                    end
                     
                 end
                 % find out overall segment pathlength
