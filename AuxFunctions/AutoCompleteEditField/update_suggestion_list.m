@@ -1,10 +1,11 @@
 function update_suggestion_list(source,event,MatchCase,ListBox,ACDictionary)
 
+
+set(source,'Enable', 'on');
+
 if isequal(event.Key,'shift')
     return
 end
-
-disp('Callback triggered!')
 
 if ~isequal(event.Key,'return')
     import java.awt.Robot;
@@ -21,5 +22,9 @@ MatchedDic = match_string_to_dictionary(EditText,ACDictionary,MatchCase);
 
 ListBox.String = MatchedDic;
 ListBox.Value = 1;
+
+uistack(ListBox,'top');
+uicontrol(source);
+set(source,'Enable', 'Inactive');
 
 end
