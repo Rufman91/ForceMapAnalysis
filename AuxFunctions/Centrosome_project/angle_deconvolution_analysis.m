@@ -8,7 +8,7 @@ clear
 E = Experiment.load;
 cd(E.ExperimentFolder)
 
-dbstop in angle_deconvolution_analysis.m at 175
+dbstop in angle_deconvolution_analysis.m at 180
 format long g;
 format compact;
 workspace;  % make sure the workspace panel is showing
@@ -39,7 +39,7 @@ if choice == 1
     s1 = ' Fit Range'; 
     s2 = ' (01)'; 
 else 
-    S1 = ''; 
+    s1 = ''; 
     s2 = ''; 
 end 
 
@@ -171,10 +171,15 @@ for m = 1:E.NumForceMaps
         CsFlatInden = ChannelIndenDepth.Image.*AngleCsBW.*QFits;
         CsFlatInden(CsFlatInden==0) = NaN;
 
+        % volume approximation
+        CsContactHeight = ChannelContact.Image.*erodedBW2; 
+        CsVolume_voxel = CsContactHeight.*pxSize^2; 
+        CsVolume = sum(CsVolume_voxel(:)); 
+
         % save 
         cd(E.ForceMapFolders{m,1})
         filename = strcat('Processed',s2);
-        save(filename,'T2','CsArea','CsRadius','CsEModHertz','CsFlatArea','CsFlatHeight','CsFlatInden')
+        save(filename,'T2','CsArea','CsRadius','CsEModHertz','CsFlatArea','CsFlatHeight','CsFlatInden','CsVolume')
 
         cd ..
         close all
