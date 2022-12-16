@@ -32,12 +32,16 @@ else
     datavalues = 0; 
 end
 
-msg = "Do you want to apply the UpperForceCutOff?";
+msg = "Do you want to apply a UpperForceCutOff?";
 opts = ["Yes" "No"];
 choice = menu(msg,opts);
 if choice == 1
+    msg2 = "Which UpperForceCutOff do you want to apply?"; 
+    opts2 = ["01" "02" "03"];
+    choice2 = menu(msg2,opts2);
+
     s1 = ' Fit Range'; 
-    s2 = ' (01)'; 
+    s2 = ' ('+opts2(choice2)+')'; 
 else 
     s1 = ''; 
     s2 = ''; 

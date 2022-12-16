@@ -21,11 +21,14 @@ DirOutput = dir(path1);
 FileNames = {DirOutput.name}';
 NumberFolders = numel(FileNames);
 
-msg = "Do you want to apply the UpperForceCutOff?";
-opts = ["Yes" "No"];
-choice = menu(msg,opts);
-if choice == 1
-    s2 = ' (01)'; 
+msg1 = "Do you want to apply a UpperForceCutOff?";
+opts1 = ["Yes" "No"];
+choice1 = menu(msg1,opts1);
+if choice1 == 1
+    msg2 = "Which UpperForceCutOff do you want to apply?"; 
+    opts2 = ["01" "02" "03"];
+    choice2 = menu(msg2,opts2);
+    s2 = ' ('+opts2(choice2)+')'; 
 else 
     s2 = ''; 
 end 
