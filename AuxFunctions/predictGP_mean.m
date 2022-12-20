@@ -6,5 +6,5 @@ N = length(X);
 K = kernel(X,X,sigma,lambda) + noise*eye(N);
 K_star = kernel(X,X_star,sigma,lambda);
 mu_star_norm = K_star'*(inv(K+1e-5*eye(N))*FNorm);
-% sigma_star = kernel(X_star,X_star,sigma,lambda) - K_star'*(K\(K_star+1e-5*eye(N)));
+sigma_star = kernel(X_star,X_star,sigma,lambda) - K_star'*(K\(K_star+1e-5*eye(N)));
 mu_star = (mu_star_norm*FSTD + FMean);

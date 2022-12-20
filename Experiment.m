@@ -821,7 +821,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 obj.FMFlag.Preprocessed(i) = 1;
             end
             
-            obj.save_experiment;
+%             obj.save_experiment;
             
             close(h);
         end

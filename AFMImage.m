@@ -852,7 +852,7 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & dynam
             KernelSigma = 1;
             GPNoise = 0;
             warning('off')
-            RectMaxIdx = round(predictGP_mean(1:NumProfiles,1:NumProfiles,KernelSigma,KernelLambda,MaxIdx,GPNoise));
+            RectMaxIdx = round(predictGP_mean([1:NumProfiles]',[1:NumProfiles]',KernelSigma,KernelLambda,MaxIdx,GPNoise));
             warning('on')
             for i=1:NumProfiles
                 LineFit = polyfit(SortedIndex(i,RectMaxIdx(i)+round(.25*(NumPoints-RectMaxIdx(i))):end),...

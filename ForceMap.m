@@ -2197,7 +2197,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
             if obj.FibrilFlag.Straight == 1
                 obj.RectApex = zeros(obj.NumPixelsX,1);
                 obj.RectApexIndex = zeros(obj.NumPixelsX,1);
-                obj.RectApexIndex = round(predictGP_mean([1:obj.NumPixelsX],[1:obj.NumPixelsX],1,5*obj.NumPixelsX,obj.ApexIndex,1));
+                obj.RectApexIndex = round(predictGP_mean([1:obj.NumPixelsX]',[1:obj.NumPixelsX]',1,5*obj.NumPixelsX,obj.ApexIndex,1));
                 for i=1:obj.NumPixelsX
                     obj.RectApex(i) = obj.HeightMap(i,obj.RectApexIndex(i),1);
                 end
