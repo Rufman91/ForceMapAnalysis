@@ -1349,8 +1349,12 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
         
         %% SMFS section
                
-        function SMFS_initialize_arrays(obj)
+        function SM_initialize_arrays(obj)
+            % Description: A function to initialize flags of the object which are used from various functions during an analysis.      
+            % Required input variables:
+            % obj
             
+            %% Function body
 %             TableSize=[1 13];
 %             VarTypes = {'double','string','string','string','string','double','double','double','string','string','string','string','string'};
 %             VarNames = {'FM row number','FM ID','Name','Date','Time','Extend velocity','Retraction velocity','Holding time','Linker','Substrate','Medium','Chip cantilever number','Chipbox number'};
@@ -1384,7 +1388,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
 %             obj.SMFSWilcoxonSnapInLength=table('Size',TableSize,'VariableTypes',VarTypes,'VariableNames',VarNames);
         end
         
-%         function SMFS_initialize_flags(obj)
+%         function SM_initialize_flags(obj)
 % 
 %             obj.initialize_flags
 %             NFM = obj.NumForceMaps;
@@ -1413,13 +1417,17 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
 %         end
 
 
-        function SMFS_properties_parameters(obj,SetNumFcValue)
-            % Descritpion: 
-            % The function verifies the number of force curves per force map and flags each force map based on the determined value compared to the input variable 'SetNumFcValue'      
-            %
-            % Required inputs:
-            % obj ... <VARIABLE DESCRIPTION>
-            % SetNumFcValue ... The variable defines the set number of force curves per force map
+        function SM_properties_parameters(obj,SetNumFcValue)
+            % Description:       
+            % The function verifies the number of force curves per force map and flags each force map based on the determined value compared to the input variable 'SetNumFcValue'. 
+            % If the 'SMFSFlag.NumForceCurves' is set for a force map the following part of the function is executed. There, properties and parameters, i.e. probe box, substrate, medium, velocities, from the jpk file name of the force map file are read out. 
+            % Force maps that have passed through are flagged at the end of the function with the 'SMFSFlag.PropertiesParameters'.
+            % Required input variables:
+            % obj
+            % SetNumFcValue ... The variable defines the number of force curves per force map
+            % Flags:
+            % SMFSFlag.PropertiesParameters
+            % SMFSFlag.NumForceCurves
                         
             %% Function body
             h = waitbar(0,'setting up','Units','normalized','Position',[0.4 0.3 0.2 0.1]);
@@ -1434,7 +1442,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 KeepFlagged = 'No';
             end
             for Fm=1:obj.NumForceMaps
-           %  for Fm=45:obj.NumForceMaps % debugging
+            %  for Fm=45:obj.NumForceMaps % debugging
                  if isequal(KeepFlagged,'Yes') && obj.SMFSFlag.PropertiesParameters(Fm) == 1
                     continue
                  end
@@ -1453,13 +1461,21 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             close(h);
         end
         
-        function SMFS_preprocessing(obj)
-            % SMFS_preprocessing: A function to run a bundle of other 
-            % typically required functions for further analysis
-            
-            
-            % Output time and date for the dairy
-            datetime('now')
+        function SM_preprocessing(obj)
+            % Description:       
+            % The function that applies various preprocessing steps to the data.
+            % First, the general cantilever sensitivity measured before starting an AFM SM experiment with the cantilever is corrected with the individual cantilever sensitivity determined from each individual force curve. 
+            % Typically, in AFM experiments it is not necessary to determine the individual sensitivity but in case of the force curves detected during AFM SM experiments it was necessary to ensure most accurate results possible. 
+            % Second, to correct for artifacts which occurred in some force curves and the general tilt, the approach data is fitted. Two fits, a sinoidal fit and linear fit, are applied separately onto the same amount of data and the better fit is selected. 
+            % Additionally, a second, linear fit is applied to correct for the tilt in the data. 
+            % Third, to optimize the tilt correction for the retraction part, a linear fit of selected retraction data is applied. 
+            % Fourth, the z-piezo height data is corrected with the cantilever deflection. 
+            % Fifth, the contact point is estimated. 
+            % Force maps that have passed through are flagged at the end of the function with the 'SMFSFlag.Preprocessed'.
+            % Flags:
+            % SMFSFlag.Preprocessed
+                             
+            %% Function body
             % Dialog box
             h = waitbar(0,'setting up','Units','normalized','Position',[0.4 0.3 0.2 0.1]);
             NLoop = length(obj.ForceMapNames);
@@ -1478,7 +1494,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             % Change into the Folder of Interest
             cd(obj.ExperimentFolder) % Move into the folder
             % Create folders for saving the produced figures
-            foldername='SMFS_preprocessing';               
+            foldername='SM_preprocessing';               
             mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
             currpath=fullfile(obj.ExperimentFolder,foldername);
             cd(currpath);           
@@ -1510,19 +1526,36 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
         end
                   
       
-        function SMFS_preparation(obj,xLimit1,xLimit2,xLimit3,AppThreshValue,RetThreshValue)
-            % SMFS_presorting: This function allows to conduct an automated presorting of the force curves 
-            % The function flags force curves and whole force maps that are
-            % non-functionalize
-            % Needed function: obj.preprocessing
-            
+        function SM_preparation(obj,xLimit1,xLimit2,xLimit3,AppThreshValue,RetThreshValue)
+            % Description: 
+            % In this function force curves are presorted to allow further
+            % analysis. Only force maps with set SMFSFlag.Preprocessed are
+            % processed. 
+            % First, indices of data points corresponding to
+            % three lengths defined by the input variables
+            % (xLimit1,xLimit2,xLimit3) are determined.
+            % Second, thresholds defined by the input variables (AppThreshValue,RetThreshValue) are used to flag force curves.
+            % The flags indicate if interactions on the approach part
+            % and/or retraction part are present.
+            % Force maps that have passed through are flagged at the end of the function with the 'SMFSFlag.Presorted'.
+            % Required input variables:
+            % xLimit1
+            % xLimit2
+            % xLimit3
+            % AppThreshValue
+            % RetThreshValue
+            % Flags:
+            % SMFSFlag.Presorted
+            % SMFSFlag.SelectFM
+            % Typical input variables used for AFM SMAD of tropocollagen  
             % Limits used for the analysis of TC            
             %xLimit1=20e-9; Retraction limit 1
             %xLimit2=200e-9; Approach limit
             %xLimit3=300e-9; Retraction limit 2
             %AppThreshValue=15e-12;     % 15 pN 
             %RetThreshValue=25e-12;     % 25 pN 
-
+            
+            %% Function body
             h = waitbar(0,'setting up','Units','normalized','Position',[0.4 0.3 0.2 0.1]);
             NLoop = length(obj.ForceMapNames);
             if sum(obj.SMFSFlag.Presorted) >= 1
@@ -1555,29 +1588,39 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             close(h);
         end
       
-        function SMFS_visual_selection(obj,XMin,XMax,YMin,YMax,NumFcMax)
-           %   function SMFS_visual_selection(obj,XMin,XMax,YMin,YMax,NumFcMax,Res)
-       
+        function SM_visual_selection(obj,XMin,XMax,YMin,YMax,NumFcMax)
+            % Description: 
+            % In this function force curves are plotted and selected based on selection criteria the user has to check for in each force curve individually. 
+            % Based on the input variable 'NumFcMax' a if condition is
+            % excecuted allowing to process only force maps with set
+            % 'SMFSFlag.Preprocessed' or 
+            % processed. 
             % 
-            if nargin<2
-                XMin= -inf;     % Limit of the X-axis in meters (m)
-                XMax= 50e-9;      % Limit of the X-axis in meters (m)
-                YMin= -inf;     % Limit of the Y-axis in Newtons (N)
-                YMax= 100e-12;      % Limit of the Y-axis in Newtons (N)    
-                NumFcMax = 25;   % Maximum number of force curves per figure
-                Res=[1 1 2560 1250]; % Define the figure resolution
-            end
-
-            % Output time and date for the dairy
-            datetime('now')
-            
+            % three lengths defined by the input variables
+            % (xLimit1,xLimit2,xLimit3) are determined.
+            % Second, thresholds defined by the input variables (AppThreshValue,RetThreshValue) are used to flag force curves.
+            % The flags indicate if interactions on the approach part
+            % and/or retraction part are present.
+            % Required input variables:
+            % XMin
+            % XMax
+            % YMin
+            % YMax
+            % NumFcMax
+            % Typical input variables used for AFM SMAD of tropocollagen 
+            % XMin= -inf;     % Limit of the X-axis in meters (m)
+            % XMax= 50e-9;      % Limit of the X-axis in meters (m)
+            % YMin= -inf;     % Limit of the Y-axis in Newtons (N)
+            % YMax= 100e-12;      % Limit of the Y-axis in Newtons (N)    
+            % NumFcMax = 25;   % Maximum number of force curves per figure
+            %% Function body
             % Figure visibility
             % set(groot,'defaultFigureVisible','off')      
             set(groot,'defaultFigureVisible','on')  
             % Change into the Folder of Interest
             cd(obj.ExperimentFolder) % Move into the folder 
             % Create folders for saving the produced figures
-            foldername='SMFS_visual_selection';    % Defines the folder name
+            foldername='SM_visual_selection';    % Defines the folder name
             mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
             currpath=fullfile(obj.ExperimentFolder,foldername);
             cd(currpath); 
@@ -1590,14 +1633,16 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 end
                % Command window output
                sprintf('Force Map No. %d of %d',fm,obj.NumForceMaps) % Gives current Force Map Position
-               % Run the chosen functions
-            %   obj.FM{ii}.fc_visual_selection_all(XMin,XMax,YMin,YMax);  
-                obj.FM{fm}.fc_visual_selection_flag_Uncorrupt(XMin,XMax,YMin,YMax,NumFcMax)
-               %obj.save_experiment;        % Save immediately after each force curve
+               % Run the FM functions depending on input variable 'NumFcMax'
+               if NumFcMax>1
+               obj.FM{fm}.fc_visual_selection_flag_Uncorrupt(XMin,XMax,YMin,YMax,NumFcMax)
+               else
+               obj.FM{fm}.fc_visual_selection_all(XMin,XMax,YMin,YMax);
+               end 
             end    
         end
       
-        function SMFS_analysis(obj,SelectedFlagStatus)
+        function SM_analysis(obj,SelectedFlagStatus)
             % This function allows to analyse different force curve
             % criteria, i.e. pulling length, adhesion energy. 
             % Input option:
@@ -1665,7 +1710,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             close(h);
         end
                  
-        function SMFS_visual_selection_analysed(obj,XMin,XMax,YMin,YMax,NumFcMax)
+        function SM_visual_selection_analysed(obj,XMin,XMax,YMin,YMax,NumFcMax)
        
             % 
             if nargin<2
@@ -1685,7 +1730,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             % Change into the Folder of Interest
             cd(obj.ExperimentFolder) % Move into the folder 
             % Create folders for saving the produced figures
-            foldername='SMFS_visual_selection_analysed';    % Defines the folder name
+            foldername='SM_visual_selection_analysed';    % Defines the folder name
             mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
             currpath=fullfile(obj.ExperimentFolder,foldername);
             cd(currpath); 
@@ -1702,7 +1747,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
         end
       
         
-        function SMFS_print_analysed_fc(obj,XMin,XMax,YMin,YMax,NumFcMax)
+        function SM_print_analysed_fc(obj,XMin,XMax,YMin,YMax,NumFcMax)
             %Furthermore, all analysed force curves are plotted and the determined
             % criteria are plotted for visual inspection
             % Input variable adaptation
@@ -1729,7 +1774,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             cd(obj.ExperimentFolder) % Move into the folder
             % Create folders for saving the produced figures
             %foldername='FM_Test';    % for debugging
-            foldername='SMFS_print_analysed_fc';    % Defines the folder name
+            foldername='SM_print_analysed_fc';    % Defines the folder name
             mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
             currpath=fullfile(obj.ExperimentFolder,foldername);
             cd(currpath);
@@ -1747,8 +1792,8 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             obj.NumFcUncorrupt=NumFcUncorrupt;
         end
                 
-        function SMFS_print_raw(obj,XMin,XMax,YMin,YMax)
-            % SMFS_print: A function to simply plot all force curves of all
+        function SM_print_raw(obj,XMin,XMax,YMin,YMax)
+            % SM_print: A function to simply plot all force curves of all
             % force maps loaded and calssified based on the SMFS Flag
             % Needed function: obj.presorting
             
@@ -1771,7 +1816,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             % Change into the Folder of Interest
             cd(obj.ExperimentFolder) % Move into the folder 
             % Create folders for saving the produced figures
-            foldername='SMFS_print_raw';    % Defines the folder name
+            foldername='SM_print_raw';    % Defines the folder name
             mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
             currpath=fullfile(obj.ExperimentFolder,foldername);
             cd(currpath); 
@@ -1786,8 +1831,8 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             end    
         end
                          
-        function SMFS_print_sort(obj,StartDate,EndDate,XMin,XMax,YMin,YMax,Flags)
-            % SMFS_print_sort: A function to plot all force curves of all
+        function SM_print_sort(obj,StartDate,EndDate,XMin,XMax,YMin,YMax,Flags)
+            % SM_print_sort: A function to plot all force curves of all
             % force maps sorted by different properties 
             % Comment: Date format is: 'YYYY.MM.DD'
             
@@ -1797,7 +1842,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             % Change into the Folder of Interest
             cd(obj.ExperimentFolder) % Move into the folder 
             % Create folders for saving the produced figures
-            foldername='SMFS_print_sort';    % Defines the folder name
+            foldername='SM_print_sort';    % Defines the folder name
             mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
             currpath=fullfile(obj.ExperimentFolder,foldername);
             cd(currpath); 
@@ -1862,7 +1907,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
         end
         
         
-        function SMFS_analysis_flag_status(obj)
+        function SM_analysis_flag_status(obj)
                         
             % Find not processed force maps
             obj.SMFSFlagDown.SelectFM=find(~obj.SMFSFlag.SelectFM);
@@ -1880,7 +1925,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
         end
  
         
-        function SMFS_results_structure(obj,ChipboxValue,ChipCantValue,LinkerValue,SubstrateValue,EnvCondValue,ExtVelocityValue,RetVelocityValue,HoldingTimeValue)
+        function SM_results_structure(obj,ChipboxValue,ChipCantValue,LinkerValue,SubstrateValue,EnvCondValue,ExtVelocityValue,RetVelocityValue,HoldingTimeValue)
 
             % If all velocities should be selected use input variable: 0
             % If all holding times should be selected use input variable:
@@ -2191,6 +2236,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             FMIndexChronoArray=FMIndexArray(FMSortDateTimeIdxFcArray);
             % Statistics
             AdhMaxAppMean=mean(ConcateArrayAdhMaxApp,'omitnan');
+            AdhMaxAppMedian=median(ConcateArrayAdhMaxApp,'omitnan');
             AdhMaxAppStd=std(ConcateArrayAdhMaxApp,'omitnan');
             [AdhMaxAppMin,AdhMaxAppMinIdx]=min(AdhMaxAppMinArray);
             [AdhMaxAppMax,AdhMaxAppMaxIdx]=max(AdhMaxAppMaxArray);
@@ -2199,6 +2245,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             AdhMaxAppMinFc=AdhMaxAppMinFcArray(AdhMaxAppMinIdx,1);
             AdhMaxAppMaxFc=AdhMaxAppMaxFcArray(AdhMaxAppMaxIdx,1);
             AdhMaxRetMean=mean(ConcateArrayAdhMaxRet,'omitnan');
+            AdhMaxRetMedian=median(ConcateArrayAdhMaxRet,'omitnan');
             AdhMaxRetStd=std(ConcateArrayAdhMaxRet,'omitnan');
             [AdhMaxRetMin,AdhMaxRetMinIdx]=min(AdhMaxRetMinArray);
             [AdhMaxRetMax,AdhMaxRetMaxIdx]=max(AdhMaxRetMaxArray);
@@ -2207,6 +2254,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             AdhMaxRetMinFc=AdhMaxRetMinFcArray(AdhMaxRetMinIdx,1);
             AdhMaxRetMaxFc=AdhMaxRetMaxFcArray(AdhMaxRetMaxIdx,1);
             AdhMaxRetUnbindingMean=mean(ConcateArrayAdhMaxRetUnbinding,'omitnan');
+            AdhMaxRetUnbindingMedian=median(ConcateArrayAdhMaxRetUnbinding,'omitnan');
             AdhMaxRetUnbindingStd=std(ConcateArrayAdhMaxRetUnbinding,'omitnan');
             [AdhMaxRetUnbindingMin,AdhMaxRetUnbindingMinIdx]=min(AdhMaxRetUnbindingMinArray);
             [AdhMaxRetUnbindingMax,AdhMaxRetUnbindingMaxIdx]=max(AdhMaxRetUnbindingMaxArray);
@@ -2215,6 +2263,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             AdhMaxRetUnbindingMinFc=AdhMaxRetUnbindingMinFcArray(AdhMaxRetUnbindingMinIdx,1);
             AdhMaxRetUnbindingMaxFc=AdhMaxRetUnbindingMaxFcArray(AdhMaxRetUnbindingMaxIdx,1);
             AdhEneAppMean=mean(ConcateArrayAdhEneApp,'omitnan');
+            AdhEneAppMedian=median(ConcateArrayAdhEneApp,'omitnan');
             AdhEneAppStd=std(ConcateArrayAdhEneApp,'omitnan');
             [AdhEneAppMin,AdhEneAppMinIdx]=min(AdhEneAppMinArray);
             [AdhEneAppMax,AdhEneAppMaxIdx]=max(AdhEneAppMaxArray);
@@ -2223,6 +2272,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             AdhEneAppMinFc=AdhEneAppMinFcArray(AdhEneAppMinIdx,1);
             AdhEneAppMaxFc=AdhEneAppMaxFcArray(AdhEneAppMaxIdx,1);
             AdhEneRetMean=mean(ConcateArrayAdhEneRet,'omitnan');
+            AdhEneRetMedian=median(ConcateArrayAdhEneRet,'omitnan');
             AdhEneRetStd=std(ConcateArrayAdhEneRet,'omitnan');
             [AdhEneRetMin,AdhEneRetMinIdx]=min(AdhEneRetMinArray);
             [AdhEneRetMax,AdhEneRetMaxIdx]=max(AdhEneRetMaxArray);
@@ -2230,14 +2280,18 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             AdhEneRetMaxFM=FMIdxArray(AdhEneRetMaxIdx);
             AdhEneRetMinFc=AdhEneRetMinFcArray(AdhEneRetMinIdx,1);
             AdhEneRetMaxFc=AdhEneRetMaxFcArray(AdhEneRetMaxIdx,1);
+            PullLengthMean=mean(ConcateArrayPullLength,'omitnan');
             PullLengthMedian=median(ConcateArrayPullLength,'omitnan');
+            PullLengthStd=std(ConcateArrayPullLength,'omitnan');
             [PullLengthMin,PullLengthMinIdx]=min(PullLengthMinArray);
             [PullLengthMax,PullLengthMaxIdx]=max(PullLengthMaxArray);
             PullLengthMinFM=FMIdxArray(PullLengthMinIdx);
             PullLengthMaxFM=FMIdxArray(PullLengthMaxIdx);
             PullLengthMinFc=PullLengthMinFcArray(PullLengthMinIdx,1);
             PullLengthMaxFc=PullLengthMaxFcArray(PullLengthMaxIdx,1);
+            SnapInMean=mean(ConcateArraySnapIn,'omitnan');
             SnapInMedian=median(ConcateArraySnapIn,'omitnan');
+            SnapInStd=std(ConcateArraySnapIn,'omitnan');
             [SnapInMin,SnapInMinIdx]=min(SnapInMinArray);
             [SnapInMax,SnapInMaxIdx]=max(SnapInMaxArray);
             SnapInMinFM=FMIdxArray(SnapInMinIdx);
@@ -2379,6 +2433,13 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             obj.SMFSResults{jj,1}.Concatenate(1).FMDateTimeNumber=FMDateTimeNumberFcArray;
             obj.SMFSResults{jj,1}.Concatenate(1).FMDateTimeNumberSort=FMSortDateTimeFcArray;
             obj.SMFSResults{jj,1}.Concatenate(1).FMDateTimeNumberSortIdx=FMSortDateTimeIdxFcArray;
+            obj.SMFSResults{jj,1}.Concatenate(1).AdhMaxApp=ConcateArrayAdhMaxApp;
+            obj.SMFSResults{jj,1}.Concatenate(1).AdhMaxRet= ConcateArrayAdhMaxRet;
+            obj.SMFSResults{jj,1}.Concatenate(1).AdhUnbinding=ConcateArrayAdhMaxRetUnbinding;
+            obj.SMFSResults{jj,1}.Concatenate(1).AdhEneApp=ConcateArrayAdhEneApp;
+            obj.SMFSResults{jj,1}.Concatenate(1).AdhEneRet=ConcateArrayAdhEneRet;
+            obj.SMFSResults{jj,1}.Concatenate(1).PullingLength=ConcateArrayPullLength;
+            obj.SMFSResults{jj,1}.Concatenate(1).SnapInLength=ConcateArraySnapIn;
             obj.SMFSResults{jj,1}.Flags(1).SMFSFlagUncorrupt=sum(SMFSFlagUncorrupt);
             obj.SMFSResults{jj,1}.Flags(1).UncorruptPct=(sum(SMFSFlagUncorrupt)/sum(TotalNumFc))*100;
             obj.SMFSResults{jj,1}.Flags(1).SMFSFlagSelected=sum(SMFSFlagSelected);
@@ -2440,15 +2501,8 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             obj.SMFSResults{jj,1}.Data(1).AdhUnbinding=yAdhUnbindingAll;
             obj.SMFSResults{jj,1}.Data(1).AdhEneApp=yAdhEneAppAll;
             obj.SMFSResults{jj,1}.Data(1).AdhEneRet=yAdhEneRetAll;
-            obj.SMFSResults{jj,1}.Data(1).yPullingLength=yPullingLengthAll;
-            obj.SMFSResults{jj,1}.Data(1).ySnapInLength=ySnapInLengthAll;
-            obj.SMFSResults{jj,1}.Data(1).AdhMaxAppConcat=ConcateArrayAdhMaxApp;
-            obj.SMFSResults{jj,1}.Data(1).AdhMaxRetConcat= ConcateArrayAdhMaxRet;
-            obj.SMFSResults{jj,1}.Data(1).AdhUnbindingConcat=ConcateArrayAdhMaxRetUnbinding;
-            obj.SMFSResults{jj,1}.Data(1).AdhEneAppConcat=ConcateArrayAdhEneApp;
-            obj.SMFSResults{jj,1}.Data(1).AdhEneRetConcat=ConcateArrayAdhEneRet;
-            obj.SMFSResults{jj,1}.Data(1).yPullingLengthConcat=ConcateArrayPullLength;
-            obj.SMFSResults{jj,1}.Data(1).ySnapInLengthConcat=ConcateArraySnapIn;
+            obj.SMFSResults{jj,1}.Data(1).PullingLength=yPullingLengthAll;
+            obj.SMFSResults{jj,1}.Data(1).SnapInLength=ySnapInLengthAll;
             obj.SMFSResults{jj,1}.Parameters(1).ExtendVelocity=ExtVelocityValue;
             obj.SMFSResults{jj,1}.Parameters(1).RetractVelocity=RetVelocityValue;
             obj.SMFSResults{jj,1}.Parameters(1).HoldingTime=HoldingTimeValue;
@@ -2482,6 +2536,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             obj.SMFSResults{jj,1}.Selection(1).LinkerFMIdx=LinkerFMIdx;
             obj.SMFSResults{jj,1}.Selection(1).LinkerConcateIdx=LinkerConcateIdx;
             obj.SMFSResults{jj,1}.Results(1).AdhMaxAppMean=AdhMaxAppMean;
+            obj.SMFSResults{jj,1}.Results(1).AdhMaxAppMedian=AdhMaxAppMedian;
             obj.SMFSResults{jj,1}.Results(1).AdhMaxAppStd=AdhMaxAppStd;
             obj.SMFSResults{jj,1}.Results(1).AdhMaxAppMinArray=AdhMaxAppMinArray;
             obj.SMFSResults{jj,1}.Results(1).AdhMaxAppMin=AdhMaxAppMin;
@@ -2494,6 +2549,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             obj.SMFSResults{jj,1}.Results(1).AdhMaxAppMaxFcArray=AdhMaxAppMaxFcArray;
             obj.SMFSResults{jj,1}.Results(1).AdhMaxAppMaxFc=AdhMaxAppMaxFc;
             obj.SMFSResults{jj,1}.Results(1).AdhMaxRetMean=AdhMaxRetMean;
+            obj.SMFSResults{jj,1}.Results(1).AdhMaxRetMedian=AdhMaxRetMedian;
             obj.SMFSResults{jj,1}.Results(1).AdhMaxRetStd=AdhMaxRetStd;
             obj.SMFSResults{jj,1}.Results(1).AdhMaxRetMinArray=AdhMaxRetMinArray;
             obj.SMFSResults{jj,1}.Results(1).AdhMaxRetMin=AdhMaxRetMin;
@@ -2506,6 +2562,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             obj.SMFSResults{jj,1}.Results(1).AdhMaxRetMaxFcArray=AdhMaxRetMaxFcArray;
             obj.SMFSResults{jj,1}.Results(1).AdhMaxRetMaxFc=AdhMaxRetMaxFc;
             obj.SMFSResults{jj,1}.Results(1).AdhMaxRetUnbindingMean=AdhMaxRetUnbindingMean;
+            obj.SMFSResults{jj,1}.Results(1).AdhMaxRetUnbindingMedian=AdhMaxRetUnbindingMedian;
             obj.SMFSResults{jj,1}.Results(1).AdhMaxRetUnbindingStd=AdhMaxRetUnbindingStd;
             obj.SMFSResults{jj,1}.Results(1).AdhMaxRetUnbindingMinArray=AdhMaxRetUnbindingMinArray;
             obj.SMFSResults{jj,1}.Results(1).AdhMaxRetUnbindingMin=AdhMaxRetUnbindingMin;
@@ -2518,6 +2575,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             obj.SMFSResults{jj,1}.Results(1).AdhMaxRetUnbindingMaxFcArray=AdhMaxRetUnbindingMaxFcArray;
             obj.SMFSResults{jj,1}.Results(1).AdhMaxRetUnbindingMaxFc=AdhMaxRetUnbindingMaxFc;
             obj.SMFSResults{jj,1}.Results(1).AdhEneAppMean=AdhEneAppMean;
+            obj.SMFSResults{jj,1}.Results(1).AdhEneAppMedian=AdhEneAppMedian;
             obj.SMFSResults{jj,1}.Results(1).AdhEneAppStd=AdhEneAppStd;
             obj.SMFSResults{jj,1}.Results(1).AdhEneAppMinArray=AdhEneAppMinArray;
             obj.SMFSResults{jj,1}.Results(1).AdhEneAppMin=AdhEneAppMin;
@@ -2530,6 +2588,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             obj.SMFSResults{jj,1}.Results(1).AdhEneAppMaxFcArray=AdhEneAppMaxFcArray;
             obj.SMFSResults{jj,1}.Results(1).AdhEneAppMaxFc=AdhEneAppMaxFc;
             obj.SMFSResults{jj,1}.Results(1).AdhEneRetMean=AdhEneRetMean;
+            obj.SMFSResults{jj,1}.Results(1).AdhEneRetMedian=AdhEneRetMedian;
             obj.SMFSResults{jj,1}.Results(1).AdhEneRetStd=AdhEneRetStd;
             obj.SMFSResults{jj,1}.Results(1).AdhEneRetMinArray=AdhEneRetMinArray;
             obj.SMFSResults{jj,1}.Results(1).AdhEneRetMin=AdhEneRetMin;
@@ -2541,7 +2600,9 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             obj.SMFSResults{jj,1}.Results(1).AdhEneRetMinFc=AdhEneRetMinFc;
             obj.SMFSResults{jj,1}.Results(1).AdhEneRetMaxFcArray=AdhEneRetMaxFcArray;
             obj.SMFSResults{jj,1}.Results(1).AdhEneRetMaxFc=AdhEneRetMaxFc;
+            obj.SMFSResults{jj,1}.Results(1).PullLengthMean=PullLengthMean;
             obj.SMFSResults{jj,1}.Results(1).PullLengthMedian=PullLengthMedian;
+            obj.SMFSResults{jj,1}.Results(1).PullLengthStd=PullLengthStd;
             obj.SMFSResults{jj,1}.Results(1).PullLengthMinArray=PullLengthMinArray;
             obj.SMFSResults{jj,1}.Results(1).PullLengthMin=PullLengthMin;
             obj.SMFSResults{jj,1}.Results(1).PullLengthMinFM=PullLengthMinFM;
@@ -2552,7 +2613,9 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             obj.SMFSResults{jj,1}.Results(1).PullLengthMaxFM=PullLengthMaxFM;
             obj.SMFSResults{jj,1}.Results(1).PullLengthMaxFcArray=PullLengthMaxFcArray;
             obj.SMFSResults{jj,1}.Results(1).PullLengthMaxFc=PullLengthMaxFc;
+            obj.SMFSResults{jj,1}.Results(1).SnapInMean=SnapInMean;
             obj.SMFSResults{jj,1}.Results(1).SnapInMedian=SnapInMedian;
+            obj.SMFSResults{jj,1}.Results(1).SnapInStd=SnapInStd;
             obj.SMFSResults{jj,1}.Results(1).SnapInMinArray=SnapInMinArray;
             obj.SMFSResults{jj,1}.Results(1).SnapInMin=SnapInMin;
             obj.SMFSResults{jj,1}.Results(1).SnapInMinFM=SnapInMinFM;
@@ -2568,7 +2631,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
  
         end
 
-        function SMFS_results_structure_FM(obj,Var)
+        function SM_results_structure_FM(obj,Var)
             % Select either Var1 or Var2, depending on what 
 
             % Output time and date for the dairy
@@ -2884,6 +2947,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             FMIndexChronoArray=FMIndexArray(FMSortDateTimeIdxFcArray);
             % Statistics
             AdhMaxAppMean=mean(ConcateArrayAdhMaxApp,'omitnan');
+            AdhMaxAppMedian=median(ConcateArrayAdhMaxApp,'omitnan');
             AdhMaxAppStd=std(ConcateArrayAdhMaxApp,'omitnan');
             [AdhMaxAppMin,AdhMaxAppMinIdx]=min(AdhMaxAppMinArray);
             [AdhMaxAppMax,AdhMaxAppMaxIdx]=max(AdhMaxAppMaxArray);
@@ -2892,6 +2956,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             AdhMaxAppMinFc=AdhMaxAppMinFcArray(AdhMaxAppMinIdx,1);
             AdhMaxAppMaxFc=AdhMaxAppMaxFcArray(AdhMaxAppMaxIdx,1);
             AdhMaxRetMean=mean(ConcateArrayAdhMaxRet,'omitnan');
+            AdhMaxRetMedian=median(ConcateArrayAdhMaxRet,'omitnan');
             AdhMaxRetStd=std(ConcateArrayAdhMaxRet,'omitnan');
             [AdhMaxRetMin,AdhMaxRetMinIdx]=min(AdhMaxRetMinArray);
             [AdhMaxRetMax,AdhMaxRetMaxIdx]=max(AdhMaxRetMaxArray);
@@ -2900,6 +2965,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             AdhMaxRetMinFc=AdhMaxRetMinFcArray(AdhMaxRetMinIdx,1);
             AdhMaxRetMaxFc=AdhMaxRetMaxFcArray(AdhMaxRetMaxIdx,1);
             AdhMaxRetUnbindingMean=mean(ConcateArrayAdhMaxRetUnbinding,'omitnan');
+            AdhMaxRetUnbindingMedian=median(ConcateArrayAdhMaxRetUnbinding,'omitnan');
             AdhMaxRetUnbindingStd=std(ConcateArrayAdhMaxRetUnbinding,'omitnan');
             [AdhMaxRetUnbindingMin,AdhMaxRetUnbindingMinIdx]=min(AdhMaxRetUnbindingMinArray);
             [AdhMaxRetUnbindingMax,AdhMaxRetUnbindingMaxIdx]=max(AdhMaxRetUnbindingMaxArray);
@@ -2908,6 +2974,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             AdhMaxRetUnbindingMinFc=AdhMaxRetUnbindingMinFcArray(AdhMaxRetUnbindingMinIdx,1);
             AdhMaxRetUnbindingMaxFc=AdhMaxRetUnbindingMaxFcArray(AdhMaxRetUnbindingMaxIdx,1);
             AdhEneAppMean=mean(ConcateArrayAdhEneApp,'omitnan');
+            AdhEneAppMedian=median(ConcateArrayAdhEneApp,'omitnan');
             AdhEneAppStd=std(ConcateArrayAdhEneApp,'omitnan');
             [AdhEneAppMin,AdhEneAppMinIdx]=min(AdhEneAppMinArray);
             [AdhEneAppMax,AdhEneAppMaxIdx]=max(AdhEneAppMaxArray);
@@ -2916,6 +2983,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             AdhEneAppMinFc=AdhEneAppMinFcArray(AdhEneAppMinIdx,1);
             AdhEneAppMaxFc=AdhEneAppMaxFcArray(AdhEneAppMaxIdx,1);
             AdhEneRetMean=mean(ConcateArrayAdhEneRet,'omitnan');
+            AdhEneRetMedian=median(ConcateArrayAdhEneRet,'omitnan');
             AdhEneRetStd=std(ConcateArrayAdhEneRet,'omitnan');
             [AdhEneRetMin,AdhEneRetMinIdx]=min(AdhEneRetMinArray);
             [AdhEneRetMax,AdhEneRetMaxIdx]=max(AdhEneRetMaxArray);
@@ -2923,14 +2991,18 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             AdhEneRetMaxFM=FMIdxArray(AdhEneRetMaxIdx);
             AdhEneRetMinFc=AdhEneRetMinFcArray(AdhEneRetMinIdx,1);
             AdhEneRetMaxFc=AdhEneRetMaxFcArray(AdhEneRetMaxIdx,1);
+            PullLengthMean=mean(ConcateArrayPullLength,'omitnan');
             PullLengthMedian=median(ConcateArrayPullLength,'omitnan');
+            PullLengthStd=std(ConcateArrayPullLength,'omitnan');
             [PullLengthMin,PullLengthMinIdx]=min(PullLengthMinArray);
             [PullLengthMax,PullLengthMaxIdx]=max(PullLengthMaxArray);
             PullLengthMinFM=FMIdxArray(PullLengthMinIdx);
             PullLengthMaxFM=FMIdxArray(PullLengthMaxIdx);
             PullLengthMinFc=PullLengthMinFcArray(PullLengthMinIdx,1);
             PullLengthMaxFc=PullLengthMaxFcArray(PullLengthMaxIdx,1);
+            SnapInMean=mean(ConcateArraySnapIn,'omitnan');
             SnapInMedian=median(ConcateArraySnapIn,'omitnan');
+            SnapInStd=std(ConcateArraySnapIn,'omitnan');
             [SnapInMin,SnapInMinIdx]=min(SnapInMinArray);
             [SnapInMax,SnapInMaxIdx]=max(SnapInMaxArray);
             SnapInMinFM=FMIdxArray(SnapInMinIdx);
@@ -3054,7 +3126,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             % Debugging
             % jj=11
             % Allocate data
-            obj.SMFSResults{jj,1}.Concatenate(1).FMID=FMIDArray;
+ obj.SMFSResults{jj,1}.Concatenate(1).FMID=FMIDArray;
             obj.SMFSResults{jj,1}.Concatenate(1).FMIndex=FMIndexArray;
             obj.SMFSResults{jj,1}.Concatenate(1).FMNum=FMNumArray;
             obj.SMFSResults{jj,1}.Concatenate(1).FMIndexChrono=FMIndexChronoArray;
@@ -3072,6 +3144,13 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             obj.SMFSResults{jj,1}.Concatenate(1).FMDateTimeNumber=FMDateTimeNumberFcArray;
             obj.SMFSResults{jj,1}.Concatenate(1).FMDateTimeNumberSort=FMSortDateTimeFcArray;
             obj.SMFSResults{jj,1}.Concatenate(1).FMDateTimeNumberSortIdx=FMSortDateTimeIdxFcArray;
+            obj.SMFSResults{jj,1}.Concatenate(1).AdhMaxApp=ConcateArrayAdhMaxApp;
+            obj.SMFSResults{jj,1}.Concatenate(1).AdhMaxRet= ConcateArrayAdhMaxRet;
+            obj.SMFSResults{jj,1}.Concatenate(1).AdhUnbinding=ConcateArrayAdhMaxRetUnbinding;
+            obj.SMFSResults{jj,1}.Concatenate(1).AdhEneApp=ConcateArrayAdhEneApp;
+            obj.SMFSResults{jj,1}.Concatenate(1).AdhEneRet=ConcateArrayAdhEneRet;
+            obj.SMFSResults{jj,1}.Concatenate(1).PullingLength=ConcateArrayPullLength;
+            obj.SMFSResults{jj,1}.Concatenate(1).SnapInLength=ConcateArraySnapIn;
             obj.SMFSResults{jj,1}.Flags(1).SMFSFlagUncorrupt=sum(SMFSFlagUncorrupt);
             obj.SMFSResults{jj,1}.Flags(1).UncorruptPct=(sum(SMFSFlagUncorrupt)/sum(TotalNumFc))*100;
             obj.SMFSResults{jj,1}.Flags(1).SMFSFlagSelected=sum(SMFSFlagSelected);
@@ -3133,15 +3212,8 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             obj.SMFSResults{jj,1}.Data(1).AdhUnbinding=yAdhUnbindingAll;
             obj.SMFSResults{jj,1}.Data(1).AdhEneApp=yAdhEneAppAll;
             obj.SMFSResults{jj,1}.Data(1).AdhEneRet=yAdhEneRetAll;
-            obj.SMFSResults{jj,1}.Data(1).yPullingLength=yPullingLengthAll;
-            obj.SMFSResults{jj,1}.Data(1).ySnapInLength=ySnapInLengthAll;
-            obj.SMFSResults{jj,1}.Data(1).AdhMaxAppConcat=ConcateArrayAdhMaxApp;
-            obj.SMFSResults{jj,1}.Data(1).AdhMaxRetConcat= ConcateArrayAdhMaxRet;
-            obj.SMFSResults{jj,1}.Data(1).AdhUnbindingConcat=ConcateArrayAdhMaxRetUnbinding;
-            obj.SMFSResults{jj,1}.Data(1).AdhEneAppConcat=ConcateArrayAdhEneApp;
-            obj.SMFSResults{jj,1}.Data(1).AdhEneRetConcat=ConcateArrayAdhEneRet;
-            obj.SMFSResults{jj,1}.Data(1).yPullingLengthConcat=ConcateArrayPullLength;
-            obj.SMFSResults{jj,1}.Data(1).ySnapInLengthConcat=ConcateArraySnapIn;
+            obj.SMFSResults{jj,1}.Data(1).PullingLength=yPullingLengthAll;
+            obj.SMFSResults{jj,1}.Data(1).SnapInLength=ySnapInLengthAll;
             obj.SMFSResults{jj,1}.Parameters(1).ExtendVelocity=ExtVelocityValue;
             obj.SMFSResults{jj,1}.Parameters(1).RetractVelocity=RetVelocityValue;
             obj.SMFSResults{jj,1}.Parameters(1).HoldingTime=HoldingTimeValue;
@@ -3175,6 +3247,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             obj.SMFSResults{jj,1}.Selection(1).LinkerFMIdx=LinkerFMIdx;
             obj.SMFSResults{jj,1}.Selection(1).LinkerConcateIdx=LinkerConcateIdx;
             obj.SMFSResults{jj,1}.Results(1).AdhMaxAppMean=AdhMaxAppMean;
+            obj.SMFSResults{jj,1}.Results(1).AdhMaxAppMedian=AdhMaxAppMedian;
             obj.SMFSResults{jj,1}.Results(1).AdhMaxAppStd=AdhMaxAppStd;
             obj.SMFSResults{jj,1}.Results(1).AdhMaxAppMinArray=AdhMaxAppMinArray;
             obj.SMFSResults{jj,1}.Results(1).AdhMaxAppMin=AdhMaxAppMin;
@@ -3187,6 +3260,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             obj.SMFSResults{jj,1}.Results(1).AdhMaxAppMaxFcArray=AdhMaxAppMaxFcArray;
             obj.SMFSResults{jj,1}.Results(1).AdhMaxAppMaxFc=AdhMaxAppMaxFc;
             obj.SMFSResults{jj,1}.Results(1).AdhMaxRetMean=AdhMaxRetMean;
+            obj.SMFSResults{jj,1}.Results(1).AdhMaxRetMedian=AdhMaxRetMedian;
             obj.SMFSResults{jj,1}.Results(1).AdhMaxRetStd=AdhMaxRetStd;
             obj.SMFSResults{jj,1}.Results(1).AdhMaxRetMinArray=AdhMaxRetMinArray;
             obj.SMFSResults{jj,1}.Results(1).AdhMaxRetMin=AdhMaxRetMin;
@@ -3199,6 +3273,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             obj.SMFSResults{jj,1}.Results(1).AdhMaxRetMaxFcArray=AdhMaxRetMaxFcArray;
             obj.SMFSResults{jj,1}.Results(1).AdhMaxRetMaxFc=AdhMaxRetMaxFc;
             obj.SMFSResults{jj,1}.Results(1).AdhMaxRetUnbindingMean=AdhMaxRetUnbindingMean;
+            obj.SMFSResults{jj,1}.Results(1).AdhMaxRetUnbindingMedian=AdhMaxRetUnbindingMedian;
             obj.SMFSResults{jj,1}.Results(1).AdhMaxRetUnbindingStd=AdhMaxRetUnbindingStd;
             obj.SMFSResults{jj,1}.Results(1).AdhMaxRetUnbindingMinArray=AdhMaxRetUnbindingMinArray;
             obj.SMFSResults{jj,1}.Results(1).AdhMaxRetUnbindingMin=AdhMaxRetUnbindingMin;
@@ -3211,6 +3286,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             obj.SMFSResults{jj,1}.Results(1).AdhMaxRetUnbindingMaxFcArray=AdhMaxRetUnbindingMaxFcArray;
             obj.SMFSResults{jj,1}.Results(1).AdhMaxRetUnbindingMaxFc=AdhMaxRetUnbindingMaxFc;
             obj.SMFSResults{jj,1}.Results(1).AdhEneAppMean=AdhEneAppMean;
+            obj.SMFSResults{jj,1}.Results(1).AdhEneAppMedian=AdhEneAppMedian;
             obj.SMFSResults{jj,1}.Results(1).AdhEneAppStd=AdhEneAppStd;
             obj.SMFSResults{jj,1}.Results(1).AdhEneAppMinArray=AdhEneAppMinArray;
             obj.SMFSResults{jj,1}.Results(1).AdhEneAppMin=AdhEneAppMin;
@@ -3223,6 +3299,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             obj.SMFSResults{jj,1}.Results(1).AdhEneAppMaxFcArray=AdhEneAppMaxFcArray;
             obj.SMFSResults{jj,1}.Results(1).AdhEneAppMaxFc=AdhEneAppMaxFc;
             obj.SMFSResults{jj,1}.Results(1).AdhEneRetMean=AdhEneRetMean;
+            obj.SMFSResults{jj,1}.Results(1).AdhEneRetMedian=AdhEneRetMedian;
             obj.SMFSResults{jj,1}.Results(1).AdhEneRetStd=AdhEneRetStd;
             obj.SMFSResults{jj,1}.Results(1).AdhEneRetMinArray=AdhEneRetMinArray;
             obj.SMFSResults{jj,1}.Results(1).AdhEneRetMin=AdhEneRetMin;
@@ -3234,7 +3311,9 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             obj.SMFSResults{jj,1}.Results(1).AdhEneRetMinFc=AdhEneRetMinFc;
             obj.SMFSResults{jj,1}.Results(1).AdhEneRetMaxFcArray=AdhEneRetMaxFcArray;
             obj.SMFSResults{jj,1}.Results(1).AdhEneRetMaxFc=AdhEneRetMaxFc;
+            obj.SMFSResults{jj,1}.Results(1).PullLengthMean=PullLengthMean;
             obj.SMFSResults{jj,1}.Results(1).PullLengthMedian=PullLengthMedian;
+            obj.SMFSResults{jj,1}.Results(1).PullLengthStd=PullLengthStd;
             obj.SMFSResults{jj,1}.Results(1).PullLengthMinArray=PullLengthMinArray;
             obj.SMFSResults{jj,1}.Results(1).PullLengthMin=PullLengthMin;
             obj.SMFSResults{jj,1}.Results(1).PullLengthMinFM=PullLengthMinFM;
@@ -3245,7 +3324,9 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             obj.SMFSResults{jj,1}.Results(1).PullLengthMaxFM=PullLengthMaxFM;
             obj.SMFSResults{jj,1}.Results(1).PullLengthMaxFcArray=PullLengthMaxFcArray;
             obj.SMFSResults{jj,1}.Results(1).PullLengthMaxFc=PullLengthMaxFc;
+            obj.SMFSResults{jj,1}.Results(1).SnapInMean=SnapInMean;
             obj.SMFSResults{jj,1}.Results(1).SnapInMedian=SnapInMedian;
+            obj.SMFSResults{jj,1}.Results(1).SnapInStd=SnapInStd;
             obj.SMFSResults{jj,1}.Results(1).SnapInMinArray=SnapInMinArray;
             obj.SMFSResults{jj,1}.Results(1).SnapInMin=SnapInMin;
             obj.SMFSResults{jj,1}.Results(1).SnapInMinFM=SnapInMinFM;
@@ -3256,11 +3337,12 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             obj.SMFSResults{jj,1}.Results(1).SnapInMaxFM=SnapInMaxFM;
             obj.SMFSResults{jj,1}.Results(1).SnapInMaxFcArray=SnapInMaxFcArray;
             obj.SMFSResults{jj,1}.Results(1).SnapInMaxFc=SnapInMaxFc;
+            % Paramater list
             obj.SMFSResultsParameters(jj,:)={jj,ChipboxValue,ChipCantValue,LinkerValue,SubstrateValue,EnvCondValue,ExtVelocityValue,RetVelocityValue,HoldingTimeValue};        
         end
 
 
-        function SMFS_results_structure_add_phase(obj,ResultsRow,Phase1End,Phase2End,Phase3End)
+        function SM_results_structure_add_phase(obj,ResultsRow,Phase1End,Phase2End,Phase3End)
             % A fct to assign all fc curves to one of the defined
             % deformation phases
             % 1 = native phase (Phase 1)
@@ -3294,7 +3376,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
         end
 
         
-        function SMFS_results_gramm_boxplot(obj,ii)
+        function SM_results_gramm_boxplot(obj,ii)
             % x-axis: Holding Time
             % Column: Retraction velocity
             % Color: Approach velocity
@@ -3308,7 +3390,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             % Change into the Folder of Interest
             cd(obj.ExperimentFolder) % Move into the folder
             % Create folders for saving the produced figures
-            foldername='SMFS_results_gramm_boxplot';    % Defines the folder name
+            foldername='SM_results_gramm_boxplot';    % Defines the folder name
             mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
             currpath=fullfile(obj.ExperimentFolder,foldername);
             cd(currpath);
@@ -3604,7 +3686,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             close all
         end
                          
-        function SMFS_results_gramm_boxplot2(obj,ResultsRow,Linker,xArg,Var)
+        function SM_results_gramm_boxplot2(obj,ResultsRow,Linker,xArg,Var)
            % Input variables: 
            % ResultsRow: double ,e.g. 1
            % Linker: string , either 'long' or 'short'
@@ -3621,7 +3703,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             % Change into the Folder of Interest
             cd(obj.ExperimentFolder) % Move into the folder
             % Create folders for saving the produced figures
-            foldername='SMFS_results_gramm_boxplot2';    % Defines the folder name
+            foldername='SM_results_gramm_boxplot2';    % Defines the folder name
             mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
             currpath=fullfile(obj.ExperimentFolder,foldername);
             cd(currpath);
@@ -4567,7 +4649,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             close all
         end
         
-        function SMFS_results_gramm_boxplot2_publication(obj,ResultsRow,Linker,xArg,MarkerArg,LegendArg,CBar,Var)
+        function SM_results_gramm_boxplot2_publication(obj,ResultsRow,Linker,xArg,MarkerArg,LegendArg,CBar,Var)
             % Input variables:
             % ResultsRow: double ,e.g. 1
             % Linker: string , either 'long' or 'short'
@@ -4630,7 +4712,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             % Change into the Folder of Interest
             cd(obj.ExperimentFolder) % Move into the folder
             % Create folders for saving the produced figures
-            foldername='SMFS_results_gramm_boxplot2_publication';    % Defines the folder name
+            foldername='SM_results_gramm_boxplot2_publication';    % Defines the folder name
             mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
             currpath=fullfile(obj.ExperimentFolder,foldername);
             cd(currpath);
@@ -4659,9 +4741,12 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 xData=obj.SMFSResults{ResultsRow}.Concatenate.FMNum;
                 xDataMin=min(xData);
                 xDataMax=max(xData);
-                xAxisCorr=(xDataMax-xDataMin)*0.005;
-                %  BoxplotWidth=18;
-                BoxplotWidth=5;
+                xAxisCorr=(xDataMax-xDataMin)*0.005; % For BoxplotWidth=10
+                %xAxisCorr=(xDataMax-xDataMin)*0.02; % For BoxplotWidth=2 and BoxplotWidth=0.02
+                % BoxplotWidth=18;
+                 BoxplotWidth=10;
+                % BoxplotWidth=2;
+                % BoxplotWidth=0.02;
                 BoxplotDodge=1;
             end
             % Var
@@ -4727,7 +4812,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             LegendyAxis1='Adhesion force (nN)';
             NameSuffix1='_MaxAdhesionForceApproach';
             % Allocate data
-            yData1=obj.SMFSResults{ResultsRow}.Data.AdhMaxAppConcat(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*-1e9;
+            yData1=obj.SMFSResults{ResultsRow}.Concatenate.AdhMaxApp(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*-1e9;
             % Create a gramm object
             if strcmpi(MarkerArg,'Y')
                 g1=gramm('x',xData,'y',yData1,...
@@ -4788,7 +4873,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             LegendyAxis2='Adhesion force (nN)';
             NameSuffix2='_MaxAdhesionForceRetract';
             % Allocate data
-            yData2=obj.SMFSResults{ResultsRow}.Data.AdhMaxRetConcat(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*-1e9;
+            yData2=obj.SMFSResults{ResultsRow}.Concatenate.AdhMaxRet(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*-1e9;
             % Create a gramm object
             if strcmpi(MarkerArg,'Y')
                 g2=gramm('x',xData,'y',yData2,...
@@ -4849,7 +4934,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             LegendyAxis3='Adhesion force (nN)';
             NameSuffix3='_AdhForceUnbinding';
             % Allocate data
-            yData3=obj.SMFSResults{ResultsRow}.Data.AdhUnbindingConcat(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*-1e9;
+            yData3=obj.SMFSResults{ResultsRow}.Concatenate.AdhUnbinding(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*-1e9;
             % Create a gramm object
             if strcmpi(MarkerArg,'Y')
                 g3=gramm('x',xData,'y',yData3,...
@@ -4911,7 +4996,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             LegendyAxis4='Adhesion energry (aJ)';
             NameSuffix4='_AdhEnergyApproach';
             % Allocate data
-            yData4=obj.SMFSResults{ResultsRow}.Data.AdhEneAppConcat(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*-1e18;
+            yData4=obj.SMFSResults{ResultsRow}.Concatenate.AdhEneApp(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*-1e18;
             % Create a gramm object
             if strcmpi(MarkerArg,'Y')
                 g4=gramm('x',xData,'y',yData4,...
@@ -4973,7 +5058,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             LegendyAxis5='Adhesion energy (aJ)';
             NameSuffix5='_AdhEnergyRetract';
             % Allocate data
-            yData5=obj.SMFSResults{ResultsRow}.Data.AdhEneRetConcat(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*-1e18;
+            yData5=obj.SMFSResults{ResultsRow}.Concatenate.AdhEneRet(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*-1e18;
             % Create a gramm object
             if strcmpi(MarkerArg,'Y')
                 g5=gramm('x',xData,'y',yData5,...
@@ -5036,7 +5121,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             LegendyAxis6='Pulling length (nm)';
             NameSuffix6='_Pullinglength';
             % Allocate data
-            yData6=obj.SMFSResults{ResultsRow}.Data.yPullingLengthConcat(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*1e9;
+            yData6=obj.SMFSResults{ResultsRow}.Concatenate.PullingLength(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*1e9;
             % Create a gramm object
             if strcmpi(MarkerArg,'Y')
                 g6=gramm('x',xData,'y',yData6,...
@@ -5099,7 +5184,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             LegendyAxis7='Snap-In length (nm)';
             NameSuffix7='_SnapInLength';
             % Allocate data
-            yData7=obj.SMFSResults{ResultsRow}.Data.ySnapInLengthConcat(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*1e9;
+            yData7=obj.SMFSResults{ResultsRow}.Concatenate.SnapInLength(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*1e9;
             % Create a gramm object
             if strcmpi(MarkerArg,'Y')
                 g7=gramm('x',xData,'y',yData7,...
@@ -5163,7 +5248,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
 
 
   
-        function SMFS_results_gramm_boxplot4(obj,ii)
+        function SM_results_gramm_boxplot4(obj,ii)
            % For results of Trial14
            % x-axis: Index
            % Column: Cantilver
@@ -5178,7 +5263,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
            % Change into the Folder of Interest
            cd(obj.ExperimentFolder) % Move into the folder
            % Create folders for saving the produced figures
-           foldername='SMFS_results_gramm_boxplot4';    % Defines the folder name
+           foldername='SM_results_gramm_boxplot4';    % Defines the folder name
            mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
            currpath=fullfile(obj.ExperimentFolder,foldername);
            cd(currpath);
@@ -5331,7 +5416,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
        end
 
        
-       function SMFS_results_gramm_plot(obj,ResultsRow,Linker,IdxShift,ChronoFMIdx,FMColour)
+       function SM_results_gramm_plot(obj,ResultsRow,Linker,IdxShift,ChronoFMIdx,FMColour)
            % ResultsRow - row index in the SMFSResultsParameters table
            % Linker: string , either 'long' or 'short'
            % FMShift - force map shift
@@ -5353,7 +5438,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
            % Change into the Folder of Interest
            cd(obj.ExperimentFolder) % Move into the folder
            % Create folders for saving the produced figures
-           foldername='SMFS_results_gramm_plot';    % Defines the folder name
+           foldername='SM_results_gramm_plot';    % Defines the folder name
            mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
            currpath=fullfile(obj.ExperimentFolder,foldername);
            cd(currpath);
@@ -5696,7 +5781,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
            close all
        end
       
-        function SMFS_results_gramm_plot2(obj,ResultsRow,Linker,xArg,MarkerArg)
+        function SM_results_gramm_plot2(obj,ResultsRow,Linker,xArg,MarkerArg)
            % Input variables: 
            % ResultsRow: double ,e.g. 1
            % Linker: string , either 'long' or 'short'
@@ -5714,7 +5799,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
            % Change into the Folder of Interest
            cd(obj.ExperimentFolder) % Move into the folder
            % Create folders for saving the produced figures
-           foldername='SMFS_results_gramm_plot2';    % Defines the folder name
+           foldername='SM_results_gramm_plot2';    % Defines the folder name
            mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
            currpath=fullfile(obj.ExperimentFolder,foldername);
            cd(currpath);
@@ -6145,7 +6230,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
            close all
        end
 
-       function SMFS_results_gramm_plot2_publication(obj,ResultsRow,Linker,xArg,MarkerArg,LegendArg,CBar,Var)
+       function SM_results_gramm_plot2_publication(obj,ResultsRow,Linker,xArg,MarkerArg,LegendArg,CBar,Var)
            % Input variables:
            % ResultsRow: double ,e.g. 1
            % Linker: string , either 'long' or 'short'
@@ -6208,7 +6293,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
            % Change into the Folder of Interest
            cd(obj.ExperimentFolder) % Move into the folder
            % Create folders for saving the produced figures
-           foldername='SMFS_results_gramm_plot2_publication';    % Defines the folder name
+           foldername='SM_results_gramm_plot2_publication';    % Defines the folder name
            mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
            currpath=fullfile(obj.ExperimentFolder,foldername);
            cd(currpath);
@@ -6304,7 +6389,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
            LegendyAxis1='Adhesion force (nN)';
            NameSuffix1='_MaxAdhesionForceApproach';
            % Allocate data
-           yData1=obj.SMFSResults{ResultsRow}.Data.AdhMaxAppConcat(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*-1e9;
+           yData1=obj.SMFSResults{ResultsRow}.Concatenate.AdhMaxApp(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*-1e9;
            % Create a gramm object
            if strcmpi(MarkerArg,'Y')
                g1=gramm('x',xData,'y',yData1,...
@@ -6364,7 +6449,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
            LegendyAxis2='Adhesion force (nN)';
            NameSuffix2='_MaxAdhesionForceRetract';
            % Allocate data
-           yData2=obj.SMFSResults{ResultsRow}.Data.AdhMaxRetConcat(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*-1e9;
+           yData2=obj.SMFSResults{ResultsRow}.Concatenate.AdhMaxRet(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*-1e9;
            % Create a gramm object
            if strcmpi(MarkerArg,'Y')
                g2=gramm('x',xData,'y',yData2,...
@@ -6424,7 +6509,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
            LegendyAxis3='Adhesion force (nN)';
            NameSuffix3='_AdhForceUnbinding';
            % Allocate data
-           yData3=obj.SMFSResults{ResultsRow}.Data.AdhUnbindingConcat(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*-1e9;
+           yData3=obj.SMFSResults{ResultsRow}.Concatenate.AdhUnbinding(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*-1e9;
            % Create a gramm object
            if strcmpi(MarkerArg,'Y')
                g3=gramm('x',xData,'y',yData3,...
@@ -6485,7 +6570,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
            LegendyAxis4='Adhesion energry (aJ)';
            NameSuffix4='_AdhEnergyApproach';
            % Allocate data
-           yData4=obj.SMFSResults{ResultsRow}.Data.AdhEneAppConcat(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*-1e18;
+           yData4=obj.SMFSResults{ResultsRow}.Concatenate.AdhEneApp(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*-1e18;
            % Create a gramm object
            if strcmpi(MarkerArg,'Y')
                g4=gramm('x',xData,'y',yData4,...
@@ -6546,7 +6631,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
            LegendyAxis5='Adhesion energy (aJ)';
            NameSuffix5='_AdhEnergyRetract';
            % Allocate data
-           yData5=obj.SMFSResults{ResultsRow}.Data.AdhEneRetConcat(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*-1e18;
+           yData5=obj.SMFSResults{ResultsRow}.Concatenate.AdhEneRet(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*-1e18;
            % Create a gramm object
            if strcmpi(MarkerArg,'Y')
                g5=gramm('x',xData,'y',yData5,...
@@ -6607,7 +6692,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
            LegendyAxis6='Pulling length (nm)';
            NameSuffix6='_Pullinglength';
            % Allocate data
-           yData6=obj.SMFSResults{ResultsRow}.Data.yPullingLengthConcat(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*1e9;
+           yData6=obj.SMFSResults{ResultsRow}.Concatenate.PullingLength(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*1e9;
            % Create a gramm object
            if strcmpi(MarkerArg,'Y')
                g6=gramm('x',xData,'y',yData6,...
@@ -6669,7 +6754,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
            LegendyAxis7='Snap-In length (nm)';
            NameSuffix7='_SnapInLength';
            % Allocate data
-           yData7=obj.SMFSResults{ResultsRow}.Data.ySnapInLengthConcat(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*1e9;
+           yData7=obj.SMFSResults{ResultsRow}.Concatenate.SnapInLength(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*1e9;
            % Create a gramm object
            if strcmpi(MarkerArg,'Y')
                g7=gramm('x',xData,'y',yData7,...
@@ -6731,7 +6816,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
        end
 
 
-          function SMFS_results_gramm_plot_FM(obj,ResultsRow,MarkerArg,LegendArg,VarArg)
+          function SM_results_gramm_plot_FM(obj,ResultsRow,MarkerArg,LegendArg,VarArg)
            % Input variables: 
            % ResultsRow: double ,e.g. 1
            % Linker: string , either 'long' or 'short'
@@ -6756,7 +6841,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
            % Change into the Folder of Interest
            cd(obj.ExperimentFolder) % Move into the folder
            % Create folders for saving the produced figures
-           foldername='SMFS_results_gramm_plot_FM';    % Defines the folder name
+           foldername='SM_results_gramm_plot_FM';    % Defines the folder name
            mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
            currpath=fullfile(obj.ExperimentFolder,foldername);
            cd(currpath);
@@ -6902,8 +6987,8 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
  
        
 
-       function SMFS_fine_figure(obj,XMin,XMax,YMin,YMax,FmoI,FcoI,Linker)
-            %     function SMFS_fine_figure(obj,XMin,XMax,YMin,YMax,Fm,Fc)
+       function SM_fine_figure(obj,XMin,XMax,YMin,YMax,FmoI,FcoI,Linker)
+            %     function SM_fine_figure(obj,XMin,XMax,YMin,YMax,Fm,Fc)
             % Function to plot individual fine figures for publication
             % FmoI ... Force map of Interest
             % FcoI ... Force curve of Interest
@@ -6926,7 +7011,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             % Run based on condition
             if FmoI==0 && strcmp(Linker,'none')
             % Create folders for saving the produced figures
-            foldername='SMFS_fine_figure';    % Defines the folder name
+            foldername='SM_fine_figure';    % Defines the folder name
             mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
             currpath=fullfile(obj.ExperimentFolder,foldername);
             cd(currpath);
@@ -6941,7 +7026,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 end
             elseif FmoI==0
             % Create folders for saving the produced figures
-            foldername='SMFS_fine_figure';    % Defines the folder name
+            foldername='SM_fine_figure';    % Defines the folder name
             mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
             currpath=fullfile(obj.ExperimentFolder,foldername);
             cd(currpath);
@@ -6959,7 +7044,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 end
             else
             % Create folders for saving the produced figures
-            foldername='SMFS_fine_figure';    % Defines the folder name
+            foldername='SM_fine_figure';    % Defines the folder name
             mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
             currpath=fullfile(obj.ExperimentFolder,foldername);
             cd(currpath);
@@ -6977,8 +7062,8 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             end
         end
 
-        function SMFS_fine_figure_publication(obj,XMin,XMax,YMin,YMax,Fm,Fc,Linker)
-            %     function SMFS_fine_figure(obj,XMin,XMax,YMin,YMax,Fm,Fc)
+        function SM_fine_figure_publication(obj,XMin,XMax,YMin,YMax,Fm,Fc,Linker)
+            %     function SM_fine_figure(obj,XMin,XMax,YMin,YMax,Fm,Fc)
             % Function to plot individual fine figures for publication
             if nargin < 3
                 XMin= -inf;
@@ -6994,7 +7079,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             % Change into the Folder of Interest
             cd(obj.ExperimentFolder) % Move into the folder            
             % Create folders for saving the produced figures
-            foldername='SMFS_fine_figure_publication';    % Defines the folder name
+            foldername='SM_fine_figure_publication';    % Defines the folder name
             mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
             currpath=fullfile(obj.ExperimentFolder,foldername);
             cd(currpath);
@@ -7003,7 +7088,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
         end
          
 
-        function SMFS_fine_figure2(obj,Fm1,Fm2,Fm3,Fc1,Fc2,Fc3)
+        function SM_fine_figure2(obj,Fm1,Fm2,Fm3,Fc1,Fc2,Fc3)
             % Function to plot individual fine figures for publication
             if nargin < 2
             Fm1=1;
@@ -7020,7 +7105,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             % Change into the Folder of Interest
             cd(obj.ExperimentFolder) % Move into the folder
             % Create folders for saving the produced figures
-            foldername='SMFS_fine_figure2';    % Defines the folder name
+            foldername='SM_fine_figure2';    % Defines the folder name
             mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
             currpath=fullfile(obj.ExperimentFolder,foldername);
             cd(currpath)
@@ -7102,7 +7187,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             close all
         end
 
-        function [xSel,ySel]=SMFS_WLC_fitting(obj,Fm,Fc)
+        function [xSel,ySel]=SM_WLC_fitting(obj,Fm,Fc)
 
             % Figure visibility
             set(groot,'defaultFigureVisible','off')
@@ -7113,7 +7198,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             cd(obj.ExperimentFolder) % Move into the folder            
             % Run based on condition
             % Create folders for saving the produced figures
-             foldername='SMFS_WLC_fitting';    % Defines the folder name
+             foldername='SM_WLC_fitting';    % Defines the folder name
              mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
              currpath=fullfile(obj.ExperimentFolder,foldername);
              cd(currpath);
@@ -7207,8 +7292,8 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
   
         % Individual ForceMap function related
         
-        function SMFS_print_pulllength(obj)
-            % SMFS_print: A function to simply plot all force curves of all
+        function SM_print_pulllength(obj)
+            % SM_print: A function to simply plot all force curves of all
             % force maps loaded and calssified based on the SMFS Flag
             % Needed function: obj.presorting
 
@@ -7235,7 +7320,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             end    
            end
                
-        function SMFS_snap_in_length_MAD(obj)            
+        function SM_snap_in_length_MAD(obj)            
             
             % Figure visibility
             %set(groot,'defaultFigureVisible','off')      
@@ -7259,7 +7344,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             end 
         end
     
-        function SMFS_adh_force_max(obj)            
+        function SM_adh_force_max(obj)            
             
             % Figure visibility
             set(groot,'defaultFigureVisible','off')      
@@ -7283,7 +7368,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             end 
         end
    
-        function SMFS_min_max(obj)
+        function SM_min_max(obj)
             
 
             for ii=1:obj.NumForceMaps
@@ -7325,7 +7410,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             end
         end
    
-        function SMFS_testing_function(obj,Fm,Fc)
+        function SM_testing_function(obj,Fm,Fc)
             % Function to quickly loop over all force maps for testing and
             % debugging
 
@@ -7361,7 +7446,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
      
         % Old functions
 
-        function SMFS_statistics(obj)
+        function SM_statistics(obj)
            
             % Uncorrupt force curves
             SumFcUncorrupt=sum(obj.NumFcUncorrupt);
@@ -7371,7 +7456,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
         end
         
 
-        function SMFS_analysis_selction_fit(obj,VelocityValue,SubstrateValue,EnvCondValue,ChipCantValue,ChipboxValue,LinkerValue)
+        function SM_analysis_selction_fit(obj,VelocityValue,SubstrateValue,EnvCondValue,ChipCantValue,ChipboxValue,LinkerValue)
                 
             % Output time and date for the dairy
             datetime('now')
@@ -7612,7 +7697,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
         end
        
         
-        function SMFS_boxplot(obj,XMin,XMax,YMin,YMax) % fc ... force curve
+        function SM_boxplot(obj,XMin,XMax,YMin,YMax) % fc ... force curve
             %
             % Output time and date for the dairy
             datetime('now')
@@ -7795,7 +7880,7 @@ PlotData=obj.SMFSResults{jj}.Data.AdhMaxAppConcat
            
         end
              
-        function SMFS_statistics_hypothesis_tests(obj,ResultsRow)
+        function SM_statistics_hypothesis_tests(obj,ResultsRow)
 
            % Lilliefors test for nomral distribution
            % Null hypothesis: Testing data is normally distributed
@@ -7828,7 +7913,7 @@ PlotData=obj.SMFSResults{jj}.Data.AdhMaxAppConcat
            % Change into the Folder of Interest
            cd(obj.ExperimentFolder) % Move into the folder
            % Create folders for saving the produced figures
-           foldername='SMFS_statistics_hypothesis_tests';    % Defines the folder name
+           foldername='SM_statistics_hypothesis_tests';    % Defines the folder name
            mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
            currpath=fullfile(obj.ExperimentFolder,foldername);
            cd(currpath);
@@ -8242,7 +8327,7 @@ PlotData=obj.SMFSResults{jj}.Data.AdhMaxAppConcat
            end
        end
 
-        function SMFS_results_gramm_boxplot_ESB(obj,ii)
+        function SM_results_gramm_boxplot_ESB(obj,ii)
 
            % Input variable adaptation
            if nargin<2
@@ -8265,7 +8350,7 @@ PlotData=obj.SMFSResults{jj}.Data.AdhMaxAppConcat
            % Change into the Folder of Interest
            cd(obj.ExperimentFolder) % Move into the folder
            % Create folders for saving the produced figures
-           foldername='SMFS_results_gramm_boxplot_ESB';    % Defines the folder name
+           foldername='SM_results_gramm_boxplot_ESB';    % Defines the folder name
            mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
            currpath=fullfile(obj.ExperimentFolder,foldername);
            cd(currpath);
@@ -8370,7 +8455,7 @@ PlotData=obj.SMFSResults{jj}.Data.AdhMaxAppConcat
        end
 
 
-        function SMFS_results_gramm_qqplot(obj,ii)
+        function SM_results_gramm_qqplot(obj,ii)
 
            % Input variable adaptation
            if nargin<2
@@ -8381,7 +8466,7 @@ PlotData=obj.SMFSResults{jj}.Data.AdhMaxAppConcat
            % Change into the Folder of Interest
            cd(obj.ExperimentFolder) % Move into the folder
            % Create folders for saving the produced figures
-           foldername='SMFS_results_gramm';    % Defines the folder name
+           foldername='SM_results_gramm';    % Defines the folder name
            mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
            currpath=fullfile(obj.ExperimentFolder,foldername);
            cd(currpath);
@@ -8699,13 +8784,13 @@ PlotData=obj.SMFSResults{jj}.Data.AdhMaxAppConcat
        end
 
 
-        function SMFS_analysis_dashboard(obj,ExtVelocityValue,RetVelocityValue,HoldingTimeValue,SubstrateValue,EnvCondValue,ChipCantValue,ChipboxValue,LinkerValue)
+        function SM_analysis_dashboard(obj,ExtVelocityValue,RetVelocityValue,HoldingTimeValue,SubstrateValue,EnvCondValue,ChipCantValue,ChipboxValue,LinkerValue)
            % I all velocities should be selected use input variable: 0
 
            % Output time and date for the dairy
            datetime('now')
            % Write to log file
-           obj.write_to_log_file('Function: SMFS_analysis_dashboard','Trial15','start')
+           obj.write_to_log_file('Function: SM_analysis_dashboard','Trial15','start')
            obj.write_to_log_file('Extend Velocity',num2str(ExtVelocityValue))
            obj.write_to_log_file('Retention Velocity',num2str(RetVelocityValue))
            obj.write_to_log_file('Holding Time',num2str(HoldingTimeValue))
