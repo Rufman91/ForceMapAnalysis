@@ -15,5 +15,5 @@ C = zeros(M,N,O);
 for i=1:O
     C(:,:,i) = a(:,i) - b(:,i)';
 end
-K = sigma*exp(-1/(2*lambda)*vecnorm(C,2,3).^2);
+K = sigma*exp(-1/(2*lambda)*sum(C.^2, 3));
 end
