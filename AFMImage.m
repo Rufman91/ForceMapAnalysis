@@ -193,10 +193,6 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & dynam
             close(h); 
         end
         
-        function base_image()
-            
-        end
-        
         function subtract_overlayed_image(obj,OverlayedImageClassInstance)
             
             if ~obj.hasOverlay
