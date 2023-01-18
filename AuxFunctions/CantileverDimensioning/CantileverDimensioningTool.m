@@ -1,4 +1,4 @@
-function createAFMgui()
+function CantileverDimensioningTool()
 %CREATEAFMGUI creates a visually appealing GUI for AFM cantilever optimization
 
 % Define figure and set layout
