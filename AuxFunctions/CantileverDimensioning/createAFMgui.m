@@ -11,6 +11,7 @@ radius = nan;
 force = nan;
 modulus = nan;
 ind2bendratio = nan;
+AllowedNumError = 1e-3;
 
 ErrorColor = [0.980392156862745,0.431372549019608,0.431372549019608];
 
@@ -74,7 +75,7 @@ ErrorText2 = {'Not enough assumptions to fill in the model!';'Fill out 4 of the 
 
 errorLabel = uicontrol('Style','text','String',...
     ErrorText1,...
-    'Position',[50 250 700 30],'ForegroundColor','red');
+    'Position',[50 250 300 30],'ForegroundColor','red');
 errorLabel.Visible = 0;
 
 ax = axes('Position',[0.1 0.05 .8 0.4]);
@@ -88,12 +89,12 @@ imshow('CantileverDimensioning.png', 'Parent', ax);
             % Check which values are missing
             if isnan(stiffness)
                 % Calculate stiffness using the given equation
-                stiffness = ind2bendratio*force / depth;
+                stiffness = ind2bendratio * force / depth;
                 set(stiffnessInput,'String',num2str(stiffness));
             end
             if isnan(ind2bendratio)
-                % Calculate stiffness using the given equation
-                ind2bendratio = depth / (force*stiffness);
+                % Calculate ind2bendratio using the given equation
+                ind2bendratio = depth * stiffness / force;
                 set(ind2bendratioInput,'String',num2str(ind2bendratio));
             end
             if isnan(depth)
@@ -131,15 +132,28 @@ imshow('CantileverDimensioning.png', 'Parent', ax);
                 set_material_error_background(false);
                 set_canti_error_background(false);
             end
-        else
             % If all input values are provided, check if the system of equations is solvable
-            if force ~= 4*modulus*sqrt(radius)*depth^(3/2)/((1-0.5^2)/3)
+            if abs(force - modulus/(1-0.5^2)*(4*sqrt(radius)*depth^(3/2)/3)) > force*AllowedNumError
                 % If system is not solvable, display error message
                 set_material_error_background(true);
                 errorLabel.String = ErrorText1;
                 errorLabel.Visible = 1;
             end
-            if (stiffness ~= ind2bendratio*force / depth)
+            if abs(ind2bendratio - depth * stiffness / force) > ind2bendratio*AllowedNumError
+                set_canti_error_background(true);
+                % If system is not solvable, display error message
+                errorLabel.String = ErrorText1;
+                errorLabel.Visible = 1;
+            end
+        else
+            % If all input values are provided, check if the system of equations is solvable
+            if abs(force - modulus/(1-0.5^2)*(4*sqrt(radius)*depth^(3/2)/3)) > force*AllowedNumError
+                % If system is not solvable, display error message
+                set_material_error_background(true);
+                errorLabel.String = ErrorText1;
+                errorLabel.Visible = 1;
+            end
+            if abs(ind2bendratio - depth * stiffness / force) > ind2bendratio*AllowedNumError
                 set_canti_error_background(true);
                 % If system is not solvable, display error message
                 errorLabel.String = ErrorText1;
