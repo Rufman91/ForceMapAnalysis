@@ -2,7 +2,7 @@ function CantileverDimensioningTool()
 %CREATEAFMGUI creates a visually appealing GUI for AFM cantilever optimization
 
 % Define figure and set layout
-fig = figure('Name','AFM Cantilever Optimization','NumberTitle','off','Position',[100 100 400 700]);
+fig = figure('Name','AFM Cantilever Optimization','NumberTitle','off','Position',[100 100 950 500]);
 set(fig,'MenuBar','none','ToolBar','none');
 
 stiffness = nan;
@@ -17,36 +17,56 @@ AllowedNumError = 1e-3;
 
 ErrorColor = [0.980392156862745,0.431372549019608,0.431372549019608];
 
-BackPanelDetector = uicontrol('Style','text','String','','Position',[50 565 300 100]);
-BackPanelCanti = uicontrol('Style','text','String','','Position',[50 465 300 100]);
+BackPanelDetector = uicontrol('Style','text','String','','Position',[50 365 300 100]);
+BackPanelCanti = uicontrol('Style','text','String','','Position',[50 265 300 100]);
 DefaultColor = BackPanelCanti.BackgroundColor;
-BackPanelMaterial = uicontrol('Style','text','String','','Position',[50 265 300 200]);
+BackPanelMaterial = uicontrol('Style','text','String','','Position',[50 65 300 200]);
+
+h = axes('Visible','off','Units','pixels','Position',[15 0 50 500]);
+MaterialSection = text('String','Material','Units','pixels','Position',[10 165]);
+set(MaterialSection, 'Rotation', 90);
+CantiSection = text('String','Cantilever','Units','pixels','Position',[10 315]);
+set(CantiSection, 'Rotation', 90);
+DetectorSection = text('String','Detector','Units','pixels','Position',[10 415]);
+set(DetectorSection, 'Rotation', 90);
 
 % Define input fields and labels
-voltLabel = uicontrol('Style','text','String','Sensor Voltage Difference (V)','Position',[50 650 150 30]);
-voltInput = uicontrol('Style','edit','String','','Position',[200 650 150 30],'Callback',@valueChangedCallback);
+voltLabel = uicontrol('Style','text','String','Sensor Voltage Difference (V)','Position',[50 450 150 30]);
+voltInput = uicontrol('Style','edit','String','','Position',[200 450 150 30],'Callback',@valueChangedCallback);
 
-sensitivityLabel = uicontrol('Style','text','String','Expected Optical Lever Sensitivity (m/V)','Position',[50 600 150 30]);
-sensitivityInput = uicontrol('Style','edit','String','','Position',[200 600 150 30],'Callback',@valueChangedCallback);
+sensitivityLabel = uicontrol('Style','text','String','Expected Optical Lever Sensitivity (m/V)','Position',[50 400 150 30]);
+sensitivityInput = uicontrol('Style','edit','String','','Position',[200 400 150 30],'Callback',@valueChangedCallback);
 
-stiffnessLabel = uicontrol('Style','text','String','Cantilever Stiffness k (N/m)','Position',[50 550 150 30]);
-stiffnessInput = uicontrol('Style','edit','String','','Position',[200 550 150 30],'Callback',@valueChangedCallback);
+stiffnessLabel = uicontrol('Style','text','String','Cantilever Stiffness k (N/m)','Position',[50 350 150 30]);
+stiffnessInput = uicontrol('Style','edit','String','','Position',[200 350 150 30],'Callback',@valueChangedCallback);
 
-ind2bendratioLabel = uicontrol('Style','text','String','Indent-to-Bend Ratio D/B (-)','Position',[50 500 150 30]);
-ind2bendratioInput = uicontrol('Style','edit','String',num2str(1),'Position',[200 500 150 30],'Callback',@valueChangedCallback);
+ind2bendratioLabel = uicontrol('Style','text','String','Indent-to-Bend Ratio D/B (-)','Position',[50 300 150 30]);
+ind2bendratioInput = uicontrol('Style','edit','String',num2str(1),'Position',[200 300 150 30],'Callback',@valueChangedCallback);
 
-radiusLabel = uicontrol('Style','text','String','Tip Radius R (m)','Position',[50 450 150 30]);
-radiusInput = uicontrol('Style','edit','String','','Position',[200 450 150 30],'Callback',@valueChangedCallback);
+radiusLabel = uicontrol('Style','text','String','Tip Radius R (m)','Position',[50 250 150 30]);
+radiusInput = uicontrol('Style','edit','String','','Position',[200 250 150 30],'Callback',@valueChangedCallback);
 
-depthLabel = uicontrol('Style','text','String','Maximum Indentation Depth D (m)','Position',[50 400 150 30]);
-depthInput = uicontrol('Style','edit','String','','Position',[200 400 150 30],'Callback',@valueChangedCallback);
+depthLabel = uicontrol('Style','text','String','Maximum Indentation Depth D (m)','Position',[50 200 150 30]);
+depthInput = uicontrol('Style','edit','String','','Position',[200 200 150 30],'Callback',@valueChangedCallback);
 
 
-forceLabel = uicontrol('Style','text','String','Maximum Force F (N)','Position',[50 350 150 30]);
-forceInput = uicontrol('Style','edit','String','','Position',[200 350 150 30],'Callback',@valueChangedCallback);
+forceLabel = uicontrol('Style','text','String','Maximum Force F (N)','Position',[50 150 150 30]);
+forceInput = uicontrol('Style','edit','String','','Position',[200 150 150 30],'Callback',@valueChangedCallback);
 
-modulusLabel = uicontrol('Style','text','String','Expected Indentation Modulus E (Pa)','Position',[50 300 150 30]);
-modulusInput = uicontrol('Style','edit','String','','Position',[200 300 150 30],'Callback',@valueChangedCallback);
+modulusLabel = uicontrol('Style','text','String','Expected Indentation Modulus E (Pa)','Position',[50 100 150 30]);
+modulusInput = uicontrol('Style','edit','String','','Position',[200 100 150 30],'Callback',@valueChangedCallback);
+
+ErrorText1 = {'Error: Input values do not satisfy system of equations';...
+    'Please erase one field that will then be recalculated to fit the model!'};
+ErrorText2 = {'Not enough assumptions to fill in the model!';'Fill out 7 of the 8 fields!'};
+
+errorLabel = uicontrol('Style','text','String',...
+    ErrorText1,...
+    'Position',[50 50 300 30],'ForegroundColor','red');
+errorLabel.Visible = 0;
+
+ax = axes('Position',[0.4 0.2 .55 .6]);
+imshow('CantileverDimensioning.png', 'Parent', ax);
 
 % Define callback functions
     function valueChangedCallback(~,~)
@@ -86,17 +106,6 @@ modulusInput = uicontrol('Style','edit','String','','Position',[200 300 150 30],
         determine_missing_values(volt,sensitivity,stiffness,depth,radius,force,modulus,ind2bendratio);
     end
 
-ErrorText1 = {'Error: Input values do not satisfy system of equations';...
-    'Please erase one field that will then be recalculated to fit the model!'};
-ErrorText2 = {'Not enough assumptions to fill in the model!';'Fill out 4 of the 5 fields!'};
-
-errorLabel = uicontrol('Style','text','String',...
-    ErrorText1,...
-    'Position',[50 250 300 30],'ForegroundColor','red');
-errorLabel.Visible = 0;
-
-ax = axes('Position',[0.1 0.05 .8 0.4]);
-imshow('CantileverDimensioning.png', 'Parent', ax);
 
     function determine_missing_values(volt,sensitivity,stiffness,depth,radius,force,modulus,ind2bendratio)
         %DETERMINEMISSINGVALUES determines missing values for AFM cantilever optimization
