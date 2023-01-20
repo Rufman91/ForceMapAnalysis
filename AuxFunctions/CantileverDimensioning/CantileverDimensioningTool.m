@@ -2,7 +2,7 @@ function CantileverDimensioningTool()
 %CREATEAFMGUI creates a visually appealing GUI for AFM cantilever optimization
 
 % Define figure and set layout
-fig = figure('Name','AFM Cantilever Optimization','NumberTitle','off','Position',[100 100 400 600]);
+fig = figure('Name','AFM Cantilever Optimization','NumberTitle','off','Position',[100 100 400 700]);
 set(fig,'MenuBar','none','ToolBar','none');
 
 stiffness = nan;
@@ -11,15 +11,24 @@ radius = nan;
 force = nan;
 modulus = nan;
 ind2bendratio = nan;
+sensitivity = nan;
+volt = nan;
 AllowedNumError = 1e-3;
 
 ErrorColor = [0.980392156862745,0.431372549019608,0.431372549019608];
 
+BackPanelDetector = uicontrol('Style','text','String','','Position',[50 565 300 100]);
 BackPanelCanti = uicontrol('Style','text','String','','Position',[50 465 300 100]);
 DefaultColor = BackPanelCanti.BackgroundColor;
 BackPanelMaterial = uicontrol('Style','text','String','','Position',[50 265 300 200]);
 
 % Define input fields and labels
+voltLabel = uicontrol('Style','text','String','Sensor Voltage Difference (V)','Position',[50 650 150 30]);
+voltInput = uicontrol('Style','edit','String','','Position',[200 650 150 30],'Callback',@valueChangedCallback);
+
+sensitivityLabel = uicontrol('Style','text','String','Expected Optical Lever Sensitivity (m/V)','Position',[50 600 150 30]);
+sensitivityInput = uicontrol('Style','edit','String','','Position',[200 600 150 30],'Callback',@valueChangedCallback);
+
 stiffnessLabel = uicontrol('Style','text','String','Cantilever Stiffness k (N/m)','Position',[50 550 150 30]);
 stiffnessInput = uicontrol('Style','edit','String','','Position',[200 550 150 30],'Callback',@valueChangedCallback);
 
@@ -42,6 +51,14 @@ modulusInput = uicontrol('Style','edit','String','','Position',[200 300 150 30],
 % Define callback functions
     function valueChangedCallback(~,~)
         % Update stiffness value and run determine_missing_values function
+        volt = str2double(get(voltInput,'String'));
+        if ~isnumeric(volt)
+            volt = nan;
+        end
+        sensitivity = str2double(get(sensitivityInput,'String'));
+        if ~isnumeric(sensitivity)
+            sensitivity = nan;
+        end
         stiffness = str2double(get(stiffnessInput,'String'));
         if ~isnumeric(stiffness)
             stiffness = nan;
@@ -66,7 +83,7 @@ modulusInput = uicontrol('Style','edit','String','','Position',[200 300 150 30],
         if ~isnumeric(ind2bendratio)
             ind2bendratio = nan;
         end
-        determine_missing_values(stiffness,depth,radius,force,modulus,ind2bendratio);
+        determine_missing_values(volt,sensitivity,stiffness,depth,radius,force,modulus,ind2bendratio);
     end
 
 ErrorText1 = {'Error: Input values do not satisfy system of equations';...
@@ -81,12 +98,24 @@ errorLabel.Visible = 0;
 ax = axes('Position',[0.1 0.05 .8 0.4]);
 imshow('CantileverDimensioning.png', 'Parent', ax);
 
-    function determine_missing_values(stiffness,depth,radius,force,modulus,ind2bendratio)
+    function determine_missing_values(volt,sensitivity,stiffness,depth,radius,force,modulus,ind2bendratio)
         %DETERMINEMISSINGVALUES determines missing values for AFM cantilever optimization
         
         % Check if any of the input values are missing
-        if isnan(stiffness) || isnan(depth) || isnan(radius) || isnan(force) || isnan(modulus) || isnan(ind2bendratio)
+        if isnan(stiffness) || isnan(depth) || isnan(radius) ||...
+                isnan(force) || isnan(modulus) || isnan(ind2bendratio) ||...
+                isnan(volt) || isnan(sensitivity)
             % Check which values are missing
+            if isnan(volt)
+                % Calculate volt using the given equation
+                volt = depth/(ind2bendratio*sensitivity);
+                set(voltInput,'String',num2str(volt));
+            end
+            if isnan(sensitivity)
+                % Calculate sensitivity using the given equation
+                sensitivity = depth/(ind2bendratio*volt);
+                set(sensitivityInput,'String',num2str(sensitivity));
+            end
             if isnan(stiffness)
                 % Calculate stiffness using the given equation
                 stiffness = ind2bendratio * force / depth;
@@ -117,20 +146,36 @@ imshow('CantileverDimensioning.png', 'Parent', ax);
                 modulus = 3*force*(1-0.5^2)/(4*sqrt(radius)*depth^(3/2));
                 set(modulusInput,'String',num2str(modulus));
             end
+            AnyMissing = 0;
             if  isnan(depth) || isnan(radius) || isnan(force) || isnan(modulus)
                 errorLabel.String = ErrorText2;
                 errorLabel.Visible = 1;
+                AnyMissing = 1;
                 set_material_error_background(true);
-                set_canti_error_background(false);
-            elseif isnan(stiffness) || isnan(ind2bendratio)
+            else
+                set_material_error_background(false);
+            end
+            if isnan(stiffness) || isnan(ind2bendratio)
                 errorLabel.String = ErrorText2;
                 errorLabel.Visible = 1;
-                set_material_error_background(false);
+                AnyMissing = 1;
                 set_canti_error_background(true);
             else
+                set_canti_error_background(false);
+            end
+            if isnan(volt) || isnan(sensitivity)
+                errorLabel.String = ErrorText2;
+                errorLabel.Visible = 1;
+                AnyMissing = 1;
+                set_detector_error_background(true);
+            else
+                set_detector_error_background(false);
+            end
+            if ~AnyMissing
                 errorLabel.Visible = 0;
                 set_material_error_background(false);
                 set_canti_error_background(false);
+                set_detector_error_background(false);
             end
             % If all input values are provided, check if the system of equations is solvable
             if abs(force - modulus/(1-0.5^2)*(4*sqrt(radius)*depth^(3/2)/3)) > force*AllowedNumError
@@ -141,6 +186,12 @@ imshow('CantileverDimensioning.png', 'Parent', ax);
             end
             if abs(ind2bendratio - depth * stiffness / force) > ind2bendratio*AllowedNumError
                 set_canti_error_background(true);
+                % If system is not solvable, display error message
+                errorLabel.String = ErrorText1;
+                errorLabel.Visible = 1;
+            end
+            if abs(volt - depth/(ind2bendratio*sensitivity)) > volt*AllowedNumError
+                set_detector_error_background(true);
                 % If system is not solvable, display error message
                 errorLabel.String = ErrorText1;
                 errorLabel.Visible = 1;
@@ -155,6 +206,12 @@ imshow('CantileverDimensioning.png', 'Parent', ax);
             end
             if abs(ind2bendratio - depth * stiffness / force) > ind2bendratio*AllowedNumError
                 set_canti_error_background(true);
+                % If system is not solvable, display error message
+                errorLabel.String = ErrorText1;
+                errorLabel.Visible = 1;
+            end
+            if abs(volt - depth/(ind2bendratio*sensitivity)) > volt*AllowedNumError
+                set_detector_error_background(true);
                 % If system is not solvable, display error message
                 errorLabel.String = ErrorText1;
                 errorLabel.Visible = 1;
@@ -190,5 +247,16 @@ imshow('CantileverDimensioning.png', 'Parent', ax);
         end
     end
 
+    function set_detector_error_background(Switch)
+        if Switch
+            BackPanelDetector.BackgroundColor = ErrorColor;
+            voltLabel.BackgroundColor = ErrorColor;
+            sensitivityLabel.BackgroundColor = ErrorColor;
+        else
+            BackPanelDetector.BackgroundColor = DefaultColor;
+            voltLabel.BackgroundColor = DefaultColor;
+            sensitivityLabel.BackgroundColor = DefaultColor;
+        end
+    end
 end
 
