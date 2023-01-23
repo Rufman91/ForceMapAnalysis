@@ -846,7 +846,7 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & dynam
             % Smooth out the hist cutoff by fitting a gp and using its mean
             KernelLambda = 5000;
             KernelSigma = 1;
-            GPNoise = 0;
+            GPNoise = 1e-6;
             warning('off')
             RectMaxIdx = round(predictGP_mean([1:NumProfiles]',[1:NumProfiles]',KernelSigma,KernelLambda,MaxIdx,GPNoise));
             warning('on')

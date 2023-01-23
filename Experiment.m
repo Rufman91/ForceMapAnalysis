@@ -20,6 +20,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                             % all the time
         FractionedSaveFiles = true
         CurrentLogFile = ''
+        DummyAFMIMageFile = "TGT-1_MSCT-F-Box33-Nr10-fit-2022.05.13-09.50.09.883.jpk-qi-image"
         ShowImageSettings = Experiment.set_default_show_image_settings()
         ForceMapAnalysisOptions = Experiment.set_default_fma_options()
         GrammOptions = Experiment.set_default_gramm_options()
@@ -612,6 +613,41 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 end
             end
             
+        end
+        
+        function add_dummy_afmimage_data(obj,Preprocessing)
+            
+            if nargin <2
+                Preprocessing = false;
+            end
+            
+            SourceFile = which(obj.DummyAFMIMageFile);
+            
+            ImageClass = AFMImage(SourceFile,obj.ExperimentFolder,'ArtificialAFMImage-1',Preprocessing);
+            
+            if isempty(obj.NumAFMImages) || obj.NumAFMImages == 0
+                obj.I{1} = ImageClass;
+                obj.NumAFMImages = 1;
+            else
+                obj.I{end+1} = ImageClass;
+                obj.NumAFMImages = obj.NumAFMImages + 1;
+            end
+            
+            Index = obj.NumAFMImages;
+            
+            % Clean up the Instance of all file specific Information
+            obj.I{Index}.Channel = [];
+            obj.I{Index}.NumChannels = 0;
+            obj.I{Index}.NumPixelsX = [];
+            obj.I{Index}.NumPixelsY = [];
+            obj.I{Index}.ScanAngle = [];
+            obj.I{Index}.ScanSizeX = [];
+            obj.I{Index}.ScanSizeY = [];
+            obj.I{Index}.OriginX = [];
+            obj.I{Index}.OriginY = [];
+            obj.I{Index}.List2Map = [];
+            obj.I{Index}.Map2List = [];
+            obj.I{Index}.Name = '';
         end
         
         function add_dummy_cantilever_tip_data(obj,Preprocessing)
