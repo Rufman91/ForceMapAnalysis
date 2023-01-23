@@ -11,8 +11,8 @@ for i = 1:2:length(varargin)
     end
 end
 
-FMean = 0;
-FSTD = 1;
+FMean = mean(F);
+FSTD = std(F);
 FNorm = (F - FMean)/(FSTD+1e-10);
 N = size(X,1);
 K = kernel(X,X,sigma,lambda) + noise*eye(N);
