@@ -14,7 +14,7 @@ figure('units','normalized','outerposition',[0 0 1 1])
 
 i = page;
 % Create a tiledlayout with the determined dimensions
-t = tiledlayout(2, 2);
+t = tiledlayout(2, 2,'TileSpacing','compact');
 for j = 1:4
     idx = (i-1)*4 + j;
     if idx > num_files
