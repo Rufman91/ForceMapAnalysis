@@ -534,9 +534,9 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             if nargin < 3
                 JustExperiment = 0;
             end
-%             if isequal(E.HostOS,'GLN')
-%                 Path = [Path filesep];
-%             end
+            %             if isequal(E.HostOS,'GLN')
+            %                 Path = [Path filesep];
+            %             end
             
             E.ExperimentFolder = Experiment.replace_fileseps(E.ExperimentFolder);
             
@@ -648,6 +648,50 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             obj.I{Index}.List2Map = [];
             obj.I{Index}.Map2List = [];
             obj.I{Index}.Name = '';
+        end
+        
+        function PC2HM_convert_pc_to_hm_and_add_afmimage(obj,PCName, PC, Resolution, zResolution,...
+                MaxPointsPerGP, PartitionShrinkingFactor, InterpolationExpansionFactor,...
+                Lambda, Sigma, Noise)
+            
+            [MaxPeakMap,MinPeakMap,MaxPeakValueMap,DensityMap,minCoords, maxCoords,...
+                subsetsGrid, boundariesGrid, subsetsCloud, boundariesCloud] =...
+                PC2HM_point_cloud_to_height_map(PC, Resolution, zResolution,...
+                MaxPointsPerGP, PartitionShrinkingFactor, InterpolationExpansionFactor,...
+                Lambda, Sigma, Noise)
+            
+            obj.add_dummy_afmimage_data(false)
+            
+            CompoundName = [PCName ...
+                '_Resolution' num2str(Resolution) ...
+                '_zResolution' num2str(zResolution) ...
+                '_MaxPointsPerGP' num2str(MaxPointsPerGP) ...
+                '_PartitionShrinkingFactor' num2str(PartitionShrinkingFactor) ...
+                '_InterpolationExpansionFactor' num2str(InterpolationExpansionFactor) ...
+                '_Lambda' num2str(Lambda) ...
+                '_Sigma' num2str(Sigma) ...
+                '_Noise' num2str(Noise) ...
+                ];
+            
+            obj.I{end}.NumPixelsX = Resolution;
+            obj.I{end}.NumPixelsY = Resolution;
+            obj.I{end}.ScanAngle = 0;
+            obj.I{end}.ScanSizeX = maxCoords(1) - minCoords(1);
+            obj.I{end}.ScanSizeY = maxCoords(2) - minCoords(2);
+            obj.I{end}.OriginX = 0;
+            obj.I{end}.OriginY = 0;
+            MaxPeakChannel = obj.I{end}.create_standard_channel(MaxPeakMap,'MaxPeakMap','m');
+            MinPeakChannel = obj.I{end}.create_standard_channel(MinPeakMap,'MinPeakMap','m');
+            MaxPeakValueChannel = obj.I{end}.create_standard_channel(MaxPeakValueMap,'MaxPeakValueMap','m');
+            DensityChannel = obj.I{end}.create_standard_channel(DensityMap,'DensityMap','m');
+            obj.I{end}.Channel(1) = MaxPeakChannel;
+            obj.I{end}.Channel(2) = MinPeakChannel;
+            obj.I{end}.Channel(3) = MaxPeakValueChannel;
+            obj.I{end}.Channel(4) = DensityChannel;
+            obj.I{end}.NumChannels = numel(obj.I{end}.Channel);
+            obj.I{end}.construct_list_to_map_relations;
+            obj.I{end}.Name = CompoundName;
+            
         end
         
         function add_dummy_cantilever_tip_data(obj,Preprocessing)

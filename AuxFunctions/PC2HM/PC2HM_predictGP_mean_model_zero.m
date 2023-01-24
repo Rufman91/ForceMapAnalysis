@@ -15,8 +15,8 @@ FMean = 0;
 FSTD = 1;
 FNorm = (F - FMean)/(FSTD+1e-10);
 N = size(X,1);
-K = kernel(X,X,sigma,lambda) + noise*eye(N);
-K_star = kernel(X,X_star,sigma,lambda);
+K = PC2HM_kernel(X,X,sigma,lambda) + noise*eye(N);
+K_star = PC2HM_kernel(X,X_star,sigma,lambda);
 mu_star_norm = K_star'*(K\FNorm);
 
 % Check if sigma_star should be calculated

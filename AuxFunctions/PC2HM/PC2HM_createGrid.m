@@ -1,4 +1,4 @@
-function gridPoints = PC2HM_createGrid(points, resolution)
+function [gridPoints,minCoords, maxCoords] = PC2HM_createGrid(points, resolution)
 
 % Find the boundary cube around the point cloud
 minCoords = min(points);

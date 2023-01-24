@@ -1,4 +1,7 @@
-function [MaxPeakMap,MinPeakMap,MaxPeakValueMap,DensityMap,UncertaintyMap,subsetsGrid, boundariesGrid, subsetsCloud, boundariesCloud] = PC2HM_point_cloud_to_height_map(PC, Resolution, zResolution, MaxPointsPerGP, PartitionShrinkingFactor, InterpolationExpansionFactor,...
+function [MaxPeakMap,MinPeakMap,MaxPeakValueMap,DensityMap,minCoords, maxCoords,...
+    subsetsGrid, boundariesGrid, subsetsCloud, boundariesCloud] =...
+    PC2HM_point_cloud_to_height_map(PC, Resolution, zResolution,...
+    MaxPointsPerGP, PartitionShrinkingFactor, InterpolationExpansionFactor,...
     Lambda, Sigma, Noise)
 
 MinPeakDistance = .2/zResolution;
@@ -6,13 +9,12 @@ MinPeakDistance = .2/zResolution;
 [NormPC,Scale,Offset] = PC2HM_normalize_pointcloud(PC,'KeepAspects');
 
 PCWeights = ones(size(NormPC,1),1);
-GridPoints = PC2HM_createGrid(NormPC,Resolution);
+[GridPoints,minCoords, maxCoords] = PC2HM_createGrid(NormPC,Resolution);
 GridWeights = ones(size(GridPoints,1),1).*zResolution;
 MaxPeakMap = zeros(Resolution,Resolution);
 MinPeakMap = MaxPeakMap;
 MaxValueMap = MaxPeakMap;
 NPeakMap = MaxPeakMap;
-UncertaintyMap = MaxPeakMap;
 
 [subsetsGrid, boundariesGrid, subsetsCloud, boundariesCloud] = ...
     PC2HM_partitionPointCloud(GridPoints, GridWeights, NormPC, PCWeights,...
@@ -42,6 +44,9 @@ for i=1:length(subsetsGrid)
         Temp = repmat(subsetsGrid{i}(j,:),[zResolution 1]);
         Temp(:,3) = Z;
         QueuePoints = [QueuePoints ; Temp];
+    end
+    if isempty(QueuePoints)
+        continue
     end
     F = ones(size(subsetsCloud{i},1),1);
     
@@ -83,9 +88,6 @@ MaxPeakValueMap = PC2HM_pointcloud2grid(MaxValuePoints,Resolution);
 MaxDensity = MaxPoints;
 MaxDensity(:,3) = MaxMean;
 DensityMap = PC2HM_pointcloud2grid(MaxDensity,Resolution);
-% MaxUncertainty = MaxPoints;
-% MaxUncertainty(:,3) = MaxSigma;
-% UncertaintyMap = PC2HM_pointcloud2grid(MaxUncertainty,Resolution);
 
 % PC2HM_visualizePartition(subsetsCloud,boundariesGrid)
 % figure
