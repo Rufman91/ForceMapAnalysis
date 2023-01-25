@@ -684,7 +684,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             MinPeakChannel = obj.I{end}.create_standard_channel(MinPeakMap,'MinPeakMap','m');
             MaxPeakValueChannel = obj.I{end}.create_standard_channel(MaxPeakValueMap,'MaxPeakValueMap','m');
             DensityChannel = obj.I{end}.create_standard_channel(DensityMap,'DensityMap','m');
-            obj.I{end}.Channel(1) = MaxPeakChannel;
+            obj.I{end}.Channel = MaxPeakChannel;
             obj.I{end}.Channel(2) = MinPeakChannel;
             obj.I{end}.Channel(3) = MaxPeakValueChannel;
             obj.I{end}.Channel(4) = DensityChannel;
