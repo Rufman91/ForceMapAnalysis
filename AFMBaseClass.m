@@ -70,6 +70,24 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
         FiberSegment_RelativePixelPosition = []
         FiberSegment_RelativePosition = []
         FiberSegment_SegmentLength = []
+        FiberSegment_Ellipse_a = []
+        FiberSegment_Ellipse_b = []
+        FiberSegment_Ellipse_AspectRatio = []
+        FiberSegment_Ellipse_Area = []
+        FiberSegment_Ellipse_Height = []
+        FiberSegment_Ellipse_WidthHalfHeight = []
+        FiberSegment_Mean_Ellipse_a = []
+        FiberSegment_Mean_Ellipse_b = []
+        FiberSegment_Mean_Ellipse_AspectRatio = []
+        FiberSegment_Mean_Ellipse_Area = []
+        FiberSegment_Mean_Ellipse_Height = []
+        FiberSegment_Mean_Ellipse_WidthHalfHeight = []
+        FiberSegment_Median_Ellipse_a = []
+        FiberSegment_Median_Ellipse_b = []
+        FiberSegment_Median_Ellipse_AspectRatio = []
+        FiberSegment_Median_Ellipse_Area = []
+        FiberSegment_Median_Ellipse_Height = []
+        FiberSegment_Median_Ellipse_WidthHalfHeight = []
         OverlayGroup = ''
         OverlayGroupName = ''
         OverlayGroupIndex = []
@@ -980,6 +998,10 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             % "LowerEndThreshold" ... Determines the lower end of the
             %                     fiber-like object. Can be given as a
             %                     fraction of fiber height or in meters. 
+            % "EllipseFitThreshold" ... Determines the cutoff above
+            %                       baseline in terms of ThresholdType
+            %                       above which profile points are to be
+            %                       taken into account for the ellipse fit.
             % "ThresholdType" ... 'Fraction'(def), 'Meters'
             % "Verbose" ... logical; if true, the function will draw a
             %               visualization of what is happening.
@@ -1003,6 +1025,7 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             defaultSmoothingWindowSize = 41;
             defaultMinPeakDistanceMeters = 50e-9;
             defaultLowerEndThreshold = .1;
+            defaultEllipseFitThreshold = .75;
             defaultThresholdType = 'Fraction';
             defaultVerbose = false;
             defaultRecordMovieBool = false;
@@ -1011,6 +1034,7 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             validSmoothingWindowSize = @(x)isnumeric(x)&&mod(x,1)==0;
             validMinPeakDistanceMeters = @(x)isnumeric(x)&&isscalar(x);
             validLowerEndThreshold = @(x)isnumeric(x)&&isscalar(x);
+            validEllipseFitThreshold = @(x)isnumeric(x)&&isscalar(x); 
             validThresholdType = @(x)any(validatestring(x,{'Fraction','Meters'}));
             validVerbose = @(x)islogical(x);
             validRecordMovieBool = @(x)islogical(x);
@@ -1019,6 +1043,7 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             addParameter(p,"SmoothingWindowSize",defaultSmoothingWindowSize,validSmoothingWindowSize);
             addParameter(p,"MinPeakDistanceMeters",defaultMinPeakDistanceMeters,validMinPeakDistanceMeters);
             addParameter(p,"LowerEndThreshold",defaultLowerEndThreshold,validLowerEndThreshold);
+            addParameter(p,"EllipseFitThreshold",defaultEllipseFitThreshold,validEllipseFitThreshold);
             addParameter(p,"ThresholdType",defaultThresholdType,validThresholdType);
             addParameter(p,"Verbose",defaultVerbose,validVerbose);
             addParameter(p,"RecordMovieBool",defaultRecordMovieBool,validRecordMovieBool);
@@ -1032,10 +1057,15 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             SmoothingWindowSize = p.Results.SmoothingWindowSize;
             MinPeakDistanceMeters = p.Results.MinPeakDistanceMeters;
             LowerEndThreshold = p.Results.LowerEndThreshold;
+            EllipseFitThreshold = p.Results.EllipseFitThreshold;
             ThresholdType = p.Results.ThresholdType;
             Verbose = p.Results.Verbose;
             RecordMovieBool = p.Results.RecordMovieBool;
             KeyFrames = p.Results.KeyFrames;
+            
+            if isequal(ThresholdType,'Fraction') && EllipseFitThreshold < 0.5
+                error('EllipseFitThreshold cannot be smaller than 0.5, if the ThresholdType is "Fraction"!')
+            end
             
             OutArrayStruct = struct();
             OutStruct = struct();
@@ -1121,6 +1151,12 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
                 LocalArea = zeros(length(SegmentPositions(:,1)),1);
                 LocalWidthBase = zeros(length(SegmentPositions(:,1)),1);
                 LocalPosition = zeros(length(SegmentPositions(:,1)),2);
+                LocalEllipse_a = zeros(length(SegmentPositions(:,1)),1);
+                LocalEllipse_b = zeros(length(SegmentPositions(:,1)),1);
+                LocalEllipse_AspectRatio = zeros(length(SegmentPositions(:,1)),1);
+                LocalEllipse_Area = zeros(length(SegmentPositions(:,1)),1);
+                LocalEllipse_Height = zeros(length(SegmentPositions(:,1)),1);
+                LocalEllipse_WidthHalfHeight = zeros(length(SegmentPositions(:,1)),1);
                 for j=1:length(SegmentPositions(:,1))
                     PerpendicularVector(j,:) = [LocalDirectionVector(j,2) -LocalDirectionVector(j,1)]/norm(LocalDirectionVector(j,:));
                     WindowStart =SegmentPositions(j,:) + PerpendicularVector(j,:).*WidthLocalWindowPixels/2;
@@ -1178,18 +1214,17 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
                         hold off
                         Ax1.Legend.String{end-1} = 'Forbidden Points';
                         Ax1.Legend.String{end} = 'Chosen Point';
-                        Ax2 = subplot('Position',[.6 .55 .3 .4]);
                         Ax1.Legend.Location = 'northeast';
-                        findpeaks(LocalProfile,LocalDistance,'Annotate','extents',...
-                            'WidthReference','halfprom','MinPeakDistance',MinPeakDistanceMeters);
-                        hold on
-                        plot(ForbiddenLocalDistance,ForbiddenProfile,'rX',...
-                            Locations(WinnerIndex),1.05*Heights(WinnerIndex),'rv',...
-                            'MarkerSize',16,'MarkerFaceColor','g')
-                        Ax2.Legend.String{end-1} = 'Forbidden Points';
-                        Ax2.Legend.String{end} = 'Chosen Point';
-                        Ax2.Legend.Location = 'northeast';
-                        hold off
+                        Ax2 = subplot('Position',[.6 .55 .3 .4]);
+%                         findpeaks(LocalProfile,LocalDistance,'Annotate','extents',...
+%                             'WidthReference','halfprom','MinPeakDistance',MinPeakDistanceMeters);
+%                         hold on
+%                         plot(ForbiddenLocalDistance,ForbiddenProfile,'rX',...
+%                             Locations(WinnerIndex),1.05*Heights(WinnerIndex),'rv',...
+%                             'MarkerSize',16,'MarkerFaceColor','g')
+%                         Ax2.Legend.String{end-1} = 'Forbidden Points';
+%                         Ax2.Legend.String{end} = 'Chosen Point';
+%                         Ax2.Legend.Location = 'northeast';
                         drawnow
                         if RecordMovieBool
                             Frame = getframe(f);
@@ -1210,8 +1245,10 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
                     PeakIndex = find(LocalDistance==Locations(WinnerIndex));
                     if isequal(ThresholdType,'Fraction')
                         Thresh = LowerEndThreshold.*LocalProfile(PeakIndex);
+                        EllThresh = EllipseFitThreshold.*LocalProfile(PeakIndex);
                     else
                         Thresh = LowerEndThreshold;
+                        EllThresh = EllipseFitThreshold;
                     end
                     % To the left
                     kk = 1;
@@ -1243,6 +1280,40 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
                         LocalWidthBase(j) = nan;
                     end
                     
+                    
+                    % To the left
+                    kk = 1;
+                    EllLeftBoundIndex = [];
+                    while (PeakIndex-kk)>0 && isempty(EllLeftBoundIndex)
+                        if LocalProfile(PeakIndex-kk) < EllThresh
+                            EllLeftBoundIndex = PeakIndex - kk;
+                        end
+                        kk = kk + 1;
+                    end
+                    EllRightBoundIndex = [];
+                    % To the right
+                    kk = 1;
+                    while (PeakIndex+kk)<=length(LocalProfile) && isempty(EllRightBoundIndex)
+                        if LocalProfile(PeakIndex+kk) < EllThresh
+                            EllRightBoundIndex = PeakIndex + kk;
+                        end
+                        kk = kk + 1;
+                    end
+                    % If info is sufficient, fit ellipse
+                    if ~isempty(EllLeftBoundIndex) && ~isempty(EllRightBoundIndex)
+                        X = LocalDistance(EllLeftBoundIndex:EllRightBoundIndex);
+                        Y = LocalProfile(EllLeftBoundIndex:EllRightBoundIndex);
+                        if Verbose && mod(j,KeyFrames)==0
+                            EllResultStruct = EllipseFit_fit_ellipse(X,Y,Ax2);
+                            hold off
+                            drawnow
+                        else
+                            EllResultStruct = EllipseFit_fit_ellipse(X,Y);
+                        end
+                    else
+                        EllResultStruct.status = 'AllWentWrong';
+                    end
+                    
                     % Write down results
                     LocalHeight(j) = Heights(WinnerIndex);
                     LocalProminence(j) = Prom(WinnerIndex);
@@ -1250,6 +1321,22 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
                     LocalWidthHalfProminence(j) = TempWidthHalfProm(WinnerIndex);
                     LocalPosition(j,1) = LocalX(WinnerIndex);
                     LocalPosition(j,2) = LocalY(WinnerIndex);
+                    if isequal(EllResultStruct.status,'')
+                        LocalEllipse_a(j) = EllResultStruct.a;
+                        LocalEllipse_b(j) = EllResultStruct.b;
+                        LocalEllipse_AspectRatio(j) = EllResultStruct.b./EllResultStruct.a;
+                        LocalEllipse_Area(j) = EllResultStruct.a.*EllResultStruct.b.*pi;
+                        LocalEllipse_Height(j) = 2*EllResultStruct.a;
+                        LocalEllipse_WidthHalfHeight(j) = 2*EllResultStruct.b;
+                    else
+                        LocalEllipse_a(j) = nan;
+                        LocalEllipse_b(j) = nan;
+                        LocalEllipse_AspectRatio(j) = nan;
+                        LocalEllipse_Area(j) = nan;
+                        LocalEllipse_Height(j) = nan;
+                        LocalEllipse_WidthHalfHeight(j) = nan;
+                    end
+                    
                     
                     % Find corresponding Pixel by distance
 %                     DistanceVector = SegmentPixelIndizes{i} - [LocalPosition(j,1) LocalPosition(j,2)];
@@ -1339,6 +1426,43 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
                 obj.Segment(i).Mean_AreaDerivedDiameter = nanmean(real(sqrt(LocalArea/pi).*2));
                 Struct(k).Median_AreaDerivedDiameter = nanmedian(real(sqrt(LocalArea/pi).*2));
                 obj.Segment(i).Median_AreaDerivedDiameter = nanmedian(real(sqrt(LocalArea/pi).*2));
+                Struct(k).Ellipse_a = LocalEllipse_a;
+                obj.Segment(i).Ellipse_a = LocalEllipse_a;
+                Struct(k).Mean_Ellipse_a = nanmean(LocalEllipse_a);
+                obj.Segment(i).Mean_Ellipse_a = nanmean(LocalEllipse_a);
+                Struct(k).Median_Ellipse_a = nanmedian(LocalEllipse_a);
+                obj.Segment(i).Median_Ellipse_a = nanmedian(LocalEllipse_a);
+                Struct(k).Ellipse_b = LocalEllipse_b;
+                obj.Segment(i).Ellipse_b = LocalEllipse_b;
+                Struct(k).Mean_Ellipse_b = nanmean(LocalEllipse_b);
+                obj.Segment(i).Mean_Ellipse_b = nanmean(LocalEllipse_b);
+                Struct(k).Median_Ellipse_b = nanmedian(LocalEllipse_b);
+                obj.Segment(i).Median_Ellipse_b = nanmedian(LocalEllipse_b);
+                Struct(k).Ellipse_AspectRatio = LocalEllipse_AspectRatio;
+                obj.Segment(i).Ellipse_AspectRatio = LocalEllipse_AspectRatio;
+                Struct(k).Mean_Ellipse_AspectRatio = nanmean(LocalEllipse_AspectRatio);
+                obj.Segment(i).Mean_Ellipse_AspectRatio = nanmean(LocalEllipse_AspectRatio);
+                Struct(k).Median_Ellipse_AspectRatio = nanmedian(LocalEllipse_AspectRatio);
+                obj.Segment(i).Median_Ellipse_AspectRatio = nanmedian(LocalEllipse_AspectRatio);
+                Struct(k).Ellipse_Area = LocalEllipse_Area;
+                obj.Segment(i).Ellipse_Area = LocalEllipse_Area;
+                Struct(k).Mean_Ellipse_Area = nanmean(LocalEllipse_Area);
+                obj.Segment(i).Mean_Ellipse_Area = nanmean(LocalEllipse_Area);
+                Struct(k).Median_Ellipse_Area = nanmedian(LocalEllipse_Area);
+                obj.Segment(i).Median_Ellipse_Area = nanmedian(LocalEllipse_Area);
+                Struct(k).Ellipse_Height = LocalEllipse_Height;
+                obj.Segment(i).Ellipse_Height = LocalEllipse_Height;
+                Struct(k).Mean_Ellipse_Height = nanmean(LocalEllipse_Height);
+                obj.Segment(i).Mean_Ellipse_Height = nanmean(LocalEllipse_Height);
+                Struct(k).Median_Ellipse_Height = nanmedian(LocalEllipse_Height);
+                obj.Segment(i).Median_Ellipse_Height = nanmedian(LocalEllipse_Height);
+                Struct(k).Ellipse_WidthHalfHeight = LocalEllipse_WidthHalfHeight;
+                obj.Segment(i).Ellipse_WidthHalfHeight = LocalEllipse_WidthHalfHeight;
+                Struct(k).Mean_Ellipse_WidthHalfHeight = nanmean(LocalEllipse_WidthHalfHeight);
+                obj.Segment(i).Mean_Ellipse_WidthHalfHeight = nanmean(LocalEllipse_WidthHalfHeight);
+                Struct(k).Median_Ellipse_WidthHalfHeight = nanmedian(LocalEllipse_WidthHalfHeight);
+                obj.Segment(i).Median_Ellipse_WidthHalfHeight = nanmedian(LocalEllipse_WidthHalfHeight);
+                
                 Struct(k).SegmentPixelIndex = SegmentPixelIndizes{i};
                 obj.Segment(i).SegmentPixelIndex = SegmentPixelIndizes{i};
                 Struct(k).CorrespondingPixelIndex = TempCorrespondingPixelIndex;
@@ -1946,6 +2070,15 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
                 'Mean_AspectRatioBaseHeight','Median_AspectRatioBaseHeight',...
                 'AreaDerivedDiameter','Mean_AreaDerivedDiameter',...
                 'Median_AreaDerivedDiameter',...
+                'Ellipse_a','Mean_Ellipse_a','Median_Ellipse_a',...
+                'Ellipse_b','Mean_Ellipse_b','Median_Ellipse_b',...
+                'Ellipse_AspectRatio','Mean_Ellipse_AspectRatio',...
+                'Median_Ellipse_AspectRatio',...
+                'Ellipse_Area','Mean_Ellipse_Area','Median_Ellipse_Area',...
+                'Ellipse_Height','Mean_Ellipse_Height',...
+                'Median_Ellipse_Height',...
+                'Ellipse_WidthHalfHeight','Mean_Ellipse_WidthHalfHeight',...
+                'Median_Ellipse_WidthHalfHeight',...
                 'RelativePixelPosition','RelativePosition'};
             
             switch PoolingMethod

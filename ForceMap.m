@@ -1318,7 +1318,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
                 if AllowXShift
                     FitFunction = 'a*(x+b)^(3/2)';
                 else
-                    Fitfunction = 'a*(x)^(3/2)';
+                    FitFunction = 'a*(x)^(3/2)';
                 end
             elseif isequal(lower(TipShape,'sneddonpolysurf'))
                 Area = TipObject.DepthDependendTipRadius;
