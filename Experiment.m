@@ -9410,6 +9410,33 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             
         end
         
+        function TCombo = combine_data_tables(T1,T2)
+            
+            T1Names = T1.Properties.VariableNames;
+            T2Names = T2.Properties.VariableNames;
+            T1Types =  varfun(@class,T1,'OutputFormat','cell');
+            T2Types =  varfun(@class,T2,'OutputFormat','cell');
+            
+            U = unique([T1Names T2Names]);
+            
+            for i=1:numel(U)
+                % T1
+                Idx1 = find(strcmp(T1Names, U{i}));
+                Idx2 = find(strcmp(T2Names, U{i}));
+                if isempty(Idx1)
+                    T1{:,T2Names{Idx2}} = eval([T2Types{Idx2} '(missing)']);
+                end
+                if isempty(Idx2)
+                    T2{:,T1Names{Idx1}} = eval([T1Types{Idx1} '(missing)']);
+                end
+            end
+            
+            TCombo = [T1 ; T2];
+            
+            TCombo = standardizeMissing(TCombo,{'',[],""});
+            
+        end
+        
     end
     
     methods(Static)
