@@ -22,7 +22,15 @@ else
     EllFit = fit_ellipse(XCombo,YCombo);
 end
 
-
+% Rescale the answers
+EllFit.a = EllFit.a.*CompoundScale;
+EllFit.b = EllFit.b.*CompoundScale;
+EllFit.X0 = EllFit.X0.*CompoundScale;
+EllFit.Y0 = EllFit.Y0.*CompoundScale;
+EllFit.X0_in = EllFit.X0_in.*CompoundScale;
+EllFit.Y0_in = EllFit.Y0_in.*CompoundScale;
+EllFit.long_axis = EllFit.long_axis.*CompoundScale;
+EllFit.short_axis = EllFit.short_axis.*CompoundScale;
 
 end
 
