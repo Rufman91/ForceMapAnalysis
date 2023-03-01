@@ -1901,6 +1901,18 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             
         end
         
+        function OutChannel = rotate_channel(InChannel,RotDegrees)
+            
+            OutChannel = InChannel;
+            
+            if rem(abs(RotDegrees),90) ~= 0
+                error('At this point only multiples of 90° rotations have been implemented')
+            end
+            
+            OutChannel.Image = imrotate(InChannel.Image,RotDegrees);
+            
+        end
+        
     end
     methods (Static)
         % Static auxiliary methods
