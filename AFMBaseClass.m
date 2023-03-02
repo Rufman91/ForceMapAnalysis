@@ -941,7 +941,7 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             
             HeightMap = HeightChannel.Image;
             
-            [~,MaxIdx] = max(filloutliers(HeightMap,'linear','movmedian',ceil(HeightChannel.NumPixelsY/5),2),[],2);
+            [~,MaxIdx] = max(filloutliers(HeightMap,'linear','movmedian',max(3,ceil(HeightChannel.NumPixelsY/100)),2),[],2);
             Points = [MaxIdx [1:size(HeightMap,1)]'];
             
             
