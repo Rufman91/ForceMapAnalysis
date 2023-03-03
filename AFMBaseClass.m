@@ -670,6 +670,22 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
         
         function [Xout,Yout] = transform_pixels_to_other_coordinate_basis(DonorClass,AcceptorClass,X,Y)
             
+            SizePerPixelX1 = DonorClass.Channel(1).ScanSizeX/DonorClass.Channel(1).NumPixelsX;
+            SizePerPixelX2 = AcceptorClass.Channel(1).ScanSizeX/AcceptorClass.Channel(1).NumPixelsX;
+            if SizePerPixelX1 ~= SizePerPixelX2
+                ScaleMultiplierX = SizePerPixelX1/SizePerPixelX2;
+            else
+                ScaleMultiplierX = 1;
+            end
+            
+            SizePerPixelY1 = DonorClass.Channel(1).ScanSizeY/DonorClass.Channel(1).NumPixelsY;
+            SizePerPixelY2 = AcceptorClass.Channel(1).ScanSizeY/AcceptorClass.Channel(1).NumPixelsY;
+            if SizePerPixelY1 ~= SizePerPixelY2
+                ScaleMultiplierY = SizePerPixelY1/SizePerPixelY2;
+            else
+                ScaleMultiplierY = 1;
+            end
+            
             XDiff = DonorClass.Channel(1).OriginX - AcceptorClass.Channel(1).OriginX;
             SizePerPixelX = AcceptorClass.Channel(1).ScanSizeX./AcceptorClass.Channel(1).NumPixelsX;
             XDiff = XDiff/SizePerPixelX;
@@ -679,7 +695,7 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             AngleDiff = DonorClass.Channel(1).ScanAngle - AcceptorClass.Channel(1).ScanAngle;
             AngleDiff = deg2rad(-AngleDiff);
             
-            Vector = [X Y];
+            Vector = [ScaleMultiplierX*X ScaleMultiplierY*Y];
             
             ImCenter = [AcceptorClass.Channel(1).NumPixelsX/2 AcceptorClass.Channel(1).NumPixelsY/2];
             
