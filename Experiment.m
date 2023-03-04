@@ -4428,7 +4428,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                     [Channel,ChannelIndex] = h.Class{Index}.get_channel(h.Channel{Index});
                     if obj.ShowImageSettings.IsUpscaled
                         Channel.Image = fillmissing(Channel.Image,'linear','EndValues','nearest');
-                        Channel = AFMImage.resize_channel(Channel,1,1920,false);
+                        Channel = AFMImage.resize_channel(Channel,1920,false);
                     end
                     h.Image{Index} = fillmissing(Channel.Image,'linear','EndValues','nearest');
                     h.BaseUnit{Index} = Channel.Unit;
