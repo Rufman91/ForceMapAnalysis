@@ -6162,22 +6162,23 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 'units','normalized',...
                 'position',[.85 .25 .07 .03],...
                 'Tooltip','Add the tag currenty in the edit box to the segments chosen in the popup above',...
-                'Visible','off');
+                'Visible','off',...
+                'Callback',@add_tag);
             
             h.c(57) = uicontrol('style','pushbutton',...
                 'String','Delete tag',...
                 'Tooltip','Delete the tag currently highlighted in the tag box from the segments chosen in the popup above',...
                 'units','normalized',...
                 'position',[.93 .25 .07 .03],...
-                'Visible','off');
+                'Visible','off',...
+                'Callback',@delete_tag);
             
             h.c(58) = uicontrol(h.Fig,...
                 'Style','listbox',...
                 'Max',1000000,'Min',1,...
                 'Units','normalized',...
                 'Position',[.85  .18 .15 .07],...
-                'Visible','off',...
-                'Callback',@tag_changed);
+                'Visible','off');
             
             
             h.SegmentBox = uicontrol(h.Fig,...
@@ -6532,6 +6533,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                     set(h.SubsegmentBox,'String',{SubSegmentNames{strcmp({h.SegmentBox.String{h.SegmentBox.Value}},Names)}});
                 end
                 draw_existing_segments
+                update_tag_box
             end
             
             function changed_slider(varargin)
@@ -6745,14 +6747,17 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                                     'Label',sprintf('%s || %s',Class{1}.Segment(i).Name,Class{1}.Segment(i).SubSegmentName),...
                                     'LabelAlpha',0.6);
                             case 'circle'
-                                h.ROIObjects{i} = drawcircle('Position',Class{1}.Segment(i).ROIObject.Position,...
+                                h.ROIObjects{i} = drawcircle('Center',Class{1}.Segment(i).ROIObject.Center,...
+                                    'Radius',Class{1}.Segment(i).ROIObject.Radius,...
                                     'Deletable',1,...
                                     'InteractionsAllowed','all',...
                                     'LineWidth',Class{1}.Segment(i).ROIObject.LineWidth,...
                                     'Label',sprintf('%s || %s',Class{1}.Segment(i).Name,Class{1}.Segment(i).SubSegmentName),...
                                     'LabelAlpha',0.6);
                             case 'ellipse'
-                                h.ROIObjects{i} = drawellipse('Position',Class{1}.Segment(i).ROIObject.Position,...
+                                h.ROIObjects{i} = drawellipse('Center',Class{1}.Segment(i).ROIObject.Center,...
+                                    'SemiAxes',Class{1}.Segment(i).ROIObject.SemiAxes,...
+                                    'RotationAngle',Class{1}.Segment(i).ROIObject.RotationAngle,...
                                     'Deletable',1,...
                                     'InteractionsAllowed','all',...
                                     'LineWidth',Class{1}.Segment(i).ROIObject.LineWidth,...
@@ -6767,6 +6772,8 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                                     'LabelAlpha',0.6);
                             case 'rectangle'
                                 h.ROIObjects{i} = drawrectangle('Position',Class{1}.Segment(i).ROIObject.Position,...
+                                    'RotationAngle',Class{1}.Segment(i).ROIObject.RotationAngle,...
+                                    'Rotatable',true,...
                                     'Deletable',1,...
                                     'InteractionsAllowed','all',...
                                     'LineWidth',Class{1}.Segment(i).ROIObject.LineWidth,...
@@ -6839,7 +6846,8 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                                         'Color',SegmentColors{2*SegmentIndex-1},...
                                         'StripeColor',SegmentColors{2*SegmentIndex});
                                 case 'circle'
-                                    h.ROIObjects{i} = drawcircle('Position',Class{1}.Segment(i).ROIObject.Position,...
+                                    h.ROIObjects{i} = drawcircle('Center',Class{1}.Segment(i).ROIObject.Center,...
+                                        'Radius',Class{1}.Segment(i).ROIObject.Radius,...
                                         'Deletable',0,...
                                         'InteractionsAllowed','none',...
                                         'LineWidth',Class{1}.Segment(i).ROIObject.LineWidth,...
@@ -6848,7 +6856,9 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                                         'Color',SegmentColors{2*SegmentIndex-1},...
                                         'StripeColor',SegmentColors{2*SegmentIndex});
                                 case 'ellipse'
-                                    h.ROIObjects{i} = drawellipse('Position',Class{1}.Segment(i).ROIObject.Position,...
+                                    h.ROIObjects{i} = drawellipse('Center',Class{1}.Segment(i).ROIObject.Center,...
+                                        'SemiAxes',Class{1}.Segment(i).ROIObject.SemiAxes,...
+                                        'RotationAngle',Class{1}.Segment(i).ROIObject.RotationAngle,...
                                         'Deletable',0,...
                                         'InteractionsAllowed','none',...
                                         'LineWidth',Class{1}.Segment(i).ROIObject.LineWidth,...
@@ -6867,6 +6877,8 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                                         'StripeColor',SegmentColors{2*SegmentIndex});
                                 case 'rectangle'
                                     h.ROIObjects{i} = drawrectangle('Position',Class{1}.Segment(i).ROIObject.Position,...
+                                        'RotationAngle',Class{1}.Segment(i).ROIObject.RotationAngle,...
+                                        'Rotatable',true,...
                                         'Deletable',0,...
                                         'InteractionsAllowed','none',...
                                         'LineWidth',Class{1}.Segment(i).ROIObject.LineWidth,...
@@ -6936,14 +6948,17 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                                         'Color',SegmentColors{2*SegmentIndex-1},...
                                         'StripeColor',SegmentColors{2*SegmentIndex});
                                 case 'circle'
-                                    h.ROIObjects{i} = drawcircle('Position',Class{1}.Segment(i).ROIObject.Position,...
+                                    h.ROIObjects{i} = drawcircle('Center',Class{1}.Segment(i).ROIObject.Center,...
+                                        'Radius',Class{1}.Segment(i).ROIObject.Radius,...
                                         'Deletable',0,...
                                         'InteractionsAllowed','none',...
                                         'LineWidth',Class{1}.Segment(i).ROIObject.LineWidth,...
                                         'Color',SegmentColors{2*SegmentIndex-1},...
                                         'StripeColor',SegmentColors{2*SegmentIndex});
                                 case 'ellipse'
-                                    h.ROIObjects{i} = drawellipse('Position',Class{1}.Segment(i).ROIObject.Position,...
+                                    h.ROIObjects{i} = drawellipse('Center',Class{1}.Segment(i).ROIObject.Center,...
+                                        'SemiAxes',Class{1}.Segment(i).ROIObject.SemiAxes,...
+                                        'RotationAngle',Class{1}.Segment(i).ROIObject.RotationAngle,...
                                         'Deletable',0,...
                                         'InteractionsAllowed','none',...
                                         'LineWidth',Class{1}.Segment(i).ROIObject.LineWidth,...
@@ -6958,6 +6973,8 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                                         'StripeColor',SegmentColors{2*SegmentIndex});
                                 case 'rectangle'
                                     h.ROIObjects{i} = drawrectangle('Position',Class{1}.Segment(i).ROIObject.Position,...
+                                        'RotationAngle',Class{1}.Segment(i).ROIObject.RotationAngle,...
+                                        'Rotatable',true,...
                                         'Deletable',0,...
                                         'InteractionsAllowed','none',...
                                         'LineWidth',Class{1}.Segment(i).ROIObject.LineWidth,...
@@ -7019,6 +7036,30 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             
             function moved_roi(varargin)
                 
+                    CurrentDrawMode = Class{1}.Segment(h.CurrentIndex).Type;
+                    switch CurrentDrawMode
+                        case 'line'
+                        case 'freehand'
+                        case 'circle'
+                            Class{1}.Segment(h.CurrentIndex).ROIObject.Center = [];
+                            Class{1}.Segment(h.CurrentIndex).ROIObject.Radius = [];
+                            Class{1}.Segment(h.CurrentIndex).ROIObject.Center = h.ROIObjects{h.CurrentIndex}.Center;
+                            Class{1}.Segment(h.CurrentIndex).ROIObject.Radius = h.ROIObjects{h.CurrentIndex}.Radius;
+                        case 'ellipse'
+                            Class{1}.Segment(h.CurrentIndex).ROIObject.Center = [];
+                            Class{1}.Segment(h.CurrentIndex).ROIObject.SemiAxes = [];
+                            Class{1}.Segment(h.CurrentIndex).ROIObject.RotationAngle = [];
+                            Class{1}.Segment(h.CurrentIndex).ROIObject.Center = h.ROIObjects{h.CurrentIndex}.Center;
+                            Class{1}.Segment(h.CurrentIndex).ROIObject.SemiAxes = h.ROIObjects{h.CurrentIndex}.SemiAxes;
+                            Class{1}.Segment(h.CurrentIndex).ROIObject.RotationAngle = h.ROIObjects{h.CurrentIndex}.RotationAngle;
+                        case 'polygon'
+                        case 'rectangle'
+                            Class{1}.Segment(h.CurrentIndex).ROIObject.RotationAngle = [];
+                            Class{1}.Segment(h.CurrentIndex).ROIObject.RotationAngle = h.ROIObjects{h.CurrentIndex}.RotationAngle;
+                        case 'crosshair'
+                        case 'point'
+                        case 'assisted'
+                    end
                 Class{1}.Segment(h.CurrentIndex).ROIObject.Position = [];
                 Class{1}.Segment(h.CurrentIndex).ROIObject.Position = h.ROIObjects{h.CurrentIndex}.Position;
                 
@@ -7132,12 +7173,18 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                             ROIObject = drawsq;
                         case 'circle'
                             ROIObject = drawcircle;
+                            Class{1}.Segment(end + Addendum).ROIObject.Center = ROIObject.Center;
+                            Class{1}.Segment(end + Addendum).ROIObject.Radius = ROIObject.Radius;
                         case 'ellipse'
                             ROIObject = drawellipse;
+                            Class{1}.Segment(end + Addendum).ROIObject.Center = ROIObject.Center;
+                            Class{1}.Segment(end + Addendum).ROIObject.SemiAxes = ROIObject.SemiAxes;
+                            Class{1}.Segment(end + Addendum).ROIObject.RotationAngle = ROIObject.RotationAngle;
                         case 'polygon'
                             ROIObject = drawpolygon;
                         case 'rectangle'
-                            ROIObject = drawrectangle;
+                            ROIObject = drawrectangle('Rotatable',true);
+                            Class{1}.Segment(end + Addendum).ROIObject.RotationAngle = ROIObject.RotationAngle;
                         case 'crosshair'
                             ROIObject = drawcrosshair;
                         case 'point'
@@ -7236,6 +7283,185 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 set(h.SubsegmentBox,'Value',length(h.SubsegmentBox.String)-1);
                 Class{1}.sort_segments_by_name_and_subsegmentname;
                 draw_channel_1
+            end
+            
+            function add_tag(varargin)
+                
+                CurrentTagfieldContent = h.c(52).String;
+                
+                TagValid = Experiment.check_segment_tag_validity(CurrentTagfieldContent);
+                
+                if ~TagValid
+                    warning('Tag is not valid. Refrain from using "*" in the string');
+                    return
+                end
+                
+                TagGrouping = h.c(55).String{h.c(55).Value};
+                
+                switch TagGrouping
+                    case 'Current Segment'
+                        FocusClass = obj.get_class_instance(ClassIndex(h.CurChannel1Idx,:));
+                        KeySegmentName = h.SegmentBox.String{h.SegmentBox.Value};
+                        [~,CurrentSegment] = AFMBaseClass.find_matching_segment(KeySegmentName,FocusClass.Segment);
+                        FocusClass.add_tag_to_segment(CurrentTagfieldContent,CurrentSegment);
+                    case 'Identical Segments in Ov. Group'
+                        FocusClass = obj.get_class_instance(ClassIndex(h.CurChannel1Idx,:));
+                        KeySegmentName = h.SegmentBox.String{h.SegmentBox.Value};
+                        if ~FocusClass.OverlayGroup.hasOverlayGroup
+                            [~,CurrentSegment] = AFMBaseClass.find_matching_segment(KeySegmentName,FocusClass.Segment);
+                            FocusClass.add_tag_to_segment(CurrentTagfieldContent,CurrentSegment);
+                        else
+                            [~,CurrentSegment] = AFMBaseClass.find_matching_segment(KeySegmentName,FocusClass.Segment);
+                            FocusClass.add_tag_to_segment(CurrentTagfieldContent,CurrentSegment);
+                            for i=1:FocusClass.OverlayGroup.Size
+                                if strcmp(FocusClass.OverlayGroup.Names{i},FocusClass.Name)
+                                    continue
+                                end
+                                Index = find(strcmp({FocusClass.OverlayGroup.Names{i}},obj.ForceMapNames));
+                                if ~isempty(Index)
+                                    [~,CurrentSegment] = AFMBaseClass.find_matching_segment(KeySegmentName,obj.FM{Index}.Segment);
+                                    obj.FM{Index}.add_tag_to_segment(CurrentTagfieldContent,CurrentSegment);
+                                end
+                                Index = find(strcmp({FocusClass.OverlayGroup.Names{i}},obj.AFMImageNames));
+                                if ~isempty(Index)
+                                    [~,CurrentSegment] = AFMBaseClass.find_matching_segment(KeySegmentName,obj.I{Index}.Segment);
+                                    obj.I{Index}.add_tag_to_segment(CurrentTagfieldContent,CurrentSegment);
+                                end
+                            end
+                        end
+                    case 'All Segments in image'
+                        FocusClass = obj.get_class_instance(ClassIndex(h.CurChannel1Idx,:));
+                        FocusClass.add_tag_to_segment(CurrentTagfieldContent);
+                    case 'All Segments in Ov. Group'
+                        FocusClass = obj.get_class_instance(ClassIndex(h.CurChannel1Idx,:));
+                        if ~FocusClass.OverlayGroup.hasOverlayGroup
+                            FocusClass.add_tag_to_segment(CurrentTagfieldContent);
+                        else
+                            FocusClass.add_tag_to_segment(CurrentTagfieldContent);
+                            for i=1:FocusClass.OverlayGroup.Size
+                                if strcmp(FocusClass.OverlayGroup.Names{i},FocusClass.Name)
+                                    continue
+                                end
+                                Index = find(strcmp({FocusClass.OverlayGroup.Names{i}},obj.ForceMapNames));
+                                if ~isempty(Index)
+                                    obj.FM{Index}.add_tag_to_segment(CurrentTagfieldContent);
+                                end
+                                Index = find(strcmp({FocusClass.OverlayGroup.Names{i}},obj.AFMImageNames));
+                                if ~isempty(Index)
+                                    obj.I{Index}.add_tag_to_segment(CurrentTagfieldContent);
+                                end
+                            end
+                        end
+                    case 'All Segments in Experiment'
+                        for i=1:obj.NumForceMaps
+                            obj.FM{i}.add_tag_to_segment(CurrentTagfieldContent);
+                        end
+                        for i = 1:obj.NumAFMImages
+                            obj.I{i}.add_tag_to_segment(CurrentTagfieldContent);
+                        end
+                end
+                
+                update_tag_box
+            end
+            
+            function delete_tag(varargin)
+                
+                CurrentTagfieldContent = h.c(58).String{h.c(58).Value};
+                
+                TagValid = Experiment.check_segment_tag_validity(CurrentTagfieldContent);
+                
+                if ~TagValid
+                    warning('Tag is not valid. Refrain from using "*" in the string');
+                    return
+                end
+                
+                TagGrouping = h.c(55).String{h.c(55).Value};
+                
+                switch TagGrouping
+                    case 'Current Segment'
+                        FocusClass = obj.get_class_instance(ClassIndex(h.CurChannel1Idx,:));
+                        KeySegmentName = h.SegmentBox.String{h.SegmentBox.Value};
+                        [~,CurrentSegment] = AFMBaseClass.find_matching_segment(KeySegmentName,FocusClass.Segment);
+                        FocusClass.remove_tag_from_segment(CurrentTagfieldContent,CurrentSegment);
+                    case 'Identical Segments in Ov. Group'
+                        FocusClass = obj.get_class_instance(ClassIndex(h.CurChannel1Idx,:));
+                        KeySegmentName = h.SegmentBox.String{h.SegmentBox.Value};
+                        if ~FocusClass.OverlayGroup.hasOverlayGroup
+                            [~,CurrentSegment] = AFMBaseClass.find_matching_segment(KeySegmentName,FocusClass.Segment);
+                            FocusClass.remove_tag_from_segment(CurrentTagfieldContent,CurrentSegment);
+                        else
+                            [~,CurrentSegment] = AFMBaseClass.find_matching_segment(KeySegmentName,FocusClass.Segment);
+                            FocusClass.remove_tag_from_segment(CurrentTagfieldContent,CurrentSegment);
+                            for i=1:FocusClass.OverlayGroup.Size
+                                if strcmp(FocusClass.OverlayGroup.Names{i},FocusClass.Name)
+                                    continue
+                                end
+                                Index = find(strcmp({FocusClass.OverlayGroup.Names{i}},obj.ForceMapNames));
+                                if ~isempty(Index)
+                                    [~,CurrentSegment] = AFMBaseClass.find_matching_segment(KeySegmentName,obj.FM{Index}.Segment);
+                                    obj.FM{Index}.remove_tag_from_segment(CurrentTagfieldContent,CurrentSegment);
+                                end
+                                Index = find(strcmp({FocusClass.OverlayGroup.Names{i}},obj.AFMImageNames));
+                                if ~isempty(Index)
+                                    [~,CurrentSegment] = AFMBaseClass.find_matching_segment(KeySegmentName,obj.I{Index}.Segment);
+                                    obj.I{Index}.remove_tag_from_segment(CurrentTagfieldContent,CurrentSegment);
+                                end
+                            end
+                        end
+                    case 'All Segments in image'
+                        FocusClass = obj.get_class_instance(ClassIndex(h.CurChannel1Idx,:));
+                        FocusClass.remove_tag_from_segment(CurrentTagfieldContent);
+                    case 'All Segments in Ov. Group'
+                        FocusClass = obj.get_class_instance(ClassIndex(h.CurChannel1Idx,:));
+                        if ~FocusClass.OverlayGroup.hasOverlayGroup
+                            FocusClass.remove_tag_from_segment(CurrentTagfieldContent);
+                        else
+                            FocusClass.remove_tag_from_segment(CurrentTagfieldContent);
+                            for i=1:FocusClass.OverlayGroup.Size
+                                if strcmp(FocusClass.OverlayGroup.Names{i},FocusClass.Name)
+                                    continue
+                                end
+                                Index = find(strcmp({FocusClass.OverlayGroup.Names{i}},obj.ForceMapNames));
+                                if ~isempty(Index)
+                                    obj.FM{Index}.remove_tag_from_segment(CurrentTagfieldContent);
+                                end
+                                Index = find(strcmp({FocusClass.OverlayGroup.Names{i}},obj.AFMImageNames));
+                                if ~isempty(Index)
+                                    obj.I{Index}.remove_tag_from_segment(CurrentTagfieldContent);
+                                end
+                            end
+                        end
+                    case 'All Segments in Experiment'
+                        for i=1:obj.NumForceMaps
+                            obj.FM{i}.remove_tag_from_segment(CurrentTagfieldContent);
+                        end
+                        for i=1:obj.NumAFMImages
+                            obj.I{i}.remove_tag_from_segment(CurrentTagfieldContent);
+                        end
+                end
+                
+                update_tag_box
+                
+            end
+            
+            function update_tag_box()
+                
+                if isempty(h.SegmentBox.String)
+                    return
+                end
+                
+                FocusClass = obj.get_class_instance(ClassIndex(h.CurChannel1Idx,:));
+                KeySegmentName = h.SegmentBox.String{h.SegmentBox.Value};
+                [~,CurrentSegment] = AFMBaseClass.find_matching_segment(KeySegmentName,FocusClass.Segment);
+                TagList = FocusClass.read_out_tag_list(CurrentSegment);
+                
+                OldValue = h.c(58).Value;
+                if numel(TagList) < OldValue
+                    OldValue = 1;
+                end
+                h.c(58).String = TagList;
+                h.c(58).Value = OldValue;
+                
             end
             
             uiwait(h.Fig)
@@ -9701,6 +9927,18 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
         function load_empty_afmimage(SourceFile,TargetPath)
             
             FullFile = which()
+            
+        end
+        
+        function IsValid = check_segment_tag_validity(String)
+            
+            IsValid = true;
+            
+            if isempty(String) ||...
+                    (~ischar(String) && ~isstring(String)) ||...
+                    contains(String,'*')
+                IsValid = false;
+            end
             
         end
         

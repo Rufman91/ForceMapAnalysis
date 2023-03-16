@@ -1615,6 +1615,89 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             obj.Segment = NewSegment;
         end
         
+        function TagList = read_out_tag_list(obj,Indizes)
+            
+            if nargin < 2
+                NumSegments = numel(obj.Segment); 
+                Indizes = [1:NumSegments];
+            end
+            
+            LoopIndizes = reshape(Indizes,1,[]);
+            TagString = '';
+            for i=LoopIndizes
+                if ~isfield(obj.Segment(i),'Tags')
+                    continue
+                end
+                TagString = [TagString obj.Segment(i).Tags];
+            end
+            
+            TagList = AFMBaseClass.split_tags_string(TagString);
+            
+        end
+        
+        function add_tag_to_segment(obj,TagString,Indizes)
+            
+            if nargin < 3
+                NumSegments = numel(obj.Segment);
+                Indizes = 1:NumSegments;
+            end
+            
+            IsValid = Experiment.check_segment_tag_validity(TagString);
+            
+            if ~IsValid
+                error([TagString ' is not a valid tag string'])
+            end
+            
+            LoopIndizes = reshape(Indizes, 1, []);
+            Default = '';
+            TagField = 'Tags';
+            
+            % Check if 'Tags' field exists and add it if it doesn't
+            if ~isfield(obj.Segment, TagField)
+                [obj.Segment(1:numel(obj.Segment)).(TagField)] = deal(Default);
+            end
+            
+            % Add TagString to the Tags field of specified segments
+            for i = LoopIndizes
+                TagList = obj.read_out_tag_list(i);
+                if sum(contains(TagList,TagString))
+                    continue
+                end
+                obj.Segment(i).Tags = append(obj.Segment(i).Tags, [TagString '**']);
+            end
+        end
+        
+        function remove_tag_from_segment(obj, TagString, Indizes)
+            
+            if nargin < 3
+                NumSegments = numel(obj.Segment);
+                Indizes = 1:NumSegments;
+            end
+            
+            IsValid = Experiment.check_segment_tag_validity(TagString);
+            
+            if ~IsValid
+                error([TagString ' is not a valid tag string'])
+            end
+            
+            LoopIndizes = reshape(Indizes, 1, []);
+            TagField = 'Tags';
+            
+            % Remove TagString from the Tags field of specified segments
+            for i = LoopIndizes
+                if ~isfield(obj.Segment(i), TagField)
+                    continue
+                end
+                
+                TagList = obj.read_out_tag_list(i);
+                TagList = TagList(cellfun(@(tag) ~isequal(tag, TagString), TagList)); % Remove the specified tag with exact one-to-one match
+
+                % Reconstruct the Tags field without the specified tag
+                obj.Segment(i).Tags = [strjoin(TagList, '**') '**'];
+            end
+        end
+        
+        
     end
     methods (Static)
         % Static main methods
@@ -1929,6 +2012,17 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             
         end
         
+        function TagList = split_tags_string(TagString)
+            
+            TagList = split(TagString,'**');
+            
+            TagList = unique(TagList);
+            
+            % Remove empty cells from the TagList
+            emptyCells = cellfun(@isempty, TagList);
+            TagList = TagList(~emptyCells);
+        end
+        
     end
     methods (Static)
         % Static auxiliary methods
@@ -1999,17 +2093,17 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
                     DistanceMatrix(i,j) = norm(SearchedPoints1(i,:) - SearchedPoints2(j,:));
                 end
             end
-                
+            
             k = 1;
             while ~isempty(DistanceMatrix)
                 [~,LinIdx] = min(DistanceMatrix,[],'all','linear');
                 [row,col] = ind2sub(size(DistanceMatrix),LinIdx);
                 IndexPairs(k,:) = [IndexListSeg1(row) ; IndexListSeg2(col)];
-%                 % Debug
-%                 plot(SearchedPoints1(IndexListSeg1,1),SearchedPoints1(IndexListSeg1,2),'bO',...
-%                     SearchedPoints2(IndexListSeg2,1),SearchedPoints2(IndexListSeg2,2),'rO',...
-%                     SearchedPoints1(row,1),SearchedPoints1(row,2),'bX',SearchedPoints2(col,1),SearchedPoints2(col,2),'rX')
-%                 drawnow
+                %                 % Debug
+                %                 plot(SearchedPoints1(IndexListSeg1,1),SearchedPoints1(IndexListSeg1,2),'bO',...
+                %                     SearchedPoints2(IndexListSeg2,1),SearchedPoints2(IndexListSeg2,2),'rO',...
+                %                     SearchedPoints1(row,1),SearchedPoints1(row,2),'bX',SearchedPoints2(col,1),SearchedPoints2(col,2),'rX')
+                %                 drawnow
                 IndexListSeg1(row) = [];
                 IndexListSeg2(col) = [];
                 DistanceMatrix(row,:) = [];
@@ -2025,15 +2119,26 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             
         end
         
-        function [OutSegment,Index] = find_matching_segment(SegmentElement,SegmentStruct)
+        function [OutSegment, Index] = find_matching_segment(SegmentElement, SegmentStruct)
             
-            TargetName = SegmentElement.Name;
-            TargetSubName = SegmentElement.SubSegmentName;
-            
-            NameList = {SegmentStruct.Name};
-            SubNameList = {SegmentStruct.SubSegmentName};
-            
-            Index = find(strcmp({TargetName},NameList) & strcmp(TargetSubName,SubNameList));
+            if isstruct(SegmentElement)
+                TargetName = SegmentElement.Name;
+                TargetSubName = SegmentElement.SubSegmentName;
+                
+                NameList = {SegmentStruct.Name};
+                SubNameList = {SegmentStruct.SubSegmentName};
+                
+                Index = find(strcmp(TargetName, NameList) & strcmp(TargetSubName, SubNameList));
+                
+            elseif ischar(SegmentElement) || isstring(SegmentElement)
+                TargetName = char(SegmentElement); % Convert to char if input is a string
+                
+                NameList = {SegmentStruct.Name};
+                
+                Index = find(strcmp(TargetName, NameList));
+            else
+                error('Invalid input: SegmentElement must be a struct, character, or string.');
+            end
             
             if isempty(Index)
                 Index = [];
