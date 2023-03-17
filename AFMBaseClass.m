@@ -1590,7 +1590,7 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
                 v.close
             end
             
-            obj.map_segment_properties_to_image_pixels('Median');
+            obj.map_fiber_segment_properties_to_image_pixels('Median');
             
             OutStructAll = Struct;
             close(h)
@@ -2182,7 +2182,7 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             
         end
         
-        function map_segment_properties_to_image_pixels(obj,PoolingMethod)
+        function map_fiber_segment_properties_to_image_pixels(obj,PoolingMethod)
             
             if nargin < 2
                 PoolingMethod = 'Median';
@@ -2306,6 +2306,11 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
                 end
             end
             close(h)
+        end
+        
+        function map_segments_to_image_pixels()
+            
+            
         end
         
         function [DynPropNames,ChannelNames] = write_unrolled_channels_to_dynamic_properties(obj)
