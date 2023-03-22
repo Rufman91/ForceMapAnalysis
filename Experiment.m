@@ -10605,9 +10605,11 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             
             for i=1:obj.NumForceMaps
                 obj.FM{i}.map_fiber_segment_properties_to_image_pixels(PoolingMethod);
+%                 obj.FM{i}.map_segments_to_image_pixels;
             end
             for i=1:obj.NumAFMImages
                 obj.I{i}.map_fiber_segment_properties_to_image_pixels(PoolingMethod);
+%                 obj.I{i}.map_segments_to_image_pixels;
             end
             
         end
