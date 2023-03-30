@@ -1691,12 +1691,64 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
                 
                 TagList = obj.read_out_tag_list(i);
                 TagList = TagList(cellfun(@(tag) ~isequal(tag, TagString), TagList)); % Remove the specified tag with exact one-to-one match
-
+                
                 % Reconstruct the Tags field without the specified tag
                 obj.Segment(i).Tags = [strjoin(TagList, '**') '**'];
             end
         end
         
+        function [localSlope, localCurvature] = analyzeSurface(obj, HeightChannelName, Radius)
+            % ANALYZESURFACE Analyzes the local slope and curvature of the AFM image.
+            % INPUTS:
+            % obj: An instance of AFMBaseClass.
+            % HeightChannelName: A string specifying the height channel name.
+            % Radius: A scalar specifying the radius around each point to be considered for the surface fit.
+            %
+            % OUTPUTS:
+            % localSlope: A matrix with the same size as the height image, containing local slope values.
+            % localCurvature: A matrix with the same size as the height image, containing local curvature values.
+            
+            % Obtain the height channel struct from the object using the given height channel name
+            heightChannel = obj.get_channel(HeightChannelName);
+            
+            % Extract the relevant information from the height channel struct
+            heightImage = heightChannel.Image;
+            scanSizeX = heightChannel.ScanSizeX;
+            scanSizeY = heightChannel.ScanSizeY;
+            numPixelsX = heightChannel.NumPixelsX;
+            numPixelsY = heightChannel.NumPixelsY;
+            
+            % Calculate the physical distance between pixels
+            deltaX = scanSizeX / (numPixelsX - 1);
+            deltaY = scanSizeY / (numPixelsY - 1);
+            
+            % Calculate the number of pixels to be considered in each direction based on the given radius
+            radiusX = ceil(Radius / deltaX);
+            radiusY = ceil(Radius / deltaY);
+            
+            % Initialize local slope and curvature matrices with the same size as the height image
+            localSlope = zeros(size(heightImage));
+            localCurvature = zeros(size(heightImage));
+            
+            % Loop through each pixel in the height image
+            for x = 1:numPixelsX
+                for y = 1:numPixelsY
+                    % Determine the range of pixels to be considered around the current pixel
+                    rangeX = max(1, x - radiusX):min(numPixelsX, x + radiusX);
+                    rangeY = max(1, y - radiusY):min(numPixelsY, y + radiusY);
+                    
+                    % Extract the sub-image around the current pixel
+                    subImage = heightImage(rangeX, rangeY);
+                    
+                    % Calculate the local slope and curvature using first and second order surface fits
+                    [slope, curvature] = AFMBaseClass.surfaceFits(subImage, deltaX, deltaY);
+                    
+                    % Store the local slope and curvature values in the corresponding matrices
+                    localSlope(x, y) = slope;
+                    localCurvature(x, y) = curvature;
+                end
+            end
+        end
         
     end
     methods (Static)
@@ -2021,6 +2073,51 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             % Remove empty cells from the TagList
             emptyCells = cellfun(@isempty, TagList);
             TagList = TagList(~emptyCells);
+        end
+        
+        function [slope, curvature] = surfaceFits(subImage, deltaX, deltaY)
+            % SURFACEFITS Calculates the local slope and curvature from a sub-image using first and second order surface fits.
+            % INPUTS:
+            % subImage: A 2D matrix representing the height values around a point in the AFM image.
+            % deltaX, deltaY: Scalars representing the physical distance between pixels in the X and Y directions.
+            %
+            % OUTPUTS:
+            % slope: A scalar representing the local slope value.
+            % curvature: A scalar representing the local curvature value.
+            
+            % Get the size of the sub-image
+            [m, n] = size(subImage);
+            
+            % Create coordinate matrices
+            [X, Y] = meshgrid((1:n) * deltaX, (1:m) * deltaY);
+            % Flatten the coordinate matrices and sub-image
+            X = X(:);
+            Y = Y(:);
+            Z = subImage(:);
+            
+            % Prepare the design matrices for first and second order surface fits
+            A1 = [X, Y, ones(length(X), 1)];
+            A2 = [X.^2, Y.^2, X.*Y, X, Y, ones(length(X), 1)];
+            
+            % Perform the least squares fit for the first and second order surfaces
+            coef1 = A1 \ Z;
+            coef2 = A2 \ Z;
+            
+            % Extract the coefficients for the first order surface fit
+            a1 = coef1(1);
+            b1 = coef1(2);
+            
+            % Extract the coefficients for the second order surface fit
+            a2 = coef2(1);
+            b2 = coef2(2);
+            c2 = coef2(3);
+            
+            % Compute the local slope
+            slope = sqrt(a1^2 + b1^2);
+            
+            % Compute the local curvature
+            curvature = sqrt((2 * a2)^2 + (2 * b2)^2);
+            
         end
         
     end
