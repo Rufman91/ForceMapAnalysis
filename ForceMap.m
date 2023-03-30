@@ -4856,26 +4856,48 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
             
         end
         
-        function create_and_level_height_map(obj)
+        function create_and_level_height_map(obj, ForceFraction)
             % first set Height Map to default values for reproducable
             % results
             
-            obj.construct_list_to_map_relations()
+            obj.construct_list_to_map_relations();
+            
+            if nargin < 2
+                ForceFraction = 1;
+            end
             
             Max = zeros(obj.NCurves,1);
             for i=1:obj.NCurves
-                [~,HHApp] = obj.get_force_curve_data(i,'AppRetSwitch',0,...
+                if ForceFraction == 1
+                [Force,HHApp] = obj.get_force_curve_data(i,'AppRetSwitch',0,...
                     'BaselineCorrection',0,'TipHeightCorrection',0,...
                     'Sensitivity','original','Unit','N');
-                Max(i) = -max(HHApp);
+                    Max(i) = -max(HHApp);
+                else
+                [Force,HHApp] = obj.get_force_curve_data(i,'AppRetSwitch',0,...
+                    'BaselineCorrection',1,'TipHeightCorrection',0,...
+                    'Sensitivity','original','Unit','N');
+                    interp_Force = linspace(min(Force), obj.Setpoint, numel(Force));
+                    [~, ForceIdx] = min(abs(interp_Force - ForceFraction * obj.Setpoint));
+                    Max(i) = -HHApp(ForceIdx);
+                end
             end
             TempHeightMap = obj.convert_data_list_to_map(Max);
             
-            % write to Channel
-            obj.delete_channel('Indented Height')
-            Height = obj.create_standard_channel(TempHeightMap,'Indented Height','m');
+            if ForceFraction == 1
+                Channel1Name = 'Indented Height';
+                Channel2Name = 'Processed Indented Height';
+            else
+                Percent = ForceFraction*100;
+                Channel1Name = ['Indented Height ForceFraction ' num2str(Percent) '%' ];
+                Channel2Name = ['Processed Indented Height ForceFraction ' num2str(Percent) '%' ];
+            end
             
-            [Channel,Index] = obj.get_channel('Indented Height');
+            % write to Channel
+            obj.delete_channel(Channel1Name)
+            Height = obj.create_standard_channel(TempHeightMap,Channel1Name,'m');
+            
+            [Channel,Index] = obj.get_channel(Channel1Name);
             if isempty(Channel)
                 Len = length(obj.Channel);
                 if ~Len
@@ -4906,10 +4928,10 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
             end
             
             % write to Channel
-            obj.delete_channel('Processed Indented Height')
-            Processed = obj.create_standard_channel(Map,'Processed Indented Height','m');
+            obj.delete_channel(Channel2Name)
+            Processed = obj.create_standard_channel(Map,Channel2Name,'m');
             
-            [Channel,Index] = obj.get_channel('Processed Indented Height');
+            [Channel,Index] = obj.get_channel(Channel2Name);
             if isempty(Channel)
                 Len = length(obj.Channel);
                 if ~Len
@@ -4922,6 +4944,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
             end
             
         end
+
         
         function create_fibril_mask(obj,MaskParam)
             
