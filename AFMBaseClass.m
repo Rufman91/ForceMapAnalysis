@@ -828,8 +828,106 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
                             continue
                         end
                         gca = Parent;
-                        Line = drawpolyline('Position',obj.Segment(j).ROIObject.Position,'Parent',Parent);
-                        Mask = Line.createMask;
+                        %%%%%%%
+                        
+                        CurrentDrawMode = lower(obj.Segment(i).Type);
+                        switch CurrentDrawMode
+                            case 'line'
+                                DrawObject = drawline('Position',obj.Segment(i).ROIObject.Position,...
+                                    'Deletable',1,...
+                                    'InteractionsAllowed','all',...
+                                    'LineWidth',obj.Segment(i).ROIObject.LineWidth,...
+                                    'Label',sprintf('%s || %s',obj.Segment(i).Name,obj.Segment(i).SubSegmentName),...
+                                    'LabelAlpha',0.6,...
+                                    'Parent',Parent);
+                            case 'freehand'
+                                DrawObject = drawfreehand('Position',obj.Segment(i).ROIObject.Position,...
+                                    'Deletable',1,...
+                                    'InteractionsAllowed','all',...
+                                    'LineWidth',obj.Segment(i).ROIObject.LineWidth,...
+                                    'Label',sprintf('%s || %s',obj.Segment(i).Name,obj.Segment(i).SubSegmentName),...
+                                    'LabelAlpha',0.6,...
+                                    'Parent',Parent);
+                            case 'square'
+                                DrawObject = drawsquare('Position',obj.Segment(i).ROIObject.Position,...
+                                    'Deletable',1,...
+                                    'InteractionsAllowed','all',...
+                                    'LineWidth',obj.Segment(i).ROIObject.LineWidth,...
+                                    'Label',sprintf('%s || %s',obj.Segment(i).Name,obj.Segment(i).SubSegmentName),...
+                                    'LabelAlpha',0.6,...
+                                    'Parent',Parent);
+                            case 'circle'
+                                DrawObject = drawcircle('Center',obj.Segment(i).ROIObject.Center,...
+                                    'Radius',obj.Segment(i).ROIObject.Radius,...
+                                    'Deletable',1,...
+                                    'InteractionsAllowed','all',...
+                                    'LineWidth',obj.Segment(i).ROIObject.LineWidth,...
+                                    'Label',sprintf('%s || %s',obj.Segment(i).Name,obj.Segment(i).SubSegmentName),...
+                                    'LabelAlpha',0.6,...
+                                    'Parent',Parent);
+                            case 'ellipse'
+                                DrawObject = drawellipse('Center',obj.Segment(i).ROIObject.Center,...
+                                    'SemiAxes',obj.Segment(i).ROIObject.SemiAxes,...
+                                    'RotationAngle',obj.Segment(i).ROIObject.RotationAngle,...
+                                    'Deletable',1,...
+                                    'InteractionsAllowed','all',...
+                                    'LineWidth',obj.Segment(i).ROIObject.LineWidth,...
+                                    'Label',sprintf('%s || %s',obj.Segment(i).Name,obj.Segment(i).SubSegmentName),...
+                                    'LabelAlpha',0.6,...
+                                    'Parent',Parent);
+                            case 'polygon'
+                                DrawObject = drawpolygon('Position',obj.Segment(i).ROIObject.Position,...
+                                    'Deletable',1,...
+                                    'InteractionsAllowed','all',...
+                                    'LineWidth',obj.Segment(i).ROIObject.LineWidth,...
+                                    'Label',sprintf('%s || %s',obj.Segment(i).Name,obj.Segment(i).SubSegmentName),...
+                                    'LabelAlpha',0.6,...
+                                    'Parent',Parent);
+                            case 'rectangle'
+                                DrawObject = drawrectangle('Position',obj.Segment(i).ROIObject.Position,...
+                                    'RotationAngle',obj.Segment(i).ROIObject.RotationAngle,...
+                                    'Rotatable',true,...
+                                    'Deletable',1,...
+                                    'InteractionsAllowed','all',...
+                                    'LineWidth',obj.Segment(i).ROIObject.LineWidth,...
+                                    'Label',sprintf('%s || %s',obj.Segment(i).Name,obj.Segment(i).SubSegmentName),...
+                                    'LabelAlpha',0.6,...
+                                    'Parent',Parent);
+                            case 'crosshair'
+                                DrawObject = drawcrosshair('Position',obj.Segment(i).ROIObject.Position,...
+                                    'Deletable',1,...
+                                    'InteractionsAllowed','all',...
+                                    'LineWidth',obj.Segment(i).ROIObject.LineWidth,...
+                                    'Label',sprintf('%s || %s',obj.Segment(i).Name,obj.Segment(i).SubSegmentName),...
+                                    'LabelAlpha',0.6,...
+                                    'Parent',Parent);
+                            case 'point'
+                                DrawObject = drawpoint('Position',obj.Segment(i).ROIObject.Position,...
+                                    'Deletable',1,...
+                                    'InteractionsAllowed','all',...
+                                    'LineWidth',obj.Segment(i).ROIObject.LineWidth,...
+                                    'Label',sprintf('%s || %s',obj.Segment(i).Name,obj.Segment(i).SubSegmentName),...
+                                    'LabelAlpha',0.6,...
+                                    'Parent',Parent);
+                            case 'assisted'
+                                DrawObject = drawassisted('Position',obj.Segment(i).ROIObject.Position,...
+                                    'Deletable',1,...
+                                    'InteractionsAllowed','all',...
+                                    'LineWidth',obj.Segment(i).ROIObject.LineWidth,...
+                                    'Label',sprintf('%s || %s',obj.Segment(i).Name,obj.Segment(i).SubSegmentName),...
+                                    'LabelAlpha',0.6,...
+                                    'Parent',Parent);
+                            case 'polyline'
+                                DrawObject = drawpolyline('Position',obj.Segment(i).ROIObject.Position,...
+                                    'Deletable',1,...
+                                    'InteractionsAllowed','all',...
+                                    'LineWidth',obj.Segment(i).ROIObject.LineWidth,...
+                                    'Label',sprintf('%s || %s',obj.Segment(i).Name,obj.Segment(i).SubSegmentName),...
+                                    'LabelAlpha',0.6,...
+                                    'Parent',Parent);
+                        end
+                        %%%%%%%
+                        Mask = DrawObject.createMask;
                         if PixelDilation
                             StrEl = strel('Disk',PixelDilation,0);
                             Mask = imdilate(Mask,StrEl);
@@ -1697,55 +1795,70 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             end
         end
         
-        function [localSlope, localCurvature] = analyzeSurface(obj, HeightChannelName, Radius)
-            % ANALYZESURFACE Analyzes the local slope and curvature of the AFM image.
-            % INPUTS:
-            % obj: An instance of AFMBaseClass.
-            % HeightChannelName: A string specifying the height channel name.
-            % Radius: A scalar specifying the radius around each point to be considered for the surface fit.
+        function [slope, curvature, slope_direction] = localSurfaceFit(obj, HeightChannelName, Radius)
+            %LOCALSURFACEFIT Calculates the local slope and curvature of an AFMBaseClass object's height image
+            %   This method takes an AFMBaseClass object instance (obj) and a HeightChannelName as input,
+            %   reads the height image using the get_channel method, and computes the local slope and
+            %   curvature within a given Radius. It also creates a map of the slope direction.
             %
-            % OUTPUTS:
-            % localSlope: A matrix with the same size as the height image, containing local slope values.
-            % localCurvature: A matrix with the same size as the height image, containing local curvature values.
+            %   Input:
+            %       obj - An AFMBaseClass object instance
+            %       HeightChannelName - The name of the height channel
+            %       Radius - The radius within which the surface fit is determined for each area
+            %
+            %   Output:
+            %       slope - The local slope as a first-order surface fit
+            %       curvature - The local curvature as a second-order surface fit
+            %       slope_direction - A map of the direction of the slope
             
-            % Obtain the height channel struct from the object using the given height channel name
-            heightChannel = obj.get_channel(HeightChannelName);
+            % Read the height image from the object using the get_channel method
+            height_channel = obj.get_channel(HeightChannelName);
+            height_image = height_channel.Image;
+            scan_size_x = height_channel.ScanSizeX;
+            scan_size_y = height_channel.ScanSizeY;
+            num_pixels_x = height_channel.NumPixelsX;
+            num_pixels_y = height_channel.NumPixelsY;
             
-            % Extract the relevant information from the height channel struct
-            heightImage = heightChannel.Image;
-            scanSizeX = heightChannel.ScanSizeX;
-            scanSizeY = heightChannel.ScanSizeY;
-            numPixelsX = heightChannel.NumPixelsX;
-            numPixelsY = heightChannel.NumPixelsY;
+            required_data_points = 6;
+            min_radius = AFMBaseClass.calculateMinimumRadius(height_channel, required_data_points);
+            if min_radius > Radius
+                Radius = min_radius;
+                warning(['The ROI-Radius you chose for curvature fitting is too small. Replaced with the minimum radius of ' num2str(min_radius)]);
+            end
             
-            % Calculate the physical distance between pixels
-            deltaX = scanSizeX / (numPixelsX - 1);
-            deltaY = scanSizeY / (numPixelsY - 1);
+            % Calculate the pixel size in x and y directions
+            pixel_size_x = scan_size_x / (num_pixels_x - 1);
+            pixel_size_y = scan_size_y / (num_pixels_y - 1);
             
-            % Calculate the number of pixels to be considered in each direction based on the given radius
-            radiusX = ceil(Radius / deltaX);
-            radiusY = ceil(Radius / deltaY);
+            % Initialize the output matrices
+            slope = zeros(num_pixels_y, num_pixels_x);
+            curvature = zeros(num_pixels_y, num_pixels_x);
+            slope_direction = zeros(num_pixels_y, num_pixels_x);
             
-            % Initialize local slope and curvature matrices with the same size as the height image
-            localSlope = zeros(size(heightImage));
-            localCurvature = zeros(size(heightImage));
-            
+            PixRadiusX = Radius/pixel_size_x;
+            PixRadiusY = Radius/pixel_size_y;
             % Loop through each pixel in the height image
-            for x = 1:numPixelsX
-                for y = 1:numPixelsY
-                    % Determine the range of pixels to be considered around the current pixel
-                    rangeX = max(1, x - radiusX):min(numPixelsX, x + radiusX);
-                    rangeY = max(1, y - radiusY):min(numPixelsY, y + radiusY);
+            for i = 1:num_pixels_y
+                for j = 1:num_pixels_x
+                    % Determine the region of interest (ROI) around the current pixel
+                    [x_roi, y_roi] = meshgrid(max(1, j-PixRadiusX):min(num_pixels_x, j+PixRadiusX), ...
+                        max(1, i-PixRadiusY):min(num_pixels_y, i+PixRadiusY));
                     
-                    % Extract the sub-image around the current pixel
-                    subImage = heightImage(rangeX, rangeY);
+                    % Extract the height values within the ROI
+                    z_roi = height_image(sub2ind(size(height_image), y_roi(:), x_roi(:)));
                     
-                    % Calculate the local slope and curvature using first and second order surface fits
-                    [slope, curvature] = AFMBaseClass.surfaceFits(subImage, deltaX, deltaY);
+                    % Fit a first-order surface (plane) to the ROI data
+                    [p1, ~, ~] = AFMBaseClass.fitPlane(x_roi(:) * pixel_size_x, y_roi(:) * pixel_size_y, z_roi);
                     
-                    % Store the local slope and curvature values in the corresponding matrices
-                    localSlope(x, y) = slope;
-                    localCurvature(x, y) = curvature;
+                    % Fit a second-order surface (paraboloid) to the ROI data
+                    [p2, ~, ~] = AFMBaseClass.fitParaboloid(x_roi(:) * pixel_size_x, y_roi(:) * pixel_size_y, z_roi);
+                    
+                    % Calculate the local slope and curvature at the current pixel
+                    slope(i, j) = norm(p1(1:2));
+                    curvature(i, j) = sqrt(p2(1)^2 + p2(2)^2);
+                    
+                    % Calculate the slope direction and convert it to degrees
+                    slope_direction(i, j) = atan2d(p1(2), p1(1));
                 end
             end
         end
@@ -2075,51 +2188,80 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             TagList = TagList(~emptyCells);
         end
         
-        function [slope, curvature] = surfaceFits(subImage, deltaX, deltaY)
-            % SURFACEFITS Calculates the local slope and curvature from a sub-image using first and second order surface fits.
-            % INPUTS:
-            % subImage: A 2D matrix representing the height values around a point in the AFM image.
-            % deltaX, deltaY: Scalars representing the physical distance between pixels in the X and Y directions.
+        function [coeffs, x_fit, z_fit] = fitPlane(x, y, z)
+            %FITPLANE Fits a first-order surface (plane) to the input data
+            %   Input:
+            %       x, y, z - The input data points
             %
-            % OUTPUTS:
-            % slope: A scalar representing the local slope value.
-            % curvature: A scalar representing the local curvature value.
+            %   Output:
+            %       coeffs
+            %       coeffs - The coefficients of the fitted plane
+            %       x_fit, z_fit - The fitted x and z values
             
-            % Get the size of the sub-image
-            [m, n] = size(subImage);
+            % Formulate the design matrix A and the observation vector b
+            A = [x, y, ones(size(x))];
+            b = z;
             
-            % Create coordinate matrices
-            [X, Y] = meshgrid((1:n) * deltaX, (1:m) * deltaY);
-            % Flatten the coordinate matrices and sub-image
-            X = X(:);
-            Y = Y(:);
-            Z = subImage(:);
+            % Solve the least squares problem to find the coefficients of the fitted plane
+            coeffs = A \ b;
             
-            % Prepare the design matrices for first and second order surface fits
-            A1 = [X, Y, ones(length(X), 1)];
-            A2 = [X.^2, Y.^2, X.*Y, X, Y, ones(length(X), 1)];
-            
-            % Perform the least squares fit for the first and second order surfaces
-            coef1 = A1 \ Z;
-            coef2 = A2 \ Z;
-            
-            % Extract the coefficients for the first order surface fit
-            a1 = coef1(1);
-            b1 = coef1(2);
-            
-            % Extract the coefficients for the second order surface fit
-            a2 = coef2(1);
-            b2 = coef2(2);
-            c2 = coef2(3);
-            
-            % Compute the local slope
-            slope = sqrt(a1^2 + b1^2);
-            
-            % Compute the local curvature
-            curvature = sqrt((2 * a2)^2 + (2 * b2)^2);
-            
+            % Calculate the fitted x and z values
+            x_fit = A * coeffs;
+            z_fit = b - x_fit;
         end
         
+        function [coeffs, x_fit, z_fit] = fitParaboloid(x, y, z)
+            %FITPARABOLOID Fits a second-order surface (paraboloid) to the input data
+            % Input:
+            % x, y, z - The input data points
+            %
+            % Output:
+            % coeffs - The coefficients of the fitted paraboloid
+            % x_fit, z_fit - The fitted x and z values
+            
+            % Formulate the design matrix A and the observation vector b
+            A = [x.^2, y.^2, x.*y, x, y, ones(size(x))];
+            b = z;
+            
+            % Solve the least squares problem to find the coefficients of the fitted paraboloid
+            coeffs = A \ b;
+            
+            % Calculate the fitted x and z values
+            x_fit = A * coeffs;
+            z_fit = b - x_fit;
+        end
+        
+        function min_radius = calculateMinimumRadius(Channel, required_data_points)
+            %CALCULATEMINIMUMRADIUS Calculates the minimum radius required for fitting a second-order surface
+            %   This function takes an AFMBaseClass object instance (obj) and the required number of data points
+            %   for fitting a second-order surface as input and calculates the minimum radius based on the grid
+            %   spacing in the x and y directions.
+            %
+            %   Input:
+            %       Channel - An AFMBaseClass channel
+            %       required_data_points - The required number of data points for fitting a second-order surface
+            %
+            %   Output:
+            %       min_radius - The minimum radius required for fitting a second-order surface
+            
+            % Get the grid spacing in the x and y directions
+            num_pixels_x = Channel.NumPixelsX;
+            num_pixels_y = Channel.NumPixelsY;
+            scan_size_x = Channel.ScanSizeX;
+            scan_size_y = Channel.ScanSizeY;
+            
+            grid_spacing_x = scan_size_x / (num_pixels_x - 1);
+            grid_spacing_y = scan_size_y / (num_pixels_y - 1);
+            
+            % Calculate the minimum radius in the x and y directions
+            min_radius_x = grid_spacing_x*ceil(sqrt(required_data_points / (num_pixels_y - 1)));
+            min_radius_y = grid_spacing_y*ceil(sqrt(required_data_points / (num_pixels_x - 1)));
+            
+            % Take the maximum of the two minimum radii to ensure enough data points
+            min_radius = max(min_radius_x, min_radius_y);
+        end
+
+
     end
     methods (Static)
         % Static auxiliary methods
