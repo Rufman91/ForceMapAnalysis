@@ -1795,7 +1795,7 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             end
         end
         
-        function [slope, curvature, slope_direction] = localSurfaceFit(obj, HeightChannelName, Radius)
+        function [slope, radius_of_curvature, slope_direction] = localSurfaceFit(obj, HeightChannelName, Radius)
             %LOCALSURFACEFIT Calculates the local slope and curvature of an AFMBaseClass object's height image
             %   This method takes an AFMBaseClass object instance (obj) and a HeightChannelName as input,
             %   reads the height image using the get_channel method, and computes the local slope and
@@ -1832,11 +1832,11 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             
             % Initialize the output matrices
             slope = zeros(num_pixels_y, num_pixels_x);
-            curvature = zeros(num_pixels_y, num_pixels_x);
+            radius_of_curvature = zeros(num_pixels_y, num_pixels_x);
             slope_direction = zeros(num_pixels_y, num_pixels_x);
             
-            PixRadiusX = Radius/pixel_size_x;
-            PixRadiusY = Radius/pixel_size_y;
+            PixRadiusX = round(Radius/pixel_size_x);
+            PixRadiusY = round(Radius/pixel_size_y);
             % Loop through each pixel in the height image
             for i = 1:num_pixels_y
                 for j = 1:num_pixels_x
@@ -1855,7 +1855,7 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
                     
                     % Calculate the local slope and curvature at the current pixel
                     slope(i, j) = norm(p1(1:2));
-                    curvature(i, j) = sqrt(p2(1)^2 + p2(2)^2);
+                    radius_of_curvature(i, j) = sign(p2(1) + p2(2))/sqrt(p2(1)^2 + p2(2)^2);
                     
                     % Calculate the slope direction and convert it to degrees
                     slope_direction(i, j) = atan2d(p1(2), p1(1));
