@@ -2210,14 +2210,14 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             z_fit = b - x_fit;
         end
         
-        function [coeffs, x_fit, z_fit] = fitParaboloid(x, y, z)
+        function [coeffs, X_fit, Y_fit, Z_fit] = fitParaboloid(x, y, z)
             %FITPARABOLOID Fits a second-order surface (paraboloid) to the input data
             % Input:
             % x, y, z - The input data points
             %
             % Output:
             % coeffs - The coefficients of the fitted paraboloid
-            % x_fit, z_fit - The fitted x and z values
+            % X_fit, Y_fit, Z_fit - The fitted x, y, and z values
             
             % Formulate the design matrix A and the observation vector b
             A = [x.^2, y.^2, x.*y, x, y, ones(size(x))];
@@ -2226,10 +2226,13 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             % Solve the least squares problem to find the coefficients of the fitted paraboloid
             coeffs = A \ b;
             
-            % Calculate the fitted x and z values
-            x_fit = A * coeffs;
-            z_fit = b - x_fit;
+            % Create a meshgrid for X and Y coordinates
+            [X_fit, Y_fit] = meshgrid(linspace(min(x), max(x), 100), linspace(min(y), max(y), 100));
+            
+            % Calculate the fitted Z values using the fit coefficients and meshgrid
+            Z_fit = coeffs(1) * X_fit.^2 + coeffs(2) * Y_fit.^2 + coeffs(3) * X_fit .* Y_fit + coeffs(4) * X_fit + coeffs(5) * Y_fit + coeffs(6);
         end
+        
         
         function min_radius = calculateMinimumRadius(Channel, required_data_points)
             %CALCULATEMINIMUMRADIUS Calculates the minimum radius required for fitting a second-order surface
