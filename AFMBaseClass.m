@@ -1837,6 +1837,18 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             
             PixRadiusX = round(Radius/pixel_size_x);
             PixRadiusY = round(Radius/pixel_size_y);
+            
+            
+            % Initialize the warning count
+            warningCount = struct('fitPlaneWarnings', 0, 'fitParaboloidWarnings', 0);
+            
+            % Suppress warnings for fitting functions
+            plane_warning_state = warning('off', 'MATLAB:rankDeficientMatrix');
+            singular_matrix_warning_state = warning('off', 'MATLAB:singularMatrix');
+            ill_conditioned_matrix_warning_state = warning('off', 'MATLAB:nearlySingularMatrix');
+            
+            
+            
             % Loop through each pixel in the height image
             for i = 1:num_pixels_y
                 for j = 1:num_pixels_x
@@ -1848,11 +1860,13 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
                     z_roi = height_image(sub2ind(size(height_image), y_roi(:), x_roi(:)));
                     
                     % Fit a first-order surface (plane) to the ROI data
-                    [p1, ~, ~] = AFMBaseClass.fitPlane(x_roi(:) * pixel_size_x, y_roi(:) * pixel_size_y, z_roi);
-                    
+                    [p1, ~, ~, ~, plane_warnings] = AFMBaseClass.fitPlane(x_roi(:) * pixel_size_x, y_roi(:) * pixel_size_y, z_roi);
+                    warningCount.fitPlaneWarnings = warningCount.fitPlaneWarnings + plane_warnings;
+            
                     % Fit a second-order surface (paraboloid) to the ROI data
-                    [p2, ~, ~] = AFMBaseClass.fitParaboloid(x_roi(:) * pixel_size_x, y_roi(:) * pixel_size_y, z_roi);
-                    
+                    [p2, ~, ~, ~, paraboloid_warnings] = AFMBaseClass.fitParaboloid(x_roi(:) * pixel_size_x, y_roi(:) * pixel_size_y, z_roi);
+                    warningCount.fitParaboloidWarnings = warningCount.fitParaboloidWarnings + paraboloid_warnings;
+            
                     % Calculate the local slope and curvature at the current pixel
                     slope(i, j) = norm(p1(1:2));
                     radius_of_curvature(i, j) = sign(p2(1) + p2(2))/sqrt(p2(1)^2 + p2(2)^2);
@@ -1861,12 +1875,47 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
                     slope_direction(i, j) = atan2d(p1(2), p1(1));
                 end
             end
+            % Restore the original warning state
+            warning(plane_warning_state);
+            warning(singular_matrix_warning_state);
+            warning(ill_conditioned_matrix_warning_state);
+            
+            % Restore the original warning state
+            warning(plane_warning_state);
+            warning(singular_matrix_warning_state);
+            warning(ill_conditioned_matrix_warning_state);
+            
         end
         
     end
     methods (Static)
         % Static main methods
         
+        function OutImage = deconvolute_by_mathematical_morphology_python(InImage, ErodingGeometry)
+            % Make sure Python is properly set up in MATLAB by running "pyversion" command in MATLAB
+            % Save the Python function in a file named "run_deconvolution.py"
+            
+            % Find the full path of the Python file on the MATLAB search path
+            python_file_path = which('run_deconvolution.py');
+            
+            if isempty(python_file_path)
+                error('run_deconvolution.py not found on the MATLAB search path.');
+            end
+            
+            % Extract the directory containing the Python file
+            python_file_dir = fileparts(python_file_path);
+            
+            % Convert MATLAB arrays to Python numpy arrays
+            InImage_np = py.numpy.array(InImage);
+            ErodingGeometry_np = py.numpy.array(ErodingGeometry);
+            
+            % Call the Python function
+            OutImage_np = py.run_deconvolution.run_deconvolution(python_file_dir, InImage_np, ErodingGeometry_np);
+            
+            % Convert the result back to a MATLAB array
+            OutImage = double(OutImage_np);
+        end
+
         function OutImage = deconvolute_by_mathematical_morphology(InImage,ErodingGeometry)
             
             if ~isequal(size(InImage),size(ErodingGeometry))
@@ -2188,7 +2237,7 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             TagList = TagList(~emptyCells);
         end
         
-        function [coeffs, x_fit, z_fit] = fitPlane(x, y, z)
+        function [coeffs, x_fit, z_fit, y_fit, warnings] = fitPlane(x, y, z)
             %FITPLANE Fits a first-order surface (plane) to the input data
             %   Input:
             %       x, y, z - The input data points
@@ -2198,19 +2247,39 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             %       coeffs - The coefficients of the fitted plane
             %       x_fit, z_fit - The fitted x and z values
             
+            % Standardize x and y values
+            x_mean = mean(x);
+            x_std = std(x);
+            y_mean = mean(y);
+            y_std = std(y);
+            x_stdized = (x - x_mean) / x_std;
+            y_stdized = (y - y_mean) / y_std;
+            
             % Formulate the design matrix A and the observation vector b
-            A = [x, y, ones(size(x))];
+            A = [x_stdized, y_stdized, ones(size(x))];
             b = z;
             
             % Solve the least squares problem to find the coefficients of the fitted plane
-            coeffs = A \ b;
+            coeffs_std = A \ b;
             
-            % Calculate the fitted x and z values
-            x_fit = A * coeffs;
-            z_fit = b - x_fit;
+            % Back-transform the coefficients to the original scale
+            coeffs = zeros(3, 1);
+            coeffs(1) = coeffs_std(1) / x_std;
+            coeffs(2) = coeffs_std(2) / y_std;
+            coeffs(3) = coeffs_std(3) - coeffs_std(1) * x_mean - coeffs_std(2) * y_mean;
+            
+            % Calculate the fitted x and z values in the original scale
+            x_fit = x;
+            y_fit = y;
+            z_fit = coeffs(1) * x + coeffs(2) * y + coeffs(3);
+            
+            
+            % Count rank deficient warnings
+            [~, warnings] = lastwarn;
+            warnings = double(contains(warnings, 'rankDeficientMatrix')) + double(contains(warnings, 'singularMatrix'));
         end
         
-        function [coeffs, X_fit, Y_fit, Z_fit] = fitParaboloid(x, y, z)
+        function [coeffs, X_fit, Y_fit, Z_fit, warnings] = fitParaboloid(x, y, z)
             %FITPARABOLOID Fits a second-order surface (paraboloid) to the input data
             % Input:
             % x, y, z - The input data points
@@ -2219,20 +2288,41 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             % coeffs - The coefficients of the fitted paraboloid
             % X_fit, Y_fit, Z_fit - The fitted x, y, and z values
             
+            % Standardize x and y values
+            x_mean = mean(x);
+            x_std = std(x);
+            y_mean = mean(y);
+            y_std = std(y);
+            x_stdized = (x - x_mean) / x_std;
+            y_stdized = (y - y_mean) / y_std;
+            
             % Formulate the design matrix A and the observation vector b
-            A = [x.^2, y.^2, x.*y, x, y, ones(size(x))];
+            A = [x_stdized.^2, y_stdized.^2, x_stdized.*y_stdized, x_stdized, y_stdized, ones(size(x))];
             b = z;
             
             % Solve the least squares problem to find the coefficients of the fitted paraboloid
-            coeffs = A \ b;
+            coeffs_std = A \ b;
+            
+            % Back-transform the coefficients to the original scale
+            coeffs = zeros(6, 1);
+            coeffs(1) = coeffs_std(1) / (x_std^2);
+            coeffs(2) = coeffs_std(2) / (y_std^2);
+            coeffs(3) = coeffs_std(3) / (x_std * y_std);
+            coeffs(4) = coeffs_std(4) / x_std - 2 * coeffs_std(1) * x_mean / x_std + coeffs_std(3) * y_mean / y_std;
+            coeffs(5) = coeffs_std(5) / y_std - 2 * coeffs_std(2) * y_mean / y_std + coeffs_std(3) * x_mean / x_std;
+            coeffs(6) = coeffs_std(6) - coeffs_std(1) * x_mean^2 - coeffs_std(2) * y_mean^2 - coeffs_std(3) * x_mean * y_mean + coeffs_std(4) * x_mean + coeffs_std(5) * y_mean;
             
             % Create a meshgrid for X and Y coordinates
             [X_fit, Y_fit] = meshgrid(linspace(min(x), max(x), 100), linspace(min(y), max(y), 100));
             
             % Calculate the fitted Z values using the fit coefficients and meshgrid
             Z_fit = coeffs(1) * X_fit.^2 + coeffs(2) * Y_fit.^2 + coeffs(3) * X_fit .* Y_fit + coeffs(4) * X_fit + coeffs(5) * Y_fit + coeffs(6);
+            
+            
+            % Count rank deficient warnings
+            [~, warnings] = lastwarn;
+            warnings = double(contains(warnings, 'rankDeficientMatrix')) + double(contains(warnings, 'singularMatrix'));
         end
-        
         
         function min_radius = calculateMinimumRadius(Channel, required_data_points)
             %CALCULATEMINIMUMRADIUS Calculates the minimum radius required for fitting a second-order surface

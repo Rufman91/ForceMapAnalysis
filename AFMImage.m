@@ -160,17 +160,13 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & dynam
             Channel = obj.get_unprocessed_height_channel('Height (measured) (Trace)');
             Based = imgaussfilt(AFMImage.subtract_line_fit_hist(Channel.Image,0.4));
             Channel.Image = Based;
-            obj.Channel(end+1) = Channel;
-            obj.Channel(end).Name = 'Background Mask';
-            obj.Channel(end).Unit = 'Logical';
-            obj.Channel(end).Image = obj.mask_background_by_threshold(Channel.Image,1);
-            Channel.Image = obj.masked_plane_fit(Channel,obj.Channel(end).Image);
+            BGMImage = obj.mask_background_by_threshold(Channel.Image,1);
+            BGMImage = obj.masked_plane_fit(Channel,BGMImage);
             ConeHeight = range(Channel.Image,'all');
             Cone = obj.cone(obj.NumPixelsX,obj.NumPixelsY,ConeHeight,obj.ScanSizeX,obj.ScanSizeY,10e-9);
-            obj.Channel(end+1) = Channel;
-            obj.Channel(end).Name = 'Eroded Tip';
-            obj.Channel(end).Unit = 'm';
-            obj.Channel(end).Image = obj.deconvolute_by_mathematical_morphology(Channel.Image,Cone);
+            DeconvImage = obj.deconvolute_by_mathematical_morphology(Channel.Image,Cone);
+            obj.add_channel(obj.create_standard_channel(DeconvImage,'Eroded Tip','m'));
+            obj.add_channel(obj.create_standard_channel(BGMImage,'Background Mask','Logical'));
             
             if nargin < 2
                 StepSize = 1e-9;
@@ -2314,7 +2310,7 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & dynam
         
         function [Multiplier,Unit,SnapTo] = parse_unit_scale(ScanSize,Unit,Mult)
             
-            ScaleSize = ScanSize*Mult;
+            ScaleSize = abs(ScanSize*Mult);
             
             if (ScaleSize < 1e-11)
                 Multiplier = 1e12;
