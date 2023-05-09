@@ -1197,7 +1197,7 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & dynam
             
             DiffSum = DiffPreviousLine + DiffNextLine;
             
-            Median = nanmedian(DiffSum);
+            Median = median(DiffSum,'omitnan');
             IQR = iqr(DiffSum);
             
             OutlierLines = find(DiffSum >= Median + IQRMult*IQR);

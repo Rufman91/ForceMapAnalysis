@@ -1704,8 +1704,8 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 end
                 obj.EMod.Apex(i,1:length(obj.FM{i}.RectApexIndex)) = EMods(obj.FM{i}.RectApexIndex);
                 for j=1:length(obj.FM{i}.RectApexIndex)
-                    if obj.EMod.Apex(i,j) > (nanmedian(obj.EMod.Apex(i,:))+2.5*iqr(obj.EMod.Apex(i,:))) || ...
-                            obj.EMod.Apex(i,j) < (nanmedian(obj.EMod.Apex(i,:))-2.5*iqr(obj.EMod.Apex(i,:))) || ...
+                    if obj.EMod.Apex(i,j) > (median(obj.EMod.Apex(i,:),'omitnan')+2.5*iqr(obj.EMod.Apex(i,:))) || ...
+                            obj.EMod.Apex(i,j) < (median(obj.EMod.Apex(i,:),'omitnan')-2.5*iqr(obj.EMod.Apex(i,:))) || ...
                             obj.FM{i}.ExclMask(obj.FM{i}.List2Map(obj.FM{i}.RectApexIndex(j),1),obj.FM{i}.List2Map(obj.FM{i}.RectApexIndex(j),2)) == 0
                         obj.EMod.Apex(i,j) = NaN;
                     elseif obj.EMod.Apex(i,j) < 0
@@ -1714,8 +1714,8 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 end
             end
             
-            obj.EMod.Mean = nanmean(obj.EMod.Apex,2);
-            obj.EMod.STD = nanstd(obj.EMod.Apex,[],2);
+            obj.EMod.Mean = mean(obj.EMod.Apex,2,'omitnan');
+            obj.EMod.STD = std(obj.EMod.Apex,[],2,'omitnan');
             obj.save_experiment;
             
             close(h);
@@ -8495,11 +8495,11 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                     Data(k).Name = obj.GroupFM(i).Name;
                     Data(k).Length = length(Data(k).Values);
                     if isequal(ErrorBars,'std')
-                        Data(k).Bars = nanstd(Data(k).Values);
+                        Data(k).Bars = std(Data(k).Values,'omitnan');
                     elseif isequal(ErrorBars,'ste')
-                        Data(k).Bars = nanstd(Data(k).Values)/sqrt(length(Data(k).Values(~isnan(Data(k).Values))));
+                        Data(k).Bars = std(Data(k).Values,'omitnan')/sqrt(length(Data(k).Values(~isnan(Data(k).Values))));
                     elseif isequal(ErrorBars,'ci')
-                        [~,~,Data(k).Bars,~] = ttest(Data(k).Values(~isnan(Data(k).Values)),nanmean(Data(k).Values));
+                        [~,~,Data(k).Bars,~] = ttest(Data(k).Values(~isnan(Data(k).Values)),mean(Data(k).Values,'omitnan'));
                     end
                     k = k + 1;
                 end
@@ -8515,11 +8515,11 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                     Data(k).Name = obj.FM{i}.Name;
                     Data(k).Length = length(Data(k).Values);
                     if isequal(ErrorBars,'std')
-                        Data(k).Bars = nanstd(Data(k).Values);
+                        Data(k).Bars = std(Data(k).Values,'omitnan');
                     elseif isequal(ErrorBars,'ste')
-                        Data(k).Bars = nanstd(Data(k).Values)/sqrt(length(Data(k).Values(~isnan(Data(k).Values))));
+                        Data(k).Bars = std(Data(k).Values,'omitnan')/sqrt(length(Data(k).Values(~isnan(Data(k).Values))));
                     elseif isequal(ErrorBars,'ci')
-                        [~,~,Data(k).Bars,~] = ttest(Data(k).Values(~isnan(Data(k).Values)),nanmean(Data(k).Values));
+                        [~,~,Data(k).Bars,~] = ttest(Data(k).Values(~isnan(Data(k).Values)),mean(Data(k).Values,'omitnan'));
                     end
                     k = k + 1;
                 end
@@ -8544,17 +8544,17 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 boxplot(DataMat)
                 title(sprintf('Boxplot of %s',YAxisName))
             elseif isequal(Method,'Barplot')
-                bar(nanmean(DataMat,1));
+                bar(mean(DataMat,1,'omitnan'));
                 hold on
                 for i=1:length(Data)
-                    errorbar(i,nanmean(DataMat(:,i)),-Data(i).Bars(1),Data(i).Bars(end),'Color','k','LineWidth',1.5);
+                    errorbar(i,mean(DataMat(:,i),'omitnan'),-Data(i).Bars(1),Data(i).Bars(end),'Color','k','LineWidth',1.5);
                 end
                 title(sprintf('Barplot of %s',YAxisName))
             elseif isequal(Method,'BarMedian')
-                bar(nanmedian(DataMat,1));
+                bar(median(DataMat,1,'omitnan'));
                 hold on
                 for i=1:length(Data)
-                    errorbar(i,nanmedian(DataMat(:,i)),-Data(i).Bars(1),Data(i).Bars(end),'Color','k','LineWidth',1.5);
+                    errorbar(i,median(DataMat(:,i),'omitnan'),-Data(i).Bars(1),Data(i).Bars(end),'Color','k','LineWidth',1.5);
                 end
                 title(sprintf('Median Barplot of %s',YAxisName))
             end
@@ -8619,8 +8619,8 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
 %                     elseif DataOP(i,j) < 0
 %                         DataOP(i,j) = NaN;
 %                     end
-                    if DataHS(i,j) > (nanmedian(DataHS(i,:))+2.5*iqr(DataHS(i,:))) || ...
-                            DataHS(i,j) < (nanmedian(DataHS(i,:))-2.5*iqr(DataHS(i,:))) || ...
+                    if DataHS(i,j) > (median(DataHS(i,:),'omitnan')+2.5*iqr(DataHS(i,:))) || ...
+                            DataHS(i,j) < (median(DataHS(i,:),'omitnan')-2.5*iqr(DataHS(i,:))) || ...
                             obj.FM{i}.ExclMask(obj.FM{i}.List2Map(obj.FM{i}.RectApexIndex(j),1),obj.FM{i}.List2Map(obj.FM{i}.RectApexIndex(j),2)) == 0 ||...
                             OutliersHS(j) == 1
                         DataHS(i,j) = NaN;
@@ -8631,7 +8631,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             end
             
 %             DataMeansOP = nanmean(DataOP,2);
-            DataMeansHS = nanmean(DataHS,2);
+            DataMeansHS = mean(DataHS,2,'omitnan');
             
             for i=1:obj.NumForceMaps
 %                 obj.FM{i}.FibrilEModOliverPharr = DataMeansOP(i);
@@ -11666,7 +11666,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 'Ellipse_geom','area',...
                 'AllowedEllipse_geom',{{'area','line'}},...
                 'TooltipEllipse_geom','area: Plot the ellipse as a shaded area with outline; line: Just plot the outline of the ellipse',...
-                'QQ_distribution',"makedist('Normal',nanmean(X),nanstd(X))",...
+                'QQ_distribution',"makedist('Normal',mean(X,'omitnan'),std(X,'omitnan'))",...
                 'DTypeQQ_distribution','char',...
                 'TooltipQQ_distribution',"Provide a theoretical distribution to plot x against using Matlab's makedist() function. Set to 'y' to plot x against y densities.",...
                 'Boxplot_width',0.6,...

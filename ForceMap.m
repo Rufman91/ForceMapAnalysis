@@ -2219,7 +2219,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
                 end
             end
             obj.FibDiam = mean(FibHeight);
-            obj.FibDiamSTD = nanstd(FibHeight);
+            obj.FibDiamSTD = std(FibHeight,'omitnan');
             
             % Convert RectApexIndex and ApexIndex, so that they are
             % consistent with the Map2List-List2Map format (its entrances
@@ -6363,8 +6363,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
             Title = sprintf('Indentation Modulus Map of %s',obj.Name);
             figure('Name',Title);
             subplot(2,2,1)
-            Lower = nanmean(obj.EModMapHertz,'all')-1.5*nanstd(obj.EModMapHertz,0,'all');
-            Upper = nanmean(obj.EModMapHertz,'all')+1.5*nanstd(obj.EModMapHertz,0,'all');
+            Lower = mean(obj.EModMapHertz,'all','omitnan')-1.5*std(obj.EModMapHertz,0,'all','omitnan');
+            Upper = mean(obj.EModMapHertz,'all','omitnan')+1.5*std(obj.EModMapHertz,0,'all','omitnan');
             I = imresize(obj.EModMapHertz,[1024 1024]);
             imshow(I,[Lower Upper],'Colormap',copper);
             colorbar
@@ -6373,8 +6373,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
             surf(obj.EModMapHertz(:,:,1),'LineStyle','none','FaceLighting','gouraud','FaceColor','interp')
             light('Style','local')
             subplot(2,2,3)
-            Lower = nanmean(obj.EModMapOliverPharr,'all')-1.5*nanstd(obj.EModMapOliverPharr,0,'all');
-            Upper = nanmean(obj.EModMapOliverPharr,'all')+1.5*nanstd(obj.EModMapOliverPharr,0,'all');
+            Lower = mean(obj.EModMapOliverPharr,'all','omitnan')-1.5*std(obj.EModMapOliverPharr,0,'all','omitnan');
+            Upper = mean(obj.EModMapOliverPharr,'all','omitnan')+1.5*std(obj.EModMapOliverPharr,0,'all','omitnan');
             I = imresize(obj.EModMapOliverPharr,[1024 1024]);
             imshow(I,[Lower Upper]);
             colorbar
@@ -6452,9 +6452,9 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
                     boxplot(obj.EModOliverPharr(obj.RectApexIndex));
                     xticklabels(obj.Name)
                     title(sprintf('mean = %.2f MPa\nmedian = %.2f MPa\nstd = %.3f MPa',...
-                        nanmean(obj.EModOliverPharr(obj.RectApexIndex))*1e-6,...
-                        nanmedian(obj.EModOliverPharr(obj.RectApexIndex))*1e-6,...
-                        nanstd(obj.EModOliverPharr(obj.RectApexIndex))*1e-6));
+                        mean(obj.EModOliverPharr(obj.RectApexIndex),'omitnan')*1e-6,...
+                        median(obj.EModOliverPharr(obj.RectApexIndex),'omitnan')*1e-6,...
+                        std(obj.EModOliverPharr(obj.RectApexIndex),'omitnan')*1e-6));
                 end
                 
                 subplot(2,3,4)
@@ -6598,9 +6598,9 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
                     boxplot(obj.EModHertz(obj.RectApexIndex));
                     xticklabels(obj.Name)
                     title(sprintf('mean = %.2f MPa\nmedian = %.2f MPa\nstd = %.3f MPa',...
-                        nanmean(obj.EModHertz(obj.RectApexIndex))*1e-6,...
-                        nanmedian(obj.EModHertz(obj.RectApexIndex))*1e-6,...
-                        nanstd(obj.EModHertz(obj.RectApexIndex))*1e-6));
+                        mean(obj.EModHertz(obj.RectApexIndex),'omitnan')*1e-6,...
+                        median(obj.EModHertz(obj.RectApexIndex),'omitnan')*1e-6,...
+                        std(obj.EModHertz(obj.RectApexIndex),'omitnan')*1e-6));
                 end
                 
                 
@@ -6685,9 +6685,9 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
                     boxplot(obj.EModOliverPharr);
                     xticklabels(obj.Name)
                     title(sprintf('mean = %.2f MPa\nmedian = %.2f MPa\nstd = %.3f MPa',...
-                        nanmean(obj.EModOliverPharr)*1e-6,...
-                        nanmedian(obj.EModOliverPharr)*1e-6,...
-                        nanstd(obj.EModOliverPharr)*1e-6));
+                        mean(obj.EModOliverPharr,'omitnan')*1e-6,...
+                        median(obj.EModOliverPharr,'omitnan')*1e-6,...
+                        std(obj.EModOliverPharr,'omitnan')*1e-6));
                 end
                 
                 subplot(2,3,4)
@@ -6823,9 +6823,9 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
                     boxplot(obj.EModHertz);
                     xticklabels(obj.Name)
                     title(sprintf('mean = %.2f MPa\nmedian = %.2f MPa\nstd = %.3f MPa',...
-                        nanmean(obj.EModHertz)*1e-6,...
-                        nanmedian(obj.EModHertz)*1e-6,...
-                        nanstd(obj.EModHertz)*1e-6));
+                        mean(obj.EModHertz,'omitnan')*1e-6,...
+                        median(obj.EModHertz,'omitnan')*1e-6,...
+                        std(obj.EModHertz,'omitnan')*1e-6));
                 end
                 
                 
