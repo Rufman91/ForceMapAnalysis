@@ -1,5 +1,3 @@
-% Hi Sasha!
-
 classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dynamicprops & AFMBaseClass
     % The force map class represents a single jpk force map file and
     % contains all necessary functions to process the forcecurves.
