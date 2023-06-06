@@ -12,6 +12,6 @@ function peak_skewness = periodic_signal_skewness(x, y_filtered, period)
         peak_start = max(1, maxima_indices(i) - half_period_indices);
         peak_end = min(length(y_filtered), maxima_indices(i) + half_period_indices);
         peak_signal = y_filtered(peak_start:peak_end);
-        peak_skewness(i) = signal_skewness(peak_signal);
+        peak_skewness(i) = DB_signal_skewness(peak_signal);
     end
 end
