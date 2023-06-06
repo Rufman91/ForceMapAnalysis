@@ -155,17 +155,21 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             
         end
         
-        function deconvolute_image(obj,CTClassInstance)
+        function deconvolute_image(obj,CTClassInstance,ChannelName)
             % Comment
+            
+            if nargin < 3
+                ChannelName = 'Processed';
+            end
             
             ErodedTip = CTClassInstance.get_channel('Eroded Tip');
             if isempty(ErodedTip)
                 CTClassInstance.deconvolute_cantilever_tip;
                 ErodedTip = CTClassInstance.get_channel('Eroded Tip');
             end
-            Processed = obj.get_channel('Processed');
-            if isempty('Processed')
-                warning('Image needs to be flattened first')
+            Processed = obj.get_channel(ChannelName);
+            if isempty(Processed)
+                warning(sprintf('Channel "%s" not found. Cannot deconvolute!',ChannelName));
                 return
             end
             
@@ -1135,6 +1139,7 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             addRequired(p,"obj",validobj);
             
             % NameValue inputs
+            defaultHeightChannelName = 'Processed';
             defaultWidthLocalWindowMeters = 800e-9;
             defaultSmoothingWindowSize = 41;
             defaultMinPeakDistanceMeters = 50e-9;
@@ -1144,6 +1149,7 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             defaultVerbose = false;
             defaultRecordMovieBool = false;
             defaultKeyFrames = 3;
+            validHeightChannelName = @(x)ischar(x);
             validWidthLocalWindowMeters = @(x)isnumeric(x)&&isscalar(x);
             validSmoothingWindowSize = @(x)isnumeric(x)&&mod(x,1)==0;
             validMinPeakDistanceMeters = @(x)isnumeric(x)&&isscalar(x);
@@ -1153,6 +1159,7 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             validVerbose = @(x)islogical(x);
             validRecordMovieBool = @(x)islogical(x);
             validKeyFrames = @(x)isnumeric(x)&&mod(x,1)==0;
+            addParameter(p,"HeightChannelName",defaultHeightChannelName,validHeightChannelName);
             addParameter(p,"WidthLocalWindowMeters",defaultWidthLocalWindowMeters,validWidthLocalWindowMeters);
             addParameter(p,"SmoothingWindowSize",defaultSmoothingWindowSize,validSmoothingWindowSize);
             addParameter(p,"MinPeakDistanceMeters",defaultMinPeakDistanceMeters,validMinPeakDistanceMeters);
@@ -1167,6 +1174,7 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             
             % Assign parsing results to named variables
             obj = p.Results.obj;
+            HeightChannelName = p.Results.HeightChannelName;
             WidthLocalWindowMeters = p.Results.WidthLocalWindowMeters;
             SmoothingWindowSize = p.Results.SmoothingWindowSize;
             MinPeakDistanceMeters = p.Results.MinPeakDistanceMeters;
@@ -1186,7 +1194,7 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             OutStructAll = struct();
             Struct = struct([]);
             
-            Channel = obj.get_channel('Processed');
+            Channel = obj.get_channel(HeightChannelName);
             if isempty(Channel)
                 warning('No Channel "Processed" found. Need flattened height channel for snap to local maximum')
                 return
