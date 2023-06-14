@@ -1448,8 +1448,8 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
                         LocalEllipse_b(j) = EllResultStruct.b;
                         LocalEllipse_AspectRatio(j) = EllResultStruct.b./EllResultStruct.a;
                         LocalEllipse_Area(j) = EllResultStruct.a.*EllResultStruct.b.*pi;
-                        LocalEllipse_Height(j) = 2*EllResultStruct.a;
-                        LocalEllipse_WidthHalfHeight(j) = 2*EllResultStruct.b;
+                        LocalEllipse_Height(j) = 2*EllResultStruct.b;
+                        LocalEllipse_WidthHalfHeight(j) = 2*EllResultStruct.a;
                     else
                         LocalEllipse_a(j) = nan;
                         LocalEllipse_b(j) = nan;
