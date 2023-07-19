@@ -1299,7 +1299,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
                 SortHeightDataForFit,FitDegreeForSneddonPolySurf,...
                 LowerForceCutoff,UpperForceCutoff,...
                 SensitivityCorrectionMethod,...
-                KeepOldResults)
+                KeepOldResults,TopologyHeightChannelName,...
+                ThinFilmMode,ThinFilmThickness)
 %                 E = calculate_e_mod_hertz(obj,CPType,TipShape,LowerCurveFraction,...
 %                 UpperCurveFraction,AllowXShift,CorrectSensitivity,UseTipData,...
 %                 UseTopology,TipObject,DataWeightByDistanceBool,...
@@ -1319,12 +1320,31 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
             obj.HertzFitAdjRSquare = zeros(1,obj.NCurves);
             obj.HertzFitRMSE = zeros(1,obj.NCurves);
             
-            if isequal(lower(TipShape),'parabolic') || isequal(lower(TipShape),'spheric approx.')
-                if AllowXShift
-                    FitFunction = 'a*(x+b)^(3/2)';
-                else
-                    FitFunction = 'a*(x)^(3/2)';
+            if contains(TipShape,'on thin film')
+                TopologyHeightChannel = obj.get_channel(TopologyHeightChannelName);
+                if isempty(TopologyHeightChannel)
+                    error('Channel %s not found',TopologyHeightChannelName);
                 end
+                TopologyList = obj.convert_map_to_data_list(TopologyHeightChannel.Image);
+            end
+            
+            if UseTopology
+                TopologyCurvatureChannel = obj.get_channel('Local Radius of Curvature');
+                if isempty(TopologyCurvatureChannel)
+                    error('Channel %s not found','Local Radius of Curvature');
+                end
+                LROCList = obj.convert_map_to_data_list(TopologyCurvatureChannel.Image);
+            end
+            
+            if isequal(lower(TipShape),'parabolic') || isequal(lower(TipShape),'spheric approx.')
+            elseif isequal(lower(TipShape),'parabolic on thin film (not bonded)')
+                nu = obj.PoissonR;
+                alpha = -0.347*(3-2*nu)/(1-nu);
+                beta = 0.056*(5-2*nu)/(1-nu);
+            elseif isequal(lower(TipShape),'parabolic on thin film (bonded)')
+                nu = obj.PoissonR;
+                alpha = -(1.2876-1.4678*nu+1.3442*nu^2)/(1-nu);
+                beta = (0.6387-1.0277*nu+1.5164*nu^2)/(1-nu);
             elseif isequal(lower(TipShape,'sneddonpolysurf'))
                 Area = TipObject.DepthDependendTipRadius;
                 Radius = sqrt(Area/pi);
@@ -1425,6 +1445,85 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
                     RangeTH{i} = range(tip_h{i});
                     force{i} = force{i}/RangeF{i};
                     tip_h{i} = tip_h{i}/RangeTH{i};
+                    
+                    if contains(TipShape,'on thin film')
+                        if isequal(ThinFilmMode,'FromValue')
+                            FilmHeight{i} = ThinFilmThickness;
+                        elseif isequal(ThinFilmMode,'From Topology')
+                            FilmHeight{i} = max(TopologyList(iRange(i)),MaxFitRange{i}(1));
+                        end
+                    end
+                    
+                    if isempty(obj.FibDiam) || UseTopology
+                        if UseTipData
+                            DepthIndex = floor(obj.IndentationDepth(iRange(i))*1e9);
+                            DepthRemainder = obj.IndentationDepth(iRange(i))*1e9 - DepthIndex;
+                            if DepthIndex >= length(TipObject.DepthDependendTipRadius)
+                                DepthIndex = length(TipObject.DepthDependendTipRadius) - 1;
+                                DepthRemainder = 0;
+                            end
+                            if DepthIndex == 0
+                                TipRadius = TipObject.DepthDependendTipRadius(DepthIndex+1)*DepthRemainder;
+                            else
+                                TipRadius = TipObject.DepthDependendTipRadius(DepthIndex)*(1-DepthRemainder) + TipObject.DepthDependendTipRadius(DepthIndex+1)*DepthRemainder;
+                            end
+                            if UseTopology
+                                
+                            else
+                                R_eff{i} = TipRadius;
+                            end
+                        else
+                            if UseTopology
+                                RTip = obj.TipRadius*1e-9;
+                                
+                                RTopo = LROCList(iRange(i));
+                                
+                                R_eff{i} =1/(1/RTip + 1/RTopo);
+                            else
+                                R_eff{i} = obj.TipRadius*1e-9;
+                            end
+                        end
+                    else
+                        if UseTipData
+                            DepthIndex = floor(obj.IndentationDepth(iRange(i))*1e9);
+                            DepthRemainder = obj.IndentationDepth(iRange(i))*1e9 - DepthIndex;
+                            if DepthIndex >= length(TipObject.DepthDependendTipRadius)
+                                DepthIndex = length(TipObject.DepthDependendTipRadius) - 1;
+                            end
+                            if DepthIndex == 0
+                                TipRadius = TipObject.DepthDependendTipRadius(DepthIndex+1)*DepthRemainder;
+                            else
+                                TipRadius = TipObject.DepthDependendTipRadius(DepthIndex)*(1-DepthRemainder) + TipObject.DepthDependendTipRadius(DepthIndex+1)*DepthRemainder;
+                            end
+                            R_eff{i} = 1/(1/TipRadius + 1/(obj.FibDiam/2));
+                        else
+                            R_eff{i} = 1/(1/(obj.TipRadius*1e-9) + 1/(obj.FibDiam/2));
+                        end
+                    end
+                    if isequal(lower(TipShape),'parabolic') || isequal(lower(TipShape),'spheric approx.')
+                        if AllowXShift
+                            FitFunction{i} = 'a*(x+b)^(3/2)';
+                        else
+                            FitFunction{i} = 'a*(x)^(3/2)';
+                        end
+                    elseif contains(TipShape,'parabolic on thin film')
+                        FitR_eff{i} = R_eff{i}/RangeTH{i};
+                        FitFilmHeight{i} = FilmHeight{i}/RangeTH{i};
+                        c1 = -2*alpha/pi*sqrt(FitR_eff{i})/FitFilmHeight{i};
+                        c2 = 4*alpha^2/pi^2*(sqrt(FitR_eff{i})/FitFilmHeight{i})^2;
+                        c3 = -8/pi^3*(alpha^3 + 4*pi^2/15*beta)*(sqrt(FitR_eff{i})/FitFilmHeight{i})^3;
+                        c4 = 16*alpha/pi^4*(alpha^3 + 3*pi^2/5*beta)*(sqrt(FitR_eff{i})/FitFilmHeight{i})^4;
+                        if AllowXShift
+                            FitFunction{i} = sprintf(...
+                                'a*(x-b)^(3/2)*(1+%6e*(x-b)^(1/2)+%6e*(x-b)^(2/2)+%6e*(x-b)^(3/2)+%6e*(x-b)^(4/2))',...
+                                c1,c2,c3,c4);
+                        else
+                            FitFunction{i} = sprintf(...
+                                'a*x^(3/2)*(1+%6e*x^(1/2)+%6e*x^(2/2)+%6e*x^(3/2)+%6e*x^(4/2))',...
+                                c1,c2,c3,c4);
+                        end
+                    end
+                    
                     if DataWeightByDistanceBool
                         Points = [tip_h{i}(1:end-1) force{i}(1:end-1)];
                         ShiftedPoints = [tip_h{i}(2:end) force{i}(2:end)];
@@ -1443,14 +1542,14 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
                                 'MaxIter',100,...
                                 'Startpoint',[1 0],...
                                 'Weights',PointWeights{i});
-                            f = fittype(FitFunction,'options',s);
+                            f = fittype(FitFunction{i},'options',s);
                         else
                             s = fitoptions('Method','NonlinearLeastSquares',...
                                 'Lower',10^(-5),...
                                 'Upper',inf,...
                                 'Startpoint',1,...
                                 'Weights',PointWeights{i});
-                            f = fittype(FitFunction,'options',s);
+                            f = fittype(FitFunction{i},'options',s);
                         end
                         [Hertzfit{i},GoF{i}] = fit(tip_h{i},...
                             force{i},f);
@@ -1462,45 +1561,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
                     try
                         % calculate E module based on the Hertz model. Be careful
                         % to convert to unnormalized data again
-                        if isempty(obj.FibDiam) || UseTopology
-                            if UseTipData
-                                if UseTopology
-                                    
-                                else
-                                    DepthIndex = floor(obj.IndentationDepth(iRange(i))*1e9);
-                                    DepthRemainder = obj.IndentationDepth(iRange(i))*1e9 - DepthIndex;
-                                    if DepthIndex >= length(TipObject.DepthDependendTipRadius)
-                                        DepthIndex = length(TipObject.DepthDependendTipRadius) - 1;
-                                        DepthRemainder = 0;
-                                    end
-                                    if DepthIndex == 0
-                                        TipRadius = TipObject.DepthDependendTipRadius(DepthIndex+1)*DepthRemainder;
-                                    else
-                                        TipRadius = TipObject.DepthDependendTipRadius(DepthIndex)*(1-DepthRemainder) + TipObject.DepthDependendTipRadius(DepthIndex+1)*DepthRemainder;
-                                    end
-                                    R_eff = TipRadius;
-                                end
-                            else
-                                R_eff = obj.TipRadius*1e-9;
-                            end
-                        else
-                            if UseTipData
-                                DepthIndex = floor(obj.IndentationDepth(iRange(i))*1e9);
-                                DepthRemainder = obj.IndentationDepth(iRange(i))*1e9 - DepthIndex;
-                                if DepthIndex >= length(TipObject.DepthDependendTipRadius)
-                                    DepthIndex = length(TipObject.DepthDependendTipRadius) - 1;
-                                end
-                                if DepthIndex == 0
-                                    TipRadius = TipObject.DepthDependendTipRadius(DepthIndex+1)*DepthRemainder;
-                                else
-                                    TipRadius = TipObject.DepthDependendTipRadius(DepthIndex)*(1-DepthRemainder) + TipObject.DepthDependendTipRadius(DepthIndex+1)*DepthRemainder;
-                                end
-                                R_eff = 1/(1/TipRadius + 1/(obj.FibDiam/2));
-                            else
-                                R_eff = 1/(1/(obj.TipRadius*1e-9) + 1/(obj.FibDiam/2));
-                            end
-                        end
-                        EMod{i} = 3*(Hertzfit{i}.a*RangeF{i}/RangeTH{i}^(3/2))/(4*sqrt(R_eff))*(1-obj.PoissonR^2);
+                        EMod{i} = 3*(Hertzfit{i}.a*RangeF{i}/RangeTH{i}^(3/2))/(4*sqrt(R_eff{i}))*(1-obj.PoissonR^2);
                     catch ME
                         EMod{i} = nan;
 %                         Hertzfit{i}.a = 0;
