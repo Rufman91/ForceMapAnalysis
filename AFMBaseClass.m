@@ -1803,7 +1803,7 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             end
         end
         
-        function [slope, radius_of_curvature, slope_direction] = localSurfaceFit(obj, HeightChannelName, Radius)
+        function [slope, radius_of_curvature, slope_direction, CorrectedRadius] = localSurfaceFit(obj, HeightChannelName, Radius)
             %LOCALSURFACEFIT Calculates the local slope and curvature of an AFMBaseClass object's height image
             %   This method takes an AFMBaseClass object instance (obj) and a HeightChannelName as input,
             %   reads the height image using the get_channel method, and computes the local slope and
@@ -1829,9 +1829,18 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             
             required_data_points = 6;
             min_radius = AFMBaseClass.calculateMinimumRadius(height_channel, required_data_points);
-            if min_radius > Radius
-                Radius = min_radius;
-                warning(['The ROI-Radius you chose for curvature fitting is too small. Replaced with the minimum radius of ' num2str(min_radius)]);
+            if isscalar(Radius)
+                if min_radius > Radius
+                    Radius = min_radius;
+                    warning(['The ROI-Radius you chose for curvature fitting is too small. Replaced with the minimum radius of ' num2str(min_radius)]);
+                end
+            else
+                CompRadius = reshape(Radius,[],1);
+                MinRadVector = min_radius.*ones(length(CompRadius),1);
+                Radius = max([MinRadVector ; CompRadius],2);
+                if ~isequal(Radius,CompRadius)
+                    warning(['Some or all of the ROI-Radii you chose for curvature fitting are too small. Replaced with the minimum radius of ' num2str(min_radius)]);
+                end
             end
             
             % Calculate the pixel size in x and y directions
@@ -1888,10 +1897,33 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             warning(singular_matrix_warning_state);
             warning(ill_conditioned_matrix_warning_state);
             
-            % Restore the original warning state
-            warning(plane_warning_state);
-            warning(singular_matrix_warning_state);
-            warning(ill_conditioned_matrix_warning_state);
+            CorrectedRadius = Radius;
+            
+        end
+        
+        function localSurfaceFit_ClassWrapper(obj, HeightChannelName, Radius, KeepOldResults)
+            
+            % Calculate the metrics
+            [slope, radius_of_curvature, slope_direction, CorrectedRadius] = localSurfaceFit(obj, HeightChannelName, Radius);
+            
+            % Determine Channel Names
+            if isscalar(CorrectedRadius)
+                LRoC_Name = sprintf('Local Radius of Curvature Kernel-R. = %.2e',CorrectedRadius);
+                S_Name = sprintf('Local Slope Kernel-R. = %.2e',CorrectedRadius);
+                SD_Name = sprintf('Local Slope Direction Kernel-R. = %.2e',CorrectedRadius);
+            else
+                LRoC_Name = 'Dynamic Kernel Radius of Curvature';
+                S_Name = 'Dynamic Kernel Slope';
+                SD_Name = 'Dynamic Kernel Slope Direction';
+            end
+            
+            % Write new Channels
+            obj.add_channel(...
+                obj.create_standard_channel(radius_of_curvature,LRoC_Name,'m'), ~KeepOldResults);
+            obj.add_channel(...
+                obj.create_standard_channel(slope,S_Name,'m/m'), ~KeepOldResults);
+            obj.add_channel(...
+                obj.create_standard_channel(slope_direction,SD_Name,'°'), ~KeepOldResults);
             
         end
         
@@ -2840,6 +2872,120 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             end
             
         end
+        
+        function visualizeCurvature(obj, ZSpacingFactor, HeightChannelName)
+%             
+%             heightChannel
+%             radiusOfCurvatureChannel
+%             slopeChannel
+%             slopeDirectionChannel
+%             ZSpacingFactor
+%             
+            
+            if nargin < 5
+                ZSpacingFactor = 1;
+            end
+            % Create the figure and set up the layout
+            fig = figure;
+            ax1 = subplot(1, 2, 1);
+            ax2 = subplot(1, 2, 2);
+            
+            % Show the height image in the bottom part of the figure
+            imshow(flipud(heightChannel.Image),[], 'Parent', ax2);
+            
+            colormap(ax2,AFMImage.define_afm_color_map);
+            
+            % Initialize the drawpoint object
+            hPoint = drawpoint(ax2, 'Position', [heightChannel.NumPixelsX/2, heightChannel.NumPixelsY/2], ...
+                'Color', 'r', 'Selected', true);
+            
+            % Set up the callback function for the drawpoint object
+            addlistener(hPoint, 'ROIMoved', @pointMoved);
+            
+            infoTextBox = uicontrol('Style', 'text', 'Position', [10, 10, 300, 80], 'BackgroundColor', 'white', 'HorizontalAlignment', 'left');
+            
+            % Function to handle the drawpoint object's position change
+            function pointMoved(src, eventData)
+                
+                position = hPoint.Position;
+                
+                % Get the position in the height image
+                xIdx = round(position(1));
+                yIdx = heightChannel.NumPixelsY - round(position(2)) + 1;
+                
+                % Get the values from the channels
+                height = heightChannel.Image(yIdx, xIdx);
+                radius = radiusOfCurvatureChannel.Image(yIdx, xIdx);
+                slope = slopeChannel.Image(yIdx, xIdx);
+                slopeDirection = slopeDirectionChannel.Image(yIdx, xIdx);
+                [heightMultiplier, heightUnit, ~] = AFMImage.parse_unit_scale(height, 'm', 1);
+                [radiusMultiplier, radiusUnit, ~] = AFMImage.parse_unit_scale(radius, 'm', 1);
+                [slopeMultiplier, slopeUnit, ~] = AFMImage.parse_unit_scale(slope, 'm/m', 1);
+                [slopeDirectionMultiplier, slopeDirectionUnit, ~] = AFMImage.parse_unit_scale(slopeDirection, '°', 1);
+                
+                
+                % Calculate the tangent plane
+                [x, y] = meshgrid(linspace(0, heightChannel.ScanSizeX, heightChannel.NumPixelsX), linspace(0, heightChannel.ScanSizeY, heightChannel.NumPixelsY));
+                z = height + slope * (cosd(slopeDirection) * (x - x(yIdx, xIdx)) + sind(slopeDirection) * (y - y(yIdx, xIdx)));
+                
+                % Calculate the sphere center
+                sphereCenter = [x(yIdx, xIdx), y(yIdx, xIdx), height + sign(radius) * abs(radius)];
+                
+                % Set up the surface plot in the top part of the figure
+                cla(ax1);
+                hold(ax1, 'on');
+                surf(ax1, x, y, heightChannel.Image, 'EdgeColor', 'none', 'FaceAlpha', 0.8);
+                colormap(ax1, AFMImage.define_afm_color_map);
+                
+                % Add this line to set the color scaling of the height map plot
+                caxis(ax1, [min(heightChannel.Image,[],'all'), max(heightChannel.Image,[],'all')]);
+                
+                num_points = 8;
+                [x_down, y_down] = meshgrid(linspace(0, heightChannel.ScanSizeX, num_points), linspace(0, heightChannel.ScanSizeY, num_points));
+                z_down = height + slope * (cosd(slopeDirection) * (x_down - x(yIdx, xIdx)) + sind(slopeDirection) * (y_down - y(yIdx, xIdx)));
+                surf(ax1, x_down, y_down, z_down, 'EdgeColor', 'k', 'FaceColor', 'g', 'FaceAlpha', 0.3);
+                
+                
+                % Plot the sphere
+                [sx, sy, sz] = sphere(50);
+                sx = sx * abs(radius) + sphereCenter(1);
+                sy = sy * abs(radius) + sphereCenter(2);
+                sz = sz * abs(radius) + sphereCenter(3);
+                
+                % Rotate the sphere about the chosen point
+                angleToRotate = atand(slope);
+                rotationAxis = [-sind(slopeDirection), cosd(slopeDirection), 0];
+                rotationCenter = [x(yIdx, xIdx), y(yIdx, xIdx), heightChannel.Image(yIdx, xIdx)];
+                [sx, sy, sz] = rotateSphere(sx, sy, sz, rotationCenter, rotationAxis, angleToRotate);
+                
+                surf(ax1, sx, sy, sz, 'EdgeColor', 'k', 'FaceColor', 'r', 'FaceAlpha', 0.3);
+                
+                % Adjust the axis settings
+                axis(ax1, 'equal');
+                xlim(ax1, [0 heightChannel.ScanSizeX]);
+                ylim(ax1, [0 heightChannel.ScanSizeY]);
+                Spacer = range(heightChannel.Image,'all').*ZSpacingFactor;
+                zlim(ax1, [min(heightChannel.Image,[],'all')-Spacer max(heightChannel.Image,[],'all')+Spacer])
+                hold(ax1, 'off');
+                view(ax1, 3);
+                xlabel(ax1, 'x');
+                ylabel(ax1, 'y');
+                zlabel(ax1, 'z');
+                title(ax1, 'Height map, tangent plane, and sphere');
+                infoText = sprintf('Height: %.3f %s\nRadius: %.3f %s\nSlope: %.3f %s\nSlope Direction: %.3f %s', ...
+                    height * heightMultiplier, heightUnit, ...
+                    radius * radiusMultiplier, radiusUnit, ...
+                    slope * slopeMultiplier, slopeUnit, ...
+                    slopeDirection * slopeDirectionMultiplier, slopeDirectionUnit);
+                
+                set(infoTextBox, 'String', infoText);
+                
+            end
+            % Call the pointMoved function to update the visualization initially
+            pointMoved();
+            
+        end
+        
         
     end
 end
