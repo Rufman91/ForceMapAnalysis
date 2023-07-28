@@ -1837,10 +1837,11 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             else
                 CompRadius = reshape(Radius,[],1);
                 MinRadVector = min_radius.*ones(length(CompRadius),1);
-                Radius = max([MinRadVector ; CompRadius],2);
+                Radius = max([MinRadVector CompRadius],[],2);
                 if ~isequal(Radius,CompRadius)
                     warning(['Some or all of the ROI-Radii you chose for curvature fitting are too small. Replaced with the minimum radius of ' num2str(min_radius)]);
                 end
+                RadiusMap = obj.convert_data_list_to_map(Radius);
             end
             
             % Calculate the pixel size in x and y directions
@@ -1869,6 +1870,10 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             % Loop through each pixel in the height image
             for i = 1:num_pixels_y
                 for j = 1:num_pixels_x
+                    if ~isscalar(Radius)
+                        PixRadiusX = round(RadiusMap(i,j)/pixel_size_x);
+                        PixRadiusY = round(RadiusMap(i,j)/pixel_size_y);
+                    end
                     % Determine the region of interest (ROI) around the current pixel
                     [x_roi, y_roi] = meshgrid(max(1, j-PixRadiusX):min(num_pixels_x, j+PixRadiusX), ...
                         max(1, i-PixRadiusY):min(num_pixels_y, i+PixRadiusY));
@@ -2873,14 +2878,85 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             
         end
         
-        function visualizeCurvature(obj, ZSpacingFactor, HeightChannelName)
-%             
-%             heightChannel
-%             radiusOfCurvatureChannel
-%             slopeChannel
-%             slopeDirectionChannel
-%             ZSpacingFactor
-%             
+        function visualize_curvature(obj,varargin)
+            % function visualize_curvature(obj,varargin)
+            %
+            % <FUNCTION DESCRIPTION HERE>
+            %
+            %
+            % Required inputs
+            % obj ... <VARIABLE DESCRIPTION>
+            %
+            % Optional inputs
+            % ZSpacingFactor ... <OPTIONAL POSITIONAL VARIABLE DESCRIPTION>
+            % HeightChannelName ... <OPTIONAL POSITIONAL VARIABLE DESCRIPTION>
+            % SurfFitChannelKeyphrase ... <OPTIONAL POSITIONAL VARIABLE DESCRIPTION>
+            
+            p = inputParser;
+            p.FunctionName = "visualize_curvature";
+            p.CaseSensitive = false;
+            p.PartialMatching = true;
+            
+            % Required inputs
+            validobj = @(x)true;
+            addRequired(p,"obj",validobj);
+            
+            % Optional positional inputs
+            defaultZSpacingFactor = 5;
+            defaultHeightChannelName = 'Processed';
+            defaultSurfFitChannelKeyphrase = '';
+            validZSpacingFactor = @(x)true;
+            validHeightChannelName = @(x)true;
+            validSurfFitChannelKeyphrase = @(x)true;
+            addParameter(p,"ZSpacingFactor",defaultZSpacingFactor,validZSpacingFactor);
+            addParameter(p,"HeightChannelName",defaultHeightChannelName,validHeightChannelName);
+            addParameter(p,"SurfFitChannelKeyphrase",defaultSurfFitChannelKeyphrase,validSurfFitChannelKeyphrase);
+            
+            parse(p,obj);
+            
+            % Assign parsing results to named variables
+            obj = p.Results.obj;
+            ZSpacingFactor = p.Results.ZSpacingFactor;
+            HeightChannelName = p.Results.HeightChannelName;
+            SurfFitChannelKeyphrase = p.Results.SurfFitChannelKeyphrase;
+            
+            
+            
+            heightChannel = obj.get_channel(HeightChannelName);
+            
+            % Determine which SurfFit channels should be displayed if there
+            % are multiple.
+            PossibleChannels = contains({obj.Channel.Name},'Radius of Curvature') & contains({obj.Channel.Name},SurfFitChannelKeyphrase);
+            if ~any(PossibleChannels)
+                PossibleChannels = contains({obj.Channel.Name},'Radius of Curvature');
+                if ~any(PossibleChannels)
+                    error('No surface topology channels found');
+                end
+            end
+            ChannelIndex = find(PossibleChannels);
+            radiusOfCurvatureChannel = obj.Channel(ChannelIndex(1));
+            
+            PossibleChannels = contains({obj.Channel.Name},'Slope') & contains({obj.Channel.Name},SurfFitChannelKeyphrase);
+            if ~any(PossibleChannels)
+                PossibleChannels = contains({obj.Channel.Name},'Slope');
+                if ~any(PossibleChannels)
+                    error('No surface topology channels found');
+                end
+            end
+            ChannelIndex = find(PossibleChannels);
+            slopeChannel = obj.Channel(ChannelIndex(1));
+            
+            PossibleChannels = contains({obj.Channel.Name},'Slope Direction') & contains({obj.Channel.Name},SurfFitChannelKeyphrase);
+            if ~any(PossibleChannels)
+                PossibleChannels = contains({obj.Channel.Name},'Slope Direction');
+                if ~any(PossibleChannels)
+                    error('No surface topology channels found');
+                end
+            end
+            ChannelIndex = find(PossibleChannels);
+            slopeDirectionChannel = obj.Channel(ChannelIndex(1));
+            
+            
             
             if nargin < 5
                 ZSpacingFactor = 1;
