@@ -80,7 +80,13 @@ end
 waitbar(length(subsetsGrid)/length(subsetsGrid),h,...
     sprintf('%i out of %i subsets processed',length(subsetsGrid),length(subsetsGrid)))
 
-PC2HM_backtransform_pointcloud(MaxPoints,Scale,Offset);
+MaxPoints = PC2HM_backtransform_pointcloud(MaxPoints,Scale,Offset);
+MinPoints = PC2HM_backtransform_pointcloud(MinPoints,Scale,Offset);
+MaxValuePoints = PC2HM_backtransform_pointcloud(MaxValuePoints,Scale,Offset);
+
+minCoords = PC2HM_backtransform_pointcloud(minCoords,Scale,Offset);
+maxCoords = PC2HM_backtransform_pointcloud(maxCoords,Scale,Offset);
+
 
 MaxPeakMap = PC2HM_pointcloud2grid(MaxPoints,Resolution);
 MinPeakMap = PC2HM_pointcloud2grid(MinPoints,Resolution);
