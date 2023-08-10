@@ -113,9 +113,21 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & dynam
             
         end
         
-        function preprocess_image(obj)
+        function preprocess_image(obj,AlternativeChannelName)
             
-            Height = obj.get_unprocessed_height_channel('Height (Trace)');
+            if nargin < 2
+                AlternativeChannelName = '';
+            end
+            
+            if nargin == 2
+                Height = obj.get_channel(AlternativeChannelName);
+                if isempty(Height)
+                    warning(spritntf('Channel %s not found',AlternativeChannelName))
+                    return
+                end
+            else
+                Height = obj.get_unprocessed_height_channel('Height (Trace)');
+            end
             
             if isempty(Height)
                 return
