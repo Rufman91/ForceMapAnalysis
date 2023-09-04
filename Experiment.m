@@ -943,6 +943,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             obj.I{Index}.List2Map = [];
             obj.I{Index}.Map2List = [];
             obj.I{Index}.Name = '';
+            obj.AFMImageNames{Index} = '';
         end
         
         function PC2HM_convert_pc_to_hm_and_add_afmimage(obj,PCName, PC, Resolution, zResolution,...
@@ -1020,16 +1021,23 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             
             obj.add_dummy_afmimage_data(false)
             
-            CompoundName = [PCName ...
-                '_Resolution' num2str(Resolution) ...
-                '_zResolution' num2str(zResolution) ...
-                '_MaxPointsPerGP' num2str(MaxPointsPerGP) ...
-                '_PartitionShrinkingFactor' num2str(PartitionShrinkingFactor) ...
-                '_InterpolationExpansionFactor' num2str(InterpolationExpansionFactor) ...
-                '_Lambda' num2str(Lambda) ...
-                '_Sigma' num2str(Sigma) ...
-                '_Noise' num2str(Noise) ...
-                ];
+            NewName = PCName;
+            Counter = 1;
+            while contains([obj.AFMImageNames{:}],NewName)
+                NewName = sprintf('%s-%03i',PCName,Counter);
+                Counter = Counter + 1;
+            end
+            
+            CompoundName = NewName;
+            
+            obj.I{end}.Metadata.PC2HM.Resolution = Resolution;
+            obj.I{end}.Metadata.PC2HM.zResolution = zResolution;
+            obj.I{end}.Metadata.PC2HM.MaxPointsPerGP = MaxPointsPerGP;
+            obj.I{end}.Metadata.PC2HM.PartitionShrinkingFactor = PartitionShrinkingFactor;
+            obj.I{end}.Metadata.PC2HM.InterpolationExpansionFactor = InterpolationExpansionFactor;
+            obj.I{end}.Metadata.PC2HM.Lambda = Lambda;
+            obj.I{end}.Metadata.PC2HM.Sigma = Sigma;
+            obj.I{end}.Metadata.PC2HM.Noise = Noise;
             
             obj.I{end}.NumPixelsX = Resolution;
             obj.I{end}.NumPixelsY = Resolution;
@@ -1049,6 +1057,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             obj.I{end}.NumChannels = numel(obj.I{end}.Channel);
             obj.I{end}.construct_list_to_map_relations;
             obj.I{end}.Name = CompoundName;
+            obj.AFMImageNames{end} = CompoundName;
             
         end
         
