@@ -61,7 +61,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
         StashedSelectedCurves = [] % In some calculations, SelectedCurves is changed temporarily inside a method.
                               % Actual Selction is stored and then restored from here
         CorruptedCurves = [] % Curves that cant be loaded
-        TipRadius = 8  % (nominal, if not otherwise calculated) tip radius in nm for the chosen type of tip model
+        TipRadius = 10e-9  % (nominal, if not otherwise calculated) tip radius in m for the chosen type of tip model
         PoissonR = 0.5  % standard Poisson ratio for most mechanical models
         Medium = ''
         FibrilFlag = []
@@ -1474,13 +1474,13 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
                             end
                         else
                             if UseTopology
-                                RTip = obj.TipRadius*1e-9;
+                                RTip = obj.TipRadius;
                                 
                                 RTopo = LROCList(iRange(i));
                                 
                                 R_eff{i} =1/(1/RTip + 1/RTopo);
                             else
-                                R_eff{i} = obj.TipRadius*1e-9;
+                                R_eff{i} = obj.TipRadius;
                             end
                         end
                     else
@@ -1497,7 +1497,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
                             end
                             R_eff{i} = 1/(1/TipRadius + 1/(obj.FibDiam/2));
                         else
-                            R_eff{i} = 1/(1/(obj.TipRadius*1e-9) + 1/(obj.FibDiam/2));
+                            R_eff{i} = 1/(1/(obj.TipRadius) + 1/(obj.FibDiam/2));
                         end
                     end
                     if isequal(lower(TipShape),'parabolic') || isequal(lower(TipShape),'spheric approx.')
@@ -4528,7 +4528,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
         function [E_mod,GoF,Hertzfit] = hertz_fit_gof(tip_h,force,CP,curve_percent,shape,TipRadius,PoissonR)
             
             if TipRadius == -1
-                prompt = {'What is the nominal tip radius of the used cantilever in nm?'};
+                prompt = {'What is the nominal tip radius of the used cantilever in m?'};
                 dlgtitle = 'Cantilever tip';
                 dims = [1 35];
                 definput = {'10'};
@@ -4558,7 +4558,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
                     CPforce,f);
                 % calculate E module based on the Hertz model. Be careful
                 % to convert to unnormalized data again
-                E_mod = 3*(Hertzfit.a*ranf/rant^(3/2))/(4*sqrt(TipRadius*10^(-9)))*(1-PoissonR^2);
+                E_mod = 3*(Hertzfit.a*ranf/rant^(3/2))/(4*sqrt(TipRadius))*(1-PoissonR^2);
             elseif isequal(shape,'spherical')
             elseif isequal(shape,'conical')
             elseif isequal(shape,'pyramid')
