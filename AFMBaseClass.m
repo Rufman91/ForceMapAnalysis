@@ -18,6 +18,7 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
         OriginY = 0
         List2Map = []        % An R->RxR ((k)->(i,j)) mapping of indices to switch between the two representations
         Map2List = []      % An RxR->R ((i,j)->(k))mapping of indices to switch between the two representations
+        Metadata = []
     end
     properties
         % All possible image channels. The Channels are all part of the
@@ -2032,14 +2033,14 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
                 YMultiplier = 1;
                 return
             elseif SizePerPixelX > SizePerPixelY
-                NewNumPixels = round(InChannel.ScanSizeX*InChannel.NumPixelsY/InChannel.ScanSizeY);
-                OutChannel.Image = imresize(InChannel.Image,[InChannel.NumPixelsY NewNumPixels],'bilinear');
+                NewNumPixels = round(InChannel.ScanSizeY*InChannel.NumPixelsY/InChannel.ScanSizeX);
+                OutChannel.Image = imresize(InChannel.Image,[InChannel.NumPixelsX NewNumPixels],'bilinear');
                 OutChannel.NumPixelsX = NewNumPixels;
                 XMultiplier = OutChannel.NumPixelsX/InChannel.NumPixelsX;
                 YMultiplier = 1;
             elseif SizePerPixelY > SizePerPixelX
-                NewNumPixels = round(InChannel.ScanSizeY*InChannel.NumPixelsX/InChannel.ScanSizeX);
-                OutChannel.Image = imresize(InChannel.Image,[NewNumPixels InChannel.NumPixelsX],'bilinear');
+                NewNumPixels = round(InChannel.ScanSizeX*InChannel.NumPixelsX/InChannel.ScanSizeY);
+                OutChannel.Image = imresize(InChannel.Image,[NewNumPixels InChannel.NumPixelsY],'bilinear');
                 OutChannel.NumPixelsY = NewNumPixels;
                 YMultiplier = OutChannel.NumPixelsY/InChannel.NumPixelsY;
                 XMultiplier = 1;
@@ -2099,12 +2100,12 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
                 PixelDiff = OutChannel.NumPixelsY - OutChannel.NumPixelsX;
                 OutChannel.Image(:,end+1:end+PixelDiff) = PaddingValue;
                 OutChannel.NumPixelsX = OutChannel.NumPixelsY;
-                OutChannel.ScanSizeX = OutChannel.ScanSizeY;
+                OutChannel.ScanSizeY = OutChannel.ScanSizeX;
             else
                 PixelDiff = OutChannel.NumPixelsX - OutChannel.NumPixelsY;
                 OutChannel.Image(end+1:end+PixelDiff,:) = PaddingValue;
                 OutChannel.NumPixelsY = OutChannel.NumPixelsX;
-                OutChannel.ScanSizeY = OutChannel.ScanSizeX;
+                OutChannel.ScanSizeX = OutChannel.ScanSizeY;
             end
             
             OutChannel = AFMBaseClass.resize_channel(OutChannel,TargetResolution,true);
