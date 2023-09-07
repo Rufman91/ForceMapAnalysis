@@ -5010,7 +5010,6 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
             end
             
         end
-
         
         function create_fibril_mask(obj,MaskParam)
             

@@ -1061,7 +1061,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             
         end
         
-        function add_dummy_cantilever_tip_data(obj,Preprocessing)
+        function add_dummy_cantilever_tip_data(obj,Preprocessing,Name)
             % function add_dummy_cantilever_tip_data(obj,Preprocessing)
             %
             % The add_dummy_cantilever_tip_data function adds a dummy
@@ -1097,11 +1097,14 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             
             if nargin <2
                 Preprocessing = true;
+                Name = 'ArtificialAFMImage-1';
+            else
+                Name = [Name '-1'];
             end
             
             SourceFile = which("TGT-1_MSCT-F-Box33-Nr10-fit-2022.05.13-09.50.09.883.jpk-qi-image");
             
-            Tip = AFMImage(SourceFile,obj.ExperimentFolder,'ArtificialAFMImage-1',Preprocessing);
+            Tip = AFMImage(SourceFile,obj.ExperimentFolder,Name,Preprocessing);
             
             if isempty(obj.NumCantileverTips) || obj.NumCantileverTips == 0
                 obj.CantileverTips{1} = Tip;
@@ -1112,12 +1115,130 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             end
         end
         
-        function create_artificial_cantilever_tip(obj)
+        function create_artificial_cantilever_tip(obj,Name,Shape,varargin)
+            % function [OutChannel1,OutChannel2] = create_custom_height_topography(Shape,varargin)
+            %
+            % <FUNCTION DESCRIPTION HERE>
+            %
+            %
+            % Required inputs
+            % Shape ... <VARIABLE DESCRIPTION>
+            %
+            % Name-Value pairs
+            % "TipRadius" ... <NAMEVALUE DESCRIPTION>
+            % "TipHeight" ... <NAMEVALUE DESCRIPTION>
+            % "TipTilt" ... <NAMEVALUE DESCRIPTION>
+            % "Radius" ... <NAMEVALUE DESCRIPTION>
+            % "HalfAngle" ... <NAMEVALUE DESCRIPTION>
+            % "ImageResolution" ... <NAMEVALUE DESCRIPTION>
+            % "StartFraction" ... <NAMEVALUE DESCRIPTION>
+            % "EndFraction" ... <NAMEVALUE DESCRIPTION>
+            % "FuseMethod" ... <NAMEVALUE DESCRIPTION>
+            % "HeightDifference" ... <NAMEVALUE DESCRIPTION>
+            % "TipApexChannel" ... <NAMEVALUE DESCRIPTION>
             
-            obj.add_dummy_cantilever_tip_data(false)
+            p = inputParser;
+            p.FunctionName = "create_custom_height_topography";
+            p.CaseSensitive = false;
+            p.PartialMatching = true;
             
+            % Required inputs
+            validShape = @(x)true;
+            addRequired(p,"Shape",validShape);
             
+            % NameValue inputs
+            defaultTipRadius = [];
+            defaultTipHeight = 1000e-9;
+            defaultTipTilt = 0;
+            defaultRadius = 20e-9;
+            defaultHalfAngle = 15;
+            defaultImageResolution = 256;
+            defaultStartFraction = .8;
+            defaultEndFraction = .99;
+            defaultFuseMethod = 'linear';
+            defaultHeightDifference = 0;
+            defaultTipApexChannel = [];
+            validTipRadius = @(x)true;
+            validTipHeight = @(x)true;
+            validTipTilt = @(x)true;
+            validRadius = @(x)true;
+            validHalfAngle = @(x)true;
+            validImageResolution = @(x)true;
+            validStartFraction = @(x)true;
+            validEndFraction = @(x)true;
+            validFuseMethod = @(x)true;
+            validHeightDifference = @(x)true;
+            validTipApexChannel = @(x)true;
+            addParameter(p,"TipRadius",defaultTipRadius,validTipRadius);
+            addParameter(p,"TipHeight",defaultTipHeight,validTipHeight);
+            addParameter(p,"TipTilt",defaultTipTilt,validTipTilt);
+            addParameter(p,"Radius",defaultRadius,validRadius);
+            addParameter(p,"HalfAngle",defaultHalfAngle,validHalfAngle);
+            addParameter(p,"ImageResolution",defaultImageResolution,validImageResolution);
+            addParameter(p,"StartFraction",defaultStartFraction,validStartFraction);
+            addParameter(p,"EndFraction",defaultEndFraction,validEndFraction);
+            addParameter(p,"FuseMethod",defaultFuseMethod,validFuseMethod);
+            addParameter(p,"HeightDifference",defaultHeightDifference,validHeightDifference);
+            addParameter(p,"TipApexChannel",defaultTipApexChannel,validTipApexChannel);
             
+            parse(p,Shape,varargin{:});
+            
+            % Assign parsing results to named variables
+            Shape = p.Results.Shape;
+            TipRadius = p.Results.TipRadius;
+            TipHeight = p.Results.TipHeight;
+            TipTilt = p.Results.TipTilt;
+            Radius = p.Results.Radius;
+            HalfAngle = p.Results.HalfAngle;
+            ImageResolution = p.Results.ImageResolution;
+            StartFraction = p.Results.StartFraction;
+            EndFraction = p.Results.EndFraction;
+            FuseMethod = p.Results.FuseMethod;
+            HeightDifference = p.Results.HeightDifference;
+            TipApexChannel = p.Results.TipApexChannel;
+            
+            obj.add_dummy_cantilever_tip_data(false,Name)
+            
+            CT = obj.CantileverTips{end};
+            CT.Name = Name;
+            obj.CantileverTipNames{end+1} = CT.Name;
+            obj.CantileverTipFolders{end+1} = CT.Folder;
+            
+            Channel = AFMImage.create_custom_height_topography(Shape,...
+                "TipRadius",TipRadius,...
+                "TipHeight",TipHeight,...
+                "TipTilt",TipTilt,...
+                "Radius",Radius,...
+                "HalfAngle",HalfAngle,...
+                "ImageResolution",ImageResolution,...
+                "StartFraction",StartFraction,...
+                "EndFraction",EndFraction,...
+                "FuseMethod",FuseMethod,...
+                "HeightDifference",HeightDifference,...
+                "TipApexChannel",TipApexChannel);
+            
+            Channel.Name = 'Processed';
+            CT.Channel(end+1) = Channel;
+            CT.hasProcessed = true;
+            
+            CT.Channel(1:CT.NumChannels) = [];
+            
+            Channel.Name = 'Eroded Tip';
+            Channel.Image = Channel.Image - max(Channel.Image,[],'all');
+            CT.Channel(end+1) = Channel;
+            CT.hasDeconvolutedCantileverTip = true;
+            
+            CT.OriginX = Channel.OriginX;
+            CT.OriginY = Channel.OriginY;
+            CT.ScanAngle = Channel.ScanAngle;
+            CT.NumPixelsX = Channel.NumPixelsX;
+            CT.NumPixelsY = Channel.NumPixelsY;
+            CT.ScanSizeX = Channel.ScanSizeX;
+            CT.ScanSizeY = Channel.ScanSizeY;
+            
+            CT.NumChannels = 2;
+            
+            CT.create_pixel_difference_channel(Channel.Image);
         end
         
         function load_force_map_analysis_options(obj)
