@@ -167,11 +167,23 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & dynam
             
         end
         
-        function deconvolute_cantilever_tip(obj,StepSize)
+        function deconvolute_cantilever_tip(obj,StepSize,ChannelName,Preprocessing)
             
-            Channel = obj.get_unprocessed_height_channel('Height (measured) (Trace)');
-            Based = imgaussfilt(AFMImage.subtract_line_fit_hist(Channel.Image,0.4));
-            Channel.Image = Based;
+            if nargin < 3
+                ChannelName = 'Height (measured) (Trace)';
+                Preprocessing = true;
+            end
+            if nargin < 2
+                StepSize = 1e-9;
+                ChannelName = 'Height (measured) (Trace)';
+                Preprocessing = true;
+            end
+            
+            Channel = obj.get_unprocessed_height_channel(ChannelName);
+            if Preprocessing
+                Based = imgaussfilt(AFMImage.subtract_line_fit_hist(Channel.Image,0.4));
+                Channel.Image = Based;
+            end
             BGMImage = obj.mask_background_by_threshold(Channel.Image,1);
             BGMImage = obj.masked_plane_fit(Channel,BGMImage);
             ConeHeight = range(Channel.Image,'all');
@@ -180,9 +192,6 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & dynam
             obj.add_channel(obj.create_standard_channel(DeconvImage,'Eroded Tip','m'));
             obj.add_channel(obj.create_standard_channel(BGMImage,'Background Mask','Logical'));
             
-            if nargin < 2
-                StepSize = 1e-9;
-            end
             
             PixelSizeX = obj.ScanSizeX/obj.NumPixelsX;
             PixelSizeY = obj.ScanSizeY/obj.NumPixelsY;
@@ -2833,8 +2842,8 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & dynam
             AspectRangeY = Channel.ScanSizeY;
             AspectRangeZ = range(Channel.Image,'all');
             
-            Surf.Parent.XLim = [0 Channel.NumPixelsX];
-            Surf.Parent.YLim = [0 Channel.NumPixelsY];
+            Surf.Parent.XLim = [0 Channel.NumPixelsY];
+            Surf.Parent.YLim = [0 Channel.NumPixelsX];
             Surf.Parent.ZLim = [min(Channel.Image,[],'all') max(Channel.Image,[],'all')];
             
             Surf.Parent.PlotBoxAspectRatio = [AspectRangeX AspectRangeY AspectRangeZ];
@@ -2872,8 +2881,8 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & dynam
             AspectRangeY = Channel.ScanSizeY;
             AspectRangeZ = range(Channel.Image,'all');
             
-            Mesh.Parent.XLim = [0 Channel.NumPixelsX];
-            Mesh.Parent.YLim = [0 Channel.NumPixelsY];
+            Mesh.Parent.XLim = [0 Channel.NumPixelsY];
+            Mesh.Parent.YLim = [0 Channel.NumPixelsX];
             Mesh.Parent.ZLim = [min(Channel.Image,[],'all') max(Channel.Image,[],'all')];
             
             Mesh.Parent.PlotBoxAspectRatio = [AspectRangeX AspectRangeY AspectRangeZ];
