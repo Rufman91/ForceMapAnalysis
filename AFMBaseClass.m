@@ -156,11 +156,20 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             
         end
         
-        function deconvolute_image(obj,CTClassInstance,ChannelName)
-            % Comment
+        function deconvolute_image(obj,CTClassInstance,ChannelName,MaxResolution,KeepOldResults)
+            % Comment Wow
             
             if nargin < 3
                 ChannelName = 'Processed';
+                MaxResolution = 1024;
+                KeepOldResults = true;
+            end
+            if nargin < 4
+                MaxResolution = 1024;
+                KeepOldResults = true;
+            end
+            if nargin < 5
+                KeepOldResults = true;
             end
             
             ErodedTip = CTClassInstance.get_channel('Eroded Tip');
@@ -174,37 +183,84 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
                 return
             end
             
+            PPHasUnequalSPP = false;
+            [PP,XMult,YMult] = AFMBaseClass.resize_channel_to_padded_same_size_per_pixel_square_image(Processed);
+            ET = AFMBaseClass.resize_channel_to_padded_same_size_per_pixel_square_image(ErodedTip);
+            
+            if XMult ~= 1 || YMult ~= 1
+                PPHasUnequalSPP = true;
+            end
+            
+            imshowpair(Processed.Image,PP.Image,'montage')
             % Resize and pad images to same resolution at correct spacial
             % ratio
-            TempMultiplier = (ErodedTip.NumPixelsX/ErodedTip.ScanSizeX)/(Processed.NumPixelsX/Processed.ScanSizeX);
-            Multiplier = TempMultiplier;
-            if TempMultiplier*Processed.NumPixelsX > 1024
-                ReductionFactor = 1024/(TempMultiplier*Processed.NumPixelsX);
-                Multiplier = TempMultiplier*ReductionFactor;
-                ReducedRes = round(ErodedTip.NumPixelsX*ReductionFactor);
-                ErodedTip.Image = imresize(ErodedTip.Image,[ReducedRes nan]);
-            end
-            if TempMultiplier >= 1
-                Smaller = ErodedTip.Image;
-                Bigger = Processed.Image;
-            else
-                Smaller = Processed.Image;
-                Bigger = ErodedTip.Image;
-            end
-            Bigger = imresize(Bigger,[round(Multiplier*size(Bigger,1)) nan]);
-            Smaller = padarray(Smaller,size(Bigger)-size(Smaller),...
-                min(Smaller,[],'all'),'post');
+            Multiplier = (ET.NumPixelsY/ET.ScanSizeX)/(PP.NumPixelsY/PP.ScanSizeX);
             
-            if TempMultiplier >= 1
-                In1 = Bigger;
-                In2 = Smaller;
+            if Multiplier >= 1
+                PP.Image = imresize(PP.Image,[round(Multiplier*PP.NumPixelsX) nan]);
+                PPResized = true;
+                ETResized = false;
             else
-                In1 = Smaller;
-                In2 = Bigger;
+                ET.Image = imresize(ET.Image,[round(1/Multiplier*ET.NumPixelsX) nan]);
+                PPResized = false;
+                ETResized = true;
             end
             
-            OutImage = obj.deconvolute_by_mathematical_morphology(In1,In2);
-            OutImage = imresize(OutImage,[Processed.NumPixelsX Processed.NumPixelsY]);
+            PaddingSize = abs(size(PP.Image) - size(ET.Image));
+            PaddingSizePre = floor(PaddingSize./2);
+            PaddingSizePost = ceil(PaddingSize./2);
+            if size(PP.Image,1) >= size(ET.Image,1)
+                ET.Image = padarray(ET.Image,PaddingSizePre,...
+                    min(ET.Image,[],'all'),'pre');
+                ET.Image = padarray(ET.Image,PaddingSizePost,...
+                    min(ET.Image,[],'all'),'post');
+                ETPadded = true;
+                PPPadded = false;
+            else
+                PP.Image = padarray(PP.Image,PaddingSizePre,...
+                    min(PP.Image,[],'all'),'pre');
+                PP.Image = padarray(PP.Image,PaddingSizePost,...
+                    min(PP.Image,[],'all'),'post');
+                ETPadded = false;
+                PPPadded = true;
+            end
+            
+            % if images ended up being too big, scale them down for
+            % deconvolution
+            isDownscaled = false; 
+            if size(ET.Image,1) > MaxResolution
+                DownscaleFactor = MaxResolution/size(ET.Image,1);
+                ET.Image = imresize(ET.Image,[MaxResolution nan]);
+                PP.Image = imresize(PP.Image,[MaxResolution nan]);
+                isDownscaled = true;
+            end
+%             subplot(2,1,1)
+%             imshowpair(PP.Image,ET.Image,'montage')
+%             subplot(2,1,2)
+%             imshowpair(Processed.Image,PP.Image,'montage')
+%             drawnow
+            
+            % Make sure the Tip is below the convoluted image EVERYWHERE
+            Min = min(PP.Image,[],'all');
+            PP.Image  = PP.Image - Min;
+
+            Out = obj.deconvolute_by_mathematical_morphology(PP.Image,ET.Image);
+            
+            % put it back
+            Out = Out + Min;
+            
+            if isDownscaled
+                Out = imresize(Out,[round(MaxResolution/DownscaleFactor) nan]);
+            end
+            if PPPadded
+                Out = Out((PaddingSizePre(1) + 1):(end - PaddingSizePost(1)),...
+                    (PaddingSizePre(1) + 1):(end - PaddingSizePost(2)));
+            end
+            if PPResized || PPHasUnequalSPP
+                Out = imresize(Out,[round(PP.NumPixelsX*YMult) round(PP.NumPixelsY*XMult)]);
+            end
+            
+            OutImage = Out(1:Processed.NumPixelsX,1:Processed.NumPixelsY);
             
             Deconvoluted = Processed;
             Deconvoluted.Name = 'Deconvoluted';
@@ -216,12 +272,7 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             
             Deconvoluted.Image = OutImage;
             
-            [~,Index] = obj.get_channel('Deconvoluted');
-            if isempty(Index)
-                obj.Channel(end+1) = Deconvoluted;
-            else
-                obj.Channel(Index) = Deconvoluted;
-            end
+            obj.add_channel(Deconvoluted,~KeepOldResults)
         end
         
         function clear_all_properties(obj)
@@ -235,6 +286,42 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
         end
         
         function construct_list_to_map_relations(obj)
+            obj.Map2List = zeros(obj.NumPixelsX, obj.NumPixelsY);
+            obj.List2Map = zeros(obj.NumPixelsX * obj.NumPixelsY, 2);
+            
+            [i_mat, j_mat] = meshgrid(1:obj.NumPixelsY, 1:obj.NumPixelsX);
+            i_mat = i_mat';
+            j_mat = j_mat';
+            
+            k = 1;
+            k_mat = reshape(1:(obj.NumPixelsX * obj.NumPixelsY), obj.NumPixelsY, obj.NumPixelsX);
+            
+            if isequal(obj.FileType, 'quantitative-imaging-map')
+                obj.Map2List = k_mat';
+                obj.List2Map = [j_mat(:), i_mat(:)];
+            elseif isequal(obj.FileType, 'force-scan-map')
+                for i=1:obj.NumPixelsX
+                    if ~mod(i,2)
+                        for j=1:obj.NumPixelsY
+                            obj.Map2List(i,j) = k;
+                            obj.List2Map(k,:) = [i j];
+                            k = k + 1;
+                        end
+                    else
+                        for j=1:obj.NumPixelsY
+                            obj.Map2List(i,obj.NumPixelsY-j+1) = k;
+                            obj.List2Map(k,:) = [i obj.NumPixelsY-j+1];
+                            k = k + 1;
+                        end
+                    end
+                end
+            else
+                obj.Map2List = k_mat';
+                obj.List2Map = [i_mat(:), j_mat(:)];
+            end
+        end
+                
+        function construct_list_to_map_relations_old(obj)
             k = 1;
             obj.List2Map = zeros(obj.NumPixelsX*obj.NumPixelsY,2);
             if isequal(obj.FileType,'quantitative-imaging-map')
@@ -436,6 +523,14 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             OutChannel = obj.create_standard_channel(OutImage,'Pixel Difference','m');
             
             obj.Channel(end+1) = OutChannel;
+            
+            obj.assert_channel_number;
+        end
+        
+        function assert_channel_number(obj)
+            
+            obj.NumChannels = numel(obj.Channel);
+            
         end
         
         function PopUp = string_of_existing(obj)
@@ -1822,6 +1917,12 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             
             % Read the height image from the object using the get_channel method
             height_channel = obj.get_channel(HeightChannelName);
+            
+            orig_num_pixels_x = height_channel.NumPixelsX;
+            orig_num_pixels_y = height_channel.NumPixelsY;
+            
+            height_channel = AFMImage.resize_channel_to_padded_same_size_per_pixel_square_image(height_channel);
+            
             height_image = height_channel.Image;
             scan_size_x = height_channel.ScanSizeX;
             scan_size_y = height_channel.ScanSizeY;
@@ -1842,7 +1943,9 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
                 if ~isequal(Radius,CompRadius)
                     warning(['Some or all of the ROI-Radii you chose for curvature fitting are too small. Replaced with the minimum radius of ' num2str(min_radius)]);
                 end
-                RadiusMap = obj.convert_data_list_to_map(Radius);
+                TempRadiusMap = obj.convert_data_list_to_map(Radius);
+                RadiusMap = ones(size(height_image)).*min_radius;
+                RadiusMap(1:size(TempRadiusMap,1),1:size(TempRadiusMap,2)) = TempRadiusMap;
             end
             
             % Calculate the pixel size in x and y directions
@@ -1891,17 +1994,21 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
                     warningCount.fitParaboloidWarnings = warningCount.fitParaboloidWarnings + paraboloid_warnings;
             
                     % Calculate the local slope and curvature at the current pixel
-                    slope(i, j) = norm(p1(1:2));
-                    radius_of_curvature(i, j) = sign(p2(1) + p2(2))/sqrt(p2(1)^2 + p2(2)^2);
+                    temp_slope(i, j) = norm(p1(1:2));
+                    temp_radius_of_curvature(i, j) = sign(p2(1) + p2(2))/sqrt(p2(1)^2 + p2(2)^2);
                     
                     % Calculate the slope direction and convert it to degrees
-                    slope_direction(i, j) = atan2d(p1(2), p1(1));
+                    temp_slope_direction(i, j) = atan2d(p1(2), p1(1));
                 end
             end
             % Restore the original warning state
             warning(plane_warning_state);
             warning(singular_matrix_warning_state);
             warning(ill_conditioned_matrix_warning_state);
+            
+            slope = temp_slope(1:orig_num_pixels_x,1:orig_num_pixels_y);
+            slope_direction = temp_slope_direction(1:orig_num_pixels_x,1:orig_num_pixels_y);
+            radius_of_curvature = temp_radius_of_curvature(1:orig_num_pixels_x,1:orig_num_pixels_y);
             
             CorrectedRadius = Radius;
             
@@ -2004,6 +2111,13 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             
             OutChannel = InChannel;
             
+            if length(TargetRes) == 2
+                OutChannel.Image = imresize(InChannel.Image,[TargetRes(1) TargetRes(2)],'bilinear');
+                OutChannel.NumPixelsX = size(OutChannel.Image,1);
+                OutChannel.NumPixelsY = size(OutChannel.Image,2);
+                return
+            end
+            
             if ~TransformToSquare
                 OutChannel.Image = imresize(InChannel.Image,TargetRes/InChannel.NumPixelsX,'bilinear');
                 OutChannel.NumPixelsX = size(OutChannel.Image,1);
@@ -2023,8 +2137,8 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             % New Image will have aspect ratio according to the ratio of
             % ScanSizeX and ScanSizeY
             
-            SizePerPixelX = InChannel.ScanSizeX./InChannel.NumPixelsX;
-            SizePerPixelY = InChannel.ScanSizeY./InChannel.NumPixelsY;
+            SizePerPixelX = InChannel.ScanSizeY./InChannel.NumPixelsX;
+            SizePerPixelY = InChannel.ScanSizeX./InChannel.NumPixelsY;
             
             OutChannel = InChannel;
             
@@ -2034,20 +2148,20 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
                 return
             elseif SizePerPixelX > SizePerPixelY
                 NewNumPixels = round(InChannel.ScanSizeY*InChannel.NumPixelsY/InChannel.ScanSizeX);
-                OutChannel.Image = imresize(InChannel.Image,[InChannel.NumPixelsX NewNumPixels],'bilinear');
+                OutChannel.Image = imresize(InChannel.Image,[NewNumPixels InChannel.NumPixelsY],'bilinear');
                 OutChannel.NumPixelsX = NewNumPixels;
                 XMultiplier = OutChannel.NumPixelsX/InChannel.NumPixelsX;
                 YMultiplier = 1;
             elseif SizePerPixelY > SizePerPixelX
                 NewNumPixels = round(InChannel.ScanSizeX*InChannel.NumPixelsX/InChannel.ScanSizeY);
-                OutChannel.Image = imresize(InChannel.Image,[NewNumPixels InChannel.NumPixelsY],'bilinear');
+                OutChannel.Image = imresize(InChannel.Image,[InChannel.NumPixelsX NewNumPixels],'bilinear');
                 OutChannel.NumPixelsY = NewNumPixels;
                 YMultiplier = OutChannel.NumPixelsY/InChannel.NumPixelsY;
                 XMultiplier = 1;
             end
         end
         
-        function OutChannel = resize_channel_to_padded_same_size_per_pixel_square_image(InChannel,varargin)
+        function [OutChannel,XMultiplier,YMultiplier] = resize_channel_to_padded_same_size_per_pixel_square_image(InChannel,varargin)
             % function OutChannel = resize_channel_to_padded_same_size_per_pixel_square_image(InChannel,varargin)
             %
             % <FUNCTION DESCRIPTION HERE>
@@ -2085,7 +2199,7 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             TargetResolution = p.Results.TargetResolution;
             
             % First, equalize the size-per-pixel relation
-            OutChannel = AFMBaseClass.resize_channel_to_same_size_per_pixel(InChannel);
+            [OutChannel,XMultiplier,YMultiplier] = AFMBaseClass.resize_channel_to_same_size_per_pixel(InChannel);
             
             if isequal(lower(PaddingType),'min')
                 PaddingValue = min(OutChannel.Image,[],'all');
@@ -2098,12 +2212,12 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             %Padd the side wih less pixels
             if OutChannel.NumPixelsX < OutChannel.NumPixelsY
                 PixelDiff = OutChannel.NumPixelsY - OutChannel.NumPixelsX;
-                OutChannel.Image(:,end+1:end+PixelDiff) = PaddingValue;
+                OutChannel.Image(end+1:end+PixelDiff,:) = PaddingValue;
                 OutChannel.NumPixelsX = OutChannel.NumPixelsY;
                 OutChannel.ScanSizeY = OutChannel.ScanSizeX;
             else
                 PixelDiff = OutChannel.NumPixelsX - OutChannel.NumPixelsY;
-                OutChannel.Image(end+1:end+PixelDiff,:) = PaddingValue;
+                OutChannel.Image(:,end+1:end+PixelDiff) = PaddingValue;
                 OutChannel.NumPixelsY = OutChannel.NumPixelsX;
                 OutChannel.ScanSizeX = OutChannel.ScanSizeY;
             end
@@ -2269,6 +2383,24 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             end
             
             OutChannel.Image = imrotate(InChannel.Image,RotDegrees);
+            
+        end
+        
+        function OutChannel = set_freehand_area_in_channel_to_value(InChannel, Value)
+            
+            F = figure('Color','w');
+            imshow(InChannel.Image,[])
+            colormap(AFMImage.define_afm_color_map)
+            
+            ROI = drawfreehand;
+            
+            Mask = ROI.createMask;
+            
+            OutChannel = InChannel;
+            OutChannel.Image(Mask) = Value;
+            
+            imshowpair(InChannel.Image, OutChannel.Image, 'Montage')
+            colormap(AFMImage.define_afm_color_map)
             
         end
         

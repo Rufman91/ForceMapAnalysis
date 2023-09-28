@@ -2964,7 +2964,7 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & dynam
             InChannel = p.Results.InChannel;
             BinSize = p.Results.BinSize;
             
-            AreaPerPixel = (InChannel.ScanSizeX/InChannel.NumPixelsX)*(InChannel.ScanSizeY/InChannel.NumPixelsY);
+            AreaPerPixel = (InChannel.ScanSizeY/InChannel.NumPixelsX)*(InChannel.ScanSizeX/InChannel.NumPixelsY);
             
             Min = min(InChannel.Image,[],'all');
             Max = max(InChannel.Image,[],'all');
