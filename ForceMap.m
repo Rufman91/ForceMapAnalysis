@@ -2354,6 +2354,131 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
             close(f)
         end
         
+        function determine_relevant_radius_of_indentation(obj,varargin)
+            % function determine_relevant_radius_of_indentation(obj,varargin)
+            %
+            % <FUNCTION DESCRIPTION HERE>
+            %
+            %
+            % Required inputs
+            % obj ... <VARIABLE DESCRIPTION>
+            %
+            % Name-Value pairs
+            % "Method" ... <NAMEVALUE DESCRIPTION>
+            % "CantileverTipInstance" ... <NAMEVALUE DESCRIPTION>
+            % "CantileverTipChannelName" ... <NAMEVALUE DESCRIPTION>
+            % "ChannelName" ... <NAMEVALUE DESCRIPTION>
+            % "IndentDepthChannelName" ... <NAMEVALUE DESCRIPTION>
+            % "KeepOldResults" ... <NAMEVALUE DESCRIPTION>
+            
+            p = inputParser;
+            p.FunctionName = "determine_relevant_radius_of_indentation";
+            p.CaseSensitive = false;
+            p.PartialMatching = true;
+            
+            % Required inputs
+            validobj = @(x)true;
+            addRequired(p,"obj",validobj);
+            
+            % NameValue inputs
+            defaultMethod = [];
+            defaultCantileverTipInstance = [];
+            defaultCantileverTipChannelName = [];
+            defaultChannelName = [];
+            defaultIndentDepthChannelName = [];
+            defaultKeepOldResults = true;
+            validMethod = @(x)true;
+            validCantileverTipInstance = @(x)true;
+            validCantileverTipChannelName = @(x)true;
+            validChannelName = @(x)true;
+            validIndentDepthChannelName = @(x)true;
+            validKeepOldResults = @(x)islogical(x);
+            addParameter(p,"Method",defaultMethod,validMethod);
+            addParameter(p,"CantileverTipInstance",defaultCantileverTipInstance,validCantileverTipInstance);
+            addParameter(p,"CantileverTipChannelName",defaultCantileverTipChannelName,validCantileverTipChannelName);
+            addParameter(p,"ChannelName",defaultChannelName,validChannelName);
+            addParameter(p,"IndentDepthChannelName",defaultIndentDepthChannelName,validIndentDepthChannelName);
+            addParameter(p,"KeepOldResults",defaultKeepOldResults,validKeepOldResults);
+            
+            parse(p,obj,varargin{:});
+            
+            % Assign parsing results to named variables
+            obj = p.Results.obj;
+            Method = p.Results.Method;
+            CantileverTipInstance = p.Results.CantileverTipInstance;
+            CantileverTipChannelName = p.Results.CantileverTipChannelName;
+            ChannelName = p.Results.ChannelName;
+            IndentDepthChannelName = p.Results.IndentDepthChannelName;
+            KeepOldResults = p.Results.KeepOldResults;
+            
+            Verbose = true;
+            KeyFrame = 23;
+            
+            TopoChannel = obj.get_channel(ChannelName);
+            IndentDepthChannel = obj.get_channel(IndentDepthChannelName);
+            CTChannel = CantileverTipInstance.get_channel(CantileverTipChannelName);
+            
+            if isempty(TopoChannel) || isempty(IndentDepthChannel)
+                error(sprintf('Channel not found: %s',ChannelName));
+            end
+            if isempty(IndentDepthChannel)
+                error(sprintf('Channel not found: %s',IndentDepthChannelName));
+            end
+            if isempty(CTChannel)
+                error(sprintf('Channel not found: %s', CantileverTipChannelName));
+            end
+            
+            % Resize CTChannel to obj resolution
+            CTChannel = obj.resize_channel(CTChannel,[TopoChannel.NumPixelsX TopoChannel.NumPixelsY]);
+            
+            % TODO: make logical map of CTChannel at indent depth. Copy and
+            % center pixelpattern to TopoChannel. Make logiacl map of
+            % TopoChannel within pixelpattern exceeding max - indent depth.
+            % whichever area is smaller is then to be taken for the Radius.
+            % make it so it is later relatively easy to export the chosen
+            % pixelpattern and not just a radius as number.
+            
+            IndentDepthList = obj.convert_map_to_data_list(IndentDepthChannel.Image);
+            TopoList = obj.convert_map_to_data_list(TopoChannel.Image);
+            
+            PixelArea = TopoChannel.ScanSizeX/TopoChannel.NumPixelsY * TopoChannel.ScanSizeY/TopoChannel.NumPixelsX;
+            ContactRadius = zeros(size(TopoList));
+            MaxCTHeight = max(CTChannel.Image,[],'all');
+            [MaxCTIndexX,MaxCTIndexY] = find(CTChannel.Image == MaxCTHeight);
+            
+            h = waitbar(0,'Setting up...');
+            for i=1:obj.NCurves
+                waitbar(i/obj.NCurves,h,'Calculating contact radius...');
+                TempCTMask = CTChannel.Image >= (MaxCTHeight - IndentDepthList(i));
+                CurPos = obj.List2Map(i,:);
+                PixShiftX = CurPos(1) - MaxCTIndexX ;
+                PixShiftY = CurPos(2) - MaxCTIndexY;
+                CTMask = shiftLogicalArray(TempCTMask,PixShiftX,PixShiftY);
+                TopoMask = TopoChannel.Image >= (TopoList(i) - IndentDepthList(i));
+                AreaMask = CTMask & TopoMask;
+                SumPixels = sum(AreaMask,'all');
+                ContactRadius(i) = sqrt((SumPixels*PixelArea)/pi);
+                if Verbose && ~mod(i,KeyFrame)
+                    subplot(2,1,1)
+                    CurPosMap = zeros(size(TempCTMask));
+                    CurPosMap(CurPos(1),CurPos(2)) = true;
+                    imshowpair(CTChannel.Image >= (MaxCTHeight - IndentDepthList(i)),TopoChannel.Image >= (TopoList(i) - IndentDepthList(i)),'montage');
+                    subplot(2,1,2)
+                    imshowpair(CurPosMap,AreaMask,'montage')
+                    title(sprintf('Contact Radius: %.2e',ContactRadius(i)))
+                    drawnow
+                end
+            end
+            
+            CRMap = obj.convert_data_list_to_map(ContactRadius);
+            
+            CRChannel = obj.create_standard_channel(CRMap,'Contact Radius','m');
+            obj.add_channel(CRChannel,~KeepOldResults);
+            
+            close(h)
+        end
+
+        
     %% SMFS related
     
         function fc_flag_workaround(obj)
