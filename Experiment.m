@@ -1158,6 +1158,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             defaultFuseMethod = 'linear';
             defaultHeightDifference = 0;
             defaultTipApexChannel = [];
+            defaultProjectedAreaStepSize = 1e-9;
             validTipRadius = @(x)true;
             validTipHeight = @(x)true;
             validTipTilt = @(x)true;
@@ -1169,6 +1170,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             validFuseMethod = @(x)true;
             validHeightDifference = @(x)true;
             validTipApexChannel = @(x)true;
+            validProjectedAreaStepSize = @(x)true;
             addParameter(p,"TipRadius",defaultTipRadius,validTipRadius);
             addParameter(p,"TipHeight",defaultTipHeight,validTipHeight);
             addParameter(p,"TipTilt",defaultTipTilt,validTipTilt);
@@ -1180,6 +1182,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             addParameter(p,"FuseMethod",defaultFuseMethod,validFuseMethod);
             addParameter(p,"HeightDifference",defaultHeightDifference,validHeightDifference);
             addParameter(p,"TipApexChannel",defaultTipApexChannel,validTipApexChannel);
+            addParameter(p,"ProjectedAreaStepSize",defaultProjectedAreaStepSize,validProjectedAreaStepSize);
             
             parse(p,Shape,varargin{:});
             
@@ -1196,6 +1199,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             FuseMethod = p.Results.FuseMethod;
             HeightDifference = p.Results.HeightDifference;
             TipApexChannel = p.Results.TipApexChannel;
+            ProjectedAreaStepSize = p.Results.ProjectedAreaStepSize;
             
             obj.add_dummy_cantilever_tip_data(false,Name)
             
@@ -1239,6 +1243,10 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             CT.NumChannels = 2;
             
             CT.create_pixel_difference_channel(Channel.Image);
+            
+            CT.ProjectedTipArea = AFMImage.calculate_projected_area_histcumsum(CT.get_channel('Eroded Tip'),ProjectedAreaStepSize);
+            CT.DepthDependendTipRadius = CT.calculate_depth_dependend_tip_data(CT.ProjectedTipArea,75);
+            
         end
         
         function load_force_map_analysis_options(obj)
@@ -1980,7 +1988,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             obj.write_to_log_file('Reference Slope Option',RefSlopeOption)
             
             % Deconvoluting cantilever tip(s)
-            if isequal(lower(EModOption),'oliver') || isequal(lower(EModOption),'both') || UseTipInHertz
+            if isequal(lower(EModOption),'oliverpharr') || isequal(lower(EModOption),'both') || UseTipInHertz
                 if obj.NumCantileverTips == 0
                     if isequal(class(obj.CantileverTips{1}),'AFMImage')
                         obj.NumCantileverTips = length(obj.CantileverTips);
@@ -2111,7 +2119,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                             obj.write_to_log_file('Allow X-Shift',AllowXShift)
                         end
                     end
-                    if isequal(lower(EModOption),'oliver') || isequal(lower(EModOption),'both')
+                    if isequal(lower(EModOption),'oliverpharr') || isequal(lower(EModOption),'both')
                         obj.FM{i}.calculate_e_mod_oliverpharr(obj.CantileverTips{obj.WhichTip(i)}.ProjectedTipArea,0.75,...
                             obj.ForceMapAnalysisOptions.KeepOldResults);
                         if i == 1
@@ -2170,7 +2178,8 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                                 );
                         end
                     end
-                    if obj.ForceMapAnalysisOptions.EModOption.Hertz.PredictiveRSquare
+                    if obj.ForceMapAnalysisOptions.EModOption.Hertz.PredictiveRSquare &&...
+                            isequal(lower(EModOption),'hertz') || isequal(lower(EModOption),'both')
                         obj.FM{i}.calculate_predictive_rsquare_hertz(...
                             obj.ForceMapAnalysisOptions.EModOption.Hertz.CorrectSensitivity,...
                             obj.ForceMapAnalysisOptions.SensitivityCorrection.SensitivityCorrectionMethod,...
@@ -8928,8 +8937,6 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 'Units','normalized',...
                 'FontSize',12,...
                 'HorizontalAlignment','center')
-            
-            
             
         end
         
