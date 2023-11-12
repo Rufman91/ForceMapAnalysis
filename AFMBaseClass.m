@@ -317,7 +317,7 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
                 end
             else
                 obj.Map2List = k_mat';
-                obj.List2Map = [i_mat(:), j_mat(:)];
+                obj.List2Map = [j_mat(:), i_mat(:)];
             end
         end
                 
