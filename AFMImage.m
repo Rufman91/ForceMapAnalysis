@@ -130,6 +130,7 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & dynam
             end
             
             if isempty(Height)
+                warning("Could not find height channel needed for preprocessing")
                 return
             end
             
@@ -143,7 +144,7 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & dynam
             for i=1:5
                 Map = AFMImage.subtract_line_fit_vertical_rov(Map,.2,0);
             end
-            Map = imresize(Map,[obj.NumPixelsY obj.NumPixelsX],'nearest');
+            Map = imresize(Map,[obj.NumPixelsX obj.NumPixelsY],'nearest');
             
             Map = AFMImage.find_and_replace_outlier_lines(Map,10);
             
