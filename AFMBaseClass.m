@@ -2040,6 +2040,65 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             
         end
         
+        function create_logical_mask_channel_from_segment(obj,SegmentName,MaskName,DilationMeters)
+            
+            if nargin < 4
+                DilationMeters = 0;
+            end
+            
+            Indices = find(contains({obj.Segment.Name},SegmentName));
+            
+            Mask = zeros(obj.NumPixelsX,obj.NumPixelsY);
+            
+            F = figure;
+            imshow(Mask)
+            
+            for i=Indices
+                CurrentDrawMode = lower(obj.Segment(i).Type);
+                switch CurrentDrawMode
+                    case 'line'
+                        ROIObjects{i} = drawline('Position',obj.Segment(i).ROIObject.Position);
+                    case 'freehand'
+                        ROIObjects{i} = drawfreehand('Position',obj.Segment(i).ROIObject.Position);
+                    case 'square'
+                        ROIObjects{i} = drawsquare('Position',obj.Segment(i).ROIObject.Position);
+                    case 'circle'
+                        ROIObjects{i} = drawcircle('Center',obj.Segment(i).ROIObject.Center,...
+                            'Radius',obj.Segment(i).ROIObject.Radius);
+                    case 'ellipse'
+                        ROIObjects{i} = drawellipse('Center',obj.Segment(i).ROIObject.Center,...
+                            'SemiAxes',obj.Segment(i).ROIObject.SemiAxes,...
+                            'RotationAngle',obj.Segment(i).ROIObject.RotationAngle);
+                    case 'polygon'
+                        ROIObjects{i} = drawpolygon('Position',obj.Segment(i).ROIObject.Position);
+                    case 'rectangle'
+                        ROIObjects{i} = drawrectangle('Position',obj.Segment(i).ROIObject.Position);
+                    case 'crosshair'
+                        ROIObjects{i} = drawcrosshair('Position',obj.Segment(i).ROIObject.Position);
+                    case 'point'
+                        ROIObjects{i} = drawpoint('Position',obj.Segment(i).ROIObject.Position);
+                    case 'assisted'
+                        ROIObjects{i} = drawassisted('Position',obj.Segment(i).ROIObject.Position);
+                    case 'polyline'
+                        ROIObjects{i} = drawpolyline('Position',obj.Segment(i).ROIObject.Position);
+                end
+                TempMask = ROIObjects{i}.createMask;
+                
+                if DilationMeters ~= 0
+                    %TODO Implement size specific pixel dilation
+                    TempMask = TempMask;
+                end
+                
+                Mask = Mask | TempMask;
+            end
+            
+            MaskChan = obj.create_standard_channel(Mask,MaskName,'logical');
+            
+            obj.add_channel(MaskChan,true);
+            
+            close(F)
+        end
+        
     end
     methods (Static)
         % Static main methods
