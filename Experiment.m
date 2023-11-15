@@ -5535,6 +5535,13 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                     h.BaseUnit{Index} = Channel.Unit;
                     h.ScanSizeX(Index) = Channel.ScanSizeX;
                     h.ScanSizeY(Index) = Channel.ScanSizeY;
+                    if isfield(h,'NumPixelsX') && isfield(h,'NumPixelsY') &&...
+                            length(h.NumPixelsX) == 2 &&...
+                            length(h.NumPixelsY) == 2 &&...
+                            ((h.NumPixelsX(Index) ~= Channel.NumPixelsX) ||...
+                            (h.NumPixelsY(Index) ~= Channel.NumPixelsY))
+                        h.ResetOnNextZoom = true;
+                    end
                     h.NumPixelsX(Index) = Channel.NumPixelsX;
                     h.NumPixelsY(Index) = Channel.NumPixelsY;
                     ColorPattern = h.Class{Index}.CMap;
