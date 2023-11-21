@@ -10309,22 +10309,22 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             
             k = 1;
             for i=1:obj.NumAFMImages
-                PopUp{k} = sprintf('Image: %s%',obj.I{i}.Name);
+                PopUp{k} = sprintf('Image %i: %s%',i,obj.I{i}.Name);
                 ClassIndex(k,:) = [1 i];
                 k = k + 1;
             end
             for i=1:obj.NumForceMaps
-                PopUp{k} = sprintf('Force Map: %s%',obj.FM{i}.Name);
+                PopUp{k} = sprintf('Force Map %i: %s%',i,obj.FM{i}.Name);
                 ClassIndex(k,:) = [2 i];
                 k = k + 1;
             end
             for i=1:obj.NumReferenceForceMaps
-                PopUp{k} = sprintf('Ref. Force Map: %s%',obj.RefFM{i}.Name);
+                PopUp{k} = sprintf('Ref. Force Map %i: %s%',i,obj.RefFM{i}.Name);
                 ClassIndex(k,:) = [3 i];
                 k = k + 1;
             end
             for i=1:obj.NumCantileverTips
-                PopUp{k} = sprintf('Cant. Tip Image: %s%',obj.CantileverTips{i}.Name);
+                PopUp{k} = sprintf('Cant. Tip Image %i: %s%',i,obj.CantileverTips{i}.Name);
                 ClassIndex(k,:) = [4 i];
                 k = k + 1;
             end
@@ -11557,9 +11557,9 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 'DTypePredictiveRSquare','logical',...
                 'TooltipPredictiveRSquare','Calculate the RSquare of the fit on the whole set of data bigger than the CP, regardless of fitting range.',...
                 'UpperForceCutOff',[],...
-                'TooltipUpperForceCutOff','Set the lower absolute y-limit in Newtons [N] for the portion of the curve that should be considered for fitting.',...
+                'TooltipUpperForceCutOff','Set the upper absolute y-limit in Newtons [N] for the portion of the curve that should be considered for fitting.',...
                 'LowerForceCutOff',0,...
-                'TooltipLowerForceCutOff','Set the upper absolute y-limit in Newtons [N] for the portion of the curve that should be considered for fitting.',...
+                'TooltipLowerForceCutOff','Set the lower absolute y-limit in Newtons [N] for the portion of the curve that should be considered for fitting.',...
                 'LowerCurveFraction',0,...
                 'TooltipLowerCurveFraction','Set the lower fraction y-limit for the portion of the curve that should be considered for fitting. This applies to the curve AFTER the ForceCutOffs.',...
                 'UpperCurveFraction',1,...
