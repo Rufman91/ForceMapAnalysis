@@ -34,7 +34,7 @@ else
 end 
 
 % filter out unwanted folders
-pat = 'colloidal-probe';
+pat = 'colloidal';
 counter = 1;
 sample_idx = nan(NumberFolders,1);
 for m = 1:NumberFolders
@@ -86,26 +86,26 @@ end
 
 %% plotting data 
 
-figure('name', 'Measurements on different days'); hold on
-colors = [0.376470588235294         0.611764705882353         0.533333333333333; ...
-    0.83921568627451         0.603921568627451         0.603921568627451; ...
-    0.650980392156863         0.650980392156863         0.650980392156863]; 
-for i = 1:length(sample_idx)
-    CsEModHertz_linear{i,1} = [];
-    BkgEModHertz_linear{i,1} = [];
-    for j = 1:counter(i)
-        plotSpread(CsEModHertz_data{i,j}.*1e-3, 'spreadWidth', 0.5, 'xNames', {'Centrosome'}, ...
-            'distributionColors', colors(i,:));
-        hold on
-        CsEModHertz_linear{i} = cat(1, CsEModHertz_linear{i,1}, CsEModHertz_data{i,j}(:));
-    end
-end
-for i = 1:length(sample_idx)
-    data_mean = mean(CsEModHertz_linear{i,1}, 'omitnan').*1e-3;
-    beeswarm(1, data_mean, 'dot_size', 5, 'MarkerEdgeColor','k', 'MarkerFaceColor', colors(i,:));
-end
-ylabel('Indentation modulus [kPa]'); box on; set(gca,'FontSize', 16, 'Linewidth', 1.5);
-ylim([0, 500]); hold off
+% figure('name', 'Measurements on different days'); hold on
+% colors = [0.376470588235294         0.611764705882353         0.533333333333333; ...
+%     0.83921568627451         0.603921568627451         0.603921568627451; ...
+%     0.650980392156863         0.650980392156863         0.650980392156863]; 
+% for i = 1:length(sample_idx)
+%     CsEModHertz_linear{i,1} = [];
+%     BkgEModHertz_linear{i,1} = [];
+%     for j = 1:counter(i)
+%         plotSpread(CsEModHertz_data{i,j}.*1e-3, 'spreadWidth', 0.5, 'xNames', {'Centrosome'}, ...
+%             'distributionColors', colors(i,:));
+%         hold on
+%         CsEModHertz_linear{i} = cat(1, CsEModHertz_linear{i,1}, CsEModHertz_data{i,j}(:));
+%     end
+% end
+% for i = 1:length(sample_idx)
+%     data_mean = mean(CsEModHertz_linear{i,1}, 'omitnan').*1e-3;
+%     beeswarm(1, data_mean, 'dot_size', 5, 'MarkerEdgeColor','k', 'MarkerFaceColor', colors(i,:));
+% end
+% ylabel('Indentation modulus [kPa]'); box on; set(gca,'FontSize', 16, 'Linewidth', 1.5);
+% ylim([0, 500]); hold off
 
 % grouping of data by different stiffness
 total_cs = sum(counter); 
