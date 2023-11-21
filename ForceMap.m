@@ -1295,15 +1295,15 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
         
         function E = calculate_e_mod_hertz(obj,CPType,TipShape,LowerCurveFraction,...
                 UpperCurveFraction,AllowXShift,CorrectSensitivity,UseTipData,...
-                UseTopology,TipObject,DataWeightByDistanceBool,...
+                UseTopography,TipObject,DataWeightByDistanceBool,...
                 SortHeightDataForFit,FitDegreeForSneddonPolySurf,...
                 LowerForceCutoff,UpperForceCutoff,...
                 SensitivityCorrectionMethod,...
-                KeepOldResults,TopologyHeightChannelName,...
+                KeepOldResults,TopographyHeightChannelName,...
                 ThinFilmMode,ThinFilmThickness)
 %                 E = calculate_e_mod_hertz(obj,CPType,TipShape,LowerCurveFraction,...
 %                 UpperCurveFraction,AllowXShift,CorrectSensitivity,UseTipData,...
-%                 UseTopology,TipObject,DataWeightByDistanceBool,...
+%                 UseTopography,TipObject,DataWeightByDistanceBool,...
 %                 SortHeightDataForFit,FitDegreeForSneddonPolySurf,...
 %                 LowerForceCutoff,UpperForceCutoff)
 
@@ -1320,20 +1320,20 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
             obj.HertzFitAdjRSquare = zeros(1,obj.NCurves);
             obj.HertzFitRMSE = zeros(1,obj.NCurves);
             
-            if contains(TipShape,'on thin film')
-                TopologyHeightChannel = obj.get_channel(TopologyHeightChannelName);
-                if isempty(TopologyHeightChannel)
-                    error('Channel %s not found',TopologyHeightChannelName);
+            if contains(TipShape,'on thin film') && isequal(ThinFilmMode,'From Topography')
+                TopographyHeightChannel = obj.get_channel(TopographyHeightChannelName);
+                if isempty(TopographyHeightChannel)
+                    error('Channel %s not found',TopographyHeightChannelName);
                 end
-                TopologyList = obj.convert_map_to_data_list(TopologyHeightChannel.Image);
+                TopographyList = obj.convert_map_to_data_list(TopographyHeightChannel.Image);
             end
             
-            if UseTopology
-                TopologyCurvatureChannel = obj.get_channel('Local Radius of Curvature');
-                if isempty(TopologyCurvatureChannel)
+            if UseTopography
+                TopographyCurvatureChannel = obj.get_channel('Local Radius of Curvature Kernel-R. = 2.00e-07');
+                if isempty(TopographyCurvatureChannel)
                     error('Channel %s not found','Local Radius of Curvature');
                 end
-                LROCList = obj.convert_map_to_data_list(TopologyCurvatureChannel.Image);
+                LROCList = obj.convert_map_to_data_list(TopographyCurvatureChannel.Image);
             end
             
             if isequal(lower(TipShape),'parabolic') || isequal(lower(TipShape),'spheric approx.')
@@ -1449,12 +1449,12 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
                     if contains(TipShape,'on thin film')
                         if isequal(ThinFilmMode,'FromValue')
                             FilmHeight{i} = ThinFilmThickness;
-                        elseif isequal(ThinFilmMode,'From Topology')
-                            FilmHeight{i} = max(TopologyList(iRange(i)),MaxFitRange{i}(1));
+                        elseif isequal(ThinFilmMode,'From Topography')
+                            FilmHeight{i} = max(TopographyList(iRange(i)),MaxFitRange{i}(1));
                         end
                     end
                     
-                    if isempty(obj.FibDiam) || UseTopology
+                    if isempty(obj.FibDiam) || UseTopography
                         if UseTipData
                             DepthIndex = floor(obj.IndentationDepth(iRange(i))*1e9);
                             DepthRemainder = obj.IndentationDepth(iRange(i))*1e9 - DepthIndex;
@@ -1467,13 +1467,15 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
                             else
                                 TipRadius = TipObject.DepthDependendTipRadius(DepthIndex)*(1-DepthRemainder) + TipObject.DepthDependendTipRadius(DepthIndex+1)*DepthRemainder;
                             end
-                            if UseTopology
+                            if UseTopography
+                                RTopo = LROCList(iRange(i));
                                 
+                                R_eff{i} =1/(1/RTip + 1/RTopo);
                             else
                                 R_eff{i} = TipRadius;
                             end
                         else
-                            if UseTopology
+                            if UseTopography
                                 RTip = obj.TipRadius;
                                 
                                 RTopo = LROCList(iRange(i));
@@ -1500,6 +1502,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
                             R_eff{i} = 1/(1/(obj.TipRadius) + 1/(obj.FibDiam/2));
                         end
                     end
+                    EffectiveRadius(iRange(i)) = R_eff{i};
                     if isequal(lower(TipShape),'parabolic') || isequal(lower(TipShape),'spheric approx.')
                         if AllowXShift
                             FitFunction{i} = 'a*(x+b)^(3/2)';
@@ -1618,6 +1621,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
                     IndDepMap(i,j) = obj.IndentationDepth(obj.Map2List(i,j));
                     IndDepMapHertz(i,j) = obj.IndentationDepthHertz(obj.Map2List(i,j));
                     IndDepMapHertzFitRange(i,j) = obj.IndentationDepthHertzFitRange(obj.Map2List(i,j));
+                    ERMap(i,j) = EffectiveRadius(obj.Map2List(i,j)); 
                 end
             end
             
@@ -1640,6 +1644,9 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
             RSquareMap = obj.convert_data_list_to_map(obj.HertzFitRSquare);
             RSquare = obj.create_standard_channel(RSquareMap,'Hertz Fit RSquare','');
             obj.add_channel(RSquare,~KeepOldResults)
+            
+            Channel = obj.create_standard_channel(ERMap,'Effective Radius Hertz','m');
+            obj.add_channel(Channel,~KeepOldResults)
             
             if AllowXShift
                 obj.CPFlag.HertzFitted = 1;
@@ -2370,6 +2377,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
             % "ChannelName" ... <NAMEVALUE DESCRIPTION>
             % "IndentDepthChannelName" ... <NAMEVALUE DESCRIPTION>
             % "KeepOldResults" ... <NAMEVALUE DESCRIPTION>
+            % "Verbose" ... <NAMEVALUE DESCRIPTION>
+            % "KeyFrame" ... <NAMEVALUE DESCRIPTION>
             
             p = inputParser;
             p.FunctionName = "determine_relevant_radius_of_indentation";
@@ -2383,22 +2392,28 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
             % NameValue inputs
             defaultMethod = [];
             defaultCantileverTipInstance = [];
-            defaultCantileverTipChannelName = [];
-            defaultChannelName = [];
-            defaultIndentDepthChannelName = [];
+            defaultCantileverTipChannelName = 'Eroded Tip';
+            defaultChannelName = 'Contact Height';
+            defaultIndentDepthChannelName = 'Indentation Depth';
             defaultKeepOldResults = true;
+            defaultVerbose = false;
+            defaultKeyFrame = 23;
             validMethod = @(x)true;
             validCantileverTipInstance = @(x)true;
             validCantileverTipChannelName = @(x)true;
             validChannelName = @(x)true;
             validIndentDepthChannelName = @(x)true;
-            validKeepOldResults = @(x)islogical(x);
+            validKeepOldResults = @(x)true;
+            validVerbose = @(x)true;
+            validKeyFrame = @(x)true;
             addParameter(p,"Method",defaultMethod,validMethod);
             addParameter(p,"CantileverTipInstance",defaultCantileverTipInstance,validCantileverTipInstance);
             addParameter(p,"CantileverTipChannelName",defaultCantileverTipChannelName,validCantileverTipChannelName);
             addParameter(p,"ChannelName",defaultChannelName,validChannelName);
             addParameter(p,"IndentDepthChannelName",defaultIndentDepthChannelName,validIndentDepthChannelName);
             addParameter(p,"KeepOldResults",defaultKeepOldResults,validKeepOldResults);
+            addParameter(p,"Verbose",defaultVerbose,validVerbose);
+            addParameter(p,"KeyFrame",defaultKeyFrame,validKeyFrame);
             
             parse(p,obj,varargin{:});
             
@@ -2410,15 +2425,15 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
             ChannelName = p.Results.ChannelName;
             IndentDepthChannelName = p.Results.IndentDepthChannelName;
             KeepOldResults = p.Results.KeepOldResults;
-            
-            Verbose = true;
-            KeyFrame = 23;
+            Verbose = p.Results.Verbose;
+            KeyFrame = p.Results.KeyFrame;
+           
             
             TopoChannel = obj.get_channel(ChannelName);
             IndentDepthChannel = obj.get_channel(IndentDepthChannelName);
             CTChannel = CantileverTipInstance.get_channel(CantileverTipChannelName);
             
-            if isempty(TopoChannel) || isempty(IndentDepthChannel)
+            if isempty(TopoChannel)
                 error(sprintf('Channel not found: %s',ChannelName));
             end
             if isempty(IndentDepthChannel)
@@ -2431,12 +2446,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
             % Resize CTChannel to obj resolution
             CTChannel = obj.resize_channel(CTChannel,[TopoChannel.NumPixelsX TopoChannel.NumPixelsY]);
             
-            % TODO: make logical map of CTChannel at indent depth. Copy and
-            % center pixelpattern to TopoChannel. Make logiacl map of
-            % TopoChannel within pixelpattern exceeding max - indent depth.
-            % whichever area is smaller is then to be taken for the Radius.
-            % make it so it is later relatively easy to export the chosen
-            % pixelpattern and not just a radius as number.
+            
             
             IndentDepthList = obj.convert_map_to_data_list(IndentDepthChannel.Image);
             TopoList = obj.convert_map_to_data_list(TopoChannel.Image);

@@ -2393,7 +2393,7 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
                     'KeepResolution',KeepResolution);
             end
             
-             
+            
             if ~KeepResolution
                 InChannel
             end
@@ -3122,7 +3122,7 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             if ~any(PossibleChannels)
                 PossibleChannels = contains({obj.Channel.Name},'Radius of Curvature');
                 if ~any(PossibleChannels)
-                    error('No surface topology channels found');
+                    error('No surface topography channels found');
                 end
             end
             ChannelIndex = find(PossibleChannels);
@@ -3132,7 +3132,7 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             if ~any(PossibleChannels)
                 PossibleChannels = contains({obj.Channel.Name},'Slope');
                 if ~any(PossibleChannels)
-                    error('No surface topology channels found');
+                    error('No surface topography channels found');
                 end
             end
             ChannelIndex = find(PossibleChannels);
@@ -3142,7 +3142,7 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             if ~any(PossibleChannels)
                 PossibleChannels = contains({obj.Channel.Name},'Slope Direction');
                 if ~any(PossibleChannels)
-                    error('No surface topology channels found');
+                    error('No surface topography channels found');
                 end
             end
             ChannelIndex = find(PossibleChannels);
