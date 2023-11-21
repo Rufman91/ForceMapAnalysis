@@ -4,9 +4,9 @@
 % sensitivity correction method using E.show_image
 % Julia Garcia Baucells 2022
 
-clear
-E = Experiment.load;
-cd(E.ExperimentFolder)
+% clear
+% E = Experiment.load;
+% cd(E.ExperimentFolder)
 
 dbstop in angle_deconvolution_analysis.m at 180
 format long g;
