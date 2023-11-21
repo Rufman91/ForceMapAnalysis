@@ -1,10 +1,19 @@
 function K = kernel(a,b,sigma,lambda)
-N = length(a);
-M = length(b);
-K = zeros(N,M);
-for i=1:N
-    for j=1:M
-        K(i,j) = sigma*exp(-1/(2*lambda)*norm(a(i)-b(j))^2);
-    end
+
+% Check wheter expected matrix size is gonna make the device explode and
+% partition accordingly
+M = size(a,1);
+N = size(b,1);
+O = size(a,2);
+
+if O~=size(b,2)
+    error('Vector a and b need to have the same amount of columns!')
 end
+
+% % Vectorize that shit!
+C = zeros(M,N,O);
+for i=1:O
+    C(:,:,i) = a(:,i) - b(:,i)';
+end
+K = sigma*exp(-1/(2*lambda)*sum(C.^2, 3));
 end

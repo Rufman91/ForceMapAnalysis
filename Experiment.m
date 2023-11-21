@@ -20,8 +20,11 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                             % all the time
         FractionedSaveFiles = true
         CurrentLogFile = ''
+        DummyAFMIMageFile = "TGT-1_MSCT-F-Box33-Nr10-fit-2022.05.13-09.50.09.883.jpk-qi-image"
         ShowImageSettings = Experiment.set_default_show_image_settings()
         ForceMapAnalysisOptions = Experiment.set_default_fma_options()
+        FMAExitErrorStack
+        FiberSegmentProcessingOptions = Experiment.set_default_fsp_options()
         GrammOptions = Experiment.set_default_gramm_options()
         CustomCantileverTipOptions = Experiment.set_custom_cantilever_tip_options()
         FM                  % Cellarray containing Force/QI Maps
@@ -75,6 +78,22 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
         % constructor method and methods related with Experiment-file handling
         
         function obj = Experiment()
+            % function obj = Experiment()
+            %
+            % The Experiment function initializes an experiment object by
+            % gathering user input, creating an experiment folder, and
+            % loading various types of files (Force Maps, Reference Force
+            % Maps, AFM Images, Surface Potential Maps, and Cantilever
+            % Tips) into the object. It also initializes flags and
+            % properties, loads pretrained neural networks, and saves the
+            % experiment object.
+            %
+            % Input: - There are no input parameters for this function, as
+            % the necessary information is gathered through user input
+            % dialogs.
+            %
+            % Output: - obj: The initialized experiment object with loaded
+            % data, neural networks, and updated properties.
             
             % Set HostOS and HostName properties
             obj.check_for_new_host
@@ -108,6 +127,37 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
         end
         
         function take_paths_and_load_files(obj,FileTypes,FullFileStruct,isNew,BigData,PythonLoaderFlag,KeepPythonFilesOpen)
+            % function
+            % take_paths_and_load_files(obj,FileTypes,FullFileStruct,isNew,BigData,PythonLoaderFlag,KeepPythonFilesOpen)
+            %
+            % This function processes and loads various types of files
+            % (Force Maps, Reference Force Maps, AFM Images, Surface
+            % Potential Maps, and Cantilever Tips) into an experiment
+            % object. It sets up the experiment object properties according
+            % to the input parameters and loads the data from the specified
+            % file paths. It also supports parallel processing when loading
+            % multiple files.
+            %
+            % Input: - obj: The experiment object to which the loaded data
+            % will be added. - FileTypes (boolean array, size: 1x5):
+            % Indicates which file types are to be loaded. The order is
+            % [Force Maps, Reference Force Maps, AFM Images, Surface
+            % Potential Maps, Cantilever Tips]. - FullFileStruct (struct):
+            % A struct containing the full file paths for each of the five
+            % file types. Each field in the struct should be named FullFile
+            % and contain a cell array of file paths. - isNew (boolean,
+            % optional): A flag indicating if this is a new experiment. If
+            % true, existing data in the object will be reset. Defaults to
+            % false. - BigData (boolean, optional): A flag indicating if
+            % the data being loaded is large, affecting the memory
+            % management. Defaults to false. - PythonLoaderFlag (boolean,
+            % optional): A flag indicating if Python should be used for
+            % data loading. Defaults to false. - KeepPythonFilesOpen
+            % (boolean, optional): A flag indicating if the Python files
+            % should be kept open after loading. Defaults to false.
+            %
+            % Output: - The function updates the obj properties with the
+            % loaded data.
             
             obj.BigDataFlag = BigData;
             obj.PythonLoaderFlag = PythonLoaderFlag;
@@ -262,6 +312,20 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
         end
         
         function Out = add_data(obj)
+            % function Out = add_data(obj)
+            %
+            % The add_data function allows users to add new data to an
+            % existing experiment object. The function prompts the user for
+            % file selection, loads the new files, updates the experiment
+            % object, and saves the updated object. If an error occurs
+            % during this process, the function restores the original
+            % experiment object.
+            %
+            % Input: - obj: The existing experiment object that new data
+            % should be added to.
+            %
+            % Output: - Out: The updated experiment object after adding the
+            % new data.
             
             warning('Note that for this function to work properly you need to assign your Experiment in workspace to itself e.g. ">> E = E.add_data" otherwise the updated Experiment will be stored in the temporary variable "ans" and inevitably overwritten at some point!')
             
@@ -315,17 +379,42 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
         function create_custom_cantilever_tip(obj,varargin)
             % function create_custom_cantilever_tip(obj,varargin)
             %
-            % <FUNCTION DESCRIPTION HERE>
+            %
+            % The create_custom_cantilever_tip function creates a custom
+            % cantilever tip for an experiment object, optionally allowing
+            % users to modify the tip shape options through a user
+            % interface. The function then updates the properties of the
+            % experiment object and saves the object if desired.
+            %
+            % Input: - obj: The existing experiment object to which a
+            % custom cantilever tip should be added.
+            %
+            % - varargin (Optional Name-Value pairs):
+            %
+            % - "OpenUIOptions": A logical value indicating whether to open
+            % the user interface for modifying tip shape options. Default
+            % is true.
+            %
+            % - "SaveExperiment": A logical value indicating whether to
+            % save the experiment object after adding the custom cantilever
+            % tip. Default is true.
             %
             %
-            % Required inputs
-            % obj ... Experiment object
+            % The function performs the following steps: 1. Parses the
+            % input arguments, ensuring the validity of the experiment
+            % object and optional name-value pairs.
             %
-            % Name-Value pairs
-            % "OpenUIOptions" ... Logical; decide whether to open ui to
-            %                   change tip shape options
-            % "SaveExperiment" ... Logical; save Experiment after
-            %                   completion
+            % 2. If "OpenUIOptions" is true, opens the user interface for
+            % modifying the tip shape options and updates the
+            % CustomCantileverTipOptions property of the experiment object.
+            %
+            % 3. Updates the experiment object properties related to the
+            % custom cantilever tip, such as CantileverTipFolders,
+            % CantileverTips, CantileverTipFlag, CantileverTipNames, and
+            % NumCantileverTips.
+            %
+            % 4. If "SaveExperiment" is true, saves the updated experiment
+            % object.
             
             p = inputParser;
             p.FunctionName = "create_custom_cantilever_tip";
@@ -371,6 +460,39 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
         end
         
         function save_experiment(obj)
+            % function save_experiment(obj)
+            %
+            % The save_experiment function saves the current state of an
+            % experiment object to a .mat file in the specified
+            % ExperimentFolder. If the FractionedSaveFiles property is set,
+            % the function saves the individual AFM classes in separate
+            % files within the ExperimentFolder before saving the
+            % experiment object.
+            %
+            % Input: - obj: The experiment object to be saved.
+            %
+            % The function performs the following steps:
+            %
+            % 1. Changes the current directory to the ExperimentFolder.
+            %
+            % 2. Initializes temporary variables to store the OpenZipFile
+            % property of force maps and reference force maps.
+            %
+            % 3. If FractionedSaveFiles is empty or false, saves the
+            % experiment object as a single .mat file.
+            %
+            % 4. If FractionedSaveFiles is true, saves each AFM class (AFM
+            % images, cantilever tips, force maps, and reference force
+            % maps) in separate files within the ExperimentFolder, and then
+            % saves the experiment object as a .mat file.
+            %
+            % 5. Restores the original current directory and OpenZipFile
+            % properties of force maps and reference force maps.
+            %
+            % 6. Displays a message indicating that the experiment object
+            % has been saved.
+            
+            
             current = what();
             cd(obj.ExperimentFolder)
             savename = sprintf('%s.mat',obj.ExperimentName);
@@ -423,6 +545,40 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
         end
         
         function load_fractioned_afm_classes(obj)
+            % function load_fractioned_afm_classes(obj)
+            %
+            % The load_fractioned_afm_classes function loads AFM class
+            % properties for AFM images, cantilever tips, force maps, and
+            % reference force maps from separate files within the
+            % ExperimentFolder, assuming that the FractionedSaveFiles
+            % property is true.
+            %
+            % Input: - obj: The experiment object containing the AFM
+            % classes to be loaded.
+            %
+            % The function performs the following steps:
+            %
+            % 1. Iterates through the AFMImageFolders array and calls the
+            % load_afm_class_properties method for each AFM image in the
+            % array, passing the folder path as an argument.
+            %
+            % 2. Iterates through the CantileverTipFolders array and calls
+            % the load_afm_class_properties method for each cantilever tip
+            % in the array, passing the folder path as an argument.
+            %
+            % 3. Iterates through the ForceMapFolders array and calls the
+            % load_afm_class_properties method for each force map in the
+            % array, passing the folder path as an argument.
+            %
+            % 4. Iterates through the ReferenceForceMapFolders array and
+            % calls the load_afm_class_properties method for each reference
+            % force map in the array, passing the folder path as an
+            % argument.
+            %
+            %
+            % No output is returned. The function updates the AFM class
+            % properties of the AFM images, cantilever tips, force maps,
+            % and reference force maps within the experiment object.
             
             for i=1:obj.NumAFMImages
                 obj.I{i}.load_afm_class_properties(obj.AFMImageFolders{i});
@@ -442,10 +598,40 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
         function ExperimentCopy = copy_experiment(obj)
             % ExperimentCopy = copy_experiment(obj)
             %
-            % makes a proper copy of the object, so that also contained
-            % handle objects, such as ForceMaps, SurfacePotentialMaps etc.
-            % are copied and not only referenced to
-            
+            %
+            % The copy_experiment function creates a deep copy of the input
+            % experiment object, including all its associated AFM images,
+            % cantilever tips, force maps, reference force maps, and
+            % surface potential maps.
+            %
+            % Input: - obj: The experiment object to be copied.
+            %
+            % Output: - ExperimentCopy: The deep copy of the input
+            % experiment object.
+            %
+            % The function performs the following steps:
+            %
+            % 1. Calls the copy method of the input experiment object to
+            % create a shallow copy named ExperimentCopy.
+            %
+            % 2. Iterates through the highest number of AFM images,
+            % cantilever tips, force maps, reference force maps, and
+            % surface potential maps within the input experiment object.
+            %
+            % 3. For each object (AFM image, cantilever tip, force map,
+            % reference force map, and surface potential map), checks
+            % whether it belongs to the 'matlab.mixin.Copyable' superclass.
+            %
+            % 4. If the object belongs to the 'matlab.mixin.Copyable'
+            % superclass, the copy method of that object is called to
+            % create a deep copy and it is added to the corresponding array
+            % in the ExperimentCopy object.
+            %
+            %
+            % Note: The input experiment object must belong to the
+            % 'matlab.mixin.Copyable' superclass in order to be copied by
+            % this function.
+
             ExperimentCopy = obj.copy;
             for i=1:max([obj.NumAFMImages obj.NumCantileverTips obj.NumForceMaps obj.NumReferenceForceMaps obj.NumSurfacePotentialMaps])
                 if i<=length(obj.FM)
@@ -482,6 +668,43 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
         end
         
         function delete_experiment(obj)
+            %function delete_experiment(obj)
+            %
+            % The delete_experiment function permanently deletes the input
+            % experiment object, its folder, experiment file, and all
+            % subfolders. This method is only available on Windows systems.
+            %
+            % Input: - obj: The experiment object to be deleted.
+            %
+            % The function performs the following steps:
+            %
+            % 1. Checks whether the host operating system is Windows
+            % ('PCW'). If not, displays a message that the method is only
+            % available on Windows systems and returns.
+            %
+            % 2. Sets the Folder variable as the experiment folder.
+            %
+            % 3. Displays a warning dialog to confirm deletion, providing
+            % the user with two choices: 'Yes, delete all' or 'Abort'.
+            %
+            % 4. If the user selects 'Yes, delete all', a second warning
+            % dialog is displayed, asking the user to confirm once more:
+            % 'YES, DO IT!' or 'Oh no, I changed my mind'.
+            %
+            % 5. If the user confirms deletion ('YES, DO IT!'), the
+            % function changes the current directory to the parent of the
+            % experiment folder, constructs the necessary command-line
+            % commands, and calls the system function to execute the
+            % commands, deleting the experiment folder and its contents.
+            %
+            % 6. If the user selects 'Abort' or 'Oh no, I changed my mind'
+            % at any point, the function returns without deleting the
+            % experiment.
+            %
+            %
+            % Note: This function is designed to work only on Windows
+            % systems. Use with caution, as the deletion is permanent and
+            % cannot be undone.
             
             if ~isequal(obj.HostOS,'PCW')
                 disp('This method is only available on Windows systems at the moment');
@@ -529,13 +752,51 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
         end
         
         function update_absolute_paths(E,Path,JustExperiment)
+            % function update_absolute_paths(E,Path,JustExperiment)
+            %
+            % The update_absolute_paths function updates the absolute file
+            % paths of the experiment object and its associated objects,
+            % such as force maps, AFM images, reference force maps, and
+            % cantilever tips.
+            %
+            % Inputs: - E: The experiment object whose absolute paths need
+            % to be updated.
+            %
+            % - Path: The new top-level path (string) to replace the old
+            % top-level path in the experiment object and its associated
+            % objects.
+            %
+            % - JustExperiment (optional, default = 0): A flag (0 or 1) to
+            % indicate whether to update only the experiment object (1) or
+            % also its associated objects (0).
+            %
+            % The function performs the following steps: 1. Checks the
+            % number of input arguments. If JustExperiment is not provided,
+            % it is set to 0 by default.
+            %
+            % 2. Replaces the file separators in the experiment folder with
+            % the appropriate separators for the current system.
+            %
+            % 3. Iterates through the force maps, AFM images, reference
+            % force maps, and cantilever tips associated with the
+            % experiment object.
+            %
+            % 4. If JustExperiment is 0, the function updates the file
+            % paths of the associated objects by replacing the old
+            % top-level path with the new top-level path.
+            %
+            % 5. Updates the file paths of the experiment object itself.
+            %
+            % Note: This function should be used when the file paths of the
+            % experiment and its associated objects need to be updated,
+            % such as when moving the experiment to a new location.
             
             if nargin < 3
                 JustExperiment = 0;
             end
-%             if isequal(E.HostOS,'GLN')
-%                 Path = [Path filesep];
-%             end
+            %             if isequal(E.HostOS,'GLN')
+            %                 Path = [Path filesep];
+            %             end
             
             E.ExperimentFolder = Experiment.replace_fileseps(E.ExperimentFolder);
             
@@ -614,15 +875,236 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             
         end
         
-        function add_dummy_cantilever_tip_data(obj,Preprocessing)
+        function add_dummy_afmimage_data(obj,Preprocessing)
+            % function add_dummy_afmimage_data(obj,Preprocessing)
+            %
+            % The add_dummy_afmimage_data function adds an artificial AFM
+            % image object to the experiment object based on a dummy AFM
+            % image file.
+            %
+            % Inputs: - obj: The experiment object to which the artificial
+            % AFM image object should be added.
+            %
+            % - Preprocessing (optional, default = false): A boolean flag
+            % indicating whether preprocessing should be applied to the
+            % artificial AFM image object.
+            %
+            %
+            % The function performs the following steps:
+            %
+            % 1. Checks the number of input arguments. If Preprocessing is
+            % not provided, it is set to false by default.
+            %
+            % 2. Retrieves the source file for the dummy AFM image.
+            %
+            % 3. Creates an AFMImage object from the source file and adds
+            % it to the experiment object.
+            %
+            % 4. Updates the NumAFMImages property of the experiment object
+            % to reflect the addition of the new AFMImage object.
+            %
+            % 5. Removes all file-specific information from the AFMImage
+            % object, leaving only the structure and properties of an
+            % artificial AFM image.
+            %
+            %
+            % Note: This function is useful when you want to create a
+            % placeholder AFM image for testing purposes or to simulate
+            % data in an experiment object.
+            
+            if nargin <2
+                Preprocessing = false;
+            end
+            
+            SourceFile = which(obj.DummyAFMIMageFile);
+            
+            ImageClass = AFMImage(SourceFile,obj.ExperimentFolder,'ArtificialAFMImage-1',Preprocessing);
+            
+            if isempty(obj.NumAFMImages) || obj.NumAFMImages == 0
+                obj.I{1} = ImageClass;
+                obj.NumAFMImages = 1;
+            else
+                obj.I{end+1} = ImageClass;
+                obj.NumAFMImages = obj.NumAFMImages + 1;
+            end
+            
+            Index = obj.NumAFMImages;
+            
+            % Clean up the Instance of all file specific Information
+            obj.I{Index}.Channel = [];
+            obj.I{Index}.NumChannels = 0;
+            obj.I{Index}.NumPixelsX = [];
+            obj.I{Index}.NumPixelsY = [];
+            obj.I{Index}.ScanAngle = [];
+            obj.I{Index}.ScanSizeX = [];
+            obj.I{Index}.ScanSizeY = [];
+            obj.I{Index}.OriginX = [];
+            obj.I{Index}.OriginY = [];
+            obj.I{Index}.List2Map = [];
+            obj.I{Index}.Map2List = [];
+            obj.I{Index}.Name = '';
+            obj.AFMImageNames{Index} = '';
+        end
+        
+        function PC2HM_convert_pc_to_hm_and_add_afmimage(obj,PCName, PC, Resolution, zResolution,...
+                MaxPointsPerGP, PartitionShrinkingFactor, InterpolationExpansionFactor,...
+                Lambda, Sigma, Noise)
+            %function PC2HM_convert_pc_to_hm_and_add_afmimage(obj,PCName,
+            %PC, Resolution, zResolution,...
+            %                 MaxPointsPerGP, PartitionShrinkingFactor,
+            %                 InterpolationExpansionFactor,... Lambda,
+            %                 Sigma, Noise)
+            %
+            % The PC2HM_convert_pc_to_hm_and_add_afmimage function converts
+            % a point cloud to a height map and adds the height map as an
+            % AFM image object to the experiment object.
+            %
+            % Inputs:
+            %
+            % - obj: The experiment object to which the height map should
+            % be added as an AFM image.
+            %
+            % - PCName: A string representing the name of the point cloud.
+            %
+            % - PC: The point cloud matrix (Nx3) with columns representing
+            % X, Y, and Z coordinates.
+            %
+            % - Resolution: The resolution of the height map (integer).
+            %
+            % - zResolution: The resolution in the Z direction (float).
+            %
+            % - MaxPointsPerGP: The maximum number of points per Gaussian
+            % process (integer).
+            %
+            % - PartitionShrinkingFactor: The shrinking factor for
+            % partitioning (float).
+            %
+            % - InterpolationExpansionFactor: The expansion factor for
+            % interpolation (float).
+            %
+            % - Lambda: The regularization parameter for Gaussian processes
+            % (float).
+            %
+            % - Sigma: The standard deviation for Gaussian processes
+            % (float).
+            %
+            % - Noise: The noise level for Gaussian processes (float).
+            %
+            % The function performs the following steps:
+            %
+            % 1. Converts the point cloud to a height map using the
+            % PC2HM_point_cloud_to_height_map function.
+            %
+            % 2. Adds a dummy AFM image object to the experiment object.
+            %
+            % 3. Sets the properties of the AFM image object based on the
+            % input parameters and the output of the height map conversion.
+            %
+            % 4. Creates and adds channels for MaxPeakMap, MinPeakMap,
+            % MaxPeakValueMap, and DensityMap to the AFM image object.
+            %
+            % 5. Constructs list-to-map relations for the AFM image object.
+            %
+            % 6. Sets the name of the AFM image object based on the input
+            % parameters.
+            %
+            %
+            % This function is useful when you want to convert a point
+            % cloud representation of a surface into a height map and
+            % incorporate it into an experiment as an AFM image object.
+
+            [MaxPeakMap,MinPeakMap,MaxPeakValueMap,DensityMap,minCoords, maxCoords,...
+                subsetsGrid, boundariesGrid, subsetsCloud, boundariesCloud] =...
+                PC2HM_point_cloud_to_height_map(PC, Resolution, zResolution,...
+                MaxPointsPerGP, PartitionShrinkingFactor, InterpolationExpansionFactor,...
+                Lambda, Sigma, Noise);
+            
+            obj.add_dummy_afmimage_data(false)
+            
+            NewName = PCName;
+            Counter = 1;
+            while contains([obj.AFMImageNames{:}],NewName)
+                NewName = sprintf('%s-%03i',PCName,Counter);
+                Counter = Counter + 1;
+            end
+            
+            CompoundName = NewName;
+            
+            obj.I{end}.Metadata.PC2HM.Resolution = Resolution;
+            obj.I{end}.Metadata.PC2HM.zResolution = zResolution;
+            obj.I{end}.Metadata.PC2HM.MaxPointsPerGP = MaxPointsPerGP;
+            obj.I{end}.Metadata.PC2HM.PartitionShrinkingFactor = PartitionShrinkingFactor;
+            obj.I{end}.Metadata.PC2HM.InterpolationExpansionFactor = InterpolationExpansionFactor;
+            obj.I{end}.Metadata.PC2HM.Lambda = Lambda;
+            obj.I{end}.Metadata.PC2HM.Sigma = Sigma;
+            obj.I{end}.Metadata.PC2HM.Noise = Noise;
+            
+            obj.I{end}.NumPixelsX = Resolution;
+            obj.I{end}.NumPixelsY = Resolution;
+            obj.I{end}.ScanAngle = 0;
+            obj.I{end}.ScanSizeX = maxCoords(1) - minCoords(1);
+            obj.I{end}.ScanSizeY = maxCoords(2) - minCoords(2);
+            obj.I{end}.OriginX = 0;
+            obj.I{end}.OriginY = 0;
+            MaxPeakChannel = obj.I{end}.create_standard_channel(MaxPeakMap,'MaxPeakMap','m');
+            MinPeakChannel = obj.I{end}.create_standard_channel(MinPeakMap,'MinPeakMap','m');
+            MaxPeakValueChannel = obj.I{end}.create_standard_channel(MaxPeakValueMap,'MaxPeakValueMap','m');
+            DensityChannel = obj.I{end}.create_standard_channel(DensityMap,'DensityMap','m');
+            obj.I{end}.Channel = MaxPeakChannel;
+            obj.I{end}.Channel(2) = MinPeakChannel;
+            obj.I{end}.Channel(3) = MaxPeakValueChannel;
+            obj.I{end}.Channel(4) = DensityChannel;
+            obj.I{end}.NumChannels = numel(obj.I{end}.Channel);
+            obj.I{end}.construct_list_to_map_relations;
+            obj.I{end}.Name = CompoundName;
+            obj.AFMImageNames{end} = CompoundName;
+            
+        end
+        
+        function add_dummy_cantilever_tip_data(obj,Preprocessing,Name)
+            % function add_dummy_cantilever_tip_data(obj,Preprocessing)
+            %
+            % The add_dummy_cantilever_tip_data function adds a dummy
+            % cantilever tip object to the experiment object.
+            %
+            %
+            % Inputs:
+            %
+            % - obj: The experiment object to which the dummy cantilever
+            % tip should be added.
+            %
+            % - Preprocessing (optional): A boolean value indicating
+            % whether preprocessing should be applied to the cantilever tip
+            % data. Default is true.
+            %
+            % The function performs the following steps:
+            %
+            % 1. Locates the source file for the dummy cantilever tip data.
+            %
+            % 2. Creates an AFMImage object with the source file and the
+            % experiment folder, using the specified preprocessing setting.
+            %
+            % 3. Adds the AFMImage object as a cantilever tip to the
+            % experiment object's CantileverTips property, updating the
+            % NumCantileverTips property accordingly.
+            %
+            % This function is useful when you want to add a dummy
+            % cantilever tip object to an experiment for testing purposes,
+            % without needing to load real data. The dummy cantilever tip
+            % data can be used for simulating different aspects of the
+            % experiment, such as analyzing the effect of the cantilever
+            % tip on the acquired AFM images.
             
             if nargin <2
                 Preprocessing = true;
+                Name = 'ArtificialAFMImage-1';
+            else
+                Name = [Name '-1'];
             end
             
             SourceFile = which("TGT-1_MSCT-F-Box33-Nr10-fit-2022.05.13-09.50.09.883.jpk-qi-image");
             
-            Tip = AFMImage(SourceFile,obj.ExperimentFolder,'ArtificialAFMImage-1',Preprocessing);
+            Tip = AFMImage(SourceFile,obj.ExperimentFolder,Name,Preprocessing);
             
             if isempty(obj.NumCantileverTips) || obj.NumCantileverTips == 0
                 obj.CantileverTips{1} = Tip;
@@ -633,16 +1115,180 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             end
         end
         
-        function create_artificial_cantilever_tip(obj)
+        function create_artificial_cantilever_tip(obj,Name,Shape,varargin)
+            % function [OutChannel1,OutChannel2] = create_custom_height_topography(Shape,varargin)
+            %
+            % <FUNCTION DESCRIPTION HERE>
+            %
+            %
+            % Required inputs
+            % Shape ... <VARIABLE DESCRIPTION>
+            %
+            % Name-Value pairs
+            % "TipRadius" ... <NAMEVALUE DESCRIPTION>
+            % "TipHeight" ... <NAMEVALUE DESCRIPTION>
+            % "TipTilt" ... <NAMEVALUE DESCRIPTION>
+            % "Radius" ... <NAMEVALUE DESCRIPTION>
+            % "HalfAngle" ... <NAMEVALUE DESCRIPTION>
+            % "ImageResolution" ... <NAMEVALUE DESCRIPTION>
+            % "StartFraction" ... <NAMEVALUE DESCRIPTION>
+            % "EndFraction" ... <NAMEVALUE DESCRIPTION>
+            % "FuseMethod" ... <NAMEVALUE DESCRIPTION>
+            % "HeightDifference" ... <NAMEVALUE DESCRIPTION>
+            % "TipApexChannel" ... <NAMEVALUE DESCRIPTION>
             
-            obj.add_dummy_cantilever_tip_data(false)
+            p = inputParser;
+            p.FunctionName = "create_custom_height_topography";
+            p.CaseSensitive = false;
+            p.PartialMatching = true;
             
+            % Required inputs
+            validShape = @(x)true;
+            addRequired(p,"Shape",validShape);
             
+            % NameValue inputs
+            defaultTipRadius = [];
+            defaultTipHeight = 1000e-9;
+            defaultTipTilt = 0;
+            defaultRadius = 20e-9;
+            defaultHalfAngle = 15;
+            defaultImageResolution = 256;
+            defaultStartFraction = .8;
+            defaultEndFraction = .99;
+            defaultFuseMethod = 'linear';
+            defaultHeightDifference = 0;
+            defaultTipApexChannel = [];
+            defaultProjectedAreaStepSize = 1e-9;
+            validTipRadius = @(x)true;
+            validTipHeight = @(x)true;
+            validTipTilt = @(x)true;
+            validRadius = @(x)true;
+            validHalfAngle = @(x)true;
+            validImageResolution = @(x)true;
+            validStartFraction = @(x)true;
+            validEndFraction = @(x)true;
+            validFuseMethod = @(x)true;
+            validHeightDifference = @(x)true;
+            validTipApexChannel = @(x)true;
+            validProjectedAreaStepSize = @(x)true;
+            addParameter(p,"TipRadius",defaultTipRadius,validTipRadius);
+            addParameter(p,"TipHeight",defaultTipHeight,validTipHeight);
+            addParameter(p,"TipTilt",defaultTipTilt,validTipTilt);
+            addParameter(p,"Radius",defaultRadius,validRadius);
+            addParameter(p,"HalfAngle",defaultHalfAngle,validHalfAngle);
+            addParameter(p,"ImageResolution",defaultImageResolution,validImageResolution);
+            addParameter(p,"StartFraction",defaultStartFraction,validStartFraction);
+            addParameter(p,"EndFraction",defaultEndFraction,validEndFraction);
+            addParameter(p,"FuseMethod",defaultFuseMethod,validFuseMethod);
+            addParameter(p,"HeightDifference",defaultHeightDifference,validHeightDifference);
+            addParameter(p,"TipApexChannel",defaultTipApexChannel,validTipApexChannel);
+            addParameter(p,"ProjectedAreaStepSize",defaultProjectedAreaStepSize,validProjectedAreaStepSize);
+            
+            parse(p,Shape,varargin{:});
+            
+            % Assign parsing results to named variables
+            Shape = p.Results.Shape;
+            TipRadius = p.Results.TipRadius;
+            TipHeight = p.Results.TipHeight;
+            TipTilt = p.Results.TipTilt;
+            Radius = p.Results.Radius;
+            HalfAngle = p.Results.HalfAngle;
+            ImageResolution = p.Results.ImageResolution;
+            StartFraction = p.Results.StartFraction;
+            EndFraction = p.Results.EndFraction;
+            FuseMethod = p.Results.FuseMethod;
+            HeightDifference = p.Results.HeightDifference;
+            TipApexChannel = p.Results.TipApexChannel;
+            ProjectedAreaStepSize = p.Results.ProjectedAreaStepSize;
+            
+            obj.add_dummy_cantilever_tip_data(false,Name)
+            
+            CT = obj.CantileverTips{end};
+            CT.Name = Name;
+            obj.CantileverTipNames{end+1} = CT.Name;
+            obj.CantileverTipFolders{end+1} = CT.Folder;
+            
+            Channel = AFMImage.create_custom_height_topography(Shape,...
+                "TipRadius",TipRadius,...
+                "TipHeight",TipHeight,...
+                "TipTilt",TipTilt,...
+                "Radius",Radius,...
+                "HalfAngle",HalfAngle,...
+                "ImageResolution",ImageResolution,...
+                "StartFraction",StartFraction,...
+                "EndFraction",EndFraction,...
+                "FuseMethod",FuseMethod,...
+                "HeightDifference",HeightDifference,...
+                "TipApexChannel",TipApexChannel);
+            
+            Channel.Name = 'Processed';
+            CT.Channel(end+1) = Channel;
+            CT.hasProcessed = true;
+            
+            CT.Channel(1:CT.NumChannels) = [];
+            
+            Channel.Name = 'Eroded Tip';
+            Channel.Image = Channel.Image - max(Channel.Image,[],'all');
+            CT.Channel(end+1) = Channel;
+            CT.hasDeconvolutedCantileverTip = true;
+            
+            CT.OriginX = Channel.OriginX;
+            CT.OriginY = Channel.OriginY;
+            CT.ScanAngle = Channel.ScanAngle;
+            CT.NumPixelsX = Channel.NumPixelsX;
+            CT.NumPixelsY = Channel.NumPixelsY;
+            CT.ScanSizeX = Channel.ScanSizeX;
+            CT.ScanSizeY = Channel.ScanSizeY;
+            
+            CT.NumChannels = 2;
+            
+            CT.create_pixel_difference_channel(Channel.Image);
+            
+            CT.ProjectedTipArea = AFMImage.calculate_projected_area_histcumsum(CT.get_channel('Eroded Tip'),ProjectedAreaStepSize);
+            CT.DepthDependendTipRadius = CT.calculate_depth_dependend_tip_data(CT.ProjectedTipArea,75);
             
         end
         
         function load_force_map_analysis_options(obj)
-           
+            % function load_force_map_analysis_options(obj)
+            %
+            % The load_force_map_analysis_options function loads force map
+            % analysis options from a .mat file and assigns them to the
+            % experiment object.
+            %
+            % Inputs:
+            %
+            % - obj: The experiment object for which the force map analysis
+            % options should be loaded and assigned.
+            %
+            % The function performs the following steps:
+            
+            % 1. Sets the default force map analysis options using
+            % Experiment.set_default_fma_options.
+            %
+            % 2. Opens a file dialog to let the user choose a .mat file
+            % containing the force map analysis options.
+            %
+            % 3. Loads the .mat file and checks if the file contains a
+            % valid ForceMapAnalysis Options structure (FMA).
+            %
+            % 4. Checks if the loaded FMA structure has the same fields as
+            % the default FMA structure.
+            %
+            % 5. If the loaded FMA structure is valid, assigns it to the
+            % obj.ForceMapAnalysisOptions property.
+            %
+            % 6. Displays a message indicating the successful assignment of
+            % the force map analysis options.
+            %
+            % This function is useful when you want to load a set of force
+            % map analysis options from a .mat file and apply them to an
+            % experiment object. The loaded options will then be used to
+            % analyze force maps associated with the experiment. The
+            % function checks the validity of the loaded options to ensure
+            % compatibility with the current default options. If the loaded
+            % options are not valid, an error is thrown.
+            
             Default = Experiment.set_default_fma_options;
             
             
@@ -672,13 +1318,54 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
         % Static methods related with Experiment-file handling
         
         function E = load(Fullfile)
-            % E = load()
+            % E = load(Fullfile)
             %
-            % recommended way of loading an existing Experiment() from its
-            % folder. Checks, if path has changed and adjusts object
-            % properties. Also checks if running on different system,
-            % and, if so, updating object properties and setting
-            % CPFlag.CNNOpt = 0
+            %
+            % The load function reads an Experiment object from a .mat file
+            % and loads it into memory. It also handles necessary updates
+            % such as checking for a new host, updating absolute paths, and
+            % loading/clearing zipped files using Python.
+            %
+            % Inputs:
+            %
+            % - Fullfile (optional): A string containing the full file path
+            % of the .mat file to load. If not provided, a file dialog will
+            % open for the user to choose the .mat file.
+            %
+            % Outputs:
+            %
+            % - E: The loaded Experiment object.
+            %
+            % The function performs the following steps:
+            %
+            % 1. Opens a file dialog to let the user choose a .mat file
+            % containing the Experiment object if Fullfile is not provided.
+            %
+            % 2. Loads the .mat file and extracts the Experiment object
+            % (obj).
+            %
+            % 3. Checks if the host has changed and updates the absolute
+            % paths accordingly.
+            %
+            % 4. If FractionedSaveFiles is set, loads the fractioned AFM
+            % classes.
+            %
+            % 5. Sets default values for PythonLoaderFlag,
+            % KeepPythonFilesOpen, and BigDataFlag if they are empty.
+            %
+            % 6. Re-checks the host and updates absolute paths.
+            %
+            % 7. If PythonLoaderFlag is true, loads or clears zipped files
+            % using Python, depending on the KeepPythonFilesOpen flag.
+            %
+            % 8. Sets the ExperimentFolder property to the loaded file's
+            % path.
+            %
+            % This function is useful when you want to load an Experiment
+            % object from a .mat file to work with it in the current
+            % session. The loaded object is updated to ensure compatibility
+            % with the current system and any necessary files are loaded or
+            % cleared according to the set flags.
             
             if nargin < 1
                 [File,Path] = uigetfile('*.mat','Choose Experiment .mat from folder');
@@ -738,7 +1425,43 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
         end
         
         function delete_folderstructure(FolderPath)
-            
+            % function delete_folderstructure(FolderPath)
+            %
+            % The delete_folderstructure function permanently deletes the
+            % specified folder, its files, and all subfolders on a Windows
+            % system. This function should be used with caution as the
+            % deletion is irreversible.
+            %
+            % Inputs:
+            %
+            % - FolderPath: A string containing the full path of the folder
+            % to be deleted.
+            %
+            % Outputs: None.
+            %
+            % The function performs the following steps:
+            %
+            % 1. Checks if the current operating system is a Windows
+            % system; if not, the function is not executed.
+            %
+            % 2. Displays a warning dialog asking the user to confirm the
+            % folder deletion.
+            %
+            % 3. If the user confirms the deletion, the function:
+            %
+            % a. Changes the current working directory to the parent folder
+            % of the target folder.
+            %
+            % b. Constructs and executes two command line commands (CMD1
+            % and CMD2) to delete the folder and its contents.
+            %
+            % c. Restores the current working directory to its previous
+            % state.
+            %
+            % Use this function when you need to permanently delete a
+            % folder and its contents on a Windows system. Be aware that
+            % this operation is irreversible, so use caution and make sure
+            % you have backups of any important data before proceeding.
             
             FullOS = computer;
             OS = FullOS(1:3);
@@ -786,8 +1509,56 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
         function preprocessing(obj)
             % preprocessing(obj)
             % 
-            % bare minimum of preprocessing steps to prepare data for
-            % custom further data processing. (.base_and_tilt())
+            %
+            % The preprocessing function performs preprocessing steps on a
+            % set of ForceMap objects. It creates and levels the height
+            % maps, then fits base lines for each ForceMap. Optionally, the
+            % user can skip ForceMaps that have already been preprocessed.
+            %
+            % Inputs:
+            %
+            % - obj: An instance of a class containing ForceMap objects
+            % that need preprocessing.
+            %
+            % Outputs: None.
+            %
+            % The function performs the following steps:
+            %
+            % 1. Initializes a progress waitbar to indicate the
+            % preprocessing progress.
+            %
+            % 2. Checks if any ForceMaps have already been preprocessed. If
+            % so, the user is prompted to decide whether to skip them and
+            % keep the old results or reprocess them.
+            %
+            % 3. Loops through each ForceMap in the obj, and for each:
+            %
+            % a. If the user chose to skip preprocessed ForceMaps and the
+            % current ForceMap is flagged as preprocessed, the loop moves
+            % to the next ForceMap.
+            %
+            % b. Creates and levels the height map for the current ForceMap
+            % using the create_and_level_height_map method.
+            %
+            % 4. Loops through each ForceMap in the obj again, and for
+            % each:
+            %
+            % a. If the user chose to skip preprocessed ForceMaps and the
+            % current ForceMap is flagged as preprocessed, the loop moves
+            % to the next ForceMap.
+            %
+            % b. Fits base lines for the current ForceMap using the
+            % base_and_tilt method.
+            %
+            % c. Flags the current ForceMap as preprocessed.
+            %
+            % 5. Closes the progress waitbar upon completion.
+            %
+            % Use this function when you need to preprocess a set of
+            % ForceMap objects by creating and leveling height maps and
+            % fitting base lines. You can choose to skip ForceMaps that
+            % have already been preprocessed to save time and keep previous
+            % results.
             
             h = waitbar(0,'setting up','Units','normalized','Position',[0.4 0.3 0.2 0.1]);
             NLoop = length(obj.ForceMapNames);
@@ -821,7 +1592,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 obj.FMFlag.Preprocessed(i) = 1;
             end
             
-            obj.save_experiment;
+%             obj.save_experiment;
             
             close(h);
         end
@@ -829,35 +1600,42 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
         function force_map_analysis_fibril(obj,CPOption,EModOption,TemporaryLoadIn,UseTipInHertz)
             % This method has been deprecated! Should work as it is but
             % wont be updated anymore.
-            % 
-            % force_map_analysis_fibril(obj,CPOption,EModOption)
             %
-            % CPOption = 'Snap-In' ... Preferred Option for data with
-            % snap-in effect
-            % CPOption = 'Fast' ...(Default) contact point estimation through single
-            % pass through CNN
-            % CPOption = 'Dropout' ... contact point estimation through
-            % averaging over multiple passes through monte carlo dropout
-            % net. NPasses (Default=100) times slower than 'Fast'
-            % CPOption = 'Zoom' ... CNN-based method 
-            % CPOption = 'ZoomDropout' ... CNN-based method (still in development)
-            %%%%%% RECOMMENDED %%%%%%
-            % CPOption = 'Zoomsweep' ... CNN-based method
-            %%%%%% RECOMMENDED %%%%%%
-            % CPOption = 'Old' ... old method for contact point estimation
-            % CPOption = 'RoV' ... RoV method for contact point estimation
-            % CPOption = 'GoF' ... GoF method for contact point estimation
-            % CPOption = 'Combo' ... RoV and GoF combined method for contact point estimation
-            % CPOption = 'Manual' ... go through manual CP determination for contact point estimation
+            % force_map_analysis_fibril(obj, CPOption, EModOption,
+            % TemporaryLoadIn, UseTipInHertz)
             %
-            % EModOption = 'Hertz' ... E-Modulus calculation through Hertz-Sneddon
-            %                           method
-            % EModOption = 'HertzCorrected' ... E-Modulus calculation through Hertz-Sneddon
-            %                               method with RefSlope-corrected
-            %                               senstitivity
-            % EModOption = 'Oliver' ... E-Modulus calculation through
-            % Oliver-Pharr-like method (O. Andriotis 2014)
-            % EModOption = 'Both'   ... 'Oliver' and 'Hertz'
+            % This function is a deprecated method for analyzing force maps
+            % of fibrils. Although it should still work, it will not be
+            % updated in the future. The function handles preprocessing
+            % tasks, contact point estimation, fibril diameter calculation,
+            % and elastic modulus calculation for each force map in the
+            % set. It also provides options to use Oliver or Hertz models
+            % and the deconvolution of the cantilever tip if needed.
+            %
+            % Inputs:
+            %
+            % obj: An object containing the force maps to be analyzed.
+            %
+            % CPOption: String, representing the contact point estimation
+            % method. It can be any valid option supported by the
+            % cp_option_converter function (e.g., 'cnnzoomsweep').
+            %
+            % EModOption: String, specifying the elastic modulus
+            % calculation method. Possible values are 'hertz', 'oliver',
+            % 'both', or 'hertzcorrected'.
+            %
+            % TemporaryLoadIn: (Optional, default: true) Boolean, if true,
+            % temporarily loads data in memory during analysis for cases
+            % when the data is too big to be stored in memory all at once.
+            %
+            % UseTipInHertz: (Optional, default: true) Boolean, if true,
+            % uses the deconvoluted cantilever tip in Hertz model
+            % calculations.
+            %
+            % Outputs: No explicit outputs. The function updates the force
+            % maps within the obj with analysis results. It also saves the
+            % experiment and displays analyzed fibril data.
+            
             
             if nargin < 5
                 TemporaryLoadIn = true;
@@ -1066,8 +1844,8 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 end
                 obj.EMod.Apex(i,1:length(obj.FM{i}.RectApexIndex)) = EMods(obj.FM{i}.RectApexIndex);
                 for j=1:length(obj.FM{i}.RectApexIndex)
-                    if obj.EMod.Apex(i,j) > (nanmedian(obj.EMod.Apex(i,:))+2.5*iqr(obj.EMod.Apex(i,:))) || ...
-                            obj.EMod.Apex(i,j) < (nanmedian(obj.EMod.Apex(i,:))-2.5*iqr(obj.EMod.Apex(i,:))) || ...
+                    if obj.EMod.Apex(i,j) > (median(obj.EMod.Apex(i,:),'omitnan')+2.5*iqr(obj.EMod.Apex(i,:))) || ...
+                            obj.EMod.Apex(i,j) < (median(obj.EMod.Apex(i,:),'omitnan')-2.5*iqr(obj.EMod.Apex(i,:))) || ...
                             obj.FM{i}.ExclMask(obj.FM{i}.List2Map(obj.FM{i}.RectApexIndex(j),1),obj.FM{i}.List2Map(obj.FM{i}.RectApexIndex(j),2)) == 0
                         obj.EMod.Apex(i,j) = NaN;
                     elseif obj.EMod.Apex(i,j) < 0
@@ -1076,8 +1854,8 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 end
             end
             
-            obj.EMod.Mean = nanmean(obj.EMod.Apex,2);
-            obj.EMod.STD = nanstd(obj.EMod.Apex,[],2);
+            obj.EMod.Mean = mean(obj.EMod.Apex,2,'omitnan');
+            obj.EMod.STD = std(obj.EMod.Apex,[],2,'omitnan');
             obj.save_experiment;
             
             close(h);
@@ -1210,7 +1988,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             obj.write_to_log_file('Reference Slope Option',RefSlopeOption)
             
             % Deconvoluting cantilever tip(s)
-            if isequal(lower(EModOption),'oliver') || isequal(lower(EModOption),'both') || UseTipInHertz
+            if isequal(lower(EModOption),'oliverpharr') || isequal(lower(EModOption),'both') || UseTipInHertz
                 if obj.NumCantileverTips == 0
                     if isequal(class(obj.CantileverTips{1}),'AFMImage')
                         obj.NumCantileverTips = length(obj.CantileverTips);
@@ -1240,197 +2018,222 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 end
             end
             
+            % Preallocate cell array to store error information
+            errors = cell(1, NLoop);
             % Main loop for contact point estimation and E-Modulus calculation
             for i=1:NLoop
-                if isequal(KeepFlagged,'Yes') && obj.FMFlag.ForceMapAnalysis(i) == 1
-                    continue
-                end
-                
-                waitbar(i/NLoop,h,sprintf('Processing Force Map %i/%i\nReading out data...',i,NLoop));
-                
-                if ~obj.KeepPythonFilesOpen && obj.PythonLoaderFlag && obj.BigDataFlag
-                    obj.load_python_files_to_memory(i,[])
-                end
-                if TemporaryLoadIn && obj.BigDataFlag
-                    obj.FM{i}.temporary_data_load_in(true);
-                end
-                
-                waitbar(i/NLoop,h,sprintf('Processing Force Map %i/%i\nCreating and levelling Height Map',i,NLoop));
-                obj.FM{i}.create_and_level_height_map
-                obj.FM{i}.create_automatic_background_mask(1)
-                
-                Thresh = obj.ForceMapAnalysisOptions.UnselectCurveFragmentsThreshold;
-                AppRetSwitch = obj.ForceMapAnalysisOptions.UnselectCurveFragmentsAppRetSwitch;
-                obj.FM{i}.unselect_curves_by_fraction_of_max_data_points(Thresh,AppRetSwitch)
-                
-                waitbar(i/NLoop,h,sprintf('Processing Force Map %i/%i\nFitting Base Line',i,NLoop));
-                if ~obj.FM{i}.BaseAndTiltFlag || ~obj.ForceMapAnalysisOptions.SkipAlreadyProcessedData
-                    obj.FM{i}.base_and_tilt(obj.ForceMapAnalysisOptions.BaselineCorrection);
-                    if i == 1
-                        obj.write_to_log_file('Baseline and Tilt option','linear')
+                try
+                    if isequal(KeepFlagged,'Yes') && obj.FMFlag.ForceMapAnalysis(i) == 1
+                        continue
                     end
-                end
-                
-                % contact point estimation happens here
-                waitbar(i/NLoop,h,sprintf('Processing Force Map %i/%i\nFinding Contact Point',i,NLoop));
-                obj.cp_option_converter(CPOption,i);
-                
-                % reference slope calculation happens here
-                waitbar(i/NLoop,h,sprintf('Processing Force Map %i/%i\nProcessing and calculating Reference Slope',i,NLoop));
-                obj.reference_slope_calculator(i);
-                
-                waitbar(i/NLoop,h,sprintf('Processing Force Map %i/%i\nCalculating E-Modulus',i,NLoop));
-                if isequal(lower(EModOption),'hertz') || isequal(lower(EModOption),'both') || isequal(lower(EModOption),'hertzcorrected')
-                    if isequal(lower(EModOption),'hertzcorrected') || isequal(lower(EModOption),'both')
-                        CorrectSens = true;
-                    else
-                        CorrectSens = false;
+                    
+                    waitbar(i/NLoop,h,sprintf('Processing Force Map %i/%i\nReading out data...',i,NLoop));
+                    
+                    if ~obj.KeepPythonFilesOpen && obj.PythonLoaderFlag && obj.BigDataFlag
+                        obj.load_python_files_to_memory(i,[])
                     end
-                    AllowXShift = obj.ForceMapAnalysisOptions.EModOption.Hertz.AllowXShift;
-                    if UseTipInHertz
-                        obj.FM{i}.calculate_e_mod_hertz(CPOption,...
-                            obj.ForceMapAnalysisOptions.EModOption.Hertz.TipShape,...
-                            obj.ForceMapAnalysisOptions.EModOption.Hertz.LowerCurveFraction,...
-                            obj.ForceMapAnalysisOptions.EModOption.Hertz.UpperCurveFraction,...
-                            AllowXShift,...
+                    if TemporaryLoadIn && obj.BigDataFlag
+                        obj.FM{i}.temporary_data_load_in(true);
+                    end
+                    
+                    waitbar(i/NLoop,h,sprintf('Processing Force Map %i/%i\nCreating and levelling Height Map',i,NLoop));
+                    obj.FM{i}.create_and_level_height_map
+                    obj.FM{i}.create_automatic_background_mask(1)
+                    
+                    Thresh = obj.ForceMapAnalysisOptions.UnselectCurveFragmentsThreshold;
+                    AppRetSwitch = obj.ForceMapAnalysisOptions.UnselectCurveFragmentsAppRetSwitch;
+                    obj.FM{i}.unselect_curves_by_fraction_of_max_data_points(Thresh,AppRetSwitch)
+                    
+                    waitbar(i/NLoop,h,sprintf('Processing Force Map %i/%i\nFitting Base Line',i,NLoop));
+                    if ~obj.FM{i}.BaseAndTiltFlag || ~obj.ForceMapAnalysisOptions.SkipAlreadyProcessedData
+                        obj.FM{i}.base_and_tilt(obj.ForceMapAnalysisOptions.BaselineCorrection);
+                        if i == 1
+                            obj.write_to_log_file('Baseline and Tilt option','linear')
+                        end
+                    end
+                    
+                    % contact point estimation happens here
+                    waitbar(i/NLoop,h,sprintf('Processing Force Map %i/%i\nFinding Contact Point',i,NLoop));
+                    obj.cp_option_converter(CPOption,i);
+                    
+                    % reference slope calculation happens here
+                    waitbar(i/NLoop,h,sprintf('Processing Force Map %i/%i\nProcessing and calculating Reference Slope',i,NLoop));
+                    obj.reference_slope_calculator(i);
+                    
+                    waitbar(i/NLoop,h,sprintf('Processing Force Map %i/%i\nCalculating E-Modulus',i,NLoop));
+                    if isequal(lower(EModOption),'hertz') || isequal(lower(EModOption),'both') || isequal(lower(EModOption),'hertzcorrected')
+                        if isequal(lower(EModOption),'hertzcorrected') || isequal(lower(EModOption),'both')
+                            CorrectSens = true;
+                        else
+                            CorrectSens = false;
+                        end
+                        AllowXShift = obj.ForceMapAnalysisOptions.EModOption.Hertz.AllowXShift;
+                        if UseTipInHertz
+                            obj.FM{i}.calculate_e_mod_hertz(CPOption,...
+                                obj.ForceMapAnalysisOptions.EModOption.Hertz.TipShape,...
+                                obj.ForceMapAnalysisOptions.EModOption.Hertz.LowerCurveFraction,...
+                                obj.ForceMapAnalysisOptions.EModOption.Hertz.UpperCurveFraction,...
+                                AllowXShift,...
+                                obj.ForceMapAnalysisOptions.EModOption.Hertz.CorrectSensitivity,...
+                                UseTipInHertz,...
+                                obj.ForceMapAnalysisOptions.EModOption.Hertz.UseTopography,...
+                                obj.CantileverTips{obj.WhichTip(i)},...
+                                obj.ForceMapAnalysisOptions.EModOption.Hertz.WeighPointsByInverseDistance,...
+                                obj.ForceMapAnalysisOptions.SortHeightDataForFit,...
+                                obj.ForceMapAnalysisOptions.EModOption.Hertz.FitDegreeForSneddonPolySurf,...
+                                obj.ForceMapAnalysisOptions.EModOption.Hertz.LowerForceCutOff,...
+                                obj.ForceMapAnalysisOptions.EModOption.Hertz.UpperForceCutOff,...
+                                obj.ForceMapAnalysisOptions.SensitivityCorrection.SensitivityCorrectionMethod,...
+                                obj.ForceMapAnalysisOptions.KeepOldResults,...
+                                obj.ForceMapAnalysisOptions.EModOption.Hertz.TopographyHeightChannel,...
+                                obj.ForceMapAnalysisOptions.EModOption.Hertz.ThinFilmMode,...
+                                obj.ForceMapAnalysisOptions.EModOption.Hertz.ThinFilmThickness);
+                        else
+                            obj.FM{i}.calculate_e_mod_hertz(CPOption,...
+                                obj.ForceMapAnalysisOptions.EModOption.Hertz.TipShape,...
+                                obj.ForceMapAnalysisOptions.EModOption.Hertz.LowerCurveFraction,...
+                                obj.ForceMapAnalysisOptions.EModOption.Hertz.UpperCurveFraction,...
+                                AllowXShift,...
+                                obj.ForceMapAnalysisOptions.EModOption.Hertz.CorrectSensitivity,...
+                                UseTipInHertz,...
+                                obj.ForceMapAnalysisOptions.EModOption.Hertz.UseTopography,...
+                                [],...
+                                obj.ForceMapAnalysisOptions.EModOption.Hertz.WeighPointsByInverseDistance,...
+                                obj.ForceMapAnalysisOptions.SortHeightDataForFit,...
+                                obj.ForceMapAnalysisOptions.EModOption.Hertz.FitDegreeForSneddonPolySurf,...
+                                obj.ForceMapAnalysisOptions.EModOption.Hertz.LowerForceCutOff,...
+                                obj.ForceMapAnalysisOptions.EModOption.Hertz.UpperForceCutOff,...
+                                obj.ForceMapAnalysisOptions.SensitivityCorrection.SensitivityCorrectionMethod,...
+                                obj.ForceMapAnalysisOptions.KeepOldResults,...
+                                obj.ForceMapAnalysisOptions.EModOption.Hertz.TopographyHeightChannel,...
+                                obj.ForceMapAnalysisOptions.EModOption.Hertz.ThinFilmMode,...
+                                obj.ForceMapAnalysisOptions.EModOption.Hertz.ThinFilmThickness);
+                        end
+                        if i == 1
+                            obj.write_to_log_file('Hertzian Tip-Shape',...
+                                obj.ForceMapAnalysisOptions.EModOption.Hertz.TipShape)
+                            obj.write_to_log_file('Hertzian UpperCurveFraction',...
+                                obj.ForceMapAnalysisOptions.EModOption.Hertz.UpperCurveFraction)
+                            obj.write_to_log_file('Hertzian LowerCurveFraction',...
+                                obj.ForceMapAnalysisOptions.EModOption.Hertz.LowerCurveFraction)
+                            obj.write_to_log_file('Allow X-Shift',AllowXShift)
+                        end
+                    end
+                    if isequal(lower(EModOption),'oliverpharr') || isequal(lower(EModOption),'both')
+                        obj.FM{i}.calculate_e_mod_oliverpharr(obj.CantileverTips{obj.WhichTip(i)}.ProjectedTipArea,0.75,...
+                            obj.ForceMapAnalysisOptions.KeepOldResults);
+                        if i == 1
+                            obj.write_to_log_file('OliverPharr UpperCurvePercent for linear fit',...
+                                obj.ForceMapAnalysisOptions.EModOption.OliverPharr.CurvePercent)
+                        end
+                    end
+                    
+                    if obj.ForceMapAnalysisOptions.OptionalMetrics.AdhesionEnergy
+                        obj.FM{i}.calculate_adhesion_energy_and_length(2,...
+                            obj.ForceMapAnalysisOptions.KeepOldResults);
+                        obj.write_to_log_file('Adhesion Energy STD-Threshold Multiplier','2')
+                    end
+                    if obj.ForceMapAnalysisOptions.OptionalMetrics.MaximumAdhesionForce
+                        obj.FM{i}.calculate_adhesion_force(...
+                            obj.ForceMapAnalysisOptions.KeepOldResults);
+                    end
+                    if obj.ForceMapAnalysisOptions.OptionalMetrics.DissipatedAndElasticEnergy
+                        obj.FM{i}.calculate_dissipated_and_elastic_energy(...
+                            obj.ForceMapAnalysisOptions.KeepOldResults);
+                    end
+                    if obj.ForceMapAnalysisOptions.OptionalMetrics.PeakIndentationAngle
+                        obj.FM{i}.calculate_peak_indentation_angle(.5,...
+                            obj.ForceMapAnalysisOptions.KeepOldResults);
+                        obj.write_to_log_file('Upper Percent of Curve considered for Peak Indentation','50%')
+                    end
+                    if obj.ForceMapAnalysisOptions.OptionalMetrics.HeightMapByCurrentCP
+                        try
+                            obj.FM{i}.create_and_level_height_map_by_current_cp(...
+                                obj.ForceMapAnalysisOptions.KeepOldResults);
+                        catch
+                        end
+                    end
+                    if obj.ForceMapAnalysisOptions.OptionalMetrics.CorrectedDZSlopes
+                        if isequal(obj.ForceMapAnalysisOptions.OptionalMetrics.CorrectedDZSlopesOptions.FitRangeMode,'SameAsSensitivityCorrection')
+                            obj.FM{i}.calculate_corrected_dzslopes(...
+                                'SensitivityCorrectionMethod',obj.ForceMapAnalysisOptions.OptionalMetrics.CorrectedDZSlopesOptions.SensitivityCorrectionMethod,...
+                                'FitRangeMode',obj.ForceMapAnalysisOptions.SensitivityCorrection.FitRangeMode,...
+                                'FitRangeLowerValue',obj.ForceMapAnalysisOptions.SensitivityCorrection.FitRangeLowerValue,...
+                                'FitRangeUpperValue',obj.ForceMapAnalysisOptions.SensitivityCorrection.FitRangeUpperValue,...
+                                'FitRangeLowerFraction',obj.ForceMapAnalysisOptions.SensitivityCorrection.FitRangeLowerFraction,...
+                                'FitRangeUpperFraction',obj.ForceMapAnalysisOptions.SensitivityCorrection.FitRangeUpperFraction,...
+                                'AppRetSwitch',obj.ForceMapAnalysisOptions.SensitivityCorrection.AppRetSwitch,...
+                                'KeepOldResults',obj.ForceMapAnalysisOptions.KeepOldResults...
+                                );
+                        else
+                            obj.FM{i}.calculate_corrected_dzslopes(...
+                                'SensititvityCorrectionMethod',obj.ForceMapAnalysisOptions.OptionalMetrics.CorrectedDZSlopesOptions.SensitivityCorrectionMethod,...
+                                'FitRangeMode',obj.ForceMapAnalysisOptions.OptionalMetrics.CorrectedDZSlopesOptions.FitRangeMode,...
+                                'FitRangeLowerValue',obj.ForceMapAnalysisOptions.OptionalMetrics.CorrectedDZSlopesOptions.FitRangeLowerValue,...
+                                'FitRangeUpperValue',obj.ForceMapAnalysisOptions.OptionalMetrics.CorrectedDZSlopesOptions.FitRangeUpperValue,...
+                                'FitRangeLowerFraction',obj.ForceMapAnalysisOptions.OptionalMetrics.CorrectedDZSlopesOptions.FitRangeLowerFraction,...
+                                'FitRangeUpperFraction',obj.ForceMapAnalysisOptions.OptionalMetrics.CorrectedDZSlopesOptions.FitRangeUpperFraction,...
+                                'AppRetSwitch',obj.ForceMapAnalysisOptions.OptionalMetrics.CorrectedDZSlopesOptions.AppRetSwitch,...
+                                'KeepOldResults',obj.ForceMapAnalysisOptions.KeepOldResults...
+                                );
+                        end
+                    end
+                    if obj.ForceMapAnalysisOptions.EModOption.Hertz.PredictiveRSquare &&...
+                            isequal(lower(EModOption),'hertz') || isequal(lower(EModOption),'both')
+                        obj.FM{i}.calculate_predictive_rsquare_hertz(...
                             obj.ForceMapAnalysisOptions.EModOption.Hertz.CorrectSensitivity,...
-                            UseTipInHertz,...
-                            obj.ForceMapAnalysisOptions.EModOption.Hertz.UseTopology,...
-                            obj.CantileverTips{obj.WhichTip(i)},...
-                            obj.ForceMapAnalysisOptions.EModOption.Hertz.WeighPointsByInverseDistance,...
-                            obj.ForceMapAnalysisOptions.SortHeightDataForFit,...
-                            obj.ForceMapAnalysisOptions.EModOption.Hertz.FitDegreeForSneddonPolySurf,...
-                            obj.ForceMapAnalysisOptions.EModOption.Hertz.LowerForceCutOff,...
-                            obj.ForceMapAnalysisOptions.EModOption.Hertz.UpperForceCutOff,...
                             obj.ForceMapAnalysisOptions.SensitivityCorrection.SensitivityCorrectionMethod,...
-                            obj.ForceMapAnalysisOptions.KeepOldResults);
-                    else
-                        obj.FM{i}.calculate_e_mod_hertz(CPOption,...
-                            obj.ForceMapAnalysisOptions.EModOption.Hertz.TipShape,...
-                            obj.ForceMapAnalysisOptions.EModOption.Hertz.LowerCurveFraction,...
-                            obj.ForceMapAnalysisOptions.EModOption.Hertz.UpperCurveFraction,...
-                            AllowXShift,...
-                            obj.ForceMapAnalysisOptions.EModOption.Hertz.CorrectSensitivity,...
-                            UseTipInHertz,...
-                            obj.ForceMapAnalysisOptions.EModOption.Hertz.UseTopology,...
-                            [],...
-                            obj.ForceMapAnalysisOptions.EModOption.Hertz.WeighPointsByInverseDistance,...
                             obj.ForceMapAnalysisOptions.SortHeightDataForFit,...
-                            obj.ForceMapAnalysisOptions.EModOption.Hertz.FitDegreeForSneddonPolySurf,...
-                            obj.ForceMapAnalysisOptions.EModOption.Hertz.LowerForceCutOff,...
-                            obj.ForceMapAnalysisOptions.EModOption.Hertz.UpperForceCutOff,...
-                            obj.ForceMapAnalysisOptions.SensitivityCorrection.SensitivityCorrectionMethod,...
-                            obj.ForceMapAnalysisOptions.KeepOldResults);
-                    end
-                    if i == 1
-                        obj.write_to_log_file('Hertzian Tip-Shape',...
-                            obj.ForceMapAnalysisOptions.EModOption.Hertz.TipShape)
-                        obj.write_to_log_file('Hertzian UpperCurveFraction',...
-                            obj.ForceMapAnalysisOptions.EModOption.Hertz.UpperCurveFraction)
-                        obj.write_to_log_file('Hertzian LowerCurveFraction',...
-                            obj.ForceMapAnalysisOptions.EModOption.Hertz.LowerCurveFraction)
-                        obj.write_to_log_file('Allow X-Shift',AllowXShift)
-                    end
-                end
-                if isequal(lower(EModOption),'oliver') || isequal(lower(EModOption),'both')
-                    obj.FM{i}.calculate_e_mod_oliverpharr(obj.CantileverTips{obj.WhichTip(i)}.ProjectedTipArea,0.75,...
-                        obj.ForceMapAnalysisOptions.KeepOldResults);
-                    if i == 1
-                        obj.write_to_log_file('OliverPharr UpperCurvePercent for linear fit',...
-                            obj.ForceMapAnalysisOptions.EModOption.OliverPharr.CurvePercent)
-                    end
-                end
-                
-                if obj.ForceMapAnalysisOptions.OptionalMetrics.AdhesionEnergy
-                    obj.FM{i}.calculate_adhesion_energy_and_length(2,...
-                            obj.ForceMapAnalysisOptions.KeepOldResults);
-                    obj.write_to_log_file('Adhesion Energy STD-Threshold Multiplier','2')
-                end
-                if obj.ForceMapAnalysisOptions.OptionalMetrics.MaximumAdhesionForce
-                    obj.FM{i}.calculate_adhesion_force(...
-                            obj.ForceMapAnalysisOptions.KeepOldResults);
-                end
-                if obj.ForceMapAnalysisOptions.OptionalMetrics.DissipatedAndElasticEnergy
-                    obj.FM{i}.calculate_dissipated_and_elastic_energy(...
-                            obj.ForceMapAnalysisOptions.KeepOldResults);
-                end
-                if obj.ForceMapAnalysisOptions.OptionalMetrics.PeakIndentationAngle
-                    obj.FM{i}.calculate_peak_indentation_angle(.5,...
-                            obj.ForceMapAnalysisOptions.KeepOldResults);
-                    obj.write_to_log_file('Upper Percent of Curve considered for Peak Indentation','50%')
-                end
-                if obj.ForceMapAnalysisOptions.OptionalMetrics.HeightMapByCurrentCP
-                    try
-                        obj.FM{i}.create_and_level_height_map_by_current_cp(...
-                            obj.ForceMapAnalysisOptions.KeepOldResults);
-                    catch
-                    end
-                end
-                if obj.ForceMapAnalysisOptions.OptionalMetrics.CorrectedDZSlopes
-                    if isequal(obj.ForceMapAnalysisOptions.OptionalMetrics.CorrectedDZSlopesOptions.FitRangeMode,'SameAsSensitivityCorrection')
-                        obj.FM{i}.calculate_corrected_dzslopes(...
-                            'SensitivityCorrectionMethod',obj.ForceMapAnalysisOptions.OptionalMetrics.CorrectedDZSlopesOptions.SensitivityCorrectionMethod,...
-                            'FitRangeMode',obj.ForceMapAnalysisOptions.SensitivityCorrection.FitRangeMode,...
-                            'FitRangeLowerValue',obj.ForceMapAnalysisOptions.SensitivityCorrection.FitRangeLowerValue,...
-                            'FitRangeUpperValue',obj.ForceMapAnalysisOptions.SensitivityCorrection.FitRangeUpperValue,...
-                            'FitRangeLowerFraction',obj.ForceMapAnalysisOptions.SensitivityCorrection.FitRangeLowerFraction,...
-                            'FitRangeUpperFraction',obj.ForceMapAnalysisOptions.SensitivityCorrection.FitRangeUpperFraction,...
-                            'AppRetSwitch',obj.ForceMapAnalysisOptions.SensitivityCorrection.AppRetSwitch,...
-                            'KeepOldResults',obj.ForceMapAnalysisOptions.KeepOldResults...
-                            );
-                    else
-                        obj.FM{i}.calculate_corrected_dzslopes(...
-                            'SensititvityCorrectionMethod',obj.ForceMapAnalysisOptions.OptionalMetrics.CorrectedDZSlopesOptions.SensitivityCorrectionMethod,...
-                            'FitRangeMode',obj.ForceMapAnalysisOptions.OptionalMetrics.CorrectedDZSlopesOptions.FitRangeMode,...
-                            'FitRangeLowerValue',obj.ForceMapAnalysisOptions.OptionalMetrics.CorrectedDZSlopesOptions.FitRangeLowerValue,...
-                            'FitRangeUpperValue',obj.ForceMapAnalysisOptions.OptionalMetrics.CorrectedDZSlopesOptions.FitRangeUpperValue,...
-                            'FitRangeLowerFraction',obj.ForceMapAnalysisOptions.OptionalMetrics.CorrectedDZSlopesOptions.FitRangeLowerFraction,...
-                            'FitRangeUpperFraction',obj.ForceMapAnalysisOptions.OptionalMetrics.CorrectedDZSlopesOptions.FitRangeUpperFraction,...
-                            'AppRetSwitch',obj.ForceMapAnalysisOptions.OptionalMetrics.CorrectedDZSlopesOptions.AppRetSwitch,...
-                            'KeepOldResults',obj.ForceMapAnalysisOptions.KeepOldResults...
+                            obj.ForceMapAnalysisOptions.EModOption.Hertz.AllowXShift,...
+                            obj.ForceMapAnalysisOptions.KeepOldResults...
                             );
                     end
-                end
-                if obj.ForceMapAnalysisOptions.EModOption.Hertz.PredictiveRSquare
-                    obj.FM{i}.calculate_predictive_rsquare_hertz(...
-                        obj.ForceMapAnalysisOptions.EModOption.Hertz.CorrectSensitivity,...
-                        obj.ForceMapAnalysisOptions.SensitivityCorrection.SensitivityCorrectionMethod,...
-                        obj.ForceMapAnalysisOptions.SortHeightDataForFit,...
-                        obj.ForceMapAnalysisOptions.EModOption.Hertz.AllowXShift,...
-                        obj.ForceMapAnalysisOptions.KeepOldResults...
-                    );
-                end
-                
-                waitbar(i/NLoop,h,sprintf('Processing Force Map %i/%i\nWrapping Up And Saving',i,NLoop));
-                
-                if TemporaryLoadIn && obj.BigDataFlag
-                    obj.FM{i}.temporary_data_load_in(false);
-                    if (i < NLoop &&...
-                            obj.ForceMapAnalysisOptions.SaveAfterEachMap) ||...
-                            (obj.ForceMapAnalysisOptions.SaveAfterEachMap &&...
-                            ~obj.ForceMapAnalysisOptions.SaveWhenFinished)
-                        obj.save_experiment;
+                    
+                    waitbar(i/NLoop,h,sprintf('Processing Force Map %i/%i\nWrapping Up And Saving',i,NLoop));
+                    
+                    if TemporaryLoadIn && obj.BigDataFlag
+                        obj.FM{i}.temporary_data_load_in(false);
+                        if (i < NLoop &&...
+                                obj.ForceMapAnalysisOptions.SaveAfterEachMap) ||...
+                                (obj.ForceMapAnalysisOptions.SaveAfterEachMap &&...
+                                ~obj.ForceMapAnalysisOptions.SaveWhenFinished)
+                            obj.save_experiment;
+                        end
                     end
-                end
-                
-                obj.FMFlag.ForceMapAnalysis(i) = 1;
-                if i==1
-                    for k=2:NLoop
-                        obj.FM{k}.CPFlag.CNNOpt = 1;
-                        obj.FM{k}.MiniBatchSize = obj.FM{1}.MiniBatchSize;
+                    
+                    obj.FMFlag.ForceMapAnalysis(i) = 1;
+                    if i==1
+                        for k=2:NLoop
+                            obj.FM{k}.CPFlag.CNNOpt = 1;
+                            obj.FM{k}.MiniBatchSize = obj.FM{1}.MiniBatchSize;
+                        end
                     end
-                end
-                if ~obj.KeepPythonFilesOpen && obj.PythonLoaderFlag && obj.BigDataFlag
-                    obj.clear_python_files_from_memory(i,[])
+                    if ~obj.KeepPythonFilesOpen && obj.PythonLoaderFlag && obj.BigDataFlag
+                        obj.clear_python_files_from_memory(i,[])
+                    end
+                    
+                catch ME
+                    % If an error occurs, store it in the errors cell array
+                    errors{i} = sprintf('Error in iteration %d ForceMap name %s: %s\nStack Trace:\n%s', i, obj.FM{i}.Name, ME.message, getReport(ME, 'extended', 'hyperlinks', 'off'));
                 end
             end
-            
             if obj.ForceMapAnalysisOptions.SaveWhenFinished
                 obj.save_experiment;
             end
             
             close(h);
             obj.write_to_log_file('','','end')
+            obj.FMAExitErrorStack = errors;
+            for i = 1:NLoop
+                if ~isempty(errors{i})
+                    warning(errors{i});
+                end
+            end
+        end
+        
+        function fiber_segment_analysis(obj)
+            
+            
         end
         
         function OutStruct = characterize_fiber_like_polyline_segments(obj,varargin)
@@ -1486,26 +2289,32 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             addRequired(p,"obj",validobj);
             
             % NameValue inputs
+            defaultHeightChannelName = 'Processed';
             defaultWidthLocalWindowMeters = 800e-9;
             defaultSmoothingWindowSize = 41;
             defaultMinPeakDistanceMeters = 50e-9;
             defaultLowerEndThreshold = .1;
+            defaultEllipseFitThreshold = .75;
             defaultThresholdType = 'Fraction';
             defaultVerbose = false;
             defaultRecordMovieBool = false;
             defaultKeyFrames = 3;
+            validHeightChannelName = @(x)ischar(x);
             validWidthLocalWindowMeters = @(x)isnumeric(x)&&isscalar(x);
             validSmoothingWindowSize = @(x)isnumeric(x)&&mod(x,1)==0;
             validMinPeakDistanceMeters = @(x)isnumeric(x)&&isscalar(x);
             validLowerEndThreshold = @(x)isnumeric(x)&&isscalar(x);
+            validEllipseFitThreshold = @(x)isnumeric(x)&&isscalar(x); 
             validThresholdType = @(x)any(validatestring(x,{'Fraction','Meters'}));
             validVerbose = @(x)islogical(x);
             validRecordMovieBool = @(x)islogical(x);
             validKeyFrames = @(x)isnumeric(x)&&mod(x,1)==0;
+            addParameter(p,"HeightChannelName",defaultHeightChannelName,validHeightChannelName);
             addParameter(p,"WidthLocalWindowMeters",defaultWidthLocalWindowMeters,validWidthLocalWindowMeters);
             addParameter(p,"SmoothingWindowSize",defaultSmoothingWindowSize,validSmoothingWindowSize);
             addParameter(p,"MinPeakDistanceMeters",defaultMinPeakDistanceMeters,validMinPeakDistanceMeters);
             addParameter(p,"LowerEndThreshold",defaultLowerEndThreshold,validLowerEndThreshold);
+            addParameter(p,"EllipseFitThreshold",defaultEllipseFitThreshold,validEllipseFitThreshold);
             addParameter(p,"ThresholdType",defaultThresholdType,validThresholdType);
             addParameter(p,"Verbose",defaultVerbose,validVerbose);
             addParameter(p,"RecordMovieBool",defaultRecordMovieBool,validRecordMovieBool);
@@ -1515,11 +2324,13 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             
             % Assign parsing results to named variables
             obj = p.Results.obj;
+            HeightChannelName = p.Results.HeightChannelName;
             WidthLocalWindowMeters = p.Results.WidthLocalWindowMeters;
             SmoothingWindowSize = p.Results.SmoothingWindowSize;
             MinPeakDistanceMeters = p.Results.MinPeakDistanceMeters;
             LowerEndThreshold = p.Results.LowerEndThreshold;
             ThresholdType = p.Results.ThresholdType;
+            EllipseFitThreshold = p.Results.EllipseFitThreshold;
             Verbose = p.Results.Verbose;
             RecordMovieBool = p.Results.RecordMovieBool;
             KeyFrames = p.Results.KeyFrames;
@@ -1529,10 +2340,12 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             for i=1:obj.NumForceMaps
                 [OutStruct(k).Array,OutStruct(k).Struct,OutStruct(k).StructAll] = ...
                     obj.FM{i}.characterize_fiber_like_polyline_segments(...
+                    'HeightChannelName',HeightChannelName,...
                     'WidthLocalWindowMeters',WidthLocalWindowMeters,...
                     'SmoothingWindowSize',SmoothingWindowSize,...
                     'MinPeakDistanceMeters',MinPeakDistanceMeters,...
                     'LowerEndThreshold',LowerEndThreshold,...
+                    'EllipseFitThreshold',EllipseFitThreshold,...
                     'ThresholdType',ThresholdType,...
                     'Verbose',Verbose,...
                     'RecordMovieBool',RecordMovieBool,...
@@ -1545,10 +2358,12 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 [OutStruct(k).Array,OutStruct(k).Struct,...
                     OutStruct(k).StructAll] = ...
                     obj.I{i}.characterize_fiber_like_polyline_segments(...
+                    'HeightChannelName',HeightChannelName,...
                     'WidthLocalWindowMeters',WidthLocalWindowMeters,...
                     'SmoothingWindowSize',SmoothingWindowSize,...
                     'MinPeakDistanceMeters',MinPeakDistanceMeters,...
                     'LowerEndThreshold',LowerEndThreshold,...
+                    'EllipseFitThreshold',EllipseFitThreshold,...
                     'ThresholdType',ThresholdType,...
                     'Verbose',Verbose,...
                     'RecordMovieBool',RecordMovieBool,...
@@ -1560,12 +2375,61 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
         end
         
         function Table = compile_experiment_content_to_table_sqldatabase(obj)
-            
+            % function Table =
+            % compile_experiment_content_to_table_sqldatabase(obj)
+            %
             % Cycle through ALL the contents of FM,I,CantileverTips and
             % create an entry of every single Pixel with columns being
-            % every possible property with special rules for some properties
-            % that are derived from 'characterize_fiber_like_polyline_segments'
-            % or 'create_overlay_group'
+            % every possible property with special rules for some
+            % properties that are derived from
+            % 'characterize_fiber_like_polyline_segments' or
+            % 'create_overlay_group'
+            %
+            % This function compiles the content of an AFM experiment,
+            % including force maps, AFM images, and cantilever tips, into a
+            % single table for use in an SQL database. The output table has
+            % columns for each property of the experiment content, with
+            % specific rules applied to properties derived from
+            % 'characterize_fiber_like_polyline_segments' and
+            % 'create_overlay_group' functions.
+            %
+            % Input:
+            %
+            % obj: An object representing the AFM experiment content. It
+            % should have properties for force maps (FM), AFM images (I),
+            % and cantilever tips (CantileverTips), as well as other
+            % properties required for the output table columns.
+            %
+            % Output:
+            %
+            % Table: A table with rows for each pixel in the AFM experiment
+            % content and columns for each property. The table is
+            % preallocated with the correct size and variable types based
+            % on the input object properties. The table's properties
+            % include variable units and descriptions derived from the
+            % 'assign_units_and_fancy_names_to_properties' function.
+            %
+            % Properties and Data Types:
+            %
+            % The input object properties can be of the following data
+            % types: float, integer, char, logical, string, or cell array
+            % of strings. The properties are stored in the output table
+            % with specific rules applied to derived properties, as
+            % mentioned above.
+            %
+            % Note that 'single' and 'double' types are replaced with
+            % 'singlenan' and 'doublenan' respectively, and 'char' is
+            % replaced with 'string'.
+            %
+            % Blacklisted Properties:
+            %
+            % The following properties are blacklisted and will not be
+            % included in the output table: 'FileVersion',
+            % 'DataStoreFolder', 'RawDataFilePath', 'OpenZipFile',
+            % 'Folder', 'HostOS', and 'HostName'.
+            %
+            % Usage: Table =
+            % compile_experiment_content_to_table_sqldatabase(obj)
             
             h = waitbar(0,'setting up...','Name','Compiling SQL Table');
             
@@ -1704,6 +2568,46 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
         end
         
         function image_analysis_base_on_even_background(obj,UpperLim,NIter)
+            % function image_analysis_base_on_even_background(obj,
+            % UpperLim, NIter)
+            %
+            % This function performs image analysis on AFM images by
+            % subtracting the line fit histogram to obtain an even
+            % background. The analysis is performed iteratively for a
+            % specified number of iterations. If no 'ProcessedSimple'
+            % channel exists, it will be created based on the 'Height
+            % (Trace)' channel.
+            %
+            % Input:
+            %
+            % obj: An object representing the AFM experiment content. It
+            % should have properties for AFM images (I) and their channels
+            % (Channel), including 'Height (Trace)' and 'ProcessedSimple'
+            % (if it exists).
+            %
+            % UpperLim (optional): A numeric value indicating the upper
+            % limit for the line fit histogram subtraction. Default is 1.
+            %
+            % NIter (optional): An integer value representing the number of
+            % iterations for the line fit histogram subtraction. Default is
+            % 1.
+            %
+            % Output:
+            %
+            % The function does not return any output variables. It
+            % modifies the input object by updating the 'ProcessedSimple'
+            % channel (or creating it if it doesn't exist) with the
+            % modified image data. Additionally, the 'hasProcessed'
+            % property of the AFM image object is set to 1.
+            %
+            % Usage: image_analysis_base_on_even_background(obj)
+            % image_analysis_base_on_even_background(obj, UpperLim)
+            % image_analysis_base_on_even_background(obj, UpperLim, NIter)
+            %
+            % Example: To process AFM images with an upper limit of 1.5 and
+            % 2 iterations, call the function as:
+            % image_analysis_base_on_even_background(obj, 1.5, 2)
+            
             
             if nargin < 2
                 UpperLim = 1;
@@ -1732,6 +2636,52 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
         end
         
         function image_analysis_flatten_on_even_background_automatic(obj,WindowSize,NIter)
+            % function
+            % image_analysis_flatten_on_even_background_automatic(obj,
+            % WindowSize, NIter)
+            %
+            % This function performs image analysis on AFM images by
+            % iteratively flattening the image on an even background using
+            % the 'subtract_line_fit_vertical_rov' function. If no
+            % 'Processed' channel exists, it will be created based on the
+            % 'Height (Trace)' channel.
+            %
+            % Input:
+            %
+            % obj: An object representing the AFM experiment content. It
+            % should have properties for AFM images (I) and their channels
+            % (Channel), including 'Height (Trace)' and 'Processed' (if it
+            % exists).
+            %
+            % WindowSize (optional): A numeric value representing the
+            % window size for the 'subtract_line_fit_vertical_rov'
+            % function. Default is 0.2.
+            %
+            % NIter (optional): An integer value representing the number of
+            % iterations for the image flattening process. Default is 3.
+            %
+            % Output:
+            %
+            % The function does not return any output variables. It
+            % modifies the input object by updating the 'Processed' channel
+            % (or creating it if it doesn't exist) with the modified image
+            % data. Additionally, the 'hasProcessed' property of the AFM
+            % image object is set to 1.
+            %
+            % Usage:
+            %
+            % image_analysis_flatten_on_even_background_automatic(obj)
+            % image_analysis_flatten_on_even_background_automatic(obj,
+            % WindowSize)
+            % image_analysis_flatten_on_even_background_automatic(obj,
+            % WindowSize, NIter)
+            %
+            % Example:
+            %
+            % To process AFM images with a window size of 0.3 and 4
+            % iterations, call the function as:
+            % image_analysis_flatten_on_even_background_automatic(obj, 0.3,
+            % 4)
             
             if nargin < 2
                 WindowSize = .2;
@@ -1760,6 +2710,50 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
         end
         
         function image_analysis_flatten_and_combine_trace_retrace_automatic(obj,WindowSize,NIter)
+            % function
+            % image_analysis_flatten_and_combine_trace_retrace_automatic(obj,
+            % WindowSize, NIter)
+            %
+            % This function performs image analysis on AFM images by
+            % flattening and combining the trace and retrace height
+            % channels. It uses the 'subtract_line_fit_hist' and
+            % 'subtract_line_fit_vertical_rov' functions for flattening and
+            % creates a new channel 'R-T Combined' with the minimum of the
+            % processed trace and retrace images.
+            %
+            % Input:
+            %
+            % obj: An object representing the AFM experiment content. It
+            % should have properties for AFM images (I) and their channels
+            % (Channel), including 'Height (Trace)' and 'Height (Retrace)'.
+            %
+            % WindowSize (optional): A numeric value representing the
+            % window size for the 'subtract_line_fit_vertical_rov'
+            % function. Default is 0.2.
+            %
+            % NIter (optional): An integer value representing the number of
+            % iterations for the image flattening process. Default is 3.
+            %
+            % Output:
+            %
+            % The function does not return any output variables. It
+            % modifies the input object by updating or creating the 'R-T
+            % Combined' channel with the combined trace and retrace image
+            % data.
+            %
+            % Usage:
+            % image_analysis_flatten_and_combine_trace_retrace_automatic(obj)
+            % image_analysis_flatten_and_combine_trace_retrace_automatic(obj,
+            % WindowSize)
+            % image_analysis_flatten_and_combine_trace_retrace_automatic(obj,
+            % WindowSize, NIter)
+            %
+            % Example:
+            %
+            % To process AFM images with a window size of 0.3 and 4
+            % iterations, call the function as:
+            % image_analysis_flatten_and_combine_trace_retrace_automatic(obj,
+            % 0.3, 4)
             
             if nargin < 2
                 WindowSize = .2;
@@ -1795,6 +2789,38 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
         end
         
         function image_analysis_mask_background(obj,Thresh)
+            % function image_analysis_mask_background(obj, Thresh)
+            %
+            % This function applies a background mask to the processed AFM
+            % images by thresholding. The mask is generated using the
+            % 'mask_background_by_threshold' function and creates a new
+            % channel 'Background Mask' in the object's Channel property.
+            %
+            % Input:
+            %
+            % obj: An object representing the AFM experiment content. It
+            % should have properties for AFM images (I) and their channels
+            % (Channel), including a 'Processed' channel.
+            %
+            % Thresh (optional): A numeric value representing the threshold
+            % for background masking. If not provided, the function will
+            % attempt to determine the threshold automatically.
+            %
+            % Output:
+            %
+            % The function does not return any output variables. It
+            % modifies the input object by creating the 'Background Mask'
+            % channel with the masked image data.
+            %
+            % Usage:
+            %
+            % image_analysis_mask_background(obj)
+            % image_analysis_mask_background(obj, Thresh)
+            %
+            % Example:
+            %
+            % To apply a background mask with a threshold of 5, call the
+            % function as: image_analysis_mask_background(obj, 5)
             
             if nargin < 2
                 Thresh = 0;
@@ -1833,7 +2859,46 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
         function cp_option_converter(obj,CPOption,i,RefFM)
             % cp_option_converter(CPOption,i,RefFM)
             %
-            % aux-function for CPOption choice
+            % aux-function for CPOption choice function
+            % cp_option_converter(obj, CPOption, i, RefFM)
+            %
+            % This function is an auxiliary function for handling various
+            % contact point (CP) estimation methods for AFM force maps.
+            % Based on the input option (CPOption), it applies the selected
+            % method to the force map and updates the contact point
+            % information.
+            %
+            % Input:
+            %
+            % obj: An object representing the AFM experiment content. It
+            % should have properties for force maps (FM), contact points
+            % (CP), and various contact point estimation methods.
+            %
+            % CPOption: A string specifying the contact point estimation
+            % method. Possible values are: 'snap-in', 'none', 'rov',
+            % 'hardsurface', 'gof', 'old', 'combo', 'manual', 'fast',
+            % 'dropout', 'zoom', 'zoomdropout', 'zoomsweep', and
+            % 'curveorigin'.
+            %
+            % i: An integer representing the index of the force map to be
+            % processed.
+            %
+            % RefFM (optional): A boolean flag indicating if the reference
+            % force map (RefFM) should be used. If not provided, the
+            % default value is false.
+            %
+            % Output:
+            %
+            % The function does not return any output variables. It
+            % modifies the input object by updating the contact point
+            % information based on the selected method.
+            %
+            % Usage: cp_option_converter(obj, CPOption, i)
+            % cp_option_converter(obj, CPOption, i, RefFM)
+            %
+            % Example: To apply the 'snap-in' method to the first force
+            % map, call the function as: cp_option_converter(obj,
+            % 'snap-in', 1)
             
             NumPasses = 20;
             
@@ -2043,6 +3108,44 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
         end
         
         function apply_segmentation_to_overlay_group(obj,GroupMemberInstance)
+            % function apply_segmentation_to_overlay_group(obj,
+            % GroupMemberInstance)
+            %
+            % This function applies a segmentation from a given group
+            % member instance to all other members of the same overlay
+            % group. It identifies the corresponding members within the AFM
+            % experiment object (obj) and applies the segmentation to force
+            % maps (FM) and AFM images (I).
+            %
+            % Input:
+            %
+            % obj: An object representing the AFM experiment content. It
+            % should have properties for force maps (FM) and AFM images
+            % (I), as well as their corresponding names (ForceMapNames,
+            % AFMImageNames).
+            %
+            % GroupMemberInstance: An object representing a group member,
+            % which includes the segmentation to be applied. It should have
+            % properties for the overlay group (OverlayGroup) and its name
+            % (Name).
+            %
+            % Output:
+            %
+            % The function does not return any output variables. It
+            % modifies the input objects by applying the segmentation from
+            % the given group member instance to all other members of the
+            % same overlay group.
+            %
+            % Usage:
+            %
+            % apply_segmentation_to_overlay_group(obj, GroupMemberInstance)
+            %
+            % Example:
+            %
+            % To apply the segmentation from a specific group member
+            % instance to all other members of the same overlay group, call
+            % the function as: apply_segmentation_to_overlay_group(obj,
+            % GroupMemberInstance)
             
             if ~GroupMemberInstance.OverlayGroup.hasOverlayGroup
                 warning('The class instance you input has no overlay group')
@@ -2073,6 +3176,47 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             % least distance of polyline vertices to the vertices of the
             % transformed segments. The mapping is injective but not
             % bijective.
+            %
+            % This function creates a proximity mapping for segments in an
+            % overlay group. Segments with the same names and subsection
+            % names are mapped to each other based on the least distance of
+            % polyline vertices to the vertices of the transformed
+            % segments. The mapping is injective but not bijective. The
+            % function provides two modes: All-to-One mode or sequential
+            % mode.
+            %
+            % Input:
+            %
+            % obj: An object representing the AFM experiment content. It
+            % should have properties for force maps (FM) and AFM images
+            % (I), as well as their corresponding names (ForceMapNames,
+            % AFMImageNames). GroupMemberInstance: An object representing a
+            % group member in the overlay group. It should have properties
+            % for the overlay group (OverlayGroup) and its name (Name).
+            %
+            % AllToOneBool: A boolean value (0 or 1). When set to 1, the
+            % function will map all group members to the first group member
+            % (All-to-One mode). When set to 0, the function will map each
+            % group member to the next one sequentially (sequential mode).
+            % Default value is 0.
+            %
+            % Output:
+            %
+            % The function does not return any output variables. It
+            % modifies the input objects by creating proximity mappings for
+            % segments in the overlay group.
+            %
+            % Usage:
+            %
+            % create_proximity_mapping_for_overlay_group_segments(obj,
+            % GroupMemberInstance, AllToOneBool)
+            %
+            % Example:
+            %
+            % To create a proximity mapping for segments in an overlay
+            % group, call the function as:
+            % create_proximity_mapping_for_overlay_group_segments(obj,
+            % GroupMemberInstance, AllToOneBool)
             
             if ~GroupMemberInstance.OverlayGroup.hasOverlayGroup
                 warning('The class instance you input has no overlay group')
@@ -2126,6 +3270,45 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
         end
         
         function reset_proximity_mapping_for_overlay_group_segments(obj,GroupMemberInstance)
+            % function
+            % reset_proximity_mapping_for_overlay_group_segments(obj,
+            % GroupMemberInstance)
+            %
+            % This function resets the proximity mapping for segments in an
+            % overlay group. It undoes the previously applied proximity
+            % mappings for all group members in the overlay group. The
+            % function iterates through all the members of the overlay
+            % group and resets their proximity mappings.
+            %
+            % Input:
+            %
+            % obj: An object representing the AFM experiment content. It
+            % should have properties for force maps (FM) and AFM images
+            % (I), as well as their corresponding names (ForceMapNames,
+            % AFMImageNames). GroupMemberInstance: An object representing a
+            % group member in the overlay group. It should have
+            %
+            % properties for the overlay group (OverlayGroup) and its name
+            % (Name).
+            %
+            % Output:
+            %
+            % The function does not return any output variables. It
+            % modifies the input objects by resetting the proximity
+            % mappings for segments in the overlay group.
+            %
+            % Usage:
+            %
+            % reset_proximity_mapping_for_overlay_group_segments(obj,
+            % GroupMemberInstance)
+            %
+            % Example:
+            %
+            % To reset the proximity mapping for segments in an overlay
+            % group, call the function as:
+            % reset_proximity_mapping_for_overlay_group_segments(obj,
+            % GroupMemberInstance)
+            
             
             if ~GroupMemberInstance.OverlayGroup.hasOverlayGroup
                 warning('The class instance you input has no overlay group')
@@ -3115,11 +4298,9 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 disp(sprintf('\n'))
                 warning(sprintf(['Cannot run "show image"!\n'...
                     'Your ShowImageSettings do not contain all the necessary information!\n'...
-                    'Most likely the settings have been updated and you need to reset and reapply your settings; try:\n\n'...
-                    '>> E.ShowImageSettings = Experiment.set_default_show_image_settings;\n\n'...
-                    'and then choose your desired settings again by calling\n\n'...
-                    '>> E.show_image\n']));
-                return
+                    'Most likely the settings have been updated.\n'...
+                    'Setting everything to current default...']));
+                obj.ShowImageSettings = Experiment.set_default_show_image_settings;
             end
             
             h.ColorMode = set_default_color_options();
@@ -4348,12 +5529,19 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                     [Channel,ChannelIndex] = h.Class{Index}.get_channel(h.Channel{Index});
                     if obj.ShowImageSettings.IsUpscaled
                         Channel.Image = fillmissing(Channel.Image,'linear','EndValues','nearest');
-                        Channel = AFMImage.resize_channel(Channel,1,1920,false);
+                        Channel = AFMImage.resize_channel(Channel,1920,false);
                     end
                     h.Image{Index} = fillmissing(Channel.Image,'linear','EndValues','nearest');
                     h.BaseUnit{Index} = Channel.Unit;
                     h.ScanSizeX(Index) = Channel.ScanSizeX;
                     h.ScanSizeY(Index) = Channel.ScanSizeY;
+                    if isfield(h,'NumPixelsX') && isfield(h,'NumPixelsY') &&...
+                            length(h.NumPixelsX) == 2 &&...
+                            length(h.NumPixelsY) == 2 &&...
+                            ((h.NumPixelsX(Index) ~= Channel.NumPixelsX) ||...
+                            (h.NumPixelsY(Index) ~= Channel.NumPixelsY))
+                        h.ResetOnNextZoom = true;
+                    end
                     h.NumPixelsX(Index) = Channel.NumPixelsX;
                     h.NumPixelsY(Index) = Channel.NumPixelsY;
                     ColorPattern = h.Class{Index}.CMap;
@@ -5361,7 +6549,63 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             function draw_result_plots()
                 
                 h.ResultStruct.Gramm = get_and_assign_result_data();
-                
+%                 
+%                 T = obj.compile_experiment_content_to_table_sqldatabase;
+%                 
+%                 % Table filtering and sorting
+%                 
+%                 rows = contains(T.SegmentName,'Snapped');% & T.FiberSegment_SegmentLength > 8e-6;
+%                 
+%                 SubT = T(rows,:);
+%                 
+%                 SortBy = 'FiberSegment_RelativePosition';
+%                 Order = 'ascend';
+%                 XColumn = 'Processed';
+%                 YColumn = 'Processed';
+%                 CColumn = 'Name';
+%                 FColumn = 'SubSegmentFullName';
+%                 
+%                 ST = sortrows(SubT,SortBy,Order);
+%                 
+%                 X = ST{:,XColumn};
+%                 Y = ST{:,YColumn};
+%                 C = ST{:,CColumn};
+%                 Facets = ST{:,FColumn};
+%                 
+%                 XName = ST.Properties.VariableDescriptions{XColumn};
+%                 YName = ST.Properties.VariableDescriptions{YColumn};
+%                 CName = ST.Properties.VariableDescriptions{CColumn};
+%                 FName = ST.Properties.VariableDescriptions{FColumn};
+%                 XUnit = ST.Properties.VariableUnits {XColumn};
+%                 YUnit = ST.Properties.VariableUnits{YColumn};
+%                 CUnit = ST.Properties.VariableUnits{CColumn};
+%                 FUnit = ST.Properties.VariableUnits{FColumn};
+%                 XText = [XName ' [' XUnit ']'];
+%                 YText = [YName ' [' YUnit ']'];
+%                 CText = [CName ' [' CUnit ']'];
+%                 FText = [FName ' [' FUnit ']'];
+%                 
+%                 if isstring(X) || iscell(X)
+%                     X = categorical(X);
+%                 end
+%                 if isstring(Y) || iscell(Y)
+%                     Y = categorical(Y);
+%                 end
+%                 if isstring(C) || iscell(C)
+%                     C = categorical(C);
+%                 end
+%                 if isstring(Facets) || iscell(Facets)
+%                     Facets = categorical(Facets);
+%                 end
+%                 
+%                 GrammStruct.X = X;
+%                 GrammStruct.Y = Y;
+%                 GrammStruct.Group = C;
+%                 GrammStruct.Facets = Facets;
+%                 GrammStruct.UnitX = XText;
+%                 GrammStruct.UnitY = YText;
+%                 
+%                 h.ResultStruct.Gramm = GrammStruct;
                 % draw gramm plot
                 h.ResultStruct.GrammFig = draw_gramm_plot(h.ResultStruct.Gramm);
             end
@@ -5505,7 +6749,6 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             end
             
             function g = draw_gramm_plot(GrammStruct,GrammObject)
-                
                 
                 X = GrammStruct.X;
                 Y = GrammStruct.Y;
@@ -5667,6 +6910,9 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
         
         function choose_segments_manually(obj,SegmentType)
             
+            FiberLikeMenu = true;
+            GeneralMenu = false;
+            
             h.ColorMode(1).Background = 'k';
             h.ColorMode(1).Profile1 = [219 21 223]./255; %[189 0 96]./255; % 'b';
             h.ColorMode(1).Profile2 = 'c';
@@ -5736,7 +6982,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             h.B(6) = uicontrol('style','pushbutton',...
                 'String','Save Figure',...
                 'units','normalized',...
-                'position',[.875 .05 .1 .04],...
+                'position',[.8 .05 .1 .04],...
                 'Callback',@save_figure_to_file);
             
             h.B(7) = uicontrol('style','checkbox',...
@@ -5972,6 +7218,78 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 'Tooltip','Apply Segmentation to Overlay Group',...
                 'Callback',@apply_segmentation_to_overlay_group);
             
+            
+            h.c(50) = uicontrol(h.Fig,'style','pushbutton','units','normalized',...
+                'position',[.91 .05 .1 .04],'string','Switch Drawmode',...
+                'Tooltip',{'Switch between general drawmode for all kinds of segment shapes (line, polyline, circle, freehand, etc...) and the polyline drawmode with additional tools for fiber like object snapping'},...
+                'Callback',@switch_drawmode);
+            
+            DrawOptions = {'Line','Polyline','Freehand','Circle',...
+                'Ellipse','Polygon','Rectangle','Assisted'};
+            
+            h.c(51) = uicontrol('style','popupmenu',...
+                'String',DrawOptions,...
+                'units','normalized',...
+                'position',[.85 .36 .15 .05],...
+                'Visible','off');
+            
+            % Tagsystem editbox
+            h.c(52) = uicontrol('style','edit',...
+                'String','',...
+                'units','normalized',...
+                'position',[.85 .33 .1 .03],...
+                'Visible','off');
+            
+            h.c(53) = uicontrol('style','text',...
+                'String','Tag',...
+                'units','normalized',...
+                'position',[.95 .33 .045 .03],...
+                'Tooltip','Fill in a tag for the current segment and choose how to add it below',...
+                'Visible','off');
+            
+            % Tagsystem add tag title
+            h.c(54) = uicontrol('style','text',...
+                'String','Add tag to | Delete tag from...',...
+                'Tooltip','Choose to which segments the current tag in the edit field should be added to',...
+                'Units','normalized',...
+                'Position',[.85 .31 .15 .02],...
+                'Visible','off');
+            
+            GroupTagOptions = {'Current Segment','Identical Segments in Ov. Group',...
+                'Identical Segments in Experiment',...
+                'All Segments in image','All Segments in Ov. Group','All Segments in Experiment'};
+            
+            % Tagsystem add to Segment button
+            h.c(55) = uicontrol('style','popupmenu',...
+                'String',GroupTagOptions,...
+                'units','normalized',...
+                'position',[.85 .28 .15 .03],...
+                'Visible','off');
+            
+            h.c(56) = uicontrol('style','pushbutton',...
+                'String','Add tag',...
+                'units','normalized',...
+                'position',[.85 .25 .07 .03],...
+                'Tooltip','Add the tag currenty in the edit box to the segments chosen in the popup above',...
+                'Visible','off',...
+                'Callback',@add_tag);
+            
+            h.c(57) = uicontrol('style','pushbutton',...
+                'String','Delete tag',...
+                'Tooltip','Delete the tag currently highlighted in the tag box from the segments chosen in the popup above',...
+                'units','normalized',...
+                'position',[.93 .25 .07 .03],...
+                'Visible','off',...
+                'Callback',@delete_tag);
+            
+            h.c(58) = uicontrol(h.Fig,...
+                'Style','listbox',...
+                'Max',1000000,'Min',1,...
+                'Units','normalized',...
+                'Position',[.85  .18 .15 .07],...
+                'Visible','off');
+            
+            
             h.SegmentBox = uicontrol(h.Fig,...
                 'Style','listbox',...
                 'Max',1000000,'Min',1,...
@@ -6025,6 +7343,33 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             end
             h.B(2).Value = DefIndex;
             draw_channel_1
+            
+            function switch_drawmode(varargin)
+                
+                GeneralIndizes = [51:58];
+                FiberLikeIndizes = [39:48];
+                
+                if FiberLikeMenu
+                    for i=FiberLikeIndizes
+                        h.c(i).Visible = 'Off';
+                    end
+                    for i=GeneralIndizes
+                        h.c(i).Visible = 'On';
+                    end
+                    FiberLikeMenu = false;
+                    GeneralMenu = true;
+                else
+                    for i=FiberLikeIndizes
+                        h.c(i).Visible = 'On';
+                    end
+                    for i=GeneralIndizes
+                        h.c(i).Visible = 'Off';
+                    end
+                    FiberLikeMenu = true;
+                    GeneralMenu = false;
+                end
+                
+            end
             
             function draw_channel_1(varargin)
                 LeftRight = 'Left';
@@ -6297,6 +7642,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                     set(h.SubsegmentBox,'String',{SubSegmentNames{strcmp({h.SegmentBox.String{h.SegmentBox.Value}},Names)}});
                 end
                 draw_existing_segments
+                update_tag_box
             end
             
             function changed_slider(varargin)
@@ -6476,7 +7822,9 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 
                 for i=1:NumSubSegments
                     SegmentIndex = find(strcmp(UniqueNames,Class{1}.Segment(i).Name));
-                    if isempty(Class{1}.Segment(i).ROIObject) || size(Class{1}.Segment(i).ROIObject.Position,1) < 2
+                    if isempty(Class{1}.Segment(i).ROIObject) || ...
+                            (isequal(Class{1}.Segment(i).Type,'polyline') && size(Class{1}.Segment(i).ROIObject.Position,1) < 2) ||...
+                            (~isequal(Class{1}.Segment(i).Type,'polyline') && size(Class{1}.Segment(i).ROIObject.Position,2) < 2)
                         Class{1}.Segment(i) = [];
                         draw_channel_1
                     end
@@ -6484,32 +7832,292 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                             isequal(Class{1}.Segment(i).SubSegmentName,h.SubsegmentBox.String{h.SubsegmentBox.Value}) &&...
                             h.EnableEditing
                         h.CurrentIndex = i;
-                        h.ROIObjects{i} = drawpolyline('Position',Class{1}.Segment(i).ROIObject.Position,...
-                            'Deletable',1,...
-                            'InteractionsAllowed','all',...
-                            'LineWidth',Class{1}.Segment(i).ROIObject.LineWidth,...
-                            'Label',sprintf('%s || %s',Class{1}.Segment(i).Name,Class{1}.Segment(i).SubSegmentName),...
-                            'LabelAlpha',0.6);
-                        addlistener(h.ROIObjects{i},'ROIMoved',@moved_roi);
-                        addlistener(h.ROIObjects{i},'VertexAdded',@moved_roi);
-                        addlistener(h.ROIObjects{i},'VertexDeleted',@moved_roi);
+                        CurrentDrawMode = lower(Class{1}.Segment(i).Type);
+                        switch CurrentDrawMode
+                            case 'line'
+                                h.ROIObjects{i} = drawline('Position',Class{1}.Segment(i).ROIObject.Position,...
+                                    'Deletable',1,...
+                                    'InteractionsAllowed','all',...
+                                    'LineWidth',Class{1}.Segment(i).ROIObject.LineWidth,...
+                                    'Label',sprintf('%s || %s',Class{1}.Segment(i).Name,Class{1}.Segment(i).SubSegmentName),...
+                                    'LabelAlpha',0.6);
+                            case 'freehand'
+                                h.ROIObjects{i} = drawfreehand('Position',Class{1}.Segment(i).ROIObject.Position,...
+                                    'Deletable',1,...
+                                    'InteractionsAllowed','all',...
+                                    'LineWidth',Class{1}.Segment(i).ROIObject.LineWidth,...
+                                    'Label',sprintf('%s || %s',Class{1}.Segment(i).Name,Class{1}.Segment(i).SubSegmentName),...
+                                    'LabelAlpha',0.6);
+                            case 'square'
+                                h.ROIObjects{i} = drawsquare('Position',Class{1}.Segment(i).ROIObject.Position,...
+                                    'Deletable',1,...
+                                    'InteractionsAllowed','all',...
+                                    'LineWidth',Class{1}.Segment(i).ROIObject.LineWidth,...
+                                    'Label',sprintf('%s || %s',Class{1}.Segment(i).Name,Class{1}.Segment(i).SubSegmentName),...
+                                    'LabelAlpha',0.6);
+                            case 'circle'
+                                h.ROIObjects{i} = drawcircle('Center',Class{1}.Segment(i).ROIObject.Center,...
+                                    'Radius',Class{1}.Segment(i).ROIObject.Radius,...
+                                    'Deletable',1,...
+                                    'InteractionsAllowed','all',...
+                                    'LineWidth',Class{1}.Segment(i).ROIObject.LineWidth,...
+                                    'Label',sprintf('%s || %s',Class{1}.Segment(i).Name,Class{1}.Segment(i).SubSegmentName),...
+                                    'LabelAlpha',0.6);
+                            case 'ellipse'
+                                h.ROIObjects{i} = drawellipse('Center',Class{1}.Segment(i).ROIObject.Center,...
+                                    'SemiAxes',Class{1}.Segment(i).ROIObject.SemiAxes,...
+                                    'RotationAngle',Class{1}.Segment(i).ROIObject.RotationAngle,...
+                                    'Deletable',1,...
+                                    'InteractionsAllowed','all',...
+                                    'LineWidth',Class{1}.Segment(i).ROIObject.LineWidth,...
+                                    'Label',sprintf('%s || %s',Class{1}.Segment(i).Name,Class{1}.Segment(i).SubSegmentName),...
+                                    'LabelAlpha',0.6);
+                            case 'polygon'
+                                h.ROIObjects{i} = drawpolygon('Position',Class{1}.Segment(i).ROIObject.Position,...
+                                    'Deletable',1,...
+                                    'InteractionsAllowed','all',...
+                                    'LineWidth',Class{1}.Segment(i).ROIObject.LineWidth,...
+                                    'Label',sprintf('%s || %s',Class{1}.Segment(i).Name,Class{1}.Segment(i).SubSegmentName),...
+                                    'LabelAlpha',0.6);
+                            case 'rectangle'
+                                h.ROIObjects{i} = drawrectangle('Position',Class{1}.Segment(i).ROIObject.Position,...
+                                    'RotationAngle',Class{1}.Segment(i).ROIObject.RotationAngle,...
+                                    'Rotatable',true,...
+                                    'Deletable',1,...
+                                    'InteractionsAllowed','all',...
+                                    'LineWidth',Class{1}.Segment(i).ROIObject.LineWidth,...
+                                    'Label',sprintf('%s || %s',Class{1}.Segment(i).Name,Class{1}.Segment(i).SubSegmentName),...
+                                    'LabelAlpha',0.6);
+                            case 'crosshair'
+                                h.ROIObjects{i} = drawcrosshair('Position',Class{1}.Segment(i).ROIObject.Position,...
+                                    'Deletable',1,...
+                                    'InteractionsAllowed','all',...
+                                    'LineWidth',Class{1}.Segment(i).ROIObject.LineWidth,...
+                                    'Label',sprintf('%s || %s',Class{1}.Segment(i).Name,Class{1}.Segment(i).SubSegmentName),...
+                                    'LabelAlpha',0.6);
+                            case 'point'
+                                h.ROIObjects{i} = drawpoint('Position',Class{1}.Segment(i).ROIObject.Position,...
+                                    'Deletable',1,...
+                                    'InteractionsAllowed','all',...
+                                    'LineWidth',Class{1}.Segment(i).ROIObject.LineWidth,...
+                                    'Label',sprintf('%s || %s',Class{1}.Segment(i).Name,Class{1}.Segment(i).SubSegmentName),...
+                                    'LabelAlpha',0.6);
+                            case 'assisted'
+                                h.ROIObjects{i} = drawassisted('Position',Class{1}.Segment(i).ROIObject.Position,...
+                                    'Deletable',1,...
+                                    'InteractionsAllowed','all',...
+                                    'LineWidth',Class{1}.Segment(i).ROIObject.LineWidth,...
+                                    'Label',sprintf('%s || %s',Class{1}.Segment(i).Name,Class{1}.Segment(i).SubSegmentName),...
+                                    'LabelAlpha',0.6);
+                            case 'polyline'
+                                h.ROIObjects{i} = drawpolyline('Position',Class{1}.Segment(i).ROIObject.Position,...
+                                    'Deletable',1,...
+                                    'InteractionsAllowed','all',...
+                                    'LineWidth',Class{1}.Segment(i).ROIObject.LineWidth,...
+                                    'Label',sprintf('%s || %s',Class{1}.Segment(i).Name,Class{1}.Segment(i).SubSegmentName),...
+                                    'LabelAlpha',0.6);
+                        end
+                            addlistener(h.ROIObjects{i},'ROIMoved',@moved_roi);
+                        if isequal(CurrentDrawMode,'polyline')
+                            addlistener(h.ROIObjects{i},'VertexAdded',@moved_roi);
+                            addlistener(h.ROIObjects{i},'VertexDeleted',@moved_roi);
+                        end
                     else
                         if h.c(38).Value
-                            h.ROIObjects{i} = drawpolyline('Position',Class{1}.Segment(i).ROIObject.Position,...
-                                'Deletable',0,...
-                                'InteractionsAllowed','none',...
-                                'LineWidth',Class{1}.Segment(i).ROIObject.LineWidth,...
-                                'Label',sprintf('%s || %s',Class{1}.Segment(i).Name,Class{1}.Segment(i).SubSegmentName),...
-                                'LabelAlpha',0.6,...
-                                'Color',SegmentColors{2*SegmentIndex-1},...
-                                'StripeColor',SegmentColors{2*SegmentIndex});
+                            
+                            CurrentDrawMode = lower(Class{1}.Segment(i).Type);
+                            switch CurrentDrawMode
+                                case 'line'
+                                    h.ROIObjects{i} = drawline('Position',Class{1}.Segment(i).ROIObject.Position,...
+                                        'Deletable',0,...
+                                        'InteractionsAllowed','none',...
+                                        'LineWidth',Class{1}.Segment(i).ROIObject.LineWidth,...
+                                        'Label',sprintf('%s || %s',Class{1}.Segment(i).Name,Class{1}.Segment(i).SubSegmentName),...
+                                        'LabelAlpha',0.6,...
+                                        'Color',SegmentColors{2*SegmentIndex-1},...
+                                        'StripeColor',SegmentColors{2*SegmentIndex});
+                                case 'freehand'
+                                    h.ROIObjects{i} = drawfreehand('Position',Class{1}.Segment(i).ROIObject.Position,...
+                                        'Deletable',0,...
+                                        'InteractionsAllowed','none',...
+                                        'LineWidth',Class{1}.Segment(i).ROIObject.LineWidth,...
+                                        'Label',sprintf('%s || %s',Class{1}.Segment(i).Name,Class{1}.Segment(i).SubSegmentName),...
+                                        'LabelAlpha',0.6,...
+                                        'Color',SegmentColors{2*SegmentIndex-1},...
+                                        'StripeColor',SegmentColors{2*SegmentIndex});
+                                case 'square'
+                                    h.ROIObjects{i} = drawsquare('Position',Class{1}.Segment(i).ROIObject.Position,...
+                                        'Deletable',0,...
+                                        'InteractionsAllowed','none',...
+                                        'LineWidth',Class{1}.Segment(i).ROIObject.LineWidth,...
+                                        'Label',sprintf('%s || %s',Class{1}.Segment(i).Name,Class{1}.Segment(i).SubSegmentName),...
+                                        'LabelAlpha',0.6,...
+                                        'Color',SegmentColors{2*SegmentIndex-1},...
+                                        'StripeColor',SegmentColors{2*SegmentIndex});
+                                case 'circle'
+                                    h.ROIObjects{i} = drawcircle('Center',Class{1}.Segment(i).ROIObject.Center,...
+                                        'Radius',Class{1}.Segment(i).ROIObject.Radius,...
+                                        'Deletable',0,...
+                                        'InteractionsAllowed','none',...
+                                        'LineWidth',Class{1}.Segment(i).ROIObject.LineWidth,...
+                                        'Label',sprintf('%s || %s',Class{1}.Segment(i).Name,Class{1}.Segment(i).SubSegmentName),...
+                                        'LabelAlpha',0.6,...
+                                        'Color',SegmentColors{2*SegmentIndex-1},...
+                                        'StripeColor',SegmentColors{2*SegmentIndex});
+                                case 'ellipse'
+                                    h.ROIObjects{i} = drawellipse('Center',Class{1}.Segment(i).ROIObject.Center,...
+                                        'SemiAxes',Class{1}.Segment(i).ROIObject.SemiAxes,...
+                                        'RotationAngle',Class{1}.Segment(i).ROIObject.RotationAngle,...
+                                        'Deletable',0,...
+                                        'InteractionsAllowed','none',...
+                                        'LineWidth',Class{1}.Segment(i).ROIObject.LineWidth,...
+                                        'Label',sprintf('%s || %s',Class{1}.Segment(i).Name,Class{1}.Segment(i).SubSegmentName),...
+                                        'LabelAlpha',0.6,...
+                                        'Color',SegmentColors{2*SegmentIndex-1},...
+                                        'StripeColor',SegmentColors{2*SegmentIndex});
+                                case 'polygon'
+                                    h.ROIObjects{i} = drawpolygon('Position',Class{1}.Segment(i).ROIObject.Position,...
+                                        'Deletable',0,...
+                                        'InteractionsAllowed','none',...
+                                        'LineWidth',Class{1}.Segment(i).ROIObject.LineWidth,...
+                                        'Label',sprintf('%s || %s',Class{1}.Segment(i).Name,Class{1}.Segment(i).SubSegmentName),...
+                                        'LabelAlpha',0.6,...
+                                        'Color',SegmentColors{2*SegmentIndex-1},...
+                                        'StripeColor',SegmentColors{2*SegmentIndex});
+                                case 'rectangle'
+                                    h.ROIObjects{i} = drawrectangle('Position',Class{1}.Segment(i).ROIObject.Position,...
+                                        'RotationAngle',Class{1}.Segment(i).ROIObject.RotationAngle,...
+                                        'Rotatable',true,...
+                                        'Deletable',0,...
+                                        'InteractionsAllowed','none',...
+                                        'LineWidth',Class{1}.Segment(i).ROIObject.LineWidth,...
+                                        'Label',sprintf('%s || %s',Class{1}.Segment(i).Name,Class{1}.Segment(i).SubSegmentName),...
+                                        'LabelAlpha',0.6,...
+                                        'Color',SegmentColors{2*SegmentIndex-1},...
+                                        'StripeColor',SegmentColors{2*SegmentIndex});
+                                case 'crosshair'
+                                    h.ROIObjects{i} = drawcrosshair('Position',Class{1}.Segment(i).ROIObject.Position,...
+                                        'Deletable',0,...
+                                        'InteractionsAllowed','none',...
+                                        'LineWidth',Class{1}.Segment(i).ROIObject.LineWidth,...
+                                        'Label',sprintf('%s || %s',Class{1}.Segment(i).Name,Class{1}.Segment(i).SubSegmentName),...
+                                        'LabelAlpha',0.6,...
+                                        'Color',SegmentColors{2*SegmentIndex-1},...
+                                        'StripeColor',SegmentColors{2*SegmentIndex});
+                                case 'point'
+                                    h.ROIObjects{i} = drawpoint('Position',Class{1}.Segment(i).ROIObject.Position,...
+                                        'Deletable',0,...
+                                        'InteractionsAllowed','none',...
+                                        'LineWidth',Class{1}.Segment(i).ROIObject.LineWidth,...
+                                        'Label',sprintf('%s || %s',Class{1}.Segment(i).Name,Class{1}.Segment(i).SubSegmentName),...
+                                        'LabelAlpha',0.6,...
+                                        'Color',SegmentColors{2*SegmentIndex-1},...
+                                        'StripeColor',SegmentColors{2*SegmentIndex});
+                                case 'assisted'
+                                    h.ROIObjects{i} = drawassisted('Position',Class{1}.Segment(i).ROIObject.Position,...
+                                        'Deletable',0,...
+                                        'InteractionsAllowed','none',...
+                                        'LineWidth',Class{1}.Segment(i).ROIObject.LineWidth,...
+                                        'Label',sprintf('%s || %s',Class{1}.Segment(i).Name,Class{1}.Segment(i).SubSegmentName),...
+                                        'LabelAlpha',0.6,...
+                                        'Color',SegmentColors{2*SegmentIndex-1},...
+                                        'StripeColor',SegmentColors{2*SegmentIndex});
+                                case 'polyline'
+                                    h.ROIObjects{i} = drawpolyline('Position',Class{1}.Segment(i).ROIObject.Position,...
+                                        'Deletable',0,...
+                                        'InteractionsAllowed','none',...
+                                        'LineWidth',Class{1}.Segment(i).ROIObject.LineWidth,...
+                                        'Label',sprintf('%s || %s',Class{1}.Segment(i).Name,Class{1}.Segment(i).SubSegmentName),...
+                                        'LabelAlpha',0.6,...
+                                        'Color',SegmentColors{2*SegmentIndex-1},...
+                                        'StripeColor',SegmentColors{2*SegmentIndex});
+                            end
                         else
-                            h.ROIObjects{i} = drawpolyline('Position',Class{1}.Segment(i).ROIObject.Position,...
-                                'Deletable',0,...
-                                'InteractionsAllowed','none',...
-                                'LineWidth',Class{1}.Segment(i).ROIObject.LineWidth,...
-                                'Color',SegmentColors{2*SegmentIndex-1},...
-                                'StripeColor',SegmentColors{2*SegmentIndex});
+                            CurrentDrawMode = lower(Class{1}.Segment(i).Type);
+                            switch CurrentDrawMode
+                                case 'line'
+                                    h.ROIObjects{i} = drawline('Position',Class{1}.Segment(i).ROIObject.Position,...
+                                        'Deletable',0,...
+                                        'InteractionsAllowed','none',...
+                                        'LineWidth',Class{1}.Segment(i).ROIObject.LineWidth,...
+                                        'Color',SegmentColors{2*SegmentIndex-1},...
+                                        'StripeColor',SegmentColors{2*SegmentIndex});
+                                case 'freehand'
+                                    h.ROIObjects{i} = drawfreehand('Position',Class{1}.Segment(i).ROIObject.Position,...
+                                        'Deletable',0,...
+                                        'InteractionsAllowed','none',...
+                                        'LineWidth',Class{1}.Segment(i).ROIObject.LineWidth,...
+                                        'Color',SegmentColors{2*SegmentIndex-1},...
+                                        'StripeColor',SegmentColors{2*SegmentIndex});
+                                case 'square'
+                                    h.ROIObjects{i} = drawsquare('Position',Class{1}.Segment(i).ROIObject.Position,...
+                                        'Deletable',0,...
+                                        'InteractionsAllowed','none',...
+                                        'LineWidth',Class{1}.Segment(i).ROIObject.LineWidth,...
+                                        'Color',SegmentColors{2*SegmentIndex-1},...
+                                        'StripeColor',SegmentColors{2*SegmentIndex});
+                                case 'circle'
+                                    h.ROIObjects{i} = drawcircle('Center',Class{1}.Segment(i).ROIObject.Center,...
+                                        'Radius',Class{1}.Segment(i).ROIObject.Radius,...
+                                        'Deletable',0,...
+                                        'InteractionsAllowed','none',...
+                                        'LineWidth',Class{1}.Segment(i).ROIObject.LineWidth,...
+                                        'Color',SegmentColors{2*SegmentIndex-1},...
+                                        'StripeColor',SegmentColors{2*SegmentIndex});
+                                case 'ellipse'
+                                    h.ROIObjects{i} = drawellipse('Center',Class{1}.Segment(i).ROIObject.Center,...
+                                        'SemiAxes',Class{1}.Segment(i).ROIObject.SemiAxes,...
+                                        'RotationAngle',Class{1}.Segment(i).ROIObject.RotationAngle,...
+                                        'Deletable',0,...
+                                        'InteractionsAllowed','none',...
+                                        'LineWidth',Class{1}.Segment(i).ROIObject.LineWidth,...
+                                        'Color',SegmentColors{2*SegmentIndex-1},...
+                                        'StripeColor',SegmentColors{2*SegmentIndex});
+                                case 'polygon'
+                                    h.ROIObjects{i} = drawpolygon('Position',Class{1}.Segment(i).ROIObject.Position,...
+                                        'Deletable',0,...
+                                        'InteractionsAllowed','none',...
+                                        'LineWidth',Class{1}.Segment(i).ROIObject.LineWidth,...
+                                        'Color',SegmentColors{2*SegmentIndex-1},...
+                                        'StripeColor',SegmentColors{2*SegmentIndex});
+                                case 'rectangle'
+                                    h.ROIObjects{i} = drawrectangle('Position',Class{1}.Segment(i).ROIObject.Position,...
+                                        'RotationAngle',Class{1}.Segment(i).ROIObject.RotationAngle,...
+                                        'Rotatable',true,...
+                                        'Deletable',0,...
+                                        'InteractionsAllowed','none',...
+                                        'LineWidth',Class{1}.Segment(i).ROIObject.LineWidth,...
+                                        'Color',SegmentColors{2*SegmentIndex-1},...
+                                        'StripeColor',SegmentColors{2*SegmentIndex});
+                                case 'crosshair'
+                                    h.ROIObjects{i} = drawcrosshair('Position',Class{1}.Segment(i).ROIObject.Position,...
+                                        'Deletable',0,...
+                                        'InteractionsAllowed','none',...
+                                        'LineWidth',Class{1}.Segment(i).ROIObject.LineWidth,...
+                                        'Color',SegmentColors{2*SegmentIndex-1},...
+                                        'StripeColor',SegmentColors{2*SegmentIndex});
+                                case 'point'
+                                    h.ROIObjects{i} = drawpoint('Position',Class{1}.Segment(i).ROIObject.Position,...
+                                        'Deletable',0,...
+                                        'InteractionsAllowed','none',...
+                                        'LineWidth',Class{1}.Segment(i).ROIObject.LineWidth,...
+                                        'Color',SegmentColors{2*SegmentIndex-1},...
+                                        'StripeColor',SegmentColors{2*SegmentIndex});
+                                case 'assisted'
+                                    h.ROIObjects{i} = drawassisted('Position',Class{1}.Segment(i).ROIObject.Position,...
+                                        'Deletable',0,...
+                                        'InteractionsAllowed','none',...
+                                        'LineWidth',Class{1}.Segment(i).ROIObject.LineWidth,...
+                                        'Color',SegmentColors{2*SegmentIndex-1},...
+                                        'StripeColor',SegmentColors{2*SegmentIndex});
+                                case 'polyline'
+                                    h.ROIObjects{i} = drawpolyline('Position',Class{1}.Segment(i).ROIObject.Position,...
+                                        'Deletable',0,...
+                                        'InteractionsAllowed','none',...
+                                        'LineWidth',Class{1}.Segment(i).ROIObject.LineWidth,...
+                                        'Color',SegmentColors{2*SegmentIndex-1},...
+                                        'StripeColor',SegmentColors{2*SegmentIndex});
+                            end
                         end
                     end
                 end
@@ -6537,6 +8145,30 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             
             function moved_roi(varargin)
                 
+                    CurrentDrawMode = Class{1}.Segment(h.CurrentIndex).Type;
+                    switch CurrentDrawMode
+                        case 'line'
+                        case 'freehand'
+                        case 'circle'
+                            Class{1}.Segment(h.CurrentIndex).ROIObject.Center = [];
+                            Class{1}.Segment(h.CurrentIndex).ROIObject.Radius = [];
+                            Class{1}.Segment(h.CurrentIndex).ROIObject.Center = h.ROIObjects{h.CurrentIndex}.Center;
+                            Class{1}.Segment(h.CurrentIndex).ROIObject.Radius = h.ROIObjects{h.CurrentIndex}.Radius;
+                        case 'ellipse'
+                            Class{1}.Segment(h.CurrentIndex).ROIObject.Center = [];
+                            Class{1}.Segment(h.CurrentIndex).ROIObject.SemiAxes = [];
+                            Class{1}.Segment(h.CurrentIndex).ROIObject.RotationAngle = [];
+                            Class{1}.Segment(h.CurrentIndex).ROIObject.Center = h.ROIObjects{h.CurrentIndex}.Center;
+                            Class{1}.Segment(h.CurrentIndex).ROIObject.SemiAxes = h.ROIObjects{h.CurrentIndex}.SemiAxes;
+                            Class{1}.Segment(h.CurrentIndex).ROIObject.RotationAngle = h.ROIObjects{h.CurrentIndex}.RotationAngle;
+                        case 'polygon'
+                        case 'rectangle'
+                            Class{1}.Segment(h.CurrentIndex).ROIObject.RotationAngle = [];
+                            Class{1}.Segment(h.CurrentIndex).ROIObject.RotationAngle = h.ROIObjects{h.CurrentIndex}.RotationAngle;
+                        case 'crosshair'
+                        case 'point'
+                        case 'assisted'
+                    end
                 Class{1}.Segment(h.CurrentIndex).ROIObject.Position = [];
                 Class{1}.Segment(h.CurrentIndex).ROIObject.Position = h.ROIObjects{h.CurrentIndex}.Position;
                 
@@ -6563,10 +8195,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 end
                 Class{1}.Segment(end).SubSegmentName = SubSegmentName;
                 
-                ROIObject = drawpolyline;
-                Class{1}.Segment(end).ROIObject.Position = ROIObject.Position;
-                Class{1}.Segment(end).ROIObject.LineWidth = ROIObject.LineWidth;
-                Class{1}.Segment(end).Type = 'polyline';
+                draw_segment('SubSegment')
                 
                 Class{1}.sort_segments_by_name_and_subsegmentname;
                 
@@ -6597,10 +8226,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 SubSegmentName = sprintf('SubS-%02d',1);
                 Class{1}.Segment(end).SubSegmentName = SubSegmentName;
                 
-                ROIObject = drawpolyline;
-                Class{1}.Segment(end).ROIObject.Position = ROIObject.Position;
-                Class{1}.Segment(end).ROIObject.LineWidth = ROIObject.LineWidth;
-                Class{1}.Segment(end).Type = 'polyline';
+                draw_segment('Segment')
                 
                 Class{1}.sort_segments_by_name_and_subsegmentname;
                 
@@ -6628,6 +8254,58 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 h.SubsegmentBox.Value = 1;
                 set(h.SubsegmentBox,'String',{SubSegmentNames{strcmp({h.SegmentBox.String{h.SegmentBox.Value}},Names)}});
                 draw_channel_1
+            end
+            
+            function draw_segment(Mode)
+                
+                if isequal(Mode,'SubSegment')
+                    Addendum = 0;
+                elseif isequal(Mode,'Segment')
+                    Addendum = 0;
+                end
+                
+                if FiberLikeMenu ||...
+                        (GeneralMenu &&...
+                        isequal(lower(h.c(51).String{h.c(51).Value}),'polyline'))
+                    ROIObject = drawpolyline;
+                    Class{1}.Segment(end + Addendum).ROIObject.Position = ROIObject.Position;
+                    Class{1}.Segment(end + Addendum).ROIObject.LineWidth = ROIObject.LineWidth;
+                    Class{1}.Segment(end + Addendum).Type = 'polyline';
+                elseif GeneralMenu
+                    CurrentDrawMode = lower(h.c(51).String{h.c(51).Value});
+                    switch CurrentDrawMode
+                        case 'line'
+                            ROIObject = drawline;
+                        case 'freehand'
+                            ROIObject = drawfreehand;
+                        case 'square'
+                            ROIObject = drawsq;
+                        case 'circle'
+                            ROIObject = drawcircle;
+                            Class{1}.Segment(end + Addendum).ROIObject.Center = ROIObject.Center;
+                            Class{1}.Segment(end + Addendum).ROIObject.Radius = ROIObject.Radius;
+                        case 'ellipse'
+                            ROIObject = drawellipse;
+                            Class{1}.Segment(end + Addendum).ROIObject.Center = ROIObject.Center;
+                            Class{1}.Segment(end + Addendum).ROIObject.SemiAxes = ROIObject.SemiAxes;
+                            Class{1}.Segment(end + Addendum).ROIObject.RotationAngle = ROIObject.RotationAngle;
+                        case 'polygon'
+                            ROIObject = drawpolygon;
+                        case 'rectangle'
+                            ROIObject = drawrectangle('Rotatable',true);
+                            Class{1}.Segment(end + Addendum).ROIObject.RotationAngle = ROIObject.RotationAngle;
+                        case 'crosshair'
+                            ROIObject = drawcrosshair;
+                        case 'point'
+                            ROIObject = drawpoint;
+                        case 'assisted'
+                            ROIObject = drawassisted;
+                    end
+                    Class{1}.Segment(end + Addendum).ROIObject.Position = ROIObject.Position;
+                    Class{1}.Segment(end + Addendum).ROIObject.LineWidth = ROIObject.LineWidth;
+                    Class{1}.Segment(end + Addendum).Type = CurrentDrawMode;
+                end
+                
             end
             
             function subsegment_changed(varargin)
@@ -6716,19 +8394,267 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 draw_channel_1
             end
             
+            function add_tag(varargin)
+                
+                CurrentTagfieldContent = h.c(52).String;
+                
+                TagValid = Experiment.check_segment_tag_validity(CurrentTagfieldContent);
+                
+                if ~TagValid
+                    warning('Tag is not valid. Refrain from using "*" in the string');
+                    return
+                end
+                
+                TagGrouping = h.c(55).String{h.c(55).Value};
+                
+                switch TagGrouping
+                    case 'Current Segment'
+                        FocusClass = obj.get_class_instance(ClassIndex(h.CurChannel1Idx,:));
+                        KeySegmentName = h.SegmentBox.String{h.SegmentBox.Value};
+                        [~,CurrentSegment] = AFMBaseClass.find_matching_segment(KeySegmentName,FocusClass.Segment);
+                        FocusClass.add_tag_to_segment(CurrentTagfieldContent,CurrentSegment);
+                    case 'Identical Segments in Ov. Group'
+                        FocusClass = obj.get_class_instance(ClassIndex(h.CurChannel1Idx,:));
+                        KeySegmentName = h.SegmentBox.String{h.SegmentBox.Value};
+                        if ~FocusClass.OverlayGroup.hasOverlayGroup
+                            [~,CurrentSegment] = AFMBaseClass.find_matching_segment(KeySegmentName,FocusClass.Segment);
+                            FocusClass.add_tag_to_segment(CurrentTagfieldContent,CurrentSegment);
+                        else
+                            [~,CurrentSegment] = AFMBaseClass.find_matching_segment(KeySegmentName,FocusClass.Segment);
+                            FocusClass.add_tag_to_segment(CurrentTagfieldContent,CurrentSegment);
+                            for i=1:FocusClass.OverlayGroup.Size
+                                if strcmp(FocusClass.OverlayGroup.Names{i},FocusClass.Name)
+                                    continue
+                                end
+                                Index = find(strcmp({FocusClass.OverlayGroup.Names{i}},obj.ForceMapNames));
+                                if ~isempty(Index)
+                                    [~,CurrentSegment] = AFMBaseClass.find_matching_segment(KeySegmentName,obj.FM{Index}.Segment);
+                                    obj.FM{Index}.add_tag_to_segment(CurrentTagfieldContent,CurrentSegment);
+                                end
+                                Index = find(strcmp({FocusClass.OverlayGroup.Names{i}},obj.AFMImageNames));
+                                if ~isempty(Index)
+                                    [~,CurrentSegment] = AFMBaseClass.find_matching_segment(KeySegmentName,obj.I{Index}.Segment);
+                                    obj.I{Index}.add_tag_to_segment(CurrentTagfieldContent,CurrentSegment);
+                                end
+                            end
+                        end
+                    case 'Identical Segments in Experiment'
+                        KeySegmentName = h.SegmentBox.String{h.SegmentBox.Value};
+                        for i=1:obj.NumForceMaps
+                            [~,CurrentSegment] = AFMBaseClass.find_matching_segment(KeySegmentName,obj.FM{i}.Segment);
+                            obj.FM{i}.add_tag_to_segment(CurrentTagfieldContent,CurrentSegment);
+                        end
+                        for i = 1:obj.NumAFMImages
+                            [~,CurrentSegment] = AFMBaseClass.find_matching_segment(KeySegmentName,obj.I{i}.Segment);
+                            obj.I{i}.add_tag_to_segment(CurrentTagfieldContent,CurrentSegment);
+                        end
+                    case 'All Segments in image'
+                        FocusClass = obj.get_class_instance(ClassIndex(h.CurChannel1Idx,:));
+                        FocusClass.add_tag_to_segment(CurrentTagfieldContent);
+                    case 'All Segments in Ov. Group'
+                        FocusClass = obj.get_class_instance(ClassIndex(h.CurChannel1Idx,:));
+                        if ~FocusClass.OverlayGroup.hasOverlayGroup
+                            FocusClass.add_tag_to_segment(CurrentTagfieldContent);
+                        else
+                            FocusClass.add_tag_to_segment(CurrentTagfieldContent);
+                            for i=1:FocusClass.OverlayGroup.Size
+                                if strcmp(FocusClass.OverlayGroup.Names{i},FocusClass.Name)
+                                    continue
+                                end
+                                Index = find(strcmp({FocusClass.OverlayGroup.Names{i}},obj.ForceMapNames));
+                                if ~isempty(Index)
+                                    obj.FM{Index}.add_tag_to_segment(CurrentTagfieldContent);
+                                end
+                                Index = find(strcmp({FocusClass.OverlayGroup.Names{i}},obj.AFMImageNames));
+                                if ~isempty(Index)
+                                    obj.I{Index}.add_tag_to_segment(CurrentTagfieldContent);
+                                end
+                            end
+                        end
+                    case 'All Segments in Experiment'
+                        for i=1:obj.NumForceMaps
+                            obj.FM{i}.add_tag_to_segment(CurrentTagfieldContent);
+                        end
+                        for i = 1:obj.NumAFMImages
+                            obj.I{i}.add_tag_to_segment(CurrentTagfieldContent);
+                        end
+                end
+                
+                update_tag_box
+            end
+            
+            function delete_tag(varargin)
+                
+                CurrentTagfieldContent = h.c(58).String{h.c(58).Value};
+                
+                TagValid = Experiment.check_segment_tag_validity(CurrentTagfieldContent);
+                
+                if ~TagValid
+                    warning('Tag is not valid. Refrain from using "*" in the string');
+                    return
+                end
+                
+                TagGrouping = h.c(55).String{h.c(55).Value};
+                
+                switch TagGrouping
+                    case 'Current Segment'
+                        FocusClass = obj.get_class_instance(ClassIndex(h.CurChannel1Idx,:));
+                        KeySegmentName = h.SegmentBox.String{h.SegmentBox.Value};
+                        [~,CurrentSegment] = AFMBaseClass.find_matching_segment(KeySegmentName,FocusClass.Segment);
+                        FocusClass.remove_tag_from_segment(CurrentTagfieldContent,CurrentSegment);
+                    case 'Identical Segments in Ov. Group'
+                        FocusClass = obj.get_class_instance(ClassIndex(h.CurChannel1Idx,:));
+                        KeySegmentName = h.SegmentBox.String{h.SegmentBox.Value};
+                        if ~FocusClass.OverlayGroup.hasOverlayGroup
+                            [~,CurrentSegment] = AFMBaseClass.find_matching_segment(KeySegmentName,FocusClass.Segment);
+                            FocusClass.remove_tag_from_segment(CurrentTagfieldContent,CurrentSegment);
+                        else
+                            [~,CurrentSegment] = AFMBaseClass.find_matching_segment(KeySegmentName,FocusClass.Segment);
+                            FocusClass.remove_tag_from_segment(CurrentTagfieldContent,CurrentSegment);
+                            for i=1:FocusClass.OverlayGroup.Size
+                                if strcmp(FocusClass.OverlayGroup.Names{i},FocusClass.Name)
+                                    continue
+                                end
+                                Index = find(strcmp({FocusClass.OverlayGroup.Names{i}},obj.ForceMapNames));
+                                if ~isempty(Index)
+                                    [~,CurrentSegment] = AFMBaseClass.find_matching_segment(KeySegmentName,obj.FM{Index}.Segment);
+                                    obj.FM{Index}.remove_tag_from_segment(CurrentTagfieldContent,CurrentSegment);
+                                end
+                                Index = find(strcmp({FocusClass.OverlayGroup.Names{i}},obj.AFMImageNames));
+                                if ~isempty(Index)
+                                    [~,CurrentSegment] = AFMBaseClass.find_matching_segment(KeySegmentName,obj.I{Index}.Segment);
+                                    obj.I{Index}.remove_tag_from_segment(CurrentTagfieldContent,CurrentSegment);
+                                end
+                            end
+                        end
+                    case 'Identical Segments in Experiment'
+                        KeySegmentName = h.SegmentBox.String{h.SegmentBox.Value};
+                        for i=1:obj.NumForceMaps
+                            [~,CurrentSegment] = AFMBaseClass.find_matching_segment(KeySegmentName,obj.FM{i}.Segment);
+                            obj.FM{i}.remove_tag_from_segment(CurrentTagfieldContent,CurrentSegment);
+                        end
+                        for i=1:obj.NumAFMImages
+                            [~,CurrentSegment] = AFMBaseClass.find_matching_segment(KeySegmentName,obj.I{i}.Segment);
+                            obj.I{i}.remove_tag_from_segment(CurrentTagfieldContent,CurrentSegment);
+                        end
+                    case 'All Segments in image'
+                        FocusClass = obj.get_class_instance(ClassIndex(h.CurChannel1Idx,:));
+                        FocusClass.remove_tag_from_segment(CurrentTagfieldContent);
+                    case 'All Segments in Ov. Group'
+                        FocusClass = obj.get_class_instance(ClassIndex(h.CurChannel1Idx,:));
+                        if ~FocusClass.OverlayGroup.hasOverlayGroup
+                            FocusClass.remove_tag_from_segment(CurrentTagfieldContent);
+                        else
+                            FocusClass.remove_tag_from_segment(CurrentTagfieldContent);
+                            for i=1:FocusClass.OverlayGroup.Size
+                                if strcmp(FocusClass.OverlayGroup.Names{i},FocusClass.Name)
+                                    continue
+                                end
+                                Index = find(strcmp({FocusClass.OverlayGroup.Names{i}},obj.ForceMapNames));
+                                if ~isempty(Index)
+                                    obj.FM{Index}.remove_tag_from_segment(CurrentTagfieldContent);
+                                end
+                                Index = find(strcmp({FocusClass.OverlayGroup.Names{i}},obj.AFMImageNames));
+                                if ~isempty(Index)
+                                    obj.I{Index}.remove_tag_from_segment(CurrentTagfieldContent);
+                                end
+                            end
+                        end
+                    case 'All Segments in Experiment'
+                        for i=1:obj.NumForceMaps
+                            obj.FM{i}.remove_tag_from_segment(CurrentTagfieldContent);
+                        end
+                        for i=1:obj.NumAFMImages
+                            obj.I{i}.remove_tag_from_segment(CurrentTagfieldContent);
+                        end
+                end
+                
+                update_tag_box
+                
+            end
+            
+            function update_tag_box()
+                
+                if isempty(h.SegmentBox.String)
+                    return
+                end
+                
+                FocusClass = obj.get_class_instance(ClassIndex(h.CurChannel1Idx,:));
+                KeySegmentName = h.SegmentBox.String{h.SegmentBox.Value};
+                [~,CurrentSegment] = AFMBaseClass.find_matching_segment(KeySegmentName,FocusClass.Segment);
+                TagList = FocusClass.read_out_tag_list(CurrentSegment);
+                
+                OldValue = h.c(58).Value;
+                if numel(TagList) < OldValue
+                    OldValue = 1;
+                end
+                h.c(58).String = TagList;
+                h.c(58).Value = OldValue;
+                
+            end
+            
             uiwait(h.Fig)
         end
         
         function [Fig,DataMat] = visualize_listed_data(obj,Property,YAxisName,BaseUnit,Method,ErrorBars,UseGrouping,ListOfIndizes)
-            % [Fig,DataMat] = visualize_listed_data(obj,Property,YAxisName,BaseUnit,Method,ErrorBars,UseGrouping,ListOfIndizes)
+            % function [Fig, DataMat] = visualize_listed_data(obj,
+            % Property, YAxisName, BaseUnit, Method, ErrorBars,
+            % UseGrouping, ListOfIndizes)
             %
-            % visualize_listed_data(varargin)
-            % Input arbitrary ForceMap listed Property
-            % e.g. 'EModOliverPharr' or 'IndentationDepth'
-            % Methods are 'Boxplot', 'Barplot', 'BarMedian'
-            % ErrorBars, 'std'...standard deviation
-            %            'ste'...standard error
-            %            'ci'...confidence interval
+            % This function visualizes the specified properties of ForceMap
+            % objects in a variety of graphical formats, such as boxplots,
+            % bar plots, or median bar plots. It can handle grouping and
+            % different error bar types, such as standard deviation,
+            % standard error, or confidence interval.
+            %
+            % Input:
+            %
+            % obj: An object representing the AFM experiment content. It
+            % should have properties for force maps (FM) and their
+            % corresponding names (ForceMapNames).
+            %
+            % Property: A string indicating the property to visualize,
+            % e.g., 'EModOliverPharr' or 'IndentationDepth'.
+            %
+            % YAxisName: A string representing the label for the y-axis.
+            %
+            % BaseUnit: A string representing the base unit for the
+            % property, e.g., 'N/m' for modulus.
+            %
+            % Method: A string indicating the visualization method. Options
+            % are 'Boxplot', 'Barplot', or 'BarMedian'.
+            %
+            % ErrorBars: A string specifying the type of error bars to
+            % display. Options are 'std' (standard deviation), 'ste'
+            % (standard error), or 'ci' (confidence interval).
+            %
+            % UseGrouping: A boolean indicating whether to use grouping
+            % (true) or not (false).
+            %
+            % ListOfIndizes: An array of indices specifying which ForceMaps
+            % to visualize. Default is all.
+            %
+            % Output:
+            %
+            % Fig: A figure handle for the generated plot.
+            %
+            % DataMat: A matrix containing the data used for visualization,
+            % with each column corresponding to a ForceMap instance and
+            % each row corresponding to a data point.
+            %
+            % Usage:
+            %
+            % [Fig, DataMat] = visualize_listed_data(obj, Property,
+            % YAxisName, BaseUnit, Method, ErrorBars, UseGrouping,
+            % ListOfIndizes)
+            %
+            % Example:
+            %
+            % To visualize the 'EModOliverPharr' property using a boxplot
+            % with standard deviation error bars and grouping, call the
+            % function as: [Fig, DataMat] = visualize_listed_data(obj,
+            % 'EModOliverPharr', 'Elastic Modulus', 'N/m', 'Boxplot',
+            % 'std', true)
             
             if nargin < 8
                 ListOfIndizes = 1:obj.NumForceMaps;
@@ -6751,11 +8677,11 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                     Data(k).Name = obj.GroupFM(i).Name;
                     Data(k).Length = length(Data(k).Values);
                     if isequal(ErrorBars,'std')
-                        Data(k).Bars = nanstd(Data(k).Values);
+                        Data(k).Bars = std(Data(k).Values,'omitnan');
                     elseif isequal(ErrorBars,'ste')
-                        Data(k).Bars = nanstd(Data(k).Values)/sqrt(length(Data(k).Values(~isnan(Data(k).Values))));
+                        Data(k).Bars = std(Data(k).Values,'omitnan')/sqrt(length(Data(k).Values(~isnan(Data(k).Values))));
                     elseif isequal(ErrorBars,'ci')
-                        [~,~,Data(k).Bars,~] = ttest(Data(k).Values(~isnan(Data(k).Values)),nanmean(Data(k).Values));
+                        [~,~,Data(k).Bars,~] = ttest(Data(k).Values(~isnan(Data(k).Values)),mean(Data(k).Values,'omitnan'));
                     end
                     k = k + 1;
                 end
@@ -6771,11 +8697,11 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                     Data(k).Name = obj.FM{i}.Name;
                     Data(k).Length = length(Data(k).Values);
                     if isequal(ErrorBars,'std')
-                        Data(k).Bars = nanstd(Data(k).Values);
+                        Data(k).Bars = std(Data(k).Values,'omitnan');
                     elseif isequal(ErrorBars,'ste')
-                        Data(k).Bars = nanstd(Data(k).Values)/sqrt(length(Data(k).Values(~isnan(Data(k).Values))));
+                        Data(k).Bars = std(Data(k).Values,'omitnan')/sqrt(length(Data(k).Values(~isnan(Data(k).Values))));
                     elseif isequal(ErrorBars,'ci')
-                        [~,~,Data(k).Bars,~] = ttest(Data(k).Values(~isnan(Data(k).Values)),nanmean(Data(k).Values));
+                        [~,~,Data(k).Bars,~] = ttest(Data(k).Values(~isnan(Data(k).Values)),mean(Data(k).Values,'omitnan'));
                     end
                     k = k + 1;
                 end
@@ -6800,17 +8726,17 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 boxplot(DataMat)
                 title(sprintf('Boxplot of %s',YAxisName))
             elseif isequal(Method,'Barplot')
-                bar(nanmean(DataMat,1));
+                bar(mean(DataMat,1,'omitnan'));
                 hold on
                 for i=1:length(Data)
-                    errorbar(i,nanmean(DataMat(:,i)),-Data(i).Bars(1),Data(i).Bars(end),'Color','k','LineWidth',1.5);
+                    errorbar(i,mean(DataMat(:,i),'omitnan'),-Data(i).Bars(1),Data(i).Bars(end),'Color','k','LineWidth',1.5);
                 end
                 title(sprintf('Barplot of %s',YAxisName))
             elseif isequal(Method,'BarMedian')
-                bar(nanmedian(DataMat,1));
+                bar(median(DataMat,1,'omitnan'));
                 hold on
                 for i=1:length(Data)
-                    errorbar(i,nanmedian(DataMat(:,i)),-Data(i).Bars(1),Data(i).Bars(end),'Color','k','LineWidth',1.5);
+                    errorbar(i,median(DataMat(:,i),'omitnan'),-Data(i).Bars(1),Data(i).Bars(end),'Color','k','LineWidth',1.5);
                 end
                 title(sprintf('Median Barplot of %s',YAxisName))
             end
@@ -6875,8 +8801,8 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
 %                     elseif DataOP(i,j) < 0
 %                         DataOP(i,j) = NaN;
 %                     end
-                    if DataHS(i,j) > (nanmedian(DataHS(i,:))+2.5*iqr(DataHS(i,:))) || ...
-                            DataHS(i,j) < (nanmedian(DataHS(i,:))-2.5*iqr(DataHS(i,:))) || ...
+                    if DataHS(i,j) > (median(DataHS(i,:),'omitnan')+2.5*iqr(DataHS(i,:))) || ...
+                            DataHS(i,j) < (median(DataHS(i,:),'omitnan')-2.5*iqr(DataHS(i,:))) || ...
                             obj.FM{i}.ExclMask(obj.FM{i}.List2Map(obj.FM{i}.RectApexIndex(j),1),obj.FM{i}.List2Map(obj.FM{i}.RectApexIndex(j),2)) == 0 ||...
                             OutliersHS(j) == 1
                         DataHS(i,j) = NaN;
@@ -6887,7 +8813,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             end
             
 %             DataMeansOP = nanmean(DataOP,2);
-            DataMeansHS = nanmean(DataHS,2);
+            DataMeansHS = mean(DataHS,2,'omitnan');
             
             for i=1:obj.NumForceMaps
 %                 obj.FM{i}.FibrilEModOliverPharr = DataMeansOP(i);
@@ -7018,8 +8944,6 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 'Units','normalized',...
                 'FontSize',12,...
                 'HorizontalAlignment','center')
-            
-            
             
         end
         
@@ -7384,7 +9308,29 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
         % auxiliary methods
         
         function reset_segmentations(obj)
-            
+            % function reset_segmentations(obj)
+            %
+            % This function resets the segmentations for all AFMImage (I)
+            % and ForceMap (FM) instances within the given object. It
+            % clears the 'Name', 'Type', 'SubSegmentName', and 'ROIObject'
+            % fields for each instance's 'Segment' structure.
+            %
+            % Input:
+            %
+            % obj: An object representing the AFM experiment content. It
+            % should have properties for AFM images (I), force maps (FM),
+            % and their corresponding counts (NumAFMImages and
+            % NumForceMaps).
+            %
+            % Output: None
+            %
+            % Usage:
+            %
+            % reset_segmentations(obj)
+            %
+            % Example: To reset all segmentations for the given object,
+            % simply call the function as: reset_segmentations(obj)
+
             for i=1:obj.NumAFMImages
                 obj.I{i}.Segment = struct('Name',[],...
                             'Type',[],...
@@ -7401,6 +9347,41 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
         end
         
         function RadiusNM = calculate_tip_radius(obj,TipDepthNM,TipIndex)
+            % function RadiusNM = calculate_tip_radius(obj, TipDepthNM,
+            % TipIndex)
+            %
+            % This function calculates the tip radius of the AFM cantilever
+            % using a specified tip depth and index. It iteratively fits
+            % spheres to the tip surface and averages the radii of the
+            % spheres to determine the tip radius.
+            %
+            % Input:
+            %
+            % obj (object): An object representing the AFM experiment
+            % content. It should have a property
+            %
+            % 'CantileverTips' containing information about cantilever
+            % tips.
+            %
+            % TipDepthNM (double, optional): The depth in nanometers used
+            % for the tip surface fitting process. Default value is 20 nm.
+            %
+            % TipIndex (integer): Index of the cantilever tip to use for
+            % the calculations.
+            %
+            % Output:
+            %
+            % RadiusNM (double): The calculated tip radius in nanometers.
+            %
+            % Usage:
+            %
+            % calculate_tip_radius(obj, TipDepthNM, TipIndex)
+            %
+            % Example: To calculate the tip radius for a specific
+            % cantilever tip in the object, call the function as:
+            % tip_radius = calculate_tip_radius(obj, 20, 1)
+            
+            
             if nargin < 2
                 TipDepthNM = 20;
             end
@@ -7475,10 +9456,38 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
         end
         
         function check_for_new_host(obj)
+            % function check_for_new_host(obj)
+            %
+            % This function checks if the system environment has changed
+            % (e.g., when moving from one computer to another). If the
+            % environment has changed, it adjusts the object properties
+            % accordingly.
+            %
+            % Input:
+            %
+            % obj (object): An object containing properties related to the
+            % system environment, such as
+            %
+            % 'HostOS' (operating system) and 'HostName' (name of the host
+            % computer).
+            %
+            % Output:
+            %
+            % None. This function modifies the input object properties in
+            % place.
+            %
+            % Usage:
+            %
             % check_for_new_host(obj)
             %
-            % Checks, if the system environment has changed and, if so,
-            % adjusts object properties
+            % Example:
+            %
+            % To check for changes in the system environment and update the
+            % object properties accordingly, call:
+            % check_for_new_host(myObject)
+            %
+            % Notes: This function supports the following operating
+            % systems: Windows ('PCW'), Linux ('GLN'), and macOS ('MAC').
             
             FullOS = computer;
             OS = FullOS(1:3);
@@ -7495,7 +9504,68 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
         end
         
         function reference_slope_parser(obj,DefaultOption,SkipGUIBool)
-            
+            % function reference_slope_parser(obj, DefaultOption,
+            % SkipGUIBool)
+            %
+            % This function parses the method to determine the reference
+            % slope for force maps and applies the selected method to the
+            % object. It provides several methods for setting reference
+            % slopes, such as using a user-defined value, user input, or
+            % automatically calculating the reference slope from a specific
+            % area.
+            %
+            % Input:
+            %
+            % obj (object): An object containing the force map properties
+            % and reference slope methods.
+            %
+            % DefaultOption (integer, optional): The default reference
+            % slope method index. Default is 1.
+            %
+            % SkipGUIBool (boolean, optional): A flag to skip the GUI and
+            % use the default option. Default is false.
+            %
+            % Output:
+            %
+            % None. This function modifies the input object properties in
+            % place.
+            %
+            % Usage:
+            %
+            % reference_slope_parser(obj) reference_slope_parser(obj,
+            % DefaultOption) reference_slope_parser(obj, DefaultOption,
+            % SkipGUIBool)
+            %
+            % Example:
+            %
+            % To parse and apply the reference slope method to an object
+            % using default options, call: reference_slope_parser(myObject)
+            %
+            % Notes:
+            %
+            % The reference slope methods supported by this function are:
+            %
+            % 1. SetAllToValue: Set all reference slopes to a specific
+            % value.
+            %
+            % 2. UserInput: Manually input the reference slopes for each
+            % force map.
+            %
+            % 3. FromRefFM: Use a reference force map to calculate the
+            % reference slopes.
+            %
+            % 4. FromArea: Calculate the reference slopes from a specific
+            % area.
+            %
+            % 5. AutomaticFibril: Automatically calculate the reference
+            % slopes based on fibril detection.
+            %
+            % 6. Automatic: Automatically calculate the reference slopes
+            % without fibril detection.
+            %
+            % 7. KeepOriginal: Keep the original reference slopes.
+
+
             if nargin < 2
                 DefaultOption = 1;
                 SkipGUIBool = false;
@@ -7553,6 +9623,63 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
         end
         
         function reference_slope_calculator(obj,Index)
+            % function reference_slope_calculator(obj, Index)
+            %
+            % This function calculates the reference slope for a force map
+            % using the selected method, such as from a reference force
+            % map, automatically with or without fibril detection, or from
+            % a specific area. The calculated reference slope is then
+            % applied to the force map object.
+            %
+            % Input:
+            %
+            % obj (object): An object containing the force map properties
+            % and reference slope methods.
+            %
+            % Index (integer): The index of the force map within the object
+            % for which the reference slope should be calculated.
+            %
+            % Output:
+            %
+            % None. This function modifies the input object properties in
+            % place.
+            %
+            % Usage:
+            %
+            % reference_slope_calculator(obj, Index)
+            %
+            % Example:
+            %
+            % To calculate and apply the reference slope for the first
+            % force map in an object, call:
+            % reference_slope_calculator(myObject, 1)
+            %
+            % Notes:
+            %
+            % The reference slope methods supported by this function are:
+            %
+            % 1. FromRefFM: Use a reference force map to calculate the
+            % reference slopes.
+            %
+            % 2. AutomaticFibril: Automatically calculate the reference
+            % slopes based on fibril detection.
+            %
+            % 3. Automatic: Automatically calculate the reference slopes
+            % without fibril detection.
+            %
+            % 4. Adaptive: Calculate the reference slopes adaptively based
+            % on an automatically created background mask.
+            %
+            % 5. FromArea: Calculate the reference slopes from a specific
+            % area.
+            %
+            % In addition to the reference slope methods, this function
+            % also accepts various options as part of the input object's
+            % ReferenceSlopeFlag.Options property, such as AppRetSwitch,
+            % FitRangeMode, FitRangeLowerFraction, FitRangeUpperFraction,
+            % FitRangeLowerValue, FitRangeUpperValue, and MovingWindowSize.
+            % These options control the behavior of the reference slope
+            % calculation process.
             
             i = Index;
             if obj.ReferenceSlopeFlag.FromRefFM
@@ -7654,7 +9781,52 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
         end
         
         function assign_reference_force_map(obj,DefaultValues)
-            
+%             function assign_reference_force_map(obj, DefaultValues)
+%             
+%             This function assigns reference force maps to the force maps
+%             in the object. The user provides a list of force map indices
+%             that correspond to each reference force map. The function
+%             ensures that each force map is assigned exactly one reference
+%             force map.
+%             
+%             Input:
+%             
+%             obj (object): An object containing the force maps and their
+%             properties.
+%             
+%             DefaultValues (cell array, optional): A cell array containing
+%             default values for force map assignments. Each cell contains
+%             a string with force map indices, e.g., '1 2 3 4 8 9 10' or
+%             '1:4 8:10'. If not provided, the default value for each
+%             reference force map will be set as 'e.g. 1 2 3 4 8 9 10 or
+%             1:4 8:10'.
+%             
+%             Output:
+%             
+%             None. This function modifies the input object properties in
+%             place.
+%             
+%             Usage:
+%             
+%             assign_reference_force_map(obj, DefaultValues)
+%             
+%             Example:
+%             
+%             To assign reference force maps to the force maps in an object
+%             using default values, call:
+%             assign_reference_force_map(myObject, DefaultValues)
+%             
+%             Notes:
+%             
+%             1. The function ensures that each force map is assigned
+%             exactly one reference force map. If the assignment is
+%             incorrect, a warning will be shown, and the user will be
+%             prompted to reassign.
+%             
+%             2. A table with force map names and their corresponding
+%             numbers is shown in the background while the user is prompted
+%             to assign the reference force maps. This helps the user make
+%             the correct assignments.
             
             obj.WhichRefMap = zeros(obj.NumForceMaps,1);
             
@@ -7701,6 +9873,51 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
         end
         
         function assign_cantilever_tips(obj,DefaultValues)
+%             function assign_cantilever_tips(obj, DefaultValues)
+%             
+%             This function assigns cantilever tips to the force maps in
+%             the object. The user provides a list of force map indices
+%             that correspond to each cantilever tip. The function ensures
+%             that each force map is assigned exactly one cantilever tip.
+%             
+%             Input:
+%             
+%             obj (object): An object containing the force maps and their
+%             properties.
+%             
+%             DefaultValues (cell array, optional): A cell array containing
+%             default values for force map assignments. Each cell contains
+%             a string with force map indices, e.g., '1 2 3 4 8 9 10' or
+%             '1:4 8:10'. If not provided, the default value for each
+%             cantilever tip will be set as 'e.g. 1 2 3 4 8 9 10 or 1:4
+%             8:10'.
+%             
+%             Output:
+%             
+%             None. This function modifies the input object properties in
+%             place.
+%             
+%             Usage:
+%             
+%             assign_cantilever_tips(obj, DefaultValues)
+%             
+%             Example:
+%             
+%             To assign cantilever tips to the force maps in an object
+%             using default values, call: assign_cantilever_tips(myObject,
+%             DefaultValues)
+%             
+%             Notes:
+%             
+%             1. The function ensures that each force map is assigned
+%             exactly one cantilever tip. If the assignment is incorrect, a
+%             warning will be shown, and the user will be prompted to
+%             reassign.
+%             
+%             2. A table with force map names and their corresponding
+%             numbers is shown in the background while the user is prompted
+%             to assign the cantilever tips. This helps the user make the
+%             correct assignments.
             
             obj.WhichTip = zeros(obj.NumForceMaps,1);
             
@@ -7747,6 +9964,49 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
         end
         
         function load_in_reference_maps(obj)
+%             function load_in_reference_maps(obj)
+%             
+%             This function loads a specified number of reference force
+%             maps into the object from .jpk-force-map or .jpk-qi-data
+%             files. The user is prompted to select the reference force
+%             maps to be loaded. The function ensures that the correct
+%             number of reference force maps is loaded.
+%             
+%             Input:
+%             
+%             obj (object): An object containing the force maps and their
+%             properties.
+%             
+%             Output:
+%             
+%             None. This function modifies the input object properties in
+%             place by adding the loaded reference force maps.
+%             
+%             Usage:
+%             
+%             load_in_reference_maps(obj)
+%             
+%             Example:
+%             
+%             To load reference force maps into an object, call:
+%             load_in_reference_maps(myObject)
+%             
+%             Notes:
+%             
+%             1. The user is prompted to enter the number of reference
+%             force maps to be loaded. The function will ensure that the
+%             correct number of reference force maps is loaded.
+%             
+%             2. The user can select one or more reference force maps at a
+%             time. The function will keep prompting the user to select
+%             reference force maps until the specified number is loaded.
+%             
+%             3. Reference force maps are loaded from .jpk-force-map or
+%             .jpk-qi-data files.
+%             
+%             4. Each loaded reference force map is assigned an ID in the
+%             format 'ReferenceMap-X', where X is the index of the
+%             reference force map.
             
             prompt = 'Enter Number of reference force maps';
             dlgtitle = 'Experiment Layout';
@@ -7784,6 +10044,46 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
         end
         
         function initialize_flags(obj)
+%             function initialize_flags(obj)
+%             
+%             This function initializes a set of flags for the input object
+%             to track the status of various analyses and assignments. It
+%             sets flags for fibril analysis, force map analysis,
+%             preprocessing, grouping, cantilever tips, reference maps, and
+%             reference slopes, among others.
+%             
+%             Input:
+%             
+%             obj (object): An object containing the force maps and their
+%             properties.
+%             
+%             Output:
+%             
+%             None. This function modifies the input object properties in
+%             place by initializing the flags.
+%             
+%             Usage:
+%             
+%             initialize_flags(obj)
+%             
+%             Example:
+%             
+%             To initialize the flags for an object, call:
+%             initialize_flags(myObject)
+%             
+%             Notes:
+%             
+%             1. The function initializes flags for multiple aspects,
+%             including: - Fibril analysis - Force map analysis -
+%             Preprocessing - Grouping - Surface potential maps - SMFS
+%             (single-molecule force spectroscopy) - Cantilever tips -
+%             Reference maps - Reference slopes
+%             
+%             2. The function checks if the object already has flags and
+%             updates them accordingly.
+%             
+%             3. The flags are used to track the progress and status of
+%             various analyses and assignments within the object.
             
             if isempty(obj.FMFlag)
                 NFM = obj.NumForceMaps;
@@ -7953,31 +10253,128 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
         end
         
         function [PopUp,ClassIndex] = string_of_existing_class_instances(obj)
+%             function [PopUp, ClassIndex] =
+%             string_of_existing_class_instances(obj)
+%             
+%             This function generates a list of strings and corresponding
+%             class indices for existing class instances of AFM images,
+%             force maps, reference force maps, and cantilever tip images
+%             in the given object. The output strings are used for
+%             populating a drop-down menu (or pop-up menu) in the user
+%             interface.
+%             
+%             Input:
+%             
+%             obj (object): An object containing AFM images, force maps,
+%             reference force maps, and cantilever tip images.
+%             
+%             Output:
+%             
+%             PopUp (cell array of strings): A list of strings representing
+%             existing class instances in the input object. Each string is
+%             formatted as "<Type>: <Instance Name>%", where <Type> is the
+%             class type (Image, Force Map, Ref. Force Map, or Cant. Tip
+%             Image), and <Instance Name> is the name of the instance.
+%             
+%             ClassIndex (Nx2 double array): A corresponding list of class
+%             indices for the existing class instances, where the first
+%             column represents the class type (1: Image, 2: Force Map, 3:
+%             Ref. Force Map, 4: Cant. Tip Image), and the second column
+%             represents the index of the instance within its respective
+%             class.
+%             
+%             Usage:
+%             
+%             [PopUp, ClassIndex] = string_of_existing_class_instances(obj)
+%             
+%             Example:
+%             
+%             To generate a list of strings and corresponding class indices
+%             for an object, call:
+%             
+%             [PopUp, ClassIndex] =
+%             string_of_existing_class_instances(myObject)
+%             
+%             Notes:
+%             
+%             1. The function iterates through the object's properties (AFM
+%             images, force maps, reference force maps, and cantilever tip
+%             images) and generates the corresponding strings and class
+%             indices.
+%             
+%             2. The output PopUp and ClassIndex can be used for creating a
+%             drop-down menu in a user interface to allow the user to
+%             select an existing class instance for further analysis or
+%             visualization.
             
             k = 1;
             for i=1:obj.NumAFMImages
-                PopUp{k} = sprintf('Image: %s%',obj.I{i}.Name);
+                PopUp{k} = sprintf('Image %i: %s%',i,obj.I{i}.Name);
                 ClassIndex(k,:) = [1 i];
                 k = k + 1;
             end
             for i=1:obj.NumForceMaps
-                PopUp{k} = sprintf('Force Map: %s%',obj.FM{i}.Name);
+                PopUp{k} = sprintf('Force Map %i: %s%',i,obj.FM{i}.Name);
                 ClassIndex(k,:) = [2 i];
                 k = k + 1;
             end
             for i=1:obj.NumReferenceForceMaps
-                PopUp{k} = sprintf('Ref. Force Map: %s%',obj.RefFM{i}.Name);
+                PopUp{k} = sprintf('Ref. Force Map %i: %s%',i,obj.RefFM{i}.Name);
                 ClassIndex(k,:) = [3 i];
                 k = k + 1;
             end
             for i=1:obj.NumCantileverTips
-                PopUp{k} = sprintf('Cant. Tip Image: %s%',obj.CantileverTips{i}.Name);
+                PopUp{k} = sprintf('Cant. Tip Image %i: %s%',i,obj.CantileverTips{i}.Name);
                 ClassIndex(k,:) = [4 i];
                 k = k + 1;
             end
         end
         
         function Class = get_class_instance(obj,ClassIndex)
+%             function Class = get_class_instance(obj, ClassIndex)
+%             
+%             This function retrieves a specific class instance from the
+%             given object based on the provided class index. The class
+%             index contains information about the class type (AFM images,
+%             force maps, reference force maps, or cantilever tip images)
+%             and the instance index within that class type.
+%             
+%             Input:
+%             
+%             obj (object): An object containing AFM images, force maps,
+%             reference force maps, and cantilever tip images.
+%             
+%             ClassIndex (1x2 double array): The class index, where the
+%             first element represents the class type (1: Image, 2: Force
+%             Map, 3: Ref. Force Map, 4: Cant. Tip Image), and the second
+%             element represents the index of the instance within its
+%             respective class.
+%             
+%             Output:
+%             
+%             Class (object): The specific class instance retrieved from
+%             the input object based on the provided class index.
+%             
+%             Usage:
+%             
+%             Class = get_class_instance(obj, ClassIndex)
+%             
+%             Example:
+%             
+%             To retrieve a specific class instance from an object based on
+%             a class index, call: Class = get_class_instance(myObject, [2,
+%             5])
+%             
+%             Notes:
+%             
+%             1. The function checks the class type specified in the
+%             ClassIndex and retrieves the corresponding class instance
+%             from the input object.
+%             
+%             2. This function is useful for retrieving a specific class
+%             instance for further analysis or visualization when a user
+%             selects an instance from a drop-down menu in a user
+%             interface.
             
             if ClassIndex(1) == 1
                 Class = obj.I{ClassIndex(2)};
@@ -7995,6 +10392,50 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
         end
         
         function cast_volume_data_to_single_precision(obj)
+%             function cast_volume_data_to_single_precision(obj)
+%             
+%             This function casts the volume data of all force maps in the
+%             given object to single precision. The volume data includes
+%             approach and retraction curves, as well as height-height, and
+%             based approach and retraction curves. The casting to single
+%             precision reduces memory usage and improves performance,
+%             especially when working with large datasets.
+%             
+%             Input:
+%             
+%             obj (object): An object containing force maps with volume
+%             data. The volume data is originally stored as double
+%             precision.
+%             
+%             Output:
+%             
+%             None. This function modifies the input object's force maps
+%             volume data in-place by converting it to single precision.
+%             
+%             Usage:
+%             
+%             cast_volume_data_to_single_precision(obj)
+%             
+%             Example:
+%             
+%             To cast the volume data of all force maps in an object to
+%             single precision, call:
+%             cast_volume_data_to_single_precision(myObject)
+%             
+%             Notes:
+%             
+%             1. This function iterates over all force maps in the object,
+%             and for each force map, it iterates over all curves
+%             (approach, retraction, height-height, based approach, and
+%             based retraction curves).
+%             
+%             2. It converts the curve data to single precision using the
+%             'single()' function.
+%             
+%             3. The THApp and THRet fields of the force maps are set to
+%             empty arrays, as they are no longer needed after casting the
+%             data to single precision.
+            
             for i=1:obj.NumForceMaps
                 obj.FM{i}.THApp = [];
                 obj.FM{i}.THRet = [];
@@ -8010,13 +10451,69 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
         end
         
         function reset_selected_and_corrupted_flags(obj)
+            % function reset_selected_and_corrupted_flags(obj)
+            %
+            % This function resets the selected and corrupted flags of all force maps within the given object.
+            % These flags are used to identify specific force maps during analysis and processing, and resetting
+            % them allows for a fresh start or re-analysis of the data.
+            %
+            % Input:
+            % obj (object): An object containing force maps, each of which has selected and corrupted flags.
+            %
+            % Output:
+            % None. This function modifies the input object's force maps' flags in-place, resetting the
+            % selected and corrupted flags.
+            %
+            % Usage:
+            % reset_selected_and_corrupted_flags(obj)
+            %
+            % Example:
+            % To reset the selected and corrupted flags of all force maps in an object, call:
+            % reset_selected_and_corrupted_flags(myObject)
+            %
+            % Notes:
+            % 1. This function iterates over all force maps in the object and calls the
+            % 'reset_selected_and_corrupted_flags()' method for each force map. This method is responsible
+            % for resetting the flags within each individual force map.
+
             for i=1:obj.NumForceMaps
                 obj.FM{i}.reset_selected_and_corrupted_flags()
             end
         end
         
         function load_python_files_to_memory(obj,IndexVector,RefIndexVector)
-            
+            % function load_python_files_to_memory(obj, IndexVector, RefIndexVector)
+            %
+            % This function loads the zipped force maps and reference force maps files into memory using
+            % Python-based extraction. The function allows selective loading of force maps and reference force
+            % maps through the use of index vectors.
+            %
+            % Input:
+            % obj (object): An object containing force maps and reference force maps.
+            % IndexVector (vector, optional): A vector containing the indices of the force maps to be loaded.
+            % Default is to load all force maps.
+            % RefIndexVector (vector, optional): A vector containing the indices of the reference force maps
+            % to be loaded. Default is to load all reference force maps.
+            %
+            % Output:
+            % None. This function modifies the input object in-place, loading the selected force maps and
+            % reference force maps into memory.
+            %
+            % Usage:
+            % load_python_files_to_memory(obj, IndexVector, RefIndexVector)
+            %
+            % Example:
+            % To load all force maps and reference force maps into memory, call:
+            % load_python_files_to_memory(myObject)
+            %
+            % To load selected force maps and reference force maps, call:
+            % load_python_files_to_memory(myObject, [1, 3, 5], [2, 4])
+            %
+            % Notes:
+            % 1. This function iterates over the specified force maps and reference force maps and calls the
+            % 'load_zipped_files_with_python()' method for each. This method is responsible for extracting
+            % and loading the data from the zipped files using Python.
+
             if nargin < 2
                 IndexVector = 1:obj.NumForceMaps;
             end
@@ -8033,6 +10530,38 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
         end
         
         function clear_python_files_from_memory(obj,IndexVector,RefIndexVector)
+            % function clear_python_files_from_memory(obj, IndexVector, RefIndexVector)
+            %
+            % This function clears the force maps and reference force maps data from memory, which were
+            % previously loaded using Python-based extraction. The function allows selective clearing of force
+            % maps and reference force maps through the use of index vectors.
+            %
+            % Input:
+            % obj (object): An object containing force maps and reference force maps.
+            % IndexVector (vector, optional): A vector containing the indices of the force maps to be cleared
+            % from memory. Default is to clear all force maps.
+            % RefIndexVector (vector, optional): A vector containing the indices of the reference force maps
+            % to be cleared from memory. Default is to clear all reference
+            % force maps.
+            %
+            % Output:
+            % None. This function modifies the input object in-place, clearing the selected force maps and
+            % reference force maps from memory.
+            %
+            % Usage:
+            % clear_python_files_from_memory(obj, IndexVector, RefIndexVector)
+            %
+            % Example:
+            % To clear all force maps and reference force maps from memory, call:
+            % clear_python_files_from_memory(myObject)
+            %
+            % To clear selected force maps and reference force maps, call:
+            % clear_python_files_from_memory(myObject, [1, 3, 5], [2, 4])
+            %
+            % Notes:
+            % 1. This function iterates over the specified force maps and reference force maps and calls the
+            % 'clear_zipped_files_from_memory()' method for each. This method is responsible for clearing
+            % the data loaded from the zipped files using Python.
             
             if nargin < 2
                 IndexVector = 1:obj.NumForceMaps;
@@ -8050,7 +10579,38 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
         end
         
         function automatic_segmentation_on_singular_vertical_fiber_batch(obj,IndexVectorFM,IndexVectorImage)
-            % automatic_segmentation_on_singular_vertical_fiber_batch(obj,IndexVectorFM,IndexVectorImage)
+            % function automatic_segmentation_on_singular_vertical_fiber_batch(obj, IndexVectorFM, IndexVectorImage)
+            %
+            % This function applies automatic segmentation on singular vertical fibers for a batch of force
+            % maps and AFM images. It allows the user to specify the indices of the force maps and images to be
+            % processed or to process all force maps and images by default.
+            %
+            % Input:
+            % obj (object): An object containing force maps and AFM images.
+            % IndexVectorFM (vector, optional): A vector containing the indices of the force maps to be
+            % processed for automatic segmentation. Default is to process
+            % all force maps.
+            % IndexVectorImage (vector, optional): A vector containing the indices of the AFM images to be
+            % processed for automatic segmentation. Default is to process
+            % all AFM images if IndexVectorFM is not provided.
+            %
+            % Output:
+            % None. This function modifies the input object in-place, applying automatic segmentation on the
+            % specified force maps and AFM images.
+            %
+            % Usage:
+            % automatic_segmentation_on_singular_vertical_fiber_batch(obj, IndexVectorFM, IndexVectorImage)
+            %
+            % Example:
+            % To apply automatic segmentation on all force maps and AFM images, call:
+            % automatic_segmentation_on_singular_vertical_fiber_batch(myObject)
+            %
+            % To apply automatic segmentation on selected force maps and AFM images, call:
+            % automatic_segmentation_on_singular_vertical_fiber_batch(myObject, [1, 3, 5], [2, 4])
+            %
+            % Notes:
+            % 1. This function iterates over the specified force maps and AFM images and calls the
+            % 'automatic_segmentation_on_singular
             
             if nargin < 2
                 for i=1:obj.NumForceMaps
@@ -8074,7 +10634,36 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
         end
         
         function OutClass = get_afm_base_class_by_name(obj,Name,AllCellStructs)
-            
+            % function OutClass = get_afm_base_class_by_name(obj, Name, AllCellStructs)
+            %
+            % This function searches for an AFM base class object (force map, AFM image, reference force map, or
+            % cantilever tip) within the provided object based on its name. The user can specify whether to
+            % search in all cell structures or only in force maps and AFM images.
+            %
+            % Input:
+            % obj (object): An object containing force maps, AFM images, reference force maps, and cantilever
+            % tips.
+            % Name (string): The name of the AFM base class object to search for.
+            % AllCellStructs (logical, optional): A flag indicating whether to search for the AFM base class
+            % object in all cell structures (force maps, AFM images,
+            % reference force maps, and cantilever tips) or only in force
+            % maps and AFM images. Default is false (search only in force
+            % maps and AFM images).
+            %
+            % Output:
+            % OutClass (object): The AFM base class object found with the specified name. If no object with
+            % the given name is found, the function returns an empty output.
+            %
+            % Usage:
+            % OutClass = get_afm_base_class_by_name(obj, Name, AllCellStructs)
+            %
+            % Example:
+            % To search for an AFM base class object named 'Sample1' in force maps and AFM images, call:
+            % OutClass = get_afm_base_class_by_name(myObject, 'Sample1')
+            %
+            % To search for an AFM base class object named 'Sample1' in all cell structures, call:
+            % OutClass
+
             if nargin < 3
                 AllCellStructs = false;
             end
@@ -8109,6 +10698,31 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
         end
         
         function set_force_map_analysis_options(obj)
+            % function set_force_map_analysis_options(obj)
+            %
+            % This function sets the force map analysis options for the provided object. If no options are
+            % specified, it sets the default force map analysis options. The function then prompts the user to
+            % adjust the options using a user interface.
+            %
+            % Input:
+            % obj (object): An object for which the force map analysis options need to be set.
+            %
+            % Output:
+            % None. This function modifies the input object in-place, updating the force map analysis options.
+            %
+            % Usage:
+            % set_force_map_analysis_options(obj)
+            %
+            % Example:
+            % To set the force map analysis options for a given object, call:
+            % set_force_map_analysis_options(myObject)
+            %
+            % Notes:
+            % 1. The function first checks if the object's ForceMapAnalysisOptions field is empty. If it is
+            % empty, the function sets the default force map analysis options using the
+            % set_default_fma_options function.
+            % 2. The function then calls ui_set_struct_fields to prompt the user to adjust the options using
+            % a user interface.
             
             if isempty(obj.ForceMapAnalysisOptions)
                 obj.ForceMapAnalysisOptions = set_default_fma_options;
@@ -8119,6 +10733,28 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
         end
         
         function set_gramm_options(obj)
+            % This function sets the gramm plot options for the Experiment object. The
+            % function first checks whether the gramm options exist and are valid, and
+            % if not, sets them to the default options using the set_default_gramm_options
+            % function. The function then prompts the user to set the options using a
+            % user interface and stores the updated options back in the object.
+            
+            % Input:
+            % - obj: the Experiment object for which to set the gramm options
+            %
+            % Output: None. The function modifies the Experiment object by setting the
+            % gramm options.
+            
+            % Valid data types:
+            % - obj: Experiment object
+            %
+            % Valid values:
+            % - None
+            
+            % Example:
+            % 1. Set gramm options for an Experiment object:
+            % exp = Experiment();
+            % exp.set_gramm_options();
             
             if isempty(obj.GrammOptions) || ...
                     ~check_structs_for_same_fields_recursively(...
@@ -8130,19 +10766,89 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             
         end
         
-        function map_segment_properties_to_image_pixels(obj,PoolingMethod)
+        function map_fiber_segment_properties_to_image_pixels(obj,PoolingMethod)
+            % The function 'map_fiber_segment_properties_to_image_pixels'
+            % is a method of the Experiment class.
+            % It maps fiber segment properties such as position, angle, and length to
+            % image pixels. The function takes two input arguments: 'obj' is the
+            % Experiment object, and 'PoolingMethod' is an optional argument that
+            % specifies the pooling method to use when mapping fiber segment properties
+            % to image pixels. If 'PoolingMethod' is not specified, the default method
+            % is used. The valid data types for 'obj' are Experiment objects, and the
+            % valid data types for 'PoolingMethod' are strings or character arrays. The
+            % possible values for 'PoolingMethod' are 'mean', 'median', 'min', 'max',
+            % and 'none'. The default value is 'median'. The function loops over all
+            % force maps and AFM images in the Experiment object and calls the
+            % 'map_fiber_segment_properties_to_image_pixels' method for each of them
+            % with the specified pooling method or the default one. The function does
+            % not return any output arguments.
             
             for i=1:obj.NumForceMaps
-                obj.FM{i}.map_segment_properties_to_image_pixels(PoolingMethod);
+                obj.FM{i}.map_fiber_segment_properties_to_image_pixels(PoolingMethod);
+%                 obj.FM{i}.map_segments_to_image_pixels;
             end
             for i=1:obj.NumAFMImages
-                obj.I{i}.map_segment_properties_to_image_pixels(PoolingMethod);
+                obj.I{i}.map_fiber_segment_properties_to_image_pixels(PoolingMethod);
+%                 obj.I{i}.map_segments_to_image_pixels;
+            end
+            
+        end
+        
+        function map_segments_to_image_pixels(obj)
+            % map_segments_to_image_pixels(obj)
+            %
+            % This function maps the fiber segments from force maps and AFM images to
+            % the corresponding image pixels. The function applies the same mapping
+            % transformation for each segment in the given image to transform the
+            % segment into the image pixel space. The mapping can be affected by the
+            % different pixel sizes in different AFM images. The function loops through
+            % all force maps and AFM images in the Experiment object and maps their
+            % fiber segments to image pixels.
+            %
+            % Inputs:
+            % - obj: An Experiment object containing force maps and AFM images.
+            %
+            % Outputs: None. However, the function modifies the force maps and AFM
+            % images in the Experiment object by mapping their fiber segments to image
+            % pixels.
+            
+            for i=1:obj.NumForceMaps
+                obj.FM{i}.map_segments_to_image_pixels;
+            end
+            for i=1:obj.NumAFMImages
+                obj.I{i}.map_segments_to_image_pixels;
             end
             
         end
         
         function [DynPropNames,ChannelNames] = write_unrolled_channels_to_dynamic_properties(obj,ShowWaitbar)
-            % Wrapper function for AFMBaseClass Method with same name
+            % The function write_unrolled_channels_to_dynamic_properties is a wrapper
+            % function that calls the AFMBaseClass method of the same name. This method
+            % writes unrolled channels to temporary properties of the AFMBaseClass
+            % objects. The function can be used to extract dynamic property names and
+            % channel names that are subsequently used for plotting or further
+            % analysis. The function loops through all the Force Maps, AFM Images, and
+            % CantileverTips stored in the object and calls the write_unrolled_channels_to_dynamic_properties
+            % method for each of them. The outputs of the method, which are the dynamic
+            % property names and channel names, are concatenated and returned as the
+            % output of the wrapper function.
+            %
+            % INPUTS:
+            % obj - an instance of the Experiment class.
+            %
+            % ShowWaitbar - a logical variable indicating whether or not to show the
+            % waitbar during the loop through the object's force maps, AFM images, and
+            % cantilever tips. Default value is true.
+            %
+            % OUTPUTS:
+            % DynPropNames - a cell array containing the names of all the dynamic
+            % properties across all the force maps, AFM images, and cantilever tips in
+            % the Experiment class.
+            %
+            % ChannelNames - a cell array containing the names of all the channels
+            % across all the force maps, AFM images, and cantilever tips in the
+            % Experiment class. The channel names can be used to extract specific
+            % channels for plotting or further analysis.
             
             if nargin < 3
                 ShowWaitbar = true;
@@ -8177,6 +10883,19 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
         
         function delete_all_dynamic_properties(obj)
             % Wrapper function for AFMBaseClass Method with same name
+            % The delete_all_dynamic_properties function is a wrapper function for the
+            % corresponding method in the AFMBaseClass superclass. This function deletes
+            % all the temporary dynamic properties created during analysis from all
+            % ForceMap, AFMImage, and CantileverTip objects in the Experiment
+            % instance.
+            %
+            % Inputs:
+            % - obj: an instance of the Experiment class
+            %
+            % Outputs: none
+            %
+            % Note: this function will issue a warning to notify the user that all
+            % temporary dynamic class properties have been deleted.
             
             ExProps = {'FM','I','CantileverTips'};
             LoopNumber = [obj.NumForceMaps obj.NumAFMImages obj.NumCantileverTips];
@@ -8199,8 +10918,46 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
         % and Experiment() loading
         
         function wdata = getinfo(filename)
-            %getinfo.m
-            %reads header info and extracts wave data from ibw file
+            %             %getinfo.m reads header information and extracts
+            %             wave data from an .ibw file. The function takes
+            %             in a file path/filename as input and returns the
+            %             wave data as a 3D array. The data is read in
+            %             chunks and preallocated for speed. The data type
+            %             is also determined based on the type number in
+            %             the header information, and the appropriate
+            %             format string is selected for use with the fread
+            %             function. If the file type is unknown, the
+            %             function displays an error message. The output
+            %             variable wdata is a 3D array where the first two
+            %             dimensions are the pixel dimensions of the image
+            %             and the third dimension corresponds to the number
+            %             of images in the file.
+            %
+            % Input:
+            %
+            % filename: a string containing the file path and name of the
+            % .ibw file to be read. Output:
+            %
+            % wdata: a 3D array containing the wave data from the .ibw
+            % file. The first two dimensions represent the pixel dimensions
+            % of the image, and the third dimension corresponds to the
+            % number of images in the file. Valid data types:
+            %
+            % filename: a string containing the file path and name of the
+            % .ibw file to be read. The file must be a valid .ibw file,
+            % otherwise the function will not be able to read the header
+            % information and extract the wave data. Possible values:
+            %
+            % filename: a string containing a valid file path and name of
+            % an .ibw file on the system. type: integer, 2, 3, or 4,
+            % indicating the type of data contained in the file. x, y:
+            % integer values representing the dimensions of the image in
+            % pixels. n: integer value indicating the number of images
+            % contained in the file. d: a string indicating the format
+            % string to be used with the fread function, based on the type
+            % number in the header information. wdata: a 3D array
+            % containing the wave data from the .ibw file.
+
             fid = fopen(filename);
             fseek(fid,80,'bof');
             type = fread(fid,1,'int16');%read type
@@ -8226,6 +10983,42 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
         
         function [Out, AppRetSwitch] = reference_slope_parser_gui(Methods)
             % THIS FUNCTION IS DEPRECATED
+            %             This function is a deprecated graphical user
+            %             interface (GUI) function that provides the user
+            %                 with a list of options to choose from to
+            %                 determine how to obtain reference slopes
+            %                 (RefSlopes) from atomic force microscopy (AFM)
+            %                 data. RefSlopes are used in the data analysis
+            %                 process of AFM images to determine the height of
+            %                 features on the sample surface. The options for
+            %                 obtaining RefSlopes are:
+            %
+            % Set all RefSlopes to a chosen value Get RefSlopes from user
+            % input for each Force Map individually Get RefSlopes from
+            % Reference Force Maps Get RefSlopes from chosen area on Force
+            % Map Get RefSlope from automatically identified glass
+            % background around fibril Get RefSlope from automatically
+            % identified glass background around object This function takes
+            % the user input and returns the chosen option as a scalar
+            % integer variable Out. The function also has an optional
+            % return variable AppRetSwitch which returns 0 or 1, depending
+            % on which radio button was selected by the user to specify
+            % whether to obtain the RefSlope from the approach or retract
+            % curve.
+            %
+            % Input:
+            %
+            % Methods: A scalar or vector of integers indicating which
+            % options should be pre-selected in the GUI. Output:
+            %
+            % Out: An integer scalar indicating which option the user chose
+            % to obtain RefSlopes from AFM data. AppRetSwitch: A scalar
+            % integer equal to 0 or 1, depending on which radio button was
+            % selected by the user to specify whether to obtain the
+            % RefSlope from the approach or retract curve. Note that this
+            % output variable is optional, and may not be returned if the
+            % user did not select one of the options for obtaining
+            % RefSlopes from the approach or retract curve.
             
             % Create figure
             left = 0.3;
@@ -8749,7 +11542,12 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             
             Hertz = struct(...
                 'TipShape','parabolic',...
-                'AllowedTipShape',{{'parabolic','spheric approx.'}},...
+                'AllowedTipShape',{{'parabolic','spheric approx.','parabolic on thin film (not bonded)','parabolic on thin film (bonded)'}},...
+                'TopographyHeightChannel','Processed',...
+                'AllowedTopographyHeightChannel',{{'Processed','Contact Height','Deconvoluted','Height','Height (measured)'}},...
+                'ThinFilmMode','From Topography',...
+                'AllowedThinFilmMode',{{'From Topography','From Value'}},...
+                'ThinFilmThickness',1e-6,...
                 'FitDegreeForSneddonPolySurf',10,...
                 'CorrectSensitivity',true,...
                 'DTypeCorrectSensitivity','logical',...
@@ -8759,17 +11557,17 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 'DTypePredictiveRSquare','logical',...
                 'TooltipPredictiveRSquare','Calculate the RSquare of the fit on the whole set of data bigger than the CP, regardless of fitting range.',...
                 'UpperForceCutOff',[],...
-                'TooltipUpperForceCutOff','Set the lower absolute y-limit in Newtons [N] for the portion of the curve that should be considered for fitting.',...
+                'TooltipUpperForceCutOff','Set the upper absolute y-limit in Newtons [N] for the portion of the curve that should be considered for fitting.',...
                 'LowerForceCutOff',0,...
-                'TooltipLowerForceCutOff','Set the upper absolute y-limit in Newtons [N] for the portion of the curve that should be considered for fitting.',...
+                'TooltipLowerForceCutOff','Set the lower absolute y-limit in Newtons [N] for the portion of the curve that should be considered for fitting.',...
                 'LowerCurveFraction',0,...
                 'TooltipLowerCurveFraction','Set the lower fraction y-limit for the portion of the curve that should be considered for fitting. This applies to the curve AFTER the ForceCutOffs.',...
                 'UpperCurveFraction',1,...
                 'TooltipUpperCurveFraction','Set the upper fraction y-limit for the portion of the curve that should be considered for fitting. This applies to the curve AFTER the ForceCutOffs.',...
                 'UseTipInHertz',true,...
                 'DTypeTipInHertz','logical',...
-                'UseTopology',false,...
-                'DTypeUseTopology','logical',...
+                'UseTopography',false,...
+                'DTypeUseTopography','logical',...
                 'WeighPointsByInverseDistance',false,...
                 'DTypeWeighPointsByInverseDistance','logical');
             
@@ -8798,7 +11596,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             FMAOptions = struct('ContactPointOption','Old',...
                 'ContactPointJustXAxis',false,...
                 'DTypeContactPointJustXAxis','logical',...
-                'AllowedContactPointOption',{{'Old','ZoomSweep','Fast','RoV','GoF','Combo','manual','HardSurface','CurveOrigin','None'}},...
+                'AllowedContactPointOption',{{'Old','ZoomSweep','Fast','Snap-In','RoV','GoF','Combo','manual','HardSurface','CurveOrigin','None'}},...
                 'EModOption',EModOption,...
                 'SensitivityCorrection',SensitivityCorrection,...
                 'BaselineCorrection',BaselineCorrection,...
@@ -8822,6 +11620,34 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 'DTypeSaveAfterEachMap','logical',...
                 'DTypeSortHeightDataForFit','logical',...
                 'SortHeightDataForFit',true);
+            
+        end
+        
+        function FSPOptions = set_default_fsp_options()
+            
+            DBandingOptions = struct(...
+                'A','A'...
+                );
+            
+            FiberCharOptions = struct(...
+                'A','A'...
+                );
+            
+            FSPOptions = struct(...
+                'CalculateFiberChar',true,...
+                'TooltipCalculateFiberChar','Calculate certain characteristics (ellipse parameters, numerical height/area, length etc...) of fiber like polyline segments',...
+                'FiberCharOptions',FiberCharOptions,...
+                'TooltipFiberCharOptions','Calculate certain characteristics (ellipse parameters, numerical height/area, length etc...) of fiber like polyline segments',...
+                'CalculateDBanding',true,...
+                'TooltipCalculateDBanding','Calculate spatial frequency and amplitude of periodic pattern on fiber apex',...
+                'DTypeCalculateDBanding','logical',...
+                'DBandingOptions',DBandingOptions,...
+                'TooltipDBandingOptions','Calculate spatial frequency and amplitude of periodic pattern on fiber apex',...
+                'SaveWhenFinished',true,...
+                'DTypeSaveWhenFinished','logical',...
+                'SaveAfterEachMap',false,...
+                'DTypeSaveAfterEachMap','logical'...
+                );
             
         end
         
@@ -9053,7 +11879,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 'Ellipse_geom','area',...
                 'AllowedEllipse_geom',{{'area','line'}},...
                 'TooltipEllipse_geom','area: Plot the ellipse as a shaded area with outline; line: Just plot the outline of the ellipse',...
-                'QQ_distribution',"makedist('Normal',nanmean(X),nanstd(X))",...
+                'QQ_distribution',"makedist('Normal',mean(X,'omitnan'),std(X,'omitnan'))",...
                 'DTypeQQ_distribution','char',...
                 'TooltipQQ_distribution',"Provide a theoretical distribution to plot x against using Matlab's makedist() function. Set to 'y' to plot x against y densities.",...
                 'Boxplot_width',0.6,...
@@ -9182,6 +12008,18 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             
         end
         
+        function IsValid = check_segment_tag_validity(String)
+            
+            IsValid = true;
+            
+            if isempty(String) ||...
+                    (~ischar(String) && ~isstring(String)) ||...
+                    contains(String,'*')
+                IsValid = false;
+            end
+            
+        end
+        
     end
     
     methods(Static)
@@ -9256,7 +12094,55 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 'hasProcessed','logical','Has Processed Channel';...
                 'hasSensitivity','logical','Has Sensitivity';...
                 'hasSpringConstant','logical','Has Cantilever Spring Constant';...
-                'hasVerticalDeflection','logical','Has Vertical Deflection Channel'...
+                'hasVerticalDeflection','logical','Has Vertical Deflection Channel';...
+                'FiberSegment_Area','m2','Fiber Numerical Area';...
+                'FiberSegment_AreaDerivedDiameter','m','Fiber Area-Derived Diameter';...
+                'FiberSegment_Height','m','Fiber Height';...
+                'FiberSegment_WidthHalfHeight','m','Fiber Width at Half-Height';...
+                'FiberSegment_Prominence','m','Fiber Prominence';...
+                'FiberSegment_WidthHalfProminence','m','Fiber Width at Half-Prominence';...
+                'FiberSegment_WidthBase','m','Fiber Width at Base';...
+                'FiberSegment_AspectRatioHalfHeight','m/m','Fiber Aspect Ratio at Half-Height';...
+                'FiberSegment_AspectRatioBaseHeight','m/m','Fiber Aspect Ratio at Base-Height';...
+                'FiberSegment_Mean_Area','m2','Fiber Mean Numerical Area';...
+                'FiberSegment_Mean_AreaDerivedDiameter','m','Fiber Mean Area-Derived Diameter';...
+                'FiberSegment_Mean_Height','m','Fiber Mean Height';...
+                'FiberSegment_Mean_WidthHalfHeight','m','Fiber Mean Width at Half-Height';...
+                'FiberSegment_Mean_Prominence','m','Fiber Mean Prominence';...
+                'FiberSegment_Mean_WidthHalfProminence','m','Fiber Mean Width at Half-Prominence';...
+                'FiberSegment_Mean_WidthBase','m','Fiber Mean Width at Base';...
+                'FiberSegment_Mean_AspectRatioHalfHeight','m/m','Fiber Mean Aspect Ratio at Half-Height';...
+                'FiberSegment_Mean_AspectRatioBaseHeight','m/m','Fiber Mean Aspect Ratio at Base-Height';...
+                'FiberSegment_Median_Area','m2','Fiber Median Numerical Area';...
+                'FiberSegment_Median_AreaDerivedDiameter','m','Fiber Median Area-Derived Diameter';...
+                'FiberSegment_Median_Height','m','Fiber Median Height';...
+                'FiberSegment_Median_WidthHalfHeight','m','Fiber Median Width at Half-Height';...
+                'FiberSegment_Median_Prominence','m','Fiber Median Prominence';...
+                'FiberSegment_Median_WidthHalfProminence','m','Fiber Median Width at Half-Prominence';...
+                'FiberSegment_Median_WidthBase','m','Fiber Median Width at Base';...
+                'FiberSegment_Median_AspectRatioHalfHeight','m/m','Fiber Median Aspect Ratio at Half-Height';...
+                'FiberSegment_Median_AspectRatioBaseHeight','m/m','Fiber Median Aspect Ratio at Base-Height';...
+                'FiberSegment_RelativePixelPosition','-','Fiber Relative Pixel Position';...
+                'FiberSegment_RelativePosition','m','Fiber Relative Position';...
+                'FiberSegment_SegmentLength','m','Fiber Segment Length';...
+                'FiberSegment_Ellipse_a','m','Fiber Ellipse a';...
+                'FiberSegment_Ellipse_b','m','Fiber Ellipse b';...
+                'FiberSegment_Ellipse_AspectRatio','m/m','Fiber Ellipse Aspect Ratio';...
+                'FiberSegment_Ellipse_Area','m2','Fiber Ellipse Area';...
+                'FiberSegment_Ellipse_Height','m','Fiber Ellipse Height';...
+                'FiberSegment_Ellipse_WidthHalfHeight','m','Fiber Ellipse Width at Half-Height';...
+                'FiberSegment_Mean_Ellipse_a','m','Fiber Mean Ellipse a';...
+                'FiberSegment_Mean_Ellipse_b','m','Fiber Mean Ellipse b';...
+                'FiberSegment_Mean_Ellipse_AspectRatio','m/m','Fiber Mean Ellipse Aspect Ratio';...
+                'FiberSegment_Mean_Ellipse_Area','m2','Fiber Mean Ellipse Area';...
+                'FiberSegment_Mean_Ellipse_Height','m','Fiber Mean Ellipse Height';...
+                'FiberSegment_Mean_Ellipse_WidthHalfHeight','m','Fiber Mean Ellipse Width at Half-Height';...
+                'FiberSegment_Median_Ellipse_a','m','Fiber Median Ellipse a';...
+                'FiberSegment_Median_Ellipse_b','m','Fiber Median Ellipse b';...
+                'FiberSegment_Median_Ellipse_AspectRatio','m/m','Fiber Median Ellipse Aspect Ratio';...
+                'FiberSegment_Median_Ellipse_Area','m2','Fiber Median Ellipse Area';...
+                'FiberSegment_Median_Ellipse_Height','m','Fiber Median Ellipse Height';...
+                'FiberSegment_Median_Ellipse_WidthHalfHeight','m','Fiber Median Ellipse Width at Half-Height';...
                 };
             
             UnitCell = cell(size(InCell));
@@ -9272,6 +12158,33 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                     FancyNameCell{i} = InCell{i};
                 end
             end
+            
+        end
+        
+        function TCombo = combine_data_tables(T1,T2)
+            
+            T1Names = T1.Properties.VariableNames;
+            T2Names = T2.Properties.VariableNames;
+            T1Types =  varfun(@class,T1,'OutputFormat','cell');
+            T2Types =  varfun(@class,T2,'OutputFormat','cell');
+            
+            U = unique([T1Names T2Names]);
+            
+            for i=1:numel(U)
+                % T1
+                Idx1 = find(strcmp(T1Names, U{i}));
+                Idx2 = find(strcmp(T2Names, U{i}));
+                if isempty(Idx1)
+                    T1{:,T2Names{Idx2}} = eval([T2Types{Idx2} '(missing)']);
+                end
+                if isempty(Idx2)
+                    T2{:,T1Names{Idx1}} = eval([T1Types{Idx1} '(missing)']);
+                end
+            end
+            
+            TCombo = [T1 ; T2];
+            
+            TCombo = standardizeMissing(TCombo,{'',[],""});
             
         end
         

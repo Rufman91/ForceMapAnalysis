@@ -18,6 +18,7 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
         OriginY = 0
         List2Map = []        % An R->RxR ((k)->(i,j)) mapping of indices to switch between the two representations
         Map2List = []      % An RxR->R ((i,j)->(k))mapping of indices to switch between the two representations
+        Metadata = []
     end
     properties
         % All possible image channels. The Channels are all part of the
@@ -70,6 +71,24 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
         FiberSegment_RelativePixelPosition = []
         FiberSegment_RelativePosition = []
         FiberSegment_SegmentLength = []
+        FiberSegment_Ellipse_a = []
+        FiberSegment_Ellipse_b = []
+        FiberSegment_Ellipse_AspectRatio = []
+        FiberSegment_Ellipse_Area = []
+        FiberSegment_Ellipse_Height = []
+        FiberSegment_Ellipse_WidthHalfHeight = []
+        FiberSegment_Mean_Ellipse_a = []
+        FiberSegment_Mean_Ellipse_b = []
+        FiberSegment_Mean_Ellipse_AspectRatio = []
+        FiberSegment_Mean_Ellipse_Area = []
+        FiberSegment_Mean_Ellipse_Height = []
+        FiberSegment_Mean_Ellipse_WidthHalfHeight = []
+        FiberSegment_Median_Ellipse_a = []
+        FiberSegment_Median_Ellipse_b = []
+        FiberSegment_Median_Ellipse_AspectRatio = []
+        FiberSegment_Median_Ellipse_Area = []
+        FiberSegment_Median_Ellipse_Height = []
+        FiberSegment_Median_Ellipse_WidthHalfHeight = []
         OverlayGroup = ''
         OverlayGroupName = ''
         OverlayGroupIndex = []
@@ -126,7 +145,7 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
                     set(obj,PropertyNames{i},LoadStruct.TempProp);
                 catch
                     if MetaProperties(i).HasDefault
-                        set(obj,PropertyNames{i},MetaProperties.DefaultValue);
+                        set(obj,PropertyNames{i},MetaProperties(i).DefaultValue);
                     else
                         set(obj,PropertyNames{i},[]);
                     end
@@ -137,51 +156,111 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             
         end
         
-        function deconvolute_image(obj,CTClassInstance)
-            % Comment
+        function deconvolute_image(obj,CTClassInstance,ChannelName,MaxResolution,KeepOldResults)
+            % Comment Wow
+            
+            if nargin < 3
+                ChannelName = 'Processed';
+                MaxResolution = 1024;
+                KeepOldResults = true;
+            end
+            if nargin < 4
+                MaxResolution = 1024;
+                KeepOldResults = true;
+            end
+            if nargin < 5
+                KeepOldResults = true;
+            end
             
             ErodedTip = CTClassInstance.get_channel('Eroded Tip');
             if isempty(ErodedTip)
                 CTClassInstance.deconvolute_cantilever_tip;
                 ErodedTip = CTClassInstance.get_channel('Eroded Tip');
             end
-            Processed = obj.get_channel('Processed');
-            if isempty('Processed')
-                warning('Image needs to be flattened first')
+            Processed = obj.get_channel(ChannelName);
+            if isempty(Processed)
+                warning(sprintf('Channel "%s" not found. Cannot deconvolute!',ChannelName));
                 return
             end
             
+            PPHasUnequalSPP = false;
+            [PP,XMult,YMult] = AFMBaseClass.resize_channel_to_padded_same_size_per_pixel_square_image(Processed);
+            ET = AFMBaseClass.resize_channel_to_padded_same_size_per_pixel_square_image(ErodedTip);
+            
+            if XMult ~= 1 || YMult ~= 1
+                PPHasUnequalSPP = true;
+            end
+            
+            imshowpair(Processed.Image,PP.Image,'montage')
             % Resize and pad images to same resolution at correct spacial
             % ratio
-            TempMultiplier = (ErodedTip.NumPixelsX/ErodedTip.ScanSizeX)/(Processed.NumPixelsX/Processed.ScanSizeX);
-            Multiplier = TempMultiplier;
-            if TempMultiplier*Processed.NumPixelsX > 1024
-                ReductionFactor = 1024/(TempMultiplier*Processed.NumPixelsX);
-                Multiplier = TempMultiplier*ReductionFactor;
-                ReducedRes = round(ErodedTip.NumPixelsX*ReductionFactor);
-                ErodedTip.Image = imresize(ErodedTip.Image,[ReducedRes nan]);
-            end
-            if TempMultiplier >= 1
-                Smaller = ErodedTip.Image;
-                Bigger = Processed.Image;
-            else
-                Smaller = Processed.Image;
-                Bigger = ErodedTip.Image;
-            end
-            Bigger = imresize(Bigger,[round(Multiplier*size(Bigger,1)) nan]);
-            Smaller = padarray(Smaller,size(Bigger)-size(Smaller),...
-                min(Smaller,[],'all'),'post');
+            Multiplier = (ET.NumPixelsY/ET.ScanSizeX)/(PP.NumPixelsY/PP.ScanSizeX);
             
-            if TempMultiplier >= 1
-                In1 = Bigger;
-                In2 = Smaller;
+            if Multiplier >= 1
+                PP.Image = imresize(PP.Image,[round(Multiplier*PP.NumPixelsX) nan]);
+                PPResized = true;
+                ETResized = false;
             else
-                In1 = Smaller;
-                In2 = Bigger;
+                ET.Image = imresize(ET.Image,[round(1/Multiplier*ET.NumPixelsX) nan]);
+                PPResized = false;
+                ETResized = true;
             end
             
-            OutImage = obj.deconvolute_by_mathematical_morphology(In1,In2);
-            OutImage = imresize(OutImage,[Processed.NumPixelsX Processed.NumPixelsY]);
+            PaddingSize = abs(size(PP.Image) - size(ET.Image));
+            PaddingSizePre = floor(PaddingSize./2);
+            PaddingSizePost = ceil(PaddingSize./2);
+            if size(PP.Image,1) >= size(ET.Image,1)
+                ET.Image = padarray(ET.Image,PaddingSizePre,...
+                    min(ET.Image,[],'all'),'pre');
+                ET.Image = padarray(ET.Image,PaddingSizePost,...
+                    min(ET.Image,[],'all'),'post');
+                ETPadded = true;
+                PPPadded = false;
+            else
+                PP.Image = padarray(PP.Image,PaddingSizePre,...
+                    min(PP.Image,[],'all'),'pre');
+                PP.Image = padarray(PP.Image,PaddingSizePost,...
+                    min(PP.Image,[],'all'),'post');
+                ETPadded = false;
+                PPPadded = true;
+            end
+            
+            % if images ended up being too big, scale them down for
+            % deconvolution
+            isDownscaled = false; 
+            if size(ET.Image,1) > MaxResolution
+                DownscaleFactor = MaxResolution/size(ET.Image,1);
+                ET.Image = imresize(ET.Image,[MaxResolution nan]);
+                PP.Image = imresize(PP.Image,[MaxResolution nan]);
+                isDownscaled = true;
+            end
+%             subplot(2,1,1)
+%             imshowpair(PP.Image,ET.Image,'montage')
+%             subplot(2,1,2)
+%             imshowpair(Processed.Image,PP.Image,'montage')
+%             drawnow
+            
+            % Make sure the Tip is below the convoluted image EVERYWHERE
+            Min = min(PP.Image,[],'all');
+            PP.Image  = PP.Image - Min;
+
+            Out = obj.deconvolute_by_mathematical_morphology(PP.Image,ET.Image);
+            
+            % put it back
+            Out = Out + Min;
+            
+            if isDownscaled
+                Out = imresize(Out,[round(MaxResolution/DownscaleFactor) nan]);
+            end
+            if PPPadded
+                Out = Out((PaddingSizePre(1) + 1):(end - PaddingSizePost(1)),...
+                    (PaddingSizePre(1) + 1):(end - PaddingSizePost(2)));
+            end
+            if PPResized || PPHasUnequalSPP
+                Out = imresize(Out,[round(PP.NumPixelsX*YMult) round(PP.NumPixelsY*XMult)]);
+            end
+            
+            OutImage = Out(1:Processed.NumPixelsX,1:Processed.NumPixelsY);
             
             Deconvoluted = Processed;
             Deconvoluted.Name = 'Deconvoluted';
@@ -193,12 +272,7 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             
             Deconvoluted.Image = OutImage;
             
-            [~,Index] = obj.get_channel('Deconvoluted');
-            if isempty(Index)
-                obj.Channel(end+1) = Deconvoluted;
-            else
-                obj.Channel(Index) = Deconvoluted;
-            end
+            obj.add_channel(Deconvoluted,~KeepOldResults)
         end
         
         function clear_all_properties(obj)
@@ -212,6 +286,42 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
         end
         
         function construct_list_to_map_relations(obj)
+            obj.Map2List = zeros(obj.NumPixelsX, obj.NumPixelsY);
+            obj.List2Map = zeros(obj.NumPixelsX * obj.NumPixelsY, 2);
+            
+            [i_mat, j_mat] = meshgrid(1:obj.NumPixelsY, 1:obj.NumPixelsX);
+            i_mat = i_mat';
+            j_mat = j_mat';
+            
+            k = 1;
+            k_mat = reshape(1:(obj.NumPixelsX * obj.NumPixelsY), obj.NumPixelsY, obj.NumPixelsX);
+            
+            if isequal(obj.FileType, 'quantitative-imaging-map')
+                obj.Map2List = k_mat';
+                obj.List2Map = [j_mat(:), i_mat(:)];
+            elseif isequal(obj.FileType, 'force-scan-map')
+                for i=1:obj.NumPixelsX
+                    if ~mod(i,2)
+                        for j=1:obj.NumPixelsY
+                            obj.Map2List(i,j) = k;
+                            obj.List2Map(k,:) = [i j];
+                            k = k + 1;
+                        end
+                    else
+                        for j=1:obj.NumPixelsY
+                            obj.Map2List(i,obj.NumPixelsY-j+1) = k;
+                            obj.List2Map(k,:) = [i obj.NumPixelsY-j+1];
+                            k = k + 1;
+                        end
+                    end
+                end
+            else
+                obj.Map2List = k_mat';
+                obj.List2Map = [j_mat(:), i_mat(:)];
+            end
+        end
+                
+        function construct_list_to_map_relations_old(obj)
             k = 1;
             obj.List2Map = zeros(obj.NumPixelsX*obj.NumPixelsY,2);
             if isequal(obj.FileType,'quantitative-imaging-map')
@@ -413,6 +523,14 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             OutChannel = obj.create_standard_channel(OutImage,'Pixel Difference','m');
             
             obj.Channel(end+1) = OutChannel;
+            
+            obj.assert_channel_number;
+        end
+        
+        function assert_channel_number(obj)
+            
+            obj.NumChannels = numel(obj.Channel);
+            
         end
         
         function PopUp = string_of_existing(obj)
@@ -652,6 +770,22 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
         
         function [Xout,Yout] = transform_pixels_to_other_coordinate_basis(DonorClass,AcceptorClass,X,Y)
             
+            SizePerPixelX1 = DonorClass.Channel(1).ScanSizeX/DonorClass.Channel(1).NumPixelsX;
+            SizePerPixelX2 = AcceptorClass.Channel(1).ScanSizeX/AcceptorClass.Channel(1).NumPixelsX;
+            if SizePerPixelX1 ~= SizePerPixelX2
+                ScaleMultiplierX = SizePerPixelX1/SizePerPixelX2;
+            else
+                ScaleMultiplierX = 1;
+            end
+            
+            SizePerPixelY1 = DonorClass.Channel(1).ScanSizeY/DonorClass.Channel(1).NumPixelsY;
+            SizePerPixelY2 = AcceptorClass.Channel(1).ScanSizeY/AcceptorClass.Channel(1).NumPixelsY;
+            if SizePerPixelY1 ~= SizePerPixelY2
+                ScaleMultiplierY = SizePerPixelY1/SizePerPixelY2;
+            else
+                ScaleMultiplierY = 1;
+            end
+            
             XDiff = DonorClass.Channel(1).OriginX - AcceptorClass.Channel(1).OriginX;
             SizePerPixelX = AcceptorClass.Channel(1).ScanSizeX./AcceptorClass.Channel(1).NumPixelsX;
             XDiff = XDiff/SizePerPixelX;
@@ -661,7 +795,7 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             AngleDiff = DonorClass.Channel(1).ScanAngle - AcceptorClass.Channel(1).ScanAngle;
             AngleDiff = deg2rad(-AngleDiff);
             
-            Vector = [X Y];
+            Vector = [ScaleMultiplierX*X ScaleMultiplierY*Y];
             
             ImCenter = [AcceptorClass.Channel(1).NumPixelsX/2 AcceptorClass.Channel(1).NumPixelsY/2];
             
@@ -794,8 +928,106 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
                             continue
                         end
                         gca = Parent;
-                        Line = drawpolyline('Position',obj.Segment(j).ROIObject.Position,'Parent',Parent);
-                        Mask = Line.createMask;
+                        %%%%%%%
+                        
+                        CurrentDrawMode = lower(obj.Segment(j).Type);
+                        switch CurrentDrawMode
+                            case 'line'
+                                DrawObject = drawline('Position',obj.Segment(j).ROIObject.Position,...
+                                    'Deletable',1,...
+                                    'InteractionsAllowed','all',...
+                                    'LineWidth',obj.Segment(j).ROIObject.LineWidth,...
+                                    'Label',sprintf('%s || %s',obj.Segment(j).Name,obj.Segment(j).SubSegmentName),...
+                                    'LabelAlpha',0.6,...
+                                    'Parent',Parent);
+                            case 'freehand'
+                                DrawObject = drawfreehand('Position',obj.Segment(j).ROIObject.Position,...
+                                    'Deletable',1,...
+                                    'InteractionsAllowed','all',...
+                                    'LineWidth',obj.Segment(j).ROIObject.LineWidth,...
+                                    'Label',sprintf('%s || %s',obj.Segment(j).Name,obj.Segment(j).SubSegmentName),...
+                                    'LabelAlpha',0.6,...
+                                    'Parent',Parent);
+                            case 'square'
+                                DrawObject = drawsquare('Position',obj.Segment(j).ROIObject.Position,...
+                                    'Deletable',1,...
+                                    'InteractionsAllowed','all',...
+                                    'LineWidth',obj.Segment(j).ROIObject.LineWidth,...
+                                    'Label',sprintf('%s || %s',obj.Segment(j).Name,obj.Segment(j).SubSegmentName),...
+                                    'LabelAlpha',0.6,...
+                                    'Parent',Parent);
+                            case 'circle'
+                                DrawObject = drawcircle('Center',obj.Segment(j).ROIObject.Center,...
+                                    'Radius',obj.Segment(j).ROIObject.Radius,...
+                                    'Deletable',1,...
+                                    'InteractionsAllowed','all',...
+                                    'LineWidth',obj.Segment(j).ROIObject.LineWidth,...
+                                    'Label',sprintf('%s || %s',obj.Segment(j).Name,obj.Segment(j).SubSegmentName),...
+                                    'LabelAlpha',0.6,...
+                                    'Parent',Parent);
+                            case 'ellipse'
+                                DrawObject = drawellipse('Center',obj.Segment(j).ROIObject.Center,...
+                                    'SemiAxes',obj.Segment(j).ROIObject.SemiAxes,...
+                                    'RotationAngle',obj.Segment(j).ROIObject.RotationAngle,...
+                                    'Deletable',1,...
+                                    'InteractionsAllowed','all',...
+                                    'LineWidth',obj.Segment(j).ROIObject.LineWidth,...
+                                    'Label',sprintf('%s || %s',obj.Segment(j).Name,obj.Segment(j).SubSegmentName),...
+                                    'LabelAlpha',0.6,...
+                                    'Parent',Parent);
+                            case 'polygon'
+                                DrawObject = drawpolygon('Position',obj.Segment(j).ROIObject.Position,...
+                                    'Deletable',1,...
+                                    'InteractionsAllowed','all',...
+                                    'LineWidth',obj.Segment(j).ROIObject.LineWidth,...
+                                    'Label',sprintf('%s || %s',obj.Segment(j).Name,obj.Segment(j).SubSegmentName),...
+                                    'LabelAlpha',0.6,...
+                                    'Parent',Parent);
+                            case 'rectangle'
+                                DrawObject = drawrectangle('Position',obj.Segment(j).ROIObject.Position,...
+                                    'RotationAngle',obj.Segment(j).ROIObject.RotationAngle,...
+                                    'Rotatable',true,...
+                                    'Deletable',1,...
+                                    'InteractionsAllowed','all',...
+                                    'LineWidth',obj.Segment(j).ROIObject.LineWidth,...
+                                    'Label',sprintf('%s || %s',obj.Segment(j).Name,obj.Segment(j).SubSegmentName),...
+                                    'LabelAlpha',0.6,...
+                                    'Parent',Parent);
+                            case 'crosshair'
+                                DrawObject = drawcrosshair('Position',obj.Segment(j).ROIObject.Position,...
+                                    'Deletable',1,...
+                                    'InteractionsAllowed','all',...
+                                    'LineWidth',obj.Segment(j).ROIObject.LineWidth,...
+                                    'Label',sprintf('%s || %s',obj.Segment(j).Name,obj.Segment(j).SubSegmentName),...
+                                    'LabelAlpha',0.6,...
+                                    'Parent',Parent);
+                            case 'point'
+                                DrawObject = drawpoint('Position',obj.Segment(j).ROIObject.Position,...
+                                    'Deletable',1,...
+                                    'InteractionsAllowed','all',...
+                                    'LineWidth',obj.Segment(j).ROIObject.LineWidth,...
+                                    'Label',sprintf('%s || %s',obj.Segment(j).Name,obj.Segment(j).SubSegmentName),...
+                                    'LabelAlpha',0.6,...
+                                    'Parent',Parent);
+                            case 'assisted'
+                                DrawObject = drawassisted('Position',obj.Segment(j).ROIObject.Position,...
+                                    'Deletable',1,...
+                                    'InteractionsAllowed','all',...
+                                    'LineWidth',obj.Segment(j).ROIObject.LineWidth,...
+                                    'Label',sprintf('%s || %s',obj.Segment(j).Name,obj.Segment(j).SubSegmentName),...
+                                    'LabelAlpha',0.6,...
+                                    'Parent',Parent);
+                            case 'polyline'
+                                DrawObject = drawpolyline('Position',obj.Segment(j).ROIObject.Position,...
+                                    'Deletable',1,...
+                                    'InteractionsAllowed','all',...
+                                    'LineWidth',obj.Segment(j).ROIObject.LineWidth,...
+                                    'Label',sprintf('%s || %s',obj.Segment(j).Name,obj.Segment(j).SubSegmentName),...
+                                    'LabelAlpha',0.6,...
+                                    'Parent',Parent);
+                        end
+                        %%%%%%%
+                        Mask = DrawObject.createMask;
                         if PixelDilation
                             StrEl = strel('Disk',PixelDilation,0);
                             Mask = imdilate(Mask,StrEl);
@@ -923,7 +1155,7 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             
             HeightMap = HeightChannel.Image;
             
-            [~,MaxIdx] = max(filloutliers(HeightMap,'linear','movmedian',ceil(HeightChannel.NumPixelsY/5),2),[],2);
+            [~,MaxIdx] = max(filloutliers(HeightMap,'linear','movmedian',max(3,ceil(HeightChannel.NumPixelsY/100)),2),[],2);
             Points = [MaxIdx [1:size(HeightMap,1)]'];
             
             
@@ -980,6 +1212,10 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             % "LowerEndThreshold" ... Determines the lower end of the
             %                     fiber-like object. Can be given as a
             %                     fraction of fiber height or in meters. 
+            % "EllipseFitThreshold" ... Determines the cutoff above
+            %                       baseline in terms of ThresholdType
+            %                       above which profile points are to be
+            %                       taken into account for the ellipse fit.
             % "ThresholdType" ... 'Fraction'(def), 'Meters'
             % "Verbose" ... logical; if true, the function will draw a
             %               visualization of what is happening.
@@ -999,26 +1235,32 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             addRequired(p,"obj",validobj);
             
             % NameValue inputs
+            defaultHeightChannelName = 'Processed';
             defaultWidthLocalWindowMeters = 800e-9;
             defaultSmoothingWindowSize = 41;
             defaultMinPeakDistanceMeters = 50e-9;
             defaultLowerEndThreshold = .1;
+            defaultEllipseFitThreshold = .75;
             defaultThresholdType = 'Fraction';
             defaultVerbose = false;
             defaultRecordMovieBool = false;
             defaultKeyFrames = 3;
+            validHeightChannelName = @(x)ischar(x);
             validWidthLocalWindowMeters = @(x)isnumeric(x)&&isscalar(x);
             validSmoothingWindowSize = @(x)isnumeric(x)&&mod(x,1)==0;
             validMinPeakDistanceMeters = @(x)isnumeric(x)&&isscalar(x);
             validLowerEndThreshold = @(x)isnumeric(x)&&isscalar(x);
+            validEllipseFitThreshold = @(x)isnumeric(x)&&isscalar(x); 
             validThresholdType = @(x)any(validatestring(x,{'Fraction','Meters'}));
             validVerbose = @(x)islogical(x);
             validRecordMovieBool = @(x)islogical(x);
             validKeyFrames = @(x)isnumeric(x)&&mod(x,1)==0;
+            addParameter(p,"HeightChannelName",defaultHeightChannelName,validHeightChannelName);
             addParameter(p,"WidthLocalWindowMeters",defaultWidthLocalWindowMeters,validWidthLocalWindowMeters);
             addParameter(p,"SmoothingWindowSize",defaultSmoothingWindowSize,validSmoothingWindowSize);
             addParameter(p,"MinPeakDistanceMeters",defaultMinPeakDistanceMeters,validMinPeakDistanceMeters);
             addParameter(p,"LowerEndThreshold",defaultLowerEndThreshold,validLowerEndThreshold);
+            addParameter(p,"EllipseFitThreshold",defaultEllipseFitThreshold,validEllipseFitThreshold);
             addParameter(p,"ThresholdType",defaultThresholdType,validThresholdType);
             addParameter(p,"Verbose",defaultVerbose,validVerbose);
             addParameter(p,"RecordMovieBool",defaultRecordMovieBool,validRecordMovieBool);
@@ -1028,21 +1270,27 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             
             % Assign parsing results to named variables
             obj = p.Results.obj;
+            HeightChannelName = p.Results.HeightChannelName;
             WidthLocalWindowMeters = p.Results.WidthLocalWindowMeters;
             SmoothingWindowSize = p.Results.SmoothingWindowSize;
             MinPeakDistanceMeters = p.Results.MinPeakDistanceMeters;
             LowerEndThreshold = p.Results.LowerEndThreshold;
+            EllipseFitThreshold = p.Results.EllipseFitThreshold;
             ThresholdType = p.Results.ThresholdType;
             Verbose = p.Results.Verbose;
             RecordMovieBool = p.Results.RecordMovieBool;
             KeyFrames = p.Results.KeyFrames;
+            
+            if isequal(ThresholdType,'Fraction') && EllipseFitThreshold < 0.5
+                error('EllipseFitThreshold cannot be smaller than 0.5, if the ThresholdType is "Fraction"!')
+            end
             
             OutArrayStruct = struct();
             OutStruct = struct();
             OutStructAll = struct();
             Struct = struct([]);
             
-            Channel = obj.get_channel('Processed');
+            Channel = obj.get_channel(HeightChannelName);
             if isempty(Channel)
                 warning('No Channel "Processed" found. Need flattened height channel for snap to local maximum')
                 return
@@ -1121,6 +1369,12 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
                 LocalArea = zeros(length(SegmentPositions(:,1)),1);
                 LocalWidthBase = zeros(length(SegmentPositions(:,1)),1);
                 LocalPosition = zeros(length(SegmentPositions(:,1)),2);
+                LocalEllipse_a = zeros(length(SegmentPositions(:,1)),1);
+                LocalEllipse_b = zeros(length(SegmentPositions(:,1)),1);
+                LocalEllipse_AspectRatio = zeros(length(SegmentPositions(:,1)),1);
+                LocalEllipse_Area = zeros(length(SegmentPositions(:,1)),1);
+                LocalEllipse_Height = zeros(length(SegmentPositions(:,1)),1);
+                LocalEllipse_WidthHalfHeight = zeros(length(SegmentPositions(:,1)),1);
                 for j=1:length(SegmentPositions(:,1))
                     PerpendicularVector(j,:) = [LocalDirectionVector(j,2) -LocalDirectionVector(j,1)]/norm(LocalDirectionVector(j,:));
                     WindowStart =SegmentPositions(j,:) + PerpendicularVector(j,:).*WidthLocalWindowPixels/2;
@@ -1178,18 +1432,17 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
                         hold off
                         Ax1.Legend.String{end-1} = 'Forbidden Points';
                         Ax1.Legend.String{end} = 'Chosen Point';
-                        Ax2 = subplot('Position',[.6 .55 .3 .4]);
                         Ax1.Legend.Location = 'northeast';
-                        findpeaks(LocalProfile,LocalDistance,'Annotate','extents',...
-                            'WidthReference','halfprom','MinPeakDistance',MinPeakDistanceMeters);
-                        hold on
-                        plot(ForbiddenLocalDistance,ForbiddenProfile,'rX',...
-                            Locations(WinnerIndex),1.05*Heights(WinnerIndex),'rv',...
-                            'MarkerSize',16,'MarkerFaceColor','g')
-                        Ax2.Legend.String{end-1} = 'Forbidden Points';
-                        Ax2.Legend.String{end} = 'Chosen Point';
-                        Ax2.Legend.Location = 'northeast';
-                        hold off
+                        Ax2 = subplot('Position',[.6 .55 .3 .4]);
+%                         findpeaks(LocalProfile,LocalDistance,'Annotate','extents',...
+%                             'WidthReference','halfprom','MinPeakDistance',MinPeakDistanceMeters);
+%                         hold on
+%                         plot(ForbiddenLocalDistance,ForbiddenProfile,'rX',...
+%                             Locations(WinnerIndex),1.05*Heights(WinnerIndex),'rv',...
+%                             'MarkerSize',16,'MarkerFaceColor','g')
+%                         Ax2.Legend.String{end-1} = 'Forbidden Points';
+%                         Ax2.Legend.String{end} = 'Chosen Point';
+%                         Ax2.Legend.Location = 'northeast';
                         drawnow
                         if RecordMovieBool
                             Frame = getframe(f);
@@ -1210,8 +1463,10 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
                     PeakIndex = find(LocalDistance==Locations(WinnerIndex));
                     if isequal(ThresholdType,'Fraction')
                         Thresh = LowerEndThreshold.*LocalProfile(PeakIndex);
+                        EllThresh = EllipseFitThreshold.*LocalProfile(PeakIndex);
                     else
                         Thresh = LowerEndThreshold;
+                        EllThresh = EllipseFitThreshold;
                     end
                     % To the left
                     kk = 1;
@@ -1243,6 +1498,40 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
                         LocalWidthBase(j) = nan;
                     end
                     
+                    
+                    % To the left
+                    kk = 1;
+                    EllLeftBoundIndex = [];
+                    while (PeakIndex-kk)>0 && isempty(EllLeftBoundIndex)
+                        if LocalProfile(PeakIndex-kk) < EllThresh
+                            EllLeftBoundIndex = PeakIndex - kk;
+                        end
+                        kk = kk + 1;
+                    end
+                    EllRightBoundIndex = [];
+                    % To the right
+                    kk = 1;
+                    while (PeakIndex+kk)<=length(LocalProfile) && isempty(EllRightBoundIndex)
+                        if LocalProfile(PeakIndex+kk) < EllThresh
+                            EllRightBoundIndex = PeakIndex + kk;
+                        end
+                        kk = kk + 1;
+                    end
+                    % If info is sufficient, fit ellipse
+                    if ~isempty(EllLeftBoundIndex) && ~isempty(EllRightBoundIndex)
+                        X = LocalDistance(EllLeftBoundIndex:EllRightBoundIndex);
+                        Y = LocalProfile(EllLeftBoundIndex:EllRightBoundIndex);
+                        if Verbose && mod(j,KeyFrames)==0
+                            EllResultStruct = EllipseFit_fit_ellipse(X,Y,Ax2);
+                            hold off
+                            drawnow
+                        else
+                            EllResultStruct = EllipseFit_fit_ellipse(X,Y);
+                        end
+                    else
+                        EllResultStruct.status = 'AllWentWrong';
+                    end
+                    
                     % Write down results
                     LocalHeight(j) = Heights(WinnerIndex);
                     LocalProminence(j) = Prom(WinnerIndex);
@@ -1250,13 +1539,33 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
                     LocalWidthHalfProminence(j) = TempWidthHalfProm(WinnerIndex);
                     LocalPosition(j,1) = LocalX(WinnerIndex);
                     LocalPosition(j,2) = LocalY(WinnerIndex);
+                    if isequal(EllResultStruct.status,'')
+                        LocalEllipse_a(j) = EllResultStruct.a;
+                        LocalEllipse_b(j) = EllResultStruct.b;
+                        LocalEllipse_AspectRatio(j) = EllResultStruct.b./EllResultStruct.a;
+                        LocalEllipse_Area(j) = EllResultStruct.a.*EllResultStruct.b.*pi;
+                        LocalEllipse_Height(j) = 2*EllResultStruct.b;
+                        LocalEllipse_WidthHalfHeight(j) = 2*EllResultStruct.a;
+                    else
+                        LocalEllipse_a(j) = nan;
+                        LocalEllipse_b(j) = nan;
+                        LocalEllipse_AspectRatio(j) = nan;
+                        LocalEllipse_Area(j) = nan;
+                        LocalEllipse_Height(j) = nan;
+                        LocalEllipse_WidthHalfHeight(j) = nan;
+                    end
+                    
                     
                     % Find corresponding Pixel by distance
 %                     DistanceVector = SegmentPixelIndizes{i} - [LocalPosition(j,1) LocalPosition(j,2)];
                     DistanceVector = SegmentPixelIndizes{i} - [obj.Segment(i).ROIObject.Position(j,1) obj.Segment(i).ROIObject.Position(j,2)];
                     Distances = vecnorm(DistanceVector,2,2);
                     [~,IndexOfClosest] = min(Distances);
-                    TempCorrespondingPixelIndex(j,:) = SegmentPixelIndizes{i}(IndexOfClosest,:);
+                    try
+                        TempCorrespondingPixelIndex(j,:) = SegmentPixelIndizes{i}(IndexOfClosest,:);
+                    catch ME
+                        warning(ME.message)
+                    end
                     
                 end
                 % find out overall segment pathlength
@@ -1289,52 +1598,89 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
                 obj.Segment(i).DirectionVector = LocalDirectionVector;
                 Struct(k).SegmentLength = SegmentLength;
                 obj.Segment(i).SegmentLength = SegmentLength;
-                Struct(k).Mean_WidthHalfHeight = nanmean(LocalWidthHalfHeight);
-                obj.Segment(i).Mean_WidthHalfHeight = nanmean(LocalWidthHalfHeight);
-                Struct(k).Median_WidthHalfHeight = nanmedian(LocalWidthHalfHeight);
-                obj.Segment(i).Median_WidthHalfHeight = nanmedian(LocalWidthHalfHeight);
-                Struct(k).Mean_Height = nanmean(LocalHeight);
-                obj.Segment(i).Mean_Height = nanmean(LocalHeight);
-                Struct(k).Median_Height = nanmedian(LocalHeight);
-                obj.Segment(i).Median_Height = nanmedian(LocalHeight);
-                Struct(k).Mean_WidthHalfProminence = nanmean(LocalWidthHalfProminence);
-                obj.Segment(i).Mean_WidthHalfProminence = nanmean(LocalWidthHalfProminence);
-                Struct(k).Median_WidthHalfProminence = nanmedian(LocalWidthHalfProminence);
-                obj.Segment(i).Median_WidthHalfProminence = nanmedian(LocalWidthHalfProminence);
-                Struct(k).Mean_Prominence = nanmean(LocalProminence);
-                obj.Segment(i).Mean_Prominence = nanmean(LocalProminence);
-                Struct(k).Median_Prominence = nanmedian(LocalProminence);
-                obj.Segment(i).Median_Prominence = nanmedian(LocalProminence);
+                Struct(k).Mean_WidthHalfHeight = mean(LocalWidthHalfHeight,'omitnan');
+                obj.Segment(i).Mean_WidthHalfHeight = mean(LocalWidthHalfHeight,'omitnan');
+                Struct(k).Median_WidthHalfHeight = median(LocalWidthHalfHeight,'omitnan');
+                obj.Segment(i).Median_WidthHalfHeight = median(LocalWidthHalfHeight,'omitnan');
+                Struct(k).Mean_Height = mean(LocalHeight,'omitnan');
+                obj.Segment(i).Mean_Height = mean(LocalHeight,'omitnan');
+                Struct(k).Median_Height = median(LocalHeight,'omitnan');
+                obj.Segment(i).Median_Height = median(LocalHeight,'omitnan');
+                Struct(k).Mean_WidthHalfProminence = mean(LocalWidthHalfProminence,'omitnan');
+                obj.Segment(i).Mean_WidthHalfProminence = mean(LocalWidthHalfProminence,'omitnan');
+                Struct(k).Median_WidthHalfProminence = median(LocalWidthHalfProminence,'omitnan');
+                obj.Segment(i).Median_WidthHalfProminence = median(LocalWidthHalfProminence,'omitnan');
+                Struct(k).Mean_Prominence = mean(LocalProminence,'omitnan');
+                obj.Segment(i).Mean_Prominence = mean(LocalProminence,'omitnan');
+                Struct(k).Median_Prominence = median(LocalProminence,'omitnan');
+                obj.Segment(i).Median_Prominence = median(LocalProminence,'omitnan');
                 Struct(k).Area = LocalArea;
                 obj.Segment(i).Area = LocalArea;
-                Struct(k).Mean_Area = nanmean(LocalArea);
-                obj.Segment(i).Mean_Area = nanmean(LocalArea);
-                Struct(k).Median_Area = nanmedian(LocalArea);
-                obj.Segment(i).Median_Area = nanmedian(LocalArea);
+                Struct(k).Mean_Area = mean(LocalArea,'omitnan');
+                obj.Segment(i).Mean_Area = mean(LocalArea,'omitnan');
+                Struct(k).Median_Area = median(LocalArea,'omitnan');
+                obj.Segment(i).Median_Area = median(LocalArea,'omitnan');
                 Struct(k).WidthBase = LocalWidthBase;
                 obj.Segment(i).WidthBase = LocalWidthBase;
-                Struct(k).Mean_WidthBase = nanmean(LocalWidthBase);
-                obj.Segment(i).Mean_WidthBase = nanmean(LocalWidthBase);
-                Struct(k).Median_WidthBase = nanmedian(LocalWidthBase);
-                obj.Segment(i).Median_WidthBase = nanmedian(LocalWidthBase);
+                Struct(k).Mean_WidthBase = mean(LocalWidthBase,'omitnan');
+                obj.Segment(i).Mean_WidthBase = mean(LocalWidthBase,'omitnan');
+                Struct(k).Median_WidthBase = median(LocalWidthBase,'omitnan');
+                obj.Segment(i).Median_WidthBase = median(LocalWidthBase,'omitnan');
                 Struct(k).AspectRatioHalfHeight = LocalHeight./LocalWidthHalfProminence;
                 obj.Segment(i).AspectRatioHalfHeight = LocalHeight./LocalWidthHalfProminence;
-                Struct(k).Mean_AspectRatioHalfHeight = nanmean(LocalHeight./LocalWidthHalfProminence);
-                obj.Segment(i).Mean_AspectRatioHalfHeight = nanmean(LocalHeight./LocalWidthHalfProminence);
-                Struct(k).Median_AspectRatioHalfHeight = nanmedian(LocalHeight./LocalWidthHalfProminence);
-                obj.Segment(i).Median_AspectRatioHalfHeight = nanmedian(LocalHeight./LocalWidthHalfProminence);
+                Struct(k).Mean_AspectRatioHalfHeight = mean(LocalHeight./LocalWidthHalfProminence,'omitnan');
+                obj.Segment(i).Mean_AspectRatioHalfHeight = mean(LocalHeight./LocalWidthHalfProminence,'omitnan');
+                Struct(k).Median_AspectRatioHalfHeight = median(LocalHeight./LocalWidthHalfProminence,'omitnan');
+                obj.Segment(i).Median_AspectRatioHalfHeight = median(LocalHeight./LocalWidthHalfProminence,'omitnan');
                 Struct(k).AspectRatioBaseHeight = LocalHeight./LocalWidthBase;
                 obj.Segment(i).AspectRatioBaseHeight = LocalHeight./LocalWidthBase;
-                Struct(k).Mean_AspectRatioBaseHeight = nanmean(LocalHeight./LocalWidthBase);
-                obj.Segment(i).Mean_AspectRatioBaseHeight = nanmean(LocalHeight./LocalWidthBase);
-                Struct(k).Median_AspectRatioBaseHeight = nanmedian(LocalHeight./LocalWidthBase);
-                obj.Segment(i).Median_AspectRatioBaseHeight = nanmedian(LocalHeight./LocalWidthBase);
+                Struct(k).Mean_AspectRatioBaseHeight = mean(LocalHeight./LocalWidthBase,'omitnan');
+                obj.Segment(i).Mean_AspectRatioBaseHeight = mean(LocalHeight./LocalWidthBase,'omitnan');
+                Struct(k).Median_AspectRatioBaseHeight = median(LocalHeight./LocalWidthBase,'omitnan');
+                obj.Segment(i).Median_AspectRatioBaseHeight = median(LocalHeight./LocalWidthBase,'omitnan');
                 Struct(k).AreaDerivedDiameter = real(sqrt(LocalArea/pi).*2);
                 obj.Segment(i).AreaDerivedDiameter = real(sqrt(LocalArea/pi).*2);
-                Struct(k).Mean_AreaDerivedDiameter = nanmean(real(sqrt(LocalArea/pi).*2));
-                obj.Segment(i).Mean_AreaDerivedDiameter = nanmean(real(sqrt(LocalArea/pi).*2));
-                Struct(k).Median_AreaDerivedDiameter = nanmedian(real(sqrt(LocalArea/pi).*2));
-                obj.Segment(i).Median_AreaDerivedDiameter = nanmedian(real(sqrt(LocalArea/pi).*2));
+                Struct(k).Mean_AreaDerivedDiameter = mean(real(sqrt(LocalArea/pi).*2),'omitnan');
+                obj.Segment(i).Mean_AreaDerivedDiameter = mean(real(sqrt(LocalArea/pi).*2),'omitnan');
+                Struct(k).Median_AreaDerivedDiameter = median(real(sqrt(LocalArea/pi).*2),'omitnan');
+                obj.Segment(i).Median_AreaDerivedDiameter = median(real(sqrt(LocalArea/pi).*2),'omitnan');
+                Struct(k).Ellipse_a = LocalEllipse_a;
+                obj.Segment(i).Ellipse_a = LocalEllipse_a;
+                Struct(k).Mean_Ellipse_a = mean(LocalEllipse_a,'omitnan');
+                obj.Segment(i).Mean_Ellipse_a = mean(LocalEllipse_a,'omitnan');
+                Struct(k).Median_Ellipse_a = median(LocalEllipse_a,'omitnan');
+                obj.Segment(i).Median_Ellipse_a = median(LocalEllipse_a,'omitnan');
+                Struct(k).Ellipse_b = LocalEllipse_b;
+                obj.Segment(i).Ellipse_b = LocalEllipse_b;
+                Struct(k).Mean_Ellipse_b = mean(LocalEllipse_b,'omitnan');
+                obj.Segment(i).Mean_Ellipse_b = mean(LocalEllipse_b,'omitnan');
+                Struct(k).Median_Ellipse_b = median(LocalEllipse_b,'omitnan');
+                obj.Segment(i).Median_Ellipse_b = median(LocalEllipse_b,'omitnan');
+                Struct(k).Ellipse_AspectRatio = LocalEllipse_AspectRatio;
+                obj.Segment(i).Ellipse_AspectRatio = LocalEllipse_AspectRatio;
+                Struct(k).Mean_Ellipse_AspectRatio = mean(LocalEllipse_AspectRatio,'omitnan');
+                obj.Segment(i).Mean_Ellipse_AspectRatio = mean(LocalEllipse_AspectRatio,'omitnan');
+                Struct(k).Median_Ellipse_AspectRatio = median(LocalEllipse_AspectRatio,'omitnan');
+                obj.Segment(i).Median_Ellipse_AspectRatio = median(LocalEllipse_AspectRatio,'omitnan');
+                Struct(k).Ellipse_Area = LocalEllipse_Area;
+                obj.Segment(i).Ellipse_Area = LocalEllipse_Area;
+                Struct(k).Mean_Ellipse_Area = mean(LocalEllipse_Area,'omitnan');
+                obj.Segment(i).Mean_Ellipse_Area = mean(LocalEllipse_Area,'omitnan');
+                Struct(k).Median_Ellipse_Area = median(LocalEllipse_Area,'omitnan');
+                obj.Segment(i).Median_Ellipse_Area = median(LocalEllipse_Area,'omitnan');
+                Struct(k).Ellipse_Height = LocalEllipse_Height;
+                obj.Segment(i).Ellipse_Height = LocalEllipse_Height;
+                Struct(k).Mean_Ellipse_Height = mean(LocalEllipse_Height,'omitnan');
+                obj.Segment(i).Mean_Ellipse_Height = mean(LocalEllipse_Height,'omitnan');
+                Struct(k).Median_Ellipse_Height = median(LocalEllipse_Height,'omitnan');
+                obj.Segment(i).Median_Ellipse_Height = median(LocalEllipse_Height,'omitnan');
+                Struct(k).Ellipse_WidthHalfHeight = LocalEllipse_WidthHalfHeight;
+                obj.Segment(i).Ellipse_WidthHalfHeight = LocalEllipse_WidthHalfHeight;
+                Struct(k).Mean_Ellipse_WidthHalfHeight = mean(LocalEllipse_WidthHalfHeight,'omitnan');
+                obj.Segment(i).Mean_Ellipse_WidthHalfHeight = mean(LocalEllipse_WidthHalfHeight,'omitnan');
+                Struct(k).Median_Ellipse_WidthHalfHeight = median(LocalEllipse_WidthHalfHeight,'omitnan');
+                obj.Segment(i).Median_Ellipse_WidthHalfHeight = median(LocalEllipse_WidthHalfHeight,'omitnan');
+                
                 Struct(k).SegmentPixelIndex = SegmentPixelIndizes{i};
                 obj.Segment(i).SegmentPixelIndex = SegmentPixelIndizes{i};
                 Struct(k).CorrespondingPixelIndex = TempCorrespondingPixelIndex;
@@ -1396,24 +1742,24 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
                     end
                 end
                 OutStruct(i).SegmentLength = TempSegmentLength;
-                OutStruct(i).Mean_Height = nanmean(OutStruct(i).Height);
-                OutStruct(i).Median_Height = nanmedian(OutStruct(i).Height);
-                OutStruct(i).Mean_WidthHalfHeight = nanmean(OutStruct(i).WidthHalfHeight);
-                OutStruct(i).Median_WidthHalfHeight = nanmedian(OutStruct(i).WidthHalfHeight);
-                OutStruct(i).Mean_Prominence = nanmean(OutStruct(i).Prominence);
-                OutStruct(i).Median_Prominence = nanmedian(OutStruct(i).Prominence);
-                OutStruct(i).Mean_WidthHalfProminence = nanmean(OutStruct(i).WidthHalfProminence);
-                OutStruct(i).Median_WidthHalfProminence = nanmedian(OutStruct(i).WidthHalfProminence);
-                OutStruct(i).Mean_Area = nanmean(OutStruct(i).Area);
-                OutStruct(i).Median_Area = nanmedian(OutStruct(i).Area);
-                OutStruct(i).Mean_WidthBase = nanmean(OutStruct(i).WidthBase);
-                OutStruct(i).Median_WidthBase = nanmedian(OutStruct(i).WidthBase);
-                OutStruct(i).Mean_AspectRatioHalfHeight = nanmean(OutStruct(i).AspectRatioHalfHeight);
-                OutStruct(i).Median_AspectRatioHalfHeight = nanmedian(OutStruct(i).AspectRatioHalfHeight);
-                OutStruct(i).Mean_AspectRatioBaseHeight = nanmean(OutStruct(i).AspectRatioBaseHeight);
-                OutStruct(i).Median_AspectRatioBaseHeight = nanmedian(OutStruct(i).AspectRatioBaseHeight);
-                OutStruct(i).Mean_AreaDerivedDiameter = nanmean(OutStruct(i).AreaDerivedDiameter);
-                OutStruct(i).Median_AreaDerivedDiameter = nanmedian(OutStruct(i).AreaDerivedDiameter);
+                OutStruct(i).Mean_Height = mean(OutStruct(i).Height,'omitnan');
+                OutStruct(i).Median_Height = median(OutStruct(i).Height,'omitnan');
+                OutStruct(i).Mean_WidthHalfHeight = mean(OutStruct(i).WidthHalfHeight,'omitnan');
+                OutStruct(i).Median_WidthHalfHeight = median(OutStruct(i).WidthHalfHeight,'omitnan');
+                OutStruct(i).Mean_Prominence = mean(OutStruct(i).Prominence,'omitnan');
+                OutStruct(i).Median_Prominence = median(OutStruct(i).Prominence,'omitnan');
+                OutStruct(i).Mean_WidthHalfProminence = mean(OutStruct(i).WidthHalfProminence,'omitnan');
+                OutStruct(i).Median_WidthHalfProminence = median(OutStruct(i).WidthHalfProminence,'omitnan');
+                OutStruct(i).Mean_Area = mean(OutStruct(i).Area,'omitnan');
+                OutStruct(i).Median_Area = median(OutStruct(i).Area,'omitnan');
+                OutStruct(i).Mean_WidthBase = mean(OutStruct(i).WidthBase,'omitnan');
+                OutStruct(i).Median_WidthBase = median(OutStruct(i).WidthBase,'omitnan');
+                OutStruct(i).Mean_AspectRatioHalfHeight = mean(OutStruct(i).AspectRatioHalfHeight,'omitnan');
+                OutStruct(i).Median_AspectRatioHalfHeight = median(OutStruct(i).AspectRatioHalfHeight,'omitnan');
+                OutStruct(i).Mean_AspectRatioBaseHeight = mean(OutStruct(i).AspectRatioBaseHeight,'omitnan');
+                OutStruct(i).Median_AspectRatioBaseHeight = median(OutStruct(i).AspectRatioBaseHeight,'omitnan');
+                OutStruct(i).Mean_AreaDerivedDiameter = mean(OutStruct(i).AreaDerivedDiameter,'omitnan');
+                OutStruct(i).Median_AreaDerivedDiameter = median(OutStruct(i).AreaDerivedDiameter,'omitnan');
             end
             
             for i=1:length(OutStruct)
@@ -1446,7 +1792,7 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
                 v.close
             end
             
-            obj.map_segment_properties_to_image_pixels('Median');
+            obj.map_fiber_segment_properties_to_image_pixels('Median');
             
             OutStructAll = Struct;
             close(h)
@@ -1471,10 +1817,317 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             obj.Segment = NewSegment;
         end
         
+        function TagList = read_out_tag_list(obj,Indizes)
+            
+            if nargin < 2
+                NumSegments = numel(obj.Segment); 
+                Indizes = [1:NumSegments];
+            end
+            
+            LoopIndizes = reshape(Indizes,1,[]);
+            TagString = '';
+            for i=LoopIndizes
+                if ~isfield(obj.Segment(i),'Tags')
+                    continue
+                end
+                TagString = [TagString obj.Segment(i).Tags];
+            end
+            
+            TagList = AFMBaseClass.split_tags_string(TagString);
+            
+        end
+        
+        function add_tag_to_segment(obj,TagString,Indizes)
+            
+            if nargin < 3
+                NumSegments = numel(obj.Segment);
+                Indizes = 1:NumSegments;
+            end
+            
+            IsValid = Experiment.check_segment_tag_validity(TagString);
+            
+            if ~IsValid
+                error([TagString ' is not a valid tag string'])
+            end
+            
+            LoopIndizes = reshape(Indizes, 1, []);
+            Default = '';
+            TagField = 'Tags';
+            
+            % Check if 'Tags' field exists and add it if it doesn't
+            if ~isfield(obj.Segment, TagField)
+                [obj.Segment(1:numel(obj.Segment)).(TagField)] = deal(Default);
+            end
+            
+            % Add TagString to the Tags field of specified segments
+            for i = LoopIndizes
+                TagList = obj.read_out_tag_list(i);
+                if sum(contains(TagList,TagString))
+                    continue
+                end
+                obj.Segment(i).Tags = append(obj.Segment(i).Tags, [TagString '**']);
+            end
+        end
+        
+        function remove_tag_from_segment(obj, TagString, Indizes)
+            
+            if nargin < 3
+                NumSegments = numel(obj.Segment);
+                Indizes = 1:NumSegments;
+            end
+            
+            IsValid = Experiment.check_segment_tag_validity(TagString);
+            
+            if ~IsValid
+                error([TagString ' is not a valid tag string'])
+            end
+            
+            LoopIndizes = reshape(Indizes, 1, []);
+            TagField = 'Tags';
+            
+            % Remove TagString from the Tags field of specified segments
+            for i = LoopIndizes
+                if ~isfield(obj.Segment(i), TagField)
+                    continue
+                end
+                
+                TagList = obj.read_out_tag_list(i);
+                TagList = TagList(cellfun(@(tag) ~isequal(tag, TagString), TagList)); % Remove the specified tag with exact one-to-one match
+                
+                % Reconstruct the Tags field without the specified tag
+                obj.Segment(i).Tags = [strjoin(TagList, '**') '**'];
+            end
+        end
+        
+        function [slope, radius_of_curvature, slope_direction, CorrectedRadius] = localSurfaceFit(obj, HeightChannelName, Radius)
+            %LOCALSURFACEFIT Calculates the local slope and curvature of an AFMBaseClass object's height image
+            %   This method takes an AFMBaseClass object instance (obj) and a HeightChannelName as input,
+            %   reads the height image using the get_channel method, and computes the local slope and
+            %   curvature within a given Radius. It also creates a map of the slope direction.
+            %
+            %   Input:
+            %       obj - An AFMBaseClass object instance
+            %       HeightChannelName - The name of the height channel
+            %       Radius - The radius within which the surface fit is determined for each area
+            %
+            %   Output:
+            %       slope - The local slope as a first-order surface fit
+            %       curvature - The local curvature as a second-order surface fit
+            %       slope_direction - A map of the direction of the slope
+            
+            % Read the height image from the object using the get_channel method
+            height_channel = obj.get_channel(HeightChannelName);
+            
+            orig_num_pixels_x = height_channel.NumPixelsX;
+            orig_num_pixels_y = height_channel.NumPixelsY;
+            
+            height_channel = AFMImage.resize_channel_to_padded_same_size_per_pixel_square_image(height_channel);
+            
+            height_image = height_channel.Image;
+            scan_size_x = height_channel.ScanSizeX;
+            scan_size_y = height_channel.ScanSizeY;
+            num_pixels_x = height_channel.NumPixelsX;
+            num_pixels_y = height_channel.NumPixelsY;
+            
+            required_data_points = 6;
+            min_radius = AFMBaseClass.calculateMinimumRadius(height_channel, required_data_points);
+            if isscalar(Radius)
+                if min_radius > Radius
+                    Radius = min_radius;
+                    warning(['The ROI-Radius you chose for curvature fitting is too small. Replaced with the minimum radius of ' num2str(min_radius)]);
+                end
+            else
+                CompRadius = reshape(Radius,[],1);
+                MinRadVector = min_radius.*ones(length(CompRadius),1);
+                Radius = max([MinRadVector CompRadius],[],2);
+                if ~isequal(Radius,CompRadius)
+                    warning(['Some or all of the ROI-Radii you chose for curvature fitting are too small. Replaced with the minimum radius of ' num2str(min_radius)]);
+                end
+                TempRadiusMap = obj.convert_data_list_to_map(Radius);
+                RadiusMap = ones(size(height_image)).*min_radius;
+                RadiusMap(1:size(TempRadiusMap,1),1:size(TempRadiusMap,2)) = TempRadiusMap;
+            end
+            
+            % Calculate the pixel size in x and y directions
+            pixel_size_x = scan_size_x / (num_pixels_x - 1);
+            pixel_size_y = scan_size_y / (num_pixels_y - 1);
+            
+            % Initialize the output matrices
+            slope = zeros(num_pixels_y, num_pixels_x);
+            radius_of_curvature = zeros(num_pixels_y, num_pixels_x);
+            slope_direction = zeros(num_pixels_y, num_pixels_x);
+            
+            PixRadiusX = round(Radius/pixel_size_x);
+            PixRadiusY = round(Radius/pixel_size_y);
+            
+            
+            % Initialize the warning count
+            warningCount = struct('fitPlaneWarnings', 0, 'fitParaboloidWarnings', 0);
+            
+            % Suppress warnings for fitting functions
+            plane_warning_state = warning('off', 'MATLAB:rankDeficientMatrix');
+            singular_matrix_warning_state = warning('off', 'MATLAB:singularMatrix');
+            ill_conditioned_matrix_warning_state = warning('off', 'MATLAB:nearlySingularMatrix');
+            
+            
+            
+            % Loop through each pixel in the height image
+            for i = 1:num_pixels_y
+                for j = 1:num_pixels_x
+                    if ~isscalar(Radius)
+                        PixRadiusX = round(RadiusMap(i,j)/pixel_size_x);
+                        PixRadiusY = round(RadiusMap(i,j)/pixel_size_y);
+                    end
+                    % Determine the region of interest (ROI) around the current pixel
+                    [x_roi, y_roi] = meshgrid(max(1, j-PixRadiusX):min(num_pixels_x, j+PixRadiusX), ...
+                        max(1, i-PixRadiusY):min(num_pixels_y, i+PixRadiusY));
+                    
+                    % Extract the height values within the ROI
+                    z_roi = height_image(sub2ind(size(height_image), y_roi(:), x_roi(:)));
+                    
+                    % Fit a first-order surface (plane) to the ROI data
+                    [p1, ~, ~, ~, plane_warnings] = AFMBaseClass.fitPlane(x_roi(:) * pixel_size_x, y_roi(:) * pixel_size_y, z_roi);
+                    warningCount.fitPlaneWarnings = warningCount.fitPlaneWarnings + plane_warnings;
+            
+                    % Fit a second-order surface (paraboloid) to the ROI data
+                    [p2, ~, ~, ~, paraboloid_warnings] = AFMBaseClass.fitParaboloid(x_roi(:) * pixel_size_x, y_roi(:) * pixel_size_y, z_roi);
+                    warningCount.fitParaboloidWarnings = warningCount.fitParaboloidWarnings + paraboloid_warnings;
+            
+                    % Calculate the local slope and curvature at the current pixel
+                    temp_slope(i, j) = norm(p1(1:2));
+                    temp_radius_of_curvature(i, j) = sign(p2(1) + p2(2))/sqrt(p2(1)^2 + p2(2)^2);
+                    
+                    % Calculate the slope direction and convert it to degrees
+                    temp_slope_direction(i, j) = atan2d(p1(2), p1(1));
+                end
+            end
+            % Restore the original warning state
+            warning(plane_warning_state);
+            warning(singular_matrix_warning_state);
+            warning(ill_conditioned_matrix_warning_state);
+            
+            slope = temp_slope(1:orig_num_pixels_x,1:orig_num_pixels_y);
+            slope_direction = temp_slope_direction(1:orig_num_pixels_x,1:orig_num_pixels_y);
+            radius_of_curvature = temp_radius_of_curvature(1:orig_num_pixels_x,1:orig_num_pixels_y);
+            
+            CorrectedRadius = Radius;
+            
+        end
+        
+        function localSurfaceFit_ClassWrapper(obj, HeightChannelName, Radius, KeepOldResults)
+            
+            % Calculate the metrics
+            [slope, radius_of_curvature, slope_direction, CorrectedRadius] = localSurfaceFit(obj, HeightChannelName, Radius);
+            
+            % Determine Channel Names
+            if isscalar(CorrectedRadius)
+                LRoC_Name = sprintf('Local Radius of Curvature Kernel-R. = %.2e',CorrectedRadius);
+                S_Name = sprintf('Local Slope Kernel-R. = %.2e',CorrectedRadius);
+                SD_Name = sprintf('Local Slope Direction Kernel-R. = %.2e',CorrectedRadius);
+            else
+                LRoC_Name = 'Dynamic Kernel Radius of Curvature';
+                S_Name = 'Dynamic Kernel Slope';
+                SD_Name = 'Dynamic Kernel Slope Direction';
+            end
+            
+            % Write new Channels
+            obj.add_channel(...
+                obj.create_standard_channel(radius_of_curvature,LRoC_Name,'m'), ~KeepOldResults);
+            obj.add_channel(...
+                obj.create_standard_channel(slope,S_Name,'m/m'), ~KeepOldResults);
+            obj.add_channel(...
+                obj.create_standard_channel(slope_direction,SD_Name,'°'), ~KeepOldResults);
+            
+        end
+        
+        function create_logical_mask_channel_from_segment(obj,SegmentName,MaskName,DilationMeters)
+            
+            if nargin < 4
+                DilationMeters = 0;
+            end
+            
+            Indices = find(contains({obj.Segment.Name},SegmentName));
+            
+            Mask = zeros(obj.NumPixelsX,obj.NumPixelsY);
+            
+            F = figure;
+            imshow(Mask)
+            
+            for i=Indices
+                CurrentDrawMode = lower(obj.Segment(i).Type);
+                switch CurrentDrawMode
+                    case 'line'
+                        ROIObjects{i} = drawline('Position',obj.Segment(i).ROIObject.Position);
+                    case 'freehand'
+                        ROIObjects{i} = drawfreehand('Position',obj.Segment(i).ROIObject.Position);
+                    case 'square'
+                        ROIObjects{i} = drawsquare('Position',obj.Segment(i).ROIObject.Position);
+                    case 'circle'
+                        ROIObjects{i} = drawcircle('Center',obj.Segment(i).ROIObject.Center,...
+                            'Radius',obj.Segment(i).ROIObject.Radius);
+                    case 'ellipse'
+                        ROIObjects{i} = drawellipse('Center',obj.Segment(i).ROIObject.Center,...
+                            'SemiAxes',obj.Segment(i).ROIObject.SemiAxes,...
+                            'RotationAngle',obj.Segment(i).ROIObject.RotationAngle);
+                    case 'polygon'
+                        ROIObjects{i} = drawpolygon('Position',obj.Segment(i).ROIObject.Position);
+                    case 'rectangle'
+                        ROIObjects{i} = drawrectangle('Position',obj.Segment(i).ROIObject.Position);
+                    case 'crosshair'
+                        ROIObjects{i} = drawcrosshair('Position',obj.Segment(i).ROIObject.Position);
+                    case 'point'
+                        ROIObjects{i} = drawpoint('Position',obj.Segment(i).ROIObject.Position);
+                    case 'assisted'
+                        ROIObjects{i} = drawassisted('Position',obj.Segment(i).ROIObject.Position);
+                    case 'polyline'
+                        ROIObjects{i} = drawpolyline('Position',obj.Segment(i).ROIObject.Position);
+                end
+                TempMask = ROIObjects{i}.createMask;
+                
+                if DilationMeters ~= 0
+                    %TODO Implement size specific pixel dilation
+                    TempMask = TempMask;
+                end
+                
+                Mask = Mask | TempMask;
+            end
+            
+            MaskChan = obj.create_standard_channel(Mask,MaskName,'logical');
+            
+            obj.add_channel(MaskChan,true);
+            
+            close(F)
+        end
+        
     end
     methods (Static)
         % Static main methods
         
+        function OutImage = deconvolute_by_mathematical_morphology_python(InImage, ErodingGeometry)
+            % Make sure Python is properly set up in MATLAB by running "pyversion" command in MATLAB
+            % Save the Python function in a file named "run_deconvolution.py"
+            
+            % Find the full path of the Python file on the MATLAB search path
+            python_file_path = which('run_deconvolution.py');
+            
+            if isempty(python_file_path)
+                error('run_deconvolution.py not found on the MATLAB search path.');
+            end
+            
+            % Extract the directory containing the Python file
+            python_file_dir = fileparts(python_file_path);
+            
+            % Convert MATLAB arrays to Python numpy arrays
+            InImage_np = py.numpy.array(InImage);
+            ErodingGeometry_np = py.numpy.array(ErodingGeometry);
+            
+            % Call the Python function
+            OutImage_np = py.run_deconvolution.run_deconvolution(python_file_dir, InImage_np, ErodingGeometry_np);
+            
+            % Convert the result back to a MATLAB array
+            OutImage = double(OutImage_np);
+        end
+
         function OutImage = deconvolute_by_mathematical_morphology(InImage,ErodingGeometry)
             
             if ~isequal(size(InImage),size(ErodingGeometry))
@@ -1517,6 +2170,13 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             
             OutChannel = InChannel;
             
+            if length(TargetRes) == 2
+                OutChannel.Image = imresize(InChannel.Image,[TargetRes(1) TargetRes(2)],'bilinear');
+                OutChannel.NumPixelsX = size(OutChannel.Image,1);
+                OutChannel.NumPixelsY = size(OutChannel.Image,2);
+                return
+            end
+            
             if ~TransformToSquare
                 OutChannel.Image = imresize(InChannel.Image,TargetRes/InChannel.NumPixelsX,'bilinear');
                 OutChannel.NumPixelsX = size(OutChannel.Image,1);
@@ -1536,8 +2196,8 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             % New Image will have aspect ratio according to the ratio of
             % ScanSizeX and ScanSizeY
             
-            SizePerPixelX = InChannel.ScanSizeX./InChannel.NumPixelsX;
-            SizePerPixelY = InChannel.ScanSizeY./InChannel.NumPixelsY;
+            SizePerPixelX = InChannel.ScanSizeY./InChannel.NumPixelsX;
+            SizePerPixelY = InChannel.ScanSizeX./InChannel.NumPixelsY;
             
             OutChannel = InChannel;
             
@@ -1546,21 +2206,21 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
                 YMultiplier = 1;
                 return
             elseif SizePerPixelX > SizePerPixelY
-                NewNumPixels = round(InChannel.ScanSizeX*InChannel.NumPixelsY/InChannel.ScanSizeY);
-                OutChannel.Image = imresize(InChannel.Image,[InChannel.NumPixelsY NewNumPixels],'bilinear');
+                NewNumPixels = round(InChannel.ScanSizeY*InChannel.NumPixelsY/InChannel.ScanSizeX);
+                OutChannel.Image = imresize(InChannel.Image,[NewNumPixels InChannel.NumPixelsY],'bilinear');
                 OutChannel.NumPixelsX = NewNumPixels;
                 XMultiplier = OutChannel.NumPixelsX/InChannel.NumPixelsX;
                 YMultiplier = 1;
             elseif SizePerPixelY > SizePerPixelX
-                NewNumPixels = round(InChannel.ScanSizeY*InChannel.NumPixelsX/InChannel.ScanSizeX);
-                OutChannel.Image = imresize(InChannel.Image,[NewNumPixels InChannel.NumPixelsX],'bilinear');
+                NewNumPixels = round(InChannel.ScanSizeX*InChannel.NumPixelsX/InChannel.ScanSizeY);
+                OutChannel.Image = imresize(InChannel.Image,[InChannel.NumPixelsX NewNumPixels],'bilinear');
                 OutChannel.NumPixelsY = NewNumPixels;
                 YMultiplier = OutChannel.NumPixelsY/InChannel.NumPixelsY;
                 XMultiplier = 1;
             end
         end
         
-        function OutChannel = resize_channel_to_padded_same_size_per_pixel_square_image(InChannel,varargin)
+        function [OutChannel,XMultiplier,YMultiplier] = resize_channel_to_padded_same_size_per_pixel_square_image(InChannel,varargin)
             % function OutChannel = resize_channel_to_padded_same_size_per_pixel_square_image(InChannel,varargin)
             %
             % <FUNCTION DESCRIPTION HERE>
@@ -1598,7 +2258,7 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             TargetResolution = p.Results.TargetResolution;
             
             % First, equalize the size-per-pixel relation
-            OutChannel = AFMBaseClass.resize_channel_to_same_size_per_pixel(InChannel);
+            [OutChannel,XMultiplier,YMultiplier] = AFMBaseClass.resize_channel_to_same_size_per_pixel(InChannel);
             
             if isequal(lower(PaddingType),'min')
                 PaddingValue = min(OutChannel.Image,[],'all');
@@ -1611,14 +2271,14 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             %Padd the side wih less pixels
             if OutChannel.NumPixelsX < OutChannel.NumPixelsY
                 PixelDiff = OutChannel.NumPixelsY - OutChannel.NumPixelsX;
-                OutChannel.Image(:,end+1:end+PixelDiff) = PaddingValue;
+                OutChannel.Image(end+1:end+PixelDiff,:) = PaddingValue;
                 OutChannel.NumPixelsX = OutChannel.NumPixelsY;
-                OutChannel.ScanSizeX = OutChannel.ScanSizeY;
+                OutChannel.ScanSizeY = OutChannel.ScanSizeX;
             else
                 PixelDiff = OutChannel.NumPixelsX - OutChannel.NumPixelsY;
-                OutChannel.Image(end+1:end+PixelDiff,:) = PaddingValue;
+                OutChannel.Image(:,end+1:end+PixelDiff) = PaddingValue;
                 OutChannel.NumPixelsY = OutChannel.NumPixelsX;
-                OutChannel.ScanSizeY = OutChannel.ScanSizeX;
+                OutChannel.ScanSizeX = OutChannel.ScanSizeY;
             end
             
             OutChannel = AFMBaseClass.resize_channel(OutChannel,TargetResolution,true);
@@ -1733,7 +2393,7 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
                     'KeepResolution',KeepResolution);
             end
             
-             
+            
             if ~KeepResolution
                 InChannel
             end
@@ -1773,6 +2433,165 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             
         end
         
+        function OutChannel = rotate_channel(InChannel,RotDegrees)
+            
+            OutChannel = InChannel;
+            
+            if rem(abs(RotDegrees),90) ~= 0
+                error('At this point only multiples of 90° rotations have been implemented')
+            end
+            
+            OutChannel.Image = imrotate(InChannel.Image,RotDegrees);
+            
+        end
+        
+        function OutChannel = set_freehand_area_in_channel_to_value(InChannel, Value)
+            
+            F = figure('Color','w');
+            imshow(InChannel.Image,[])
+            colormap(AFMImage.define_afm_color_map)
+            
+            ROI = drawfreehand;
+            
+            Mask = ROI.createMask;
+            
+            OutChannel = InChannel;
+            OutChannel.Image(Mask) = Value;
+            
+            imshowpair(InChannel.Image, OutChannel.Image, 'Montage')
+            colormap(AFMImage.define_afm_color_map)
+            
+        end
+        
+        function TagList = split_tags_string(TagString)
+            
+            TagList = split(TagString,'**');
+            
+            TagList = unique(TagList);
+            
+            % Remove empty cells from the TagList
+            emptyCells = cellfun(@isempty, TagList);
+            TagList = TagList(~emptyCells);
+        end
+        
+        function [coeffs, x_fit, z_fit, y_fit, warnings] = fitPlane(x, y, z)
+            %FITPLANE Fits a first-order surface (plane) to the input data
+            %   Input:
+            %       x, y, z - The input data points
+            %
+            %   Output:
+            %       coeffs
+            %       coeffs - The coefficients of the fitted plane
+            %       x_fit, z_fit - The fitted x and z values
+            
+            % Standardize x and y values
+            x_mean = mean(x);
+            x_std = std(x);
+            y_mean = mean(y);
+            y_std = std(y);
+            x_stdized = (x - x_mean) / x_std;
+            y_stdized = (y - y_mean) / y_std;
+            
+            % Formulate the design matrix A and the observation vector b
+            A = [x_stdized, y_stdized, ones(size(x))];
+            b = z;
+            
+            % Solve the least squares problem to find the coefficients of the fitted plane
+            coeffs_std = A \ b;
+            
+            % Back-transform the coefficients to the original scale
+            coeffs = zeros(3, 1);
+            coeffs(1) = coeffs_std(1) / x_std;
+            coeffs(2) = coeffs_std(2) / y_std;
+            coeffs(3) = coeffs_std(3) - coeffs_std(1) * x_mean - coeffs_std(2) * y_mean;
+            
+            % Calculate the fitted x and z values in the original scale
+            x_fit = x;
+            y_fit = y;
+            z_fit = coeffs(1) * x + coeffs(2) * y + coeffs(3);
+            
+            
+            % Count rank deficient warnings
+            [~, warnings] = lastwarn;
+            warnings = double(contains(warnings, 'rankDeficientMatrix')) + double(contains(warnings, 'singularMatrix'));
+        end
+        
+        function [coeffs, X_fit, Y_fit, Z_fit, warnings] = fitParaboloid(x, y, z)
+            %FITPARABOLOID Fits a second-order surface (paraboloid) to the input data
+            % Input:
+            % x, y, z - The input data points
+            %
+            % Output:
+            % coeffs - The coefficients of the fitted paraboloid
+            % X_fit, Y_fit, Z_fit - The fitted x, y, and z values
+            
+            % Standardize x and y values
+            x_mean = mean(x);
+            x_std = std(x);
+            y_mean = mean(y);
+            y_std = std(y);
+            x_stdized = (x - x_mean) / x_std;
+            y_stdized = (y - y_mean) / y_std;
+            
+            % Formulate the design matrix A and the observation vector b
+            A = [x_stdized.^2, y_stdized.^2, x_stdized.*y_stdized, x_stdized, y_stdized, ones(size(x))];
+            b = z;
+            
+            % Solve the least squares problem to find the coefficients of the fitted paraboloid
+            coeffs_std = A \ b;
+            
+            % Back-transform the coefficients to the original scale
+            coeffs = zeros(6, 1);
+            coeffs(1) = coeffs_std(1) / (x_std^2);
+            coeffs(2) = coeffs_std(2) / (y_std^2);
+            coeffs(3) = coeffs_std(3) / (x_std * y_std);
+            coeffs(4) = coeffs_std(4) / x_std - 2 * coeffs_std(1) * x_mean / x_std + coeffs_std(3) * y_mean / y_std;
+            coeffs(5) = coeffs_std(5) / y_std - 2 * coeffs_std(2) * y_mean / y_std + coeffs_std(3) * x_mean / x_std;
+            coeffs(6) = coeffs_std(6) - coeffs_std(1) * x_mean^2 - coeffs_std(2) * y_mean^2 - coeffs_std(3) * x_mean * y_mean + coeffs_std(4) * x_mean + coeffs_std(5) * y_mean;
+            
+            % Create a meshgrid for X and Y coordinates
+            [X_fit, Y_fit] = meshgrid(linspace(min(x), max(x), 100), linspace(min(y), max(y), 100));
+            
+            % Calculate the fitted Z values using the fit coefficients and meshgrid
+            Z_fit = coeffs(1) * X_fit.^2 + coeffs(2) * Y_fit.^2 + coeffs(3) * X_fit .* Y_fit + coeffs(4) * X_fit + coeffs(5) * Y_fit + coeffs(6);
+            
+            
+            % Count rank deficient warnings
+            [~, warnings] = lastwarn;
+            warnings = double(contains(warnings, 'rankDeficientMatrix')) + double(contains(warnings, 'singularMatrix'));
+        end
+        
+        function min_radius = calculateMinimumRadius(Channel, required_data_points)
+            %CALCULATEMINIMUMRADIUS Calculates the minimum radius required for fitting a second-order surface
+            %   This function takes an AFMBaseClass object instance (obj) and the required number of data points
+            %   for fitting a second-order surface as input and calculates the minimum radius based on the grid
+            %   spacing in the x and y directions.
+            %
+            %   Input:
+            %       Channel - An AFMBaseClass channel
+            %       required_data_points - The required number of data points for fitting a second-order surface
+            %
+            %   Output:
+            %       min_radius - The minimum radius required for fitting a second-order surface
+            
+            % Get the grid spacing in the x and y directions
+            num_pixels_x = Channel.NumPixelsX;
+            num_pixels_y = Channel.NumPixelsY;
+            scan_size_x = Channel.ScanSizeX;
+            scan_size_y = Channel.ScanSizeY;
+            
+            grid_spacing_x = scan_size_x / (num_pixels_x - 1);
+            grid_spacing_y = scan_size_y / (num_pixels_y - 1);
+            
+            % Calculate the minimum radius in the x and y directions
+            min_radius_x = grid_spacing_x*ceil(sqrt(required_data_points / (num_pixels_y - 1)));
+            min_radius_y = grid_spacing_y*ceil(sqrt(required_data_points / (num_pixels_x - 1)));
+            
+            % Take the maximum of the two minimum radii to ensure enough data points
+            min_radius = max(min_radius_x, min_radius_y);
+        end
+
+
     end
     methods (Static)
         % Static auxiliary methods
@@ -1843,17 +2662,17 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
                     DistanceMatrix(i,j) = norm(SearchedPoints1(i,:) - SearchedPoints2(j,:));
                 end
             end
-                
+            
             k = 1;
             while ~isempty(DistanceMatrix)
                 [~,LinIdx] = min(DistanceMatrix,[],'all','linear');
                 [row,col] = ind2sub(size(DistanceMatrix),LinIdx);
                 IndexPairs(k,:) = [IndexListSeg1(row) ; IndexListSeg2(col)];
-%                 % Debug
-%                 plot(SearchedPoints1(IndexListSeg1,1),SearchedPoints1(IndexListSeg1,2),'bO',...
-%                     SearchedPoints2(IndexListSeg2,1),SearchedPoints2(IndexListSeg2,2),'rO',...
-%                     SearchedPoints1(row,1),SearchedPoints1(row,2),'bX',SearchedPoints2(col,1),SearchedPoints2(col,2),'rX')
-%                 drawnow
+                %                 % Debug
+                %                 plot(SearchedPoints1(IndexListSeg1,1),SearchedPoints1(IndexListSeg1,2),'bO',...
+                %                     SearchedPoints2(IndexListSeg2,1),SearchedPoints2(IndexListSeg2,2),'rO',...
+                %                     SearchedPoints1(row,1),SearchedPoints1(row,2),'bX',SearchedPoints2(col,1),SearchedPoints2(col,2),'rX')
+                %                 drawnow
                 IndexListSeg1(row) = [];
                 IndexListSeg2(col) = [];
                 DistanceMatrix(row,:) = [];
@@ -1869,15 +2688,26 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             
         end
         
-        function [OutSegment,Index] = find_matching_segment(SegmentElement,SegmentStruct)
+        function [OutSegment, Index] = find_matching_segment(SegmentElement, SegmentStruct)
             
-            TargetName = SegmentElement.Name;
-            TargetSubName = SegmentElement.SubSegmentName;
-            
-            NameList = {SegmentStruct.Name};
-            SubNameList = {SegmentStruct.SubSegmentName};
-            
-            Index = find(strcmp({TargetName},NameList) & strcmp(TargetSubName,SubNameList));
+            if isstruct(SegmentElement)
+                TargetName = SegmentElement.Name;
+                TargetSubName = SegmentElement.SubSegmentName;
+                
+                NameList = {SegmentStruct.Name};
+                SubNameList = {SegmentStruct.SubSegmentName};
+                
+                Index = find(strcmp(TargetName, NameList) & strcmp(TargetSubName, SubNameList));
+                
+            elseif ischar(SegmentElement) || isstring(SegmentElement)
+                TargetName = char(SegmentElement); % Convert to char if input is a string
+                
+                NameList = {SegmentStruct.Name};
+                
+                Index = find(strcmp(TargetName, NameList));
+            else
+                error('Invalid input: SegmentElement must be a struct, character, or string.');
+            end
             
             if isempty(Index)
                 Index = [];
@@ -1921,7 +2751,7 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             
         end
         
-        function map_segment_properties_to_image_pixels(obj,PoolingMethod)
+        function map_fiber_segment_properties_to_image_pixels(obj,PoolingMethod)
             
             if nargin < 2
                 PoolingMethod = 'Median';
@@ -1942,17 +2772,26 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
                 'Mean_AspectRatioBaseHeight','Median_AspectRatioBaseHeight',...
                 'AreaDerivedDiameter','Mean_AreaDerivedDiameter',...
                 'Median_AreaDerivedDiameter',...
+                'Ellipse_a','Mean_Ellipse_a','Median_Ellipse_a',...
+                'Ellipse_b','Mean_Ellipse_b','Median_Ellipse_b',...
+                'Ellipse_AspectRatio','Mean_Ellipse_AspectRatio',...
+                'Median_Ellipse_AspectRatio',...
+                'Ellipse_Area','Mean_Ellipse_Area','Median_Ellipse_Area',...
+                'Ellipse_Height','Mean_Ellipse_Height',...
+                'Median_Ellipse_Height',...
+                'Ellipse_WidthHalfHeight','Mean_Ellipse_WidthHalfHeight',...
+                'Median_Ellipse_WidthHalfHeight',...
                 'RelativePixelPosition','RelativePosition'};
             
             switch PoolingMethod
                 case 'Mean'
-                    PoolingFcn = @(x)nanmean(x);
+                    PoolingFcn = @(x)mean(x,'omitnan');
                 case 'Median'
-                    PoolingFcn = @(x)nanmedian(x);
+                    PoolingFcn = @(x)median(x,'omitnan');
                 case 'Max'
-                    PoolingFcn = @(x)nanmax(x);
+                    PoolingFcn = @(x)max(x,'omitnan');
                 case 'Min'
-                    PoolingFcn = @(x)nanmin(x);
+                    PoolingFcn = @(x)min(x,'omitnan');
             end
             
             h = waitbar(0,'setting up...',...
@@ -2000,9 +2839,9 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
                     Indizes = find(CorrespondingPixelIndex(:,1) == CurrentPixel(1) &...
                         CorrespondingPixelIndex(:,2) == CurrentPixel(2));
                     if CurrentPixel(1) < 1 ||...
-                            CurrentPixel(1) > obj.NumPixelsX ||...
+                            CurrentPixel(1) > obj.NumPixelsY ||...
                             CurrentPixel(2) < 1 ||...
-                            CurrentPixel(2) > obj.NumPixelsY
+                            CurrentPixel(2) > obj.NumPixelsX
                         Processed(Indizes) = true;
                         continue
                     end
@@ -2019,23 +2858,68 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
                         end
                         try
                         obj.(['FiberSegment_' FieldsList{j}])...
-                            (obj.Map2List(CurrentPixel(1),CurrentPixel(2))) = PooledValue;
+                            (obj.Map2List(CurrentPixel(2),CurrentPixel(1))) = PooledValue;
                         catch
                             warning("Couldn't assign property")
                             i
                             j
                         end
                     end
-                    obj.SegmentName{obj.Map2List(CurrentPixel(1),CurrentPixel(2))} =...
+                    obj.SegmentName{obj.Map2List(CurrentPixel(2),CurrentPixel(1))} =...
                         obj.Segment(i).Name;
-                    obj.SubSegmentName{obj.Map2List(CurrentPixel(1),CurrentPixel(2))} =...
+                    obj.SubSegmentName{obj.Map2List(CurrentPixel(2),CurrentPixel(1))} =...
                         obj.Segment(i).SubSegmentName;
-                    obj.SubSegmentFullName{obj.Map2List(CurrentPixel(1),CurrentPixel(2))} =...
+                    obj.SubSegmentFullName{obj.Map2List(CurrentPixel(2),CurrentPixel(1))} =...
                         [obj.Segment(i).Name '-' obj.Segment(i).SubSegmentName];
                     Processed(Indizes) = true;
                 end
             end
             close(h)
+        end
+        
+        function map_segments_to_image_pixels(obj)
+            
+            h = waitbar(0,'setting up...',...
+                'Name',obj.Name);
+            
+            
+            F = figure;
+            
+            ROIObjects = obj.draw_segments_to_figure(F);
+            
+            % initialize object properties
+            obj.SegmentName = cell(obj.NumPixelsX*obj.NumPixelsY,1);
+            obj.SubSegmentName = cell(obj.NumPixelsX*obj.NumPixelsY,1);
+            obj.SubSegmentFullName = cell(obj.NumPixelsX*obj.NumPixelsY,1);
+            [obj.SegmentName(:)] = {''};
+            [obj.SubSegmentName(:)] = {''};
+            [obj.SubSegmentFullName(:)] = {''};
+            
+            NumSegments = numel(obj.Segment);
+            
+            UniqueMask = zeros(obj.NumPixelsX,obj.NumPixelsY);
+            UnionMask = zeros(obj.NumPixelsX,obj.NumPixelsY);
+            
+            for i=1:NumSegments
+                waitbar(i/NumSegments,h,obj.Segment(i).Name,...
+                    'Name',obj.Name)
+                if ~isfield(obj.Segment(i),'ROIObject') ||...
+                        isempty(obj.Segment(i).ROIObject)
+                    continue
+                end
+                CurMask = ROIObjects{i}.createMask;
+%                 CurList = obj.convert_map_to_data_list(CurMask);
+%                 [obj.UnionSegmentName(CurList)] = {obj.Segment(i).Name};
+                UniqueMask = xor(CurMask,UniqueMask);
+%                 [obj.UniqueSegmentName(CurList)] = {obj.Segment(i).Name};
+            end
+            for i=1:NumSegments
+                CurMask = ROIObjects{i}.createMask;
+                UniqueList = obj.convert_map_to_data_list(UniqueMask & CurMask);
+                [obj.UniqueSegmentName(CurList)] = {obj.Segment(i).Name};
+            end
+            close(h)
+            
         end
         
         function [DynPropNames,ChannelNames] = write_unrolled_channels_to_dynamic_properties(obj)
@@ -2077,6 +2961,299 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
                 end
             end
         end
+        
+        function [ROIObjects,F] = draw_segments_to_figure(obj,F)
+            
+            if nargin < 2
+                F = figure;
+            end
+            
+            NumSegments = numel(obj.Segment);
+            ROIObjects = cell(NumSegments,1);
+            
+            Image = zeros(obj.NumPixelsX,obj.NumPixelsY);
+            
+            gcf = F;
+            imshow(Image)
+            
+            for i=1:NumSegments
+                if ~isfield(obj.Segment(i),'ROIObject') ||...
+                        isempty(obj.Segment(i).ROIObject)
+                    continue
+                end
+                CurrentDrawMode = obj.Segment(i).Type;
+                switch CurrentDrawMode
+                    case 'line'
+                        ROIObjects{i} = drawline('Position',obj.Segment(i).ROIObject.Position,...
+                            'Deletable',1,...
+                            'InteractionsAllowed','all',...
+                            'LineWidth',obj.Segment(i).ROIObject.LineWidth,...
+                            'Label',sprintf('%s || %s',obj.Segment(i).Name,obj.Segment(i).SubSegmentName),...
+                            'LabelAlpha',0.6);
+                    case 'freehand'
+                        ROIObjects{i} = drawfreehand('Position',obj.Segment(i).ROIObject.Position,...
+                            'Deletable',1,...
+                            'InteractionsAllowed','all',...
+                            'LineWidth',obj.Segment(i).ROIObject.LineWidth,...
+                            'Label',sprintf('%s || %s',obj.Segment(i).Name,obj.Segment(i).SubSegmentName),...
+                            'LabelAlpha',0.6);
+                    case 'square'
+                        ROIObjects{i} = drawsquare('Position',obj.Segment(i).ROIObject.Position,...
+                            'Deletable',1,...
+                            'InteractionsAllowed','all',...
+                            'LineWidth',obj.Segment(i).ROIObject.LineWidth,...
+                            'Label',sprintf('%s || %s',obj.Segment(i).Name,obj.Segment(i).SubSegmentName),...
+                            'LabelAlpha',0.6);
+                    case 'circle'
+                        ROIObjects{i} = drawcircle('Center',obj.Segment(i).ROIObject.Center,...
+                            'Radius',obj.Segment(i).ROIObject.Radius,...
+                            'Deletable',1,...
+                            'InteractionsAllowed','all',...
+                            'LineWidth',obj.Segment(i).ROIObject.LineWidth,...
+                            'Label',sprintf('%s || %s',obj.Segment(i).Name,obj.Segment(i).SubSegmentName),...
+                            'LabelAlpha',0.6);
+                    case 'ellipse'
+                        ROIObjects{i} = drawellipse('Center',obj.Segment(i).ROIObject.Center,...
+                            'SemiAxes',obj.Segment(i).ROIObject.SemiAxes,...
+                            'RotationAngle',obj.Segment(i).ROIObject.RotationAngle,...
+                            'Deletable',1,...
+                            'InteractionsAllowed','all',...
+                            'LineWidth',obj.Segment(i).ROIObject.LineWidth,...
+                            'Label',sprintf('%s || %s',obj.Segment(i).Name,obj.Segment(i).SubSegmentName),...
+                            'LabelAlpha',0.6);
+                    case 'polygon'
+                        ROIObjects{i} = drawpolygon('Position',obj.Segment(i).ROIObject.Position,...
+                            'Deletable',1,...
+                            'InteractionsAllowed','all',...
+                            'LineWidth',obj.Segment(i).ROIObject.LineWidth,...
+                            'Label',sprintf('%s || %s',obj.Segment(i).Name,obj.Segment(i).SubSegmentName),...
+                            'LabelAlpha',0.6);
+                    case 'rectangle'
+                        ROIObjects{i} = drawrectangle('Position',obj.Segment(i).ROIObject.Position,...
+                            'RotationAngle',obj.Segment(i).ROIObject.RotationAngle,...
+                            'Rotatable',true,...
+                            'Deletable',1,...
+                            'InteractionsAllowed','all',...
+                            'LineWidth',obj.Segment(i).ROIObject.LineWidth,...
+                            'Label',sprintf('%s || %s',obj.Segment(i).Name,obj.Segment(i).SubSegmentName),...
+                            'LabelAlpha',0.6);
+                    case 'crosshair'
+                        ROIObjects{i} = drawcrosshair('Position',obj.Segment(i).ROIObject.Position,...
+                            'Deletable',1,...
+                            'InteractionsAllowed','all',...
+                            'LineWidth',obj.Segment(i).ROIObject.LineWidth,...
+                            'Label',sprintf('%s || %s',obj.Segment(i).Name,obj.Segment(i).SubSegmentName),...
+                            'LabelAlpha',0.6);
+                    case 'point'
+                        ROIObjects{i} = drawpoint('Position',obj.Segment(i).ROIObject.Position,...
+                            'Deletable',1,...
+                            'InteractionsAllowed','all',...
+                            'LineWidth',obj.Segment(i).ROIObject.LineWidth,...
+                            'Label',sprintf('%s || %s',obj.Segment(i).Name,obj.Segment(i).SubSegmentName),...
+                            'LabelAlpha',0.6);
+                    case 'assisted'
+                        ROIObjects{i} = drawassisted('Position',obj.Segment(i).ROIObject.Position,...
+                            'Deletable',1,...
+                            'InteractionsAllowed','all',...
+                            'LineWidth',obj.Segment(i).ROIObject.LineWidth,...
+                            'Label',sprintf('%s || %s',obj.Segment(i).Name,obj.Segment(i).SubSegmentName),...
+                            'LabelAlpha',0.6);
+                    case 'polyline'
+                        ROIObjects{i} = drawpolyline('Position',obj.Segment(i).ROIObject.Position,...
+                            'Deletable',1,...
+                            'InteractionsAllowed','all',...
+                            'LineWidth',obj.Segment(i).ROIObject.LineWidth,...
+                            'Label',sprintf('%s || %s',obj.Segment(i).Name,obj.Segment(i).SubSegmentName),...
+                            'LabelAlpha',0.6);
+                end
+            end
+            
+        end
+        
+        function visualize_curvature(obj,varargin)
+            % function visualize_curvature(obj,varargin)
+            %
+            % <FUNCTION DESCRIPTION HERE>
+            %
+            %
+            % Required inputs
+            % obj ... <VARIABLE DESCRIPTION>
+            %
+            % Optional inputs
+            % ZSpacingFactor ... <OPTIONAL POSITIONAL VARIABLE DESCRIPTION>
+            % HeightChannelName ... <OPTIONAL POSITIONAL VARIABLE DESCRIPTION>
+            % SurfFitChannelKeyphrase ... <OPTIONAL POSITIONAL VARIABLE DESCRIPTION>
+            
+            p = inputParser;
+            p.FunctionName = "visualize_curvature";
+            p.CaseSensitive = false;
+            p.PartialMatching = true;
+            
+            % Required inputs
+            validobj = @(x)true;
+            addRequired(p,"obj",validobj);
+            
+            % Optional positional inputs
+            defaultZSpacingFactor = 5;
+            defaultHeightChannelName = 'Processed';
+            defaultSurfFitChannelKeyphrase = '';
+            validZSpacingFactor = @(x)true;
+            validHeightChannelName = @(x)true;
+            validSurfFitChannelKeyphrase = @(x)true;
+            addParameter(p,"ZSpacingFactor",defaultZSpacingFactor,validZSpacingFactor);
+            addParameter(p,"HeightChannelName",defaultHeightChannelName,validHeightChannelName);
+            addParameter(p,"SurfFitChannelKeyphrase",defaultSurfFitChannelKeyphrase,validSurfFitChannelKeyphrase);
+            
+            parse(p,obj);
+            
+            % Assign parsing results to named variables
+            obj = p.Results.obj;
+            ZSpacingFactor = p.Results.ZSpacingFactor;
+            HeightChannelName = p.Results.HeightChannelName;
+            SurfFitChannelKeyphrase = p.Results.SurfFitChannelKeyphrase;
+            
+            
+            
+            heightChannel = obj.get_channel(HeightChannelName);
+            
+            % Determine which SurfFit channels should be displayed if there
+            % are multiple.
+            PossibleChannels = contains({obj.Channel.Name},'Radius of Curvature') & contains({obj.Channel.Name},SurfFitChannelKeyphrase);
+            if ~any(PossibleChannels)
+                PossibleChannels = contains({obj.Channel.Name},'Radius of Curvature');
+                if ~any(PossibleChannels)
+                    error('No surface topography channels found');
+                end
+            end
+            ChannelIndex = find(PossibleChannels);
+            radiusOfCurvatureChannel = obj.Channel(ChannelIndex(1));
+            
+            PossibleChannels = contains({obj.Channel.Name},'Slope') & contains({obj.Channel.Name},SurfFitChannelKeyphrase);
+            if ~any(PossibleChannels)
+                PossibleChannels = contains({obj.Channel.Name},'Slope');
+                if ~any(PossibleChannels)
+                    error('No surface topography channels found');
+                end
+            end
+            ChannelIndex = find(PossibleChannels);
+            slopeChannel = obj.Channel(ChannelIndex(1));
+            
+            PossibleChannels = contains({obj.Channel.Name},'Slope Direction') & contains({obj.Channel.Name},SurfFitChannelKeyphrase);
+            if ~any(PossibleChannels)
+                PossibleChannels = contains({obj.Channel.Name},'Slope Direction');
+                if ~any(PossibleChannels)
+                    error('No surface topography channels found');
+                end
+            end
+            ChannelIndex = find(PossibleChannels);
+            slopeDirectionChannel = obj.Channel(ChannelIndex(1));
+            
+            
+            
+            if nargin < 5
+                ZSpacingFactor = 1;
+            end
+            % Create the figure and set up the layout
+            fig = figure;
+            ax1 = subplot(1, 2, 1);
+            ax2 = subplot(1, 2, 2);
+            
+            % Show the height image in the bottom part of the figure
+            imshow(flipud(heightChannel.Image),[], 'Parent', ax2);
+            
+            colormap(ax2,AFMImage.define_afm_color_map);
+            
+            % Initialize the drawpoint object
+            hPoint = drawpoint(ax2, 'Position', [heightChannel.NumPixelsX/2, heightChannel.NumPixelsY/2], ...
+                'Color', 'r', 'Selected', true);
+            
+            % Set up the callback function for the drawpoint object
+            addlistener(hPoint, 'ROIMoved', @pointMoved);
+            
+            infoTextBox = uicontrol('Style', 'text', 'Position', [10, 10, 300, 80], 'BackgroundColor', 'white', 'HorizontalAlignment', 'left');
+            
+            % Function to handle the drawpoint object's position change
+            function pointMoved(src, eventData)
+                
+                position = hPoint.Position;
+                
+                % Get the position in the height image
+                xIdx = round(position(1));
+                yIdx = heightChannel.NumPixelsY - round(position(2)) + 1;
+                
+                % Get the values from the channels
+                height = heightChannel.Image(yIdx, xIdx);
+                radius = radiusOfCurvatureChannel.Image(yIdx, xIdx);
+                slope = slopeChannel.Image(yIdx, xIdx);
+                slopeDirection = slopeDirectionChannel.Image(yIdx, xIdx);
+                [heightMultiplier, heightUnit, ~] = AFMImage.parse_unit_scale(height, 'm', 1);
+                [radiusMultiplier, radiusUnit, ~] = AFMImage.parse_unit_scale(radius, 'm', 1);
+                [slopeMultiplier, slopeUnit, ~] = AFMImage.parse_unit_scale(slope, 'm/m', 1);
+                [slopeDirectionMultiplier, slopeDirectionUnit, ~] = AFMImage.parse_unit_scale(slopeDirection, '°', 1);
+                
+                
+                % Calculate the tangent plane
+                [x, y] = meshgrid(linspace(0, heightChannel.ScanSizeX, heightChannel.NumPixelsX), linspace(0, heightChannel.ScanSizeY, heightChannel.NumPixelsY));
+                z = height + slope * (cosd(slopeDirection) * (x - x(yIdx, xIdx)) + sind(slopeDirection) * (y - y(yIdx, xIdx)));
+                
+                % Calculate the sphere center
+                sphereCenter = [x(yIdx, xIdx), y(yIdx, xIdx), height + sign(radius) * abs(radius)];
+                
+                % Set up the surface plot in the top part of the figure
+                cla(ax1);
+                hold(ax1, 'on');
+                surf(ax1, x, y, heightChannel.Image, 'EdgeColor', 'none', 'FaceAlpha', 0.8);
+                colormap(ax1, AFMImage.define_afm_color_map);
+                
+                % Add this line to set the color scaling of the height map plot
+                caxis(ax1, [min(heightChannel.Image,[],'all'), max(heightChannel.Image,[],'all')]);
+                
+                num_points = 8;
+                [x_down, y_down] = meshgrid(linspace(0, heightChannel.ScanSizeX, num_points), linspace(0, heightChannel.ScanSizeY, num_points));
+                z_down = height + slope * (cosd(slopeDirection) * (x_down - x(yIdx, xIdx)) + sind(slopeDirection) * (y_down - y(yIdx, xIdx)));
+                surf(ax1, x_down, y_down, z_down, 'EdgeColor', 'k', 'FaceColor', 'g', 'FaceAlpha', 0.3);
+                
+                
+                % Plot the sphere
+                [sx, sy, sz] = sphere(50);
+                sx = sx * abs(radius) + sphereCenter(1);
+                sy = sy * abs(radius) + sphereCenter(2);
+                sz = sz * abs(radius) + sphereCenter(3);
+                
+                % Rotate the sphere about the chosen point
+                angleToRotate = atand(slope);
+                rotationAxis = [-sind(slopeDirection), cosd(slopeDirection), 0];
+                rotationCenter = [x(yIdx, xIdx), y(yIdx, xIdx), heightChannel.Image(yIdx, xIdx)];
+                [sx, sy, sz] = rotateSphere(sx, sy, sz, rotationCenter, rotationAxis, angleToRotate);
+                
+                surf(ax1, sx, sy, sz, 'EdgeColor', 'k', 'FaceColor', 'r', 'FaceAlpha', 0.3);
+                
+                % Adjust the axis settings
+                axis(ax1, 'equal');
+                xlim(ax1, [0 heightChannel.ScanSizeX]);
+                ylim(ax1, [0 heightChannel.ScanSizeY]);
+                Spacer = range(heightChannel.Image,'all').*ZSpacingFactor;
+                zlim(ax1, [min(heightChannel.Image,[],'all')-Spacer max(heightChannel.Image,[],'all')+Spacer])
+                hold(ax1, 'off');
+                view(ax1, 3);
+                xlabel(ax1, 'x');
+                ylabel(ax1, 'y');
+                zlabel(ax1, 'z');
+                title(ax1, 'Height map, tangent plane, and sphere');
+                infoText = sprintf('Height: %.3f %s\nRadius: %.3f %s\nSlope: %.3f %s\nSlope Direction: %.3f %s', ...
+                    height * heightMultiplier, heightUnit, ...
+                    radius * radiusMultiplier, radiusUnit, ...
+                    slope * slopeMultiplier, slopeUnit, ...
+                    slopeDirection * slopeDirectionMultiplier, slopeDirectionUnit);
+                
+                set(infoTextBox, 'String', infoText);
+                
+            end
+            % Call the pointMoved function to update the visualization initially
+            pointMoved();
+            
+        end
+        
         
     end
 end

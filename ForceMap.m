@@ -61,7 +61,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
         StashedSelectedCurves = [] % In some calculations, SelectedCurves is changed temporarily inside a method.
                               % Actual Selction is stored and then restored from here
         CorruptedCurves = [] % Curves that cant be loaded
-        TipRadius = 8  % (nominal, if not otherwise calculated) tip radius in nm for the chosen type of tip model
+        TipRadius = 10e-9  % (nominal, if not otherwise calculated) tip radius in m for the chosen type of tip model
         PoissonR = 0.5  % standard Poisson ratio for most mechanical models
         Medium = ''
         FibrilFlag = []
@@ -326,7 +326,12 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
             File = Split{end};
             % If file path had a leading filesep, add it back in
             if isequal(obj.RawDataFilePath(1),filesep)
-                Folder = strcat(filesep,Folder);
+                if isequal(obj.RawDataFilePath(2),filesep)
+                    Folder = strcat(filesep,Folder);
+                    Folder = strcat(filesep,Folder);
+                else
+                    Folder = strcat(filesep,Folder);
+                end
             end
             cd(Folder)
             obj.OpenZipFile = py.zipfile.ZipFile(File);
@@ -1290,14 +1295,15 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
         
         function E = calculate_e_mod_hertz(obj,CPType,TipShape,LowerCurveFraction,...
                 UpperCurveFraction,AllowXShift,CorrectSensitivity,UseTipData,...
-                UseTopology,TipObject,DataWeightByDistanceBool,...
+                UseTopography,TipObject,DataWeightByDistanceBool,...
                 SortHeightDataForFit,FitDegreeForSneddonPolySurf,...
                 LowerForceCutoff,UpperForceCutoff,...
                 SensitivityCorrectionMethod,...
-                KeepOldResults)
+                KeepOldResults,TopographyHeightChannelName,...
+                ThinFilmMode,ThinFilmThickness)
 %                 E = calculate_e_mod_hertz(obj,CPType,TipShape,LowerCurveFraction,...
 %                 UpperCurveFraction,AllowXShift,CorrectSensitivity,UseTipData,...
-%                 UseTopology,TipObject,DataWeightByDistanceBool,...
+%                 UseTopography,TipObject,DataWeightByDistanceBool,...
 %                 SortHeightDataForFit,FitDegreeForSneddonPolySurf,...
 %                 LowerForceCutoff,UpperForceCutoff)
 
@@ -1314,12 +1320,31 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
             obj.HertzFitAdjRSquare = zeros(1,obj.NCurves);
             obj.HertzFitRMSE = zeros(1,obj.NCurves);
             
-            if isequal(lower(TipShape),'parabolic') || isequal(lower(TipShape),'spheric approx.')
-                if AllowXShift
-                    FitFunction = 'a*(x+b)^(3/2)';
-                else
-                    Fitfunction = 'a*(x)^(3/2)';
+            if contains(TipShape,'on thin film') && isequal(ThinFilmMode,'From Topography')
+                TopographyHeightChannel = obj.get_channel(TopographyHeightChannelName);
+                if isempty(TopographyHeightChannel)
+                    error('Channel %s not found',TopographyHeightChannelName);
                 end
+                TopographyList = obj.convert_map_to_data_list(TopographyHeightChannel.Image);
+            end
+            
+            if UseTopography
+                TopographyCurvatureChannel = obj.get_channel('Local Radius of Curvature Kernel-R. = 2.00e-07');
+                if isempty(TopographyCurvatureChannel)
+                    error('Channel %s not found','Local Radius of Curvature');
+                end
+                LROCList = obj.convert_map_to_data_list(TopographyCurvatureChannel.Image);
+            end
+            
+            if isequal(lower(TipShape),'parabolic') || isequal(lower(TipShape),'spheric approx.')
+            elseif isequal(lower(TipShape),'parabolic on thin film (not bonded)')
+                nu = obj.PoissonR;
+                alpha = -0.347*(3-2*nu)/(1-nu);
+                beta = 0.056*(5-2*nu)/(1-nu);
+            elseif isequal(lower(TipShape),'parabolic on thin film (bonded)')
+                nu = obj.PoissonR;
+                alpha = -(1.2876-1.4678*nu+1.3442*nu^2)/(1-nu);
+                beta = (0.6387-1.0277*nu+1.5164*nu^2)/(1-nu);
             elseif isequal(lower(TipShape,'sneddonpolysurf'))
                 Area = TipObject.DepthDependendTipRadius;
                 Radius = sqrt(Area/pi);
@@ -1420,6 +1445,88 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
                     RangeTH{i} = range(tip_h{i});
                     force{i} = force{i}/RangeF{i};
                     tip_h{i} = tip_h{i}/RangeTH{i};
+                    
+                    if contains(TipShape,'on thin film')
+                        if isequal(ThinFilmMode,'FromValue')
+                            FilmHeight{i} = ThinFilmThickness;
+                        elseif isequal(ThinFilmMode,'From Topography')
+                            FilmHeight{i} = max(TopographyList(iRange(i)),MaxFitRange{i}(1));
+                        end
+                    end
+                    
+                    if isempty(obj.FibDiam) || UseTopography
+                        if UseTipData
+                            DepthIndex = floor(obj.IndentationDepth(iRange(i))*1e9);
+                            DepthRemainder = obj.IndentationDepth(iRange(i))*1e9 - DepthIndex;
+                            if DepthIndex >= length(TipObject.DepthDependendTipRadius)
+                                DepthIndex = length(TipObject.DepthDependendTipRadius) - 1;
+                                DepthRemainder = 0;
+                            end
+                            if DepthIndex == 0
+                                TipRadius = TipObject.DepthDependendTipRadius(DepthIndex+1)*DepthRemainder;
+                            else
+                                TipRadius = TipObject.DepthDependendTipRadius(DepthIndex)*(1-DepthRemainder) + TipObject.DepthDependendTipRadius(DepthIndex+1)*DepthRemainder;
+                            end
+                            if UseTopography
+                                RTopo = LROCList(iRange(i));
+                                
+                                R_eff{i} =1/(1/RTip + 1/RTopo);
+                            else
+                                R_eff{i} = TipRadius;
+                            end
+                        else
+                            if UseTopography
+                                RTip = obj.TipRadius;
+                                
+                                RTopo = LROCList(iRange(i));
+                                
+                                R_eff{i} =1/(1/RTip + 1/RTopo);
+                            else
+                                R_eff{i} = obj.TipRadius;
+                            end
+                        end
+                    else
+                        if UseTipData
+                            DepthIndex = floor(obj.IndentationDepth(iRange(i))*1e9);
+                            DepthRemainder = obj.IndentationDepth(iRange(i))*1e9 - DepthIndex;
+                            if DepthIndex >= length(TipObject.DepthDependendTipRadius)
+                                DepthIndex = length(TipObject.DepthDependendTipRadius) - 1;
+                            end
+                            if DepthIndex == 0
+                                TipRadius = TipObject.DepthDependendTipRadius(DepthIndex+1)*DepthRemainder;
+                            else
+                                TipRadius = TipObject.DepthDependendTipRadius(DepthIndex)*(1-DepthRemainder) + TipObject.DepthDependendTipRadius(DepthIndex+1)*DepthRemainder;
+                            end
+                            R_eff{i} = 1/(1/TipRadius + 1/(obj.FibDiam/2));
+                        else
+                            R_eff{i} = 1/(1/(obj.TipRadius) + 1/(obj.FibDiam/2));
+                        end
+                    end
+                    EffectiveRadius(iRange(i)) = R_eff{i};
+                    if isequal(lower(TipShape),'parabolic') || isequal(lower(TipShape),'spheric approx.')
+                        if AllowXShift
+                            FitFunction{i} = 'a*(x+b)^(3/2)';
+                        else
+                            FitFunction{i} = 'a*(x)^(3/2)';
+                        end
+                    elseif contains(TipShape,'parabolic on thin film')
+                        FitR_eff{i} = R_eff{i}/RangeTH{i};
+                        FitFilmHeight{i} = FilmHeight{i}/RangeTH{i};
+                        c1 = -2*alpha/pi*sqrt(FitR_eff{i})/FitFilmHeight{i};
+                        c2 = 4*alpha^2/pi^2*(sqrt(FitR_eff{i})/FitFilmHeight{i})^2;
+                        c3 = -8/pi^3*(alpha^3 + 4*pi^2/15*beta)*(sqrt(FitR_eff{i})/FitFilmHeight{i})^3;
+                        c4 = 16*alpha/pi^4*(alpha^3 + 3*pi^2/5*beta)*(sqrt(FitR_eff{i})/FitFilmHeight{i})^4;
+                        if AllowXShift
+                            FitFunction{i} = sprintf(...
+                                'a*(x-b)^(3/2)*(1+%6e*(x-b)^(1/2)+%6e*(x-b)^(2/2)+%6e*(x-b)^(3/2)+%6e*(x-b)^(4/2))',...
+                                c1,c2,c3,c4);
+                        else
+                            FitFunction{i} = sprintf(...
+                                'a*x^(3/2)*(1+%6e*x^(1/2)+%6e*x^(2/2)+%6e*x^(3/2)+%6e*x^(4/2))',...
+                                c1,c2,c3,c4);
+                        end
+                    end
+                    
                     if DataWeightByDistanceBool
                         Points = [tip_h{i}(1:end-1) force{i}(1:end-1)];
                         ShiftedPoints = [tip_h{i}(2:end) force{i}(2:end)];
@@ -1430,23 +1537,23 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
                     end
                 end
                 parfor i=1:BatchSize
-                    if AllowXShift
-                        s = fitoptions('Method','NonlinearLeastSquares',...
-                            'Lower',[10^(-5) -min(tip_h{i})],...
-                            'Upper',[inf min(tip_h{i})],...
-                            'MaxIter',100,...
-                            'Startpoint',[1 0],...
-                            'Weights',PointWeights{i});
-                        f = fittype(FitFunction,'options',s);
-                    else
-                        s = fitoptions('Method','NonlinearLeastSquares',...
-                            'Lower',10^(-5),...
-                            'Upper',inf,...
-                            'Startpoint',1,...
-                            'Weights',PointWeights{i});
-                        f = fittype(FitFunction,'options',s);
-                    end
                     try
+                        if AllowXShift
+                            s = fitoptions('Method','NonlinearLeastSquares',...
+                                'Lower',[10^(-5) -min(tip_h{i})],...
+                                'Upper',[inf min(tip_h{i})],...
+                                'MaxIter',100,...
+                                'Startpoint',[1 0],...
+                                'Weights',PointWeights{i});
+                            f = fittype(FitFunction{i},'options',s);
+                        else
+                            s = fitoptions('Method','NonlinearLeastSquares',...
+                                'Lower',10^(-5),...
+                                'Upper',inf,...
+                                'Startpoint',1,...
+                                'Weights',PointWeights{i});
+                            f = fittype(FitFunction{i},'options',s);
+                        end
                         [Hertzfit{i},GoF{i}] = fit(tip_h{i},...
                             force{i},f);
                     catch
@@ -1457,45 +1564,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
                     try
                         % calculate E module based on the Hertz model. Be careful
                         % to convert to unnormalized data again
-                        if isempty(obj.FibDiam) || UseTopology
-                            if UseTipData
-                                if UseTopology
-                                    
-                                else
-                                    DepthIndex = floor(obj.IndentationDepth(iRange(i))*1e9);
-                                    DepthRemainder = obj.IndentationDepth(iRange(i))*1e9 - DepthIndex;
-                                    if DepthIndex >= length(TipObject.DepthDependendTipRadius)
-                                        DepthIndex = length(TipObject.DepthDependendTipRadius) - 1;
-                                        DepthRemainder = 0;
-                                    end
-                                    if DepthIndex == 0
-                                        TipRadius = TipObject.DepthDependendTipRadius(DepthIndex+1)*DepthRemainder;
-                                    else
-                                        TipRadius = TipObject.DepthDependendTipRadius(DepthIndex)*(1-DepthRemainder) + TipObject.DepthDependendTipRadius(DepthIndex+1)*DepthRemainder;
-                                    end
-                                    R_eff = TipRadius;
-                                end
-                            else
-                                R_eff = obj.TipRadius*1e-9;
-                            end
-                        else
-                            if UseTipData
-                                DepthIndex = floor(obj.IndentationDepth(iRange(i))*1e9);
-                                DepthRemainder = obj.IndentationDepth(iRange(i))*1e9 - DepthIndex;
-                                if DepthIndex >= length(TipObject.DepthDependendTipRadius)
-                                    DepthIndex = length(TipObject.DepthDependendTipRadius) - 1;
-                                end
-                                if DepthIndex == 0
-                                    TipRadius = TipObject.DepthDependendTipRadius(DepthIndex+1)*DepthRemainder;
-                                else
-                                    TipRadius = TipObject.DepthDependendTipRadius(DepthIndex)*(1-DepthRemainder) + TipObject.DepthDependendTipRadius(DepthIndex+1)*DepthRemainder;
-                                end
-                                R_eff = 1/(1/TipRadius + 1/(obj.FibDiam/2));
-                            else
-                                R_eff = 1/(1/(obj.TipRadius*1e-9) + 1/(obj.FibDiam/2));
-                            end
-                        end
-                        EMod{i} = 3*(Hertzfit{i}.a*RangeF{i}/RangeTH{i}^(3/2))/(4*sqrt(R_eff))*(1-obj.PoissonR^2);
+                        EMod{i} = 3*(Hertzfit{i}.a*RangeF{i}/RangeTH{i}^(3/2))/(4*sqrt(R_eff{i}))*(1-obj.PoissonR^2);
                     catch ME
                         EMod{i} = nan;
 %                         Hertzfit{i}.a = 0;
@@ -1552,6 +1621,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
                     IndDepMap(i,j) = obj.IndentationDepth(obj.Map2List(i,j));
                     IndDepMapHertz(i,j) = obj.IndentationDepthHertz(obj.Map2List(i,j));
                     IndDepMapHertzFitRange(i,j) = obj.IndentationDepthHertzFitRange(obj.Map2List(i,j));
+                    ERMap(i,j) = EffectiveRadius(obj.Map2List(i,j)); 
                 end
             end
             
@@ -1574,6 +1644,9 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
             RSquareMap = obj.convert_data_list_to_map(obj.HertzFitRSquare);
             RSquare = obj.create_standard_channel(RSquareMap,'Hertz Fit RSquare','');
             obj.add_channel(RSquare,~KeepOldResults)
+            
+            Channel = obj.create_standard_channel(ERMap,'Effective Radius Hertz','m');
+            obj.add_channel(Channel,~KeepOldResults)
             
             if AllowXShift
                 obj.CPFlag.HertzFitted = 1;
@@ -2197,7 +2270,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
             if obj.FibrilFlag.Straight == 1
                 obj.RectApex = zeros(obj.NumPixelsX,1);
                 obj.RectApexIndex = zeros(obj.NumPixelsX,1);
-                obj.RectApexIndex = round(predictGP_mean([1:obj.NumPixelsX],[1:obj.NumPixelsX],1,5*obj.NumPixelsX,obj.ApexIndex,1));
+                obj.RectApexIndex = round(predictGP_mean([1:obj.NumPixelsX]',[1:obj.NumPixelsX]',1,5*obj.NumPixelsX,obj.ApexIndex,1));
                 for i=1:obj.NumPixelsX
                     obj.RectApex(i) = obj.HeightMap(i,obj.RectApexIndex(i),1);
                 end
@@ -2214,7 +2287,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
                 end
             end
             obj.FibDiam = mean(FibHeight);
-            obj.FibDiamSTD = nanstd(FibHeight);
+            obj.FibDiamSTD = std(FibHeight,'omitnan');
             
             % Convert RectApexIndex and ApexIndex, so that they are
             % consistent with the Map2List-List2Map format (its entrances
@@ -2287,6 +2360,134 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
             %            pause(5)
             close(f)
         end
+        
+        function determine_relevant_radius_of_indentation(obj,varargin)
+            % function determine_relevant_radius_of_indentation(obj,varargin)
+            %
+            % <FUNCTION DESCRIPTION HERE>
+            %
+            %
+            % Required inputs
+            % obj ... <VARIABLE DESCRIPTION>
+            %
+            % Name-Value pairs
+            % "Method" ... <NAMEVALUE DESCRIPTION>
+            % "CantileverTipInstance" ... <NAMEVALUE DESCRIPTION>
+            % "CantileverTipChannelName" ... <NAMEVALUE DESCRIPTION>
+            % "ChannelName" ... <NAMEVALUE DESCRIPTION>
+            % "IndentDepthChannelName" ... <NAMEVALUE DESCRIPTION>
+            % "KeepOldResults" ... <NAMEVALUE DESCRIPTION>
+            % "Verbose" ... <NAMEVALUE DESCRIPTION>
+            % "KeyFrame" ... <NAMEVALUE DESCRIPTION>
+            
+            p = inputParser;
+            p.FunctionName = "determine_relevant_radius_of_indentation";
+            p.CaseSensitive = false;
+            p.PartialMatching = true;
+            
+            % Required inputs
+            validobj = @(x)true;
+            addRequired(p,"obj",validobj);
+            
+            % NameValue inputs
+            defaultMethod = [];
+            defaultCantileverTipInstance = [];
+            defaultCantileverTipChannelName = 'Eroded Tip';
+            defaultChannelName = 'Contact Height';
+            defaultIndentDepthChannelName = 'Indentation Depth';
+            defaultKeepOldResults = true;
+            defaultVerbose = false;
+            defaultKeyFrame = 23;
+            validMethod = @(x)true;
+            validCantileverTipInstance = @(x)true;
+            validCantileverTipChannelName = @(x)true;
+            validChannelName = @(x)true;
+            validIndentDepthChannelName = @(x)true;
+            validKeepOldResults = @(x)true;
+            validVerbose = @(x)true;
+            validKeyFrame = @(x)true;
+            addParameter(p,"Method",defaultMethod,validMethod);
+            addParameter(p,"CantileverTipInstance",defaultCantileverTipInstance,validCantileverTipInstance);
+            addParameter(p,"CantileverTipChannelName",defaultCantileverTipChannelName,validCantileverTipChannelName);
+            addParameter(p,"ChannelName",defaultChannelName,validChannelName);
+            addParameter(p,"IndentDepthChannelName",defaultIndentDepthChannelName,validIndentDepthChannelName);
+            addParameter(p,"KeepOldResults",defaultKeepOldResults,validKeepOldResults);
+            addParameter(p,"Verbose",defaultVerbose,validVerbose);
+            addParameter(p,"KeyFrame",defaultKeyFrame,validKeyFrame);
+            
+            parse(p,obj,varargin{:});
+            
+            % Assign parsing results to named variables
+            obj = p.Results.obj;
+            Method = p.Results.Method;
+            CantileverTipInstance = p.Results.CantileverTipInstance;
+            CantileverTipChannelName = p.Results.CantileverTipChannelName;
+            ChannelName = p.Results.ChannelName;
+            IndentDepthChannelName = p.Results.IndentDepthChannelName;
+            KeepOldResults = p.Results.KeepOldResults;
+            Verbose = p.Results.Verbose;
+            KeyFrame = p.Results.KeyFrame;
+           
+            
+            TopoChannel = obj.get_channel(ChannelName);
+            IndentDepthChannel = obj.get_channel(IndentDepthChannelName);
+            CTChannel = CantileverTipInstance.get_channel(CantileverTipChannelName);
+            
+            if isempty(TopoChannel)
+                error(sprintf('Channel not found: %s',ChannelName));
+            end
+            if isempty(IndentDepthChannel)
+                error(sprintf('Channel not found: %s',IndentDepthChannelName));
+            end
+            if isempty(CTChannel)
+                error(sprintf('Channel not found: %s', CantileverTipChannelName));
+            end
+            
+            % Resize CTChannel to obj resolution
+            CTChannel = obj.resize_channel(CTChannel,[TopoChannel.NumPixelsX TopoChannel.NumPixelsY]);
+            
+            
+            
+            IndentDepthList = obj.convert_map_to_data_list(IndentDepthChannel.Image);
+            TopoList = obj.convert_map_to_data_list(TopoChannel.Image);
+            
+            PixelArea = TopoChannel.ScanSizeX/TopoChannel.NumPixelsY * TopoChannel.ScanSizeY/TopoChannel.NumPixelsX;
+            ContactRadius = zeros(size(TopoList));
+            MaxCTHeight = max(CTChannel.Image,[],'all');
+            [MaxCTIndexX,MaxCTIndexY] = find(CTChannel.Image == MaxCTHeight);
+            
+            h = waitbar(0,'Setting up...');
+            for i=1:obj.NCurves
+                waitbar(i/obj.NCurves,h,'Calculating contact radius...');
+                TempCTMask = CTChannel.Image >= (MaxCTHeight - IndentDepthList(i));
+                CurPos = obj.List2Map(i,:);
+                PixShiftX = CurPos(1) - MaxCTIndexX ;
+                PixShiftY = CurPos(2) - MaxCTIndexY;
+                CTMask = shiftLogicalArray(TempCTMask,PixShiftX,PixShiftY);
+                TopoMask = TopoChannel.Image >= (TopoList(i) - IndentDepthList(i));
+                AreaMask = CTMask & TopoMask;
+                SumPixels = sum(AreaMask,'all');
+                ContactRadius(i) = sqrt((SumPixels*PixelArea)/pi);
+                if Verbose && ~mod(i,KeyFrame)
+                    subplot(2,1,1)
+                    CurPosMap = zeros(size(TempCTMask));
+                    CurPosMap(CurPos(1),CurPos(2)) = true;
+                    imshowpair(CTChannel.Image >= (MaxCTHeight - IndentDepthList(i)),TopoChannel.Image >= (TopoList(i) - IndentDepthList(i)),'montage');
+                    subplot(2,1,2)
+                    imshowpair(CurPosMap,AreaMask,'montage')
+                    title(sprintf('Contact Radius: %.2e',ContactRadius(i)))
+                    drawnow
+                end
+            end
+            
+            CRMap = obj.convert_data_list_to_map(ContactRadius);
+            
+            CRChannel = obj.create_standard_channel(CRMap,'Contact Radius','m');
+            obj.add_channel(CRChannel,~KeepOldResults);
+            
+            close(h)
+        end
+
         
     %% SMFS related
     
@@ -4462,7 +4663,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
         function [E_mod,GoF,Hertzfit] = hertz_fit_gof(tip_h,force,CP,curve_percent,shape,TipRadius,PoissonR)
             
             if TipRadius == -1
-                prompt = {'What is the nominal tip radius of the used cantilever in nm?'};
+                prompt = {'What is the nominal tip radius of the used cantilever in m?'};
                 dlgtitle = 'Cantilever tip';
                 dims = [1 35];
                 definput = {'10'};
@@ -4492,7 +4693,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
                     CPforce,f);
                 % calculate E module based on the Hertz model. Be careful
                 % to convert to unnormalized data again
-                E_mod = 3*(Hertzfit.a*ranf/rant^(3/2))/(4*sqrt(TipRadius*10^(-9)))*(1-PoissonR^2);
+                E_mod = 3*(Hertzfit.a*ranf/rant^(3/2))/(4*sqrt(TipRadius))*(1-PoissonR^2);
             elseif isequal(shape,'spherical')
             elseif isequal(shape,'conical')
             elseif isequal(shape,'pyramid')
@@ -4856,26 +5057,48 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
             
         end
         
-        function create_and_level_height_map(obj)
+        function create_and_level_height_map(obj, ForceFraction)
             % first set Height Map to default values for reproducable
             % results
             
-            obj.construct_list_to_map_relations()
+            obj.construct_list_to_map_relations();
+            
+            if nargin < 2
+                ForceFraction = 1;
+            end
             
             Max = zeros(obj.NCurves,1);
             for i=1:obj.NCurves
-                [~,HHApp] = obj.get_force_curve_data(i,'AppRetSwitch',0,...
+                if ForceFraction == 1
+                [Force,HHApp] = obj.get_force_curve_data(i,'AppRetSwitch',0,...
                     'BaselineCorrection',0,'TipHeightCorrection',0,...
                     'Sensitivity','original','Unit','N');
-                Max(i) = -max(HHApp);
+                    Max(i) = -max(HHApp);
+                else
+                [Force,HHApp] = obj.get_force_curve_data(i,'AppRetSwitch',0,...
+                    'BaselineCorrection',1,'TipHeightCorrection',0,...
+                    'Sensitivity','original','Unit','N');
+                    interp_Force = linspace(min(Force), obj.Setpoint, numel(Force));
+                    [~, ForceIdx] = min(abs(interp_Force - ForceFraction * obj.Setpoint));
+                    Max(i) = -HHApp(ForceIdx);
+                end
             end
             TempHeightMap = obj.convert_data_list_to_map(Max);
             
-            % write to Channel
-            obj.delete_channel('Indented Height')
-            Height = obj.create_standard_channel(TempHeightMap,'Indented Height','m');
+            if ForceFraction == 1
+                Channel1Name = 'Indented Height';
+                Channel2Name = 'Processed Indented Height';
+            else
+                Percent = ForceFraction*100;
+                Channel1Name = ['Indented Height ForceFraction ' num2str(Percent) '%' ];
+                Channel2Name = ['Processed Indented Height ForceFraction ' num2str(Percent) '%' ];
+            end
             
-            [Channel,Index] = obj.get_channel('Indented Height');
+            % write to Channel
+            obj.delete_channel(Channel1Name)
+            Height = obj.create_standard_channel(TempHeightMap,Channel1Name,'m');
+            
+            [Channel,Index] = obj.get_channel(Channel1Name);
             if isempty(Channel)
                 Len = length(obj.Channel);
                 if ~Len
@@ -4906,10 +5129,10 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
             end
             
             % write to Channel
-            obj.delete_channel('Processed Indented Height')
-            Processed = obj.create_standard_channel(Map,'Processed Indented Height','m');
+            obj.delete_channel(Channel2Name)
+            Processed = obj.create_standard_channel(Map,Channel2Name,'m');
             
-            [Channel,Index] = obj.get_channel('Processed Indented Height');
+            [Channel,Index] = obj.get_channel(Channel2Name);
             if isempty(Channel)
                 Len = length(obj.Channel);
                 if ~Len
@@ -6335,8 +6558,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
             Title = sprintf('Indentation Modulus Map of %s',obj.Name);
             figure('Name',Title);
             subplot(2,2,1)
-            Lower = nanmean(obj.EModMapHertz,'all')-1.5*nanstd(obj.EModMapHertz,0,'all');
-            Upper = nanmean(obj.EModMapHertz,'all')+1.5*nanstd(obj.EModMapHertz,0,'all');
+            Lower = mean(obj.EModMapHertz,'all','omitnan')-1.5*std(obj.EModMapHertz,0,'all','omitnan');
+            Upper = mean(obj.EModMapHertz,'all','omitnan')+1.5*std(obj.EModMapHertz,0,'all','omitnan');
             I = imresize(obj.EModMapHertz,[1024 1024]);
             imshow(I,[Lower Upper],'Colormap',copper);
             colorbar
@@ -6345,8 +6568,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
             surf(obj.EModMapHertz(:,:,1),'LineStyle','none','FaceLighting','gouraud','FaceColor','interp')
             light('Style','local')
             subplot(2,2,3)
-            Lower = nanmean(obj.EModMapOliverPharr,'all')-1.5*nanstd(obj.EModMapOliverPharr,0,'all');
-            Upper = nanmean(obj.EModMapOliverPharr,'all')+1.5*nanstd(obj.EModMapOliverPharr,0,'all');
+            Lower = mean(obj.EModMapOliverPharr,'all','omitnan')-1.5*std(obj.EModMapOliverPharr,0,'all','omitnan');
+            Upper = mean(obj.EModMapOliverPharr,'all','omitnan')+1.5*std(obj.EModMapOliverPharr,0,'all','omitnan');
             I = imresize(obj.EModMapOliverPharr,[1024 1024]);
             imshow(I,[Lower Upper]);
             colorbar
@@ -6424,9 +6647,9 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
                     boxplot(obj.EModOliverPharr(obj.RectApexIndex));
                     xticklabels(obj.Name)
                     title(sprintf('mean = %.2f MPa\nmedian = %.2f MPa\nstd = %.3f MPa',...
-                        nanmean(obj.EModOliverPharr(obj.RectApexIndex))*1e-6,...
-                        nanmedian(obj.EModOliverPharr(obj.RectApexIndex))*1e-6,...
-                        nanstd(obj.EModOliverPharr(obj.RectApexIndex))*1e-6));
+                        mean(obj.EModOliverPharr(obj.RectApexIndex),'omitnan')*1e-6,...
+                        median(obj.EModOliverPharr(obj.RectApexIndex),'omitnan')*1e-6,...
+                        std(obj.EModOliverPharr(obj.RectApexIndex),'omitnan')*1e-6));
                 end
                 
                 subplot(2,3,4)
@@ -6570,9 +6793,9 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
                     boxplot(obj.EModHertz(obj.RectApexIndex));
                     xticklabels(obj.Name)
                     title(sprintf('mean = %.2f MPa\nmedian = %.2f MPa\nstd = %.3f MPa',...
-                        nanmean(obj.EModHertz(obj.RectApexIndex))*1e-6,...
-                        nanmedian(obj.EModHertz(obj.RectApexIndex))*1e-6,...
-                        nanstd(obj.EModHertz(obj.RectApexIndex))*1e-6));
+                        mean(obj.EModHertz(obj.RectApexIndex),'omitnan')*1e-6,...
+                        median(obj.EModHertz(obj.RectApexIndex),'omitnan')*1e-6,...
+                        std(obj.EModHertz(obj.RectApexIndex),'omitnan')*1e-6));
                 end
                 
                 
@@ -6657,9 +6880,9 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
                     boxplot(obj.EModOliverPharr);
                     xticklabels(obj.Name)
                     title(sprintf('mean = %.2f MPa\nmedian = %.2f MPa\nstd = %.3f MPa',...
-                        nanmean(obj.EModOliverPharr)*1e-6,...
-                        nanmedian(obj.EModOliverPharr)*1e-6,...
-                        nanstd(obj.EModOliverPharr)*1e-6));
+                        mean(obj.EModOliverPharr,'omitnan')*1e-6,...
+                        median(obj.EModOliverPharr,'omitnan')*1e-6,...
+                        std(obj.EModOliverPharr,'omitnan')*1e-6));
                 end
                 
                 subplot(2,3,4)
@@ -6795,9 +7018,9 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
                     boxplot(obj.EModHertz);
                     xticklabels(obj.Name)
                     title(sprintf('mean = %.2f MPa\nmedian = %.2f MPa\nstd = %.3f MPa',...
-                        nanmean(obj.EModHertz)*1e-6,...
-                        nanmedian(obj.EModHertz)*1e-6,...
-                        nanstd(obj.EModHertz)*1e-6));
+                        mean(obj.EModHertz,'omitnan')*1e-6,...
+                        median(obj.EModHertz,'omitnan')*1e-6,...
+                        std(obj.EModHertz,'omitnan')*1e-6));
                 end
                 
                 

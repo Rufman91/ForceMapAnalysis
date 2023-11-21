@@ -113,11 +113,24 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & dynam
             
         end
         
-        function preprocess_image(obj)
+        function preprocess_image(obj,AlternativeChannelName)
             
-            Height = obj.get_unprocessed_height_channel('Height (Trace)');
+            if nargin < 2
+                AlternativeChannelName = '';
+            end
+            
+            if nargin == 2
+                Height = obj.get_channel(AlternativeChannelName);
+                if isempty(Height)
+                    warning(spritntf('Channel %s not found',AlternativeChannelName))
+                    return
+                end
+            else
+                Height = obj.get_unprocessed_height_channel('Height (Trace)');
+            end
             
             if isempty(Height)
+                warning("Could not find height channel needed for preprocessing")
                 return
             end
             
@@ -131,7 +144,7 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & dynam
             for i=1:5
                 Map = AFMImage.subtract_line_fit_vertical_rov(Map,.2,0);
             end
-            Map = imresize(Map,[obj.NumPixelsY obj.NumPixelsX],'nearest');
+            Map = imresize(Map,[obj.NumPixelsX obj.NumPixelsY],'nearest');
             
             Map = AFMImage.find_and_replace_outlier_lines(Map,10);
             
@@ -155,26 +168,31 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & dynam
             
         end
         
-        function deconvolute_cantilever_tip(obj,StepSize)
+        function deconvolute_cantilever_tip(obj,StepSize,ChannelName,Preprocessing)
             
-            Channel = obj.get_unprocessed_height_channel('Height (measured) (Trace)');
-            Based = imgaussfilt(AFMImage.subtract_line_fit_hist(Channel.Image,0.4));
-            Channel.Image = Based;
-            obj.Channel(end+1) = Channel;
-            obj.Channel(end).Name = 'Background Mask';
-            obj.Channel(end).Unit = 'Logical';
-            obj.Channel(end).Image = obj.mask_background_by_threshold(Channel.Image,1);
-            Channel.Image = obj.masked_plane_fit(Channel,obj.Channel(end).Image);
-            ConeHeight = range(Channel.Image,'all');
-            Cone = obj.cone(obj.NumPixelsX,obj.NumPixelsY,ConeHeight,obj.ScanSizeX,obj.ScanSizeY,10e-9);
-            obj.Channel(end+1) = Channel;
-            obj.Channel(end).Name = 'Eroded Tip';
-            obj.Channel(end).Unit = 'm';
-            obj.Channel(end).Image = obj.deconvolute_by_mathematical_morphology(Channel.Image,Cone);
-            
+            if nargin < 3
+                ChannelName = 'Height (measured) (Trace)';
+                Preprocessing = true;
+            end
             if nargin < 2
                 StepSize = 1e-9;
+                ChannelName = 'Height (measured) (Trace)';
+                Preprocessing = true;
             end
+            
+            Channel = obj.get_unprocessed_height_channel(ChannelName);
+            if Preprocessing
+                Based = imgaussfilt(AFMImage.subtract_line_fit_hist(Channel.Image,0.4));
+                Channel.Image = Based;
+            end
+            BGMImage = obj.mask_background_by_threshold(Channel.Image,1);
+            BGMImage = obj.masked_plane_fit(Channel,BGMImage);
+            ConeHeight = range(Channel.Image,'all');
+            Cone = obj.cone(obj.NumPixelsX,obj.NumPixelsY,ConeHeight,obj.ScanSizeX,obj.ScanSizeY,10e-9);
+            DeconvImage = obj.deconvolute_by_mathematical_morphology(Channel.Image,Cone);
+            obj.add_channel(obj.create_standard_channel(DeconvImage,'Eroded Tip','m'));
+            obj.add_channel(obj.create_standard_channel(BGMImage,'Background Mask','Logical'));
+            
             
             PixelSizeX = obj.ScanSizeX/obj.NumPixelsX;
             PixelSizeY = obj.ScanSizeY/obj.NumPixelsY;
@@ -191,10 +209,6 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & dynam
             
             obj.hasDeconvolutedCantileverTip = true;
             close(h); 
-        end
-        
-        function base_image()
-            
         end
         
         function subtract_overlayed_image(obj,OverlayedImageClassInstance)
@@ -337,7 +351,11 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & dynam
         function ChannelOut = overlay_parameters_by_bayesopt(Channel1,Channel2,BackgroundPercent,MinOverlap,AngleRange,UseParallel,MaxFunEval,PreMaxFunEval,NumPreSearches,NClusters)
             % ChannelOut = overlay_parameters_by_bayesopt(Channel1,Channel2,BackgroundPercent,MinOverlap,AngleRange,UseParallel,MaxFunEval,PreMaxFunEval,NumPreSearches,NClusters)
             
-            % Assume Channel2 has same angle and origin as Channel1
+            % Resize Channels to same size per pixel, padded square Images
+            Channel1 = AFMBaseClass.resize_channel_to_padded_same_size_per_pixel_square_image(Channel1,'PaddingType','Zero');
+            Channel2 = AFMBaseClass.resize_channel_to_padded_same_size_per_pixel_square_image(Channel2,'PaddingType','Zero');
+            
+            % At first, assume Channel2 has same angle and origin as Channel1
             Channel2.OriginX = Channel1.OriginX;
             Channel2.OriginY = Channel1.OriginY;
             Channel2.ScanAngle = Channel1.ScanAngle;
@@ -347,12 +365,12 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & dynam
             % exactly the same
             SizePerPixel1 = Channel1.ScanSizeX/Channel1.NumPixelsX;
             SizePerPixel2 = Channel2.ScanSizeX/Channel2.NumPixelsX;
-            if SizePerPixel1 > SizePerPixel2
+            if SizePerPixel1 < SizePerPixel2
                 ScaleMultiplier = SizePerPixel1/SizePerPixel2;
                 Channel1.Image = imresize(Channel1.Image,ScaleMultiplier);
                 Channel1.NumPixelsX = size(Channel1.Image,1);
                 Channel1.NumPixelsY = size(Channel1.Image,2);
-            elseif SizePerPixel1 < SizePerPixel2
+            elseif SizePerPixel1 > SizePerPixel2
                 ScaleMultiplier = SizePerPixel2/SizePerPixel1;
                 Channel2.Image = imresize(Channel2.Image,ScaleMultiplier);
                 Channel2.NumPixelsX = size(Channel2.Image,1);
@@ -477,6 +495,55 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & dynam
             ChannelOut.Name = 'Overlay';
         end
         
+        function ShiftValues = show_two_channnel_overlay(Channel1, Channel2)
+            
+            % Resize Channels to same size per pixel, padded square Images
+            Channel1 = AFMBaseClass.resize_channel_to_padded_same_size_per_pixel_square_image(Channel1,'PaddingType','Zero');
+            Channel2 = AFMBaseClass.resize_channel_to_padded_same_size_per_pixel_square_image(Channel2,'PaddingType','Zero');
+            
+            % Resize the bigger Channel (in ScanSize-per-Pixel) so
+            % imagesizes correspond to ScanSizes. Do nothing, if they are
+            % exactly the same
+            SizePerPixel1 = Channel1.ScanSizeX/Channel1.NumPixelsX;
+            SizePerPixel2 = Channel2.ScanSizeX/Channel2.NumPixelsX;
+            if SizePerPixel1 < SizePerPixel2
+                ScaleMultiplier = SizePerPixel1/SizePerPixel2;
+                Channel1.Image = imresize(Channel1.Image,ScaleMultiplier);
+                Channel1.NumPixelsX = size(Channel1.Image,1);
+                Channel1.NumPixelsY = size(Channel1.Image,2);
+            elseif SizePerPixel1 > SizePerPixel2
+                ScaleMultiplier = SizePerPixel2/SizePerPixel1;
+                Channel2.Image = imresize(Channel2.Image,ScaleMultiplier);
+                Channel2.NumPixelsX = size(Channel2.Image,1);
+                Channel2.NumPixelsY = size(Channel2.Image,2);
+            end
+            % Create Background masks
+            Mask1 = AFMImage.mask_background_by_threshold(Channel1.Image,0,'on');
+            Mask2 = AFMImage.mask_background_by_threshold(Channel2.Image,0,'on');
+            
+            
+            ShiftPixX = round((Channel2.OriginX - Channel1.OriginX)*Channel2.NumPixelsX/Channel2.ScanSizeX);
+            ShiftPixY = round((Channel2.OriginY - Channel1.OriginY)*Channel2.NumPixelsY/Channel2.ScanSizeY);
+            Angle = Channel2.ScanAngle - Channel1.ScanAngle;
+            
+            [Overlay1,Overlay2,OverlayMask1,OverlayMask2] = AFMImage.overlay_two_images(Channel1,Channel2,ShiftPixX,ShiftPixY,Angle,Mask1,Mask2);
+            
+            figure('Color','w');
+            
+            imshowpair(OverlayMask1,OverlayMask2)
+            
+            ShiftValues.ShiftPixX = ShiftPixX;
+            ShiftValues.ShiftPixY = ShiftPixY;
+            ShiftValues.ShiftX = (Channel2.OriginX - Channel1.OriginX);
+            ShiftValues.ShiftY = (Channel2.OriginY - Channel1.OriginY);
+            ShiftValues.Angle = Angle;
+            
+            title({'Pixelshift',sprintf('X:%i,Y:%i,Angle:%.3f',ShiftPixX,ShiftPixY,Angle),...
+                'Physical Shift',sprintf('X:%i,Y:%i,Angle:%.3f',...
+                ShiftValues.ShiftX,ShiftValues.ShiftY,Angle)});
+            
+        end
+        
         function Loss = overlay_loss(Channel1,Channel2,Mask1,Mask2,ShiftPixX,ShiftPixY,Angle)
             
             [Overlay1,Overlay2,OverlayMask1,OverlayMask2] = AFMImage.overlay_two_images(Channel1,Channel2,ShiftPixX,ShiftPixY,Angle,Mask1,Mask2);
@@ -523,8 +590,8 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & dynam
             % from the positional data of the Channel-struct (Operation mode
             % in standard overlay)
             if nargin == 2
-                ShiftPixX = (Channel2.OriginX - Channel1.OriginX)*Channel2.NumPixelsX/Channel2.ScanSizeX;
-                ShiftPixY = (Channel2.OriginY - Channel1.OriginY)*Channel2.NumPixelsY/Channel2.ScanSizeY;
+                ShiftPixX = round((Channel2.OriginX - Channel1.OriginX)*Channel2.NumPixelsX/Channel2.ScanSizeX);
+                ShiftPixY = round((Channel2.OriginY - Channel1.OriginY)*Channel2.NumPixelsY/Channel2.ScanSizeY);
                 Angle = Channel2.ScanAngle - Channel1.ScanAngle;
             end
             
@@ -567,87 +634,6 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & dynam
             end
         end
         
-        function overlay_wrapper_old(FirstClassInstance,OverlayedClassInstance,...
-                BackgroundPercent,MinOverlap,AngleRange,UseParallel,...
-                MaxFunEval,PreMaxFunEval,NumPreSearches,NClusters)
-            % overlay_wrapper_old(obj,OverlayedImageClassInstance,BackgroundPercent,MinOverlap,AngleRange,UseParallel,MaxFunEval,PreMaxFunEval,NumPreSearches,NClusters)
-            
-            if nargin < 3
-                BackgroundPercent = 0;
-                MinOverlap = .6;
-                AngleRange = 30;
-                UseParallel = true;
-                MaxFunEval = 200;
-                PreMaxFunEval = 30;
-                NumPreSearches = 84;
-                NClusters = 4;
-            end
-            
-            Channel1 = FirstClassInstance.get_channel('Processed');
-            Channel2 = OverlayedClassInstance.get_channel('Processed');
-            
-            [OutChannel,ScaleMultiplier,WhoScaled] = AFMImage.overlay_parameters_by_bayesopt(Channel1,Channel2,...
-                BackgroundPercent,MinOverlap,AngleRange,UseParallel,MaxFunEval,PreMaxFunEval,NumPreSearches,NClusters);
-            
-            [Overlay1,Overlay2] = AFMImage.overlay_two_images(Channel1,OutChannel);
-            
-            % Create Overlay Background masks
-            OverlayMask1 = AFMImage.mask_background_by_threshold(Overlay1,BackgroundPercent,'on');
-            OverlayMask2 = AFMImage.mask_background_by_threshold(Overlay2,BackgroundPercent,'on');
-            
-            if isequal(WhoScaled,'Channel1')
-                Scale1 = ScaleMultiplier;
-                Scale2 = 1;
-            elseif isequal(WhoScaled,'Channel2')
-                Scale1 = 1;
-                Scale2 = ScaleMultiplier;
-            elseif isequal(WhoScaled,'No one')
-                Scale1 = 1;
-                Scale2 = 1;
-            end
-            
-            % write the overlays into the corresponding Class instances
-            SecondOut = OutChannel;
-            SecondMaskOut = OutChannel;
-            SecondOut.Image = Overlay2;
-            SecondMaskOut.Image = OverlayMask2;
-            SecondMaskOut.Unit = 'Logical';
-            SecondMaskOut.Name = 'Overlay Mask';
-            SecondOut.NumPixelsX = size(SecondOut.Image,1);
-            SecondOut.NumPixelsY = size(SecondOut.Image,2);
-            SecondOut.ScanSizeX = Channel2.ScanSizeX*(SecondOut.NumPixelsX/(Channel2.NumPixelsX*Scale2));
-            SecondOut.ScanSizeY = Channel2.ScanSizeY*(SecondOut.NumPixelsY/(Channel2.NumPixelsY*Scale2));
-            SecondMaskOut.NumPixelsX = SecondOut.NumPixelsX;
-            SecondMaskOut.NumPixelsY = SecondOut.NumPixelsY;
-            SecondMaskOut.ScanSizeX = SecondOut.ScanSizeX;
-            SecondMaskOut.ScanSizeY = SecondOut.ScanSizeY;
-            
-            FirstOut = Channel1;
-            FirstMaskOut = Channel1;
-            FirstOut.Image = Overlay1;
-            FirstOut.Name = 'Overlay';
-            FirstMaskOut.Image = OverlayMask1;
-            FirstMaskOut.Unit = 'Logical';
-            FirstMaskOut.Name = 'Overlay Mask';
-            FirstOut.NumPixelsX = size(FirstOut.Image,1);
-            FirstOut.NumPixelsY = size(FirstOut.Image,2);
-            FirstOut.ScanSizeX = Channel2.ScanSizeX*(FirstOut.NumPixelsX/(Channel1.NumPixelsX*Scale1));
-            FirstOut.ScanSizeY = Channel2.ScanSizeY*(FirstOut.NumPixelsY/(Channel1.NumPixelsY*Scale1));
-            FirstMaskOut.NumPixelsX = FirstOut.NumPixelsX;
-            FirstMaskOut.NumPixelsY = FirstOut.NumPixelsY;
-            FirstMaskOut.ScanSizeX = FirstOut.ScanSizeX;
-            FirstMaskOut.ScanSizeY = FirstOut.ScanSizeY;
-            
-            FirstClassInstance.Channel(end+1) = FirstOut;
-            FirstClassInstance.Channel(end+1) = FirstMaskOut;
-            
-            OverlayedClassInstance.Channel(end+1) = SecondOut;
-            OverlayedClassInstance.Channel(end+1) = SecondMaskOut;
-            
-            FirstClassInstance.hasOverlay = true;
-            OverlayedClassInstance.hasOverlay = true;
-        end
-        
         function overlay_wrapper(FirstClassInstance,OverlayedClassInstance,...
                 BackgroundPercent,MinOverlap,AngleRange,UseParallel,...
                 MaxFunEval,PreMaxFunEval,NumPreSearches,NClusters)
@@ -657,7 +643,7 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & dynam
             
             if nargin < 3
                 BackgroundPercent = 0;
-                MinOverlap = .6;
+                MinOverlap = .3;
                 AngleRange = 30;
                 UseParallel = true;
                 MaxFunEval = 200;
@@ -850,9 +836,9 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & dynam
             % Smooth out the hist cutoff by fitting a gp and using its mean
             KernelLambda = 5000;
             KernelSigma = 1;
-            GPNoise = 0;
+            GPNoise = 1e-6;
             warning('off')
-            RectMaxIdx = round(predictGP_mean(1:NumProfiles,1:NumProfiles,KernelSigma,KernelLambda,MaxIdx,GPNoise));
+            RectMaxIdx = round(predictGP_mean([1:NumProfiles]',[1:NumProfiles]',KernelSigma,KernelLambda,MaxIdx,GPNoise));
             warning('on')
             for i=1:NumProfiles
                 LineFit = polyfit(SortedIndex(i,RectMaxIdx(i)+round(.25*(NumPoints-RectMaxIdx(i))):end),...
@@ -1205,7 +1191,7 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & dynam
             
             DiffSum = DiffPreviousLine + DiffNextLine;
             
-            Median = nanmedian(DiffSum);
+            Median = median(DiffSum,'omitnan');
             IQR = iqr(DiffSum);
             
             OutlierLines = find(DiffSum >= Median + IQRMult*IQR);
@@ -2242,13 +2228,18 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & dynam
             
             % the rotation is done around the center of the IMAGE and not
             % the Origin so first shift the origin to mid image, then rotate and finally scale and shift to OriginX/Y;
-            X1 = X - (size(Image,1)/2 + 1);
-            Y1 = Y - (size(Image,2)/2 + 1);
-            X = X1.*cosd(InChannel.ScanAngle) + Y1.*sind(InChannel.ScanAngle);
-            Y = -X1.*sind(InChannel.ScanAngle) + Y1.*cosd(InChannel.ScanAngle);
+            X1 = X - (size(Image,2)/2 + 1);
+            Y1 = Y - (size(Image,1)/2 + 1);
+            X = X1.*cosd(-InChannel.ScanAngle) + Y1.*sind(-InChannel.ScanAngle);
+            Y = -X1.*sind(-InChannel.ScanAngle) + Y1.*cosd(-InChannel.ScanAngle);
             
-            X = X.*InChannel.ScanSizeX/InChannel.NumPixelsX - InChannel.OriginX;
-            Y = Y.*InChannel.ScanSizeY/InChannel.NumPixelsY - InChannel.OriginY;
+            X = X.*InChannel.ScanSizeY/InChannel.NumPixelsY - InChannel.OriginY;
+            Y = Y.*InChannel.ScanSizeX/InChannel.NumPixelsX - InChannel.OriginX;
+%             
+%             X = X + (size(Image,1)/2 + 1)*InChannel.ScanSizeX/InChannel.NumPixelsX;
+%             Y = Y + (size(Image,2)/2 + 1)*InChannel.ScanSizeY/InChannel.NumPixelsY;
+            
+            
         end
         
         function [XOut,YOut] = rotate_and_shift_point_cloud(X,Y,ShiftX,ShiftY,Angle)
@@ -2318,7 +2309,7 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & dynam
         
         function [Multiplier,Unit,SnapTo] = parse_unit_scale(ScanSize,Unit,Mult)
             
-            ScaleSize = ScanSize*Mult;
+            ScaleSize = abs(ScanSize*Mult);
             
             if (ScaleSize < 1e-11)
                 Multiplier = 1e12;
@@ -2852,8 +2843,8 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & dynam
             AspectRangeY = Channel.ScanSizeY;
             AspectRangeZ = range(Channel.Image,'all');
             
-            Surf.Parent.XLim = [0 Channel.NumPixelsX];
-            Surf.Parent.YLim = [0 Channel.NumPixelsY];
+            Surf.Parent.XLim = [0 Channel.NumPixelsY];
+            Surf.Parent.YLim = [0 Channel.NumPixelsX];
             Surf.Parent.ZLim = [min(Channel.Image,[],'all') max(Channel.Image,[],'all')];
             
             Surf.Parent.PlotBoxAspectRatio = [AspectRangeX AspectRangeY AspectRangeZ];
@@ -2891,8 +2882,8 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & dynam
             AspectRangeY = Channel.ScanSizeY;
             AspectRangeZ = range(Channel.Image,'all');
             
-            Mesh.Parent.XLim = [0 Channel.NumPixelsX];
-            Mesh.Parent.YLim = [0 Channel.NumPixelsY];
+            Mesh.Parent.XLim = [0 Channel.NumPixelsY];
+            Mesh.Parent.YLim = [0 Channel.NumPixelsX];
             Mesh.Parent.ZLim = [min(Channel.Image,[],'all') max(Channel.Image,[],'all')];
             
             Mesh.Parent.PlotBoxAspectRatio = [AspectRangeX AspectRangeY AspectRangeZ];
@@ -2974,7 +2965,7 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & dynam
             InChannel = p.Results.InChannel;
             BinSize = p.Results.BinSize;
             
-            AreaPerPixel = (InChannel.ScanSizeX/InChannel.NumPixelsX)*(InChannel.ScanSizeY/InChannel.NumPixelsY);
+            AreaPerPixel = (InChannel.ScanSizeY/InChannel.NumPixelsX)*(InChannel.ScanSizeX/InChannel.NumPixelsY);
             
             Min = min(InChannel.Image,[],'all');
             Max = max(InChannel.Image,[],'all');
