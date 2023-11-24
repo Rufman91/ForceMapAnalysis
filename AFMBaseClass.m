@@ -1937,7 +1937,7 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
                     warning(['The ROI-Radius you chose for curvature fitting is too small. Replaced with the minimum radius of ' num2str(min_radius)]);
                 end
             else
-                CompRadius = reshape(Radius,[],1);
+                CompRadius = obj.convert_map_to_data_list(Radius);
                 MinRadVector = min_radius.*ones(length(CompRadius),1);
                 Radius = max([MinRadVector CompRadius],[],2);
                 if ~isequal(Radius,CompRadius)
@@ -1988,11 +1988,11 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
                     % Fit a first-order surface (plane) to the ROI data
                     [p1, ~, ~, ~, plane_warnings] = AFMBaseClass.fitPlane(x_roi(:) * pixel_size_x, y_roi(:) * pixel_size_y, z_roi);
                     warningCount.fitPlaneWarnings = warningCount.fitPlaneWarnings + plane_warnings;
-            
+                    
                     % Fit a second-order surface (paraboloid) to the ROI data
                     [p2, ~, ~, ~, paraboloid_warnings] = AFMBaseClass.fitParaboloid(x_roi(:) * pixel_size_x, y_roi(:) * pixel_size_y, z_roi);
                     warningCount.fitParaboloidWarnings = warningCount.fitParaboloidWarnings + paraboloid_warnings;
-            
+                    
                     % Calculate the local slope and curvature at the current pixel
                     temp_slope(i, j) = norm(p1(1:2));
                     temp_radius_of_curvature(i, j) = sign(p2(1) + p2(2))/sqrt(p2(1)^2 + p2(2)^2);
@@ -3128,9 +3128,10 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             ChannelIndex = find(PossibleChannels);
             radiusOfCurvatureChannel = obj.Channel(ChannelIndex(1));
             
-            PossibleChannels = contains({obj.Channel.Name},'Slope') & contains({obj.Channel.Name},SurfFitChannelKeyphrase);
+            PossibleChannels = contains({obj.Channel.Name},'Slope Kernel') | contains({obj.Channel.Name},'Kernel Slope')...
+                & contains({obj.Channel.Name},SurfFitChannelKeyphrase);
             if ~any(PossibleChannels)
-                PossibleChannels = contains({obj.Channel.Name},'Slope');
+                PossibleChannels =  contains({obj.Channel.Name},'Slope Kernel') | contains({obj.Channel.Name},'Kernel Slope');
                 if ~any(PossibleChannels)
                     error('No surface topography channels found');
                 end

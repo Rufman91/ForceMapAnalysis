@@ -1468,9 +1468,9 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
                                 TipRadius = TipObject.DepthDependendTipRadius(DepthIndex)*(1-DepthRemainder) + TipObject.DepthDependendTipRadius(DepthIndex+1)*DepthRemainder;
                             end
                             if UseTopography
-                                RTopo = LROCList(iRange(i));
+                                RTopo = -LROCList(iRange(i));
                                 
-                                R_eff{i} =1/(1/RTip + 1/RTopo);
+                                R_eff{i} =1/(1/TipRadius + 1/RTopo);
                             else
                                 R_eff{i} = TipRadius;
                             end
@@ -1478,9 +1478,12 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
                             if UseTopography
                                 RTip = obj.TipRadius;
                                 
-                                RTopo = LROCList(iRange(i));
+                                % Negative LROCList because of how the
+                                % ROC is defined for the local surfface
+                                % fits
+                                RTopo = -LROCList(iRange(i));
                                 
-                                R_eff{i} =1/(1/RTip + 1/RTopo);
+                                R_eff{i} = 1/(1/RTip + 1/RTopo);
                             else
                                 R_eff{i} = obj.TipRadius;
                             end
