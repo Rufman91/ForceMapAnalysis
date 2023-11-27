@@ -1,6 +1,5 @@
 % centrosome AFM data analysis: angle deconvolution to identify areas from
-% which indentation modulus values are extracted
-% post-processing step after having evaluated the quality of the fits and
+% which indentation modulus values are extractedE.sh% post-processing step after having evaluated the quality of the fits and
 % sensitivity correction method using E.show_image
 % Julia Garcia Baucells 2022
 
@@ -8,7 +7,7 @@ clear
 E = Experiment.load;
 cd(E.ExperimentFolder)
 
-dbstop in AngleDeconvolution.m at 180
+dbstop in AngleDeconvolution.m at 198
 format long g;
 format compact;
 workspace;  % make sure the workspace panel is showing
@@ -16,36 +15,51 @@ workspace;  % make sure the workspace panel is showing
 close all
 clc
 show_fig = 'on';
-msg = "Do you need to exclude force maps?";
-opts = ["Yes" "No"];
-choice = menu(msg,opts);
+msg1 = "Do you need to exclude force maps?";
+opts1 = ["Yes" "No"];
+choice1 = menu(msg1,opts1);
+
+msg2 = "Do you want to apply a subsequent ForceMapAnalysisOptions?";
+opts2 = ["Yes" "No"];
+choice2 = menu(msg2,opts2);
+
+if choice2 == 1
+    msg3 = "Which ForceMapAnalysisOptions do you want to apply?";
+    opts3 = ["01" "02" "03"];
+    choice3 = menu(msg3,opts3);
+
+    s1 = ' Fit Range';
+    s2 = ' ('+opts2(choice3)+')';
+else
+    s1 = '';
+    s2 = '';
+    choice3 = []; 
+end
 
 % read force map number to be excluded
-if choice == 1
+if choice1 == 1
     if isfile('Exclude.txt')
         fileID = fopen('Exclude.txt', 'r');
         datacell = textscan(fileID, '%f', 'Delimiter',' ', 'CollectOutput', 1);
         fclose(fileID);
-        datavalues = datacell{1};    %as a numeric array
+        datavalues = unique(datacell{1}); % Remove duplicates
+    else
+        datavalues = [];
     end
-else 
-    datavalues = 0; 
+    if choice3 == 3
+        if isfile('Exclude03.txt')
+            fileID = fopen('Exclude03.txt', 'r');
+            datacell03 = textscan(fileID, '%f', 'Delimiter',' ', 'CollectOutput', 1);
+            fclose(fileID);
+            datavalues03 = unique(datacell03{1}); % Remove duplicates
+
+            % combine values without repeating
+            datavalues = unique([datavalues; datavalues03]);
+        end
+    end
+else
+    datavalues = [];
 end
-
-msg = "Do you want to apply a UpperForceCutOff?";
-opts = ["Yes" "No"];
-choice = menu(msg,opts);
-if choice == 1
-    msg2 = "Which UpperForceCutOff do you want to apply?"; 
-    opts2 = ["01" "02" "03"];
-    choice2 = menu(msg2,opts2);
-
-    s1 = ' Fit Range'; 
-    s2 = ' ('+opts2(choice2)+')'; 
-else 
-    s1 = ''; 
-    s2 = ''; 
-end 
 
 for m = 1:E.NumForceMaps
     if ismember(m, datavalues) 

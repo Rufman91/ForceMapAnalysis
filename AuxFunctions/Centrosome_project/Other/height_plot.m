@@ -22,7 +22,8 @@ hold on
 ft = fittype( 'power2' );
 opts = fitoptions( 'Method', 'NonlinearLeastSquares' );
 opts.Display = 'Off';
-opts.StartPoint = [6133207.15536504 -2.05322611301745 -35.6361239539309];
+% opts.StartPoint = [6133207.15536504 -2.05322611301745 -35.6361239539309]; % w/o modifications
+opts.StartPoint = [2058429.67363441 -2.04285486042691 -8.67399822133641]; % thin film 
 
 % Fit model to data.
 [fitresult, gof] = fit( xData, yData, ft, opts );
@@ -35,4 +36,5 @@ xlabel('Centrosome height [nm]');
 hFig=findall(0,'type','figure');
 hLeg=findobj(hFig(1,1),'type','legend');
 set(hLeg,'visible','off')
-
+xlim([0 1000])
+ylim([0 300])

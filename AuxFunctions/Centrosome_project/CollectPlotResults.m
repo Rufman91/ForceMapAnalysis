@@ -1,14 +1,12 @@
-% code that travels through the folders containing colloidal-probe in the 
+% code that goes through folders containing colloidal-probe in the folder
 % name, enters, loads the experiment, goes into the folders of each 
 % processed centrosome and loads the .mat file where the post-processing
-% results are, plotting
+% results are, plots the data
 % Julia Garcia Baucells 2022
 
 format long g;
 format compact;
 workspace;  % make sure the workspace panel is showing
-% dbstop in collect_plot_results.m at 130
-% dbstop in collect_plot_results.m at 175
 
 close all
 clear
@@ -21,16 +19,17 @@ DirOutput = dir(path1);
 FileNames = {DirOutput.name}';
 NumberFolders = numel(FileNames);
 
-msg1 = "Do you want to apply a UpperForceCutOff?";
+msg1 = "Do you want to apply a subsequent ForceMapAnalysisOptions?";
 opts1 = ["Yes" "No"];
 choice1 = menu(msg1,opts1);
 if choice1 == 1
-    msg2 = "Which UpperForceCutOff do you want to apply?"; 
+    msg2 = "Which ForceMapAnalysisOptions do you want to apply?"; 
     opts2 = ["01" "02" "03"];
     choice2 = menu(msg2,opts2);
     s2 = ' ('+opts2(choice2)+')'; 
 else 
-    s2 = ''; 
+    s2 = '';
+    choice2 = []; 
 end 
 
 % filter out unwanted folders
@@ -61,6 +60,19 @@ for n = 1:length(sample_idx)
         datacell = textscan(fileID, '%f', 'Delimiter',' ', 'CollectOutput', 1);
         fclose(fileID);
         datavalues = datacell{1};    %as a numeric array
+    else
+        datavalues = [];
+    end
+    if choice2 == 3
+        if isfile('Exclude03.txt')
+            fileID = fopen('Exclude03.txt', 'r');
+            datacell03 = textscan(fileID, '%f', 'Delimiter',' ', 'CollectOutput', 1);
+            fclose(fileID);
+            datavalues03 = unique(datacell03{1}); % Remove duplicates
+
+            % combine values without repeating
+            datavalues = unique([datavalues; datavalues03]);
+        end
     end
    
     % collect data
