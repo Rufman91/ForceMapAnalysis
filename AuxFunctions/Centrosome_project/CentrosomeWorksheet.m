@@ -1,10 +1,10 @@
 %% Tip data cleanup and deconvolution DO THIS WITH THE OTHER SCRIPT
-InChannel = E.CantileverTips{1}.get_channel('Processed');
-for i=1:4
-    OutChannel = set_freehand_area_in_channel_to_value(InChannel, min(InChannel.Image,[],'all'));
-end
-
-E.CantileverTips{1}.deconvolute_cantilever_tip;
+% InChannel = E.CantileverTips{1}.get_channel('Processed');
+% for i=1:4
+%     OutChannel = set_freehand_area_in_channel_to_value(InChannel, min(InChannel.Image,[],'all'));
+% end
+% 
+% E.CantileverTips{1}.deconvolute_cantilever_tip;
 
 %% Fit force curves with simple models to get Contact Height
 

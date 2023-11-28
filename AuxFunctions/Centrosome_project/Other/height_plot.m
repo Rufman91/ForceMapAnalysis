@@ -37,4 +37,4 @@ hFig=findall(0,'type','figure');
 hLeg=findobj(hFig(1,1),'type','legend');
 set(hLeg,'visible','off')
 xlim([0 1000])
-ylim([0 300])
+ylim([0 400])

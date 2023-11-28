@@ -29,7 +29,7 @@ if choice2 == 1
     choice3 = menu(msg3,opts3);
 
     s1 = ' Fit Range';
-    s2 = ' ('+opts2(choice3)+')';
+    s2 = ' ('+opts3(choice3)+')';
 else
     s1 = '';
     s2 = '';
