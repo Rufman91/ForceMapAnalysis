@@ -23,6 +23,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
         DummyAFMIMageFile = "TGT-1_MSCT-F-Box33-Nr10-fit-2022.05.13-09.50.09.883.jpk-qi-image"
         ShowImageSettings = Experiment.set_default_show_image_settings()
         ForceMapAnalysisOptions = Experiment.set_default_fma_options()
+        CurrentFMA_ID = 'none'
         FMAExitErrorStack
         FiberSegmentProcessingOptions = Experiment.set_default_fsp_options()
         GrammOptions = Experiment.set_default_gramm_options()
@@ -1899,8 +1900,10 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 Time = strrep(Time,':','-');
                 Time = strrep(Time,'.','_');
                 FMA = obj.ForceMapAnalysisOptions;
+                [~,FMA_ID] = fileparts(tempname);
+                obj.broadcast_current_fma_id(FMA_ID);
                 OptionsSnapshot = sprintf('ForceMapAnalysis-Options_%s.mat',Time);
-                save(OptionsSnapshot,'FMA');
+                save(OptionsSnapshot,'FMA','FMA_ID');
                 cd(current.path)
                 CPOption = obj.ForceMapAnalysisOptions.ContactPointOption;
                 EModOption = obj.ForceMapAnalysisOptions.EModOption.Type;
@@ -2229,6 +2232,8 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                     warning(errors{i});
                 end
             end
+            
+            obj.broadcast_current_fma_id('none')
         end
         
         function fiber_segment_analysis(obj)
@@ -10910,6 +10915,25 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             end
             
             warning('All temporary dynamic class properties deleted')
+        end
+        
+        function broadcast_current_fma_id(obj,FMA_ID)
+            
+            obj.CurrentFMA_ID = FMA_ID;
+            
+            for i=1:obj.NumForceMaps
+                obj.FM{i}.CurrentFMA_ID = FMA_ID;
+            end
+            for i=1:obj.NumAFMImages
+                obj.I{i}.CurrentFMA_ID = FMA_ID;
+            end
+            for i=1:obj.NumReferenceForceMaps
+                obj.RefFM{i}.CurrentFMA_ID = FMA_ID;
+            end
+            for i=1:obj.NumCantileverTips
+                obj.CantileverTips{i}.CurrentFMA_ID = FMA_ID;
+            end
+            
         end
         
     end

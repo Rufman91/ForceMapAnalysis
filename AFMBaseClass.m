@@ -19,6 +19,7 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
         List2Map = []        % An R->RxR ((k)->(i,j)) mapping of indices to switch between the two representations
         Map2List = []      % An RxR->R ((i,j)->(k))mapping of indices to switch between the two representations
         Metadata = []
+        CurrentFMA_ID = 'none'
     end
     properties
         % All possible image channels. The Channels are all part of the
@@ -470,6 +471,8 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             if nargin < 3
                 ReplaceSameNamed = false;
             end
+            
+            Channel.FMA_ID = obj.CurrentFMA_ID;
             
             % Write to Channel
             [~,Index] = obj.get_channel(Channel.Name);
