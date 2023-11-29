@@ -1,10 +1,16 @@
 %% Tip data cleanup and deconvolution DO THIS WITH THE OTHER SCRIPT
-% InChannel = E.CantileverTips{1}.get_channel('Processed');
-% for i=1:4
-%     OutChannel = set_freehand_area_in_channel_to_value(InChannel, min(InChannel.Image,[],'all'));
-% end
-% 
-% E.CantileverTips{1}.deconvolute_cantilever_tip;
+InChannel = E.CantileverTips{1}.get_channel('Processed');
+for i=1:4
+    OutChannel = set_freehand_area_in_channel_to_value(InChannel, min(InChannel.Image,[],'all'));
+end
+
+E.CantileverTips{1}.deconvolute_cantilever_tip;
+
+%% Set nominal bead radius
+
+for i=1:E.NumForceMaps
+    E.FM{i}.TipRadius = 1e-6;
+end
 
 %% Fit force curves with simple models to get Contact Height
 
@@ -17,24 +23,14 @@ E.force_map_analysis_general
 for i=1:E.NumForceMaps
 i
 E.FM{i}.CP = E.FM{i}.CP_HertzFitted;
-E.FM{i}.create_and_level_height_map_by_current_cp;
+E.FM{i}.create_height_map_by_current_cp_and_level_by_other_channel('Height (measured)',false)
 end
 
 %% Centrosomes smoothing steps
 for i =1:E.NumForceMaps
-    Chan = E.FM{i}.get_channel('Contact Height (02)');
-    if size(Chan.Image,1) < 128
-        Map = imresize(Chan.Image,[256 256],'nearest');
-    elseif size(Chan.Image,1) < 512
-        Map = imresize(Chan.Image,[512 512],'nearest');
-    else
-        Map = imresize(Chan.Image,[1024 1024],'nearest');
-    end
-    for j=1:5
-        Map = AFMImage.subtract_line_fit_vertical_rov(Map,.1,0);
-    end
-    Map = imresize(Map,[Chan.NumPixelsX Chan.NumPixelsY],'nearest');
-    Map = AFMImage.find_and_replace_outlier_lines(Map,10);
+    Chan = E.FM{i}.get_channel('Contact Height');
+    Map = Chan.Image;
+    Map = AFMImage.find_and_replace_outlier_lines(Map,3);
     Chan.Image = Map;
     SmoothChan = Chan;
     SmoothChan.Image = sgolayfilt(SmoothChan.Image,3,15);
@@ -43,6 +39,20 @@ for i =1:E.NumForceMaps
     SmoothChan.Name = 'Contact Height Smoothed';
     E.FM{i}.add_channel(SmoothChan,true);
 end
+%% Background selection
+
+E.choose_segments_manually
+
+%% Bias correction
+for i=1:E.NumForceMaps
+    Dat = E.FM{1}.get_segment_data_from_channel('Contact Height Smoothed');
+    Bias = mean(Dat,'all','omitnan');
+    Chan = E.FM{i}.get_channel('Contact Height Smoothed');
+    Chan.Image = Chan.Image -Bias;
+    E.FM{i}.add_channel(Chan,true);
+end
+
+
 
 %% Now for thin film ana.
 % Choose a thin film model in set_force_map_analysis_options
@@ -64,7 +74,7 @@ E.force_map_analysis_general
 E.create_artificial_cantilever_tip('HalfsphereTip','halfsphere',...
     'Radius',1e-6,'TipHeight',2e-6,'ImageResolution',128,...
     'FuseMethod','linear',...
-    'TipApexChannel',E.CantileverTips{1}.get_channel('Eroded Tip'),...
+    'TipApexChannel',[],...
     'HeightDifference',33e-9);
 AFMImage.plot_mesh_channel_to_scale(E.CantileverTips{end}.get_channel('Eroded Tip'))
 E.create_artificial_cantilever_tip('HalfsphereTip','halfsphere',...
@@ -96,11 +106,11 @@ end
 for i=1:E.NumForceMaps
     i
     if i <= 8
-        TipIdx = 4;
+        TipIdx = 6;
     else
-        TipIdx = 5;
+        TipIdx = 6;
     end
 %     TipIdx = 4;
-    E.FM{i}.deconvolute_image(E.CantileverTips{TipIdx},'Contact Height Smoothed',1024,false);
+    E.FM{i}.deconvolute_image(E.CantileverTips{TipIdx},'Contact Height Smoothed',1024,true);
     
 end
