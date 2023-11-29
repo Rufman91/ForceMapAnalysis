@@ -472,6 +472,11 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
                 ReplaceSameNamed = false;
             end
             
+            if ~isfield(obj.Channel,'FMA_ID')
+                for i=1:length(obj.Channel)
+                    obj.Channel(i).FMA_ID = 'none';
+                end
+            end
             Channel.FMA_ID = obj.CurrentFMA_ID;
             
             % Write to Channel
@@ -2102,6 +2107,77 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             close(F)
         end
         
+        
+        function [Map,FitParams] = flatten_image_by_vertical_rov(obj,SourceChannelName)
+            
+            if nargin < 2
+                SourceChannelName = 'NoChannelNameGiven';
+            end
+            
+            if nargin == 2
+                Height = obj.get_channel(SourceChannelName);
+                if isempty(Height)
+                    warning(sprintf('Channel %s not found, getting unprocessed height channel instead',SourceChannelName))
+                    Height = obj.get_unprocessed_height_channel('Height (Trace)');
+                end
+            else
+                Height = obj.get_unprocessed_height_channel('Height (Trace)');
+            end
+            
+            if isempty(Height)
+                warning("Could not find height channel needed for preprocessing")
+                return
+            end
+            
+            if size(Height.Image,1) < 128
+                Map = imresize(Height.Image,[256 256],'nearest');
+            elseif size(Height.Image,1) < 512
+                Map = imresize(Height.Image,[512 512],'nearest');
+            else
+                Map = imresize(Height.Image,[1024 1024],'nearest');
+            end
+            FitParams = zeros(size(Map,1),2);
+            for i=1:5
+                [Map,TempFitParams] = AFMImage.subtract_line_fit_vertical_rov(Map,.2,0);
+                FitParams = FitParams + TempFitParams;
+            end
+            Map = imresize(Map,[obj.NumPixelsX obj.NumPixelsY],'nearest');
+            
+        end
+        
+        function Map = flatten_image_by_other_channels_fitparams(obj,Source,Target)
+            
+            % Chack equal size
+            if (size(Source.Image,1) ~= size(Target.Image,1)) ||...
+                    (size(Source.Image,2) ~= size(Target.Image,2))
+                
+                error(sprintf('Channels %s and %s must be of the same size',SourceChannelName,TargetChannelName))
+                
+            end
+            
+            [~,FitParams] = obj.flatten_image_by_vertical_rov(Source.Name);
+            
+            if size(Target.Image,1) < 128
+                Map = imresize(Target.Image,[256 256],'nearest');
+            elseif size(Target.Image,1) < 512
+                Map = imresize(Target.Image,[512 512],'nearest');
+            else
+                Map = imresize(Target.Image,[1024 1024],'nearest');
+            end
+            NumProfiles = size(Map,1);
+            NumPoints = size(Map,2);
+            InImage = Map;
+            for i=1:NumProfiles
+                LineEval = [1:NumPoints]'*FitParams(i,1) + FitParams(i,2);
+                Line = InImage(i,:)';
+                Line = Line - LineEval;
+                InImage(i,:) = Line;
+            end
+            
+            Map = imresize(InImage,[Target.NumPixelsX Target.NumPixelsY],'nearest');
+            
+        end
+        
     end
     methods (Static)
         % Static main methods
@@ -2593,8 +2669,7 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             % Take the maximum of the two minimum radii to ensure enough data points
             min_radius = max(min_radius_x, min_radius_y);
         end
-
-
+        
     end
     methods (Static)
         % Static auxiliary methods
