@@ -1468,9 +1468,9 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
                                 TipRadius = TipObject.DepthDependendTipRadius(DepthIndex)*(1-DepthRemainder) + TipObject.DepthDependendTipRadius(DepthIndex+1)*DepthRemainder;
                             end
                             if UseTopography
-                                RTopo = LROCList(iRange(i));
+                                RTopo = -LROCList(iRange(i));
                                 
-                                R_eff{i} =1/(1/RTip + 1/RTopo);
+                                R_eff{i} =1/(1/TipRadius + 1/RTopo);
                             else
                                 R_eff{i} = TipRadius;
                             end
@@ -1478,9 +1478,12 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
                             if UseTopography
                                 RTip = obj.TipRadius;
                                 
-                                RTopo = LROCList(iRange(i));
+                                % Negative LROCList because of how the
+                                % ROC is defined for the local surfface
+                                % fits
+                                RTopo = -LROCList(iRange(i));
                                 
-                                R_eff{i} =1/(1/RTip + 1/RTopo);
+                                R_eff{i} = 1/(1/RTip + 1/RTopo);
                             else
                                 R_eff{i} = obj.TipRadius;
                             end
@@ -2190,6 +2193,27 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
             for i=1:5
                 Map = AFMImage.subtract_line_fit_vertical_rov(Map,.2,0);
             end
+            
+            Map = AFMImage.find_and_replace_outlier_lines(Map,10);
+            
+            % Write to Channel
+            Channel = obj.create_standard_channel(Map,'Contact Height','m');
+            obj.add_channel(Channel,~KeepOldResults)
+        end
+        
+        function create_height_map_by_current_cp_and_level_by_other_channel(obj,OtherChannelName,KeepOldResults)
+            
+            Map = obj.convert_data_list_to_map(-obj.CP(:,1));
+            
+            for i=1:obj.NumPixelsX
+                Map(i,:) = AFMImage.replace_points_of_certain_value_in_line(Map(i,:),0);
+            end
+            
+            Target = obj.create_standard_channel(Map,'Raw Contact Height','m');
+            
+            Source = obj.get_channel(OtherChannelName);
+            
+            Map = obj.flatten_image_by_other_channels_fitparams(Source,Target);
             
             Map = AFMImage.find_and_replace_outlier_lines(Map,10);
             
@@ -5095,20 +5119,9 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
             end
             
             % write to Channel
-            obj.delete_channel(Channel1Name)
             Height = obj.create_standard_channel(TempHeightMap,Channel1Name,'m');
             
-            [Channel,Index] = obj.get_channel(Channel1Name);
-            if isempty(Channel)
-                Len = length(obj.Channel);
-                if ~Len
-                    obj.Channel = Height;
-                else
-                    obj.Channel(Len+1) = Height;
-                end
-            else
-                obj.Channel(Index) = Height;
-            end
+            obj.add_channel(Height,true);
             
             if size(obj.HeightMap,1) < 128
                 Map = imresize(TempHeightMap,[256 256],'nearest');
@@ -5129,20 +5142,9 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
             end
             
             % write to Channel
-            obj.delete_channel(Channel2Name)
             Processed = obj.create_standard_channel(Map,Channel2Name,'m');
             
-            [Channel,Index] = obj.get_channel(Channel2Name);
-            if isempty(Channel)
-                Len = length(obj.Channel);
-                if ~Len
-                    obj.Channel = Processed;
-                else
-                    obj.Channel(Len+1) = Processed;
-                end
-            else
-                obj.Channel(Index) = Processed;
-            end
+            obj.add_channel(Processed,true);
             
         end
         

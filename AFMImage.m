@@ -119,50 +119,13 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & dynam
                 AlternativeChannelName = '';
             end
             
-            if nargin == 2
-                Height = obj.get_channel(AlternativeChannelName);
-                if isempty(Height)
-                    warning(spritntf('Channel %s not found',AlternativeChannelName))
-                    return
-                end
-            else
-                Height = obj.get_unprocessed_height_channel('Height (Trace)');
-            end
-            
-            if isempty(Height)
-                warning("Could not find height channel needed for preprocessing")
-                return
-            end
-            
-            if size(Height.Image,1) < 128
-                Map = imresize(Height.Image,[256 256],'nearest');
-            elseif size(Height.Image,1) < 512
-                Map = imresize(Height.Image,[512 512],'nearest');
-            else
-                Map = imresize(Height.Image,[1024 1024],'nearest');
-            end
-            for i=1:5
-                Map = AFMImage.subtract_line_fit_vertical_rov(Map,.2,0);
-            end
-            Map = imresize(Map,[obj.NumPixelsX obj.NumPixelsY],'nearest');
-            
+            Map = obj.flatten_image_by_vertical_rov(AlternativeChannelName);
             Map = AFMImage.find_and_replace_outlier_lines(Map,10);
             
             % write to Channel
-            obj.delete_channel('Processed')
             Processed = obj.create_standard_channel(Map,'Processed','m');
             
-            [Channel,Index] = obj.get_channel('Processed');
-            if isempty(Channel)
-                Len = length(obj.Channel);
-                if ~Len
-                    obj.Channel = Processed;
-                else
-                    obj.Channel(Len+1) = Processed;
-                end
-            else
-                obj.Channel(Index) = Processed;
-            end
+            obj.add_channel(Processed,true);
             
             obj.create_pixel_difference_channel;
             
@@ -793,7 +756,7 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & dynam
             OutImage = 1;
         end
         
-        function OutImage = subtract_line_fit_vertical_rov(InImage,WindowSize,DebugBool)
+        function [OutImage,FitParams] = subtract_line_fit_vertical_rov(InImage,WindowSize,DebugBool)
             
             NumProfiles = size(InImage,1);
             NumPoints = size(InImage,2);
@@ -840,6 +803,7 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & dynam
             warning('off')
             RectMaxIdx = round(predictGP_mean([1:NumProfiles]',[1:NumProfiles]',KernelSigma,KernelLambda,MaxIdx,GPNoise));
             warning('on')
+            FitParams = zeros(NumProfiles,2);
             for i=1:NumProfiles
                 LineFit = polyfit(SortedIndex(i,RectMaxIdx(i)+round(.25*(NumPoints-RectMaxIdx(i))):end),...
                     Sorted(i,RectMaxIdx(i)+round(.25*(NumPoints-RectMaxIdx(i))):end),1);
@@ -847,6 +811,7 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & dynam
                 Line = InImage(i,:)';
                 Line = Line - LineEval;
                 InImage(i,:) = Line;
+                FitParams(i,:) = LineFit;
             end
             
             OutImage = InImage;

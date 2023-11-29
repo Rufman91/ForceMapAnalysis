@@ -19,6 +19,7 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
         List2Map = []        % An R->RxR ((k)->(i,j)) mapping of indices to switch between the two representations
         Map2List = []      % An RxR->R ((i,j)->(k))mapping of indices to switch between the two representations
         Metadata = []
+        CurrentFMA_ID = 'none'
     end
     properties
         % All possible image channels. The Channels are all part of the
@@ -470,6 +471,13 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             if nargin < 3
                 ReplaceSameNamed = false;
             end
+            
+            if ~isfield(obj.Channel,'FMA_ID')
+                for i=1:length(obj.Channel)
+                    obj.Channel(i).FMA_ID = 'none';
+                end
+            end
+            Channel.FMA_ID = obj.CurrentFMA_ID;
             
             % Write to Channel
             [~,Index] = obj.get_channel(Channel.Name);
@@ -1937,7 +1945,7 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
                     warning(['The ROI-Radius you chose for curvature fitting is too small. Replaced with the minimum radius of ' num2str(min_radius)]);
                 end
             else
-                CompRadius = reshape(Radius,[],1);
+                CompRadius = obj.convert_map_to_data_list(Radius);
                 MinRadVector = min_radius.*ones(length(CompRadius),1);
                 Radius = max([MinRadVector CompRadius],[],2);
                 if ~isequal(Radius,CompRadius)
@@ -1988,11 +1996,11 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
                     % Fit a first-order surface (plane) to the ROI data
                     [p1, ~, ~, ~, plane_warnings] = AFMBaseClass.fitPlane(x_roi(:) * pixel_size_x, y_roi(:) * pixel_size_y, z_roi);
                     warningCount.fitPlaneWarnings = warningCount.fitPlaneWarnings + plane_warnings;
-            
+                    
                     % Fit a second-order surface (paraboloid) to the ROI data
                     [p2, ~, ~, ~, paraboloid_warnings] = AFMBaseClass.fitParaboloid(x_roi(:) * pixel_size_x, y_roi(:) * pixel_size_y, z_roi);
                     warningCount.fitParaboloidWarnings = warningCount.fitParaboloidWarnings + paraboloid_warnings;
-            
+                    
                     % Calculate the local slope and curvature at the current pixel
                     temp_slope(i, j) = norm(p1(1:2));
                     temp_radius_of_curvature(i, j) = sign(p2(1) + p2(2))/sqrt(p2(1)^2 + p2(2)^2);
@@ -2097,6 +2105,77 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             obj.add_channel(MaskChan,true);
             
             close(F)
+        end
+        
+        
+        function [Map,FitParams] = flatten_image_by_vertical_rov(obj,SourceChannelName)
+            
+            if nargin < 2
+                SourceChannelName = 'NoChannelNameGiven';
+            end
+            
+            if nargin == 2
+                Height = obj.get_channel(SourceChannelName);
+                if isempty(Height)
+                    warning(sprintf('Channel %s not found, getting unprocessed height channel instead',SourceChannelName))
+                    Height = obj.get_unprocessed_height_channel('Height (Trace)');
+                end
+            else
+                Height = obj.get_unprocessed_height_channel('Height (Trace)');
+            end
+            
+            if isempty(Height)
+                warning("Could not find height channel needed for preprocessing")
+                return
+            end
+            
+            if size(Height.Image,1) < 128
+                Map = imresize(Height.Image,[256 256],'nearest');
+            elseif size(Height.Image,1) < 512
+                Map = imresize(Height.Image,[512 512],'nearest');
+            else
+                Map = imresize(Height.Image,[1024 1024],'nearest');
+            end
+            FitParams = zeros(size(Map,1),2);
+            for i=1:5
+                [Map,TempFitParams] = AFMImage.subtract_line_fit_vertical_rov(Map,.2,0);
+                FitParams = FitParams + TempFitParams;
+            end
+            Map = imresize(Map,[obj.NumPixelsX obj.NumPixelsY],'nearest');
+            
+        end
+        
+        function Map = flatten_image_by_other_channels_fitparams(obj,Source,Target)
+            
+            % Chack equal size
+            if (size(Source.Image,1) ~= size(Target.Image,1)) ||...
+                    (size(Source.Image,2) ~= size(Target.Image,2))
+                
+                error(sprintf('Channels %s and %s must be of the same size',SourceChannelName,TargetChannelName))
+                
+            end
+            
+            [~,FitParams] = obj.flatten_image_by_vertical_rov(Source.Name);
+            
+            if size(Target.Image,1) < 128
+                Map = imresize(Target.Image,[256 256],'nearest');
+            elseif size(Target.Image,1) < 512
+                Map = imresize(Target.Image,[512 512],'nearest');
+            else
+                Map = imresize(Target.Image,[1024 1024],'nearest');
+            end
+            NumProfiles = size(Map,1);
+            NumPoints = size(Map,2);
+            InImage = Map;
+            for i=1:NumProfiles
+                LineEval = [1:NumPoints]'*FitParams(i,1) + FitParams(i,2);
+                Line = InImage(i,:)';
+                Line = Line - LineEval;
+                InImage(i,:) = Line;
+            end
+            
+            Map = imresize(InImage,[Target.NumPixelsX Target.NumPixelsY],'nearest');
+            
         end
         
     end
@@ -2590,8 +2669,7 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             % Take the maximum of the two minimum radii to ensure enough data points
             min_radius = max(min_radius_x, min_radius_y);
         end
-
-
+        
     end
     methods (Static)
         % Static auxiliary methods
@@ -3128,9 +3206,10 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             ChannelIndex = find(PossibleChannels);
             radiusOfCurvatureChannel = obj.Channel(ChannelIndex(1));
             
-            PossibleChannels = contains({obj.Channel.Name},'Slope') & contains({obj.Channel.Name},SurfFitChannelKeyphrase);
+            PossibleChannels = contains({obj.Channel.Name},'Slope Kernel') | contains({obj.Channel.Name},'Kernel Slope')...
+                & contains({obj.Channel.Name},SurfFitChannelKeyphrase);
             if ~any(PossibleChannels)
-                PossibleChannels = contains({obj.Channel.Name},'Slope');
+                PossibleChannels =  contains({obj.Channel.Name},'Slope Kernel') | contains({obj.Channel.Name},'Kernel Slope');
                 if ~any(PossibleChannels)
                     error('No surface topography channels found');
                 end
