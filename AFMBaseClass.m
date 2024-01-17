@@ -530,7 +530,7 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             
             OutChannel = obj.create_standard_channel(OutImage,'Pixel Difference','m');
             
-            obj.Channel(end+1) = OutChannel;
+            obj.add_channel(OutChannel,true)
             
             obj.assert_channel_number;
         end
