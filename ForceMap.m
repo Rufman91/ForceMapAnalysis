@@ -1438,6 +1438,10 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
                     force{i}(force{i}<(LowerCurveFraction)*max(force{i})) = [];
                     force{i}(force{i}>(UpperCurveFraction)*max(force{i})) = [];
                     tip_h{i}(1:(length(tip_h{i})-length(force{i}))) = [];
+                    
+                    if length(tip_h{i}) < 2
+                        continue
+                    end
                     % Allocate the maximum indentation for later
                     % calculation of max indent. depth of fitrange
                     MaxFitRange{i} = max(tip_h{i});
