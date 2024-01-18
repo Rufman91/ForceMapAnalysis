@@ -5062,20 +5062,9 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
             Map = AFMImage.find_and_replace_outlier_lines(Map,10);
             
             % write to Channel
-            obj.delete_channel('Processed')
             Processed = obj.create_standard_channel(Map,'Processed','m');
             
-            [Channel,Index] = obj.get_channel('Processed');
-            if isempty(Channel)
-                Len = length(obj.Channel);
-                if ~Len
-                    obj.Channel = Processed;
-                else
-                    obj.Channel(Len+1) = Processed;
-                end
-            else
-                obj.Channel(Index) = Processed;
-            end
+            obj.add_channel(Processed,true);
             
             obj.HeightMap = Processed.Image;
             
