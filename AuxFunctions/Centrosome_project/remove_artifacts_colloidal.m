@@ -1,7 +1,7 @@
 
 %% BEGIN%%
 
-NumberOfTheTipYouWantToUse = 1;
+NumberOfTheTipYouWantToUse = 2;
 [Channel,Index] = E.CantileverTips{NumberOfTheTipYouWantToUse}.get_unprocessed_height_channel('Height (measured) (Trace)');
 Based = AFMImage.subtract_line_fit_hist(Channel.Image,0.4);
 Channel.Image = Based;

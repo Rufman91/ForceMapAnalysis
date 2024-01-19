@@ -1,10 +1,10 @@
 %% Tip data cleanup and deconvolution DO THIS WITH THE OTHER SCRIPT
-InChannel = E.CantileverTips{1}.get_channel('Processed');
-for i=1:4
-    OutChannel = set_freehand_area_in_channel_to_value(InChannel, min(InChannel.Image,[],'all'));
-end
-
-E.CantileverTips{1}.deconvolute_cantilever_tip;
+% InChannel = E.CantileverTips{1}.get_channel('Processed');
+% for i=1:4
+%     OutChannel = set_freehand_area_in_channel_to_value(InChannel, min(InChannel.Image,[],'all'));
+% end
+% 
+% E.CantileverTips{1}.deconvolute_cantilever_tip;
 
 %% Set nominal bead radius
 
@@ -18,7 +18,7 @@ end
 % SensitivityCorrectionMethod: KeepOriginal
 % AllowXShift: true
 
-E.force_map_analysis_general
+% E.force_map_analysis_general
 
 for i=1:E.NumForceMaps
 i
@@ -45,14 +45,12 @@ E.choose_segments_manually
 
 %% Bias correction
 for i=1:E.NumForceMaps
-    Dat = E.FM{1}.get_segment_data_from_channel('Contact Height Smoothed');
-    Bias = mean(Dat,'all','omitnan');
+    Dat = E.FM{i}.get_segment_data_from_channel('Contact Height Smoothed');
+    Bias = mean(Dat,'all','omitnan'); 
     Chan = E.FM{i}.get_channel('Contact Height Smoothed');
-    Chan.Image = Chan.Image -Bias;
+    Chan.Image = Chan.Image-Bias;
     E.FM{i}.add_channel(Chan,true);
 end
-
-
 
 %% Now for thin film ana.
 % Choose a thin film model in set_force_map_analysis_options
@@ -65,7 +63,6 @@ E.ForceMapAnalysisOptions.EModOption.Hertz.TopographyHeightChannel = 'Contact He
 % Analyze!
 
 E.force_map_analysis_general
-
 
 %% Create an artificial AFM tip for devonvolution
 
