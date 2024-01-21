@@ -3,18 +3,18 @@
 % sensitivity correction method using E.show_image
 % Julia Garcia Baucells 2022
 
-clear
-E = Experiment.load;
-cd(E.ExperimentFolder)
+% clear
+% E = Experiment.load;
+% cd(E.ExperimentFolder)
 
-dbstop in AngleDeconvolution.m at 198
+dbstop in AngleDeconvolution.m at 206
 format long g;
 format compact;
 workspace;  % make sure the workspace panel is showing
 
 close all
 clc
-show_fig = 'on';
+show_fig = 'off';
 msg1 = "Do you need to exclude force maps?";
 opts1 = ["Yes" "No"];
 choice1 = menu(msg1,opts1);
@@ -65,19 +65,19 @@ for m = 1:E.NumForceMaps
     if ismember(m, datavalues) 
         % skip evaluation round
     else
-        % processed height data segmentation (centrosome 2D-stamp on glass) 
-        ChannelProcHeight = E.FM{m}.get_channel('Processed');
-        figure('name','Processed','visible',show_fig); hold on
-        imagesc(ChannelProcHeight.Image.*1e9); axis image; 
-        c = colorbar; c.Location = 'northoutside'; c.Label.String = 'Processed [nm]'; 
+        % contact height smoothed 2D centrosome segmentation  
+        ChannelContactHeight = E.FM{m}.get_channel('Contact Height Smoothed');
+        figure('name','Contact Height Smoothed','visible',show_fig); hold on
+        imagesc(ChannelContactHeight.Image.*1e9); axis image; 
+        c = colorbar; c.Location = 'northoutside'; c.Label.String = 'Height [nm]'; 
         set(gca,'FontSize', 16, 'Linewidth', 1.5); axis off
-        T = multithresh(ChannelProcHeight.Image);
-        BW = imbinarize(ChannelProcHeight.Image,T);
+        T = multithresh(ChannelContactHeight.Image);
+        BW = imbinarize(ChannelContactHeight.Image,T);
         BW2 = imfill(BW,'holes');
         SE = strel("disk",2);
         erodedBW2 = imerode(BW2,SE);
         dilatedBW2 = imdilate(BW2,SE);
-        figure('name','Processed mask','visible',show_fig); hold on
+        figure('name','Centrosome mask','visible',show_fig); hold on
         imagesc(erodedBW2); axis image; axis off 
 
         % filter out bad R2 Hertz fits 
@@ -88,7 +88,7 @@ for m = 1:E.NumForceMaps
         QPredictiveR2 = ChannelPredictiveR2.Image; 
         QPredictiveR2(QPredictiveR2<PredictiveR2Thr) = 0; 
         QR2 = ChannelR2.Image; 
-        QR2(QR2<R2Thr) = 0; QFits = QR2.*QPredictiveR2; QFits(QFits>0)=1; 
+        QR2(QR2<R2Thr) = 0; QFits = QR2.*QPredictiveR2; QFits(QFits>0) = 1; 
 
         % get indentation depth average in centrosome region
         ChannelIndenDepth = E.FM{m}.get_channel('Indentation Depth Hertz');
@@ -97,15 +97,19 @@ for m = 1:E.NumForceMaps
         imagesc(CsInden.*1e9); axis image; c = colorbar; 
         c.Location = 'northoutside'; c.Label.String = 'Indentation Depth [nm]'; 
         set(gca,'FontSize', 16, 'Linewidth', 1.5); axis off
-        CsInden(CsInden==0)=NaN; CsIndenAvrg = mean(CsInden(:), 'omitnan'); 
+        CsInden(CsInden==0) = NaN; CsIndenAvrg = mean(CsInden(:), 'omitnan'); 
 
         % tip radius at this identation depth
-        TipAreaFX = E.CantileverTips{1}.ProjectedTipArea;
+        if m>=1 && m<=45
+            TipAreaFX = E.CantileverTips{1}.ProjectedTipArea;
+        else
+            TipAreaFX = E.CantileverTips{2}.ProjectedTipArea;
+        end
         TipAreaCsInden = TipAreaFX(round(CsIndenAvrg*1e+9));
         TipRadiusCsInden = sqrt(TipAreaCsInden/pi);
 
         % px size
-        pxSize = (ChannelProcHeight.ScanSizeX/ChannelProcHeight.NumPixelsX);
+        pxSize = (ChannelContactHeight.ScanSizeX/ChannelContactHeight.NumPixelsX);
 
         CsProps = regionprops(erodedBW2, 'Area','EquivDiameter');
         [~, ind] = sort([CsProps.Area], 'descend');
@@ -116,7 +120,7 @@ for m = 1:E.NumForceMaps
         % calculate size of struct element
         SeRadius = round(TipRadiusCsInden/pxSize);
         kernel = strel('disk', SeRadius);
-        dimensions = size(ChannelProcHeight.Image);
+        dimensions = size(ChannelContactHeight.Image);
         dimensions2 = size(kernel.Neighborhood);
 
         % define kernel center indices
@@ -131,7 +135,7 @@ for m = 1:E.NumForceMaps
                         ii = i+(k-kernelCenter_x);
                         jj = j+(l-kernelCenter_y);
                         if (ii >= 1 && ii <= dimensions(1) && jj >= 1 && jj <= dimensions(2))
-                            Cloud_DPs(ii,jj) = ChannelProcHeight.Image(ii,jj)*kernel.Neighborhood(k,l); % data points within kernel
+                            Cloud_DPs(ii,jj) = ChannelContactHeight.Image(ii,jj)*kernel.Neighborhood(k,l); % data points within kernel
                             %                         AngleImage(i,j) = AngleImage(i,j) + ChannelHeight.Image(ii,jj)*kernel.Neighborhood(k,l);
                         end
                     end
@@ -181,8 +185,8 @@ for m = 1:E.NumForceMaps
         CsFlatArea = CsFlatProps.Area*pxSize^2;
 
         % centrosome height (contact height) & indentation on the flat area
-        ChannelContact = E.FM{m}.get_channel(strcat('Contact Height',s2));
-        CsFlatHeight = ChannelContact.Image.*AngleCsBW.*QFits;
+%         ChannelContact = E.FM{m}.get_channel(strcat('Contact Height',s2));
+        CsFlatHeight = ChannelContactHeight.Image.*AngleCsBW.*QFits;
         CsFlatHeight(CsFlatHeight==0) = NaN;
         
         ChannelIndenDepth = E.FM{m}.get_channel(strcat('Indentation Depth Hertz',s1,s2));
@@ -190,7 +194,7 @@ for m = 1:E.NumForceMaps
         CsFlatInden(CsFlatInden==0) = NaN;
 
         % volume approximation
-        CsContactHeight = ChannelContact.Image.*erodedBW2; 
+        CsContactHeight = ChannelContactHeight.Image.*erodedBW2; 
         CsVolume_voxel = CsContactHeight.*pxSize^2; 
         CsVolume = sum(CsVolume_voxel(:)); 
 
