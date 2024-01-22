@@ -1,13 +1,9 @@
-% centrosome AFM data analysis: angle deconvolution to identify areas from
-% which indentation modulus values are extractedE.sh% post-processing step after having evaluated the quality of the fits and
-% sensitivity correction method using E.show_image
-% Julia Garcia Baucells 2022
 
 % clear
 % E = Experiment.load;
 % cd(E.ExperimentFolder)
 
-dbstop in AngleDeconvolution.m at 206
+dbstop in AngleDeconvolution.m at 239
 format long g;
 format compact;
 workspace;  % make sure the workspace panel is showing
@@ -46,17 +42,17 @@ if choice1 == 1
     else
         datavalues = [];
     end
-    if choice3 == 3
-        if isfile('Exclude03.txt')
-            fileID = fopen('Exclude03.txt', 'r');
-            datacell03 = textscan(fileID, '%f', 'Delimiter',' ', 'CollectOutput', 1);
-            fclose(fileID);
-            datavalues03 = unique(datacell03{1}); % Remove duplicates
-
-            % combine values without repeating
-            datavalues = unique([datavalues; datavalues03]);
-        end
-    end
+%     if choice3 == 3
+%         if isfile('Exclude03.txt')
+%             fileID = fopen('Exclude03.txt', 'r');
+%             datacell03 = textscan(fileID, '%f', 'Delimiter',' ', 'CollectOutput', 1);
+%             fclose(fileID);
+%             datavalues03 = unique(datacell03{1}); % Remove duplicates
+% 
+%             % combine values without repeating
+%             datavalues = unique([datavalues; datavalues03]);
+%         end
+%     end
 else
     datavalues = [];
 end
@@ -74,11 +70,53 @@ for m = 1:E.NumForceMaps
         T = multithresh(ChannelContactHeight.Image);
         BW = imbinarize(ChannelContactHeight.Image,T);
         BW2 = imfill(BW,'holes');
-        SE = strel("disk",2);
+        SE = strel("disk",3);
         erodedBW2 = imerode(BW2,SE);
         dilatedBW2 = imdilate(BW2,SE);
         figure('name','Centrosome mask','visible',show_fig); hold on
         imagesc(erodedBW2); axis image; axis off 
+
+        % check if the mask is open 
+        logical_first_row = any(erodedBW2(1,:)); 
+        logical_last_row = any(erodedBW2(end,:)); 
+        logical_first_col = any(erodedBW2(:,1)); 
+        logical_last_col = any(erodedBW2(:,end)); 
+        folderPath = E.ForceMapFolders{m, 1};
+        decisionFilePath = fullfile(folderPath, 'MaskUserDecision.mat');
+
+        if any([logical_first_row, logical_last_row, logical_first_col, logical_last_col])
+            if exist(decisionFilePath, 'file') == 2
+                load(decisionFilePath, 'erodedBW2');
+                figure('name','Centrosome mask','visible',show_fig); hold on
+                imagesc(erodedBW2); axis image; axis off
+
+            else
+                userInput = input('Mask is open. Do you want to eliminate (1), keep (2), or trim manually (3)? ');
+                switch userInput
+                    case 1
+                        % eliminate the object at the image boundary
+                        erodedBW2 = imclearborder(erodedBW2);
+                        save(decisionFilePath, 'userInput', 'erodedBW2');
+                    case 2
+                        % keep the object as it is
+                    case 3
+                        % trim manually
+                        roiwindow = CROIEditor_CE(erodedBW2);
+                        waitfor(roiwindow, 'roi');
+                        if ~isvalid(roiwindow)
+                            disp('You closed ROI window without applying ROI')
+                            return
+                        end
+                        [~,labels,~] = roiwindow.getROIData;
+                        delete(roiwindow);
+                        AppliedMask = (labels >= 1);
+                        erodedBW2 = AppliedMask.*erodedBW2;
+                        save(decisionFilePath, 'userInput', 'erodedBW2');
+                end
+            end
+        else
+            disp('Mask is closed. No need for user input.');
+        end
 
         % filter out bad R2 Hertz fits 
         PredictiveR2Thr = 0.96; 
@@ -158,7 +196,7 @@ for m = 1:E.NumForceMaps
         set(gca,'FontSize', 16, 'Linewidth', 1.5); axis off
         
         % angle-based segmentation
-        T2 = multithresh(AngleImage);
+        T2 = 1.45; % 83.0788802939694 deg % multithresh(AngleImage); 
         AngleCsBW = imbinarize(AngleImage,T2).*erodedBW2; % exclude flat areas outside centrosome
         AngleBkgBW = imbinarize(AngleImage,T2).*imcomplement(dilatedBW2); % glass background area
         figure('name', 'Topography angle segmented','visible',show_fig)
@@ -174,8 +212,7 @@ for m = 1:E.NumForceMaps
         % from centrosome's flat region
         CsEModHertz = ChannelEModHertz.Image.*AngleCsBW.*QFits;
         CsEModHertz(CsEModHertz==0)=NaN;
-        figure('name', 'Indentation modulus Hertz')
-        hold on
+        figure('name', 'Indentation modulus Hertz', 'visible', show_fig); hold on
         imagesc(CsEModHertz*1e-3); axis image; c = colorbar; % kPa
         c.Location = 'northoutside'; c.Label.String = 'Indentation modulus Hertz [kPa]'; 
         axis off; set(gca,'FontSize', 16, 'Linewidth', 1.5); 
@@ -199,9 +236,9 @@ for m = 1:E.NumForceMaps
         CsVolume = sum(CsVolume_voxel(:)); 
 
         % save 
-        cd(E.ForceMapFolders{m,1})
+        cd(folderPath) 
         filename = strcat('Processed',s2);
-        save(filename,'T2','CsArea','CsRadius','CsEModHertz','CsFlatArea','CsFlatHeight','CsFlatInden','CsVolume')
+        save(filename,'CsArea','CsRadius','CsEModHertz','CsFlatArea','CsFlatHeight','CsFlatInden','CsVolume')
 
         cd ..
         close all
