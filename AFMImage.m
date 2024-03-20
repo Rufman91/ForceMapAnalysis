@@ -1075,19 +1075,22 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & dynam
                     'dependent',{'y'},'independent',{'x'},...
                     'coefficients',{'a'},...
                     'options',SphOpt);
-                Depth = [1:i]'.*1e-9;
+                Depth = [0:i-1]'.*1e-9;
                 X = Depth/range(Depth);
-                Y = ProjectedTipArea(1:i)/range(ProjectedTipArea(1:i));
+                Y = ProjectedTipArea(1:i+1)/range(ProjectedTipArea(1:i+1));
                 ParabolaFit = fit(X,...
-                    Y,...
+                    Y(1:end-1),...
                     ProjAParabola,...
-                    'Weights',[1:i]'.^2);
+                    'Weights',1+diff(Y(1:i+1)));
                 warning('off')
                 ParabolaFit.a = ParabolaFit.a*range(Depth)/range(ProjectedTipArea(1:i));
                 warning('on')
                 RParabola = 1/(2*ParabolaFit.a);
                 DepthDependendTipRadius(i) = RParabola;
+                % Debug
 %                 plot(Depth,ProjectedTipArea(1:i),'rO',Depth,feval(ParabolaFit,Depth),'g')
+%                 drawnow
+                %
             end
             % Fill the first 4 nm with the data from the 5th nm
             for i=1:MinIdx
