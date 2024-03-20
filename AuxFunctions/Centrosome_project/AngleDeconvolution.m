@@ -1,9 +1,8 @@
-
 % clear
 % E = Experiment.load;
-% cd(E.ExperimentFolder)
+cd(E.ExperimentFolder)
 
-dbstop in AngleDeconvolution.m at 239
+% dbstop in AngleDeconvolution.m at 239
 format long g;
 format compact;
 workspace;  % make sure the workspace panel is showing
@@ -21,7 +20,7 @@ choice2 = menu(msg2,opts2);
 
 if choice2 == 1
     msg3 = "Which ForceMapAnalysisOptions do you want to apply?";
-    opts3 = ["01" "02" "03"];
+    opts3 = ["01" "02" "03" "04"];
     choice3 = menu(msg3,opts3);
 
     s1 = ' Fit Range';
@@ -70,7 +69,7 @@ for m = 1:E.NumForceMaps
         T = multithresh(ChannelContactHeight.Image);
         BW = imbinarize(ChannelContactHeight.Image,T);
         BW2 = imfill(BW,'holes');
-        SE = strel("disk",3);
+        SE = strel("disk",2);
         erodedBW2 = imerode(BW2,SE);
         dilatedBW2 = imdilate(BW2,SE);
         figure('name','Centrosome mask','visible',show_fig); hold on
@@ -153,7 +152,7 @@ for m = 1:E.NumForceMaps
         [~, ind] = sort([CsProps.Area], 'descend');
         CsProps = CsProps(ind);
         CsArea = CsProps(1).Area.*pxSize^2;
-        CsRadius = (CsProps(1).EquivDiameter*pxSize)/2;
+        CsRadiusXY = (CsProps(1).EquivDiameter*pxSize)/2;
 
         % calculate size of struct element
         SeRadius = round(TipRadiusCsInden/pxSize);
@@ -222,9 +221,10 @@ for m = 1:E.NumForceMaps
         CsFlatArea = CsFlatProps.Area*pxSize^2;
 
         % centrosome height (contact height) & indentation on the flat area
-%         ChannelContact = E.FM{m}.get_channel(strcat('Contact Height',s2));
         CsFlatHeight = ChannelContactHeight.Image.*AngleCsBW.*QFits;
         CsFlatHeight(CsFlatHeight==0) = NaN;
+        CsFlatMax = max(CsFlatHeight, [], 'all', 'omitnan'); % maximum height 
+        CsFlatPrctile = prctile(CsFlatHeight, 95, "all"); 
         
         ChannelIndenDepth = E.FM{m}.get_channel(strcat('Indentation Depth Hertz',s1,s2));
         CsFlatInden = ChannelIndenDepth.Image.*AngleCsBW.*QFits;
@@ -234,11 +234,12 @@ for m = 1:E.NumForceMaps
         CsContactHeight = ChannelContactHeight.Image.*erodedBW2; 
         CsVolume_voxel = CsContactHeight.*pxSize^2; 
         CsVolume = sum(CsVolume_voxel(:)); 
+        CsVolumeSphereCap = (pi * CsFlatMax^2 / 3) * (3*CsRadiusXY - CsFlatMax);
 
         % save 
         cd(folderPath) 
         filename = strcat('Processed',s2);
-        save(filename,'CsArea','CsRadius','CsEModHertz','CsFlatArea','CsFlatHeight','CsFlatInden','CsVolume')
+        save(filename,'CsArea','CsRadiusXY','CsEModHertz','CsFlatArea','CsFlatHeight','CsFlatMax', 'CsFlatPrctile', 'CsFlatInden','CsVolume', 'CsVolumeSphereCap')
 
         cd ..
         close all

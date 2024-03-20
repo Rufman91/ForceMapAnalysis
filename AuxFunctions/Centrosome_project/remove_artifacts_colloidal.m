@@ -26,7 +26,7 @@ imshowpair(Channel.Image,CleanImage,'montage')
 %
 % !!!CAUTION!!!
 %
-% Execute this step only if you are happy withcl the results from the clean up
+% Execute this step only if you are happy with the results from the clean up
 E.CantileverTips{NumberOfTheTipYouWantToUse}.Channel(Index).Image = CleanImage;
 % From here you can proceed the analysis as usual
 

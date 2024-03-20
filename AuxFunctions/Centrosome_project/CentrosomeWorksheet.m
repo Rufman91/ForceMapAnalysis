@@ -8,9 +8,9 @@
 
 %% Set nominal bead radius
 
-for i=1:E.NumForceMaps
-    E.FM{i}.TipRadius = 1e-6;
-end
+% for i=1:E.NumForceMaps
+%     E.FM{i}.TipRadius = 1e-6;
+% end
 
 %% Fit force curves with simple models to get Contact Height
 
@@ -20,14 +20,14 @@ end
 
 % E.force_map_analysis_general
 
-for i=1:E.NumForceMaps
-i
-E.FM{i}.CP = E.FM{i}.CP_HertzFitted;
-E.FM{i}.create_height_map_by_current_cp_and_level_by_other_channel('Height (measured)',false)
+for i = 1:E.NumForceMaps
+    i
+    E.FM{i}.CP = E.FM{i}.CP_HertzFitted;
+    E.FM{i}.create_height_map_by_current_cp_and_level_by_other_channel('Height (measured)',false)
 end
 
 %% Centrosomes smoothing steps
-for i =1:E.NumForceMaps
+for i = 1:E.NumForceMaps
     Chan = E.FM{i}.get_channel('Contact Height');
     Map = Chan.Image;
     Map = AFMImage.find_and_replace_outlier_lines(Map,3);
@@ -39,12 +39,13 @@ for i =1:E.NumForceMaps
     SmoothChan.Name = 'Contact Height Smoothed';
     E.FM{i}.add_channel(SmoothChan,true);
 end
+
 %% Background selection
 
 E.choose_segments_manually
 
 %% Bias correction
-for i=1:E.NumForceMaps
+for i = 1:E.NumForceMaps
     Dat = E.FM{i}.get_segment_data_from_channel('Contact Height Smoothed');
     Bias = mean(Dat,'all','omitnan'); 
     Chan = E.FM{i}.get_channel('Contact Height Smoothed');
