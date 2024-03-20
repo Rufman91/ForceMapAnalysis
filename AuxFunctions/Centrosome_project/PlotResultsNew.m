@@ -20,6 +20,20 @@ else
     choice3 = []; 
 end
 
+% read force map number to be excluded
+if choice1 == 1
+    if isfile('Exclude.txt')
+        fileID = fopen('Exclude.txt', 'r');
+        datacell = textscan(fileID, '%f', 'Delimiter',' ', 'CollectOutput', 1);
+        fclose(fileID);
+        datavalues = unique(datacell{1}); % Remove duplicates
+    else
+        datavalues = [];
+    end
+else
+    datavalues = [];
+end
+
 for i = 1:E.NumForceMaps
     if ismember(i, datavalues)
         % skip evaluation round
@@ -99,7 +113,7 @@ xlabel('Radius [nm]');
 figure('name', 'Compression vs. maximum height'); hold on
 box on; set(gca,'FontSize', 16, 'Linewidth', 1.5);
 for i = 1:E.NumForceMaps
-        scatter(CsFlatPrctile_data(i), (CsInden_mean(i)/CsFlatHeight_mean(i))*100, 50, [0 0.4470 0.7410], "filled");  
+        scatter(CsFlatPrctile_data(i), (CsInden_mean(i)/CsFlatHeight_mean(i))*100, 50, [0.4940 0.1840 0.5560], "filled");  
 end
 xlabel('Centrosome height [nm]');
 ylabel('Compression [%]')

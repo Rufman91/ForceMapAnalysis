@@ -9,7 +9,7 @@ workspace;  % make sure the workspace panel is showing
 
 close all
 clc
-show_fig = 'off';
+show_fig = 'on';
 msg1 = "Do you need to exclude force maps?";
 opts1 = ["Yes" "No"];
 choice1 = menu(msg1,opts1);
@@ -238,8 +238,8 @@ for m = 1:E.NumForceMaps
 
         % save 
         cd(folderPath) 
-        filename = strcat('Processed',s2);
-        save(filename,'CsArea','CsRadiusXY','CsEModHertz','CsFlatArea','CsFlatHeight','CsFlatMax', 'CsFlatPrctile', 'CsFlatInden','CsVolume', 'CsVolumeSphereCap')
+%         filename = strcat('Processed',s2);
+%         save(filename,'CsArea','CsRadiusXY','CsEModHertz','CsFlatArea','CsFlatHeight','CsFlatMax', 'CsFlatPrctile', 'CsFlatInden','CsVolume', 'CsVolumeSphereCap')
 
         cd ..
         close all
