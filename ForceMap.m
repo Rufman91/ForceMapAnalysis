@@ -19,6 +19,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
     % >> FM.TipRadius;
     % to get a class parameter of this force map (the tip radius of the used cantilever)
     
+    % Hi Afshar
+    
     properties
         % Properties shared for the whole Force Map. All data is given SI
         % units otherwise it would be stated separately 
