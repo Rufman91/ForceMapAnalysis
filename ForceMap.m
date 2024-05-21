@@ -1366,7 +1366,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
             obj.EModHertz = zeros(obj.NCurves,1);
             obj.IndentationDepth = zeros(obj.NCurves,1);
             obj.IndentationDepthHertz = zeros(obj.NCurves,1);
-            obj.IndentationDepthHertzFitRange = zeros(obj.NCurves,1);
+            obj.IndentationDepthHeload('/home/manuel/Downloads/ForceMapAnalysis-Options_15-May-2024_10-44-02.mat')rtzFitRange = zeros(obj.NCurves,1);
+            EffectiveRadius = ones(obj.NCurves,1).*NaN;
             while ~isempty(iRange')
                 NumWorkers = 8;
                 BatchSize = min(NumWorkers,length(iRange));
@@ -1435,7 +1436,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
                     end
                     % delete everything below curve_percent of the maximum
                     % force
-                    force{i}(force{i}<(LowerCurveFraction)*max(force{i})) = [];
+                    force{i}(force{iload('/home/manuel/Downloads/ForceMapAnalysis-Options_15-May-2024_10-44-02.mat')}<(LowerCurveFraction)*max(force{i})) = [];
                     force{i}(force{i}>(UpperCurveFraction)*max(force{i})) = [];
                     tip_h{i}(1:(length(tip_h{i})-length(force{i}))) = [];
                     
@@ -1512,7 +1513,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
                     EffectiveRadius(iRange(i)) = R_eff{i};
                     if isequal(lower(TipShape),'parabolic') || isequal(lower(TipShape),'spheric approx.')
                         if AllowXShift
-                            FitFunction{i} = 'a*(x+b)^(3/2)';
+                            FitFload('/home/manuel/Downloads/ForceMapAnalysis-Options_15-May-2024_10-44-02.mat')unction{i} = 'a*(x+b)^(3/2)';
                         else
                             FitFunction{i} = 'a*(x)^(3/2)';
                         end
@@ -1523,7 +1524,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
                         c2 = 4*alpha^2/pi^2*(sqrt(FitR_eff{i})/FitFilmHeight{i})^2;
                         c3 = -8/pi^3*(alpha^3 + 4*pi^2/15*beta)*(sqrt(FitR_eff{i})/FitFilmHeight{i})^3;
                         c4 = 16*alpha/pi^4*(alpha^3 + 3*pi^2/5*beta)*(sqrt(FitR_eff{i})/FitFilmHeight{i})^4;
-                        if AllowXShift
+                        if AllowXShiftload('/home/manuel/Downloads/ForceMapAnalysis-Options_15-May-2024_10-44-02.mat')
                             FitFunction{i} = sprintf(...
                                 'a*(x-b)^(3/2)*(1+%6e*(x-b)^(1/2)+%6e*(x-b)^(2/2)+%6e*(x-b)^(3/2)+%6e*(x-b)^(4/2))',...
                                 c1,c2,c3,c4);
@@ -1575,7 +1576,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
                     catch ME
                         EMod{i} = nan;
 %                         Hertzfit{i}.a = 0;
-%                         if AllowXShift
+%                         if AllowXShiload('/home/manuel/Downloads/ForceMapAnalysis-Options_15-May-2024_10-44-02.mat')ft
 %                             Hertzfit{i}.b = 0;
 %                         end
                     end
