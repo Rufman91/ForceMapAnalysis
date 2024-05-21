@@ -1368,8 +1368,11 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
             obj.IndentationDepthHertz = zeros(obj.NCurves,1);
             obj.IndentationDepthHertzFitRange = zeros(obj.NCurves,1);
             EffectiveRadius = ones(obj.NCurves,1).*NaN;
+            
+            c = parcluster();
+            NumWorkers = c.NumWorkers;
+            
             while ~isempty(iRange')
-                NumWorkers = 8;
                 BatchSize = min(NumWorkers,length(iRange));
                 if isequal(lower(CPType),'cnn')
                     CP = obj.CP(iRange(1:BatchSize),:);
