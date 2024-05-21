@@ -1366,7 +1366,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
             obj.EModHertz = zeros(obj.NCurves,1);
             obj.IndentationDepth = zeros(obj.NCurves,1);
             obj.IndentationDepthHertz = zeros(obj.NCurves,1);
-            obj.IndentationDepthHeload('/home/manuel/Downloads/ForceMapAnalysis-Options_15-May-2024_10-44-02.mat')rtzFitRange = zeros(obj.NCurves,1);
+            obj.IndentationDepthHertzFitRange = zeros(obj.NCurves,1);
             EffectiveRadius = ones(obj.NCurves,1).*NaN;
             while ~isempty(iRange')
                 NumWorkers = 8;
@@ -1513,7 +1513,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
                     EffectiveRadius(iRange(i)) = R_eff{i};
                     if isequal(lower(TipShape),'parabolic') || isequal(lower(TipShape),'spheric approx.')
                         if AllowXShift
-                            FitFload('/home/manuel/Downloads/ForceMapAnalysis-Options_15-May-2024_10-44-02.mat')unction{i} = 'a*(x+b)^(3/2)';
+                            FitFunction{i} = 'a*(x+b)^(3/2)';
                         else
                             FitFunction{i} = 'a*(x)^(3/2)';
                         end
