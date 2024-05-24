@@ -1329,7 +1329,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
             end
             
             if UseTopography
-                TopographyCurvatureChannel = obj.get_channel('Local Radius of Curvature Kernel-R. = 2.00e-07');
+                TopographyCurvatureChannel = obj.get_channel(obj.search_channel('Local Radius of Curvature'));
                 if isempty(TopographyCurvatureChannel)
                     error('Channel %s not found','Local Radius of Curvature');
                 end
@@ -1367,8 +1367,12 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
             obj.IndentationDepth = zeros(obj.NCurves,1);
             obj.IndentationDepthHertz = zeros(obj.NCurves,1);
             obj.IndentationDepthHertzFitRange = zeros(obj.NCurves,1);
+            EffectiveRadius = ones(obj.NCurves,1).*NaN;
+            
+            c = parcluster();
+            NumWorkers = c.NumWorkers;
+            
             while ~isempty(iRange')
-                NumWorkers = 8;
                 BatchSize = min(NumWorkers,length(iRange));
                 if isequal(lower(CPType),'cnn')
                     CP = obj.CP(iRange(1:BatchSize),:);
@@ -1575,7 +1579,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
                     catch ME
                         EMod{i} = nan;
 %                         Hertzfit{i}.a = 0;
-%                         if AllowXShift
+%                         if AllowXShiload('/home/manuel/Downloads/ForceMapAnalysis-Options_15-May-2024_10-44-02.mat')ft
 %                             Hertzfit{i}.b = 0;
 %                         end
                     end

@@ -158,7 +158,40 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
         end
         
         function deconvolute_image(obj,CTClassInstance,ChannelName,MaxResolution,KeepOldResults)
-            % Comment Wow
+            % Deconvolutes the specified image channel by removing the convolution effects of the AFM tip.
+            %
+            % This function applies mathematical morphology to deconvolute the image of the AFM tip from
+            % the sample image, aiming to enhance the image resolution and quality. It adjusts the image based
+            % on the tip's known shape and size, potentially improving the accuracy of subsequent analyses.
+            %
+            % Parameters:
+            %   obj (AFMBaseClass): The instance of the class containing the method, which should include
+            %                       image data and metadata.
+            %   CTClassInstance (CantileverTipClass): An instance of the CantileverTipClass containing information
+            %                                         about the AFM cantilever tip, including its shape and size.
+            %   ChannelName (string): The name of the image channel to be deconvoluted. Default is 'Processed'.
+            %   MaxResolution (integer): The maximum resolution for the deconvolution process, specified as the
+            %                            length of one side of the image in pixels. This parameter controls the
+            %                            trade-off between processing time and deconvolution quality. Higher values
+            %                            lead to finer deconvolution at the cost of increased processing time.
+            %                            Default is 1024.
+            %   KeepOldResults (logical): A flag indicating whether to keep the original, unprocessed image data
+            %                             alongside the deconvoluted results. Setting this to true allows for
+            %                             comparison between original and processed images but requires additional
+            %                             memory. Default is true.
+            %
+            % Returns:
+            %   This function does not return a value. Instead, it modifies the instance of AFMBaseClass in place,
+            %   updating the specified image channel with the deconvoluted image.
+            %
+            % Examples:
+            %   afmImageInstance.deconvolute_image(cantileverTipInstance, 'Height', 1024, false);
+            %   This example deconvolutes the 'Height' channel of the afmImageInstance using the specified
+            %   cantileverTipInstance. The maximum resolution is set to 1024 pixels, and the original image data
+            %   is not retained.
+            %
+            % See also:
+            %   CantileverTipClass, AFMBaseClass
             
             if nargin < 3
                 ChannelName = 'Processed';
@@ -451,6 +484,21 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             end
         end
         
+        function ChannelNameResult = search_channel(obj, ChannelName)
+            k = 0;
+            ChannelNameResult = '';
+            for i = 1:length(obj.Channel)
+                if contains(obj.Channel(i).Name, ChannelName, 'IgnoreCase', true)
+                    ChannelNameResult = obj.Channel(i).Name;
+                    k = k + 1;
+                    break;
+                end
+            end
+            if k == 0
+                warning('No channel name matches the searched one: %s', ChannelName);
+            end
+        end
+
         function OutChannel = create_standard_channel(obj,Image,Name,Unit)
             
             OutChannel.Image = Image;
@@ -2106,7 +2154,6 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             
             close(F)
         end
-        
         
         function [Map,FitParams] = flatten_image_by_vertical_rov(obj,SourceChannelName)
             

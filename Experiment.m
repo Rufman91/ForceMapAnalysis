@@ -2063,6 +2063,25 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                     waitbar(i/NLoop,h,sprintf('Processing Force Map %i/%i\nProcessing and calculating Reference Slope',i,NLoop));
                     obj.reference_slope_calculator(i);
                     
+                    if obj.ForceMapAnalysisOptions.EModOption.Hertz.UseTopography
+                        % Calculate local curvature maps
+                        waitbar(i/NLoop,h,sprintf('Processing Force Map %i/%i\nProcessing and calculating Local Curvature Maps',i,NLoop));
+                        if obj.ForceMapAnalysisOptions.EModOption.Hertz.UseTipInHertz
+                            % At the moment Local Radius is determined by
+                            % the mean cantilever depth dependend tip
+                            % radius this is kind of a placeholder until
+                            % proper contact area based radii can be fed to
+                            % the routine.
+                            obj.FM{i}.localSurfaceFit_ClassWrapper(obj.ForceMapAnalysisOptions.EModOption.Hertz.TopographyHeightChannel,...
+                                0.25*mean(obj.CantileverTips{obj.WhichTip{i}}.DepthDependendTipRadius(1:end/2)),...
+                                obj.ForceMapAnalysisOptions.KeepOldResults);
+                        else
+                            obj.FM{i}.localSurfaceFit_ClassWrapper(obj.ForceMapAnalysisOptions.EModOption.Hertz.TopographyHeightChannel,...
+                                0.25*obj.FM{i}.TipRadius,...
+                                obj.ForceMapAnalysisOptions.KeepOldResults);
+                        end
+                    end
+                    
                     waitbar(i/NLoop,h,sprintf('Processing Force Map %i/%i\nCalculating E-Modulus',i,NLoop));
                     if isequal(lower(EModOption),'hertz') || isequal(lower(EModOption),'both') || isequal(lower(EModOption),'hertzcorrected')
                         if isequal(lower(EModOption),'hertzcorrected') || isequal(lower(EModOption),'both')
