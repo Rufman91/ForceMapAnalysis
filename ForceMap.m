@@ -1329,7 +1329,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
             end
             
             if UseTopography
-                TopographyCurvatureChannel = obj.get_channel('Local Radius of Curvature Kernel-R. = 2.00e-07');
+                TopographyCurvatureChannel = obj.get_channel(obj.search_channel('Local Radius of Curvature'));
                 if isempty(TopographyCurvatureChannel)
                     error('Channel %s not found','Local Radius of Curvature');
                 end
