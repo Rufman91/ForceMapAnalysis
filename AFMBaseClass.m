@@ -484,6 +484,21 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             end
         end
         
+        function ChannelNameResult = search_channel(obj, ChannelName)
+            k = 0;
+            ChannelNameResult = '';
+            for i = 1:length(obj.Channel)
+                if contains(obj.Channel(i).Name, ChannelName, 'IgnoreCase', true)
+                    ChannelNameResult = obj.Channel(i).Name;
+                    k = k + 1;
+                    break;
+                end
+            end
+            if k == 0
+                warning('No channel name matches the searched one: %s', ChannelName);
+            end
+        end
+
         function OutChannel = create_standard_channel(obj,Image,Name,Unit)
             
             OutChannel.Image = Image;
@@ -2139,7 +2154,6 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             
             close(F)
         end
-        
         
         function [Map,FitParams] = flatten_image_by_vertical_rov(obj,SourceChannelName)
             
