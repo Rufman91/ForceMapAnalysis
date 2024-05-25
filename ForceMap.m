@@ -1329,12 +1329,29 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
             end
             
             if UseTopography
-                TopographyCurvatureChannel = obj.get_channel(obj.search_channel('Local Radius of Curvature'));
-                if isempty(TopographyCurvatureChannel)
-                    error('Channel %s not found','Local Radius of Curvature');
+                [~, AllMatches] = obj.search_channel('Local Radius of Curvature');
+                TempChan = [];
+                for i = 1:length(AllMatches)
+                    TempChan = obj.get_channel(AllMatches{i});
+                    if isequal(TempChan.FMA_ID, obj.CurrentFMA_ID)
+                        break;
+                    end
                 end
+                
+                if isempty(TempChan) || ~isequal(TempChan.FMA_ID, obj.CurrentFMA_ID)
+                    warning('No channel with FMA_ID matching CurrentFMA_ID found. Using the first match instead.');
+                    TempChan = obj.get_channel(AllMatches{1});
+                end
+                
+                TopographyCurvatureChannel = TempChan;
+                
+                if isempty(TopographyCurvatureChannel)
+                    error('Channel %s not found', 'Local Radius of Curvature');
+                end
+                
                 LROCList = obj.convert_map_to_data_list(TopographyCurvatureChannel.Image);
             end
+
             
             if isequal(lower(TipShape),'parabolic') || isequal(lower(TipShape),'spheric approx.')
             elseif isequal(lower(TipShape),'parabolic on thin film (not bonded)')
