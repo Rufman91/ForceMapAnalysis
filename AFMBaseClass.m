@@ -484,20 +484,24 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             end
         end
         
-        function ChannelNameResult = search_channel(obj, ChannelName)
+        function [ChannelNameResult, AllMatches] = search_channel(obj, ChannelName)
             k = 0;
             ChannelNameResult = '';
+            AllMatches = {};
             for i = 1:length(obj.Channel)
                 if contains(obj.Channel(i).Name, ChannelName, 'IgnoreCase', true)
-                    ChannelNameResult = obj.Channel(i).Name;
+                    if k == 0
+                        ChannelNameResult = obj.Channel(i).Name;
+                    end
                     k = k + 1;
-                    break;
+                    AllMatches{end+1} = obj.Channel(i).Name; %#ok<AGROW>
                 end
             end
             if k == 0
                 warning('No channel name matches the searched one: %s', ChannelName);
             end
         end
+
 
         function OutChannel = create_standard_channel(obj,Image,Name,Unit)
             
