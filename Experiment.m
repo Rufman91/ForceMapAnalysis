@@ -2072,12 +2072,32 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                             % radius this is kind of a placeholder until
                             % proper contact area based radii can be fed to
                             % the routine.
+                            if isempty(obj.FM{i}.search_channel('Indentation Depth'))
+                                obj.FM{i}.create_and_level_height_map_by_current_cp(...
+                                    obj.ForceMapAnalysisOptions.KeepOldResults);
+                                [~,AllNames] = obj.FM{i}.search_channel('Contact Height');
+                                CHChan = obj.FM{i}.get_channel(AllNames{end});
+                                TmpHChan = obj.FM{i}.get_channel('Processed');
+                                SIDChan = obj.FM{i}.create_standard_channel(...
+                                    CHChan.Image - TmpHChan.Image,'Indentation Depth','m');
+                            else
+                                SIDChan = obj.FM{i}.get_channel(...
+                                    obj.FM{i}.search_channel('Indentation Depth'));
+                            end
+                            THChan = obj.CantileverTips{obj.WhichTip(i)}.get_channel('Eroded Tip');
+                            SHChan = obj.FM{i}.get_channel(...
+                                obj.ForceMapAnalysisOptions.EModOption.Hertz.TopographyHeightChannel);
+                            RadiiMap = obj.FM{i}.local_contact_area_ClassWrapper(...
+                                THChan,SHChan,SIDChan,...
+                                obj.ForceMapAnalysisOptions.KeepOldResults);
+                            Radii = obj.FM{i}.convert_map_to_data_list(RadiiMap);
                             obj.FM{i}.localSurfaceFit_ClassWrapper(obj.ForceMapAnalysisOptions.EModOption.Hertz.TopographyHeightChannel,...
-                                0.25*mean(obj.CantileverTips{obj.WhichTip{i}}.DepthDependendTipRadius(1:end/2)),...
+                                Radii,...
                                 obj.ForceMapAnalysisOptions.KeepOldResults);
                         else
+                            Radii = 0.25*obj.FM{i}.TipRadius;
                             obj.FM{i}.localSurfaceFit_ClassWrapper(obj.ForceMapAnalysisOptions.EModOption.Hertz.TopographyHeightChannel,...
-                                0.25*obj.FM{i}.TipRadius,...
+                                Radii,...
                                 obj.ForceMapAnalysisOptions.KeepOldResults);
                         end
                     end
@@ -3131,6 +3151,10 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 end
             end
                 
+            if obj.FM{i}.CPFlag.CNNopt
+                obj.broadcast_CNN_optimization(i);
+            end
+            
         end
         
         function apply_segmentation_to_overlay_group(obj,GroupMemberInstance)
@@ -10953,6 +10977,18 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             end
             for i=1:obj.NumCantileverTips
                 obj.CantileverTips{i}.CurrentFMA_ID = FMA_ID;
+            end
+            
+        end
+        
+        function broadcast_CNN_optimization(obj,Index)
+            
+            OptimizedBatchSize = obj.FM{Index}.MiniBatchSize;
+            
+            for i=1:obj.NumForceMaps
+                obj.FM{i}.MiniBatchSize = OptimizedBatchSize;
+                obj.FM{i}.CPFlag.CNNopt = true;
+                disp('Broadcasting optimal MiniBatchSize to other ForceMaps')
             end
             
         end
