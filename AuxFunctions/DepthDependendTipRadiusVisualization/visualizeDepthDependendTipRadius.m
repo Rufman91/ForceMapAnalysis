@@ -1,4 +1,6 @@
 function visualizeDepthDependendTipRadius(Channel, radiusVec, heightVec)
+%visualizeDepthDependendTipRadius(Channel, radiusVec, heightVec)
+
     % Validate inputs
     if nargin < 3
         error('Three input arguments required: Channel, radiusVec, heightVec');
@@ -21,7 +23,7 @@ function visualizeDepthDependendTipRadius(Channel, radiusVec, heightVec)
     ax = axes('Parent', f);
     slider = uicontrol('Parent', f, 'Style', 'slider', 'Position', [100, 10, 300, 20],...
         'min', 1, 'max', length(radiusVec), 'Value', 1, 'SliderStep', [1/(length(radiusVec)-1) , 1/(length(radiusVec)-1)]);
-    fitRangeText = uicontrol('Style', 'text', 'Position', [410, 10, 100, 20], 'String', 'Fit Range: ');
+    fitRangeText = uicontrol('Style', 'text', 'Position', [410, 10, 300, 20], 'String', 'Fit Range: ');
     addlistener(slider, 'ContinuousValueChange', @(hObject, event) updatePlot(hObject, ax, XGrid, YGrid, heightMap, radiusVec, heightVec, fitRangeText));
 
     % Initial plot
@@ -36,7 +38,7 @@ function updatePlot(hObject, ax, XGrid, YGrid, heightMap, radiusVec, heightVec, 
     idx = round(get(hObject, 'Value'));
 
     % Update fit range text
-    set(fitRangeText, 'String', sprintf('Fit Range: %.2fm', heightVec(idx)));
+    set(fitRangeText, 'String', sprintf('Fit Range: %.2em  Tip Radius: %.2em', heightVec(idx),radiusVec(idx)));
 
     % Generate paraboloid on the same grid
     Z = createParaboloid(XGrid, YGrid, radiusVec(idx), max(heightMap(:)));
