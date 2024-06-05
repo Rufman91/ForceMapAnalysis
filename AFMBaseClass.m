@@ -502,7 +502,6 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             end
         end
 
-
         function OutChannel = create_standard_channel(obj,Image,Name,Unit)
             
             OutChannel.Image = Image;
@@ -1960,6 +1959,8 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
         end
         
         function [slope, radius_of_curvature, slope_direction, CorrectedRadius] = localSurfaceFit(obj, HeightChannelName, Radius)
+            %[slope, radius_of_curvature, slope_direction, CorrectedRadius] = localSurfaceFit(obj, HeightChannelName, Radius)
+            %
             %LOCALSURFACEFIT Calculates the local slope and curvature of an AFMBaseClass object's height image
             %   This method takes an AFMBaseClass object instance (obj) and a HeightChannelName as input,
             %   reads the height image using the get_channel method, and computes the local slope and
@@ -1997,7 +1998,7 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
                     warning(['The ROI-Radius you chose for curvature fitting is too small. Replaced with the minimum radius of ' num2str(min_radius)]);
                 end
             else
-                CompRadius = obj.convert_map_to_data_list(Radius);
+                CompRadius = Radius;
                 MinRadVector = min_radius.*ones(length(CompRadius),1);
                 Radius = max([MinRadVector CompRadius],[],2);
                 if ~isequal(Radius,CompRadius)
@@ -2075,6 +2076,7 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
         end
         
         function localSurfaceFit_ClassWrapper(obj, HeightChannelName, Radius, KeepOldResults)
+            %localSurfaceFit_ClassWrapper(obj, HeightChannelName, Radius, KeepOldResults)
             
             % Calculate the metrics
             [slope, radius_of_curvature, slope_direction, CorrectedRadius] = localSurfaceFit(obj, HeightChannelName, Radius);
@@ -2097,6 +2099,24 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
                 obj.create_standard_channel(slope,S_Name,'m/m'), ~KeepOldResults);
             obj.add_channel(...
                 obj.create_standard_channel(slope_direction,SD_Name,'°'), ~KeepOldResults);
+            
+        end
+        
+        function [ContactRadii,ContactArea] = local_contact_area_ClassWrapper(...
+                obj, TipHeightChannel, HeightChannel, IndendationDepthChannel,KeepOldResults)
+            
+            THChan = TipHeightChannel;
+            SHChan = HeightChannel;
+            SIDChan = IndendationDepthChannel;
+            
+            ContactArea = AFMBaseClass.calculateContactArea(THChan,SHChan,SIDChan,'Verbose',false);
+            ContactRadii = sqrt(ContactArea./pi);
+            
+%             % Write new Channels
+%             obj.add_channel(...
+%                 obj.create_standard_channel(ContactArea,'Dynamic Contact Area','m^2'), ~KeepOldResults);
+%             obj.add_channel(...
+%                 obj.create_standard_channel(ContactRadii,'Dynamic Contact Radius','m'), ~KeepOldResults);
             
         end
         
@@ -2564,6 +2584,7 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
         end
         
         function OutChannel = rotate_channel(InChannel,RotDegrees)
+            % OutChannel = rotate_channel(InChannel,RotDegrees)
             
             OutChannel = InChannel;
             
@@ -2705,8 +2726,8 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             %       min_radius - The minimum radius required for fitting a second-order surface
             
             % Get the grid spacing in the x and y directions
-            num_pixels_x = Channel.NumPixelsX;
-            num_pixels_y = Channel.NumPixelsY;
+            num_pixels_y = Channel.NumPixelsX;
+            num_pixels_x = Channel.NumPixelsY;
             scan_size_x = Channel.ScanSizeX;
             scan_size_y = Channel.ScanSizeY;
             
@@ -2714,11 +2735,185 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             grid_spacing_y = scan_size_y / (num_pixels_y - 1);
             
             % Calculate the minimum radius in the x and y directions
-            min_radius_x = grid_spacing_x*ceil(sqrt(required_data_points / (num_pixels_y - 1)));
-            min_radius_y = grid_spacing_y*ceil(sqrt(required_data_points / (num_pixels_x - 1)));
+            min_radius_x = grid_spacing_x*ceil(sqrt(required_data_points / (num_pixels_x - 1)));
+            min_radius_y = grid_spacing_y*ceil(sqrt(required_data_points / (num_pixels_y - 1)));
             
             % Take the maximum of the two minimum radii to ensure enough data points
             min_radius = max(min_radius_x, min_radius_y);
+        end
+        
+        function contactAreas = calculateContactArea(tipStruct, sampleStruct, indentationStruct, varargin)
+            % Calculate contact area between AFM tip and sample based on indentation depth
+            %
+            % Inputs:
+            % tipStruct - struct representing the AFM tip height map
+            % sampleStruct - struct representing the sample height map
+            % indentationStruct - struct representing the indentation depth map
+            %
+            % Outputs:
+            % contactAreas - contact area for each pixel position
+            % overlapMasks - 3D matrix containing binary masks of overlapping pixels for each position
+            
+            % Parse input arguments
+            p = inputParser;
+            addParameter(p, 'Verbose', false, @islogical);
+            parse(p, varargin{:});
+            verbose = p.Results.Verbose;
+            
+            if verbose
+                figure
+            end
+            
+            % Extract image data
+            tipHeightMap = tipStruct.Image;
+            sampleHeightMap = sampleStruct.Image;
+            indentationDepthMap = indentationStruct.Image;
+            
+            % Extract scan sizes and resolutions
+            tipScanSizeX = tipStruct.ScanSizeX;
+            tipScanSizeY = tipStruct.ScanSizeY;
+            tipNumPixelsX = tipStruct.NumPixelsY;
+            tipNumPixelsY = tipStruct.NumPixelsX;
+            
+            sampleScanSizeX = sampleStruct.ScanSizeX;
+            sampleScanSizeY = sampleStruct.ScanSizeY;
+            sampleNumPixelsX = sampleStruct.NumPixelsY;
+            sampleNumPixelsY = sampleStruct.NumPixelsX;
+            
+            % Determine the physical sizes of both images
+            tipPhysicalSizeX = tipScanSizeX;
+            tipPhysicalSizeY = tipScanSizeY;
+            
+            samplePhysicalSizeX = sampleScanSizeX;
+            samplePhysicalSizeY = sampleScanSizeY;
+            
+            % Determine the final image size in the physical domain
+            finalPhysicalSizeX = max(tipPhysicalSizeX, samplePhysicalSizeX);
+            finalPhysicalSizeY = max(tipPhysicalSizeY, samplePhysicalSizeY);
+            
+            % Determine the final resolution for both images
+            finalResolutionX = max(tipNumPixelsX, sampleNumPixelsX);
+            finalResolutionY = max(tipNumPixelsY, sampleNumPixelsY);
+            
+            % Interpolation grid for the final image size and resolution
+            [xGridFinal, yGridFinal] = meshgrid(linspace(0, finalPhysicalSizeX, finalResolutionX), ...
+                linspace(0, finalPhysicalSizeY, finalResolutionY));
+            
+            % Rescale the tip height map to match the final resolution
+            [xGridTip, yGridTip] = meshgrid(linspace(0, tipPhysicalSizeX, tipNumPixelsX), ...
+                linspace(0, tipPhysicalSizeY, tipNumPixelsY));
+            tipHeightMapRescaled = interp2(xGridTip, yGridTip, tipHeightMap, xGridFinal, yGridFinal, 'linear', min(tipHeightMap,[],'all') - range(sampleHeightMap,'all'));
+            
+            % Prune tip height map background down to not affect high
+            % sample map regions
+            LowerCutFraction = 0.2;
+            tipHeightMapRescaled(tipHeightMapRescaled < min(tipHeightMap,[],'all')...
+                + LowerCutFraction*range(tipHeightMap,'all'))...
+                = min(tipHeightMapRescaled,[],'all');
+            
+            % Rescale the sample height map and indentation depth map to match the final resolution
+            [xGridSample, yGridSample] = meshgrid(linspace(0, samplePhysicalSizeX, sampleNumPixelsX), ...
+                linspace(0, samplePhysicalSizeY, sampleNumPixelsY));
+            sampleHeightMapRescaled = interp2(xGridSample, yGridSample, sampleHeightMap, xGridFinal, yGridFinal, 'linear', min(sampleHeightMap,[],'all'));
+            indentationDepthMapRescaled = interp2(xGridSample, yGridSample, indentationDepthMap, xGridFinal, yGridFinal, 'linear', min(indentationDepthMap,[],'all'));
+            
+            % Calculate padding sizes
+            padX = floor(size(tipHeightMapRescaled, 2));
+            padY = floor(size(tipHeightMapRescaled, 1));
+            
+            % Pad the sample height map and indentation depth map to accommodate shifts
+            paddedSampleHeightMap = padarray(sampleHeightMapRescaled, [padY, padX], 'replicate', 'both');
+            paddedIndentationDepthMap = padarray(indentationDepthMapRescaled, [padY, padX], 'replicate', 'both');
+            
+            % Initialize results
+            contactAreas = zeros(sampleNumPixelsY, sampleNumPixelsX);
+            
+            % Calculate pixel area
+            pixelArea = (finalPhysicalSizeX / finalResolutionX) * (finalPhysicalSizeY / finalResolutionY);
+            
+            % Find the position of the highest point in the tip height map
+            [maxTipHeight, maxTipIndex] = max(tipHeightMapRescaled(:));
+            [maxTipY, maxTipX] = ind2sub(size(tipHeightMapRescaled), maxTipIndex);
+            
+            % Invert Tip Data so, tip apex is at zero
+            tipHeightMapRescaled = -tipHeightMapRescaled;
+            tipHeightMapRescaled = tipHeightMapRescaled + maxTipHeight;
+            
+            % Iterate over each pixel in the sample height map
+            for i = 1:sampleNumPixelsY
+                for j = 1:sampleNumPixelsX
+                    % Current position in the padded maps
+                    currentX = j + padX;
+                    currentY = i + padY;
+                    
+                    % Calculate the shift required to align the highest point of the tip with the current pixel
+                    shiftY = currentY - maxTipY;
+                    shiftX = currentX - maxTipX;
+                    
+                    % Determine the bounds of the region to be copied
+                    startY = shiftY;
+                    endY = shiftY + size(tipHeightMapRescaled, 1) - 1;
+                    startX = shiftX;
+                    endX = shiftX + size(tipHeightMapRescaled, 2) - 1;
+                    
+                    % Check if the start and end indices are within the padded map boundaries
+                    if startY > 0 && endY <= size(paddedSampleHeightMap, 1) && startX > 0 && endX <= size(paddedSampleHeightMap, 2)
+                        % Extract the region of interest from the padded maps
+                        overlapRegionSample = paddedSampleHeightMap(startY:endY, startX:endX);
+                        overlapRegionIndentation = paddedIndentationDepthMap(startY:endY, startX:endX);
+                        
+                        % Ensure the sizes match for shifting operation
+                        if all(size(overlapRegionSample) == size(tipHeightMapRescaled))
+                            % Calculate overlap
+                            overlapMask = ((overlapRegionSample - sampleHeightMap(i,j)) >= (tipHeightMapRescaled - indentationDepthMap(i,j)));
+                            
+                            % Calculate contact area
+                            contactAreas(i, j) = sum(overlapMask(:)) * pixelArea;
+                            
+                            if verbose && mod(j,1)==0
+                                subplot(2,3,1)
+                                imshow(overlapMask,[])
+                                subplot(2,3,2)
+                                imshow(contactAreas,[])
+                                
+                                subplot(2,3,4)
+                                imshow(overlapRegionSample,[])
+                                subplot(2,3,5)
+                                imshowpair(overlapRegionSample,tipHeightMapRescaled)
+                                
+                                subplot(2,3,[3 6])
+                                mesh((overlapRegionSample - sampleHeightMap(i,j)))
+                                hold on
+                                mesh((tipHeightMapRescaled - indentationDepthMap(i,j)))
+                                hold off
+                                zlim([-3e-7 4e-7])
+                                drawnow
+                            end
+                        else
+                            fprintf('somethings wrong %i,%i \n',i,j)
+                        end
+                    end
+                end
+            end
+            
+            % Debugging and visualization
+            if verbose
+                figure;
+                subplot(1, 3, 1);
+                imagesc(sampleHeightMapRescaled);
+                title('Sample Height Map');
+                colorbar;
+                
+                subplot(1, 3, 2);
+                imagesc(tipHeightMapRescaled);
+                title('Rescaled Tip Height Map');
+                colorbar;
+                
+                subplot(1, 3, 3);
+                imagesc(contactAreas);
+                title('Contact Areas');
+                colorbar;
+            end
         end
         
     end
