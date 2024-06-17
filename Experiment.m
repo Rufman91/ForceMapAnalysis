@@ -2401,6 +2401,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 end
             end
             for i=1:obj.NumAFMImages
+                try
                 [OutStruct(k).Array,OutStruct(k).Struct,...
                     OutStruct(k).StructAll] = ...
                     obj.I{i}.characterize_fiber_like_polyline_segments(...
@@ -2416,6 +2417,8 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                     'KeyFrames',KeyFrames);
                 if ~isempty(OutStruct(k).Array)
                     k = k + 1;
+                end
+                catch
                 end
             end
         end
