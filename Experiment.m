@@ -2418,7 +2418,8 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 if ~isempty(OutStruct(k).Array)
                     k = k + 1;
                 end
-                catch
+                catch ME
+                    warning(ME)
                 end
             end
         end
