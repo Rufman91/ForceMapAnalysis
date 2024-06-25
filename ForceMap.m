@@ -799,7 +799,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
             elseif isequal(lower(RunMode),'zoomsweep')
                 runmode = 4;
                 if nargin < 3
-                    NumPasses = 5; % if not specified in arguments, NumPasses defaults to 20
+                    NumPasses = 5; % if not specified in arguments, NumPasses defaults to 5
                 end
             end
             ImgSize = NeuralNet.Layers(1).InputSize;
@@ -1329,7 +1329,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
             end
             
             if UseTopography
-                [~, AllMatches] = obj.search_channel('Local Radius of Curvature');
+                [~, AllMatches] = obj.search_channel('Radius of Curvature');
                 TempChan = [];
                 for i = 1:length(AllMatches)
                     TempChan = obj.get_channel(AllMatches{i});
@@ -1339,7 +1339,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
                 end
                 
                 if isempty(TempChan) || ~isequal(TempChan.FMA_ID, obj.CurrentFMA_ID)
-                    warning('No channel with FMA_ID matching CurrentFMA_ID found. Using the first match instead.');
+                    warning(sprintf('No channel with FMA_ID matching CurrentFMA_ID found. Using the first match "%s" instead.',AllMatches{1}));
                     TempChan = obj.get_channel(AllMatches{1});
                 end
                 

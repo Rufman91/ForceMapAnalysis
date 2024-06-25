@@ -502,7 +502,6 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             end
         end
 
-
         function OutChannel = create_standard_channel(obj,Image,Name,Unit)
             
             OutChannel.Image = Image;
@@ -1356,6 +1355,11 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
                 return
             end
             
+            % All calculations assume same size per pixel so convert
+            % Channel to same physical size per pixel and use multipliers
+            % to convert back afterwards
+            [Channel,XMult,YMult] = AFMBaseClass.resize_channel_to_same_size_per_pixel(Channel);
+            
             % Convert inputs from meters to pixels
             SizePerPixel = Channel.ScanSizeX/Channel.NumPixelsX;
             WidthLocalWindowPixels = WidthLocalWindowMeters/SizePerPixel;
@@ -1379,8 +1383,11 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
                 if ~isequal(obj.Segment(i).Type,'polyline') || isempty(strfind(obj.Segment(i).Name,'Snapped'))
                     continue
                 end
+                % Adapt Segment positions to new image dimensions
+                ConvSegPos = obj.Segment(i).ROIObject.Position;
+                ConvSegPos = [ConvSegPos(:,1)*YMult ConvSegPos(:,2)*XMult];
                 
-                Polyline = drawpolyline(Ax.Parent,'Position',obj.Segment(i).ROIObject.Position);
+                Polyline = drawpolyline(Ax.Parent,'Position',ConvSegPos);
                 FirstMask = Polyline.createMask;
                 TempMask = FirstMask;
                 [TempCol,TempRow] = find(FirstMask == 1);
@@ -1420,8 +1427,13 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
                     end
                     IgnoreMask = or(IgnoreMask,(SegmentMasks(:,:,j) > SegmentMasks(:,:,i)));
                 end
-                SegmentPositions = obj.Segment(i).ROIObject.Position;
-                LocalDirectionVector = AFMBaseClass.find_local_direction_vector_in_ordered_vector_list(obj.Segment(i).ROIObject.Position,SmoothingWindowSize,'flat');
+                
+                % Adapt Segment positions to new image dimensions
+                ConvSegPos = obj.Segment(i).ROIObject.Position;
+                ConvSegPos = [ConvSegPos(:,1)*YMult ConvSegPos(:,2)*XMult];
+                SegmentPositions = ConvSegPos;
+                
+                LocalDirectionVector = AFMBaseClass.find_local_direction_vector_in_ordered_vector_list(SegmentPositions,SmoothingWindowSize,'flat');
                 LocalHeight = zeros(length(SegmentPositions(:,1)),1);
                 LocalProminence = zeros(length(SegmentPositions(:,1)),1);
                 LocalWidthHalfHeight = zeros(length(SegmentPositions(:,1)),1);
@@ -1618,7 +1630,7 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
                     
                     % Find corresponding Pixel by distance
 %                     DistanceVector = SegmentPixelIndizes{i} - [LocalPosition(j,1) LocalPosition(j,2)];
-                    DistanceVector = SegmentPixelIndizes{i} - [obj.Segment(i).ROIObject.Position(j,1) obj.Segment(i).ROIObject.Position(j,2)];
+                    DistanceVector = SegmentPixelIndizes{i} - [SegmentPositions(j,1) SegmentPositions(j,2)];
                     Distances = vecnorm(DistanceVector,2,2);
                     [~,IndexOfClosest] = min(Distances);
                     try
@@ -1643,6 +1655,24 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
                 SegmentLength = sum(vecnorm(...
                     (SegmentPositions(1:end-1,:) - SegmentPositions(2:end,:))...
                     *SizePerPixel,2,2),'all');
+                
+                % Now rescale back all relevant pixel positions so they
+                % make sense in the context of the original channel
+                % dimensions. Skip if XMult==YMult==1
+                if XMult == 1 && YMult==1
+                    % do nothing
+                else
+                    SegmentPositions = [SegmentPositions(:,1)/YMult SegmentPositions(:,2)/XMult];
+                    TempCorrespondingPixelIndex = [TempCorrespondingPixelIndex(:,1)/YMult TempCorrespondingPixelIndex(:,2)/XMult];
+                    
+                    % Bin integer pixel positions
+                    integerListX = 1:round(Channel.NumPixelsX/XMult);
+                    integerListY = 1:round(Channel.NumPixelsY/YMult);
+                    TempCorrespondingPixelIndex(:,2) = binToNearest(TempCorrespondingPixelIndex(:,2),integerListX);
+                    TempCorrespondingPixelIndex(:,1) = binToNearest(TempCorrespondingPixelIndex(:,1),integerListY);
+                    SegmentPixelIndizes{i}(:,2) = binToNearest(SegmentPixelIndizes{i}(:,2)/XMult,integerListX);
+                    SegmentPixelIndizes{i}(:,1) = binToNearest(SegmentPixelIndizes{i}(:,1)/YMult,integerListY);
+                end
                 
                 % write down results
                 Struct(k).Name = obj.Segment(i).Name;
@@ -1747,8 +1777,8 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
                 obj.Segment(i).CorrespondingPixelIndex = TempCorrespondingPixelIndex;
                 TempCorrespondingPixelIndex = [];
                 
-                LocalPositionRealWorld = [SegmentPositions(:,1).*Channel.ScanSizeX/Channel.NumPixelsX ...
-                    SegmentPositions(:,2).*Channel.ScanSizeY/Channel.NumPixelsY];
+                LocalPositionRealWorld = [SegmentPositions(:,1).*Channel.ScanSizeX/(Channel.NumPixelsX/YMult) ...
+                    SegmentPositions(:,2).*Channel.ScanSizeY/(Channel.NumPixelsY/XMult)];
                 RelativePixel(1) = 0;
                 RelativeRealWorld(1) = 0;
                 RelativePixel(2:length(SegmentPositions)) = cumsum(vecnorm(...
@@ -1852,7 +1882,7 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
                 v.close
             end
             
-            obj.map_fiber_segment_properties_to_image_pixels('Median');
+             obj.map_fiber_segment_properties_to_image_pixels('Median');
             
             OutStructAll = Struct;
             close(h)
@@ -1960,6 +1990,8 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
         end
         
         function [slope, radius_of_curvature, slope_direction, CorrectedRadius] = localSurfaceFit(obj, HeightChannelName, Radius)
+            %[slope, radius_of_curvature, slope_direction, CorrectedRadius] = localSurfaceFit(obj, HeightChannelName, Radius)
+            %
             %LOCALSURFACEFIT Calculates the local slope and curvature of an AFMBaseClass object's height image
             %   This method takes an AFMBaseClass object instance (obj) and a HeightChannelName as input,
             %   reads the height image using the get_channel method, and computes the local slope and
@@ -1997,7 +2029,7 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
                     warning(['The ROI-Radius you chose for curvature fitting is too small. Replaced with the minimum radius of ' num2str(min_radius)]);
                 end
             else
-                CompRadius = obj.convert_map_to_data_list(Radius);
+                CompRadius = Radius;
                 MinRadVector = min_radius.*ones(length(CompRadius),1);
                 Radius = max([MinRadVector CompRadius],[],2);
                 if ~isequal(Radius,CompRadius)
@@ -2075,6 +2107,7 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
         end
         
         function localSurfaceFit_ClassWrapper(obj, HeightChannelName, Radius, KeepOldResults)
+            %localSurfaceFit_ClassWrapper(obj, HeightChannelName, Radius, KeepOldResults)
             
             % Calculate the metrics
             [slope, radius_of_curvature, slope_direction, CorrectedRadius] = localSurfaceFit(obj, HeightChannelName, Radius);
@@ -2097,6 +2130,24 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
                 obj.create_standard_channel(slope,S_Name,'m/m'), ~KeepOldResults);
             obj.add_channel(...
                 obj.create_standard_channel(slope_direction,SD_Name,'°'), ~KeepOldResults);
+            
+        end
+        
+        function [ContactRadii,ContactArea] = local_contact_area_ClassWrapper(...
+                obj, TipHeightChannel, HeightChannel, IndendationDepthChannel,KeepOldResults)
+            
+            THChan = TipHeightChannel;
+            SHChan = HeightChannel;
+            SIDChan = IndendationDepthChannel;
+            
+            ContactArea = AFMBaseClass.calculateContactArea(THChan,SHChan,SIDChan,'Verbose',false);
+            ContactRadii = sqrt(ContactArea./pi);
+            
+            % Write new Channels
+            obj.add_channel(...
+                obj.create_standard_channel(ContactArea,'Dynamic Contact Area','m^2'), ~KeepOldResults);
+            obj.add_channel(...
+                obj.create_standard_channel(ContactRadii,'Dynamic Contact Radius','m'), ~KeepOldResults);
             
         end
         
@@ -2319,7 +2370,7 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
         end
         
         function [OutChannel,XMultiplier,YMultiplier] = resize_channel_to_same_size_per_pixel(InChannel)
-            % OutChannel = resize_channel_to_same_size_per_pixel(InChannel)
+            % [OutChannel,XMultiplier,YMultiplier] = resize_channel_to_same_size_per_pixel(InChannel)
             % 
             % Resizes the image dimension with bigger size per pixel so
             % the OutChannel always has more pixels.
@@ -2564,6 +2615,7 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
         end
         
         function OutChannel = rotate_channel(InChannel,RotDegrees)
+            % OutChannel = rotate_channel(InChannel,RotDegrees)
             
             OutChannel = InChannel;
             
@@ -2705,8 +2757,8 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             %       min_radius - The minimum radius required for fitting a second-order surface
             
             % Get the grid spacing in the x and y directions
-            num_pixels_x = Channel.NumPixelsX;
-            num_pixels_y = Channel.NumPixelsY;
+            num_pixels_y = Channel.NumPixelsX;
+            num_pixels_x = Channel.NumPixelsY;
             scan_size_x = Channel.ScanSizeX;
             scan_size_y = Channel.ScanSizeY;
             
@@ -2714,12 +2766,296 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             grid_spacing_y = scan_size_y / (num_pixels_y - 1);
             
             % Calculate the minimum radius in the x and y directions
-            min_radius_x = grid_spacing_x*ceil(sqrt(required_data_points / (num_pixels_y - 1)));
-            min_radius_y = grid_spacing_y*ceil(sqrt(required_data_points / (num_pixels_x - 1)));
+            min_radius_x = grid_spacing_x*ceil(sqrt(required_data_points / (num_pixels_x - 1)));
+            min_radius_y = grid_spacing_y*ceil(sqrt(required_data_points / (num_pixels_y - 1)));
             
             % Take the maximum of the two minimum radii to ensure enough data points
             min_radius = max(min_radius_x, min_radius_y);
         end
+        
+        function contactAreas = calculateContactArea(tipStruct, sampleStruct, indentationStruct, varargin)
+            % contactAreas = calculateContactArea(tipStruct, sampleStruct, indentationStruct, varargin)
+            % Calculate contact area between AFM tip and sample based on indentation depth
+            %
+            % Inputs:
+            % tipStruct - struct representing the AFM tip height map
+            % sampleStruct - struct representing the sample height map
+            % indentationStruct - struct representing the indentation depth map
+            % 'Verbose', false, @islogical
+            %
+            % Outputs:
+            % contactAreas - contact area for each pixel position
+            
+            % Parse input arguments
+            p = inputParser;
+            addParameter(p, 'Verbose', false, @islogical);
+            parse(p, varargin{:});
+            verbose = p.Results.Verbose;
+            
+            if verbose
+                figure
+            end
+            
+            % Extract image data
+            tipHeightMap = tipStruct.Image;
+            sampleHeightMap = sampleStruct.Image;
+            indentationDepthMap = indentationStruct.Image;
+            
+            % Extract scan sizes and resolutions
+            tipScanSizeX = tipStruct.ScanSizeX;
+            tipScanSizeY = tipStruct.ScanSizeY;
+            tipNumPixelsX = tipStruct.NumPixelsY;
+            tipNumPixelsY = tipStruct.NumPixelsX;
+            
+            sampleScanSizeX = sampleStruct.ScanSizeX;
+            sampleScanSizeY = sampleStruct.ScanSizeY;
+            sampleNumPixelsX = sampleStruct.NumPixelsY;
+            sampleNumPixelsY = sampleStruct.NumPixelsX;
+            
+            % Determine the physical sizes of both images
+            tipPhysicalSizeX = tipScanSizeX;
+            tipPhysicalSizeY = tipScanSizeY;
+            
+            samplePhysicalSizeX = sampleScanSizeX;
+            samplePhysicalSizeY = sampleScanSizeY;
+            
+            % Equalize the AFM images
+            
+            % Equalize the AFM images
+            [equalizedTipStruct, equalizedSampleStruct, indicesTip, indicesSample] =...
+                AFMBaseClass.equalizeAFMImages(tipStruct, sampleStruct,...
+                'PreserveResolution',true,'SquarePhysicalPixel',false);
+            [~, equalizedIndentationStruct, ~, indicesIndentation] =...
+                AFMBaseClass.equalizeAFMImages(equalizedSampleStruct, indentationStruct,...
+                'PreserveResolution',true,'SquarePhysicalPixel',false);
+            
+            if equalizedTipStruct.NumPixelsX*equalizedTipStruct.NumPixelsY >= 1024^2
+                warning(sprintf('Trying to compute with maximal resolution results in a %i sized image. Downscaling instead...',sqrt(equalizedTipStruct.NumPixelsX*equalizedTipStruct.NumPixelsY)))
+                [equalizedTipStruct, equalizedSampleStruct, indicesTip, indicesSample] =...
+                    AFMBaseClass.equalizeAFMImages(tipStruct, sampleStruct,...
+                    'PreserveResolution',false,'SquarePhysicalPixel',false);
+                [~, equalizedIndentationStruct, ~, indicesIndentation] =...
+                    AFMBaseClass.equalizeAFMImages(equalizedSampleStruct, indentationStruct,...
+                    'PreserveResolution',false,'SquarePhysicalPixel',false);
+            end
+            
+            tipHeightMapRescaled = equalizedTipStruct.Image;
+            sampleHeightMapRescaled = equalizedSampleStruct.Image;
+            indentationDepthMapRescaled = equalizedIndentationStruct.Image;
+            
+            % Prune tip height map background down to not affect high
+            % sample map regions
+            LowerCutFraction = 0.2;
+            tipHeightMapRescaled(tipHeightMapRescaled < min(tipHeightMap,[],'all')...
+                + LowerCutFraction*range(tipHeightMap,'all'))...
+                = min(tipHeightMapRescaled - range(sampleHeightMapRescaled,'all'),[],'all');
+            
+            % Calculate padding sizes
+            padX = floor(size(tipHeightMapRescaled, 2));
+            padY = floor(size(tipHeightMapRescaled, 1));
+            
+            % Pad the sample height map and indentation depth map to accommodate shifts
+            paddedSampleHeightMap = padarray(sampleHeightMapRescaled, [padY, padX], 'replicate', 'both');
+            paddedIndentationDepthMap = padarray(indentationDepthMapRescaled, [padY, padX], 'replicate', 'both');
+            
+            % Initialize results
+            contactAreas = zeros(sampleNumPixelsY, sampleNumPixelsX);
+            
+            % Calculate pixel area
+            pixelArea = (equalizedSampleStruct.ScanSizeX / equalizedSampleStruct.NumPixelsX) * ...
+                (equalizedSampleStruct.ScanSizeY / equalizedSampleStruct.NumPixelsY);
+            
+            % Find the position of the highest point in the tip height map
+            [maxTipHeight, maxTipIndex] = max(tipHeightMapRescaled(:));
+            [maxTipY, maxTipX] = ind2sub(size(tipHeightMapRescaled), maxTipIndex);
+            
+            % Invert Tip Data so, tip apex is at zero
+            tipHeightMapRescaled = -tipHeightMapRescaled;
+            tipHeightMapRescaled = tipHeightMapRescaled + maxTipHeight;
+            
+            % Iterate over each pixel in the sample height map
+            for i = 1:sampleNumPixelsY
+                for j = 1:sampleNumPixelsX
+                    % Current position in the padded maps
+                    currentX = round(j/sampleNumPixelsX*(indicesSample.endX - indicesSample.startX + 1)) + indicesSample.startX + padX;
+                    currentY = round(i/sampleNumPixelsY*(indicesSample.endY - indicesSample.startY + 1)) + indicesSample.startY + padY;
+                    
+                    % Calculate the shift required to align the highest point of the tip with the current pixel
+                    shiftY = currentY - maxTipY;
+                    shiftX = currentX - maxTipX;
+                    
+                    % Determine the bounds of the region to be copied
+                    startY = shiftY;
+                    endY = shiftY + size(tipHeightMapRescaled, 1) - 1;
+                    startX = shiftX;
+                    endX = shiftX + size(tipHeightMapRescaled, 2) - 1;
+                    
+                    % Check if the start and end indices are within the padded map boundaries
+                    if startY > 0 && endY <= size(paddedSampleHeightMap, 1) && startX > 0 && endX <= size(paddedSampleHeightMap, 2)
+                        % Extract the region of interest from the padded maps
+                        overlapRegionSample = paddedSampleHeightMap(startY:endY, startX:endX);
+                        overlapRegionIndentation = paddedIndentationDepthMap(startY:endY, startX:endX);
+                        
+                        % Ensure the sizes match for shifting operation
+                        if all(size(overlapRegionSample) == size(tipHeightMapRescaled))
+                            % Calculate overlap
+                            overlapMask = ((overlapRegionSample - sampleHeightMap(i,j)) >= (tipHeightMapRescaled - indentationDepthMap(i,j)));
+                            
+                            % Calculate contact area
+                            contactAreas(i, j) = sum(overlapMask(:)) * pixelArea;
+                            
+                            if verbose && mod(j,256)==0
+                                subplot(2,3,1)
+                                imshow(overlapMask,[])
+                                subplot(2,3,2)
+                                imshow(contactAreas,[])
+                                
+                                subplot(2,3,4)
+                                imshow(overlapRegionSample,[])
+                                subplot(2,3,5)
+                                imshowpair(overlapRegionSample,-tipHeightMapRescaled)
+                                
+                                subplot(2,3,[3 6])
+                                mesh((overlapRegionSample - sampleHeightMap(i,j)))
+                                hold on
+                                mesh((tipHeightMapRescaled - indentationDepthMap(i,j)))
+                                hold off
+                                zlim([-3e-7 4e-7])
+                                drawnow
+                            end
+                        else
+                            fprintf('somethings wrong %i,%i \n',i,j)
+                        end
+                    end
+                end
+            end
+            
+            % Debugging and visualization
+            if verbose
+                figure;
+                subplot(1, 3, 1);
+                imagesc(sampleHeightMapRescaled);
+                title('Sample Height Map');
+                colorbar;
+                
+                subplot(1, 3, 2);
+                imagesc(tipHeightMapRescaled);
+                title('Rescaled Tip Height Map');
+                colorbar;
+                
+                subplot(1, 3, 3);
+                imagesc(contactAreas);
+                title('Contact Areas');
+                colorbar;
+            end
+        end
+        
+        function [outStruct1, outStruct2, indices1, indices2] = equalizeAFMImages(imageStruct1, imageStruct2, varargin)
+            % Parse optional input arguments
+            p = inputParser;
+            addParameter(p, 'PreserveResolution', false, @(x) islogical(x) || x == 0 || x == 1);
+            addParameter(p, 'SquarePhysicalPixel', false, @(x) islogical(x) || x == 0 || x == 1);
+            parse(p, varargin{:});
+            preserveResolution = p.Results.PreserveResolution;
+            squarePhysicalPixel = p.Results.SquarePhysicalPixel;
+            
+            % Extract fields from input structs
+            image1 = imageStruct1.Image;
+            numPixelsX1 = imageStruct1.NumPixelsY;
+            numPixelsY1 = imageStruct1.NumPixelsX;
+            scanSizeX1 = imageStruct1.ScanSizeX;
+            scanSizeY1 = imageStruct1.ScanSizeY;
+            
+            image2 = imageStruct2.Image;
+            numPixelsX2 = imageStruct2.NumPixelsY;
+            numPixelsY2 = imageStruct2.NumPixelsX;
+            scanSizeX2 = imageStruct2.ScanSizeX;
+            scanSizeY2 = imageStruct2.ScanSizeY;
+            
+            % Calculate physical sizes per pixel
+            physSizePerPixelX1 = scanSizeX1 / numPixelsX1;
+            physSizePerPixelY1 = scanSizeY1 / numPixelsY1;
+            physSizePerPixelX2 = scanSizeX2 / numPixelsX2;
+            physSizePerPixelY2 = scanSizeY2 / numPixelsY2;
+            
+            % Determine the maximum scan size
+            [maxScanSizeX, ~] = max([scanSizeX1, scanSizeX2]);
+            [maxScanSizeY, ~] = max([scanSizeY1, scanSizeY2]);
+            
+            % Determine the minimum physical size per pixel for upscaling if needed
+            if preserveResolution
+                [minPhysSizePerPixelX, ~] = min([physSizePerPixelX1, physSizePerPixelX2]);
+                [minPhysSizePerPixelY, ~] = min([physSizePerPixelY1, physSizePerPixelY2]);
+            else
+                [minPhysSizePerPixelX, ~] = max([physSizePerPixelX1, physSizePerPixelX2]);
+                [minPhysSizePerPixelY, ~] = max([physSizePerPixelY1, physSizePerPixelY2]);
+            end
+            
+            % Ensure square physical pixels if requested
+            if squarePhysicalPixel
+                minPhysSizePerPixelX = min(minPhysSizePerPixelX, minPhysSizePerPixelY);
+                minPhysSizePerPixelY = minPhysSizePerPixelX;
+            end
+            
+            % Calculate new number of pixels
+            newNumPixelsX = ceil(maxScanSizeX / minPhysSizePerPixelX);
+            newNumPixelsY = ceil(maxScanSizeY / minPhysSizePerPixelY);
+            
+            % Resize and pad the images
+            [resizedImage1, indices1] = AFMBaseClass.resizeAndPadImage(image1, ...
+                numPixelsX1, numPixelsY1, newNumPixelsX, newNumPixelsY, ...
+                scanSizeX1, scanSizeY1, minPhysSizePerPixelX, minPhysSizePerPixelY);
+            [resizedImage2, indices2] = AFMBaseClass.resizeAndPadImage(image2, ...
+                numPixelsX2, numPixelsY2, newNumPixelsX, newNumPixelsY, ...
+                scanSizeX2, scanSizeY2, minPhysSizePerPixelX, minPhysSizePerPixelY);
+            
+            % Create output structs
+            outStruct1 = imageStruct1;
+            outStruct2 = imageStruct2;
+            
+            outStruct1.Image = resizedImage1;
+            outStruct1.NumPixelsX = newNumPixelsY;
+            outStruct1.NumPixelsY = newNumPixelsX;
+            outStruct1.ScanSizeX = maxScanSizeX; 
+            outStruct1.ScanSizeY = maxScanSizeY;
+            
+            outStruct2.Image = resizedImage2;
+            outStruct2.NumPixelsX = newNumPixelsY;
+            outStruct2.NumPixelsY = newNumPixelsX;
+            outStruct2.ScanSizeX = maxScanSizeX; 
+            outStruct2.ScanSizeY = maxScanSizeY;
+        end
+        
+        function [resizedImage, indices] = resizeAndPadImage(image, ...
+                numPixelsX, numPixelsY, newNumPixelsX, newNumPixelsY, ...
+                scanSizeX, scanSizeY, physSizePerPixelX, physSizePerPixelY)
+            % Calculate scale factors
+            scaleFactorX = (scanSizeX / numPixelsX) / physSizePerPixelX;
+            scaleFactorY = (scanSizeY / numPixelsY) / physSizePerPixelY;
+            
+            % Resize image
+            resizedImage = imresize(image, [round(numPixelsY * scaleFactorY), round(numPixelsX * scaleFactorX)]);
+            
+            % Determine padding
+            padX = newNumPixelsX - size(resizedImage, 2);
+            padY = newNumPixelsY - size(resizedImage, 1);
+            
+            % Pad image
+            padLeft = floor(padX / 2);
+            padRight = padX - padLeft;
+            padTop = floor(padY / 2);
+            padBottom = padY - padTop;
+            resizedImage = padarray(resizedImage, [padTop, padLeft], min(resizedImage, [], 'all'), 'pre');
+            resizedImage = padarray(resizedImage, [padBottom, padRight], min(resizedImage, [], 'all'), 'post');
+            
+            % Calculate indices
+            startIndexX = padLeft + 1;
+            endIndexX = startIndexX + size(image, 2) * scaleFactorX - 1;
+            startIndexY = padTop + 1;
+            endIndexY = startIndexY + size(image, 1) * scaleFactorY - 1;
+            indices = struct('startX', round(startIndexX), 'endX', round(endIndexX), 'startY', round(startIndexY), 'endY', round(endIndexY));
+        end
+        
         
     end
     methods (Static)
