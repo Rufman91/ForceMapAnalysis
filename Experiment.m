@@ -9765,6 +9765,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                             'Verbose',false);
                     end
                     obj.FM{i}.RefSlope = obj.RefFM{RefIdx}.RefSlope;
+                    obj.FM{i}.RefSlopeCorrectedSensitivity = obj.RefFM{RefIdx}.RefSlopeCorrectedSensitivity;
                     obj.FM{i}.HasRefSlope = true;
                 elseif length(obj.RefFM) == 1
                     if ~obj.RefFM{1}.HasRefSlope
@@ -9784,6 +9785,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                             'Verbose',false);
                     end
                     obj.FM{i}.RefSlope = obj.RefFM{1}.RefSlope;
+                    obj.FM{i}.RefSlopeCorrectedSensitivity = obj.RefFM{1}.RefSlopeCorrectedSensitivity;
                     obj.FM{i}.HasRefSlope = true;
                 end
             elseif obj.ReferenceSlopeFlag.AutomaticFibril
