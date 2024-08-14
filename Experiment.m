@@ -12346,5 +12346,121 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             toc
         end
         
+        
+        function SummaryStruct = multiexperiment_create_and_save_data_table(FilterNonSnapped)
+            
+            if nargin < 1
+                FilterNonSnapped = false;
+            end
+            
+            k = 1;
+            LoadMore = 'Yes';
+            FullFile = {}; % Initialize FullFile to avoid potential issues with empty cells
+            
+            % File selection loop
+            while isequal(LoadMore, 'Yes')
+                [File, Path] = uigetfile('*.mat', 'Choose Experiment .mat from folder');
+                
+                % Check if the user selected a file
+                if isequal(File, 0) || isequal(Path, 0)
+                    disp('No file selected, exiting the selection loop.');
+                    break;
+                end
+                
+                FullFile{k} = fullfile(Path, File);
+                k = k + 1;
+                
+                LoadMore = questdlg('Do you want to add more Experiments?', ...
+                    'Multiexperiment loader', ...
+                    'Yes', ...
+                    'No', ...
+                    'No');
+            end
+            
+            % Remove empty entries in FullFile
+            FullFile = FullFile(~cellfun('isempty', FullFile));
+            NumExperiments = length(FullFile);
+            
+            % If no experiments are loaded, exit early
+            if NumExperiments == 0
+                disp('No experiments were loaded. Exiting the function.');
+                SummaryStruct = [];
+                return;
+            end
+            
+            % Initialize SummaryStruct
+            SummaryStruct(1:NumExperiments) = struct(...
+                'AnalysisSuccessful', true, ...
+                'ErrorStack', []);
+            
+            tic
+            h = waitbar(0, 'Setting up...');
+            
+            for i = 1:NumExperiments
+                waitbar((i) / NumExperiments, h, ...
+                    ['Loading Experiment ' num2str(i) ' of ' num2str(NumExperiments)]);
+                try
+                    % Load experiment data
+                    E = Experiment.load(FullFile{i});
+                    
+                    waitbar((i) / NumExperiments, h, ...
+                        ['Processing Experiment ' num2str(i) ' of ' num2str(NumExperiments)]);
+                    
+                    % Compile data into a table
+                    T = E.compile_experiment_content_to_table_sqldatabase;
+                    
+                    isTableFiltered = false;
+                    
+                    % Apply filtering if needed
+                    if FilterNonSnapped
+                        columnName = 'SegmentName';
+                        isColumnPresent = ismember(columnName, T.Properties.VariableNames);
+                        
+                        if isColumnPresent
+                            rows = ~contains(T.SegmentName, 'Snapped');
+                            T(rows, :) = [];
+                            isTableFiltered = true;
+                        else
+                            fprintf('\nData Table does not contain a Column named "SegmentName".\n');
+                            fprintf('Is your Data properly Segmented?\nSaving full Table instead...\n');
+                        end
+                    end
+                    
+                    % Generate timestamped filename
+                    currentDateTime = datetime('now');
+                    formattedDateTime = datestr(currentDateTime, 'yyyy_mm_dd_HH_MM');
+                    
+                    if isTableFiltered
+                        FileName = ['DataTable_', 'Filtered_', formattedDateTime, '.mat'];
+                    else
+                        FileName = ['DataTable_', formattedDateTime, '.mat'];
+                    end
+                    
+                    % Save the table
+                    try
+                        current = what;
+                        cd(E.ExperimentFolder)
+                        save(FileName, 'T', '-v7.3');
+                        cd(current.path)
+                    catch saveError
+                        warning('Failed to save the file: %s\nError: %s', FileName, saveError.message);
+                        SummaryStruct(i).AnalysisSuccessful = false;
+                        SummaryStruct(i).ErrorStack = saveError;
+                    end
+                    
+                    clear T
+                    
+                catch ME
+                    SummaryStruct(i).ErrorStack = ME;
+                    SummaryStruct(i).AnalysisSuccessful = false;
+                    clear T
+                end
+            end
+            
+            close(h)
+            toc
+        end
+
+        
     end
 end
