@@ -6002,6 +6002,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
                 AppRetSwitch=obj.NumSegments-1;
             end
             
+            AppRetSwitch = int8(AppRetSwitch);
+            
             if ~obj.PythonLoaderFlag
                 HeaderFileDirectory = fullfile(TempFolder,'shared-data','header.properties');
                 SegmentHeaderFileDirectory = fullfile(TempFolder,'index',string((CurveNumber-1)),'segments',string(AppRetSwitch),'segment-header.properties');

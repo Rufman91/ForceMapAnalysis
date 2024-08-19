@@ -122,19 +122,15 @@ or
 >> E.FM{1}.quality_control_oliver_pharr		% creates a few plots to validate Oliver-Pharrian analysis of indentation modulus (if force map analysis has been run already)
 
 Most properties will be empty and most methods will produce errors, though, until you run data analysis on the data of interest.
-This is done for, respectively, force maps and surface potential maps by
+This is done for force maps by
 
->> E.force_map_analysis_fibril(CPOption, EModOption)      % for collagen fibril force maps
->> E.force_map_analysis_general(CPOption, EModOption)     % for more general cases of force maps (e.g. no fibril masking, no FibDiam calculation etc.)
->> E.surface_potential_analysis_fibril()
+>> E.force_map_analysis_general     
 
-the options for the force map analysis are explained in the functions header comments.
-
-The tip deconvolution was just adapted from the old script by Orestis Andriotis. It is run in the context of the force_map_analysis_fibril method right at the beginning.
+the options for the force map analysis can be adjusted and set using the
+>> E.set_force_map_analysis_options
+method
 
 You should now be able to run the force analysis. Note that the E-Mod of every force curve will be calculated.
 
-The methods for statistical analysis have been carelessly slapped together for a specific use case and are subject to generalization in the near future.
-
-The fibrils overall moduli, as well as the apex moduli and standard deviations are saved into the property struct E.EMod
+To view images, force curves and analysis results, use the E.show_image method. Most relevant information is saved to the respective force maps channels and can be explored in the viewer.
 
