@@ -20,7 +20,7 @@ else
     choice3 = []; 
 end
 
-% read force map number to be excluded
+% Read number of force maps to exclude
 if choice1 == 1
     if isfile('Exclude.txt')
         fileID = fopen('Exclude.txt', 'r');
@@ -36,7 +36,7 @@ end
 
 for i = 1:E.NumForceMaps
     if ismember(i, datavalues)
-        % skip evaluation round
+        % Skip evaluation round
     else
         cd(E.ForceMapFolders{i,1})
         load(strcat('Processed',s2,'.mat'))
@@ -59,14 +59,42 @@ CsFlatMax_data(CsFlatMax_data == 0) = NaN;
 CsVolume_data(CsVolume_data == 0) = NaN;
 CsVolumeSphereCap_data(CsVolumeSphereCap_data == 0) = NaN;
 CsEModHertz_mean(CsEModHertz_mean == 0) = NaN;
-nnz(~isnan(CsEModHertz_mean))
+
+
+% figure('name', 'Maximum height dependence'); hold on
+% box on; set(gca,'FontSize', 16, 'Linewidth', 1.5);
+% for i = 1:E.NumForceMaps
+%     scatter(CsFlatPrctile_data(i), CsEModHertz_mean(i), 50, [0.4940 0.1840 0.5560], "filled");
+% end
+% hold on
+% ylabel('Indentation modulus [kPa]');
+% xlabel('Centrosome height [nm]');
+
+if isempty(choice3)
+    c =  [55/255 126/255 184/255];
+elseif choice3 ==1
+    c =  [152/255 78/255 163/255]; % Thin film
+elseif choice3==2
+    c = [255/255 127/255 0/255]; % Topography
+    elseif choice3==3
+    c = [77/255 175/255 74/255]; % Thin film + topography
+end
+
+figure('name', 'Volume dependence'); hold on
+box on; set(gca,'FontSize', 18, 'Linewidth', 1.5);
+for i = 1:E.NumForceMaps
+    scatter(((4.*CsVolume_data(i))./(3*pi)).^(1/3)*1000, CsEModHertz_mean(i), 50, c, "filled");
+end
+ylabel('Indentation modulus [kPa]');
+xlabel('Centrosome radius [nm]');
+xlim([0 1800]); ylim([-50 350])
 
 figure('name', 'Mean height dependence'); hold on
-box on; set(gca,'FontSize', 16, 'Linewidth', 1.5);
+box on; set(gca,'FontSize', 18, 'Linewidth', 1.5);
 for i = 1:E.NumForceMaps
-    scatter(CsFlatHeight_mean(i), CsEModHertz_mean(i), 50, [0.4940 0.1840 0.5560], "filled"); %  [0 0.4470 0.7410] [0.8500 0.3250 0.0980]
+    scatter(CsFlatHeight_mean(i), CsEModHertz_mean(i), 50, c, "filled");
 end
-hold on
+% hold on
 % [xData, yData] = prepareCurveData( CsHeight_mean, CsEModHertz_mean );
 % 
 % % Set up fittype and options.
@@ -81,39 +109,23 @@ hold on
 % % Plot fit with data.
 % h = plot( fitresult, xData, yData );
 ylabel('Indentation modulus [kPa]');
-xlabel('Centrosome height [nm]');
+xlabel('Centrosome mean height [nm]');
+ylim([-50 350]); xlim([0, 1100])
 % legend boxoff
 
-figure('name', 'Maximum height dependence'); hold on
-box on; set(gca,'FontSize', 16, 'Linewidth', 1.5);
-for i = 1:E.NumForceMaps
-    scatter(CsFlatPrctile_data(i), CsEModHertz_mean(i), 50, [0.4940 0.1840 0.5560], "filled");
-end
-hold on
-ylabel('Indentation modulus [kPa]');
-xlabel('Centrosome height [nm]');
 
-figure('name', 'Volume dependence'); hold on
-box on; set(gca,'FontSize', 16, 'Linewidth', 1.5);
-for i = 1:E.NumForceMaps
-    scatter(((4.*CsVolume_data(i))./(3*pi)).^(1/3)*1000, CsEModHertz_mean(i), 50, [0 0.4470 0.7410], "filled");
-end
-ylabel('Indentation modulus [kPa]');
-xlabel('Radius [nm]');
-xlim([0 1800])
-
-figure('name', 'Maximum height vs. volume'); hold on
-box on; set(gca,'FontSize', 16, 'Linewidth', 1.5);
-for i = 1:E.NumForceMaps
-    scatter(((4.*CsVolume_data(i))./(3*pi)).^(1/3)*1000, CsFlatPrctile_data(i), 50, [0 0.4470 0.7410], "filled");
-end
-ylabel('Centrosome height [nm]'); 
-xlabel('Radius [nm]');
-
-figure('name', 'Compression vs. maximum height'); hold on
-box on; set(gca,'FontSize', 16, 'Linewidth', 1.5);
-for i = 1:E.NumForceMaps
-        scatter(CsFlatPrctile_data(i), (CsInden_mean(i)/CsFlatHeight_mean(i))*100, 50, [0.4940 0.1840 0.5560], "filled");  
-end
-xlabel('Centrosome height [nm]');
-ylabel('Compression [%]')
+% figure('name', 'Maximum height vs. volume'); hold on
+% box on; set(gca,'FontSize', 16, 'Linewidth', 1.5);
+% for i = 1:E.NumForceMaps
+%     scatter(((4.*CsVolume_data(i))./(3*pi)).^(1/3)*1000, CsFlatPrctile_data(i), 50, [0 0.4470 0.7410], "filled");
+% end
+% ylabel('Centrosome height [nm]'); 
+% xlabel('Radius [nm]');
+% 
+% figure('name', 'Compression vs. maximum height'); hold on
+% box on; set(gca,'FontSize', 16, 'Linewidth', 1.5);
+% for i = 1:E.NumForceMaps
+%         scatter(CsFlatPrctile_data(i), (CsInden_mean(i)/CsFlatHeight_mean(i))*100, 50, [0.4940 0.1840 0.5560], "filled");  
+% end
+% xlabel('Centrosome height [nm]');
+% ylabel('Compression [%]')

@@ -1,4 +1,4 @@
-function [PlaneAngle] = calculate_topography_angle(arr)
+function [PlaneAngle] = calculate_angle_topography(arr)
 
 % generate test fake data
 % create a cloud of random points

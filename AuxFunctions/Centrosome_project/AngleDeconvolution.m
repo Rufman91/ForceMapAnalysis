@@ -2,14 +2,14 @@
 % E = Experiment.load;
 cd(E.ExperimentFolder)
 
-% dbstop in AngleDeconvolution.m at 239
+dbstop in AngleDeconvolution.m at 111
 format long g;
 format compact;
-workspace;  % make sure the workspace panel is showing
+workspace;  % Make sure the workspace panel is showing
 
 close all
 clc
-show_fig = 'on';
+show_fig = 'off';
 msg1 = "Do you need to exclude force maps?";
 opts1 = ["Yes" "No"];
 choice1 = menu(msg1,opts1);
@@ -31,7 +31,7 @@ else
     choice3 = []; 
 end
 
-% read force map number to be excluded
+% Read number of force maps to exclude
 if choice1 == 1
     if isfile('Exclude.txt')
         fileID = fopen('Exclude.txt', 'r');
@@ -58,14 +58,14 @@ end
 
 for m = 1:E.NumForceMaps
     if ismember(m, datavalues) 
-        % skip evaluation round
+        % Skip evaluation round
     else
-        % contact height smoothed 2D centrosome segmentation  
+        % Contact height smoothed channel used for 2D centrosome segmentation  
         ChannelContactHeight = E.FM{m}.get_channel('Contact Height Smoothed');
         figure('name','Contact Height Smoothed','visible',show_fig); hold on
         imagesc(ChannelContactHeight.Image.*1e9); axis image; 
         c = colorbar; c.Location = 'northoutside'; c.Label.String = 'Height [nm]'; 
-        set(gca,'FontSize', 16, 'Linewidth', 1.5); axis off
+        set(gca,'FontSize', 16, 'Linewidth', 1.5); axis off; colormap("hot") 
         T = multithresh(ChannelContactHeight.Image);
         BW = imbinarize(ChannelContactHeight.Image,T);
         BW2 = imfill(BW,'holes');
@@ -73,9 +73,9 @@ for m = 1:E.NumForceMaps
         erodedBW2 = imerode(BW2,SE);
         dilatedBW2 = imdilate(BW2,SE);
         figure('name','Centrosome mask','visible',show_fig); hold on
-        imagesc(erodedBW2); axis image; axis off 
+        imagesc(erodedBW2); axis image; axis off
 
-        % check if the mask is open 
+        % Check if centrosome mask is open 
         logical_first_row = any(erodedBW2(1,:)); 
         logical_last_row = any(erodedBW2(end,:)); 
         logical_first_col = any(erodedBW2(:,1)); 
@@ -93,13 +93,14 @@ for m = 1:E.NumForceMaps
                 userInput = input('Mask is open. Do you want to eliminate (1), keep (2), or trim manually (3)? ');
                 switch userInput
                     case 1
-                        % eliminate the object at the image boundary
+                        % Eliminate the object at the image boundary
                         erodedBW2 = imclearborder(erodedBW2);
                         save(decisionFilePath, 'userInput', 'erodedBW2');
                     case 2
-                        % keep the object as it is
+                        % Keep the object as it is
+                         save(decisionFilePath, 'userInput', 'erodedBW2');
                     case 3
-                        % trim manually
+                        % Trim manually
                         roiwindow = CROIEditor_CE(erodedBW2);
                         waitfor(roiwindow, 'roi');
                         if ~isvalid(roiwindow)
@@ -117,7 +118,7 @@ for m = 1:E.NumForceMaps
             disp('Mask is closed. No need for user input.');
         end
 
-        % filter out bad R2 Hertz fits 
+        % Filter out bad R2 Hertz fits 
         PredictiveR2Thr = 0.96; 
         R2Thr = 0.99; 
         ChannelPredictiveR2 = E.FM{m}.get_channel('Hertz Fit Predictive RSquare');
@@ -127,7 +128,7 @@ for m = 1:E.NumForceMaps
         QR2 = ChannelR2.Image; 
         QR2(QR2<R2Thr) = 0; QFits = QR2.*QPredictiveR2; QFits(QFits>0) = 1; 
 
-        % get indentation depth average in centrosome region
+        % Get indentation depth average in centrosome region
         ChannelIndenDepth = E.FM{m}.get_channel('Indentation Depth Hertz');
         CsInden = ChannelIndenDepth.Image.*erodedBW2.*QFits;
         figure('name', 'Indentation depth','visible',show_fig); hold on
@@ -136,7 +137,7 @@ for m = 1:E.NumForceMaps
         set(gca,'FontSize', 16, 'Linewidth', 1.5); axis off
         CsInden(CsInden==0) = NaN; CsIndenAvrg = mean(CsInden(:), 'omitnan'); 
 
-        % tip radius at this identation depth
+        % Tip radius at this identation depth
         if m>=1 && m<=45
             TipAreaFX = E.CantileverTips{1}.ProjectedTipArea;
         else
@@ -154,13 +155,13 @@ for m = 1:E.NumForceMaps
         CsArea = CsProps(1).Area.*pxSize^2;
         CsRadiusXY = (CsProps(1).EquivDiameter*pxSize)/2;
 
-        % calculate size of struct element
+        % Calculate size of struct element
         SeRadius = round(TipRadiusCsInden/pxSize);
         kernel = strel('disk', SeRadius);
         dimensions = size(ChannelContactHeight.Image);
         dimensions2 = size(kernel.Neighborhood);
 
-        % define kernel center indices
+        % Define kernel center indices
         kernelCenter_x = round(dimensions2(1)/2);
         kernelCenter_y = round(dimensions2(2)/2);
 
@@ -172,7 +173,7 @@ for m = 1:E.NumForceMaps
                         ii = i+(k-kernelCenter_x);
                         jj = j+(l-kernelCenter_y);
                         if (ii >= 1 && ii <= dimensions(1) && jj >= 1 && jj <= dimensions(2))
-                            Cloud_DPs(ii,jj) = ChannelContactHeight.Image(ii,jj)*kernel.Neighborhood(k,l); % data points within kernel
+                            Cloud_DPs(ii,jj) = ChannelContactHeight.Image(ii,jj)*kernel.Neighborhood(k,l); % Data points within kernel
                             %                         AngleImage(i,j) = AngleImage(i,j) + ChannelHeight.Image(ii,jj)*kernel.Neighborhood(k,l);
                         end
                     end
@@ -182,8 +183,8 @@ for m = 1:E.NumForceMaps
                 %         imagesc(Cloud_DPs)
                 Cloud_DPs(Cloud_DPs == 0) = NaN;
                 [row, col] = ind2sub(size(Cloud_DPs), 1:numel(Cloud_DPs));
-                arr = [row(:).*pxSize, col(:).*pxSize, Cloud_DPs(:)]; % convert axis units to m
-                arr(any(isnan(arr), 2), :) = []; % eliminate rows with nans
+                arr = [row(:).*pxSize, col(:).*pxSize, Cloud_DPs(:)]; % Convert axis units to m
+                arr(any(isnan(arr), 2), :) = []; % Eliminate rows with nans
                 [PlaneAngle] = calculate_angle_topography(arr);
                 AngleImage(i,j) = PlaneAngle;
                 clear Cloud_DPs
@@ -194,7 +195,7 @@ for m = 1:E.NumForceMaps
         c.Location = 'northoutside'; c.Label.String = 'Angle [rad]'; % 90 deg flat 
         set(gca,'FontSize', 16, 'Linewidth', 1.5); axis off
         
-        % angle-based segmentation
+        % Angle-based segmentation
         T2 = 1.45; % 83.0788802939694 deg % multithresh(AngleImage); 
         AngleCsBW = imbinarize(AngleImage,T2).*erodedBW2; % exclude flat areas outside centrosome
         AngleBkgBW = imbinarize(AngleImage,T2).*imcomplement(dilatedBW2); % glass background area
@@ -206,9 +207,9 @@ for m = 1:E.NumForceMaps
         imagesc(AngleBkgBW); axis image; title('glass'); axis off 
         set(gca,'FontSize', 16, 'Linewidth', 1.5); 
 
-        % get indentation modulus Hertz data 
+        % Get indentation modulus Hertz data 
         ChannelEModHertz = E.FM{m}.get_channel(strcat('Indentation Modulus Hertz',s2));
-        % from centrosome's flat region
+        % From the centrosome's flat region
         CsEModHertz = ChannelEModHertz.Image.*AngleCsBW.*QFits;
         CsEModHertz(CsEModHertz==0)=NaN;
         figure('name', 'Indentation modulus Hertz', 'visible', show_fig); hold on
@@ -216,30 +217,30 @@ for m = 1:E.NumForceMaps
         c.Location = 'northoutside'; c.Label.String = 'Indentation modulus Hertz [kPa]'; 
         axis off; set(gca,'FontSize', 16, 'Linewidth', 1.5); 
 
-        % calculate centrosome's flat area
+        % Calculate centrosome's flat area
         CsFlatProps = regionprops(AngleCsBW, 'Area');
         CsFlatArea = CsFlatProps.Area*pxSize^2;
 
-        % centrosome height (contact height) & indentation on the flat area
+        % Centrosome height (contact height) and indentation on the flat area
         CsFlatHeight = ChannelContactHeight.Image.*AngleCsBW.*QFits;
         CsFlatHeight(CsFlatHeight==0) = NaN;
-        CsFlatMax = max(CsFlatHeight, [], 'all', 'omitnan'); % maximum height 
+        CsFlatMax = max(CsFlatHeight, [], 'all', 'omitnan'); % Maximum height 
         CsFlatPrctile = prctile(CsFlatHeight, 95, "all"); 
         
         ChannelIndenDepth = E.FM{m}.get_channel(strcat('Indentation Depth Hertz',s1,s2));
         CsFlatInden = ChannelIndenDepth.Image.*AngleCsBW.*QFits;
         CsFlatInden(CsFlatInden==0) = NaN;
 
-        % volume approximation
+        % Volume approximation
         CsContactHeight = ChannelContactHeight.Image.*erodedBW2; 
         CsVolume_voxel = CsContactHeight.*pxSize^2; 
         CsVolume = sum(CsVolume_voxel(:)); 
         CsVolumeSphereCap = (pi * CsFlatMax^2 / 3) * (3*CsRadiusXY - CsFlatMax);
 
-        % save 
+        % Save 
         cd(folderPath) 
-%         filename = strcat('Processed',s2);
-%         save(filename,'CsArea','CsRadiusXY','CsEModHertz','CsFlatArea','CsFlatHeight','CsFlatMax', 'CsFlatPrctile', 'CsFlatInden','CsVolume', 'CsVolumeSphereCap')
+        filename = strcat('Processed',s2);
+        save(filename,'CsArea','CsRadiusXY','CsEModHertz','CsFlatArea','CsFlatHeight','CsFlatMax', 'CsFlatPrctile', 'CsFlatInden','CsVolume', 'CsVolumeSphereCap')
 
         cd ..
         close all
