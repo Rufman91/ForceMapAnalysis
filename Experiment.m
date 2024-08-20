@@ -1423,6 +1423,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             
             E.ExperimentFolder = Path;
             
+            E.check_and_assert_channel_image_sizes;
         end
         
         function delete_folderstructure(FolderPath)
@@ -10999,6 +11000,61 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             
         end
         
+        function check_and_assert_channel_image_sizes(obj)
+            
+            for i=1:obj.NumAFMImages
+                for j=1:numel(obj.I{i}.Channel)
+                    [NPX,NPY] = size(obj.I{i}.Channel(j).Image);
+                    if NPX ~= obj.I{i}.Channel(j).NumPixelsX ||...
+                            NPY ~= obj.I{i}.Channel(j).NumPixelsY
+                        warning(sprintf('Channel %s in %s has mismatched image dimensions and NumPixel values.\nAdjusted to \nNumPixelsX = %i and NumPixelsY = %i',...
+                            obj.I{i}.Channel(j).Name,obj.I{i}.Name,NPX,NPY));
+                    end
+                    obj.I{i}.Channel(j).NumPixelsX = NPX;
+                    obj.I{i}.Channel(j).NumPixelsY = NPY;
+                end
+            end
+            
+            for i=1:obj.NumForceMaps
+                for j=1:numel(obj.FM{i}.Channel)
+                    [NPX,NPY] = size(obj.FM{i}.Channel(j).Image);
+                    if NPX ~= obj.FM{i}.Channel(j).NumPixelsX ||...
+                            NPY ~= obj.FM{i}.Channel(j).NumPixelsY
+                        warning(sprintf('Channel %s in %s has mismatched image dimensions and NumPixel values.\nAdjusted to \nNumPixelsX = %i and NumPixelsY = %i',...
+                            obj.FM{i}.Channel(j).Name,obj.FM{i}.Name,NPX,NPY));
+                    end
+                    obj.FM{i}.Channel(j).NumPixelsX = NPX;
+                    obj.FM{i}.Channel(j).NumPixelsY = NPY;
+                end
+            end
+            
+            for i=1:obj.NumReferenceForceMaps
+                for j=1:numel(obj.RefFM{i}.Channel)
+                    [NPX,NPY] = size(obj.RefFM{i}.Channel(j).Image);
+                    if NPX ~= obj.RefFM{i}.Channel(j).NumPixelsX ||...
+                            NPY ~= obj.RefFM{i}.Channel(j).NumPixelsY
+                        warning(sprintf('Channel %s in %s has mismatched image dimensions and NumPixel values.\nAdjusted to \nNumPixelsX = %i and NumPixelsY = %i',...
+                            obj.RefFM{i}.Channel(j).Name,obj.RefFM{i}.Name,NPX,NPY));
+                    end
+                    obj.RefFM{i}.Channel(j).NumPixelsX = NPX;
+                    obj.RefFM{i}.Channel(j).NumPixelsY = NPY;
+                end
+            end
+            
+            for i=1:obj.NumCantileverTips
+                for j=1:numel(obj.CantileverTips{i}.Channel)
+                    [NPX,NPY] = size(obj.CantileverTips{i}.Channel(j).Image);
+                    if NPX ~= obj.CantileverTips{i}.Channel(j).NumPixelsX ||...
+                            NPY ~= obj.CantileverTips{i}.Channel(j).NumPixelsY
+                        warning(sprintf('Channel %s in %s has mismatched image dimensions and NumPixel values.\nAdjusted to \nNumPixelsX = %i and NumPixelsY = %i',...
+                            obj.CantileverTips{i}.Channel(j).Name,obj.CantileverTips{i}.Name,NPX,NPY));
+                    end
+                    obj.CantileverTips{i}.Channel(j).NumPixelsX = NPX;
+                    obj.CantileverTips{i}.Channel(j).NumPixelsY = NPY;
+                end
+            end
+        end
+        
     end
     methods(Static)
         % Static auxilary methods mainly for tip deconvolution (code by Orestis Andriotis)
@@ -12345,7 +12401,6 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             close(h)
             toc
         end
-        
         
         function SummaryStruct = multiexperiment_create_and_save_data_table(FilterNonSnapped)
             
