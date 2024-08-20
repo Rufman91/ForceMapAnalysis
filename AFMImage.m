@@ -11,7 +11,6 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & dynam
         ImagingType = ''
         FileVersion = ''
         DateTime = ''
-        NumChannels = []
     end
     properties
         % Image Data Properties. All dimensions in SI-units, Angles in
@@ -1718,16 +1717,16 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & dynam
                 obj.ScanSizeY = nan;
             end
             try
-                obj.NumPixelsX = FileInfo(1).UnknownTags(find([FileInfo(1).UnknownTags.ID]==32838)).Value;
+                obj.NumPixelsY = FileInfo(1).UnknownTags(find([FileInfo(1).UnknownTags.ID]==32838)).Value;
             catch
                 warning("Couldn't determine NumPixelsX")
-                obj.NumPixelsX = nan;
+                obj.NumPixelsY = nan;
             end
             try
-                obj.NumPixelsY = FileInfo(1).UnknownTags(find([FileInfo(1).UnknownTags.ID]==32839)).Value;
+                obj.NumPixelsX = FileInfo(1).UnknownTags(find([FileInfo(1).UnknownTags.ID]==32839)).Value;
             catch
                 warning("Couldn't determine NumPixelsY")
-                obj.NumPixelsY = nan;
+                obj.NumPixelsX = nan;
             end
             
             % Now read out ImagingType-specific properties

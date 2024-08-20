@@ -29,6 +29,7 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
         % allows for image cropping, image-overlays and easy addition of
         % other kinds of image-data (e.g. AdhesionMaps, EModMaps)
         Channel
+        NumChannels = []
         CMap = AFMImage.define_afm_color_map
     end
     properties
@@ -454,7 +455,7 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             for i=1:length(HeightChannelList)
                 [Channel,Index] = obj.get_channel(HeightChannelList{i});
                 if ~isempty(Channel)
-                    warning(sprintf('Could not find a Channel named "%s", loaded Channel "%s" instead',ChannelName,HeightChannelList{i}))
+%                     warning(sprintf('Could not find a Channel named "%s", loaded Channel "%s" instead',ChannelName,HeightChannelList{i}))
                     FoundRequested = false;
                     return
                 end
@@ -578,6 +579,10 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             end
             
             OutImage = AFMImage.create_pixel_difference_map(InImage);
+            
+            if useSlowScanDirBool
+                OutImage = imrotate(OutImage,-90);
+            end
             
             OutChannel = obj.create_standard_channel(OutImage,'Pixel Difference','m');
             
@@ -1470,7 +1475,7 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
                                 (round(ForbiddenY(jj))<1 || round(ForbiddenY(jj))>Size(2)) 
                             continue
                         end
-                        if ~IgnoreMask(round(ForbiddenY(jj)),round(ForbiddenX(jj)))
+                        if ~IgnoreMask(round(ForbiddenX(jj)),round(ForbiddenY(jj)))
                             ForbiddenX(jj) = [];
                             ForbiddenY(jj) = [];
                             ForbiddenProfile(jj) = [];
@@ -1642,12 +1647,12 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
                 end
                 % find out overall segment pathlength
                 for m=size(SegmentPositions,1):-1:1
-                    if SegmentPositions(m,1)>Channel.NumPixelsX ||...
+                    if SegmentPositions(m,1)>Channel.NumPixelsY ||...
                             SegmentPositions(m,1)<0
                         SegmentPositions(m,:) = [];
                         continue
                     end
-                    if SegmentPositions(m,2)>Channel.NumPixelsY ||...
+                    if SegmentPositions(m,2)>Channel.NumPixelsX ||...
                             SegmentPositions(m,2)<0
                         SegmentPositions(m,:) = [];
                     end
@@ -2219,7 +2224,7 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             if nargin == 2
                 Height = obj.get_channel(SourceChannelName);
                 if isempty(Height)
-                    warning(sprintf('Channel %s not found, getting unprocessed height channel instead',SourceChannelName))
+%                     warning(sprintf('Channel %s not found, getting unprocessed height channel instead',SourceChannelName))
                     Height = obj.get_unprocessed_height_channel('Height (Trace)');
                 end
             else
@@ -2227,23 +2232,25 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             end
             
             if isempty(Height)
-                warning("Could not find height channel needed for preprocessing")
+                warning(sprintf("Could not find height channel needed for preprocessing.\nNo Channel named '%s'.\nNor where any of these backup channels found:\n'Height (measured) (Trace)','Height (Trace)','Height (measured)','Height','Height (measured) (Retrace)','Height (Retrace)'",SourceChannelName))
                 return
             end
             
-            if size(Height.Image,1) < 128
-                Map = imresize(Height.Image,[256 256],'nearest');
-            elseif size(Height.Image,1) < 512
-                Map = imresize(Height.Image,[512 512],'nearest');
+            if max(size(Height.Image)) < 128
+                Map = imresize(Height.Image,[256 256],'bilinear');
+            elseif max(size(Height.Image)) < 512
+                Map = imresize(Height.Image,[512 512],'bilinear');
+            elseif max(size(Height.Image)) <= 1024
+                Map = imresize(Height.Image,[1024 1024],'bilinear');
             else
-                Map = imresize(Height.Image,[1024 1024],'nearest');
+                Map = imresize(Height.Image,[max(size(Height.Image)) max(size(Height.Image))],'nearest');
             end
             FitParams = zeros(size(Map,1),2);
             for i=1:5
                 [Map,TempFitParams] = AFMImage.subtract_line_fit_vertical_rov(Map,.2,0);
                 FitParams = FitParams + TempFitParams;
             end
-            Map = imresize(Map,[obj.NumPixelsX obj.NumPixelsY],'nearest');
+            Map = imresize(Map,[obj.NumPixelsX obj.NumPixelsY],'bilinear');
             
         end
         
