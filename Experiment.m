@@ -2419,7 +2419,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                     k = k + 1;
                 end
                 catch ME
-                    warning(ME)
+                    warning(ME.identifier,'%s',ME.message)
                 end
             end
         end
@@ -9359,7 +9359,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
         end
     end
     methods
-        % auxiliary methods
+        % auxiliary methodsE.I{1}.Segment(2).ROIObject.Position()
         
         function reset_segmentations(obj)
             % function reset_segmentations(obj)
