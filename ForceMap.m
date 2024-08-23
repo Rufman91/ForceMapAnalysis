@@ -5302,7 +5302,11 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
             if obj.BigDataFlag
                 if obj.PythonLoaderFlag
                     TempFolderName = 'DataStore';
-                    mkdir(DataFolder,TempFolderName);
+                    % Check if the directory already exists
+                    if ~exist(fullfile(DataFolder, TempFolderName), 'dir')
+                        % Create the directory if it does not exist
+                        mkdir(DataFolder, TempFolderName);
+                    end
                     TempFolder = fullfile(DataFolder,TempFolderName);
                 else
                     TempFolderName = sprintf('FM_DataStore_%s',obj.ID);
