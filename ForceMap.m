@@ -4523,7 +4523,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
             
             clear tline;
             frewind(FileID);
-            B=strfind(A,'vDeflection');
+            B=regexp(A,'lcd-info\.\d+\.channel\.name=vDeflection');
             tline = A(B:end);
             vDefNum = regexp(tline,exp1,'match','once');
             
