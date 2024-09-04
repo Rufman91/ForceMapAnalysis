@@ -2800,7 +2800,7 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             verbose = p.Results.Verbose;
             
             if verbose
-                figure
+                figure('Position',[200 200 30*50 9*50],'Color','w')
             end
             
             % Extract image data
@@ -2880,6 +2880,13 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             tipHeightMapRescaled = -tipHeightMapRescaled;
             tipHeightMapRescaled = tipHeightMapRescaled + maxTipHeight;
             
+            if verbose
+                % Define video writer object
+                v = VideoWriter('local_contact_area.avi', 'Uncompressed AVI');  % Create a VideoWriter object
+                v.FrameRate = 60;  % Set frame rate to 60 FPS
+                open(v);  % Open the video file for writing
+            end
+            
             % Iterate over each pixel in the sample height map
             for i = 1:sampleNumPixelsY
                 for j = 1:sampleNumPixelsX
@@ -2911,16 +2918,20 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
                             % Calculate contact area
                             contactAreas(i, j) = sum(overlapMask(:)) * pixelArea;
                             
-                            if verbose && mod(j,256)==0
+                            if verbose && mod(j,1)==0 && i>=256 && i<=260
                                 subplot(2,3,1)
                                 imshow(overlapMask,[])
+                                title('Pixels in Contact')
                                 subplot(2,3,2)
                                 imshow(contactAreas,[])
+                                title('Contact Area Map')
                                 
                                 subplot(2,3,4)
                                 imshow(overlapRegionSample,[])
+                                title('Sample')
                                 subplot(2,3,5)
                                 imshowpair(overlapRegionSample,-tipHeightMapRescaled)
+                                title('Tip on Sample')
                                 
                                 subplot(2,3,[3 6])
                                 mesh((overlapRegionSample - sampleHeightMap(i,j)))
@@ -2928,7 +2939,15 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
                                 mesh((tipHeightMapRescaled - indentationDepthMap(i,j)))
                                 hold off
                                 zlim([-3e-7 4e-7])
+                                daspect([1 1 0.01*abs(-3e-7 - 4e-7)]);
+                                view(220, 37.5);
+                                title('Tip Scanning Over Sample')
+                                
                                 drawnow
+                                
+                                % Capture the current frame and write it to the video
+                                frame = getframe(gcf);  % Capture the current figure as a frame
+                                writeVideo(v, frame);   % Write the frame to the video
                             end
                         else
                             fprintf('somethings wrong %i,%i \n',i,j)
@@ -2939,6 +2958,9 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             
             % Debugging and visualization
             if verbose
+                % Close the video file
+                close(v);
+                
                 figure;
                 subplot(1, 3, 1);
                 imagesc(sampleHeightMapRescaled);
