@@ -1,4 +1,4 @@
-classdef Experiment < matlab.mixin.Copyable
+classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
     
     properties
         % Essential properties for File and subclass management
@@ -6,6 +6,9 @@ classdef Experiment < matlab.mixin.Copyable
         ExperimentFolder    % Shows Folder where Experiment is saved
         HostOS              % Shows the current operating system
         HostName            % Shows the current Host (User of running machine)
+        BigDataFlag         % Determines how Experiment loads ForceMap objects. If true, 
+                            % force voluime data are not loaded into RAM
+                            % but read from unpacked jpk data container
         CurrentLogFile
         FM                  % Cellarray containing Force/QI Maps
         NumForceMaps
@@ -40,17 +43,42 @@ classdef Experiment < matlab.mixin.Copyable
         CP_CNN
         idxSubstrate
         idxEnvCond
+        MinFM
+        NumFcUncorrupt % SMFS property
     end
     properties
         % All the Flags
         FMFlag
         SPMFlag
         SMFSFlag
-        SMFSFlagPrint
+        SMFSFlagDown
+        DebugFlag
         ReferenceSlopeFlag
         AssignedReferenceMaps
         CantileverTipFlag
         AssignedCantileverTips
+    end
+    
+    % SMFS related
+    properties
+        SMFSFMParameters
+        SMFSResults
+        SMFSResultsParameters
+        WLCFit
+        SMFSLillieAdhMaxApp
+        SMFSLillieAdhMaxRet
+        SMFSLillieAdhUnbinding
+        SMFSLillieAdhEneApp
+        SMFSLillieAdhEneRet
+        SMFSLilliePullingLength
+        SMFSLillieSnapInLength
+        SMFSWilcoxonAdhMaxApp
+        SMFSWilcoxonAdhMaxRet
+        SMFSWilcoxonAdhUnbinding
+        SMFSWilcoxonAdhEneApp
+        SMFSWilcoxonAdhEneRet
+        SMFSWilcoxonPullingLength
+        SMFSWilcoxonSnapInLength
     end
     
     methods
@@ -68,7 +96,7 @@ classdef Experiment < matlab.mixin.Copyable
             obj.ExperimentFolder = fullfile(ParentFolder,obj.ExperimentName,filesep);
             
             % get Experiment filenames and paths from user input
-            [FileTypes, FullFileStruct, IsValid] = obj.constructor_user_input_parser(obj.ExperimentName,obj.HostOS);
+            [FileTypes, FullFileStruct, IsValid, BigData] = obj.constructor_user_input_parser(obj.ExperimentName,obj.HostOS);
             
             if ~IsValid
                 obj = [];
@@ -76,7 +104,7 @@ classdef Experiment < matlab.mixin.Copyable
             end
             
             % get paths of requested files and load them in
-            obj.take_paths_and_load_files(FileTypes,FullFileStruct,true)
+            obj.take_paths_and_load_files(FileTypes,FullFileStruct,true,BigData)
             
             obj.initialize_flags
             
@@ -88,7 +116,7 @@ classdef Experiment < matlab.mixin.Copyable
             obj.save_experiment();
         end
         
-        function take_paths_and_load_files(obj,FileTypes,FullFileStruct,isNew)
+        function take_paths_and_load_files(obj,FileTypes,FullFileStruct,isNew,BigData)
             
             if nargin<4
                 isNew = false;
@@ -116,6 +144,7 @@ classdef Experiment < matlab.mixin.Copyable
                 obj.NumCantileverTips = 0;
                 obj.CantileverTipNames = cell(0,0);
                 obj.CantileverTipFolders = cell(0,0);
+                obj.BigDataFlag = BigData;
             end
             
             % Need to assign something to *FullFile. Otherwise parfor will
@@ -154,10 +183,10 @@ classdef Experiment < matlab.mixin.Copyable
                             TempID{j,i} = sprintf('%s-%i',obj.ExperimentName,IDs(j+sum(NumFiles(1:i))-NumFiles(i)));
                         end
                         if i == 1 && FileTypes(i) && (j<=NumFiles(i))
-                            TempCell{j,i} = ForceMap(FMFullFile{j},obj.ExperimentFolder,TempID{j,i});
+                            TempCell{j,i} = ForceMap(FMFullFile{j},obj.ExperimentFolder,TempID{j,i},obj.BigDataFlag);
                         end
                         if i == 2 && FileTypes(i) && (j<=NumFiles(i))
-                            TempCell{j,i} = ForceMap(RefFMFullFile{j},obj.ExperimentFolder,TempID{j,i});
+                            TempCell{j,i} = ForceMap(RefFMFullFile{j},obj.ExperimentFolder,TempID{j,i},obj.BigDataFlag);
                         end
                         if i == 3 && FileTypes(i) && (j<=NumFiles(i))
                             TempCell{j,i} = AFMImage(IFullFile{j},obj.ExperimentFolder,TempID{j,i});
@@ -175,10 +204,10 @@ classdef Experiment < matlab.mixin.Copyable
                     for j=1:NumFiles(i)
                         TempID{j,i} = sprintf('%s-%i',obj.ExperimentName,IDs(j+sum(NumFiles(1:i))-NumFiles(i)));
                         if i == 1 && FileTypes(i)
-                            TempCell{j,i} = ForceMap(FMFullFile{j},obj.ExperimentFolder,TempID{j,i});
+                            TempCell{j,i} = ForceMap(FMFullFile{j},obj.ExperimentFolder,TempID{j,i},obj.BigDataFlag);
                         end
                         if i == 2 && FileTypes(i)
-                            TempCell{j,i} = ForceMap(RefFMFullFile{j},obj.ExperimentFolder,TempID{j,i});
+                            TempCell{j,i} = ForceMap(RefFMFullFile{j},obj.ExperimentFolder,TempID{j,i},obj.BigDataFlag);
                         end
                         if i == 3 && FileTypes(i)
                             TempCell{j,i} = AFMImage(IFullFile{j},obj.ExperimentFolder,TempID{j,i});
@@ -261,12 +290,13 @@ classdef Experiment < matlab.mixin.Copyable
                 % get paths of requested files and load them in
                 SaveCopy.take_paths_and_load_files(FileTypes,FullFileStruct,isNew)
                 
-                SaveCopy.initialize_flags
+                % SaveCopy.initialize_flags % What to do with this?
                 
                 Out = SaveCopy;
                 Out.save_experiment
                 warning('Did you read the warning above?');
             catch ME
+                warning(ME.getReport)
                 disp('data adding failed. restored original experiment object')
                 fclose('all');
                 cd(obj.ExperimentFolder)
@@ -339,6 +369,44 @@ classdef Experiment < matlab.mixin.Copyable
                 end
             end
         end
+        
+        function delete_experiment(obj)
+            
+            if ~isequal(obj.HostOS,'PCW')
+                disp('This method is only available on Windows systems at the moment');
+                return
+            end
+            
+            Folder = string(obj.ExperimentFolder);
+            
+            answer = questdlg('Caution! This PERMANENTLY deletes the experiment folder, experiment file and all subfolders', ...
+                sprintf('Deletion of %s',Folder),'Yes, delete all', ...
+                'Abort','Abort');
+            % Handle response
+            switch answer
+                case 'Yes, delete all'
+                    disp(sprintf('Deleting %s. This may take from a few to tens of minutes',obj.ExperimentName))
+                    
+                    current = what();
+                    cd(Folder)
+                    cd ..
+                    
+                    cmd1_1 = string('DEL /F/Q/S ');
+                    cmd1_2 = string(' > nul');
+                    cmd2_1 = string('RMDIR /Q/S ');
+                    
+                    CMD1 = strcat(cmd1_1,Folder,cmd1_2);
+                    CMD2 = strcat(cmd2_1,Folder);
+                    
+                    system(CMD1);
+                    system(CMD2);
+                    
+                    cd(current.path)
+                case 'Abort'
+                    return
+            end
+            
+        end
     end
     methods(Static)
         % Static methods related with Experiment-file handling
@@ -367,6 +435,9 @@ classdef Experiment < matlab.mixin.Copyable
             for i=1:E.NumForceMaps
                 if ~isempty(E.FM{i})
                     E.FM{i}.check_for_new_host();
+                    OldDataStore = E.FM{i}.DataStoreFolder;
+                    Split = strsplit(OldDataStore,filesep);
+                    E.FM{i}.DataStoreFolder = fullfile(Path,Split{end-1});
                     E.FM{i}.Folder = FMFolder;
                     E.ForceMapFolders{i} = FMFolder;
                 end
@@ -388,6 +459,48 @@ classdef Experiment < matlab.mixin.Copyable
             end
             
             E.ExperimentFolder = Path;
+            
+        end
+        
+        function delete_folderstructure(FolderPath)
+            
+            
+            FullOS = computer;
+            OS = FullOS(1:3);
+            
+            if ~isequal(OS,'PCW')
+                disp('This method is only available on Windows systems at the moment');
+                return
+            end
+            
+            Folder = FolderPath;
+            
+            answer = questdlg({'Caution! This PERMANENTLY deletes the given folder, its files and all subfolders:',Folder}, ...
+                sprintf('Deletion of %s',Folder),'Yes, delete all', ...
+                'Abort','Abort');
+            % Handle response
+            switch answer
+                case 'Yes, delete all'
+                    disp(sprintf('Deleting %s. This may take from a few to tens of minutes',Folder))
+                    
+                    current = what();
+                    cd(Folder)
+                    cd ..
+                    
+                    cmd1_1 = string('DEL /F/Q/S ');
+                    cmd1_2 = string(' > nul');
+                    cmd2_1 = string('RMDIR /Q/S ');
+                    
+                    CMD1 = strcat(cmd1_1,Folder,cmd1_2);
+                    CMD2 = strcat(cmd2_1,Folder);
+                    
+                    system(CMD1);
+                    system(CMD2);
+                    
+                    cd(current.path)
+                case 'Abort'
+                    return
+            end
             
         end
         
@@ -438,7 +551,7 @@ classdef Experiment < matlab.mixin.Copyable
             close(h);
         end
         
-        function force_map_analysis_fibril(obj,CPOption,EModOption,BaseLineCorrectBool)
+        function force_map_analysis_fibril(obj,CPOption,EModOption,BaseLineCorrectBool,TemporaryLoadInBool,UseTipInHertzBool)
             % force_map_analysis_fibril(obj,CPOption,EModOption)
             %
             % CPOption = 'Snap-In' ... Preferred Option for data with
@@ -460,13 +573,21 @@ classdef Experiment < matlab.mixin.Copyable
             % CPOption = 'Manual' ... go through manual CP determination for contact point estimation
             %
             % EModOption = 'Hertz' ... E-Modulus calculation through Hertz-Sneddon
-            % method
+            %                           method
+            % EModOption = 'HertzCorrected' ... E-Modulus calculation through Hertz-Sneddon
+            %                               method with RefSlope-corrected
+            %                               senstitivity
             % EModOption = 'Oliver' ... E-Modulus calculation through
             % Oliver-Pharr-like method (O. Andriotis 2014)
             % EModOption = 'Both'   ... 'Oliver' and 'Hertz'
             
             if nargin < 4
                 BaseLineCorrectBool = false;
+                TemporaryLoadInBool = true;
+                UseTipInHertzBool = true;
+            elseif nargin < 5
+                TemporaryLoadInBool = true;
+                UseTipInHertzBool = true;
             end
             
             obj.write_to_log_file('Analysis Function','force_map_analysis_fibril()','start')
@@ -521,7 +642,7 @@ classdef Experiment < matlab.mixin.Copyable
             obj.write_to_log_file('Reference Slope Option',RefSlopeOption)
             
             % Deconvoluting cantilever tip(s)
-            if isequal(lower(EModOption),'oliver') || isequal(lower(EModOption),'both')
+            if isequal(lower(EModOption),'oliver') || isequal(lower(EModOption),'both') || UseTipInHertzBool
                 if obj.NumCantileverTips == 0
                     if isequal(class(obj.CantileverTips{1}),'AFMImage')
                         obj.NumCantileverTips = length(obj.CantileverTips);
@@ -557,6 +678,20 @@ classdef Experiment < matlab.mixin.Copyable
                 if isequal(KeepFlagged,'Yes') && obj.FMFlag.FibrilAnalysis(i) == 1
                     continue
                 end
+                
+                waitbar(i/NLoop,h,sprintf('Processing Fibril %i/%i\nReading out data...',i,NLoop));
+                if TemporaryLoadInBool && obj.BigDataFlag
+                    obj.FM{i}.temporary_data_load_in(true);
+                end
+                
+                waitbar(i/NLoop,h,sprintf('Processing Fibril %i/%i\nCreating and levelling Height Map',i,NLoop));
+                obj.FM{i}.create_and_level_height_map
+                obj.FM{i}.create_automatic_background_mask(1)
+                
+                Thresh = 1/2;
+                AppRetSwitch = 2;
+                obj.FM{i}.unselect_curves_by_fraction_of_max_data_points(Thresh,AppRetSwitch)
+                
                 waitbar(i/NLoop,h,sprintf('Processing Fibril %i/%i\nFitting Base Line',i,NLoop));
                 if ~obj.FM{i}.BaseAndTiltFlag
                     obj.FM{i}.base_and_tilt('linear');
@@ -570,21 +705,31 @@ classdef Experiment < matlab.mixin.Copyable
                 % contact point estimation happens here
                 waitbar(i/NLoop,h,sprintf('Processing Fibril %i/%i\nFinding Contact Point',i,NLoop));
                 if BaseLineCorrectBool
-                    obj.cp_option_converter('Fast',i);
+                    if ~obj.FM{i}.CPFlag.CNN
+                        obj.cp_option_converter('Fast',i);
+                    end
                     FractionBeforeCP = .7;
-                    obj.FM{1}.base_and_tilt_using_cp(FractionBeforeCP)
+                    obj.FM{i}.base_and_tilt_using_cp(FractionBeforeCP)
                     obj.write_to_log_file('FractionBeforeCP',FractionBeforeCP);
                 end
+                
+                if ~obj.FM{i}.CPFlag.CNNZoomSweep
                 obj.cp_option_converter(CPOption,i);
+                end
                 
                 % reference slope calculation happens here
                 waitbar(i/NLoop,h,sprintf('Processing Fibril %i/%i\nProcessing and calculating Reference Slope',i,NLoop));
                 obj.reference_slope_calculator(i);
                 
                 waitbar(i/NLoop,h,sprintf('Processing Fibril %i/%i\nCalculating E-Modulus',i,NLoop));
-                if isequal(lower(EModOption),'hertz') || isequal(lower(EModOption),'both')
+                if isequal(lower(EModOption),'hertz') || isequal(lower(EModOption),'both') || isequal(lower(EModOption),'hertzcorrected')
+                    if isequal(lower(EModOption),'hertzcorrected') || isequal(lower(EModOption),'both')
+                        CorrectSens = true;
+                    else
+                        CorrectSens = false;
+                    end
                     AllowXShift = true;
-                    obj.FM{i}.calculate_e_mod_hertz(CPOption,'parabolic',1,AllowXShift);
+                    obj.FM{i}.calculate_e_mod_hertz(CPOption,'parabolic',1,AllowXShift,CorrectSens,UseTipInHertzBool,0,obj.CantileverTips{obj.WhichTip(i)});
                     if i == 1
                         obj.write_to_log_file('Hertzian Tip-Shape','parabolic')
                         obj.write_to_log_file('Hertzian CurvePercent','1')
@@ -593,7 +738,6 @@ classdef Experiment < matlab.mixin.Copyable
                 end
                 if isequal(lower(EModOption),'oliver') || isequal(lower(EModOption),'both')
                     obj.FM{i}.calculate_e_mod_oliverpharr(obj.CantileverTips{obj.WhichTip(i)}.ProjectedTipArea,0.75);
-                    obj.FM{i}.ProjTipArea = obj.CantileverTips{obj.WhichTip(i)}.ProjectedTipArea;
                     if i == 1
                         obj.write_to_log_file('OliverPharr CurvePercent','0.75')
                     end
@@ -605,6 +749,7 @@ classdef Experiment < matlab.mixin.Copyable
                 obj.FM{i}.calculate_dissipated_and_elastic_energy;
                 obj.FM{i}.calculate_peak_indentation_angle(.5);
                 obj.write_to_log_file('Upper Percent of Curve considered for Peak Indentation','50%')
+                obj.FM{i}.create_and_level_height_map_by_current_cp;
                 
                 waitbar(i/NLoop,h,sprintf('Processing Fibril %i/%i\nWrapping Up And Saving',i,NLoop));
                 
@@ -615,6 +760,21 @@ classdef Experiment < matlab.mixin.Copyable
                         end
                     end
                 end
+                
+                if TemporaryLoadInBool && obj.BigDataFlag
+                    obj.FM{i}.temporary_data_load_in(false);
+                    if i < NLoop
+%                         obj.save_experiment;
+                    end
+                end
+                
+                if i==1
+                    for k=2:NLoop
+                        obj.FM{k}.CPFlag.CNNOpt = 1;
+                        obj.FM{k}.MiniBatchSize = obj.FM{1}.MiniBatchSize;
+                    end
+                end
+                
                 Fig{i} = obj.FM{i}.show_analyzed_fibril();
                 obj.FMFlag.FibrilAnalysis(i) = 1;
             end
@@ -622,7 +782,7 @@ classdef Experiment < matlab.mixin.Copyable
             % Assign the Apex curves EMod and exclude +-2.5*IQR and curves
             % from ExclMask
             for i=1:NLoop
-                if isequal(lower(EModOption),'hertz')
+                if isequal(lower(EModOption),'hertz') || isequal(lower(EModOption),'hertzcorrected')
                     EMods = obj.FM{i}.EModHertz;
                 elseif isequal(lower(EModOption),'oliver')
                     EMods = obj.FM{i}.EModOliverPharr;
@@ -649,7 +809,7 @@ classdef Experiment < matlab.mixin.Copyable
             obj.write_to_log_file('','','end')
         end
         
-        function force_map_analysis_general(obj,CPOption,EModOption,BaseLineCorrectBool)
+        function force_map_analysis_general(obj,CPOption,EModOption,BaseLineCorrectBool,TemporaryLoadInBool,UseTipInHertzBool,TiltCorrectionBool)
             % force_map_analysis_general(obj,CPOption,EModOption)
             %
             % CPOption = 'Snap-In' ... Preferred Option for data with
@@ -672,11 +832,24 @@ classdef Experiment < matlab.mixin.Copyable
             %
             % EModOption = 'Hertz' ... E-Modulus calculation through Hertz-Sneddon
             % method
+            % EModOption = 'HertzCorrected' ... E-Modulus calculation through Hertz-Sneddon
+            %                               method with RefSlope-corrected
+            %                               senstitivity
             % EModOption = 'Oliver' ... E-Modulus calculation through
             % Oliver-Pharr-like method (O. Andriotis 2014)
             
             if nargin < 4
-                BasLineCorrectBool = false;
+                BaseLineCorrectBool = false;
+                TemporaryLoadInBool = true;
+                UseTipInHertzBool = true;
+                TiltCorrectionBool = true;
+            elseif nargin < 5
+                TemporaryLoadInBool = true;
+                UseTipInHertzBool = true;
+                TiltCorrectionBool = true;
+            elseif nargin < 6
+                UseTipInHertzBool = true;
+                TiltCorrectionBool = true;
             end
             
             obj.write_to_log_file('Analysis Function','force_map_analysis_general()','start')
@@ -715,7 +888,7 @@ classdef Experiment < matlab.mixin.Copyable
             obj.write_to_log_file('Reference Slope Option',RefSlopeOption)
             
             % Deconvoluting cantilever tip(s)
-            if isequal(lower(EModOption),'oliver')
+            if isequal(lower(EModOption),'oliver') || isequal(lower(EModOption),'both') || UseTipInHertzBool
                 if obj.NumCantileverTips == 0
                     if isequal(class(obj.CantileverTips{1}),'AFMImage')
                         obj.NumCantileverTips = length(obj.CantileverTips);
@@ -750,9 +923,23 @@ classdef Experiment < matlab.mixin.Copyable
                 if isequal(KeepFlagged,'Yes') && obj.FMFlag.ForceMapAnalysis(i) == 1
                     continue
                 end
+                
+                waitbar(i/NLoop,h,sprintf('Processing Fibril %i/%i\nReading out data...',i,NLoop));
+                if TemporaryLoadInBool && obj.BigDataFlag
+                    obj.FM{i}.temporary_data_load_in(true);
+                end
+                
+                waitbar(i/NLoop,h,sprintf('Processing Fibril %i/%i\nCreating and levelling Height Map',i,NLoop));
+                obj.FM{i}.create_and_level_height_map
+                obj.FM{i}.create_automatic_background_mask(1)
+                
+                Thresh = 1/2;
+                AppRetSwitch = 2;
+                obj.FM{i}.unselect_curves_by_fraction_of_max_data_points(Thresh,AppRetSwitch)
+                
                 waitbar(i/NLoop,h,sprintf('Processing ForceMap %i/%i\nFitting Base Line',i,NLoop));
                 if ~obj.FM{i}.BaseAndTiltFlag
-                    obj.FM{i}.base_and_tilt('linear');
+                    obj.FM{i}.base_and_tilt('linear',TiltCorrectionBool);
                 if i == 1
                     obj.write_to_log_file('Baseline and Tilt option','linear')
                 end
@@ -761,21 +948,31 @@ classdef Experiment < matlab.mixin.Copyable
                 % contact point estimation happens here
                 waitbar(i/NLoop,h,sprintf('Processing ForceMap %i/%i\nFinding Contact Point',i,NLoop));
                 if BaseLineCorrectBool
-                    obj.cp_option_converter('Fast',i);
+                    if ~obj.FM{i}.CPFlag.CNN
+                        obj.cp_option_converter('Fast',i);
+                    end
                     FractionBeforeCP = .7;
-                    obj.FM{1}.base_and_tilt_using_cp(FractionBeforeCP)
+                    obj.FM{i}.base_and_tilt_using_cp(FractionBeforeCP)
                     obj.write_to_log_file('FractionBeforeCP',FractionBeforeCP);
                 end
+                
+                if ~obj.FM{i}.CPFlag.CNNZoomSweep
                 obj.cp_option_converter(CPOption,i);
+                end
                 
                 % reference slope calculation happens here
                 waitbar(i/NLoop,h,sprintf('Processing ForceMap %i/%i\nProcessing and calculating Reference Slope',i,NLoop));
                 obj.reference_slope_calculator(i);
                 
                 waitbar(i/NLoop,h,sprintf('Processing Fibril %i/%i\nCalculating E-Modulus',i,NLoop));
-                if isequal(lower(EModOption),'hertz') || isequal(lower(EModOption),'both')
+                if isequal(lower(EModOption),'hertz') || isequal(lower(EModOption),'both') || isequal(lower(EModOption),'hertzcorrected')
+                    if isequal(lower(EModOption),'hertzcorrected') || isequal(lower(EModOption),'both')
+                        CorrectSens = true;
+                    else
+                        CorrectSens = false;
+                    end
                     AllowXShift = true;
-                    obj.FM{i}.calculate_e_mod_hertz(CPOption,'parabolic',1,AllowXShift);
+                    obj.FM{i}.calculate_e_mod_hertz(CPOption,'parabolic',.9,AllowXShift,CorrectSens,UseTipInHertzBool,0,obj.CantileverTips{obj.WhichTip(i)});
                     if i == 1
                         obj.write_to_log_file('Hertzian Tip-Shape','parabolic')
                         obj.write_to_log_file('Hertzian CurvePercent','1')
@@ -784,7 +981,6 @@ classdef Experiment < matlab.mixin.Copyable
                 end
                 if isequal(lower(EModOption),'oliver') || isequal(lower(EModOption),'both')
                     obj.FM{i}.calculate_e_mod_oliverpharr(obj.CantileverTips{obj.WhichTip(i)}.ProjectedTipArea,0.75);
-                    obj.FM{i}.ProjTipArea = obj.CantileverTips{obj.WhichTip(i)}.ProjectedTipArea;
                     if i == 1
                         obj.write_to_log_file('OliverPharr CurvePercent','0.75')
                     end
@@ -796,12 +992,28 @@ classdef Experiment < matlab.mixin.Copyable
                 obj.FM{i}.calculate_dissipated_and_elastic_energy;
                 obj.FM{i}.calculate_peak_indentation_angle(.5);
                 obj.write_to_log_file('Upper Percent of Curve considered for Peak Indentation','50%')
+                try
+                    obj.FM{i}.create_and_level_height_map_by_current_cp;
+                catch
+                end
                 
                 waitbar(i/NLoop,h,sprintf('Processing ForceMap %i/%i\nWrapping Up And Saving',i,NLoop));
                 
+                if TemporaryLoadInBool && obj.BigDataFlag
+                    obj.FM{i}.temporary_data_load_in(false);
+                    if i < NLoop
+%                         obj.save_experiment;
+                    end
+                end
+                
                 obj.FMFlag.ForceMapAnalysis(i) = 1;
+                if i==1
+                    for k=2:NLoop
+                        obj.FM{k}.CPFlag.CNNOpt = 1;
+                        obj.FM{k}.MiniBatchSize = obj.FM{1}.MiniBatchSize;
+                    end
+                end
             end
-            
             
             obj.save_experiment;
             
@@ -809,7 +1021,7 @@ classdef Experiment < matlab.mixin.Copyable
             obj.write_to_log_file('','','end')
         end
         
-        function image_analysis_flatten_on_even_background(obj,UpperLim,NIter)
+        function image_analysis_base_on_even_background(obj,UpperLim,NIter)
             
             if nargin < 2
                 UpperLim = 1;
@@ -855,7 +1067,7 @@ classdef Experiment < matlab.mixin.Copyable
                     Index = length(obj.I{i}.Channel)+1;
                     obj.I{i}.NumChannels = Index;
                 end
-                Processed.Image = AFMImage.subtract_line_fit_hist(Height.Image, .5);
+               % Processed.Image = AFMImage.subtract_line_fit_hist(Height.Image, .5);
                 for j=1:NIter
                     Processed.Image = AFMImage.subtract_line_fit_vertical_rov(Processed.Image, WindowSize,false);
                 end
@@ -1135,223 +1347,8271 @@ classdef Experiment < matlab.mixin.Copyable
             close(Fig)
         end
         
-        function min_batch(obj)
+        %% SMFS section
+               
+        function SM_initialize_arrays(obj)
+            % Description: A function to initialize flags of the object which are used from various functions during an analysis.      
+            % Required input variables:
+            % obj
             
-            for ii=1:obj.NumForceMaps
-               obj.FM{ii}.base_and_tilt('linear');
-               obj.FM{ii}.min_force; 
-            end
-            obj.save_experiment
+            %% Function body
+%             TableSize=[1 13];
+%             VarTypes = {'double','string','string','string','string','double','double','double','string','string','string','string','string'};
+%             VarNames = {'FM row number','FM ID','Name','Date','Time','Extend velocity','Retraction velocity','Holding time','Linker','Substrate','Medium','Chip cantilever number','Chipbox number'};
+%             obj.SMFSFMParameters=table('Size',TableSize,'VariableTypes',VarTypes,'VariableNames',VarNames);
+
+            TableSize=[1 9];
+            VarTypes = {'double','string','string','string','string','string','double','double','double'};
+            VarNames = {'SMFSResults Idx','Chipbox number','Chip cantilever number','Linker','Substrate','Medium','Extend velocity','Retraction velocity','Holding time'};
+            obj.SMFSResultsParameters=table('Size',TableSize,'VariableTypes',VarTypes,'VariableNames',VarNames);
+
+            %             TableSize=[1 5];
+%             VarTypes = {'double','double','double','double','double'};
+%             VarNames = {'SMFSLillie Idx','SMFSResultsParameter Row Num1','Sum force-curves tested','Hypothesis','p-value'};
+%             obj.SMFSLillieAdhMaxApp=table('Size',TableSize,'VariableTypes',VarTypes,'VariableNames',VarNames);
+%             obj.SMFSLillieAdhMaxRet=table('Size',TableSize,'VariableTypes',VarTypes,'VariableNames',VarNames);
+%             obj.SMFSLillieAdhUnbinding=table('Size',TableSize,'VariableTypes',VarTypes,'VariableNames',VarNames);
+%             obj.SMFSLillieAdhEneApp=table('Size',TableSize,'VariableTypes',VarTypes,'VariableNames',VarNames);
+%             obj.SMFSLillieAdhEneRet=table('Size',TableSize,'VariableTypes',VarTypes,'VariableNames',VarNames);
+%             obj.SMFSLilliePullingLength=table('Size',TableSize,'VariableTypes',VarTypes,'VariableNames',VarNames);
+%             obj.SMFSLillieSnapInLength=table('Size',TableSize,'VariableTypes',VarTypes,'VariableNames',VarNames);
+% 
+%             TableSize=[1 7];
+%             VarTypes = {'double','double','double','double','double','double','double'};
+%             VarNames = {'SMFSWilcoxon Idx','SMFSResultsParameter Row Num1','Sum force-curves tested Row Num1','SMFSResultsParameter Row Num2','Sum force-curves tested Row Num2','Hypothesis','p-value'};
+%             obj.SMFSWilcoxonAdhMaxApp=table('Size',TableSize,'VariableTypes',VarTypes,'VariableNames',VarNames);
+%             obj.SMFSWilcoxonAdhMaxRet=table('Size',TableSize,'VariableTypes',VarTypes,'VariableNames',VarNames);
+%             obj.SMFSWilcoxonAdhUnbinding=table('Size',TableSize,'VariableTypes',VarTypes,'VariableNames',VarNames);
+%             obj.SMFSWilcoxonAdhEneApp=table('Size',TableSize,'VariableTypes',VarTypes,'VariableNames',VarNames);
+%             obj.SMFSWilcoxonAdhEneRet=table('Size',TableSize,'VariableTypes',VarTypes,'VariableNames',VarNames);
+%             obj.SMFSWilcoxonPullingLength=table('Size',TableSize,'VariableTypes',VarTypes,'VariableNames',VarNames);
+%             obj.SMFSWilcoxonSnapInLength=table('Size',TableSize,'VariableTypes',VarTypes,'VariableNames',VarNames);
         end
         
-        function SMFS_preprocessing(obj)
-            % SMFS_preprocessing: A function to run a bundle of other 
-            % typically required functions for further analysis
-            %obj.preprocessing
+%         function SM_initialize_flags(obj)
+% 
+%             obj.initialize_flags
+%             NFM = obj.NumForceMaps;
+% 
+%              obj.SMFSFlag.PropertiesParameters = false(NFM,1);
+%                          for Fm=1:obj.NumForceMaps
+%                               obj.FM{Fm}.initialize_flags
+%                          end
+% 
+%             NFM = obj.NumForceMaps;
+% 
+%             obj.SMFSFlagDown.AnalysedPreSelected = false(NFM,1);
+%             obj.SMFSFlagDown.AnalysedPostSelected = false(NFM,1);
+% 
+%             if isempty(obj.FMFlag)
+%                 obj.SMFSFlag.AnalysedPreSelected = false(NFM,1);
+%                 obj.SMFSFlag.AnalysedPostSelected = false(NFM,1);
+%             else
+%                 PrevNFM = length(obj.FMFlag.FibrilAnalysis);
+%                 NFM = obj.NumForceMaps;
+%                 DiffFM = NFM - PrevNFM;
+%                 obj.SMFSFlag.AnalysedPreSelected = false(DiffFM,1);
+%                 obj.SMFSFlag.AnalysedPostSelected = false(DiffFM,1);
+%             end
+% 
+%         end
+
+
+        function SM_properties_parameters(obj,SetNumFcValue)
+            % Description:       
+            % The function verifies the number of force curves per force map and flags each force map based on the determined value compared to the input variable 'SetNumFcValue'. 
+            % If the 'SMFSFlag.NumForceCurves' is set for a force map the following part of the function is executed. There, properties and parameters, i.e. probe box, substrate, medium, velocities, from the jpk file name of the force map file are read out. 
+            % Force maps that have passed through are flagged at the end of the function with the 'SMFSFlag.PropertiesParameters'.
+            % Required input variables:
+            % obj
+            % SetNumFcValue ... The variable defines the number of force curves per force map
+            % Flags:
+            % SMFSFlag.PropertiesParameters
+            % SMFSFlag.NumForceCurves
+                        
+            %% Function body
+            h = waitbar(0,'setting up','Units','normalized','Position',[0.4 0.3 0.2 0.1]);
+            NLoop = length(obj.ForceMapNames);
+            if sum(obj.SMFSFlag.PropertiesParameters) >= 1
+                KeepFlagged = questdlg(sprintf('Some maps have been processed already.\nDo you want to skip them and keep old results?'),...
+                    'Processing Options',...
+                    'Yes',...
+                    'No',...
+                    'No');
+            else
+                KeepFlagged = 'No';
+            end
+            for Fm=1:obj.NumForceMaps
+            %  for Fm=45:obj.NumForceMaps % debugging
+                 if isequal(KeepFlagged,'Yes') && obj.SMFSFlag.PropertiesParameters(Fm) == 1
+                    continue
+                 end
+                waitbar(Fm/NLoop,h,sprintf('Preprocessing ForceMap %i/%i\nProcessing force curves',Fm,NLoop));  
+                obj.FM{Fm}.fc_measurement_prop
+                if obj.FM{Fm}.NCurves==SetNumFcValue
+                    obj.SMFSFlag.NumForceCurves(Fm)=1;
+                else
+                    obj.SMFSFlag.NumForceCurves(Fm)=0;
+                end 
+                obj.SMFSFMParameters(Fm,:)={Fm,obj.FM{Fm}.ID,obj.FM{Fm}.Name,obj.FM{Fm}.Date,obj.FM{Fm}.Time,obj.FM{Fm}.ExtendVelocity,obj.FM{Fm}.RetractVelocity,obj.FM{Fm}.HoldingTime,obj.FM{Fm}.Linker,obj.FM{Fm}.Substrate,obj.FM{Fm}.EnvCond,obj.FM{Fm}.ChipCant,obj.FM{Fm}.Chipbox};
+                waitbar(Fm/NLoop,h,sprintf('Preprocessing ForceMap %i/%i\nWrapping Up And Saving',Fm,NLoop));
+            % Set flag
+                obj.SMFSFlag.PropertiesParameters(Fm) = 1;
+            end
+            close(h);
+        end
+        
+        function SM_preprocessing(obj)
+            % Description:       
+            % The function that applies various preprocessing steps to the data.
+            % First, the general cantilever sensitivity measured before starting an AFM SM experiment with the cantilever is corrected with the individual cantilever sensitivity determined from each individual force curve. 
+            % Typically, in AFM experiments it is not necessary to determine the individual sensitivity but in case of the force curves detected during AFM SM experiments it was necessary to ensure most accurate results possible. 
+            % Second, to correct for artifacts which occurred in some force curves and the general tilt, the approach data is fitted. Two fits, a sinoidal fit and linear fit, are applied separately onto the same amount of data and the better fit is selected. 
+            % Additionally, a second, linear fit is applied to correct for the tilt in the data. 
+            % Third, to optimize the tilt correction for the retraction part, a linear fit of selected retraction data is applied. 
+            % Fourth, the z-piezo height data is corrected with the cantilever deflection. 
+            % Fifth, the contact point is estimated. 
+            % Force maps that have passed through are flagged at the end of the function with the 'SMFSFlag.Preprocessed'.
+            % Flags:
+            % SMFSFlag.Preprocessed
+                             
+            %% Function body
+            % Dialog box
+            h = waitbar(0,'setting up','Units','normalized','Position',[0.4 0.3 0.2 0.1]);
+            NLoop = length(obj.ForceMapNames);
+            if sum(obj.SMFSFlag.Preprocessed) >= 1
+                KeepFlagged = questdlg(sprintf('Some maps have been processed already.\nDo you want to skip them and keep old results?'),...
+                    'Processing Options',...
+                    'Yes',...
+                    'No',...
+                    'No');
+            else
+                KeepFlagged = 'No';
+            end
+            % Figure visibility
+            set(groot,'defaultFigureVisible','off')      
+            % set(groot,'defaultFigureVisible','on')  
+            % Change into the Folder of Interest
+            cd(obj.ExperimentFolder) % Move into the folder
+            % Create folders for saving the produced figures
+            foldername='SM_preprocessing';               
+            mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
+            currpath=fullfile(obj.ExperimentFolder,foldername);
+            cd(currpath);           
             % force map loop
-            %for ii=1:obj.NumForceMaps
-            for ii=270    
-                obj.FM{ii}.fc_chipprop
-            end
-        end
-                
-        function SMFS_presorting(obj)
-            % SMFS_presorting: This function allows to conduct an automated presorting of the force curves 
-            % The function flags force curves and whole force maps that are
-            % non-functionalize
             
-            % Needed function
-            obj.preprocessing
+            %for Fm=1:obj.NumForceMaps   
+            for Fm=164:obj.NumForceMaps  % debugging
+            % for Fm=1 % debugging
+                if isequal(KeepFlagged,'Yes') && obj.SMFSFlag.Preprocessed(Fm) == 1
+                    KeepFlagged = questdlg(sprintf('Some maps have been processed already.\nDo you want to skip them and keep old results?'),...
+                    'Processing Options',...
+                    'Yes',...
+                    'No',...
+                    'No');
+                else
+                    KeepFlagged = 'No';
+                end
+                waitbar(Fm/NLoop,h,sprintf('Preprocessing ForceMap %i/%i\nProcessing force curves',Fm,NLoop));            
+                obj.FM{Fm}.fc_sensitivity_correction
+                obj.FM{Fm}.fc_sinoidal_fit
+                obj.FM{Fm}.fc_linear_fit
+                obj.FM{Fm}.fc_TipHeight_calculation
+                obj.FM{Fm}.fc_estimate_cp_hardsurface
+                waitbar(Fm/NLoop,h,sprintf('Preprocessing ForceMap %i/%i\nWrapping Up And Saving',Fm,NLoop));
+                % Set flag
+                obj.SMFSFlag.Preprocessed(Fm) = 1;
+            end
+            close(h);
+        end
+                  
+      
+        function SM_preparation(obj,xLimit1,xLimit2,xLimit3,AppThreshValue,RetThreshValue)
+            % Description: 
+            % In this function force curves are presorted to allow further
+            % analysis. Only force maps with set SMFSFlag.Preprocessed are
+            % processed. 
+            % First, indices of data points corresponding to
+            % three lengths defined by the input variables
+            % (xLimit1,xLimit2,xLimit3) are determined.
+            % Second, thresholds defined by the input variables (AppThreshValue,RetThreshValue) are used to flag force curves.
+            % The flags indicate if interactions on the approach part
+            % and/or retraction part are present.
+            % Force maps that have passed through are flagged at the end of the function with the 'SMFSFlag.Presorted'.
+            % Required input variables:
+            % xLimit1
+            % xLimit2
+            % xLimit3
+            % AppThreshValue
+            % RetThreshValue
+            % Flags:
+            % SMFSFlag.Presorted
+            % SMFSFlag.SelectFM
+            % Typical input variables used for AFM SMAD of tropocollagen  
+            % Limits used for the analysis of TC            
+            %xLimit1=20e-9; Retraction limit 1
+            %xLimit2=200e-9; Approach limit
+            %xLimit3=300e-9; Retraction limit 2
+            %AppThreshValue=15e-12;     % 15 pN 
+            %RetThreshValue=25e-12;     % 25 pN 
+            
+            %% Function body
+            h = waitbar(0,'setting up','Units','normalized','Position',[0.4 0.3 0.2 0.1]);
+            NLoop = length(obj.ForceMapNames);
+            if sum(obj.SMFSFlag.Presorted) >= 1
+                KeepFlagged = questdlg(sprintf('Some maps have been processed already.\nDo you want to skip them and keep old results?'),...
+                    'Processing Options',...
+                    'Yes',...
+                    'No',...
+                    'No');
+            else
+                KeepFlagged = 'No';
+            end                        
             % Loop over the imported force maps
-            for ii=1:obj.NumForceMaps
-            %for ii=46:obj.NumForceMaps % Debugging
-            % Command window output
-                sprintf('Force Map No. %d of %d',ii,obj.NumForceMaps) % Gives current Force Map Position
-                obj.FM{ii}.base_and_tilt
-                obj.FM{ii}.estimate_cp_hardsurface
-                obj.FM{ii}.fc_based_ret_correction  
-                obj.FM{ii}.fc_selection_procedure
-                    if nnz(obj.FM{ii}.SMFSFlag.Min)<20 % Only if more than 20 force curves fulfil the citeria the whole force map is considered successfully functionalized
-                        obj.SMFSFlag(ii)=0;
+            for Fm=1:obj.NumForceMaps
+            %for Fm=1:76 % Debugging
+                if isequal(KeepFlagged,'Yes') && ~obj.SMFSFlag.Preprocessed(Fm)
+                    continue
+                end   
+                waitbar(Fm/NLoop,h,sprintf('Preprocessing ForceMap %i/%i\nProcessing force curves',Fm,NLoop));
+                waitbar(Fm/NLoop,h,sprintf('Preprocessing ForceMap %i/%i\nWrapping Up And Saving',Fm,NLoop));
+                sprintf('Force Map No. %d of %d',Fm,obj.NumForceMaps) % Gives current Force Map Position               
+                obj.FM{Fm}.fc_xLimit_idx(xLimit1,xLimit2,xLimit3)
+                obj.FM{Fm}.fc_selection_threshold(AppThreshValue,RetThreshValue)
+                    if nnz(obj.FM{Fm}.SMFSFlag.RetMinCrit)<20 % Only if more than 20 force curves fulfil the citeria the whole force map is considered successfully functionalized
+                        obj.SMFSFlag.SelectFM(Fm)=0;
                     else
-                        obj.SMFSFlag(ii)=1;
+                        obj.SMFSFlag.SelectFM(Fm)=1;
                     end
+                    obj.SMFSFlag.Presorted(Fm) = 1;
             end
+            close(h);
         end
-               
-        function SMFS_print(obj)
-            % SMFS_print: A function to simply plot all force curves of all
-            % force maps loaded and calssified based on the SMFS Flag 
-            
+      
+        function SM_visual_selection(obj,XMin,XMax,YMin,YMax,NumFcMax)
+            % Description: 
+            % In this function force curves are plotted and selected based on selection criteria the user has to check for in each force curve individually. 
+            % Based on the input variable 'NumFcMax' a if condition is
+            % excecuted allowing to process only force maps with set
+            % 'SMFSFlag.Preprocessed' or 
+            % processed. 
+            % 
+            % three lengths defined by the input variables
+            % (xLimit1,xLimit2,xLimit3) are determined.
+            % Second, thresholds defined by the input variables (AppThreshValue,RetThreshValue) are used to flag force curves.
+            % The flags indicate if interactions on the approach part
+            % and/or retraction part are present.
+            % Required input variables:
+            % XMin
+            % XMax
+            % YMin
+            % YMax
+            % NumFcMax
+            % Typical input variables used for AFM SMAD of tropocollagen 
+            % XMin= -inf;     % Limit of the X-axis in meters (m)
+            % XMax= 50e-9;      % Limit of the X-axis in meters (m)
+            % YMin= -inf;     % Limit of the Y-axis in Newtons (N)
+            % YMax= 100e-12;      % Limit of the Y-axis in Newtons (N)    
+            % NumFcMax = 25;   % Maximum number of force curves per figure
+            %% Function body
+            % Figure visibility
+            % set(groot,'defaultFigureVisible','off')      
+            set(groot,'defaultFigureVisible','on')  
             % Change into the Folder of Interest
             cd(obj.ExperimentFolder) % Move into the folder 
             % Create folders for saving the produced figures
-            % foldername='FM_raw_Fig';    % Defines the folder name
-            foldername='FM_presort0';    % Defines the folder name
+            foldername='SM_visual_selection';    % Defines the folder name
             mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
             currpath=fullfile(obj.ExperimentFolder,foldername);
             cd(currpath); 
             
             % Loop over the imported force maps
-            %for ii=1:obj.NumForceMaps
-            for ii=88:obj.NumForceMaps % Debugging
-            % Presort condition 
-                if ~obj.SMFSFlag(ii)   % Selects all flagged 1 force maps
-                %if obj.SMFSFlag(ii)     % Selects all flagged 0 force maps
+            for fm=1:obj.NumForceMaps
+            %for fm=38:53 % Debugging
+                if ~obj.SMFSFlag.Preprocessed(fm)
                     continue
                 end
                % Command window output
-               sprintf('Force Map No. %d of %d',ii,obj.NumForceMaps) % Gives current Force Map Position
-               % Run the chosen functions
-               obj.FM{ii}.estimate_cp_hardsurface
-               obj.FM{ii}.fc_print;     
-             %  obj.save_experiment;        % Save immediately after each force curve
+               sprintf('Force Map No. %d of %d',fm,obj.NumForceMaps) % Gives current Force Map Position
+               % Run the FM functions depending on input variable 'NumFcMax'
+               if NumFcMax>1
+               obj.FM{fm}.fc_visual_selection_flag_Uncorrupt(XMin,XMax,YMin,YMax,NumFcMax)
+               else
+               obj.FM{fm}.fc_visual_selection_all(XMin,XMax,YMin,YMax);
+               end 
             end    
         end
-        
-        function SMFS_print_sort(obj,StartDate,EndDate)
-            % SMFS_print_sort: A function to plot all force curves of all
-            % force maps sorted by different properties 
-            
-            % Comment: Date format is: 'YYYY.MM.DD'
-            
-         % Change into the Folder of Interest
-            cd(obj.ExperimentFolder) % Move into the folder 
-            if nargin<2
-                StartDate='0000.00.00';
-                EndDate='2999.00.00';
-            elseif nargin<3
-                EndDate='2999.00.00';
+      
+        function SM_analysis(obj,SelectedFlagStatus)
+            % This function allows to analyse different force curve
+            % criteria, i.e. pulling length, adhesion energy. 
+            % Input option:
+            % SelectedFlagStatus: 
+            % - 'Pre'
+            % - 'Post'
+            % Stands for before or after the SMFSFlag.Selected has been set
+           
+            % Output time and date for the dairy
+            datetime('now')
+             h = waitbar(0,'setting up','Units','normalized','Position',[0.4 0.3 0.2 0.1]);
+            NLoop = length(obj.ForceMapNames);
+            switch SelectedFlagStatus
+                case 'Pre'
+                if sum(obj.SMFSFlag.AnalysedPreSelected) >= 1
+                    KeepFlagged = questdlg(sprintf('Some maps have been processed already.\nDo you want to skip them and keep old results?'),...
+                    'Processing Options',...
+                    'Yes',...
+                    'No',...
+                    'No');
+                else
+                KeepFlagged = 'No';
+                end    
+                case 'Post'
+                if sum(obj.SMFSFlag.AnalysedPostSelected) >= 1
+                KeepFlagged = questdlg(sprintf('Some maps have been processed already.\nDo you want to skip them and keep old results?'),...
+                    'Processing Options',...
+                    'Yes',...
+                    'No',...
+                    'No');
+                else
+                KeepFlagged = 'No';
+                end   
             end
-            % Loop over the imported force maps
-             for ii=1:obj.NumForceMaps
-                % Needed function
-                obj.FM{ii}.fc_chipprop
-         
-                %if ~obj.SMFSFlag(ii)     % Selects all flagged 1 force maps
-                if obj.SMFSFlag(ii)     % Selects all flagged 0 force maps
+            % Figure visibility
+            set(groot,'defaultFigureVisible','off')      
+            % set(groot,'defaultFigureVisible','on') 
+            %% Loop
+            for Fm=1:obj.NumForceMaps
+            %for Fm=27:36 % Debugging    
+            if isequal(KeepFlagged,'Yes') 
                     continue
-                end
-                % Remove the dots in the dates               
-                FMDate=split(obj.FM{ii}.Date,'.');
-                StartDateSplit=split(StartDate,'.');
-                EndDateSplit=split(EndDate,'.');
-                % if conditions for the time selection (start date and end date)              
-                if ~(str2num(FMDate{1}) > str2num(StartDateSplit{1}) || ... % Verifies if the year of the FM object Date is greater than the start date
-                        (str2num(FMDate{1}) == str2num(StartDateSplit{1})... % Verifies if the year of the FM object Date is equal with the start date
-                        && str2num(FMDate{2}) > str2num(StartDateSplit{2})) || ...  % Verifies if the month of the FM object Date is greater than the start date
-                    (str2num(FMDate{1}) == str2num(StartDateSplit{1})...    
-                    &&(str2num(FMDate{2}) == str2num(StartDateSplit{2}))... % Verifies if the month of the FM object Date is equal than the start date
-                        && (str2num(FMDate{3}) >= str2num(StartDateSplit{3})))) % Verifies if the day of the FM object Date is greater than or equal with the start date
-                    continue
-                elseif ~(str2num(FMDate{1}) < str2num(EndDateSplit{1}) || ... 
-                        (str2num(FMDate{1}) == str2num(EndDateSplit{1})...
-                        && str2num(FMDate{2}) < str2num(EndDateSplit{2})) || ...
-                    (str2num(FMDate{1}) == str2num(EndDateSplit{1})...    
-                    &&(str2num(FMDate{2}) == str2num(EndDateSplit{2}))...
-                        && (str2num(FMDate{3}) <= str2num(EndDateSplit{3})))) 
-                    continue
-                end  
-                % Define variables for the folder name
-                SMFSFlagConvert=num2str(obj.SMFSFlag(ii));
-                VelocityConvert=num2str(obj.FM{ii}.Velocity*1e+9); % Convert into nm
-                StartDateMod=strrep(StartDate,'.','');
-                EndDateMod=strrep(EndDate,'.','');
-                foldername=append('FM_Flag',SMFSFlagConvert,'_',VelocityConvert,'_',obj.FM{ii}.Substrate,'_',obj.FM{ii}.EnvCond,'_',StartDateMod,'-',EndDateMod); % Defines the folder name
-                warning('off','all'); % To not showing the warning that the same folder is created each loop
-                mkdir(foldername);
-                warning('on','all');
-                cd(foldername)         
-               % Run the chosen functions
-               obj.FM{ii}.estimate_cp_hardsurface      
-               obj.FM{ii}.fc_print
-               cd(obj.ExperimentFolder) % Move into the folder 
-               obj.SMFSFlagPrint(ii)=1;               
-            end 
-            %obj.save_experiment        % Save immediately after each force curve
-        end
-        
-        function SMFS_print_sort_cantilever(obj,StartDate,EndDate)
-            % SMFS_print_sort: A function to plot all force curves of all
-            % force maps sorted by different properties 
-            
-            % Comment: Date format is: 'YYYY.MM.DD'
-            
-         % Change into the Folder of Interest
-            cd(obj.ExperimentFolder) % Move into the folder 
-            if nargin<2
-                StartDate='0000.00.00';
-                EndDate='2999.00.00';
-            elseif nargin<3
-                EndDate='2999.00.00';
+            end   
+               waitbar(Fm/NLoop,h,sprintf('Preprocessing ForceMap %i/%i\nProcessing force curves',Fm,NLoop));
+               waitbar(Fm/NLoop,h,sprintf('Preprocessing ForceMap %i/%i\nWrapping Up And Saving',Fm,NLoop));
+               sprintf('Force Map No. %d of %d',Fm,obj.NumForceMaps) % Gives current Force Map Position   
+               % Print force curves containing label for the pulling length
+               % and colored area for the adhesion energy                              
+               % Snap-in
+               obj.FM{Fm}.fc_snap_in_length_MAD(SelectedFlagStatus)
+               % Pulling length
+               obj.FM{Fm}.fc_pulling_length_MAD(SelectedFlagStatus)
+               % Maximum adhesion force
+               obj.FM{Fm}.fc_adh_force_max(SelectedFlagStatus)
+               % Adhesion energy
+               obj.FM{Fm}.fc_adhesion_energy_idxlength(SelectedFlagStatus)    
+               % Flag
+               %% General variables 1
+           if strcmpi(SelectedFlagStatus,'Pre')
+               obj.SMFSFlag.AnalysedPreSelected(Fm) = 1;
+           elseif strcmpi(SelectedFlagStatus,'Post')
+               obj.SMFSFlag.AnalysedPostSelected(Fm) = 1;
+           end
             end
-            % Loop over the imported force maps
-             for ii=1:obj.NumForceMaps
-                % Needed function
-                obj.FM{ii}.fc_chipprop
-                        
-                % Remove the dots in the dates               
-                FMDate=split(obj.FM{ii}.Date,'.');
-                StartDateSplit=split(StartDate,'.');
-                EndDateSplit=split(EndDate,'.');
-                % if conditions for the time selection (start date and end date)              
-                if ~(str2num(FMDate{1}) > str2num(StartDateSplit{1}) || ... % Verifies if the year of the FM object Date is greater than the start date
-                        (str2num(FMDate{1}) == str2num(StartDateSplit{1})... % Verifies if the year of the FM object Date is equal with the start date
-                        && str2num(FMDate{2}) > str2num(StartDateSplit{2})) || ...  % Verifies if the month of the FM object Date is greater than the start date
-                    (str2num(FMDate{1}) == str2num(StartDateSplit{1})...    
-                    &&(str2num(FMDate{2}) == str2num(StartDateSplit{2}))... % Verifies if the month of the FM object Date is equal than the start date
-                        && (str2num(FMDate{3}) >= str2num(StartDateSplit{3})))) % Verifies if the day of the FM object Date is greater than or equal with the start date
-                    continue
-                elseif ~(str2num(FMDate{1}) < str2num(EndDateSplit{1}) || ... 
-                        (str2num(FMDate{1}) == str2num(EndDateSplit{1})...
-                        && str2num(FMDate{2}) < str2num(EndDateSplit{2})) || ...
-                    (str2num(FMDate{1}) == str2num(EndDateSplit{1})...    
-                    &&(str2num(FMDate{2}) == str2num(EndDateSplit{2}))...
-                        && (str2num(FMDate{3}) <= str2num(EndDateSplit{3})))) 
-                    continue
-                end  
-                % Define variables for the folder name
-                SMFSFlagConvert=num2str(obj.SMFSFlag(ii));
-                StartDateMod=strrep(StartDate,'.','');
-                EndDateMod=strrep(EndDate,'.','');                
-                %foldername=append('FM_Flag',SMFSFlagConvert,'_',obj.FM{ii}.ChipCant,'_',StartDateMod,'-',EndDateMod); % Defines the folder name
-                foldername=append('FM_',obj.FM{ii}.ChipCant,'_',StartDateMod,'-',EndDateMod);
-                warning('off','all'); % To not showing the warning that the same folder is created each loop
-                mkdir(foldername);
-                warning('on','all');
-                cd(foldername)         
-               % Run the chosen functions
-               obj.FM{ii}.estimate_cp_hardsurface      
-               obj.FM{ii}.fc_print
-               cd(obj.ExperimentFolder) % Move into the folder                           
-            end 
-            %obj.save_experiment        % Save immediately after each force curve
+            close(h);
         end
-        
-        function SMFS_selection(obj)
-         
+                 
+        function SM_visual_selection_analysed(obj,XMin,XMax,YMin,YMax,NumFcMax)
+       
+            % 
+            if nargin<2
+                XMin= -inf;     % Limit of the X-axis in meters (m)
+                XMax= 50e-9;      % Limit of the X-axis in meters (m)
+                YMin= -0.3e-9;     % Limit of the Y-axis in Newtons (N)
+                YMax= 100e-12;      % Limit of the Y-axis in Newtons (N)    
+                NumFcMax = 25;   % Maximum number of force curves per figure
+            end
+            
+            % Output time and date for the dairy
+            datetime('now')
+            
+            % Figure visibility
+            % set(groot,'defaultFigureVisible','off')      
+            set(groot,'defaultFigureVisible','on')  
             % Change into the Folder of Interest
             cd(obj.ExperimentFolder) % Move into the folder 
             % Create folders for saving the produced figures
-            foldername='FM_Fig';    % Defines the folder name
+            foldername='SM_visual_selection_analysed';    % Defines the folder name
             mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
             currpath=fullfile(obj.ExperimentFolder,foldername);
             cd(currpath); 
             
             % Loop over the imported force maps
-            for ii=1:obj.NumForceMaps
-            %for ii=3:5 % Debugging
+            for Fm=1:obj.NumForceMaps
+            %for Fm=27 % Debugging
                % Command window output
-               sprintf('Force Map No. %d of %d',ii,obj.NumForceMaps) % Gives current Force Map Position
+               sprintf('Force Map No. %d of %d',Fm,obj.NumForceMaps) % Gives current Force Map Position
                % Run the chosen functions
-               obj.FM{ii}.estimate_cp_hardsurface
-               obj.FM{ii}.fc_selection;     
+                obj.FM{Fm}.fc_visual_selection_analysed(XMin,XMax,YMin,YMax,NumFcMax)
                %obj.save_experiment;        % Save immediately after each force curve
             end    
         end
+      
+        
+        function SM_print_analysed_fc(obj,XMin,XMax,YMin,YMax,NumFcMax)
+            %Furthermore, all analysed force curves are plotted and the determined
+            % criteria are plotted for visual inspection
+            % Input variable adaptation
+            % IMPORTANT: Input variable NumFcMax - Only natural numbers are allowed
+            % that result in natural numbers after square root extraction.
+            if nargin<2
+                XMin= -inf;     % Limit of the X-axis in meters (m)
+                XMax= 50e-9;      % Limit of the X-axis in meters (m)
+                YMin= -inf;     % Limit of the Y-axis in Newtons (N)
+                YMax= 100e-12;      % Limit of the Y-axis in Newtons (N)
+                NumFcMax = 25;   % Maximum number of force curves per figure
+            elseif nargin<3
+                XMin= -inf;     % Limit of the X-axis in meters (m)
+                XMax= inf;      % Limit of the X-axis in meters (m)
+                YMin= -inf;     % Limit of the Y-axis in Newtons (N)
+                YMax= inf;      % Limit of the Y-axis in Newtons (N)
+            end
+            % Output time and date for the dairy
+            datetime('now')
+            
+            % Figure visibility
+            set(groot,'defaultFigureVisible','off')
+        %    set(groot,'defaultFigureVisible','on')
+            cd(obj.ExperimentFolder) % Move into the folder
+            % Create folders for saving the produced figures
+            %foldername='FM_Test';    % for debugging
+            foldername='SM_print_analysed_fc';    % Defines the folder name
+            mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
+            currpath=fullfile(obj.ExperimentFolder,foldername);
+            cd(currpath);
+            %% loop
+            for Fm=1:obj.NumForceMaps
+            %for Fm=28 % Debugging
+            %sprintf('Force Map No. %d of %d',hh,obj.NumForceMaps) % Gives current Force Map Position   
+            if ~obj.SMFSFlag.Preprocessed(Fm)
+                    continue
+            end   
+            % Determine needed input variable
+               NumFcUncorrupt(Fm)=nnz(obj.FM{Fm}.SMFSFlag.Uncorrupt); % Determine the number of uncorrupted force curves     
+               obj.FM{Fm}.fc_print_analysed(XMin,XMax,YMin,YMax,NumFcMax)         
+            end
+            obj.NumFcUncorrupt=NumFcUncorrupt;
+        end
+                
+        function SM_print_raw(obj,XMin,XMax,YMin,YMax)
+            % SM_print: A function to simply plot all force curves of all
+            % force maps loaded and calssified based on the SMFS Flag
+            % Needed function: obj.presorting
+            
+            % Show time and date for the dairy
+            datetime('now')
+            
+            if nargin<2
+                XMin= -inf;     % Limit of the X-axis in meters (m)  
+                XMax= inf;      % Limit of the X-axis in meters (m)
+                YMin= -inf;     % Limit of the Y-axis in Newtons (N)   
+                YMax= inf;      % Limit of the Y-axis in Newtons (N)
+            else
+                
+            end
+       
+            % Figure visibility
+            set(groot,'defaultFigureVisible','off')      
+            % set(groot,'defaultFigureVisible','on')  
+            % Change into the Folder of Interest
+            % Change into the Folder of Interest
+            cd(obj.ExperimentFolder) % Move into the folder 
+            % Create folders for saving the produced figures
+            foldername='SM_print_raw';    % Defines the folder name
+            mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
+            currpath=fullfile(obj.ExperimentFolder,foldername);
+            cd(currpath); 
+            
+            % Loop over the imported force maps
+            %for Fm=1:obj.NumForceMaps
+            for Fm=1 % Debugging
+               % Command window output
+               sprintf('Force Map No. %d of %d',Fm,obj.NumForceMaps) % Gives current Force Map Position
+               % Run the chosen functions
+               obj.FM{Fm}.fc_print_raw(XMin,XMax,YMin,YMax);     
+            end    
+        end
+                         
+        function SM_print_sort(obj,StartDate,EndDate,XMin,XMax,YMin,YMax,Flags)
+            % SM_print_sort: A function to plot all force curves of all
+            % force maps sorted by different properties 
+            % Comment: Date format is: 'YYYY.MM.DD'
+            
+            % Figure visibility
+            set(groot,'defaultFigureVisible','off')      
+            % set(groot,'defaultFigureVisible','on')  
+            % Change into the Folder of Interest
+            cd(obj.ExperimentFolder) % Move into the folder 
+            % Create folders for saving the produced figures
+            foldername='SM_print_sort';    % Defines the folder name
+            mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
+            currpath=fullfile(obj.ExperimentFolder,foldername);
+            cd(currpath); 
+            % Input variable adaptation
+            if nargin<2
+                StartDate='0000.00.00';
+                EndDate='2999.00.00';
+                XMin= -inf;     % Limit of the X-axis in meters (m)  
+                XMax= inf;      % Limit of the X-axis in meters (m)
+                YMin= -inf;     % Limit of the Y-axis in Newtons (N)   
+                YMax= inf;      % Limit of the Y-axis in Newtons (N)
+            elseif nargin<6    
+                StartDate='0000.00.00';
+                EndDate='2999.00.00';
+            end
+            
+            % Output time and date for the dairy
+            datetime('now')
+            
+            % Loop over the imported force maps
+             for Fm=1:obj.NumForceMaps
+             %for Fm=25:36
+                 % Needed function               
+                %if ~obj.SMFSFlag(ii)     % Selects all flagged 1 force maps
+                %if obj.SMFSFlag(ii)     % Selects all flagged 0 force maps
+                %    continue
+                %end
+                % Remove the dots in the dates               
+                FMDate=split(obj.FM{Fm}.Date,'.');
+                StartDateSplit=split(StartDate,'.');
+                EndDateSplit=split(EndDate,'.');
+                % if conditions for the time selection (start date and end date)              
+                if ~(str2num(FMDate{1}) > str2num(StartDateSplit{1}) || ... % Verifies if the year of the FM object Date is greater than the start date
+                        (str2num(FMDate{1}) == str2num(StartDateSplit{1})... % Verifies if the year of the FM object Date is equal with the start date
+                        && str2num(FMDate{2}) > str2num(StartDateSplit{2})) || ...  % Verifies if the month of the FM object Date is greater than the start date
+                    (str2num(FMDate{1}) == str2num(StartDateSplit{1})...    
+                    &&(str2num(FMDate{2}) == str2num(StartDateSplit{2}))... % Verifies if the month of the FM object Date is equal than the start date
+                        && (str2num(FMDate{3}) >= str2num(StartDateSplit{3})))) % Verifies if the day of the FM object Date is greater than or equal with the start date
+                    continue
+                elseif ~(str2num(FMDate{1}) < str2num(EndDateSplit{1}) || ... 
+                        (str2num(FMDate{1}) == str2num(EndDateSplit{1})...
+                        && str2num(FMDate{2}) < str2num(EndDateSplit{2})) || ...
+                    (str2num(FMDate{1}) == str2num(EndDateSplit{1})...    
+                    &&(str2num(FMDate{2}) == str2num(EndDateSplit{2}))...
+                        && (str2num(FMDate{3}) <= str2num(EndDateSplit{3})))) 
+                    continue
+                end  
+                % Define variables for the folder name
+                StartDateMod=strrep(StartDate,'.','');
+                EndDateMod=strrep(EndDate,'.','');
+                %foldername=append('FM_Flag',SMFSFlagConvert,'_',VelocityConvert,'_',obj.FM{ii}.Substrate,'_',obj.FM{ii}.EnvCond,'_',StartDateMod,'-',EndDateMod); % Defines the folder name
+                %foldername=append(obj.FM{ii}.Substrate,'_',obj.FM{ii}.EnvCond,'_',StartDateMod,'-',EndDateMod); % Defines the folder name 
+                foldername=append(StartDateMod,'-',EndDateMod,'_',obj.FM{Fm}.Chipbox,'_',obj.FM{Fm}.ChipCant); % Defines the folder name 
+                warning('off','all'); % Set warning off to prevent from showing the same warning each loop 
+                mkdir(foldername);
+                warning('on','all');
+                cd(foldername)         
+               % Run the chosen function  
+               obj.FM{Fm}.fc_print_fitted(XMin,XMax,YMin,YMax,Flags)
+               cd(obj.ExperimentFolder) % Move into the folder                             
+            end            
+        end
         
         
-    end
+        function SM_analysis_flag_status(obj)
+                        
+            % Find not processed force maps
+            obj.SMFSFlagDown.SelectFM=find(~obj.SMFSFlag.SelectFM);
+            obj.SMFSFlagDown.PropertiesParameters=find(~obj.SMFSFlag.PropertiesParameters);
+            obj.SMFSFlagDown.Preprocessed=find(~obj.SMFSFlag.Preprocessed);
+            obj.SMFSFlagDown.Presorted=find(~obj.SMFSFlag.Presorted);
+            obj.SMFSFlagDown.NumForceCurves=find(~obj.SMFSFlag.NumForceCurves);            
+            obj.SMFSFlagDown.AnalysedPreSelected=find(~obj.SMFSFlag.AnalysedPreSelected);
+            obj.SMFSFlagDown.AnalysedPostSelected=find(~obj.SMFSFlag.AnalysedPostSelected);
+     %       obj.SMFSFlagDown.Analysed=find(~obj.SMFSFlag.Analysed);
+            for Fm=1:obj.NumForceMaps
+            %for Fm=122:133
+            obj.FM{Fm}.fc_flag_status          
+            end
+        end
+ 
+        
+        function SM_results_structure(obj,ChipboxValue,ChipCantValue,LinkerValue,SubstrateValue,EnvCondValue,ExtVelocityValue,RetVelocityValue,HoldingTimeValue)
+
+            % If all velocities should be selected use input variable: 0
+            % If all holding times should be selected use input variable:
+            % -1
+
+            % Output time and date for the dairy
+            datetime('now')
+            % Define variables
+            FMIdxArray=[];
+            jj=1;
+            DateFormat='yyyy-MM-dd HH-mm-ss-SSS';
+            for Fm=1:obj.NumForceMaps
+                %% Debugging
+                %for Fm=65:117 % for debugging
+                sprintf('Force map No. %d',Fm) % Gives current force map
+                %% Force map selection criteria
+                if ~obj.SMFSFlag.AnalysedPostSelected(Fm) || ~obj.SMFSFlag.NumForceCurves(Fm)    % Exclude force map if analysis has not been done
+%                if ~obj.SMFSFlag.Analysed(Fm) || ~obj.SMFSFlag.NumForceCurves(Fm)    % Exclude force map if analysis has not been done
+                    continue
+                end
+                % Parameters
+                if ((round(obj.FM{Fm}.ExtendVelocity,8)==ExtVelocityValue || ExtVelocityValue==0) ...
+                        && (round(obj.FM{Fm}.RetractVelocity,8)==RetVelocityValue || RetVelocityValue==0) ...
+                        && (round(obj.FM{Fm}.HoldingTime,2)==HoldingTimeValue || HoldingTimeValue==-1) ...    % Round holding time value to correct for tiny deviations of decimal places after the comma origin from instrument (AFM)
+                        && (strcmpi(obj.FM{Fm}.Substrate,SubstrateValue) || strcmpi(SubstrateValue,'All')) ...
+                        && (strcmpi(obj.FM{Fm}.EnvCond,EnvCondValue) || strcmpi(EnvCondValue,'All')) ...
+                        && (strcmpi(obj.FM{Fm}.ChipCant,ChipCantValue) || strcmpi(ChipCantValue,'All')) ...
+                        && (strcmpi(obj.FM{Fm}.Chipbox,ChipboxValue) || strcmpi(ChipboxValue,'All')) ...
+                        && (strcmpi(obj.FM{Fm}.Linker,LinkerValue) || strcmpi(LinkerValue,'All')))
+                    % Define variables for the if condition
+                    FMIdxArray(jj,1)=Fm;
+                    % Adjust variable
+                    jj=jj+1;
+                end
+            end
+            % If condition to handle an empty index array
+            if isempty(FMIdxArray)
+                return
+            else
+            end
+            % Preallocate
+            ConcateArrayAdhMaxApp=zeros(length(FMIdxArray)*obj.FM{FMIdxArray(1)}.NCurves,1);
+            ConcateArrayAdhMaxRet=zeros(length(FMIdxArray)*obj.FM{FMIdxArray(1)}.NCurves,1);
+            ConcateArrayAdhMaxRetUnbinding=zeros(length(FMIdxArray)*obj.FM{FMIdxArray(1)}.NCurves,1);
+            ConcateArrayAdhEneApp=zeros(length(FMIdxArray)*obj.FM{FMIdxArray(1)}.NCurves,1);
+            ConcateArrayAdhEneRet=zeros(length(FMIdxArray)*obj.FM{FMIdxArray(1)}.NCurves,1);
+            ConcateArrayPullLength=zeros(length(FMIdxArray)*obj.FM{FMIdxArray(1)}.NCurves,1);
+            ConcateArraySnapIn=zeros(length(FMIdxArray)*obj.FM{FMIdxArray(1)}.NCurves,1);
+            yAdhMaxAppAll=zeros(obj.FM{FMIdxArray(1)}.NCurves,length(FMIdxArray));
+            FCAnalysedyAdhMaxApp=zeros(1,length(FMIdxArray));
+            yAdhMaxRetAll=zeros(obj.FM{FMIdxArray(1)}.NCurves,length(FMIdxArray));
+            FCAnalysedyAdhMaxRet=zeros(1,length(FMIdxArray));
+            yAdhUnbindingAll=zeros(obj.FM{FMIdxArray(1)}.NCurves,length(FMIdxArray));
+            FCAnalysedyAdhUnbind=zeros(1,length(FMIdxArray));
+            yAdhEneAppAll=zeros(obj.FM{FMIdxArray(1)}.NCurves,length(FMIdxArray));
+            FCAnalysedyAdhEneApp=zeros(1,length(FMIdxArray));
+            yAdhEneRetAll=zeros(obj.FM{FMIdxArray(1)}.NCurves,length(FMIdxArray));
+            FCAnalysedyAdhEneRet=zeros(1,length(FMIdxArray));
+            yPullingLengthAll=zeros(obj.FM{FMIdxArray(1)}.NCurves,length(FMIdxArray));
+            FCAnalysedyPullingLength=zeros(1,length(FMIdxArray));
+            ySnapInLengthAll=zeros(obj.FM{FMIdxArray(1)}.NCurves,length(FMIdxArray));
+            FCAnalysedySnapInLength=zeros(1,length(FMIdxArray));            
+            FMID=cell(length(FMIdxArray),1);
+            FMNum=zeros(length(FMIdxArray),1);
+            FMExtVelocity=zeros(length(FMIdxArray),1);
+            FMRetVelocity=zeros(length(FMIdxArray),1);
+            FMHoldingTime=zeros(length(FMIdxArray),1);
+            FMSubstrate=cell(length(FMIdxArray),1);
+            FMEnvCond=cell(length(FMIdxArray),1);
+            FMChipCant=cell(length(FMIdxArray),1);
+            FMChipbox=cell(length(FMIdxArray),1);
+            FMLinker=cell(length(FMIdxArray),1);
+            FMDateTime=cell(length(FMIdxArray),1);
+            FMDateTimeNumber=zeros(length(FMIdxArray),1);
+            TotalNumFc=zeros(length(FMIdxArray),1);            
+            SMFSFlagUncorrupt=zeros(length(FMIdxArray),1);
+            SMFSFlagSelected=zeros(length(FMIdxArray),1);
+            SMFSFlagAppMinCrit=zeros(length(FMIdxArray),1);
+            SMFSFlagRetMinCrit=zeros(length(FMIdxArray),1);
+            SMFSFlagLengthRequisite=zeros(length(FMIdxArray),1);
+            SMFSFlagFit=zeros(length(FMIdxArray),1);
+            SMFSFlagFitLinear=zeros(length(FMIdxArray),1);
+            SMFSFlagFitSinoidal=zeros(length(FMIdxArray),1);
+            SMFSFlagSnapIn=zeros(length(FMIdxArray),1);
+            SMFSFlagPullingLength=zeros(length(FMIdxArray),1);
+            AdhMaxAppMinArray=zeros(length(FMIdxArray),1);
+            AdhMaxAppMinFcArray=zeros(length(FMIdxArray),1);
+            AdhMaxAppMaxArray=zeros(length(FMIdxArray),1);
+            AdhMaxAppMaxFcArray=zeros(length(FMIdxArray),1);
+            AdhMaxRetMinArray=zeros(length(FMIdxArray),1);
+            AdhMaxRetMinFcArray=zeros(length(FMIdxArray),1);
+            AdhMaxRetMaxArray=zeros(length(FMIdxArray),1);
+            AdhMaxRetMaxFcArray=zeros(length(FMIdxArray),1);
+            AdhMaxRetUnbindingMinArray=zeros(length(FMIdxArray),1);
+            AdhMaxRetUnbindingMinFcArray=zeros(length(FMIdxArray),1);
+            AdhMaxRetUnbindingMaxArray=zeros(length(FMIdxArray),1);
+            AdhMaxRetUnbindingMaxFcArray=zeros(length(FMIdxArray),1);
+            AdhEneAppMinArray=zeros(length(FMIdxArray),1);
+            AdhEneAppMinFcArray=zeros(length(FMIdxArray),1);
+            AdhEneAppMaxArray=zeros(length(FMIdxArray),1);
+            AdhEneAppMaxFcArray=zeros(length(FMIdxArray),1);
+            AdhEneRetMinArray=zeros(length(FMIdxArray),1);
+            AdhEneRetMinFcArray=zeros(length(FMIdxArray),1);
+            AdhEneRetMaxArray=zeros(length(FMIdxArray),1);
+            AdhEneRetMaxFcArray=zeros(length(FMIdxArray),1);
+            PullLengthMinArray=zeros(length(FMIdxArray),1);
+            PullLengthMinFcArray=zeros(length(FMIdxArray),1);
+            PullLengthMaxArray=zeros(length(FMIdxArray),1);
+            PullLengthMaxFcArray=zeros(length(FMIdxArray),1);
+            SnapInMinArray=zeros(length(FMIdxArray),1);
+            SnapInMinFcArray=zeros(length(FMIdxArray),1);
+            SnapInMaxArray=zeros(length(FMIdxArray),1);
+            SnapInMaxFcArray=zeros(length(FMIdxArray),1);
+            % Loop
+            for ff=1:length(FMIdxArray)
+                %% Debugging
+                %for ff=6 % for debugging
+                %sprintf('Index array row No. %d',ff) % Gives current Force curve
+                % Allocate data
+                yAdhMaxApp=obj.FM{FMIdxArray(ff)}.AdhForceMaxApp;
+                yAdhMaxRet=obj.FM{FMIdxArray(ff)}.AdhForceMaxRet;
+                yAdhUnbinding=obj.FM{FMIdxArray(ff)}.AdhForceUnbinding;
+                yAdhEneApp=obj.FM{FMIdxArray(ff)}.AppAdhEnergy_IdxMethod;
+                yAdhEneRet=obj.FM{FMIdxArray(ff)}.RetAdhEnergy_IdxMethod;
+                yPullingLength=obj.FM{FMIdxArray(ff)}.PullingLength;
+                ySnapInLength=obj.FM{FMIdxArray(ff)}.SnapInLength;
+                FMID{ff,1}=obj.FM{FMIdxArray(ff)}.ID;
+                FMNum(ff,1)=ff;
+                FMExtVelocity(ff,1)=round(obj.FM{FMIdxArray(ff)}.ExtendVelocity,8); % Round holding time value to correct for tiny deviations of decimal places after the comma origin from instrument (AFM)
+                FMRetVelocity(ff,1)=round(obj.FM{FMIdxArray(ff)}.RetractVelocity,8); % Round holding time value to correct for tiny deviations of decimal places after the comma origin from instrument (AFM)
+                FMHoldingTime(ff,1)=round(obj.FM{FMIdxArray(ff)}.HoldingTime,2); % Round holding time value to correct for tiny deviations of decimal places after the comma origin from instrument (AFM)
+                FMSubstrate{ff,1}=obj.FM{FMIdxArray(ff)}.Substrate;
+                FMEnvCond{ff,1}=obj.FM{FMIdxArray(ff)}.EnvCond;
+                FMChipCant{ff,1}=obj.FM{FMIdxArray(ff)}.ChipCant;
+                FMChipbox{ff,1}=obj.FM{FMIdxArray(ff)}.Chipbox;
+                FMLinker{ff,1}=obj.FM{FMIdxArray(ff)}.Linker;
+                FMDate=obj.FM{FMIdxArray(ff)}.Date;
+                FMTime=obj.FM{FMIdxArray(ff)}.Time;
+                DateTimeStr=[FMDate,' ',FMTime];
+                FMDateTime{ff,1}=cellstr(datetime(DateTimeStr,'InputFormat',DateFormat,'Format',DateFormat));
+                FMDateTimeNumber(ff,1)=datenum(datetime(DateTimeStr,'InputFormat',DateFormat,'Format',DateFormat));
+                TotalNumFc(ff,1)=obj.FM{FMIdxArray(ff)}.NCurves;
+                % SMFS Flags
+                SMFSFlagUncorrupt(ff,1)=nnz(obj.FM{FMIdxArray(ff)}.SMFSFlag.Uncorrupt');
+                SMFSFlagSelected(ff,1)=nnz(obj.FM{FMIdxArray(ff)}.SMFSFlag.Selected');
+                SMFSFlagAppMinCrit(ff,1)=nnz(obj.FM{FMIdxArray(ff)}.SMFSFlag.AppMinCrit');
+                SMFSFlagRetMinCrit(ff,1)=nnz(obj.FM{FMIdxArray(ff)}.SMFSFlag.RetMinCrit');
+                SMFSFlagLengthRequisite(ff,1)=nnz(obj.FM{FMIdxArray(ff)}.SMFSFlag.LengthRequisite');
+                SMFSFlagFit(ff,1)=nnz(obj.FM{FMIdxArray(ff)}.SMFSFlag.Fit');
+                SMFSFlagFitLinear(ff,1)=nnz(obj.FM{FMIdxArray(ff)}.SMFSFlag.FitLinear');
+                SMFSFlagFitSinoidal(ff,1)=nnz(obj.FM{FMIdxArray(ff)}.SMFSFlag.FitSinoidal');
+                SMFSFlagSnapIn(ff,1)=nnz(obj.FM{FMIdxArray(ff)}.SMFSFlag.SnapIn');
+                SMFSFlagPullingLength(ff,1)=nnz(obj.FM{FMIdxArray(ff)}.SMFSFlag.PullingLength');
+                %% Concatenate arrays
+                % FCs of each FM in seperate column
+                yAdhMaxAppAll(:,ff)=yAdhMaxApp'.*obj.FM{FMIdxArray(ff)}.SMFSFlag.Selected';
+                yAdhMaxAppAll(yAdhMaxAppAll==0)=nan; % Replace zero entries by nan´s
+                FCAnalysedyAdhMaxApp(1,ff)=nnz(~isnan(yAdhMaxAppAll(:,ff)));
+                yAdhMaxRetAll(:,ff)=yAdhMaxRet'.*obj.FM{FMIdxArray(ff)}.SMFSFlag.Selected';
+                yAdhMaxRetAll(yAdhMaxRetAll==0)=nan; % Replace zero entries by nan´s
+                FCAnalysedyAdhMaxRet(1,ff)=nnz(~isnan(yAdhMaxRetAll(:,ff)));
+                yAdhUnbindingAll(:,ff)=yAdhUnbinding'.*obj.FM{FMIdxArray(ff)}.SMFSFlag.Selected';
+                yAdhUnbindingAll(yAdhUnbindingAll==0)=nan; % Replace zero entries by nan´s
+                FCAnalysedyAdhUnbind(1,ff)=nnz(~isnan(yAdhUnbindingAll(:,ff)));
+                yAdhEneAppAll(:,ff)=yAdhEneApp'.*obj.FM{FMIdxArray(ff)}.SMFSFlag.Selected';
+                yAdhEneAppAll(yAdhEneAppAll==0)=nan; % Replace zero entries by nan´s
+                FCAnalysedyAdhEneApp(1,ff)=nnz(~isnan(yAdhEneAppAll(:,ff)));
+                yAdhEneRetAll(:,ff)=yAdhEneRet'.*obj.FM{FMIdxArray(ff)}.SMFSFlag.Selected';
+                yAdhEneRetAll(yAdhEneRetAll==0)=nan; % Replace zero entries by nan´s
+                FCAnalysedyAdhEneRet(1,ff)=nnz(~isnan(yAdhEneRetAll(:,ff)));
+                yPullingLengthAll(:,ff)=yPullingLength'.*obj.FM{FMIdxArray(ff)}.SMFSFlag.Selected';
+                yPullingLengthAll(yPullingLengthAll==0)=nan; % Replace zero entries by nan´s
+                FCAnalysedyPullingLength(1,ff)=nnz(~isnan(yPullingLengthAll(:,ff)));
+                ySnapInLengthAll(:,ff)=ySnapInLength'.*obj.FM{FMIdxArray(ff)}.SMFSFlag.Selected';
+                ySnapInLengthAll(ySnapInLengthAll==0)=nan; % Replace zero entries by nan´s
+                FCAnalysedySnapInLength(1,ff)=nnz(~isnan(ySnapInLengthAll(:,ff)));
+                % All FCs of all FM in one column                   
+                if ~isempty(yAdhMaxApp)
+                    % Determine the number of rows per force map
+                    ArrayLength=length(yAdhMaxApp); % Define the length of the array
+                    row_start = ((ff-1) * ArrayLength) + 1; % Define the appropriate row start to append the new data
+                    row_end   = ff * ArrayLength; % Define the appropriate row end to append the new data
+                    % Concatenated data
+                    ConcateArrayAdhMaxApp(row_start:row_end,:)=yAdhMaxApp'; % Append the new data into the concatenated vector
+                    ConcateArrayAdhMaxApp(row_start:row_end,:)=ConcateArrayAdhMaxApp(row_start:row_end,:).*obj.FM{FMIdxArray(ff)}.SMFSFlag.Selected'; % Set non-selected force curves from the concatenated arrays to zero
+                    ConcateArrayAdhMaxApp(ConcateArrayAdhMaxApp==0)=nan; % Replace zero entries by nan´s
+                    % Allocate parameters
+                    FMIDArray(row_start:row_end,:)={FMID}; % Allocate the FM ID to each row
+                    FMIndexArray(row_start:row_end,:)=FMIdxArray(ff);
+                    FMNumArray(row_start:row_end,:)=ff;
+                    FcNumArray(row_start:row_end,:)=(row_start:row_end)';
+                    FMExtVelocityArray(row_start:row_end,:)=FMExtVelocity(ff,1);
+                    FMRetVelocityArray(row_start:row_end,:)=FMRetVelocity(ff,1);
+                    FMHoldingTimeArray(row_start:row_end,:)=FMHoldingTime(ff,1);
+                    FMSubstrateArray(row_start:row_end,:)=FMSubstrate(ff,1);
+                    FMEnvCondArray(row_start:row_end,:)=FMEnvCond(ff,1);
+                    FMChipCantArray(row_start:row_end,:)=FMChipCant(ff,1);
+                    FMChipboxArray(row_start:row_end,:)=FMChipbox(ff,1);
+                    FMLinkerArray(row_start:row_end,:)=FMLinker(ff,1);
+                    FMDateTimeFcArray(row_start:row_end,:)=datetime(DateTimeStr,'InputFormat',DateFormat,'Format',DateFormat);
+                    FMDateTimeNumberFcArray(row_start:row_end,:)=datenum(datetime(DateTimeStr,'InputFormat',DateFormat,'Format',DateFormat));
+                else
+                end
+                if ~isempty(yAdhMaxRet)
+                    % Determine the number of rows per force map
+                    ArrayLength=length(yAdhMaxRet); % Define the length of the array
+                    row_start = ((ff-1) * ArrayLength) + 1; % Define the appropriate row start to append the new data
+                    row_end   = ff * ArrayLength; % Define the appropriate row end to append the new data
+                    % Concatenated data
+                    ConcateArrayAdhMaxRet(row_start:row_end,:)=yAdhMaxRet'; % Append the new data into the concatenated vector
+                    ConcateArrayAdhMaxRet(row_start:row_end,:)=ConcateArrayAdhMaxRet(row_start:row_end,:).*obj.FM{FMIdxArray(ff)}.SMFSFlag.Selected'; % Set non-selected force curves from the concatenated arrays to zero
+                    ConcateArrayAdhMaxRet(ConcateArrayAdhMaxRet==0)=nan; % Replace zero entries by nan´s
+                else
+                end
+                if ~isempty(yAdhUnbinding)
+                    % Determine the number of rows per force map
+                    ArrayLength=length(yAdhUnbinding); % Define the length of the array
+                    row_start = ((ff-1) * ArrayLength) + 1; % Define the appropriate row start to append the new data
+                    row_end   = ff * ArrayLength; % Define the appropriate row end to append the new data
+                    % Concatenated data
+                    ConcateArrayAdhMaxRetUnbinding(row_start:row_end,:)=yAdhUnbinding'; % Append the new data into the concatenated vector
+                    ConcateArrayAdhMaxRetUnbinding(row_start:row_end,:)=ConcateArrayAdhMaxRetUnbinding(row_start:row_end,:).*obj.FM{FMIdxArray(ff)}.SMFSFlag.Selected'; % Set non-selected force curves from the concatenated arrays to zero
+                    ConcateArrayAdhMaxRetUnbinding(ConcateArrayAdhMaxRetUnbinding==0)=nan; % Replace zero entries by nan´s
+                else
+                end
+                if ~isempty(yAdhEneApp)
+                    % Determine the number of rows per force map
+                    ArrayLength=length(yAdhEneApp); % Define the length of the array
+                    row_start = ((ff-1) * ArrayLength) + 1; % Define the appropriate row start to append the new data
+                    row_end   = ff * ArrayLength; % Define the appropriate row end to append the new data
+                    % Concatenated data
+                    ConcateArrayAdhEneApp(row_start:row_end,:)=yAdhEneApp'; % Append the new data into the concatenated vector
+                    ConcateArrayAdhEneApp(row_start:row_end,:)=ConcateArrayAdhEneApp(row_start:row_end,:).*obj.FM{FMIdxArray(ff)}.SMFSFlag.Selected'; % Set non-selected force curves from the concatenated arrays to zero
+                    ConcateArrayAdhEneApp(ConcateArrayAdhEneApp==0)=nan; % Replace zero entries by nan´s
+                else
+                end
+                if ~isempty(yAdhEneRet)
+                    % Determine the number of rows per force map
+                    ArrayLength=length(yAdhEneRet); % Define the length of the array
+                    row_start = ((ff-1) * ArrayLength) + 1; % Define the appropriate row start to append the new data
+                    row_end   = ff * ArrayLength; % Define the appropriate row end to append the new data
+                    % Concatenated data
+                    ConcateArrayAdhEneRet(row_start:row_end,:)=yAdhEneRet'; % Append the new data into the concatenated vector
+                    ConcateArrayAdhEneRet(row_start:row_end,:)=ConcateArrayAdhEneRet(row_start:row_end,:).*obj.FM{FMIdxArray(ff)}.SMFSFlag.Selected'; % Set non-selected force curves from the concatenated arrays to zero
+                    ConcateArrayAdhEneRet(ConcateArrayAdhEneRet==0)=nan; % Replace zero entries by nan´s
+                else
+                end
+                if ~isempty(yPullingLength)
+                    % Determine the number of rows per force map
+                    ArrayLength=length(yPullingLength); % Define the length of the array
+                    row_start = ((ff-1) * ArrayLength) + 1; % Define the appropriate row start to append the new data
+                    row_end   = ff * ArrayLength; % Define the appropriate row end to append the new data
+                    % Concatenated data
+                    ConcateArrayPullLength(row_start:row_end,:)=yPullingLength'; % Append the new data into the concatenated vector
+                    ConcateArrayPullLength(row_start:row_end,:)=ConcateArrayPullLength(row_start:row_end,:).*obj.FM{FMIdxArray(ff)}.SMFSFlag.Selected'; % Set non-selected force curves from the concatenated arrays to zero
+                    ConcateArrayPullLength(ConcateArrayPullLength==0)=nan; % Replace zero entries by nan´s
+                else
+                end
+                if ~isempty(ySnapInLength)
+                    % Determine the number of rows per force map
+                    ArrayLength=length(ySnapInLength); % Define the length of the array
+                    row_start = ((ff-1) * ArrayLength) + 1; % Define the appropriate row start to append the new data
+                    row_end   = ff * ArrayLength; % Define the appropriate row end to append the new data
+                    % Concatenated data
+                    ConcateArraySnapIn(row_start:row_end,:)=ySnapInLength'; % Append the new data into the concatenated vector
+                    ConcateArraySnapIn(row_start:row_end,:)=ConcateArraySnapIn(row_start:row_end,:).*obj.FM{FMIdxArray(ff)}.SMFSFlag.Selected'; % Set non-selected force curves from the concatenated arrays to zero
+                    ConcateArraySnapIn(ConcateArraySnapIn==0)=nan; % Replace zero entries by nan´s
+                else
+                end
+                % Min max values and location
+                if ff==1
+                    [AdhMaxAppMinArray(ff,1),AdhMaxAppMinFcArray(ff,1)]=min(ConcateArrayAdhMaxApp(1:100),[],'omitnan');
+                    [AdhMaxAppMaxArray(ff,1),AdhMaxAppMaxFcArray(ff,1)]=max(ConcateArrayAdhMaxApp(1:100),[],'omitnan');
+                    [AdhMaxRetMinArray(ff,1),AdhMaxRetMinFcArray(ff,1)]=min(ConcateArrayAdhMaxRet(1:100),[],'omitnan');
+                    [AdhMaxRetMaxArray(ff,1),AdhMaxRetMaxFcArray(ff,1)]=max(ConcateArrayAdhMaxRet(1:100),[],'omitnan');
+                    [AdhMaxRetUnbindingMinArray(ff,1),AdhMaxRetUnbindingMinFcArray(ff,1)]=min(ConcateArrayAdhMaxRetUnbinding(1:100),[],'omitnan');
+                    [AdhMaxRetUnbindingMaxArray(ff,1),AdhMaxRetUnbindingMaxFcArray(ff,1)]=max(ConcateArrayAdhMaxRetUnbinding(1:100),[],'omitnan');
+                    [AdhEneAppMinArray(ff,1),AdhEneAppMinFcArray(ff,1)]=min(ConcateArrayAdhEneApp(1:100),[],'omitnan');
+                    [AdhEneAppMaxArray(ff,1),AdhEneAppMaxFcArray(ff,1)]=max(ConcateArrayAdhEneApp(1:100),[],'omitnan');
+                    [AdhEneRetMinArray(ff,1),AdhEneRetMinFcArray(ff,1)]=min(ConcateArrayAdhEneRet(1:100),[],'omitnan');
+                    [AdhEneRetMaxArray(ff,1),AdhEneRetMaxFcArray(ff,1)]=max(ConcateArrayAdhEneRet(1:100),[],'omitnan');
+                    [PullLengthMinArray(ff,1),PullLengthMinFcArray(ff,1)]=min(ConcateArrayPullLength(1:100),[],'omitnan');
+                    [PullLengthMaxArray(ff,1),PullLengthMaxFcArray(ff,1)]=max(ConcateArrayPullLength(1:100),[],'omitnan');
+                    [SnapInMinArray(ff,1),SnapInMinFcArray(ff,1)]=min(ConcateArraySnapIn(1:100),[],'omitnan');
+                    [SnapInMaxArray(ff,1),SnapInMaxFcArray(ff,1)]=max(ConcateArraySnapIn(1:100),[],'omitnan');
+                else
+                    [AdhMaxAppMinArray(ff,1),AdhMaxAppMinFcArray(ff,1)]=min(ConcateArrayAdhMaxApp(((ff-1)*100)+1:ff*100),[],'omitnan');
+                    [AdhMaxAppMaxArray(ff,1),AdhMaxAppMaxFcArray(ff,1)]=max(ConcateArrayAdhMaxApp(((ff-1)*100)+1:ff*100),[],'omitnan');
+                    [AdhMaxRetMinArray(ff,1),AdhMaxRetMinFcArray(ff,1)]=min(ConcateArrayAdhMaxRet(((ff-1)*100)+1:ff*100),[],'omitnan');
+                    [AdhMaxRetMaxArray(ff,1),AdhMaxRetMaxFcArray(ff,1)]=max(ConcateArrayAdhMaxRet(((ff-1)*100)+1:ff*100),[],'omitnan');
+                    [AdhMaxRetUnbindingMinArray(ff,1),AdhMaxRetUnbindingMinFcArray(ff,1)]=min(ConcateArrayAdhMaxRetUnbinding(((ff-1)*100)+1:ff*100),[],'omitnan');
+                    [AdhMaxRetUnbindingMaxArray(ff,1),AdhMaxRetUnbindingMaxFcArray(ff,1)]=max(ConcateArrayAdhMaxRetUnbinding(((ff-1)*100)+1:ff*100),[],'omitnan');
+                    [AdhEneAppMinArray(ff,1),AdhEneAppMinFcArray(ff,1)]=min(ConcateArrayAdhEneApp(((ff-1)*100)+1:ff*100),[],'omitnan');
+                    [AdhEneAppMaxArray(ff,1),AdhEneAppMaxFcArray(ff,1)]=max(ConcateArrayAdhEneApp(((ff-1)*100)+1:ff*100),[],'omitnan');
+                    [AdhEneRetMinArray(ff,1),AdhEneRetMinFcArray(ff,1)]=min(ConcateArrayAdhEneRet(((ff-1)*100)+1:ff*100),[],'omitnan');
+                    [AdhEneRetMaxArray(ff,1),AdhEneRetMaxFcArray(ff,1)]=max(ConcateArrayAdhEneRet(((ff-1)*100)+1:ff*100),[],'omitnan');
+                    [PullLengthMinArray(ff,1),PullLengthMinFcArray(ff,1)]=min(ConcateArrayPullLength(((ff-1)*100)+1:ff*100),[],'omitnan');
+                    [PullLengthMaxArray(ff,1),PullLengthMaxFcArray(ff,1)]=max(ConcateArrayPullLength(((ff-1)*100)+1:ff*100),[],'omitnan');
+                    [SnapInMinArray(ff,1),SnapInMinFcArray(ff,1)]=min(ConcateArraySnapIn(((ff-1)*100)+1:ff*100),[],'omitnan');
+                    [SnapInMaxArray(ff,1),SnapInMaxFcArray(ff,1)]=max(ConcateArraySnapIn(((ff-1)*100)+1:ff*100),[],'omitnan');
+                end
+            end
+            % Sorting the force maps and force curves based on measurement time
+            [~, FMSortDateTimeIdxFc]=sort(FMDateTimeNumber); % Sort force maps based on the time of measurement
+            FMIndexChrono=FMIdxArray(FMSortDateTimeIdxFc); % Order the force maps chronologically
+            [FMSortDateTimeFcArray, FMSortDateTimeIdxFcArray]=sort(FMDateTimeNumberFcArray);
+            FcNumArrayChrono=FcNumArray(FMSortDateTimeIdxFcArray);
+            FMIndexChronoArray=FMIndexArray(FMSortDateTimeIdxFcArray);
+            % Statistics
+            AdhMaxAppMean=mean(ConcateArrayAdhMaxApp,'omitnan');
+            AdhMaxAppMedian=median(ConcateArrayAdhMaxApp,'omitnan');
+            AdhMaxAppStd=std(ConcateArrayAdhMaxApp,'omitnan');
+            [AdhMaxAppMin,AdhMaxAppMinIdx]=min(AdhMaxAppMinArray);
+            [AdhMaxAppMax,AdhMaxAppMaxIdx]=max(AdhMaxAppMaxArray);
+            AdhMaxAppMinFM=FMIdxArray(AdhMaxAppMinIdx);
+            AdhMaxAppMaxFM=FMIdxArray(AdhMaxAppMaxIdx);
+            AdhMaxAppMinFc=AdhMaxAppMinFcArray(AdhMaxAppMinIdx,1);
+            AdhMaxAppMaxFc=AdhMaxAppMaxFcArray(AdhMaxAppMaxIdx,1);
+            AdhMaxRetMean=mean(ConcateArrayAdhMaxRet,'omitnan');
+            AdhMaxRetMedian=median(ConcateArrayAdhMaxRet,'omitnan');
+            AdhMaxRetStd=std(ConcateArrayAdhMaxRet,'omitnan');
+            [AdhMaxRetMin,AdhMaxRetMinIdx]=min(AdhMaxRetMinArray);
+            [AdhMaxRetMax,AdhMaxRetMaxIdx]=max(AdhMaxRetMaxArray);
+            AdhMaxRetMinFM=FMIdxArray(AdhMaxRetMinIdx);
+            AdhMaxRetMaxFM=FMIdxArray(AdhMaxRetMaxIdx);
+            AdhMaxRetMinFc=AdhMaxRetMinFcArray(AdhMaxRetMinIdx,1);
+            AdhMaxRetMaxFc=AdhMaxRetMaxFcArray(AdhMaxRetMaxIdx,1);
+            AdhMaxRetUnbindingMean=mean(ConcateArrayAdhMaxRetUnbinding,'omitnan');
+            AdhMaxRetUnbindingMedian=median(ConcateArrayAdhMaxRetUnbinding,'omitnan');
+            AdhMaxRetUnbindingStd=std(ConcateArrayAdhMaxRetUnbinding,'omitnan');
+            [AdhMaxRetUnbindingMin,AdhMaxRetUnbindingMinIdx]=min(AdhMaxRetUnbindingMinArray);
+            [AdhMaxRetUnbindingMax,AdhMaxRetUnbindingMaxIdx]=max(AdhMaxRetUnbindingMaxArray);
+            AdhMaxRetUnbindingMinFM=FMIdxArray(AdhMaxRetUnbindingMinIdx);
+            AdhMaxRetUnbindingMaxFM=FMIdxArray(AdhMaxRetUnbindingMaxIdx);
+            AdhMaxRetUnbindingMinFc=AdhMaxRetUnbindingMinFcArray(AdhMaxRetUnbindingMinIdx,1);
+            AdhMaxRetUnbindingMaxFc=AdhMaxRetUnbindingMaxFcArray(AdhMaxRetUnbindingMaxIdx,1);
+            AdhEneAppMean=mean(ConcateArrayAdhEneApp,'omitnan');
+            AdhEneAppMedian=median(ConcateArrayAdhEneApp,'omitnan');
+            AdhEneAppStd=std(ConcateArrayAdhEneApp,'omitnan');
+            [AdhEneAppMin,AdhEneAppMinIdx]=min(AdhEneAppMinArray);
+            [AdhEneAppMax,AdhEneAppMaxIdx]=max(AdhEneAppMaxArray);
+            AdhEneAppMinFM=FMIdxArray(AdhEneAppMinIdx);
+            AdhEneAppMaxFM=FMIdxArray(AdhEneAppMaxIdx);
+            AdhEneAppMinFc=AdhEneAppMinFcArray(AdhEneAppMinIdx,1);
+            AdhEneAppMaxFc=AdhEneAppMaxFcArray(AdhEneAppMaxIdx,1);
+            AdhEneRetMean=mean(ConcateArrayAdhEneRet,'omitnan');
+            AdhEneRetMedian=median(ConcateArrayAdhEneRet,'omitnan');
+            AdhEneRetStd=std(ConcateArrayAdhEneRet,'omitnan');
+            [AdhEneRetMin,AdhEneRetMinIdx]=min(AdhEneRetMinArray);
+            [AdhEneRetMax,AdhEneRetMaxIdx]=max(AdhEneRetMaxArray);
+            AdhEneRetMinFM=FMIdxArray(AdhEneRetMinIdx);
+            AdhEneRetMaxFM=FMIdxArray(AdhEneRetMaxIdx);
+            AdhEneRetMinFc=AdhEneRetMinFcArray(AdhEneRetMinIdx,1);
+            AdhEneRetMaxFc=AdhEneRetMaxFcArray(AdhEneRetMaxIdx,1);
+            PullLengthMean=mean(ConcateArrayPullLength,'omitnan');
+            PullLengthMedian=median(ConcateArrayPullLength,'omitnan');
+            PullLengthStd=std(ConcateArrayPullLength,'omitnan');
+            [PullLengthMin,PullLengthMinIdx]=min(PullLengthMinArray);
+            [PullLengthMax,PullLengthMaxIdx]=max(PullLengthMaxArray);
+            PullLengthMinFM=FMIdxArray(PullLengthMinIdx);
+            PullLengthMaxFM=FMIdxArray(PullLengthMaxIdx);
+            PullLengthMinFc=PullLengthMinFcArray(PullLengthMinIdx,1);
+            PullLengthMaxFc=PullLengthMaxFcArray(PullLengthMaxIdx,1);
+            SnapInMean=mean(ConcateArraySnapIn,'omitnan');
+            SnapInMedian=median(ConcateArraySnapIn,'omitnan');
+            SnapInStd=std(ConcateArraySnapIn,'omitnan');
+            [SnapInMin,SnapInMinIdx]=min(SnapInMinArray);
+            [SnapInMax,SnapInMaxIdx]=max(SnapInMaxArray);
+            SnapInMinFM=FMIdxArray(SnapInMinIdx);
+            SnapInMaxFM=FMIdxArray(SnapInMaxIdx);
+            SnapInMinFc=SnapInMinFcArray(PullLengthMinIdx,1);
+            SnapInMaxFc=SnapInMaxFcArray(PullLengthMaxIdx,1);
+            %% Data selection based on input parameters
+            % Determine unique entries
+            ExtVelocityValues=unique(FMExtVelocity)';
+            RetVelocityValues=unique(FMRetVelocity)';
+            HoldingTimeValues=unique(FMHoldingTime)';
+            SubstrateValues=unique(FMSubstrate)';
+            EnvCondValues=unique(FMEnvCond)';
+            ChipCantValues=unique(FMChipCant)';
+            ChipboxValues=unique(FMChipbox)';
+            LinkerValues=unique(FMLinker)';
+            % Preallocate
+            ExtVelocityFMIdx=zeros(length(FMExtVelocity),length(ExtVelocityValues));
+            ExtVelocityConcateIdx=zeros(length(FMIndexArray),length(ExtVelocityValues));
+            RetVelocityFMIdx=zeros(length(FMRetVelocity),length(RetVelocityValues));
+            RetVelocityConcateIdx=zeros(length(FMIndexArray),length(RetVelocityValues));
+            HoldingTimeFMIdx=zeros(length(FMHoldingTime),length(HoldingTimeValues));
+            HoldingTimeConcateIdx=zeros(length(FMIndexArray),length(HoldingTimeValues));
+            SubstrateFMIdx=zeros(length(FMSubstrate),length(SubstrateValues));
+            SubstrateConcateIdx=zeros(length(FMIndexArray),length(SubstrateValues));
+            EnvCondFMIdx=zeros(length(FMEnvCond),length(EnvCondValues));
+            EnvCondConcateIdx=zeros(length(FMIndexArray),length(EnvCondValues));
+            ChipCantFMIdx=zeros(length(FMChipCant),length(ChipCantValues));
+            ChipCantConcateIdx=zeros(length(FMIndexArray),length(ChipCantValues));
+            ChipboxFMIdx=zeros(length(FMChipbox),length(ChipboxValues));
+            ChipboxConcateIdx=zeros(length(FMIndexArray),length(ChipboxValues));
+            LinkerFMIdx=zeros(length(FMLinker),length(LinkerValues));
+            LinkerConcateIdx=zeros(length(FMIndexArray),length(LinkerValues));
+            for Fm=1:length(ExtVelocityValues)
+                [~, Loc] =ismember(FMExtVelocity,ExtVelocityValues(Fm)); % Identify the force maps that have the same value
+                Loc=find(Loc); % Use find to get ride of nonzeros
+                FMIdx=FMIdxArray(Loc); % Identify same entries in the concatenate data of the results table
+                [~, ConcateLoc]=ismember(FMIndexArray,FMIdx); % Identify same entries in the concatenate data of the results table
+                ConcateLoc=find(ConcateLoc); % Use find to get ride of nonzeros
+                % Allocate the data
+                ExtVelocityFMIdx(1:length(Loc),Fm)=FMIdx;
+                ExtVelocityConcateIdx(1:length(ConcateLoc),Fm)=ConcateLoc;
+            end
+            for Fm=1:length(RetVelocityValues)
+                [~, Loc] =ismember(FMRetVelocity,RetVelocityValues(Fm)); % Identify the force maps that have the same value
+                Loc=find(Loc); % Use find to get ride of nonzeros
+                FMIdx=FMIdxArray(Loc); % Identify same entries in the concatenate data of the results table
+                [~, ConcateLoc]=ismember(FMIndexArray,FMIdx); % Identify same entries in the concatenate data of the results table
+                ConcateLoc=find(ConcateLoc); % Use find to get ride of nonzeros
+                % Allocate the data
+                RetVelocityFMIdx(1:length(Loc),Fm)=FMIdx;
+                RetVelocityConcateIdx(1:length(ConcateLoc),Fm)=ConcateLoc;
+            end
+            for Fm=1:length(HoldingTimeValues)
+                [~, Loc] =ismember(FMHoldingTime,HoldingTimeValues(Fm)); % Identify the force maps that have the same value
+                Loc=find(Loc); % Use find to get ride of nonzeros
+                FMIdx=FMIdxArray(Loc); % Identify same entries in the concatenate data of the results table
+                [~, ConcateLoc]=ismember(FMIndexArray,FMIdx); % Identify same entries in the concatenate data of the results table
+                ConcateLoc=find(ConcateLoc); % Use find to get ride of nonzeros
+                % Allocate the data
+                HoldingTimeFMIdx(1:length(Loc),Fm)=FMIdx;
+                HoldingTimeConcateIdx(1:length(ConcateLoc),Fm)=ConcateLoc;
+            end
+            for Fm=1:length(SubstrateValues)
+                [~, Loc] =ismember(FMSubstrate,SubstrateValues(Fm)); % Identify the force maps that have the same value
+                Loc=find(Loc); % Use find to get ride of nonzeros
+                FMIdx=FMIdxArray(Loc); % Identify same entries in the concatenate data of the results table
+                [~, ConcateLoc]=ismember(FMIndexArray,FMIdx); % Identify same entries in the concatenate data of the results table
+                ConcateLoc=find(ConcateLoc); % Use find to get ride of nonzeros
+                % Allocate the data
+                SubstrateFMIdx(1:length(Loc),Fm)=FMIdx;
+                SubstrateConcateIdx(1:length(ConcateLoc),Fm)=ConcateLoc;
+            end
+            for Fm=1:length(EnvCondValues)
+                [~, Loc] =ismember(FMEnvCond,EnvCondValues(Fm)); % Identify the force maps that have the same value
+                Loc=find(Loc); % Use find to get ride of nonzeros
+                FMIdx=FMIdxArray(Loc); % Identify same entries in the concatenate data of the results table
+                [~, ConcateLoc]=ismember(FMIndexArray,FMIdx); % Identify same entries in the concatenate data of the results table
+                ConcateLoc=find(ConcateLoc); % Use find to get ride of nonzeros
+                % Allocate the data
+                EnvCondFMIdx(1:length(Loc),Fm)=FMIdx;
+                EnvCondConcateIdx(1:length(ConcateLoc),Fm)=ConcateLoc;
+            end
+            for Fm=1:length(ChipCantValues)
+                [~, Loc] =ismember(FMChipCant,ChipCantValues(Fm)); % Identify the force maps that have the same value
+                Loc=find(Loc); % Use find to get ride of nonzeros
+                FMIdx=FMIdxArray(Loc); % Identify same entries in the concatenate data of the results table
+                [~, ConcateLoc]=ismember(FMIndexArray,FMIdx); % Identify same entries in the concatenate data of the results table
+                ConcateLoc=find(ConcateLoc); % Use find to get ride of nonzeros
+                % Allocate the data
+                ChipCantFMIdx(1:length(Loc),Fm)=FMIdx;
+                ChipCantConcateIdx(1:length(ConcateLoc),Fm)=ConcateLoc;
+            end
+            for Fm=1:length(ChipboxValues)
+                [~, Loc] =ismember(FMChipbox,ChipboxValues(Fm)); % Identify the force maps that have the same value
+                Loc=find(Loc); % Use find to get ride of nonzeros
+                FMIdx=FMIdxArray(Loc); % Identify same entries in the concatenate data of the results table
+                [~, ConcateLoc]=ismember(FMIndexArray,FMIdx); % Identify same entries in the concatenate data of the results table
+                ConcateLoc=find(ConcateLoc); % Use find to get ride of nonzeros
+                % Allocate the data
+                ChipboxFMIdx(1:length(Loc),Fm)=FMIdx;
+                ChipboxConcateIdx(1:length(ConcateLoc),Fm)=ConcateLoc;
+            end
+            for Fm=1:length(LinkerValues)
+                [~, Loc] =ismember(FMLinker,LinkerValues(Fm)); % Identify the force maps that have the same value
+                Loc=find(Loc); % Use find to get ride of nonzeros
+                FMIdx=FMIdxArray(Loc); % Identify same entries in the concatenate data of the results table
+                [~, ConcateLoc]=ismember(FMIndexArray,FMIdx); % Identify same entries in the concatenate data of the results table
+                ConcateLoc=find(ConcateLoc); % Use find to get ride of nonzeros
+                % Allocate the data
+                LinkerFMIdx(1:length(Loc),Fm)=FMIdx;
+                LinkerConcateIdx(1:length(ConcateLoc),Fm)=ConcateLoc;
+            end
+            %% SMFS Results structure
+            % Check entry
+            if ~isempty(obj.SMFSResults)
+                jj=length(obj.SMFSResults)+1;
+            else
+                jj=1;
+            end
+            % Debugging
+            % jj=11
+            % Allocate data
+            obj.SMFSResults{jj,1}.Concatenate(1).FMID=FMIDArray;
+            obj.SMFSResults{jj,1}.Concatenate(1).FMIndex=FMIndexArray;
+            obj.SMFSResults{jj,1}.Concatenate(1).FMNum=FMNumArray;
+            obj.SMFSResults{jj,1}.Concatenate(1).FMIndexChrono=FMIndexChronoArray;
+            obj.SMFSResults{jj,1}.Concatenate(1).FcNum=FcNumArray;
+            obj.SMFSResults{jj,1}.Concatenate(1).FcNumChrono=FcNumArrayChrono;
+            obj.SMFSResults{jj,1}.Concatenate(1).FMExtVelocity=FMExtVelocityArray;
+            obj.SMFSResults{jj,1}.Concatenate(1).FMRetVelocity=FMRetVelocityArray;
+            obj.SMFSResults{jj,1}.Concatenate(1).FMHoldingTime=FMHoldingTimeArray;
+            obj.SMFSResults{jj,1}.Concatenate(1).FMSubstrate=FMSubstrateArray;
+            obj.SMFSResults{jj,1}.Concatenate(1).FMEnvCond=FMEnvCondArray;
+            obj.SMFSResults{jj,1}.Concatenate(1).FMChipCant=FMChipCantArray;
+            obj.SMFSResults{jj,1}.Concatenate(1).FMChipbox=FMChipboxArray;
+            obj.SMFSResults{jj,1}.Concatenate(1).FMLinker=FMLinkerArray;
+            obj.SMFSResults{jj,1}.Concatenate(1).FMDateTime=FMDateTimeFcArray;
+            obj.SMFSResults{jj,1}.Concatenate(1).FMDateTimeNumber=FMDateTimeNumberFcArray;
+            obj.SMFSResults{jj,1}.Concatenate(1).FMDateTimeNumberSort=FMSortDateTimeFcArray;
+            obj.SMFSResults{jj,1}.Concatenate(1).FMDateTimeNumberSortIdx=FMSortDateTimeIdxFcArray;
+            obj.SMFSResults{jj,1}.Concatenate(1).AdhMaxApp=ConcateArrayAdhMaxApp;
+            obj.SMFSResults{jj,1}.Concatenate(1).AdhMaxRet= ConcateArrayAdhMaxRet;
+            obj.SMFSResults{jj,1}.Concatenate(1).AdhUnbinding=ConcateArrayAdhMaxRetUnbinding;
+            obj.SMFSResults{jj,1}.Concatenate(1).AdhEneApp=ConcateArrayAdhEneApp;
+            obj.SMFSResults{jj,1}.Concatenate(1).AdhEneRet=ConcateArrayAdhEneRet;
+            obj.SMFSResults{jj,1}.Concatenate(1).PullingLength=ConcateArrayPullLength;
+            obj.SMFSResults{jj,1}.Concatenate(1).SnapInLength=ConcateArraySnapIn;
+            obj.SMFSResults{jj,1}.Flags(1).SMFSFlagUncorrupt=sum(SMFSFlagUncorrupt);
+            obj.SMFSResults{jj,1}.Flags(1).UncorruptPct=(sum(SMFSFlagUncorrupt)/sum(TotalNumFc))*100;
+            obj.SMFSResults{jj,1}.Flags(1).SMFSFlagSelected=sum(SMFSFlagSelected);
+            obj.SMFSResults{jj,1}.Flags(1).SelectedPct=(sum(SMFSFlagSelected)/sum(TotalNumFc))*100;
+            obj.SMFSResults{jj,1}.Flags(1).SMFSFlagAppMinCrit=sum(SMFSFlagAppMinCrit);
+            obj.SMFSResults{jj,1}.Flags(1).AppMinCritPct=(sum(SMFSFlagAppMinCrit)/sum(TotalNumFc))*100;
+            obj.SMFSResults{jj,1}.Flags(1).SMFSFlagRetMinCrit=sum(SMFSFlagRetMinCrit);
+            obj.SMFSResults{jj,1}.Flags(1).RetMinCritPct=(sum(SMFSFlagRetMinCrit)/sum(TotalNumFc))*100;
+            obj.SMFSResults{jj,1}.Flags(1).SMFSFlagLengthRequisite=sum(SMFSFlagLengthRequisite);
+            obj.SMFSResults{jj,1}.Flags(1).LengthRequisitePct=(sum(SMFSFlagLengthRequisite)/sum(TotalNumFc))*100;
+            obj.SMFSResults{jj,1}.Flags(1).SMFSFlagFit=sum(SMFSFlagFit);
+            obj.SMFSResults{jj,1}.Flags(1).FitPct=(sum(SMFSFlagFit)/sum(TotalNumFc))*100;
+            obj.SMFSResults{jj,1}.Flags(1).SMFSFlagFitLinear=sum(SMFSFlagFitLinear);
+            obj.SMFSResults{jj,1}.Flags(1).FitLinearPct=(sum(SMFSFlagFitLinear)/sum(TotalNumFc))*100;
+            obj.SMFSResults{jj,1}.Flags(1).SMFSFlagFitSinoidal=sum(SMFSFlagFitSinoidal);
+            obj.SMFSResults{jj,1}.Flags(1).FitSinoidalPct=(sum(SMFSFlagFitSinoidal)/sum(TotalNumFc))*100;
+            obj.SMFSResults{jj,1}.Flags(1).SMFSFlagSnapIn=sum(SMFSFlagSnapIn);
+            obj.SMFSResults{jj,1}.Flags(1).SnapInPct=(sum(SMFSFlagSnapIn)/sum(TotalNumFc))*100;
+            obj.SMFSResults{jj,1}.Flags(1).SMFSFlagPullingLength=sum(SMFSFlagPullingLength);
+            obj.SMFSResults{jj,1}.Flags(1).PullingLengthPct=(sum(SMFSFlagPullingLength)/sum(TotalNumFc))*100;
+            obj.SMFSResults{jj,1}.Data(1).FMIndex=FMIdxArray;
+            obj.SMFSResults{jj,1}.Data(1).FMIndexChrono=FMIndexChrono;
+            obj.SMFSResults{jj,1}.Data(1).FMID=FMID;
+            obj.SMFSResults{jj,1}.Data(1).FMNum=FMNum;
+            obj.SMFSResults{jj,1}.Data(1).FMExtVelocity=FMExtVelocity;
+            obj.SMFSResults{jj,1}.Data(1).FMRetVelocity=FMRetVelocity;
+            obj.SMFSResults{jj,1}.Data(1).FMHoldingTime=FMHoldingTime;
+            obj.SMFSResults{jj,1}.Data(1).FMSubstrate=FMSubstrate;
+            obj.SMFSResults{jj,1}.Data(1).FMEnvCond=FMEnvCond;
+            obj.SMFSResults{jj,1}.Data(1).FMChipCant=FMChipCant;
+            obj.SMFSResults{jj,1}.Data(1).FMChipbox=FMChipbox;
+            obj.SMFSResults{jj,1}.Data(1).FMLinker=FMLinker;
+            obj.SMFSResults{jj,1}.Data(1).FMDateTime=FMDateTime;
+            obj.SMFSResults{jj,1}.Data(1).FMDateTimeSortIdx=FMSortDateTimeIdxFc;
+            obj.SMFSResults{jj,1}.Data(1).TotalNumFc=sum(TotalNumFc);
+            obj.SMFSResults{jj,1}.Data(1).SumNumFcAnalysedAdhMaxApp=nnz(~isnan(ConcateArrayAdhMaxApp));
+            obj.SMFSResults{jj,1}.Data(1).SumNumFcAnalysedAdhMaxAppPct=(nnz(~isnan(ConcateArrayAdhMaxApp))/sum(TotalNumFc))*100;
+            obj.SMFSResults{jj,1}.Data(1).SumNumFcAnalysedAdhMaxRet=nnz(~isnan(ConcateArrayAdhMaxRet));
+            obj.SMFSResults{jj,1}.Data(1).SumNumFcAnalysedAdhMaxRetPct=(nnz(~isnan(ConcateArrayAdhMaxRet))/sum(TotalNumFc))*100;
+            obj.SMFSResults{jj,1}.Data(1).SumNumFcAnalysedAdhUnbinding=nnz(~isnan(ConcateArrayAdhMaxRetUnbinding));
+            obj.SMFSResults{jj,1}.Data(1).SumNumFcAnalysedAdhUnbindingPct=(nnz(~isnan(ConcateArrayAdhMaxRetUnbinding))/sum(TotalNumFc))*100;
+            obj.SMFSResults{jj,1}.Data(1).SumNumFcAnalysedAdhEneApp=nnz(~isnan(ConcateArrayAdhEneApp));
+            obj.SMFSResults{jj,1}.Data(1).SumNumFcAnalysedAdhEneAppPct=(nnz(~isnan(ConcateArrayAdhEneApp))/sum(TotalNumFc))*100;
+            obj.SMFSResults{jj,1}.Data(1).SumNumFcAnalysedAdhEneRet=nnz(~isnan(ConcateArrayAdhEneRet));
+            obj.SMFSResults{jj,1}.Data(1).SumNumFcAnalysedAdhEneRetPct=(nnz(~isnan(ConcateArrayAdhEneRet))/sum(TotalNumFc))*100;
+            obj.SMFSResults{jj,1}.Data(1).SumNumFcAnalysedyPullingLength=nnz(~isnan(ConcateArrayPullLength));
+            obj.SMFSResults{jj,1}.Data(1).SumNumFcAnalysedPullingLengthPct=(nnz(~isnan(ConcateArrayPullLength))/sum(TotalNumFc))*100;
+            obj.SMFSResults{jj,1}.Data(1).SumNumFcAnalysedySnapInLength=nnz(~isnan(ConcateArraySnapIn));
+            obj.SMFSResults{jj,1}.Data(1).SumNumFcAnalysedySnapInLengthPct=(nnz(~isnan(ConcateArraySnapIn))/sum(TotalNumFc))*100;
+            obj.SMFSResults{jj,1}.Data(1).NumFcAnalysedAdhMaxApp=FCAnalysedyAdhMaxApp;
+            obj.SMFSResults{jj,1}.Data(1).NumFcAnalysedAdhMaxRet=FCAnalysedyAdhMaxRet;
+            obj.SMFSResults{jj,1}.Data(1).NumFcAnalysedAdhUnbinding=FCAnalysedyAdhUnbind;
+            obj.SMFSResults{jj,1}.Data(1).NumFcAnalysedAdhEneApp=FCAnalysedyAdhEneApp;
+            obj.SMFSResults{jj,1}.Data(1).NumFcAnalysedAdhEneRet=FCAnalysedyAdhEneRet;
+            obj.SMFSResults{jj,1}.Data(1).NumFcAnalysedyPullingLength=FCAnalysedyPullingLength;
+            obj.SMFSResults{jj,1}.Data(1).NumFcAnalysedySnapInLength=FCAnalysedySnapInLength;
+            obj.SMFSResults{jj,1}.Data(1).AdhMaxApp=yAdhMaxAppAll;
+            obj.SMFSResults{jj,1}.Data(1).AdhMaxRet=yAdhMaxRetAll;
+            obj.SMFSResults{jj,1}.Data(1).AdhUnbinding=yAdhUnbindingAll;
+            obj.SMFSResults{jj,1}.Data(1).AdhEneApp=yAdhEneAppAll;
+            obj.SMFSResults{jj,1}.Data(1).AdhEneRet=yAdhEneRetAll;
+            obj.SMFSResults{jj,1}.Data(1).PullingLength=yPullingLengthAll;
+            obj.SMFSResults{jj,1}.Data(1).SnapInLength=ySnapInLengthAll;
+            obj.SMFSResults{jj,1}.Parameters(1).ExtendVelocity=ExtVelocityValue;
+            obj.SMFSResults{jj,1}.Parameters(1).RetractVelocity=RetVelocityValue;
+            obj.SMFSResults{jj,1}.Parameters(1).HoldingTime=HoldingTimeValue;
+            obj.SMFSResults{jj,1}.Parameters(1).Substrate=SubstrateValue;
+            obj.SMFSResults{jj,1}.Parameters(1).Medium=EnvCondValue;
+            obj.SMFSResults{jj,1}.Parameters(1).ChipCantilever=ChipCantValue;
+            obj.SMFSResults{jj,1}.Parameters(1).Chipbox=ChipboxValue;
+            obj.SMFSResults{jj,1}.Parameters(1).Linker=LinkerValue;
+            obj.SMFSResults{jj,1}.Selection(1).ExtVelocityParameters=ExtVelocityValues;
+            obj.SMFSResults{jj,1}.Selection(1).ExtVelocityFMIdx=ExtVelocityFMIdx;
+            obj.SMFSResults{jj,1}.Selection(1).ExtVelocityConcateIdx=ExtVelocityConcateIdx;
+            obj.SMFSResults{jj,1}.Selection(1).RetVelocityParameters=RetVelocityValues;
+            obj.SMFSResults{jj,1}.Selection(1).RetVelocityFMIdx=RetVelocityFMIdx;
+            obj.SMFSResults{jj,1}.Selection(1).RetVelocityConcateIdx=RetVelocityConcateIdx;
+            obj.SMFSResults{jj,1}.Selection(1).HoldingTimeParameters=HoldingTimeValues;
+            obj.SMFSResults{jj,1}.Selection(1).HoldingTimeFMIdx=HoldingTimeFMIdx;
+            obj.SMFSResults{jj,1}.Selection(1).HoldingTimeConcateIdx=HoldingTimeConcateIdx;
+            obj.SMFSResults{jj,1}.Selection(1).SubstrateParameters=SubstrateValues;
+            obj.SMFSResults{jj,1}.Selection(1).SubstrateFMIdx=SubstrateFMIdx;
+            obj.SMFSResults{jj,1}.Selection(1).SubstrateConcateIdx=SubstrateConcateIdx;
+            obj.SMFSResults{jj,1}.Selection(1).EnvCondParameters=EnvCondValues;
+            obj.SMFSResults{jj,1}.Selection(1).EnvCondFMIdx=EnvCondFMIdx;
+            obj.SMFSResults{jj,1}.Selection(1).EnvCondConcateIdx=EnvCondConcateIdx;
+            obj.SMFSResults{jj,1}.Selection(1).ChipCantParameters=ChipCantValues;
+            obj.SMFSResults{jj,1}.Selection(1).ChipCantFMIdx=ChipCantFMIdx;
+            obj.SMFSResults{jj,1}.Selection(1).ChipCantConcateIdx=ChipCantConcateIdx;
+            obj.SMFSResults{jj,1}.Selection(1).ChipboxParameters=ChipboxValues;
+            obj.SMFSResults{jj,1}.Selection(1).ChipboxFMIdx=ChipboxFMIdx;
+            obj.SMFSResults{jj,1}.Selection(1).ChipboxConcateIdx=ChipboxConcateIdx;
+            obj.SMFSResults{jj,1}.Selection(1).LinkerParameters=LinkerValues;
+            obj.SMFSResults{jj,1}.Selection(1).LinkerFMIdx=LinkerFMIdx;
+            obj.SMFSResults{jj,1}.Selection(1).LinkerConcateIdx=LinkerConcateIdx;
+            obj.SMFSResults{jj,1}.Results(1).AdhMaxAppMean=AdhMaxAppMean;
+            obj.SMFSResults{jj,1}.Results(1).AdhMaxAppMedian=AdhMaxAppMedian;
+            obj.SMFSResults{jj,1}.Results(1).AdhMaxAppStd=AdhMaxAppStd;
+            obj.SMFSResults{jj,1}.Results(1).AdhMaxAppMinArray=AdhMaxAppMinArray;
+            obj.SMFSResults{jj,1}.Results(1).AdhMaxAppMin=AdhMaxAppMin;
+            obj.SMFSResults{jj,1}.Results(1).AdhMaxAppMaxArray=AdhMaxAppMaxArray;
+            obj.SMFSResults{jj,1}.Results(1).AdhMaxAppMax=AdhMaxAppMax;
+            obj.SMFSResults{jj,1}.Results(1).AdhMaxAppMinFM=AdhMaxAppMinFM;
+            obj.SMFSResults{jj,1}.Results(1).AdhMaxAppMaxFM=AdhMaxAppMaxFM;
+            obj.SMFSResults{jj,1}.Results(1).AdhMaxAppMinFcArray=AdhMaxAppMinFcArray;
+            obj.SMFSResults{jj,1}.Results(1).AdhMaxAppMinFc=AdhMaxAppMinFc;
+            obj.SMFSResults{jj,1}.Results(1).AdhMaxAppMaxFcArray=AdhMaxAppMaxFcArray;
+            obj.SMFSResults{jj,1}.Results(1).AdhMaxAppMaxFc=AdhMaxAppMaxFc;
+            obj.SMFSResults{jj,1}.Results(1).AdhMaxRetMean=AdhMaxRetMean;
+            obj.SMFSResults{jj,1}.Results(1).AdhMaxRetMedian=AdhMaxRetMedian;
+            obj.SMFSResults{jj,1}.Results(1).AdhMaxRetStd=AdhMaxRetStd;
+            obj.SMFSResults{jj,1}.Results(1).AdhMaxRetMinArray=AdhMaxRetMinArray;
+            obj.SMFSResults{jj,1}.Results(1).AdhMaxRetMin=AdhMaxRetMin;
+            obj.SMFSResults{jj,1}.Results(1).AdhMaxRetMaxArray=AdhMaxRetMaxArray;
+            obj.SMFSResults{jj,1}.Results(1).AdhMaxRetMax=AdhMaxRetMax;
+            obj.SMFSResults{jj,1}.Results(1).AdhMaxRetMinFM=AdhMaxRetMinFM;
+            obj.SMFSResults{jj,1}.Results(1).AdhMaxRetMaxFM=AdhMaxRetMaxFM;
+            obj.SMFSResults{jj,1}.Results(1).AdhMaxRetMinFcArray=AdhMaxRetMinFcArray;
+            obj.SMFSResults{jj,1}.Results(1).AdhMaxRetMinFc=AdhMaxRetMinFc;
+            obj.SMFSResults{jj,1}.Results(1).AdhMaxRetMaxFcArray=AdhMaxRetMaxFcArray;
+            obj.SMFSResults{jj,1}.Results(1).AdhMaxRetMaxFc=AdhMaxRetMaxFc;
+            obj.SMFSResults{jj,1}.Results(1).AdhMaxRetUnbindingMean=AdhMaxRetUnbindingMean;
+            obj.SMFSResults{jj,1}.Results(1).AdhMaxRetUnbindingMedian=AdhMaxRetUnbindingMedian;
+            obj.SMFSResults{jj,1}.Results(1).AdhMaxRetUnbindingStd=AdhMaxRetUnbindingStd;
+            obj.SMFSResults{jj,1}.Results(1).AdhMaxRetUnbindingMinArray=AdhMaxRetUnbindingMinArray;
+            obj.SMFSResults{jj,1}.Results(1).AdhMaxRetUnbindingMin=AdhMaxRetUnbindingMin;
+            obj.SMFSResults{jj,1}.Results(1).AdhMaxRetUnbindingMaxArray=AdhMaxRetUnbindingMaxArray;
+            obj.SMFSResults{jj,1}.Results(1).AdhMaxRetUnbindingMax=AdhMaxRetUnbindingMax;
+            obj.SMFSResults{jj,1}.Results(1).AdhMaxRetUnbindingMinFM=AdhMaxRetUnbindingMinFM;
+            obj.SMFSResults{jj,1}.Results(1).AdhMaxRetUnbindingMaxFM=AdhMaxRetUnbindingMaxFM;
+            obj.SMFSResults{jj,1}.Results(1).AdhMaxRetUnbindingMinFcArray=AdhMaxRetUnbindingMinFcArray;
+            obj.SMFSResults{jj,1}.Results(1).AdhMaxRetUnbindingMinFc=AdhMaxRetUnbindingMinFc;
+            obj.SMFSResults{jj,1}.Results(1).AdhMaxRetUnbindingMaxFcArray=AdhMaxRetUnbindingMaxFcArray;
+            obj.SMFSResults{jj,1}.Results(1).AdhMaxRetUnbindingMaxFc=AdhMaxRetUnbindingMaxFc;
+            obj.SMFSResults{jj,1}.Results(1).AdhEneAppMean=AdhEneAppMean;
+            obj.SMFSResults{jj,1}.Results(1).AdhEneAppMedian=AdhEneAppMedian;
+            obj.SMFSResults{jj,1}.Results(1).AdhEneAppStd=AdhEneAppStd;
+            obj.SMFSResults{jj,1}.Results(1).AdhEneAppMinArray=AdhEneAppMinArray;
+            obj.SMFSResults{jj,1}.Results(1).AdhEneAppMin=AdhEneAppMin;
+            obj.SMFSResults{jj,1}.Results(1).AdhEneAppMaxArray=AdhEneAppMaxArray;
+            obj.SMFSResults{jj,1}.Results(1).AdhEneAppMax=AdhEneAppMax;
+            obj.SMFSResults{jj,1}.Results(1).AdhEneAppMinFM=AdhEneAppMinFM;
+            obj.SMFSResults{jj,1}.Results(1).AdhEneAppMaxFM=AdhEneAppMaxFM;
+            obj.SMFSResults{jj,1}.Results(1).AdhEneAppMinFcArray=AdhEneAppMinFcArray;
+            obj.SMFSResults{jj,1}.Results(1).AdhEneAppMinFc=AdhEneAppMinFc;
+            obj.SMFSResults{jj,1}.Results(1).AdhEneAppMaxFcArray=AdhEneAppMaxFcArray;
+            obj.SMFSResults{jj,1}.Results(1).AdhEneAppMaxFc=AdhEneAppMaxFc;
+            obj.SMFSResults{jj,1}.Results(1).AdhEneRetMean=AdhEneRetMean;
+            obj.SMFSResults{jj,1}.Results(1).AdhEneRetMedian=AdhEneRetMedian;
+            obj.SMFSResults{jj,1}.Results(1).AdhEneRetStd=AdhEneRetStd;
+            obj.SMFSResults{jj,1}.Results(1).AdhEneRetMinArray=AdhEneRetMinArray;
+            obj.SMFSResults{jj,1}.Results(1).AdhEneRetMin=AdhEneRetMin;
+            obj.SMFSResults{jj,1}.Results(1).AdhEneRetMaxArray=AdhEneRetMaxArray;
+            obj.SMFSResults{jj,1}.Results(1).AdhEneRetMax=AdhEneRetMax;
+            obj.SMFSResults{jj,1}.Results(1).AdhEneRetMinFM=AdhEneRetMinFM;
+            obj.SMFSResults{jj,1}.Results(1).AdhEneRetMaxFM=AdhEneRetMaxFM;
+            obj.SMFSResults{jj,1}.Results(1).AdhEneRetMinFcArray=AdhEneRetMinFcArray;
+            obj.SMFSResults{jj,1}.Results(1).AdhEneRetMinFc=AdhEneRetMinFc;
+            obj.SMFSResults{jj,1}.Results(1).AdhEneRetMaxFcArray=AdhEneRetMaxFcArray;
+            obj.SMFSResults{jj,1}.Results(1).AdhEneRetMaxFc=AdhEneRetMaxFc;
+            obj.SMFSResults{jj,1}.Results(1).PullLengthMean=PullLengthMean;
+            obj.SMFSResults{jj,1}.Results(1).PullLengthMedian=PullLengthMedian;
+            obj.SMFSResults{jj,1}.Results(1).PullLengthStd=PullLengthStd;
+            obj.SMFSResults{jj,1}.Results(1).PullLengthMinArray=PullLengthMinArray;
+            obj.SMFSResults{jj,1}.Results(1).PullLengthMin=PullLengthMin;
+            obj.SMFSResults{jj,1}.Results(1).PullLengthMinFM=PullLengthMinFM;
+            obj.SMFSResults{jj,1}.Results(1).PullLengthMinFcArray=PullLengthMinFcArray;
+            obj.SMFSResults{jj,1}.Results(1).PullLengthMinFc=PullLengthMinFc;
+            obj.SMFSResults{jj,1}.Results(1).PullLengthMaxArray=PullLengthMaxArray;
+            obj.SMFSResults{jj,1}.Results(1).PullLengthMax=PullLengthMax;
+            obj.SMFSResults{jj,1}.Results(1).PullLengthMaxFM=PullLengthMaxFM;
+            obj.SMFSResults{jj,1}.Results(1).PullLengthMaxFcArray=PullLengthMaxFcArray;
+            obj.SMFSResults{jj,1}.Results(1).PullLengthMaxFc=PullLengthMaxFc;
+            obj.SMFSResults{jj,1}.Results(1).SnapInMean=SnapInMean;
+            obj.SMFSResults{jj,1}.Results(1).SnapInMedian=SnapInMedian;
+            obj.SMFSResults{jj,1}.Results(1).SnapInStd=SnapInStd;
+            obj.SMFSResults{jj,1}.Results(1).SnapInMinArray=SnapInMinArray;
+            obj.SMFSResults{jj,1}.Results(1).SnapInMin=SnapInMin;
+            obj.SMFSResults{jj,1}.Results(1).SnapInMinFM=SnapInMinFM;
+            obj.SMFSResults{jj,1}.Results(1).SnapInMinFcArray=SnapInMinFcArray;
+            obj.SMFSResults{jj,1}.Results(1).SnapInMinFc=SnapInMinFc;
+            obj.SMFSResults{jj,1}.Results(1).SnapInMaxArray=SnapInMaxArray;
+            obj.SMFSResults{jj,1}.Results(1).SnapInMax=SnapInMax;
+            obj.SMFSResults{jj,1}.Results(1).SnapInMaxFM=SnapInMaxFM;
+            obj.SMFSResults{jj,1}.Results(1).SnapInMaxFcArray=SnapInMaxFcArray;
+            obj.SMFSResults{jj,1}.Results(1).SnapInMaxFc=SnapInMaxFc;
+            % Paramater list
+            obj.SMFSResultsParameters(jj,:)={jj,ChipboxValue,ChipCantValue,LinkerValue,SubstrateValue,EnvCondValue,ExtVelocityValue,RetVelocityValue,HoldingTimeValue};
+ 
+        end
+
+        function SM_results_structure_FM(obj,Var)
+            % Select either Var1 or Var2, depending on what 
+
+            % Output time and date for the dairy
+            datetime('now')
+            % Define variables
+            DateFormat='yyyy-MM-dd HH-mm-ss-SSS';
+            ExtVelocityValue=0;
+            RetVelocityValue=0;
+            HoldingTimeValue=-1;
+            SubstrateValue='Various';
+            EnvCondValue='Various';
+            ChipCantValue='Various';
+            ChipboxValue='Various';
+            LinkerValue='Various';
+            
+            if Var==1
+            % Input dialog
+            prompt = {'Enter the force map number you do not want to have included in the "SMFSResults"-structure (For multiple selections just use the space key to separeat entries)'};
+            definput = {''};
+            opts.Interpreter = 'tex';
+            FMIdxArray=inputdlg(prompt,'Select all - except of ...',[1 150],definput,opts);
+            FMIdxArray=str2num(FMIdxArray{1}); % Convert the cell array to numerals
+            elseif Var==2
+            warning('This variation requires that a none parameter based selection row in the "SMFSResults"-structure exists (Typically row 1)')
+            dlgtitle='Enter the "SMFSResults"-structure row the chronologcial data will be taken from';
+            prompt = {'ResultsRow'};
+            definput={'1'};
+            dims=[1 150];
+            ResultsRow = inputdlg(prompt,dlgtitle,dims,definput); 
+            ResultsRow=str2num(ResultsRow{1});
+            dlgtitle='Enter the chronological force map index of the first and last force map you want to have included in the "SMFSResults"-structure';
+            prompt = {'First','Last'};
+            dims=[1 150; 1 150];
+            FMIdxChrono = inputdlg(prompt,dlgtitle,dims); 
+            FMIdxChrono1=str2num(FMIdxChrono{1});
+            FMIdxChrono2=str2num(FMIdxChrono{2});           
+            % Allocate the force maps in chronological order as defined by
+            % the input dialog box
+            FMIdxArray=obj.SMFSResults{ResultsRow}.Data.FMDateTimeSortIdx(FMIdxChrono1:FMIdxChrono2);
+            end
+            % If condition to handle an empty index array
+            if isempty(FMIdxArray)
+                return
+            else
+            end
+            % Preallocate
+            ConcateArrayAdhMaxApp=zeros(length(FMIdxArray)*obj.FM{FMIdxArray(1)}.NCurves,1);
+            ConcateArrayAdhMaxRet=zeros(length(FMIdxArray)*obj.FM{FMIdxArray(1)}.NCurves,1);
+            ConcateArrayAdhMaxRetUnbinding=zeros(length(FMIdxArray)*obj.FM{FMIdxArray(1)}.NCurves,1);
+            ConcateArrayAdhEneApp=zeros(length(FMIdxArray)*obj.FM{FMIdxArray(1)}.NCurves,1);
+            ConcateArrayAdhEneRet=zeros(length(FMIdxArray)*obj.FM{FMIdxArray(1)}.NCurves,1);
+            ConcateArrayPullLength=zeros(length(FMIdxArray)*obj.FM{FMIdxArray(1)}.NCurves,1);
+            ConcateArraySnapIn=zeros(length(FMIdxArray)*obj.FM{FMIdxArray(1)}.NCurves,1);
+            yAdhMaxAppAll=zeros(obj.FM{FMIdxArray(1)}.NCurves,length(FMIdxArray));
+            FCAnalysedyAdhMaxApp=zeros(1,length(FMIdxArray));
+            yAdhMaxRetAll=zeros(obj.FM{FMIdxArray(1)}.NCurves,length(FMIdxArray));
+            FCAnalysedyAdhMaxRet=zeros(1,length(FMIdxArray));
+            yAdhUnbindingAll=zeros(obj.FM{FMIdxArray(1)}.NCurves,length(FMIdxArray));
+            FCAnalysedyAdhUnbind=zeros(1,length(FMIdxArray));
+            yAdhEneAppAll=zeros(obj.FM{FMIdxArray(1)}.NCurves,length(FMIdxArray));
+            FCAnalysedyAdhEneApp=zeros(1,length(FMIdxArray));
+            yAdhEneRetAll=zeros(obj.FM{FMIdxArray(1)}.NCurves,length(FMIdxArray));
+            FCAnalysedyAdhEneRet=zeros(1,length(FMIdxArray));
+            yPullingLengthAll=zeros(obj.FM{FMIdxArray(1)}.NCurves,length(FMIdxArray));
+            FCAnalysedyPullingLength=zeros(1,length(FMIdxArray));
+            ySnapInLengthAll=zeros(obj.FM{FMIdxArray(1)}.NCurves,length(FMIdxArray));
+            FCAnalysedySnapInLength=zeros(1,length(FMIdxArray));            
+            FMID=cell(length(FMIdxArray),1);
+            FMNum=zeros(length(FMIdxArray),1);
+            FMExtVelocity=zeros(length(FMIdxArray),1);
+            FMRetVelocity=zeros(length(FMIdxArray),1);
+            FMHoldingTime=zeros(length(FMIdxArray),1);
+            FMSubstrate=cell(length(FMIdxArray),1);
+            FMEnvCond=cell(length(FMIdxArray),1);
+            FMChipCant=cell(length(FMIdxArray),1);
+            FMChipbox=cell(length(FMIdxArray),1);
+            FMLinker=cell(length(FMIdxArray),1);
+            FMDateTime=cell(length(FMIdxArray),1);
+            FMDateTimeNumber=zeros(length(FMIdxArray),1);
+            TotalNumFc=zeros(length(FMIdxArray),1);            
+            SMFSFlagUncorrupt=zeros(length(FMIdxArray),1);
+            SMFSFlagSelected=zeros(length(FMIdxArray),1);
+            SMFSFlagAppMinCrit=zeros(length(FMIdxArray),1);
+            SMFSFlagRetMinCrit=zeros(length(FMIdxArray),1);
+            SMFSFlagLengthRequisite=zeros(length(FMIdxArray),1);
+            SMFSFlagFit=zeros(length(FMIdxArray),1);
+            SMFSFlagFitLinear=zeros(length(FMIdxArray),1);
+            SMFSFlagFitSinoidal=zeros(length(FMIdxArray),1);
+            SMFSFlagSnapIn=zeros(length(FMIdxArray),1);
+            SMFSFlagPullingLength=zeros(length(FMIdxArray),1);
+            AdhMaxAppMinArray=zeros(length(FMIdxArray),1);
+            AdhMaxAppMinFcArray=zeros(length(FMIdxArray),1);
+            AdhMaxAppMaxArray=zeros(length(FMIdxArray),1);
+            AdhMaxAppMaxFcArray=zeros(length(FMIdxArray),1);
+            AdhMaxRetMinArray=zeros(length(FMIdxArray),1);
+            AdhMaxRetMinFcArray=zeros(length(FMIdxArray),1);
+            AdhMaxRetMaxArray=zeros(length(FMIdxArray),1);
+            AdhMaxRetMaxFcArray=zeros(length(FMIdxArray),1);
+            AdhMaxRetUnbindingMinArray=zeros(length(FMIdxArray),1);
+            AdhMaxRetUnbindingMinFcArray=zeros(length(FMIdxArray),1);
+            AdhMaxRetUnbindingMaxArray=zeros(length(FMIdxArray),1);
+            AdhMaxRetUnbindingMaxFcArray=zeros(length(FMIdxArray),1);
+            AdhEneAppMinArray=zeros(length(FMIdxArray),1);
+            AdhEneAppMinFcArray=zeros(length(FMIdxArray),1);
+            AdhEneAppMaxArray=zeros(length(FMIdxArray),1);
+            AdhEneAppMaxFcArray=zeros(length(FMIdxArray),1);
+            AdhEneRetMinArray=zeros(length(FMIdxArray),1);
+            AdhEneRetMinFcArray=zeros(length(FMIdxArray),1);
+            AdhEneRetMaxArray=zeros(length(FMIdxArray),1);
+            AdhEneRetMaxFcArray=zeros(length(FMIdxArray),1);
+            PullLengthMinArray=zeros(length(FMIdxArray),1);
+            PullLengthMinFcArray=zeros(length(FMIdxArray),1);
+            PullLengthMaxArray=zeros(length(FMIdxArray),1);
+            PullLengthMaxFcArray=zeros(length(FMIdxArray),1);
+            SnapInMinArray=zeros(length(FMIdxArray),1);
+            SnapInMinFcArray=zeros(length(FMIdxArray),1);
+            SnapInMaxArray=zeros(length(FMIdxArray),1);
+            SnapInMaxFcArray=zeros(length(FMIdxArray),1);
+            % Loop
+            for ff=1:length(FMIdxArray)
+                %% Debugging
+                %for ff=6 % for debugging
+                %sprintf('Index array row No. %d',ff) % Gives current Force curve
+                % Allocate data
+                yAdhMaxApp=obj.FM{FMIdxArray(ff)}.AdhForceMaxApp;
+                yAdhMaxRet=obj.FM{FMIdxArray(ff)}.AdhForceMaxRet;
+                yAdhUnbinding=obj.FM{FMIdxArray(ff)}.AdhForceUnbinding;
+                yAdhEneApp=obj.FM{FMIdxArray(ff)}.AppAdhEnergy_IdxMethod;
+                yAdhEneRet=obj.FM{FMIdxArray(ff)}.RetAdhEnergy_IdxMethod;
+                yPullingLength=obj.FM{FMIdxArray(ff)}.PullingLength;
+                ySnapInLength=obj.FM{FMIdxArray(ff)}.SnapInLength;
+                FMID{ff,1}=obj.FM{FMIdxArray(ff)}.ID;
+                FMNum(ff,1)=ff;
+                FMExtVelocity(ff,1)=round(obj.FM{FMIdxArray(ff)}.ExtendVelocity,8); % Round holding time value to correct for tiny deviations of decimal places after the comma origin from instrument (AFM)
+                FMRetVelocity(ff,1)=round(obj.FM{FMIdxArray(ff)}.RetractVelocity,8); % Round holding time value to correct for tiny deviations of decimal places after the comma origin from instrument (AFM)
+                FMHoldingTime(ff,1)=round(obj.FM{FMIdxArray(ff)}.HoldingTime,2); % Round holding time value to correct for tiny deviations of decimal places after the comma origin from instrument (AFM)
+                FMSubstrate{ff,1}=obj.FM{FMIdxArray(ff)}.Substrate;
+                FMEnvCond{ff,1}=obj.FM{FMIdxArray(ff)}.EnvCond;
+                FMChipCant{ff,1}=obj.FM{FMIdxArray(ff)}.ChipCant;
+                FMChipbox{ff,1}=obj.FM{FMIdxArray(ff)}.Chipbox;
+                FMLinker{ff,1}=obj.FM{FMIdxArray(ff)}.Linker;
+                FMDate=obj.FM{FMIdxArray(ff)}.Date;
+                FMTime=obj.FM{FMIdxArray(ff)}.Time;
+                DateTimeStr=[FMDate,' ',FMTime];
+                FMDateTime{ff,1}=cellstr(datetime(DateTimeStr,'InputFormat',DateFormat,'Format',DateFormat));
+                FMDateTimeNumber(ff,1)=datenum(datetime(DateTimeStr,'InputFormat',DateFormat,'Format',DateFormat));
+                TotalNumFc(ff,1)=obj.FM{FMIdxArray(ff)}.NCurves;
+                % SMFS Flags
+                SMFSFlagUncorrupt(ff,1)=nnz(obj.FM{FMIdxArray(ff)}.SMFSFlag.Uncorrupt');
+                SMFSFlagSelected(ff,1)=nnz(obj.FM{FMIdxArray(ff)}.SMFSFlag.Selected');
+                SMFSFlagAppMinCrit(ff,1)=nnz(obj.FM{FMIdxArray(ff)}.SMFSFlag.AppMinCrit');
+                SMFSFlagRetMinCrit(ff,1)=nnz(obj.FM{FMIdxArray(ff)}.SMFSFlag.RetMinCrit');
+                SMFSFlagLengthRequisite(ff,1)=nnz(obj.FM{FMIdxArray(ff)}.SMFSFlag.LengthRequisite');
+                SMFSFlagFit(ff,1)=nnz(obj.FM{FMIdxArray(ff)}.SMFSFlag.Fit');
+                SMFSFlagFitLinear(ff,1)=nnz(obj.FM{FMIdxArray(ff)}.SMFSFlag.FitLinear');
+                SMFSFlagFitSinoidal(ff,1)=nnz(obj.FM{FMIdxArray(ff)}.SMFSFlag.FitSinoidal');
+                SMFSFlagSnapIn(ff,1)=nnz(obj.FM{FMIdxArray(ff)}.SMFSFlag.SnapIn');
+                SMFSFlagPullingLength(ff,1)=nnz(obj.FM{FMIdxArray(ff)}.SMFSFlag.PullingLength');
+                %% Concatenate arrays
+                % FCs of each FM in seperate column
+                yAdhMaxAppAll(:,ff)=yAdhMaxApp'.*obj.FM{FMIdxArray(ff)}.SMFSFlag.Selected';
+                yAdhMaxAppAll(yAdhMaxAppAll==0)=nan; % Replace zero entries by nan´s
+                FCAnalysedyAdhMaxApp(1,ff)=nnz(~isnan(yAdhMaxAppAll(:,ff)));
+                yAdhMaxRetAll(:,ff)=yAdhMaxRet'.*obj.FM{FMIdxArray(ff)}.SMFSFlag.Selected';
+                yAdhMaxRetAll(yAdhMaxRetAll==0)=nan; % Replace zero entries by nan´s
+                FCAnalysedyAdhMaxRet(1,ff)=nnz(~isnan(yAdhMaxRetAll(:,ff)));
+                yAdhUnbindingAll(:,ff)=yAdhUnbinding'.*obj.FM{FMIdxArray(ff)}.SMFSFlag.Selected';
+                yAdhUnbindingAll(yAdhUnbindingAll==0)=nan; % Replace zero entries by nan´s
+                FCAnalysedyAdhUnbind(1,ff)=nnz(~isnan(yAdhUnbindingAll(:,ff)));
+                yAdhEneAppAll(:,ff)=yAdhEneApp'.*obj.FM{FMIdxArray(ff)}.SMFSFlag.Selected';
+                yAdhEneAppAll(yAdhEneAppAll==0)=nan; % Replace zero entries by nan´s
+                FCAnalysedyAdhEneApp(1,ff)=nnz(~isnan(yAdhEneAppAll(:,ff)));
+                yAdhEneRetAll(:,ff)=yAdhEneRet'.*obj.FM{FMIdxArray(ff)}.SMFSFlag.Selected';
+                yAdhEneRetAll(yAdhEneRetAll==0)=nan; % Replace zero entries by nan´s
+                FCAnalysedyAdhEneRet(1,ff)=nnz(~isnan(yAdhEneRetAll(:,ff)));
+                yPullingLengthAll(:,ff)=yPullingLength'.*obj.FM{FMIdxArray(ff)}.SMFSFlag.Selected';
+                yPullingLengthAll(yPullingLengthAll==0)=nan; % Replace zero entries by nan´s
+                FCAnalysedyPullingLength(1,ff)=nnz(~isnan(yPullingLengthAll(:,ff)));
+                ySnapInLengthAll(:,ff)=ySnapInLength'.*obj.FM{FMIdxArray(ff)}.SMFSFlag.Selected';
+                ySnapInLengthAll(ySnapInLengthAll==0)=nan; % Replace zero entries by nan´s
+                FCAnalysedySnapInLength(1,ff)=nnz(~isnan(ySnapInLengthAll(:,ff)));
+                % All FCs of all FM in one column                   
+                if ~isempty(yAdhMaxApp)
+                    % Determine the number of rows per force map
+                    ArrayLength=length(yAdhMaxApp); % Define the length of the array
+                    row_start = ((ff-1) * ArrayLength) + 1; % Define the appropriate row start to append the new data
+                    row_end   = ff * ArrayLength; % Define the appropriate row end to append the new data
+                    % Concatenated data
+                    ConcateArrayAdhMaxApp(row_start:row_end,:)=yAdhMaxApp'; % Append the new data into the concatenated vector
+                    ConcateArrayAdhMaxApp(row_start:row_end,:)=ConcateArrayAdhMaxApp(row_start:row_end,:).*obj.FM{FMIdxArray(ff)}.SMFSFlag.Selected'; % Set non-selected force curves from the concatenated arrays to zero
+                    ConcateArrayAdhMaxApp(ConcateArrayAdhMaxApp==0)=nan; % Replace zero entries by nan´s
+                    % Allocate parameters
+                    FMIDArray(row_start:row_end,:)={FMID}; % Allocate the FM ID to each row
+                    FMIndexArray(row_start:row_end,:)=FMIdxArray(ff);
+                    FMNumArray(row_start:row_end,:)=ff;
+                    FcNumArray(row_start:row_end,:)=(row_start:row_end)';
+                    FMExtVelocityArray(row_start:row_end,:)=FMExtVelocity(ff,1);
+                    FMRetVelocityArray(row_start:row_end,:)=FMRetVelocity(ff,1);
+                    FMHoldingTimeArray(row_start:row_end,:)=FMHoldingTime(ff,1);
+                    FMSubstrateArray(row_start:row_end,:)=FMSubstrate(ff,1);
+                    FMEnvCondArray(row_start:row_end,:)=FMEnvCond(ff,1);
+                    FMChipCantArray(row_start:row_end,:)=FMChipCant(ff,1);
+                    FMChipboxArray(row_start:row_end,:)=FMChipbox(ff,1);
+                    FMLinkerArray(row_start:row_end,:)=FMLinker(ff,1);
+                    FMDateTimeFcArray(row_start:row_end,:)=datetime(DateTimeStr,'InputFormat',DateFormat,'Format',DateFormat);
+                    FMDateTimeNumberFcArray(row_start:row_end,:)=datenum(datetime(DateTimeStr,'InputFormat',DateFormat,'Format',DateFormat));
+                else
+                end
+                if ~isempty(yAdhMaxRet)
+                    % Determine the number of rows per force map
+                    ArrayLength=length(yAdhMaxRet); % Define the length of the array
+                    row_start = ((ff-1) * ArrayLength) + 1; % Define the appropriate row start to append the new data
+                    row_end   = ff * ArrayLength; % Define the appropriate row end to append the new data
+                    % Concatenated data
+                    ConcateArrayAdhMaxRet(row_start:row_end,:)=yAdhMaxRet'; % Append the new data into the concatenated vector
+                    ConcateArrayAdhMaxRet(row_start:row_end,:)=ConcateArrayAdhMaxRet(row_start:row_end,:).*obj.FM{FMIdxArray(ff)}.SMFSFlag.Selected'; % Set non-selected force curves from the concatenated arrays to zero
+                    ConcateArrayAdhMaxRet(ConcateArrayAdhMaxRet==0)=nan; % Replace zero entries by nan´s
+                else
+                end
+                if ~isempty(yAdhUnbinding)
+                    % Determine the number of rows per force map
+                    ArrayLength=length(yAdhUnbinding); % Define the length of the array
+                    row_start = ((ff-1) * ArrayLength) + 1; % Define the appropriate row start to append the new data
+                    row_end   = ff * ArrayLength; % Define the appropriate row end to append the new data
+                    % Concatenated data
+                    ConcateArrayAdhMaxRetUnbinding(row_start:row_end,:)=yAdhUnbinding'; % Append the new data into the concatenated vector
+                    ConcateArrayAdhMaxRetUnbinding(row_start:row_end,:)=ConcateArrayAdhMaxRetUnbinding(row_start:row_end,:).*obj.FM{FMIdxArray(ff)}.SMFSFlag.Selected'; % Set non-selected force curves from the concatenated arrays to zero
+                    ConcateArrayAdhMaxRetUnbinding(ConcateArrayAdhMaxRetUnbinding==0)=nan; % Replace zero entries by nan´s
+                else
+                end
+                if ~isempty(yAdhEneApp)
+                    % Determine the number of rows per force map
+                    ArrayLength=length(yAdhEneApp); % Define the length of the array
+                    row_start = ((ff-1) * ArrayLength) + 1; % Define the appropriate row start to append the new data
+                    row_end   = ff * ArrayLength; % Define the appropriate row end to append the new data
+                    % Concatenated data
+                    ConcateArrayAdhEneApp(row_start:row_end,:)=yAdhEneApp'; % Append the new data into the concatenated vector
+                    ConcateArrayAdhEneApp(row_start:row_end,:)=ConcateArrayAdhEneApp(row_start:row_end,:).*obj.FM{FMIdxArray(ff)}.SMFSFlag.Selected'; % Set non-selected force curves from the concatenated arrays to zero
+                    ConcateArrayAdhEneApp(ConcateArrayAdhEneApp==0)=nan; % Replace zero entries by nan´s
+                else
+                end
+                if ~isempty(yAdhEneRet)
+                    % Determine the number of rows per force map
+                    ArrayLength=length(yAdhEneRet); % Define the length of the array
+                    row_start = ((ff-1) * ArrayLength) + 1; % Define the appropriate row start to append the new data
+                    row_end   = ff * ArrayLength; % Define the appropriate row end to append the new data
+                    % Concatenated data
+                    ConcateArrayAdhEneRet(row_start:row_end,:)=yAdhEneRet'; % Append the new data into the concatenated vector
+                    ConcateArrayAdhEneRet(row_start:row_end,:)=ConcateArrayAdhEneRet(row_start:row_end,:).*obj.FM{FMIdxArray(ff)}.SMFSFlag.Selected'; % Set non-selected force curves from the concatenated arrays to zero
+                    ConcateArrayAdhEneRet(ConcateArrayAdhEneRet==0)=nan; % Replace zero entries by nan´s
+                else
+                end
+                if ~isempty(yPullingLength)
+                    % Determine the number of rows per force map
+                    ArrayLength=length(yPullingLength); % Define the length of the array
+                    row_start = ((ff-1) * ArrayLength) + 1; % Define the appropriate row start to append the new data
+                    row_end   = ff * ArrayLength; % Define the appropriate row end to append the new data
+                    % Concatenated data
+                    ConcateArrayPullLength(row_start:row_end,:)=yPullingLength'; % Append the new data into the concatenated vector
+                    ConcateArrayPullLength(row_start:row_end,:)=ConcateArrayPullLength(row_start:row_end,:).*obj.FM{FMIdxArray(ff)}.SMFSFlag.Selected'; % Set non-selected force curves from the concatenated arrays to zero
+                    ConcateArrayPullLength(ConcateArrayPullLength==0)=nan; % Replace zero entries by nan´s
+                else
+                end
+                if ~isempty(ySnapInLength)
+                    % Determine the number of rows per force map
+                    ArrayLength=length(ySnapInLength); % Define the length of the array
+                    row_start = ((ff-1) * ArrayLength) + 1; % Define the appropriate row start to append the new data
+                    row_end   = ff * ArrayLength; % Define the appropriate row end to append the new data
+                    % Concatenated data
+                    ConcateArraySnapIn(row_start:row_end,:)=ySnapInLength'; % Append the new data into the concatenated vector
+                    ConcateArraySnapIn(row_start:row_end,:)=ConcateArraySnapIn(row_start:row_end,:).*obj.FM{FMIdxArray(ff)}.SMFSFlag.Selected'; % Set non-selected force curves from the concatenated arrays to zero
+                    ConcateArraySnapIn(ConcateArraySnapIn==0)=nan; % Replace zero entries by nan´s
+                else
+                end
+                % Min max values and location
+                if ff==1
+                    [AdhMaxAppMinArray(ff,1),AdhMaxAppMinFcArray(ff,1)]=min(ConcateArrayAdhMaxApp(1:100),[],'omitnan');
+                    [AdhMaxAppMaxArray(ff,1),AdhMaxAppMaxFcArray(ff,1)]=max(ConcateArrayAdhMaxApp(1:100),[],'omitnan');
+                    [AdhMaxRetMinArray(ff,1),AdhMaxRetMinFcArray(ff,1)]=min(ConcateArrayAdhMaxRet(1:100),[],'omitnan');
+                    [AdhMaxRetMaxArray(ff,1),AdhMaxRetMaxFcArray(ff,1)]=max(ConcateArrayAdhMaxRet(1:100),[],'omitnan');
+                    [AdhMaxRetUnbindingMinArray(ff,1),AdhMaxRetUnbindingMinFcArray(ff,1)]=min(ConcateArrayAdhMaxRetUnbinding(1:100),[],'omitnan');
+                    [AdhMaxRetUnbindingMaxArray(ff,1),AdhMaxRetUnbindingMaxFcArray(ff,1)]=max(ConcateArrayAdhMaxRetUnbinding(1:100),[],'omitnan');
+                    [AdhEneAppMinArray(ff,1),AdhEneAppMinFcArray(ff,1)]=min(ConcateArrayAdhEneApp(1:100),[],'omitnan');
+                    [AdhEneAppMaxArray(ff,1),AdhEneAppMaxFcArray(ff,1)]=max(ConcateArrayAdhEneApp(1:100),[],'omitnan');
+                    [AdhEneRetMinArray(ff,1),AdhEneRetMinFcArray(ff,1)]=min(ConcateArrayAdhEneRet(1:100),[],'omitnan');
+                    [AdhEneRetMaxArray(ff,1),AdhEneRetMaxFcArray(ff,1)]=max(ConcateArrayAdhEneRet(1:100),[],'omitnan');
+                    [PullLengthMinArray(ff,1),PullLengthMinFcArray(ff,1)]=min(ConcateArrayPullLength(1:100),[],'omitnan');
+                    [PullLengthMaxArray(ff,1),PullLengthMaxFcArray(ff,1)]=max(ConcateArrayPullLength(1:100),[],'omitnan');
+                    [SnapInMinArray(ff,1),SnapInMinFcArray(ff,1)]=min(ConcateArraySnapIn(1:100),[],'omitnan');
+                    [SnapInMaxArray(ff,1),SnapInMaxFcArray(ff,1)]=max(ConcateArraySnapIn(1:100),[],'omitnan');
+                else
+                    [AdhMaxAppMinArray(ff,1),AdhMaxAppMinFcArray(ff,1)]=min(ConcateArrayAdhMaxApp(((ff-1)*100)+1:ff*100),[],'omitnan');
+                    [AdhMaxAppMaxArray(ff,1),AdhMaxAppMaxFcArray(ff,1)]=max(ConcateArrayAdhMaxApp(((ff-1)*100)+1:ff*100),[],'omitnan');
+                    [AdhMaxRetMinArray(ff,1),AdhMaxRetMinFcArray(ff,1)]=min(ConcateArrayAdhMaxRet(((ff-1)*100)+1:ff*100),[],'omitnan');
+                    [AdhMaxRetMaxArray(ff,1),AdhMaxRetMaxFcArray(ff,1)]=max(ConcateArrayAdhMaxRet(((ff-1)*100)+1:ff*100),[],'omitnan');
+                    [AdhMaxRetUnbindingMinArray(ff,1),AdhMaxRetUnbindingMinFcArray(ff,1)]=min(ConcateArrayAdhMaxRetUnbinding(((ff-1)*100)+1:ff*100),[],'omitnan');
+                    [AdhMaxRetUnbindingMaxArray(ff,1),AdhMaxRetUnbindingMaxFcArray(ff,1)]=max(ConcateArrayAdhMaxRetUnbinding(((ff-1)*100)+1:ff*100),[],'omitnan');
+                    [AdhEneAppMinArray(ff,1),AdhEneAppMinFcArray(ff,1)]=min(ConcateArrayAdhEneApp(((ff-1)*100)+1:ff*100),[],'omitnan');
+                    [AdhEneAppMaxArray(ff,1),AdhEneAppMaxFcArray(ff,1)]=max(ConcateArrayAdhEneApp(((ff-1)*100)+1:ff*100),[],'omitnan');
+                    [AdhEneRetMinArray(ff,1),AdhEneRetMinFcArray(ff,1)]=min(ConcateArrayAdhEneRet(((ff-1)*100)+1:ff*100),[],'omitnan');
+                    [AdhEneRetMaxArray(ff,1),AdhEneRetMaxFcArray(ff,1)]=max(ConcateArrayAdhEneRet(((ff-1)*100)+1:ff*100),[],'omitnan');
+                    [PullLengthMinArray(ff,1),PullLengthMinFcArray(ff,1)]=min(ConcateArrayPullLength(((ff-1)*100)+1:ff*100),[],'omitnan');
+                    [PullLengthMaxArray(ff,1),PullLengthMaxFcArray(ff,1)]=max(ConcateArrayPullLength(((ff-1)*100)+1:ff*100),[],'omitnan');
+                    [SnapInMinArray(ff,1),SnapInMinFcArray(ff,1)]=min(ConcateArraySnapIn(((ff-1)*100)+1:ff*100),[],'omitnan');
+                    [SnapInMaxArray(ff,1),SnapInMaxFcArray(ff,1)]=max(ConcateArraySnapIn(((ff-1)*100)+1:ff*100),[],'omitnan');
+                end
+            end
+            % Sorting the force maps and force curves based on measurement time
+            [~, FMSortDateTimeIdxFc]=sort(FMDateTimeNumber); % Sort force maps based on the time of measurement
+            FMIndexChrono=FMIdxArray(FMSortDateTimeIdxFc); % Order the force maps chronologically
+            [FMSortDateTimeFcArray, FMSortDateTimeIdxFcArray]=sort(FMDateTimeNumberFcArray);
+            FcNumArrayChrono=FcNumArray(FMSortDateTimeIdxFcArray);
+            FMIndexChronoArray=FMIndexArray(FMSortDateTimeIdxFcArray);
+            % Statistics
+            AdhMaxAppMean=mean(ConcateArrayAdhMaxApp,'omitnan');
+            AdhMaxAppMedian=median(ConcateArrayAdhMaxApp,'omitnan');
+            AdhMaxAppStd=std(ConcateArrayAdhMaxApp,'omitnan');
+            [AdhMaxAppMin,AdhMaxAppMinIdx]=min(AdhMaxAppMinArray);
+            [AdhMaxAppMax,AdhMaxAppMaxIdx]=max(AdhMaxAppMaxArray);
+            AdhMaxAppMinFM=FMIdxArray(AdhMaxAppMinIdx);
+            AdhMaxAppMaxFM=FMIdxArray(AdhMaxAppMaxIdx);
+            AdhMaxAppMinFc=AdhMaxAppMinFcArray(AdhMaxAppMinIdx,1);
+            AdhMaxAppMaxFc=AdhMaxAppMaxFcArray(AdhMaxAppMaxIdx,1);
+            AdhMaxRetMean=mean(ConcateArrayAdhMaxRet,'omitnan');
+            AdhMaxRetMedian=median(ConcateArrayAdhMaxRet,'omitnan');
+            AdhMaxRetStd=std(ConcateArrayAdhMaxRet,'omitnan');
+            [AdhMaxRetMin,AdhMaxRetMinIdx]=min(AdhMaxRetMinArray);
+            [AdhMaxRetMax,AdhMaxRetMaxIdx]=max(AdhMaxRetMaxArray);
+            AdhMaxRetMinFM=FMIdxArray(AdhMaxRetMinIdx);
+            AdhMaxRetMaxFM=FMIdxArray(AdhMaxRetMaxIdx);
+            AdhMaxRetMinFc=AdhMaxRetMinFcArray(AdhMaxRetMinIdx,1);
+            AdhMaxRetMaxFc=AdhMaxRetMaxFcArray(AdhMaxRetMaxIdx,1);
+            AdhMaxRetUnbindingMean=mean(ConcateArrayAdhMaxRetUnbinding,'omitnan');
+            AdhMaxRetUnbindingMedian=median(ConcateArrayAdhMaxRetUnbinding,'omitnan');
+            AdhMaxRetUnbindingStd=std(ConcateArrayAdhMaxRetUnbinding,'omitnan');
+            [AdhMaxRetUnbindingMin,AdhMaxRetUnbindingMinIdx]=min(AdhMaxRetUnbindingMinArray);
+            [AdhMaxRetUnbindingMax,AdhMaxRetUnbindingMaxIdx]=max(AdhMaxRetUnbindingMaxArray);
+            AdhMaxRetUnbindingMinFM=FMIdxArray(AdhMaxRetUnbindingMinIdx);
+            AdhMaxRetUnbindingMaxFM=FMIdxArray(AdhMaxRetUnbindingMaxIdx);
+            AdhMaxRetUnbindingMinFc=AdhMaxRetUnbindingMinFcArray(AdhMaxRetUnbindingMinIdx,1);
+            AdhMaxRetUnbindingMaxFc=AdhMaxRetUnbindingMaxFcArray(AdhMaxRetUnbindingMaxIdx,1);
+            AdhEneAppMean=mean(ConcateArrayAdhEneApp,'omitnan');
+            AdhEneAppMedian=median(ConcateArrayAdhEneApp,'omitnan');
+            AdhEneAppStd=std(ConcateArrayAdhEneApp,'omitnan');
+            [AdhEneAppMin,AdhEneAppMinIdx]=min(AdhEneAppMinArray);
+            [AdhEneAppMax,AdhEneAppMaxIdx]=max(AdhEneAppMaxArray);
+            AdhEneAppMinFM=FMIdxArray(AdhEneAppMinIdx);
+            AdhEneAppMaxFM=FMIdxArray(AdhEneAppMaxIdx);
+            AdhEneAppMinFc=AdhEneAppMinFcArray(AdhEneAppMinIdx,1);
+            AdhEneAppMaxFc=AdhEneAppMaxFcArray(AdhEneAppMaxIdx,1);
+            AdhEneRetMean=mean(ConcateArrayAdhEneRet,'omitnan');
+            AdhEneRetMedian=median(ConcateArrayAdhEneRet,'omitnan');
+            AdhEneRetStd=std(ConcateArrayAdhEneRet,'omitnan');
+            [AdhEneRetMin,AdhEneRetMinIdx]=min(AdhEneRetMinArray);
+            [AdhEneRetMax,AdhEneRetMaxIdx]=max(AdhEneRetMaxArray);
+            AdhEneRetMinFM=FMIdxArray(AdhEneRetMinIdx);
+            AdhEneRetMaxFM=FMIdxArray(AdhEneRetMaxIdx);
+            AdhEneRetMinFc=AdhEneRetMinFcArray(AdhEneRetMinIdx,1);
+            AdhEneRetMaxFc=AdhEneRetMaxFcArray(AdhEneRetMaxIdx,1);
+            PullLengthMean=mean(ConcateArrayPullLength,'omitnan');
+            PullLengthMedian=median(ConcateArrayPullLength,'omitnan');
+            PullLengthStd=std(ConcateArrayPullLength,'omitnan');
+            [PullLengthMin,PullLengthMinIdx]=min(PullLengthMinArray);
+            [PullLengthMax,PullLengthMaxIdx]=max(PullLengthMaxArray);
+            PullLengthMinFM=FMIdxArray(PullLengthMinIdx);
+            PullLengthMaxFM=FMIdxArray(PullLengthMaxIdx);
+            PullLengthMinFc=PullLengthMinFcArray(PullLengthMinIdx,1);
+            PullLengthMaxFc=PullLengthMaxFcArray(PullLengthMaxIdx,1);
+            SnapInMean=mean(ConcateArraySnapIn,'omitnan');
+            SnapInMedian=median(ConcateArraySnapIn,'omitnan');
+            SnapInStd=std(ConcateArraySnapIn,'omitnan');
+            [SnapInMin,SnapInMinIdx]=min(SnapInMinArray);
+            [SnapInMax,SnapInMaxIdx]=max(SnapInMaxArray);
+            SnapInMinFM=FMIdxArray(SnapInMinIdx);
+            SnapInMaxFM=FMIdxArray(SnapInMaxIdx);
+            SnapInMinFc=SnapInMinFcArray(PullLengthMinIdx,1);
+            SnapInMaxFc=SnapInMaxFcArray(PullLengthMaxIdx,1);
+            %% Data selection based on input parameters
+            % Determine unique entries
+            ExtVelocityValues=unique(FMExtVelocity)';
+            RetVelocityValues=unique(FMRetVelocity)';
+            HoldingTimeValues=unique(FMHoldingTime)';
+            SubstrateValues=unique(FMSubstrate)';
+            EnvCondValues=unique(FMEnvCond)';
+            ChipCantValues=unique(FMChipCant)';
+            ChipboxValues=unique(FMChipbox)';
+            LinkerValues=unique(FMLinker)';
+            % Preallocate
+            ExtVelocityFMIdx=zeros(length(FMExtVelocity),length(ExtVelocityValues));
+            ExtVelocityConcateIdx=zeros(length(FMIndexArray),length(ExtVelocityValues));
+            RetVelocityFMIdx=zeros(length(FMRetVelocity),length(RetVelocityValues));
+            RetVelocityConcateIdx=zeros(length(FMIndexArray),length(RetVelocityValues));
+            HoldingTimeFMIdx=zeros(length(FMHoldingTime),length(HoldingTimeValues));
+            HoldingTimeConcateIdx=zeros(length(FMIndexArray),length(HoldingTimeValues));
+            SubstrateFMIdx=zeros(length(FMSubstrate),length(SubstrateValues));
+            SubstrateConcateIdx=zeros(length(FMIndexArray),length(SubstrateValues));
+            EnvCondFMIdx=zeros(length(FMEnvCond),length(EnvCondValues));
+            EnvCondConcateIdx=zeros(length(FMIndexArray),length(EnvCondValues));
+            ChipCantFMIdx=zeros(length(FMChipCant),length(ChipCantValues));
+            ChipCantConcateIdx=zeros(length(FMIndexArray),length(ChipCantValues));
+            ChipboxFMIdx=zeros(length(FMChipbox),length(ChipboxValues));
+            ChipboxConcateIdx=zeros(length(FMIndexArray),length(ChipboxValues));
+            LinkerFMIdx=zeros(length(FMLinker),length(LinkerValues));
+            LinkerConcateIdx=zeros(length(FMIndexArray),length(LinkerValues));
+            for Fm=1:length(ExtVelocityValues)
+                [~, Loc] =ismember(FMExtVelocity,ExtVelocityValues(Fm)); % Identify the force maps that have the same value
+                Loc=find(Loc); % Use find to get ride of nonzeros
+                FMIdx=FMIdxArray(Loc); % Identify same entries in the concatenate data of the results table
+                [~, ConcateLoc]=ismember(FMIndexArray,FMIdx); % Identify same entries in the concatenate data of the results table
+                ConcateLoc=find(ConcateLoc); % Use find to get ride of nonzeros
+                % Allocate the data
+                ExtVelocityFMIdx(1:length(Loc),Fm)=FMIdx;
+                ExtVelocityConcateIdx(1:length(ConcateLoc),Fm)=ConcateLoc;
+            end
+            for Fm=1:length(RetVelocityValues)
+                [~, Loc] =ismember(FMRetVelocity,RetVelocityValues(Fm)); % Identify the force maps that have the same value
+                Loc=find(Loc); % Use find to get ride of nonzeros
+                FMIdx=FMIdxArray(Loc); % Identify same entries in the concatenate data of the results table
+                [~, ConcateLoc]=ismember(FMIndexArray,FMIdx); % Identify same entries in the concatenate data of the results table
+                ConcateLoc=find(ConcateLoc); % Use find to get ride of nonzeros
+                % Allocate the data
+                RetVelocityFMIdx(1:length(Loc),Fm)=FMIdx;
+                RetVelocityConcateIdx(1:length(ConcateLoc),Fm)=ConcateLoc;
+            end
+            for Fm=1:length(HoldingTimeValues)
+                [~, Loc] =ismember(FMHoldingTime,HoldingTimeValues(Fm)); % Identify the force maps that have the same value
+                Loc=find(Loc); % Use find to get ride of nonzeros
+                FMIdx=FMIdxArray(Loc); % Identify same entries in the concatenate data of the results table
+                [~, ConcateLoc]=ismember(FMIndexArray,FMIdx); % Identify same entries in the concatenate data of the results table
+                ConcateLoc=find(ConcateLoc); % Use find to get ride of nonzeros
+                % Allocate the data
+                HoldingTimeFMIdx(1:length(Loc),Fm)=FMIdx;
+                HoldingTimeConcateIdx(1:length(ConcateLoc),Fm)=ConcateLoc;
+            end
+            for Fm=1:length(SubstrateValues)
+                [~, Loc] =ismember(FMSubstrate,SubstrateValues(Fm)); % Identify the force maps that have the same value
+                Loc=find(Loc); % Use find to get ride of nonzeros
+                FMIdx=FMIdxArray(Loc); % Identify same entries in the concatenate data of the results table
+                [~, ConcateLoc]=ismember(FMIndexArray,FMIdx); % Identify same entries in the concatenate data of the results table
+                ConcateLoc=find(ConcateLoc); % Use find to get ride of nonzeros
+                % Allocate the data
+                SubstrateFMIdx(1:length(Loc),Fm)=FMIdx;
+                SubstrateConcateIdx(1:length(ConcateLoc),Fm)=ConcateLoc;
+            end
+            for Fm=1:length(EnvCondValues)
+                [~, Loc] =ismember(FMEnvCond,EnvCondValues(Fm)); % Identify the force maps that have the same value
+                Loc=find(Loc); % Use find to get ride of nonzeros
+                FMIdx=FMIdxArray(Loc); % Identify same entries in the concatenate data of the results table
+                [~, ConcateLoc]=ismember(FMIndexArray,FMIdx); % Identify same entries in the concatenate data of the results table
+                ConcateLoc=find(ConcateLoc); % Use find to get ride of nonzeros
+                % Allocate the data
+                EnvCondFMIdx(1:length(Loc),Fm)=FMIdx;
+                EnvCondConcateIdx(1:length(ConcateLoc),Fm)=ConcateLoc;
+            end
+            for Fm=1:length(ChipCantValues)
+                [~, Loc] =ismember(FMChipCant,ChipCantValues(Fm)); % Identify the force maps that have the same value
+                Loc=find(Loc); % Use find to get ride of nonzeros
+                FMIdx=FMIdxArray(Loc); % Identify same entries in the concatenate data of the results table
+                [~, ConcateLoc]=ismember(FMIndexArray,FMIdx); % Identify same entries in the concatenate data of the results table
+                ConcateLoc=find(ConcateLoc); % Use find to get ride of nonzeros
+                % Allocate the data
+                ChipCantFMIdx(1:length(Loc),Fm)=FMIdx;
+                ChipCantConcateIdx(1:length(ConcateLoc),Fm)=ConcateLoc;
+            end
+            for Fm=1:length(ChipboxValues)
+                [~, Loc] =ismember(FMChipbox,ChipboxValues(Fm)); % Identify the force maps that have the same value
+                Loc=find(Loc); % Use find to get ride of nonzeros
+                FMIdx=FMIdxArray(Loc); % Identify same entries in the concatenate data of the results table
+                [~, ConcateLoc]=ismember(FMIndexArray,FMIdx); % Identify same entries in the concatenate data of the results table
+                ConcateLoc=find(ConcateLoc); % Use find to get ride of nonzeros
+                % Allocate the data
+                ChipboxFMIdx(1:length(Loc),Fm)=FMIdx;
+                ChipboxConcateIdx(1:length(ConcateLoc),Fm)=ConcateLoc;
+            end
+            for Fm=1:length(LinkerValues)
+                [~, Loc] =ismember(FMLinker,LinkerValues(Fm)); % Identify the force maps that have the same value
+                Loc=find(Loc); % Use find to get ride of nonzeros
+                FMIdx=FMIdxArray(Loc); % Identify same entries in the concatenate data of the results table
+                [~, ConcateLoc]=ismember(FMIndexArray,FMIdx); % Identify same entries in the concatenate data of the results table
+                ConcateLoc=find(ConcateLoc); % Use find to get ride of nonzeros
+                % Allocate the data
+                LinkerFMIdx(1:length(Loc),Fm)=FMIdx;
+                LinkerConcateIdx(1:length(ConcateLoc),Fm)=ConcateLoc;
+            end
+            %% SMFS Results structure
+            % Check entry
+            if ~isempty(obj.SMFSResults)
+                jj=length(obj.SMFSResults)+1;
+            else
+                jj=1;
+            end
+            % Debugging
+            % jj=11
+            % Allocate data
+ obj.SMFSResults{jj,1}.Concatenate(1).FMID=FMIDArray;
+            obj.SMFSResults{jj,1}.Concatenate(1).FMIndex=FMIndexArray;
+            obj.SMFSResults{jj,1}.Concatenate(1).FMNum=FMNumArray;
+            obj.SMFSResults{jj,1}.Concatenate(1).FMIndexChrono=FMIndexChronoArray;
+            obj.SMFSResults{jj,1}.Concatenate(1).FcNum=FcNumArray;
+            obj.SMFSResults{jj,1}.Concatenate(1).FcNumChrono=FcNumArrayChrono;
+            obj.SMFSResults{jj,1}.Concatenate(1).FMExtVelocity=FMExtVelocityArray;
+            obj.SMFSResults{jj,1}.Concatenate(1).FMRetVelocity=FMRetVelocityArray;
+            obj.SMFSResults{jj,1}.Concatenate(1).FMHoldingTime=FMHoldingTimeArray;
+            obj.SMFSResults{jj,1}.Concatenate(1).FMSubstrate=FMSubstrateArray;
+            obj.SMFSResults{jj,1}.Concatenate(1).FMEnvCond=FMEnvCondArray;
+            obj.SMFSResults{jj,1}.Concatenate(1).FMChipCant=FMChipCantArray;
+            obj.SMFSResults{jj,1}.Concatenate(1).FMChipbox=FMChipboxArray;
+            obj.SMFSResults{jj,1}.Concatenate(1).FMLinker=FMLinkerArray;
+            obj.SMFSResults{jj,1}.Concatenate(1).FMDateTime=FMDateTimeFcArray;
+            obj.SMFSResults{jj,1}.Concatenate(1).FMDateTimeNumber=FMDateTimeNumberFcArray;
+            obj.SMFSResults{jj,1}.Concatenate(1).FMDateTimeNumberSort=FMSortDateTimeFcArray;
+            obj.SMFSResults{jj,1}.Concatenate(1).FMDateTimeNumberSortIdx=FMSortDateTimeIdxFcArray;
+            obj.SMFSResults{jj,1}.Concatenate(1).AdhMaxApp=ConcateArrayAdhMaxApp;
+            obj.SMFSResults{jj,1}.Concatenate(1).AdhMaxRet= ConcateArrayAdhMaxRet;
+            obj.SMFSResults{jj,1}.Concatenate(1).AdhUnbinding=ConcateArrayAdhMaxRetUnbinding;
+            obj.SMFSResults{jj,1}.Concatenate(1).AdhEneApp=ConcateArrayAdhEneApp;
+            obj.SMFSResults{jj,1}.Concatenate(1).AdhEneRet=ConcateArrayAdhEneRet;
+            obj.SMFSResults{jj,1}.Concatenate(1).PullingLength=ConcateArrayPullLength;
+            obj.SMFSResults{jj,1}.Concatenate(1).SnapInLength=ConcateArraySnapIn;
+            obj.SMFSResults{jj,1}.Flags(1).SMFSFlagUncorrupt=sum(SMFSFlagUncorrupt);
+            obj.SMFSResults{jj,1}.Flags(1).UncorruptPct=(sum(SMFSFlagUncorrupt)/sum(TotalNumFc))*100;
+            obj.SMFSResults{jj,1}.Flags(1).SMFSFlagSelected=sum(SMFSFlagSelected);
+            obj.SMFSResults{jj,1}.Flags(1).SelectedPct=(sum(SMFSFlagSelected)/sum(TotalNumFc))*100;
+            obj.SMFSResults{jj,1}.Flags(1).SMFSFlagAppMinCrit=sum(SMFSFlagAppMinCrit);
+            obj.SMFSResults{jj,1}.Flags(1).AppMinCritPct=(sum(SMFSFlagAppMinCrit)/sum(TotalNumFc))*100;
+            obj.SMFSResults{jj,1}.Flags(1).SMFSFlagRetMinCrit=sum(SMFSFlagRetMinCrit);
+            obj.SMFSResults{jj,1}.Flags(1).RetMinCritPct=(sum(SMFSFlagRetMinCrit)/sum(TotalNumFc))*100;
+            obj.SMFSResults{jj,1}.Flags(1).SMFSFlagLengthRequisite=sum(SMFSFlagLengthRequisite);
+            obj.SMFSResults{jj,1}.Flags(1).LengthRequisitePct=(sum(SMFSFlagLengthRequisite)/sum(TotalNumFc))*100;
+            obj.SMFSResults{jj,1}.Flags(1).SMFSFlagFit=sum(SMFSFlagFit);
+            obj.SMFSResults{jj,1}.Flags(1).FitPct=(sum(SMFSFlagFit)/sum(TotalNumFc))*100;
+            obj.SMFSResults{jj,1}.Flags(1).SMFSFlagFitLinear=sum(SMFSFlagFitLinear);
+            obj.SMFSResults{jj,1}.Flags(1).FitLinearPct=(sum(SMFSFlagFitLinear)/sum(TotalNumFc))*100;
+            obj.SMFSResults{jj,1}.Flags(1).SMFSFlagFitSinoidal=sum(SMFSFlagFitSinoidal);
+            obj.SMFSResults{jj,1}.Flags(1).FitSinoidalPct=(sum(SMFSFlagFitSinoidal)/sum(TotalNumFc))*100;
+            obj.SMFSResults{jj,1}.Flags(1).SMFSFlagSnapIn=sum(SMFSFlagSnapIn);
+            obj.SMFSResults{jj,1}.Flags(1).SnapInPct=(sum(SMFSFlagSnapIn)/sum(TotalNumFc))*100;
+            obj.SMFSResults{jj,1}.Flags(1).SMFSFlagPullingLength=sum(SMFSFlagPullingLength);
+            obj.SMFSResults{jj,1}.Flags(1).PullingLengthPct=(sum(SMFSFlagPullingLength)/sum(TotalNumFc))*100;
+            obj.SMFSResults{jj,1}.Data(1).FMIndex=FMIdxArray;
+            obj.SMFSResults{jj,1}.Data(1).FMIndexChrono=FMIndexChrono;
+            obj.SMFSResults{jj,1}.Data(1).FMID=FMID;
+            obj.SMFSResults{jj,1}.Data(1).FMNum=FMNum;
+            obj.SMFSResults{jj,1}.Data(1).FMExtVelocity=FMExtVelocity;
+            obj.SMFSResults{jj,1}.Data(1).FMRetVelocity=FMRetVelocity;
+            obj.SMFSResults{jj,1}.Data(1).FMHoldingTime=FMHoldingTime;
+            obj.SMFSResults{jj,1}.Data(1).FMSubstrate=FMSubstrate;
+            obj.SMFSResults{jj,1}.Data(1).FMEnvCond=FMEnvCond;
+            obj.SMFSResults{jj,1}.Data(1).FMChipCant=FMChipCant;
+            obj.SMFSResults{jj,1}.Data(1).FMChipbox=FMChipbox;
+            obj.SMFSResults{jj,1}.Data(1).FMLinker=FMLinker;
+            obj.SMFSResults{jj,1}.Data(1).FMDateTime=FMDateTime;
+            obj.SMFSResults{jj,1}.Data(1).FMDateTimeSortIdx=FMSortDateTimeIdxFc;
+            obj.SMFSResults{jj,1}.Data(1).TotalNumFc=sum(TotalNumFc);
+            obj.SMFSResults{jj,1}.Data(1).SumNumFcAnalysedAdhMaxApp=nnz(~isnan(ConcateArrayAdhMaxApp));
+            obj.SMFSResults{jj,1}.Data(1).SumNumFcAnalysedAdhMaxAppPct=(nnz(~isnan(ConcateArrayAdhMaxApp))/sum(TotalNumFc))*100;
+            obj.SMFSResults{jj,1}.Data(1).SumNumFcAnalysedAdhMaxRet=nnz(~isnan(ConcateArrayAdhMaxRet));
+            obj.SMFSResults{jj,1}.Data(1).SumNumFcAnalysedAdhMaxRetPct=(nnz(~isnan(ConcateArrayAdhMaxRet))/sum(TotalNumFc))*100;
+            obj.SMFSResults{jj,1}.Data(1).SumNumFcAnalysedAdhUnbinding=nnz(~isnan(ConcateArrayAdhMaxRetUnbinding));
+            obj.SMFSResults{jj,1}.Data(1).SumNumFcAnalysedAdhUnbindingPct=(nnz(~isnan(ConcateArrayAdhMaxRetUnbinding))/sum(TotalNumFc))*100;
+            obj.SMFSResults{jj,1}.Data(1).SumNumFcAnalysedAdhEneApp=nnz(~isnan(ConcateArrayAdhEneApp));
+            obj.SMFSResults{jj,1}.Data(1).SumNumFcAnalysedAdhEneAppPct=(nnz(~isnan(ConcateArrayAdhEneApp))/sum(TotalNumFc))*100;
+            obj.SMFSResults{jj,1}.Data(1).SumNumFcAnalysedAdhEneRet=nnz(~isnan(ConcateArrayAdhEneRet));
+            obj.SMFSResults{jj,1}.Data(1).SumNumFcAnalysedAdhEneRetPct=(nnz(~isnan(ConcateArrayAdhEneRet))/sum(TotalNumFc))*100;
+            obj.SMFSResults{jj,1}.Data(1).SumNumFcAnalysedyPullingLength=nnz(~isnan(ConcateArrayPullLength));
+            obj.SMFSResults{jj,1}.Data(1).SumNumFcAnalysedPullingLengthPct=(nnz(~isnan(ConcateArrayPullLength))/sum(TotalNumFc))*100;
+            obj.SMFSResults{jj,1}.Data(1).SumNumFcAnalysedySnapInLength=nnz(~isnan(ConcateArraySnapIn));
+            obj.SMFSResults{jj,1}.Data(1).SumNumFcAnalysedySnapInLengthPct=(nnz(~isnan(ConcateArraySnapIn))/sum(TotalNumFc))*100;
+            obj.SMFSResults{jj,1}.Data(1).NumFcAnalysedAdhMaxApp=FCAnalysedyAdhMaxApp;
+            obj.SMFSResults{jj,1}.Data(1).NumFcAnalysedAdhMaxRet=FCAnalysedyAdhMaxRet;
+            obj.SMFSResults{jj,1}.Data(1).NumFcAnalysedAdhUnbinding=FCAnalysedyAdhUnbind;
+            obj.SMFSResults{jj,1}.Data(1).NumFcAnalysedAdhEneApp=FCAnalysedyAdhEneApp;
+            obj.SMFSResults{jj,1}.Data(1).NumFcAnalysedAdhEneRet=FCAnalysedyAdhEneRet;
+            obj.SMFSResults{jj,1}.Data(1).NumFcAnalysedyPullingLength=FCAnalysedyPullingLength;
+            obj.SMFSResults{jj,1}.Data(1).NumFcAnalysedySnapInLength=FCAnalysedySnapInLength;
+            obj.SMFSResults{jj,1}.Data(1).AdhMaxApp=yAdhMaxAppAll;
+            obj.SMFSResults{jj,1}.Data(1).AdhMaxRet=yAdhMaxRetAll;
+            obj.SMFSResults{jj,1}.Data(1).AdhUnbinding=yAdhUnbindingAll;
+            obj.SMFSResults{jj,1}.Data(1).AdhEneApp=yAdhEneAppAll;
+            obj.SMFSResults{jj,1}.Data(1).AdhEneRet=yAdhEneRetAll;
+            obj.SMFSResults{jj,1}.Data(1).PullingLength=yPullingLengthAll;
+            obj.SMFSResults{jj,1}.Data(1).SnapInLength=ySnapInLengthAll;
+            obj.SMFSResults{jj,1}.Parameters(1).ExtendVelocity=ExtVelocityValue;
+            obj.SMFSResults{jj,1}.Parameters(1).RetractVelocity=RetVelocityValue;
+            obj.SMFSResults{jj,1}.Parameters(1).HoldingTime=HoldingTimeValue;
+            obj.SMFSResults{jj,1}.Parameters(1).Substrate=SubstrateValue;
+            obj.SMFSResults{jj,1}.Parameters(1).Medium=EnvCondValue;
+            obj.SMFSResults{jj,1}.Parameters(1).ChipCantilever=ChipCantValue;
+            obj.SMFSResults{jj,1}.Parameters(1).Chipbox=ChipboxValue;
+            obj.SMFSResults{jj,1}.Parameters(1).Linker=LinkerValue;
+            obj.SMFSResults{jj,1}.Selection(1).ExtVelocityParameters=ExtVelocityValues;
+            obj.SMFSResults{jj,1}.Selection(1).ExtVelocityFMIdx=ExtVelocityFMIdx;
+            obj.SMFSResults{jj,1}.Selection(1).ExtVelocityConcateIdx=ExtVelocityConcateIdx;
+            obj.SMFSResults{jj,1}.Selection(1).RetVelocityParameters=RetVelocityValues;
+            obj.SMFSResults{jj,1}.Selection(1).RetVelocityFMIdx=RetVelocityFMIdx;
+            obj.SMFSResults{jj,1}.Selection(1).RetVelocityConcateIdx=RetVelocityConcateIdx;
+            obj.SMFSResults{jj,1}.Selection(1).HoldingTimeParameters=HoldingTimeValues;
+            obj.SMFSResults{jj,1}.Selection(1).HoldingTimeFMIdx=HoldingTimeFMIdx;
+            obj.SMFSResults{jj,1}.Selection(1).HoldingTimeConcateIdx=HoldingTimeConcateIdx;
+            obj.SMFSResults{jj,1}.Selection(1).SubstrateParameters=SubstrateValues;
+            obj.SMFSResults{jj,1}.Selection(1).SubstrateFMIdx=SubstrateFMIdx;
+            obj.SMFSResults{jj,1}.Selection(1).SubstrateConcateIdx=SubstrateConcateIdx;
+            obj.SMFSResults{jj,1}.Selection(1).EnvCondParameters=EnvCondValues;
+            obj.SMFSResults{jj,1}.Selection(1).EnvCondFMIdx=EnvCondFMIdx;
+            obj.SMFSResults{jj,1}.Selection(1).EnvCondConcateIdx=EnvCondConcateIdx;
+            obj.SMFSResults{jj,1}.Selection(1).ChipCantParameters=ChipCantValues;
+            obj.SMFSResults{jj,1}.Selection(1).ChipCantFMIdx=ChipCantFMIdx;
+            obj.SMFSResults{jj,1}.Selection(1).ChipCantConcateIdx=ChipCantConcateIdx;
+            obj.SMFSResults{jj,1}.Selection(1).ChipboxParameters=ChipboxValues;
+            obj.SMFSResults{jj,1}.Selection(1).ChipboxFMIdx=ChipboxFMIdx;
+            obj.SMFSResults{jj,1}.Selection(1).ChipboxConcateIdx=ChipboxConcateIdx;
+            obj.SMFSResults{jj,1}.Selection(1).LinkerParameters=LinkerValues;
+            obj.SMFSResults{jj,1}.Selection(1).LinkerFMIdx=LinkerFMIdx;
+            obj.SMFSResults{jj,1}.Selection(1).LinkerConcateIdx=LinkerConcateIdx;
+            obj.SMFSResults{jj,1}.Results(1).AdhMaxAppMean=AdhMaxAppMean;
+            obj.SMFSResults{jj,1}.Results(1).AdhMaxAppMedian=AdhMaxAppMedian;
+            obj.SMFSResults{jj,1}.Results(1).AdhMaxAppStd=AdhMaxAppStd;
+            obj.SMFSResults{jj,1}.Results(1).AdhMaxAppMinArray=AdhMaxAppMinArray;
+            obj.SMFSResults{jj,1}.Results(1).AdhMaxAppMin=AdhMaxAppMin;
+            obj.SMFSResults{jj,1}.Results(1).AdhMaxAppMaxArray=AdhMaxAppMaxArray;
+            obj.SMFSResults{jj,1}.Results(1).AdhMaxAppMax=AdhMaxAppMax;
+            obj.SMFSResults{jj,1}.Results(1).AdhMaxAppMinFM=AdhMaxAppMinFM;
+            obj.SMFSResults{jj,1}.Results(1).AdhMaxAppMaxFM=AdhMaxAppMaxFM;
+            obj.SMFSResults{jj,1}.Results(1).AdhMaxAppMinFcArray=AdhMaxAppMinFcArray;
+            obj.SMFSResults{jj,1}.Results(1).AdhMaxAppMinFc=AdhMaxAppMinFc;
+            obj.SMFSResults{jj,1}.Results(1).AdhMaxAppMaxFcArray=AdhMaxAppMaxFcArray;
+            obj.SMFSResults{jj,1}.Results(1).AdhMaxAppMaxFc=AdhMaxAppMaxFc;
+            obj.SMFSResults{jj,1}.Results(1).AdhMaxRetMean=AdhMaxRetMean;
+            obj.SMFSResults{jj,1}.Results(1).AdhMaxRetMedian=AdhMaxRetMedian;
+            obj.SMFSResults{jj,1}.Results(1).AdhMaxRetStd=AdhMaxRetStd;
+            obj.SMFSResults{jj,1}.Results(1).AdhMaxRetMinArray=AdhMaxRetMinArray;
+            obj.SMFSResults{jj,1}.Results(1).AdhMaxRetMin=AdhMaxRetMin;
+            obj.SMFSResults{jj,1}.Results(1).AdhMaxRetMaxArray=AdhMaxRetMaxArray;
+            obj.SMFSResults{jj,1}.Results(1).AdhMaxRetMax=AdhMaxRetMax;
+            obj.SMFSResults{jj,1}.Results(1).AdhMaxRetMinFM=AdhMaxRetMinFM;
+            obj.SMFSResults{jj,1}.Results(1).AdhMaxRetMaxFM=AdhMaxRetMaxFM;
+            obj.SMFSResults{jj,1}.Results(1).AdhMaxRetMinFcArray=AdhMaxRetMinFcArray;
+            obj.SMFSResults{jj,1}.Results(1).AdhMaxRetMinFc=AdhMaxRetMinFc;
+            obj.SMFSResults{jj,1}.Results(1).AdhMaxRetMaxFcArray=AdhMaxRetMaxFcArray;
+            obj.SMFSResults{jj,1}.Results(1).AdhMaxRetMaxFc=AdhMaxRetMaxFc;
+            obj.SMFSResults{jj,1}.Results(1).AdhMaxRetUnbindingMean=AdhMaxRetUnbindingMean;
+            obj.SMFSResults{jj,1}.Results(1).AdhMaxRetUnbindingMedian=AdhMaxRetUnbindingMedian;
+            obj.SMFSResults{jj,1}.Results(1).AdhMaxRetUnbindingStd=AdhMaxRetUnbindingStd;
+            obj.SMFSResults{jj,1}.Results(1).AdhMaxRetUnbindingMinArray=AdhMaxRetUnbindingMinArray;
+            obj.SMFSResults{jj,1}.Results(1).AdhMaxRetUnbindingMin=AdhMaxRetUnbindingMin;
+            obj.SMFSResults{jj,1}.Results(1).AdhMaxRetUnbindingMaxArray=AdhMaxRetUnbindingMaxArray;
+            obj.SMFSResults{jj,1}.Results(1).AdhMaxRetUnbindingMax=AdhMaxRetUnbindingMax;
+            obj.SMFSResults{jj,1}.Results(1).AdhMaxRetUnbindingMinFM=AdhMaxRetUnbindingMinFM;
+            obj.SMFSResults{jj,1}.Results(1).AdhMaxRetUnbindingMaxFM=AdhMaxRetUnbindingMaxFM;
+            obj.SMFSResults{jj,1}.Results(1).AdhMaxRetUnbindingMinFcArray=AdhMaxRetUnbindingMinFcArray;
+            obj.SMFSResults{jj,1}.Results(1).AdhMaxRetUnbindingMinFc=AdhMaxRetUnbindingMinFc;
+            obj.SMFSResults{jj,1}.Results(1).AdhMaxRetUnbindingMaxFcArray=AdhMaxRetUnbindingMaxFcArray;
+            obj.SMFSResults{jj,1}.Results(1).AdhMaxRetUnbindingMaxFc=AdhMaxRetUnbindingMaxFc;
+            obj.SMFSResults{jj,1}.Results(1).AdhEneAppMean=AdhEneAppMean;
+            obj.SMFSResults{jj,1}.Results(1).AdhEneAppMedian=AdhEneAppMedian;
+            obj.SMFSResults{jj,1}.Results(1).AdhEneAppStd=AdhEneAppStd;
+            obj.SMFSResults{jj,1}.Results(1).AdhEneAppMinArray=AdhEneAppMinArray;
+            obj.SMFSResults{jj,1}.Results(1).AdhEneAppMin=AdhEneAppMin;
+            obj.SMFSResults{jj,1}.Results(1).AdhEneAppMaxArray=AdhEneAppMaxArray;
+            obj.SMFSResults{jj,1}.Results(1).AdhEneAppMax=AdhEneAppMax;
+            obj.SMFSResults{jj,1}.Results(1).AdhEneAppMinFM=AdhEneAppMinFM;
+            obj.SMFSResults{jj,1}.Results(1).AdhEneAppMaxFM=AdhEneAppMaxFM;
+            obj.SMFSResults{jj,1}.Results(1).AdhEneAppMinFcArray=AdhEneAppMinFcArray;
+            obj.SMFSResults{jj,1}.Results(1).AdhEneAppMinFc=AdhEneAppMinFc;
+            obj.SMFSResults{jj,1}.Results(1).AdhEneAppMaxFcArray=AdhEneAppMaxFcArray;
+            obj.SMFSResults{jj,1}.Results(1).AdhEneAppMaxFc=AdhEneAppMaxFc;
+            obj.SMFSResults{jj,1}.Results(1).AdhEneRetMean=AdhEneRetMean;
+            obj.SMFSResults{jj,1}.Results(1).AdhEneRetMedian=AdhEneRetMedian;
+            obj.SMFSResults{jj,1}.Results(1).AdhEneRetStd=AdhEneRetStd;
+            obj.SMFSResults{jj,1}.Results(1).AdhEneRetMinArray=AdhEneRetMinArray;
+            obj.SMFSResults{jj,1}.Results(1).AdhEneRetMin=AdhEneRetMin;
+            obj.SMFSResults{jj,1}.Results(1).AdhEneRetMaxArray=AdhEneRetMaxArray;
+            obj.SMFSResults{jj,1}.Results(1).AdhEneRetMax=AdhEneRetMax;
+            obj.SMFSResults{jj,1}.Results(1).AdhEneRetMinFM=AdhEneRetMinFM;
+            obj.SMFSResults{jj,1}.Results(1).AdhEneRetMaxFM=AdhEneRetMaxFM;
+            obj.SMFSResults{jj,1}.Results(1).AdhEneRetMinFcArray=AdhEneRetMinFcArray;
+            obj.SMFSResults{jj,1}.Results(1).AdhEneRetMinFc=AdhEneRetMinFc;
+            obj.SMFSResults{jj,1}.Results(1).AdhEneRetMaxFcArray=AdhEneRetMaxFcArray;
+            obj.SMFSResults{jj,1}.Results(1).AdhEneRetMaxFc=AdhEneRetMaxFc;
+            obj.SMFSResults{jj,1}.Results(1).PullLengthMean=PullLengthMean;
+            obj.SMFSResults{jj,1}.Results(1).PullLengthMedian=PullLengthMedian;
+            obj.SMFSResults{jj,1}.Results(1).PullLengthStd=PullLengthStd;
+            obj.SMFSResults{jj,1}.Results(1).PullLengthMinArray=PullLengthMinArray;
+            obj.SMFSResults{jj,1}.Results(1).PullLengthMin=PullLengthMin;
+            obj.SMFSResults{jj,1}.Results(1).PullLengthMinFM=PullLengthMinFM;
+            obj.SMFSResults{jj,1}.Results(1).PullLengthMinFcArray=PullLengthMinFcArray;
+            obj.SMFSResults{jj,1}.Results(1).PullLengthMinFc=PullLengthMinFc;
+            obj.SMFSResults{jj,1}.Results(1).PullLengthMaxArray=PullLengthMaxArray;
+            obj.SMFSResults{jj,1}.Results(1).PullLengthMax=PullLengthMax;
+            obj.SMFSResults{jj,1}.Results(1).PullLengthMaxFM=PullLengthMaxFM;
+            obj.SMFSResults{jj,1}.Results(1).PullLengthMaxFcArray=PullLengthMaxFcArray;
+            obj.SMFSResults{jj,1}.Results(1).PullLengthMaxFc=PullLengthMaxFc;
+            obj.SMFSResults{jj,1}.Results(1).SnapInMean=SnapInMean;
+            obj.SMFSResults{jj,1}.Results(1).SnapInMedian=SnapInMedian;
+            obj.SMFSResults{jj,1}.Results(1).SnapInStd=SnapInStd;
+            obj.SMFSResults{jj,1}.Results(1).SnapInMinArray=SnapInMinArray;
+            obj.SMFSResults{jj,1}.Results(1).SnapInMin=SnapInMin;
+            obj.SMFSResults{jj,1}.Results(1).SnapInMinFM=SnapInMinFM;
+            obj.SMFSResults{jj,1}.Results(1).SnapInMinFcArray=SnapInMinFcArray;
+            obj.SMFSResults{jj,1}.Results(1).SnapInMinFc=SnapInMinFc;
+            obj.SMFSResults{jj,1}.Results(1).SnapInMaxArray=SnapInMaxArray;
+            obj.SMFSResults{jj,1}.Results(1).SnapInMax=SnapInMax;
+            obj.SMFSResults{jj,1}.Results(1).SnapInMaxFM=SnapInMaxFM;
+            obj.SMFSResults{jj,1}.Results(1).SnapInMaxFcArray=SnapInMaxFcArray;
+            obj.SMFSResults{jj,1}.Results(1).SnapInMaxFc=SnapInMaxFc;
+            % Paramater list
+            obj.SMFSResultsParameters(jj,:)={jj,ChipboxValue,ChipCantValue,LinkerValue,SubstrateValue,EnvCondValue,ExtVelocityValue,RetVelocityValue,HoldingTimeValue};        
+        end
+
+
+        function SM_results_structure_add_phase(obj,ResultsRow,Phase1End,Phase2End,Phase3End)
+            % A fct to assign all fc curves to one of the defined
+            % deformation phases
+            % 1 = native phase (Phase 1)
+            % 2 = denaturartion phase (Phase 2)
+            % 3 = cohesion phase (Phase 3)
+            % 4 = destruction phase (Phase 4)
+            % Preallocate
+            DeformPhaseArray=zeros(length(obj.SMFSResults{ResultsRow}.Concatenate.FMIndex),1);
+            DeformPhaseFMArray=zeros(length(obj.SMFSResults{ResultsRow}.Data.FMIndex),1);
+            % Assign the deformation phase to the fc
+            DeformPhaseArray(1:Phase1End)=1; % Phase 1
+            DeformPhaseArray(Phase1End:Phase2End)=2; % Phase 2
+            DeformPhaseArray(Phase2End:Phase3End)=3; % Phase 3
+            DeformPhaseArray(Phase3End:end)=4; % Phase 4
+            % Assign the deformation phase to the fm based on the fc
+            for fm=1:length(DeformPhaseFMArray)
+                if fm==1
+                    FMStart=1;
+                    FMEnd=FMStart+99;
+                else
+                    FMStart=FMEnd;
+                    FMEnd=FMStart+99;
+                end 
+                [GroupCts,DeformPhase] = groupcounts(DeformPhaseArray(FMStart:FMEnd)); % Determine the number of fc in each phases per fm 
+                [~,PhaseIdx]=max(GroupCts); % Determine the phase majority within the fm  
+                DeformPhaseFMArray(fm,1)=DeformPhase(PhaseIdx); % Assign the phase of the fm based on the fc majority
+            end
+            % Allocate data
+            obj.SMFSResults{ResultsRow,1}.DeformPhase(1).Fc=DeformPhaseArray;
+            obj.SMFSResults{ResultsRow,1}.DeformPhase(1).Fm=DeformPhaseFMArray;
+        end
+
+        
+        function SM_results_gramm_boxplot(obj,ii)
+            % x-axis: Holding Time
+            % Column: Retraction velocity
+            % Color: Approach velocity
+            
+            % Input variable adaptation
+            if nargin<2
+                ii=1;
+            end
+            % Output time and date for the dairy
+            datetime('now')
+            % Change into the Folder of Interest
+            cd(obj.ExperimentFolder) % Move into the folder
+            % Create folders for saving the produced figures
+            foldername='SM_results_gramm_boxplot';    % Defines the folder name
+            mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
+            currpath=fullfile(obj.ExperimentFolder,foldername);
+            cd(currpath);
+            %% General variables 1
+            ColorBrewerMap1=[[253 174 97]./255; % Ochreish
+                 [116 173 209]./255]; % Steel blueish
+            ColorMap1=[[0 25 255]./255;  % Blue
+                [26 255 0]./255; % Green
+                [255 102 0]./255; % Orange
+                [255 0 26]./255]; % Red                
+            LimitForce1=[0 14e-12]; % Regime I - Entropic
+            LimitForce2=[14e-12 5e-9]; %Regime II - Unfolding
+            LimitForce3=[5e-9 22e-9]; % Regime III - Backbone stretching
+            LimitLength1=[0 310]; %
+            LimitLength2=[310 463]; %
+            LimitLength3=[390e-9 452.6e-9]; % Regime III - Backbone stretching
+            Res=[1 1 2560 1250]; % Define the figure resolution            
+            if obj.SMFSResults{ii}.Parameters.ExtendVelocity==0
+                ExtVelocityValueStr='All';
+            else
+                ExtVelocityValueStr=num2str(round(obj.SMFSResults{ii}.Parameters.ExtendVelocity*1e9));
+            end
+            if obj.SMFSResults{ii}.Parameters.RetractVelocity==0
+                RetVelocityValueStr='All';
+            else
+                RetVelocityValueStr=num2str(round(obj.SMFSResults{ii}.Parameters.RetractVelocity*1e9));
+            end
+            if obj.SMFSResults{ii}.Parameters.HoldingTime==-1
+                HoldingTimeValueStr='All';
+            else
+                HoldingTimeValueStr=num2str(obj.SMFSResults{ii}.Parameters.HoldingTime);
+            end
+            FigNamePt1=sprintf('SMFSResultRow%d_',ii);
+            FigNamePt2=strcat(ExtVelocityValueStr,{'_'},RetVelocityValueStr,{'_'},HoldingTimeValueStr,{'_'},obj.SMFSResults{ii}.Parameters.Substrate,{'_'},obj.SMFSResults{ii}.Parameters.Medium,{'_'},obj.SMFSResults{ii}.Parameters.ChipCantilever,{'_'},obj.SMFSResults{ii}.Parameters.Chipbox,{'_'},obj.SMFSResults{ii}.Parameters.Linker);
+            FigNamePt2=char(FigNamePt2);
+            FigNamePt3='_Boxplot';
+            LegendxAxis='Holding Time (s)';
+            LegendColor='Approach velocity (m/s)';
+            ColumnName='Retraction velocity (m/s)';
+            % Allocate general data
+            FMExtVeloData=obj.SMFSResults{ii}.Concatenate.FMExtVelocity;
+            FMRetVeloData=obj.SMFSResults{ii}.Concatenate.FMRetVelocity;
+            xData=obj.SMFSResults{ii}.Concatenate.FMHoldingTime;
+            ColorData=FMExtVeloData;
+            ColumnData=FMRetVeloData;
+           % BoxplotWidth=2;  
+            BoxplotWidth=0.2;  
+            %% Gramm object 1
+            % Define variables
+            Plottitle=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ii,1}.Data(1).FMIndex),obj.SMFSResults{ii,1}.Data(1).SumNumFcAnalysedAdhMaxApp);
+            LegendyAxis1='Adhesion force (N)';
+            NameSuffix1='_MaxAdhesionForceApproach';
+            % Allocate data
+            yData1=obj.SMFSResults{ii}.Data.AdhMaxAppConcat*-1; 
+            % Create a gramm object
+            g1=gramm('x',xData,'y',yData1,...
+                'color',ColorData);
+            g1.facet_grid([],ColumnData) % Subdivide the data in subplots horizontally
+            % Plot data 
+            g1.geom_polygon('y',{LimitForce1;LimitForce2;LimitForce3},'color',ColorMap1);
+            g1.geom_jitter('width',0.2,...
+                'dodge',2.4); % Plot raw data as jitter
+            g1.stat_boxplot('notch',true,...
+                'width',BoxplotWidth,...
+                'dodge',2.4); % Plot data in boxplot           
+            g1.set_title(Plottitle) %Set figure title
+            % Legend
+            g1.set_names('x',LegendxAxis,'y',LegendyAxis1,'color',LegendColor,'column',ColumnName)    
+            % Figure
+            h_fig1=figure(1);
+            h_fig1.Color='white'; % changes the background color of the figure
+            h_fig1.Units='pixel'; % Defines the units
+            h_fig1.OuterPosition=Res;
+            h_fig1.PaperOrientation='landscape';
+            h_fig1.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3);
+            % The actual plotting
+            g1.draw()
+            % Save figure            
+            FullName1=strcat(FigNamePt1,FigNamePt2,FigNamePt3,NameSuffix1);
+            %%% Save the current figure in the current folder
+            print(h_fig1,FullName1,'-dpng');
+            
+            %% Gramm object 2
+            % Define variables
+            Plottitle=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ii,1}.Data(1).FMIndex),obj.SMFSResults{ii,1}.Data(1).SumNumFcAnalysedAdhMaxRet);
+            LegendyAxis2='Adhesion force (nN)';
+            NameSuffix2='_MaxAdhesionForceRetract';
+            % Allocate data
+            yData2=obj.SMFSResults{ii}.Data.AdhMaxRetConcat*-1e9;
+            % Create a gramm object
+            g2=gramm('x',xData,'y',yData2,...
+                'color',ColorData);
+            g2.facet_grid([],ColumnData) % Subdivide the data in subplots horizontally
+            % Plot data 
+    %        g2.geom_polygon('y',{LimitForce1;LimitForce2;LimitForce3},'color',ColorMap1);
+            g2.geom_jitter('width',0.2,...
+                'dodge',2.4); % Plot raw data as jitter
+            g2.stat_boxplot('notch',true,...
+                'width',BoxplotWidth,...
+                'dodge',2.4); % Plot data in boxplot            
+            g2.set_title(Plottitle) %Set figure title
+            % Legend
+            g2.set_names('x',LegendxAxis,'y',LegendyAxis2,'color',LegendColor,'column',ColumnName)    
+            % Figure
+            h_fig2=figure(2);
+            h_fig2.Color='white'; % changes the background color of the figure
+            h_fig2.Units='pixel'; % Defines the units
+            h_fig2.OuterPosition=Res;
+            h_fig2.PaperOrientation='landscape';
+            h_fig2.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,NameSuffix2);
+            % The actual plotting
+            g2.draw()             
+            % Save figure            
+            FullName2=strcat(FigNamePt1,FigNamePt2,FigNamePt3,NameSuffix2);
+            %%% Save the current figure in the current folder
+            print(h_fig2,FullName2,'-dpng');
+            
+            %% Gramm object 3
+            % Define variables
+            Plottitle=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ii,1}.Data(1).FMIndex),obj.SMFSResults{ii,1}.Data(1).SumNumFcAnalysedAdhUnbinding); 
+            LegendyAxis3='Adhesion force (nN)';
+            NameSuffix3='_AdhForceUnbinding';
+            % Allocate data
+            yData3=obj.SMFSResults{ii}.Data.AdhUnbindingConcat*-1e9;
+            % Create a gramm object
+            g3=gramm('x',xData,'y',yData3,...
+                'color',ColorData);
+            g3.facet_grid([],ColumnData) % Subdivide the data in subplots horizontally
+            % Plot data
+    %        g3.geom_polygon('y',{LimitForce1;LimitForce2;LimitForce3},'color',ColorMap1);
+            g3.geom_jitter('width',0.2,...
+                'dodge',2.4); % Plot raw data as jitter
+            g3.stat_boxplot('notch',true,...
+                'width',BoxplotWidth,...
+                'dodge',2.4); % Plot data in boxplot
+            g3.set_title(Plottitle) %Set figure title
+            % Legend
+            g3.set_names('x',LegendxAxis,'y',LegendyAxis3,'color',LegendColor,'column',ColumnName)    
+            % Figure
+            h_fig3=figure(3);
+            h_fig3.Color='white'; % changes the background color of the figure
+            h_fig3.Units='pixel'; % Defines the units
+            h_fig3.OuterPosition=Res;
+            h_fig3.PaperOrientation='landscape';
+            h_fig3.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,NameSuffix3);
+            % The actual plotting
+            g3.draw()
+            % Save figure
+            FullName3=strcat(FigNamePt1,FigNamePt2,FigNamePt3,NameSuffix3);
+            %%% Save the current figure in the current folder
+            print(h_fig3,FullName3,'-dpng');
+            
+            %% Gramm object 4
+            % Define variables
+            Plottitle=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ii,1}.Data(1).FMIndex),obj.SMFSResults{ii,1}.Data(1).SumNumFcAnalysedAdhEneApp); 
+            LegendyAxis4='Adhesion energry (J)';
+            NameSuffix4='_AdhEnergyApproach';
+            % Allocate data
+            yData4=obj.SMFSResults{ii}.Data.AdhEneAppConcat*-1;
+            ColorData4=FMExtVeloData;
+            ColumnData4=FMRetVeloData;
+            % Create a gramm object
+            g4=gramm('x',xData,'y',yData4,...
+                'color',ColorData4);
+            g4.facet_grid([],ColumnData4) % Subdivide the data in subplots horizontally
+            % Plot data
+            g4.geom_jitter('width',0.2,...
+                'dodge',2.4); % Plot raw data as jitter
+            g4.stat_boxplot('notch',true,...
+                'width',BoxplotWidth,...
+                'dodge',2.4); % Plot data in boxplot
+            g4.set_title(Plottitle) %Set figure title
+            % Legend
+            g4.set_names('x',LegendxAxis,'y',LegendyAxis4,'color',LegendColor,'column',ColumnName)    
+            % Figure
+            h_fig4=figure(4);
+            h_fig4.Color='white'; % changes the background color of the figure
+            h_fig4.Units='pixel'; % Defines the units
+            h_fig4.OuterPosition=Res;
+            h_fig4.PaperOrientation='landscape';
+            h_fig4.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,NameSuffix4);
+            % The actual plotting
+            g4.draw()
+            % Save figure
+            FullName4=strcat(FigNamePt1,FigNamePt2,FigNamePt3,NameSuffix4);
+            %%% Save the current figure in the current folder
+            print(h_fig4,FullName4,'-dpng');
+            
+            %% Gramm object 5
+            % Define variables
+            Plottitle=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ii,1}.Data(1).FMIndex),obj.SMFSResults{ii,1}.Data(1).SumNumFcAnalysedAdhEneRet);
+            LegendyAxis5='Adhesion energy (J)';
+            NameSuffix5='_AdhEnergyRetract';
+            % Allocate data
+            yData5=obj.SMFSResults{ii}.Data.AdhEneRetConcat*-1;
+            % Create a gramm object
+            g5=gramm('x',xData,'y',yData5,...
+                'color',ColorData);
+            g5.facet_grid([],ColumnData) % Subdivide the data in subplots horizontally
+            % Plot data 
+            g5.geom_jitter('width',0.2,...
+                'dodge',2.4); % Plot raw data as jitter
+            g5.stat_boxplot('notch',true,...
+                'width',BoxplotWidth,...
+                'dodge',2.4); % Plot data in boxplot
+            g5.set_title(Plottitle) %Set figure title
+            % Legend
+            g5.set_names('x',LegendxAxis,'y',LegendyAxis5,'color',LegendColor,'column',ColumnName)    
+            % Figure
+            h_fig5=figure(5);
+            h_fig5.Color='white'; % changes the background color of the figure
+            h_fig5.Units='pixel'; % Defines the units
+            h_fig5.OuterPosition=Res;
+            h_fig5.PaperOrientation='landscape';
+            h_fig5.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,NameSuffix5);
+            % The actual plotting
+            g5.draw()
+            % Save figure
+            FullName5=strcat(FigNamePt1,FigNamePt2,FigNamePt3,NameSuffix5);
+            %%% Save the current figure in the current folder
+            print(h_fig5,FullName5,'-dpng');
+            
+            %% Gramm object 6
+            % Define variables
+            Plottitle=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ii,1}.Data(1).FMIndex),obj.SMFSResults{ii,1}.Data(1).SumNumFcAnalysedyPullingLength);
+            LegendyAxis6='Pulling length (nm)';
+            NameSuffix6='_Pullinglength';
+            % Allocate data
+            yData6=obj.SMFSResults{ii}.Data.yPullingLengthConcat*1e9;
+            % Create a gramm object
+            g6=gramm('x',xData,'y',yData6,...
+                'color',ColorData);
+            g6.facet_grid([],ColumnData) % Subdivide the data in subplots horizontally
+            % Plot data 
+            g6.geom_polygon('y',{LimitLength1;LimitLength2},'color',ColorBrewerMap1);
+            g6.geom_jitter('width',0.2,...
+                'dodge',2.4); % Plot raw data as jitter
+            g6.stat_boxplot('notch',true,...
+                'width',BoxplotWidth,...
+                'dodge',2.4); % Plot data in boxplot
+            g6.set_title(Plottitle) %Set figure title
+            % Legend
+            g6.set_names('x',LegendxAxis,'y',LegendyAxis6,'color',LegendColor,'column',ColumnName)    
+            % Figure
+            h_fig6=figure(6);
+            h_fig6.Color='white'; % changes the background color of the figure
+            h_fig6.Units='pixel'; % Defines the units
+            h_fig6.OuterPosition=Res;
+            h_fig6.PaperOrientation='landscape';
+            h_fig6.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,NameSuffix6);
+            % The actual plotting
+            g6.draw()
+            % Save figure
+            FullName6=strcat(FigNamePt1,FigNamePt2,FigNamePt3,NameSuffix6);
+            %%% Save the current figure in the current folder
+            print(h_fig6,FullName6,'-dpng');
+            
+            %% Gramm object 7
+            % Define variables
+            Plottitle=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ii,1}.Data(1).FMIndex),obj.SMFSResults{ii,1}.Data(1).SumNumFcAnalysedySnapInLength);
+            LegendyAxis7='Snap-In length (nm)';
+            NameSuffix7='_SnapInLength';
+            % Allocate data
+            yData7=obj.SMFSResults{ii}.Data.ySnapInLengthConcat*1e9;
+            % Create a gramm object
+            g7=gramm('x',xData,'y',yData7,...
+                'color',ColorData);
+            g7.facet_grid([],ColumnData) % Subdivide the data in subplots horizontally
+            % Plot data     
+            g7.geom_polygon('y',{LimitLength1;LimitLength2},'color',ColorBrewerMap1);
+            g7.geom_jitter('width',0.2,...
+                'dodge',2.4); % Plot raw data as jitter
+            g7.stat_boxplot('notch',true,...
+                'width',BoxplotWidth,...
+                'dodge',2.4); % Plot data in boxplot            
+            g7.set_title(Plottitle) %Set figure title
+            % Legend
+            g7.set_names('x',LegendxAxis,'y',LegendyAxis7,'color',LegendColor,'column',ColumnName)    
+            % Figure
+            h_fig7=figure(7);
+            h_fig7.Color='white'; % changes the background color of the figure
+            h_fig7.Units='pixel'; % Defines the units
+            h_fig7.OuterPosition=Res;
+            h_fig7.PaperOrientation='landscape';
+            h_fig7.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,NameSuffix7);
+            % The actual plotting
+            g7.draw()
+            % Save figure
+            FullName7=strcat(FigNamePt1,FigNamePt2,FigNamePt3,NameSuffix7);
+            %%% Save the current figure in the current folder
+            print(h_fig7,FullName7,'-dpng');
+            % House keeping
+            close all
+        end
+                         
+        function SM_results_gramm_boxplot2(obj,ResultsRow,Linker,xArg,Var)
+           % Input variables: 
+           % ResultsRow: double ,e.g. 1
+           % Linker: string , either 'long' or 'short'
+           % xArg (x-axis argument): string, either 'Index' or 'DateTime'
+           % CBar (Color Bar): string, either 'Y' or 'N' 
+           % Var (Variant): double, either 1 or 2
+            
+            % Input variable adaptation
+            if nargin<2
+                ResultsRow=1;
+            end
+            ColorBrewerMap1=[[253 174 97]./255; % Ochreish
+                 [116 173 209]./255]; % Steel blueish
+            % Change into the Folder of Interest
+            cd(obj.ExperimentFolder) % Move into the folder
+            % Create folders for saving the produced figures
+            foldername='SM_results_gramm_boxplot2';    % Defines the folder name
+            mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
+            currpath=fullfile(obj.ExperimentFolder,foldername);
+            cd(currpath);
+            %% General variables 1
+            if strcmpi(Linker,'Long')
+            LimitLengthRet1=[0 378]; 
+            LimitLengthRet2=[378 522];
+            LimitLengthApp=[50 120];
+            elseif strcmpi(Linker,'Short')
+            LimitLengthRet1=[0 333]; 
+            LimitLengthRet2=[333 463]; 
+            LimitLengthApp=[50 120];
+            end
+            if strcmpi(xArg,'DateTime')
+            LegendxAxis='Date and Time';
+            xData=obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSort;
+            xDataMin=min(xData);
+            xDataMax=max(xData);
+            xAxisCorr=(xDataMax-xDataMin)*0.05;
+            xDataPt20=xDataMax-(xDataMax-xDataMin)*0.8;
+            xDataPt40=xDataMax-(xDataMax-xDataMin)*0.6;
+            xDataPt60=xDataMax-(xDataMax-xDataMin)*0.4; 
+            xDataPt80=xDataMax-(xDataMax-xDataMin)*0.2; 
+            BoxplotWidth=2;
+            BoxplotWidthOverview=0.8;
+            elseif strcmpi(xArg,'Index')
+            LegendxAxis='Chronological force map order';
+            xData=obj.SMFSResults{ResultsRow}.Concatenate.FMNum;
+            xDataMin=min(xData);
+            xDataMax=max(xData);               
+            xAxisCorr=(xDataMax-xDataMin)*0.05;
+            xDataPt20=ceil(xDataMax-(xDataMax-xDataMin)*0.8);
+            xDataPt40=ceil(xDataMax-(xDataMax-xDataMin)*0.6);
+            xDataPt60=ceil(xDataMax-(xDataMax-xDataMin)*0.4); 
+            xDataPt80=ceil(xDataMax-(xDataMax-xDataMin)*0.2);        
+            BoxplotWidth=2;
+            BoxplotWidthOverview=0.5;
+            end           
+            Res=[1 1 2560 1250]; % Define the figure resolution
+            if Var==1
+            LegendColor='Medium';
+            LightnessName='Substrate';
+            MarkerName='ChipCantilever';
+            LightnessData=obj.SMFSResults{ResultsRow}.Concatenate.FMSubstrate(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx);
+            ColorData=obj.SMFSResults{ResultsRow}.Concatenate.FMEnvCond(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx);
+            MarkerData=obj.SMFSResults{ResultsRow}.Concatenate.FMChipCant(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx);  
+            elseif Var==2
+            LegendColor='Approach velocity (m/s)';
+            LightnessName='Retraction velocity (m/s)';
+            MarkerName='Holding Time';
+            FMExtVeloData=obj.SMFSResults{ResultsRow}.Concatenate.FMExtVelocity(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx);
+            FMRetVeloData=obj.SMFSResults{ResultsRow}.Concatenate.FMRetVelocity(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx);
+            ColorData=FMExtVeloData;
+            LightnessData=FMRetVeloData;
+            MarkerData=obj.SMFSResults{ResultsRow}.Concatenate.FMHoldingTime(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx);    
+            end
+            if obj.SMFSResults{ResultsRow}.Parameters.ExtendVelocity==0
+                ExtVelocityValueStr='All';
+            else
+                ExtVelocityValueStr=num2str(round(obj.SMFSResults{ResultsRow}.Parameters.ExtendVelocity*1e9));
+            end
+            if obj.SMFSResults{ResultsRow}.Parameters.RetractVelocity==0
+                RetVelocityValueStr='All';
+            else
+                RetVelocityValueStr=num2str(round(obj.SMFSResults{ResultsRow}.Parameters.RetractVelocity*1e9));
+            end
+            if obj.SMFSResults{ResultsRow}.Parameters.HoldingTime==-1
+                HoldingTimeValueStr='All';
+            else
+                HoldingTimeValueStr=num2str(obj.SMFSResults{ResultsRow}.Parameters.HoldingTime);
+            end
+            % General names
+            FigNamePt1=sprintf('SMFSResultRow%d_',ResultsRow);
+            FigNamePt2=strcat(ExtVelocityValueStr,{'_'},RetVelocityValueStr,{'_'},HoldingTimeValueStr,{'_'},obj.SMFSResults{ResultsRow}.Parameters.Substrate,{'_'},obj.SMFSResults{ResultsRow}.Parameters.Medium,{'_'},obj.SMFSResults{ResultsRow}.Parameters.ChipCantilever,{'_'},obj.SMFSResults{ResultsRow}.Parameters.Chipbox,{'_'},obj.SMFSResults{ResultsRow}.Parameters.Linker);
+            FigNamePt2=char(FigNamePt2);           
+            FigNamePt3='_Boxplot2';
+            FigNamePt4=sprintf('_Var%d_',Var);
+            GenNameSuffix1='_Pt1';
+            GenNameSuffix2='_Pt2';
+            GenNameSuffix3='_Pt3';
+            GenNameSuffix4='_Pt4';
+            GenNameSuffix5='_Pt5';
+            MarkerStyle={'d' 's' 'v' 'o'};
+            MarkerSize=10;     
+            %% Gramm object 1
+            % Define variables
+            Plottitle1=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ResultsRow,1}.Data(1).FMIndex),obj.SMFSResults{ResultsRow,1}.Data(1).SumNumFcAnalysedAdhMaxApp);
+            LegendyAxis1='Adhesion force (nN)';
+            NameSuffix1='_MaxAdhesionForceApproach';
+            % Allocate data
+            yData1=obj.SMFSResults{ResultsRow}.Data.AdhMaxAppConcat(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*-1e9; 
+            % Create a gramm object
+            g1=gramm('x',xData,'y',yData1,...
+                'color',ColorData,...
+                'lightness',LightnessData,...
+                'marker',MarkerData);
+            % Plot data 
+      %      g1.geom_polygon('y',{LimitForce1;LimitForce2;LimitForce3},'color',ColorBrewerMap1);
+            g1.stat_boxplot('notch',true,...
+                 'width',BoxplotWidthOverview,...
+                 'dodge',2); % Plot data in boxplot
+           % Set options
+           g1.axe_property('xlim',[xDataMin-xAxisCorr xDataMax+xAxisCorr]) % Set x limit
+           if strcmpi(xArg,'DateTime')
+           g1.set_datetick('x',0,'keeplimits') % Format x-axis
+           end   
+           g1.set_title(Plottitle1) %Set figure title
+           g1.set_names('x',LegendxAxis,'y',LegendyAxis1,'color',LegendColor,'lightness',LightnessName,'marker',MarkerName)
+           g1.set_color_options('map','hcl',...
+               'n_color',6,...
+               'n_lightness',6,...
+               'legend','expand')  
+           g1.set_text_options('font','Helvetica','base_size',14,'label_scaling',1.2)
+           %g1.set_layout_options("legend",0) % Hide legend
+            g1.set_layout_options("legend",1) % Show legend
+            % Figure
+            h_fig1=figure(1);
+            h_fig1.Color='white'; % changes the background color of the figure
+            h_fig1.Units='pixel'; % Defines the units
+            h_fig1.OuterPosition=Res;
+            h_fig1.PaperOrientation='landscape';
+            h_fig1.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,FigNamePt4,xArg,NameSuffix1);
+            % The actual plotting
+            g1.draw()             
+            % Save figure            
+            FullName1=strcat(FigNamePt1,FigNamePt2,FigNamePt3,FigNamePt4,xArg,NameSuffix1);
+            print(h_fig1,FullName1,'-dpng'); 
+            print(h_fig1,FullName1,'-depsc');
+   %         g1.export('file_name',FullName2,file_type='pdf',width=42,height=29.7,units='centimeters');
+
+            %% Gramm object 2
+            % Define variables
+            Plottitle2=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ResultsRow,1}.Data(1).FMIndex),obj.SMFSResults{ResultsRow,1}.Data(1).SumNumFcAnalysedAdhMaxRet);
+            LegendyAxis2='Adhesion force (nN)';
+            NameSuffix2='_MaxAdhesionForceRetract';
+            % Allocate data
+            yData2=obj.SMFSResults{ResultsRow}.Data.AdhMaxRetConcat(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*-1e9;               
+            % Create a gramm object
+            g2=gramm('x',xData,'y',yData2,...
+                'color',ColorData,...
+                'lightness',LightnessData,...
+                'marker',MarkerData);
+            % Plot data 
+      %      g2.geom_polygon('y',{LimitForce1;LimitForce2;LimitForce3},'color',ColorBrewerMap1);
+            g2.stat_boxplot('notch',true,...
+                 'width',BoxplotWidthOverview,...
+                 'dodge',2); % Plot data in boxplot
+           % Set options
+           g2.axe_property('xlim',[xDataMin-xAxisCorr xDataMax+xAxisCorr]) % Set x limit
+           if strcmpi(xArg,'DateTime')
+           g2.set_datetick('x',0,'keeplimits') % Format x-axis
+           end   
+           g2.set_title(Plottitle2) %Set figure title
+           g2.set_names('x',LegendxAxis,'y',LegendyAxis2,'color',LegendColor,'lightness',LightnessName,'marker',MarkerName)
+           g2.set_color_options('map','hcl',...
+               'n_color',6,...
+               'n_lightness',6,...
+               'legend','expand')  
+           g2.set_text_options('font','Helvetica','base_size',14,'label_scaling',1.2)
+           %g2.set_layout_options("legend",0) % Hide legend
+            g2.set_layout_options("legend",1) % Show legend
+            % Figure
+            h_fig2=figure(2);
+            h_fig2.Color='white'; % changes the background color of the figure
+            h_fig2.Units='pixel'; % Defines the units
+            h_fig2.OuterPosition=Res;
+            h_fig2.PaperOrientation='landscape';
+            h_fig2.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,FigNamePt4,xArg,NameSuffix2);
+            % The actual plotting
+            g2.draw()             
+            % Save figure            
+            FullName2=strcat(FigNamePt1,FigNamePt2,FigNamePt3,FigNamePt4,xArg,NameSuffix2);
+            print(h_fig2,FullName2,'-dpng');
+            print(h_fig2,FullName2,'-depsc');
+   %         g2.export('file_name',FullName2,file_type='pdf',width=42,height=29.7,units='centimeters');  
+%             %% Create a gramm object 21
+%             g21=gramm('x',xData,'y',yData2,...
+%                 'color',ColorData,...
+%                 'lightness',LightnessData,...
+%                 'marker',MarkerData);
+%             % Plot data 
+%    %         g21.geom_polygon('y',{LimitForce1;LimitForce2;LimitForce3},'color',ColorMap1);
+%             g21.stat_boxplot('notch',true,...
+%                 'width',BoxplotWidth,...
+%                 'dodge',2); % Plot data in boxplot
+%             g21.geom_point()
+%             % Set options
+%             g21.axe_property('xlim',[xDataMin xDataPt20]) % Set x limit
+%             if strcmpi(xArg,'DateTime')
+%             g21.set_datetick('x',0,'keeplimits') % Format x-axis
+%             end
+%             g21.set_point_options('markers',MarkerStyle,'base_size',MarkerSize)
+%             g21.set_names('x',LegendxAxis,'y',LegendyAxis2,'color',LegendColor,'lightness',LightnessName)
+%             g21.set_color_options('map','hcl',...
+%                 'n_color',6,...
+%                 'n_lightness',6,...
+%                 'legend','merge')
+%             % Figure
+%             h_fig21=figure(21);
+%             h_fig21.Color='white'; % changes the background color of the figure
+%             h_fig21.Units='pixel'; % Defines the units
+%             h_fig21.OuterPosition=Res;
+%             h_fig21.PaperOrientation='landscape';
+%             h_fig21.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix2,GenNameSuffix1);
+%             % The actual plotting
+%             g21.draw()             
+%             % Save figure            
+%             FullName21=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix2,GenNameSuffix1);
+%             %%% Save the current figure in the current folder
+%             print(h_fig21,FullName21,'-dpng');  
+%             %% Create a gramm object 22
+%             g22=gramm('x',xData,'y',yData2,...
+%                 'color',ColorData,...
+%                 'lightness',LightnessData,...
+%                 'marker',MarkerData);
+%             % Plot data 
+%  %           g22.geom_polygon('y',{LimitForce1;LimitForce2;LimitForce3},'color',ColorMap1);
+%             g22.stat_boxplot('notch',true,...
+%                 'width',BoxplotWidth,...
+%                 'dodge',2); % Plot data in boxplot
+%             g22.geom_point()
+%             % Set options
+%             g22.axe_property('xlim',[xDataPt20 xDataPt40]) % Set x limit
+%             if strcmpi(xArg,'DateTime')    
+%             g22.set_datetick('x',0,'keeplimits') % Format x-axis
+%             end
+%             g22.set_point_options('markers',MarkerStyle,'base_size',MarkerSize)
+%             g22.set_names('x',LegendxAxis,'y',LegendyAxis2,'color',LegendColor,'lightness',LightnessName)
+%             g22.set_color_options('map','hcl',...
+%                 'n_color',6,...
+%                 'n_lightness',6,...
+%                 'legend','expand')
+%             % Figure
+%             h_fig22=figure(22);
+%             h_fig22.Color='white'; % changes the background color of the figure
+%             h_fig22.Units='pixel'; % Defines the units
+%             h_fig22.OuterPosition=Res;
+%             h_fig22.PaperOrientation='landscape';
+%             h_fig22.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix2,GenNameSuffix2);
+%             % The actual plotting
+%             g22.draw()             
+%             % Save figure            
+%             FullName22=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix2,GenNameSuffix2);
+%             %%% Save the current figure in the current folder
+%             print(h_fig22,FullName22,'-dpng'); 
+%             %% Create a gramm object 23
+%             g23=gramm('x',xData,'y',yData2,...
+%                 'color',ColorData,...
+%                 'lightness',LightnessData,...
+%                 'marker',MarkerData);
+%             % Plot data 
+% %            g23.geom_polygon('y',{LimitForce1;LimitForce2;LimitForce3},'color',ColorMap1);
+%             g23.stat_boxplot('notch',true,...
+%                 'width',BoxplotWidth,...
+%                 'dodge',2); % Plot data in boxplot
+%             g23.geom_point()
+%             % Set options
+%             g23.axe_property('xlim',[xDataPt40 xDataPt60]) % Set x limit
+%             if strcmpi(xArg,'DateTime')
+%             g23.set_datetick('x',0,'keeplimits') % Format x-axis
+%             end
+%             g23.set_point_options('markers',MarkerStyle,'base_size',MarkerSize)
+%             g23.set_names('x',LegendxAxis,'y',LegendyAxis2,'color',LegendColor,'lightness',LightnessName)
+%             g23.set_color_options('map','hcl',...
+%                 'n_color',6,...
+%                 'n_lightness',6,...
+%                 'legend','expand')
+%             % Figure
+%             h_fig23=figure(23);
+%             h_fig23.Color='white'; % changes the background color of the figure
+%             h_fig23.Units='pixel'; % Defines the units
+%             h_fig23.OuterPosition=Res;
+%             h_fig23.PaperOrientation='landscape';
+%             h_fig23.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix2,GenNameSuffix3);
+%             % The actual plotting
+%             g23.draw()             
+%             % Save figure            
+%             FullName23=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix2,GenNameSuffix3);
+%             %%% Save the current figure in the current folder
+%             print(h_fig23,FullName23,'-dpng');  
+%             %% Create a gramm object 24
+%             g24=gramm('x',xData,'y',yData2,...
+%                 'color',ColorData,...
+%                 'lightness',LightnessData,...
+%                 'marker',MarkerData);
+%             % Plot data 
+%     %        g24.geom_polygon('y',{LimitForce1;LimitForce2;LimitForce3},'color',ColorMap1);
+%             g24.stat_boxplot('notch',true,...
+%                 'width',BoxplotWidth,...
+%                 'dodge',2); % Plot data in boxplot
+%             g24.geom_point()
+%             % Set options
+%             g24.axe_property('xlim',[xDataPt60 xDataMax]) % Set x limit
+%             if strcmpi(xArg,'DateTime')
+%             g24.set_datetick('x',0,'keeplimits') % Format x-axis
+%             end
+%             g24.set_point_options('markers',MarkerStyle,'base_size',MarkerSize)
+%             g24.set_names('x',LegendxAxis,'y',LegendyAxis2,'color',LegendColor,'lightness',LightnessName)
+%             g24.set_color_options('map','hcl',...
+%                 'n_color',6,...
+%                 'n_lightness',6,...
+%                 'legend','expand') 
+%             % Figure
+%             h_fig24=figure(24);
+%             h_fig24.Color='white'; % changes the background color of the figure
+%             h_fig24.Units='pixel'; % Defines the units
+%             h_fig24.OuterPosition=Res;
+%             h_fig24.PaperOrientation='landscape';
+%             h_fig24.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix2,GenNameSuffix4);
+%             % The actual plotting
+%             g24.draw()             
+%             % Save figure            
+%             FullName24=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix2,GenNameSuffix4);
+%             %%% Save the current figure in the current folder
+%             print(h_fig24,FullName24,'-dpng');   
+%             %% Create a gramm object 25
+%             g25=gramm('x',xData,'y',yData2,...
+%                 'color',ColorData,...
+%                 'lightness',LightnessData,...
+%                 'marker',MarkerData);
+%             g25.geom_point()
+%             % Plot data 
+%      %       g25.geom_polygon('y',{LimitForce1;LimitForce2;LimitForce3},'color',ColorMap1);
+%             g25.stat_boxplot('notch',true,...
+%                 'width',BoxplotWidth,...
+%                 'dodge',2); % Plot data in boxplot
+%             % Set options
+%             g25.axe_property('xlim',[xDataPt80 xDataMax]) % Set x limit
+%             if strcmpi(xArg,'DateTime')
+%             g25.set_datetick('x',0,'keeplimits') % Format x-axis
+%             end
+%             g25.set_point_options('markers',MarkerStyle,'base_size',MarkerSize)
+%             g25.set_names('x',LegendxAxis,'y',LegendyAxis2,'color',LegendColor,'lightness',LightnessName)
+%             g25.set_color_options('map','hcl',...
+%                 'n_color',6,...
+%                 'n_lightness',6,...
+%                 'legend','expand') 
+%             % Figure
+%             h_fig25=figure(25);
+%             h_fig25.Color='white'; % changes the background color of the figure
+%             h_fig25.Units='pixel'; % Defines the units
+%             h_fig25.OuterPosition=Res;
+%             h_fig25.PaperOrientation='landscape';
+%             h_fig25.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix2,GenNameSuffix5);
+%             % The actual plotting
+%             g25.draw()             
+%             % Save figure            
+%             FullName25=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix2,GenNameSuffix5);
+%             %%% Save the current figure in the current folder
+%             print(h_fig25,FullName25,'-dpng');
+% 
+
+            %% Gramm object 3
+            % Define variables
+            Plottitle3=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ResultsRow,1}.Data(1).FMIndex),obj.SMFSResults{ResultsRow,1}.Data(1).SumNumFcAnalysedAdhUnbinding); 
+            LegendyAxis3='Adhesion force (nN)';
+            NameSuffix3='_AdhForceUnbinding';
+            % Allocate data
+            yData3=obj.SMFSResults{ResultsRow}.Data.AdhUnbindingConcat(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*-1e9;
+            % Create a gramm object
+            g3=gramm('x',xData,'y',yData3,...
+                'color',ColorData,...
+                'lightness',LightnessData,...
+                'marker',MarkerData);
+            % Plot data 
+      %     g3.geom_polygon('y',{LimitForce1;LimitForce2;LimitForce3},'color',ColorBrewerMap1);
+            g3.stat_boxplot('notch',true,...
+                 'width',BoxplotWidthOverview,...
+                 'dodge',2); % Plot data in boxplot
+           % Set options
+           g3.axe_property('xlim',[xDataMin-xAxisCorr xDataMax+xAxisCorr]) % Set x limit
+           if strcmpi(xArg,'DateTime')
+           g3.set_datetick('x',0,'keeplimits') % Format x-axis
+           end   
+           g3.set_title(Plottitle3) %Set figure title
+           g3.set_names('x',LegendxAxis,'y',LegendyAxis3,'color',LegendColor,'lightness',LightnessName,'marker',MarkerName)
+           g3.set_color_options('map','hcl',...
+               'n_color',6,...
+               'n_lightness',6,...
+               'legend','expand')  
+           g3.set_text_options('font','Helvetica','base_size',14,'label_scaling',1.2)
+          % g3.set_layout_options("legend",0) % Hide legend
+            g3.set_layout_options("legend",1) % Show legend
+            % Figure
+            h_fig3=figure(3);
+            h_fig3.Color='white'; % changes the background color of the figure
+            h_fig3.Units='pixel'; % Defines the units
+            h_fig3.OuterPosition=Res;
+            h_fig3.PaperOrientation='landscape';
+            h_fig3.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,FigNamePt4,xArg,NameSuffix3);
+            % The actual plotting
+            g3.draw()             
+            % Save figure            
+            FullName3=strcat(FigNamePt1,FigNamePt2,FigNamePt3,FigNamePt4,xArg,NameSuffix3);
+            print(h_fig3,FullName3,'-dpng');
+            print(h_fig3,FullName3,'-depsc');
+   %         g3.export('file_name',FullName3,file_type='pdf',width=42,height=29.7,units='centimeters');
+            
+            %% Gramm object 4
+            % Define variables
+            Plottitle4=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ResultsRow,1}.Data(1).FMIndex),obj.SMFSResults{ResultsRow,1}.Data(1).SumNumFcAnalysedAdhEneApp);
+            LegendyAxis4='Adhesion energry (aJ)';
+            NameSuffix4='_AdhEnergyApproach';
+            % Allocate data
+            yData4=obj.SMFSResults{ResultsRow}.Data.AdhEneAppConcat(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*-1e18;
+            % Create a gramm object
+            g4=gramm('x',xData,'y',yData4,...
+                'color',ColorData,...
+                'lightness',LightnessData,...
+                'marker',MarkerData);          
+            % Plot data 
+            g4.stat_boxplot('notch',true,...
+                'width',BoxplotWidthOverview,...
+                'dodge',2); % Plot data in boxplot
+            % Set options
+            g4.axe_property('xlim',[xDataMin-xAxisCorr xDataMax+xAxisCorr]) % Set x limit
+            if strcmpi(xArg,'DateTime')
+            g4.set_datetick('x',0,'keeplimits') % Format x-axis
+            end
+            g4.set_title(Plottitle4) %Set figure title
+            g4.set_names('x',LegendxAxis,'y',LegendyAxis4,'color',LegendColor,'lightness',LightnessName,'marker',MarkerName)   
+            g4.set_color_options('map','hcl',...
+                'n_color',6,...
+                'n_lightness',6,...
+                'legend','expand')      
+            g4.set_text_options('font','Helvetica','base_size',14,'label_scaling',1.2)
+            %g4.set_layout_options("legend",0) % Hide legend
+            g4.set_layout_options("legend",1) % Show legend
+            % Figure
+            h_fig4=figure(4);
+            h_fig4.Color='white'; % changes the background color of the figure
+            h_fig4.Units='pixel'; % Defines the units
+            h_fig4.OuterPosition=Res;
+            h_fig4.PaperOrientation='landscape';
+            h_fig4.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,FigNamePt4,xArg,NameSuffix4);
+            % The actual plotting
+            g4.draw()
+            % Save figure
+            FullName4=strcat(FigNamePt1,FigNamePt2,FigNamePt3,FigNamePt4,xArg,NameSuffix4);
+            print(h_fig4,FullName4,'-dpng'); 
+            print(h_fig4,FullName4,'-depsc'); 
+         %   g4.export('file_name',FullName5,file_type='pdf',width=42,height=29.7,units='centimeters');
+            
+            %% Gramm object 5
+            % Define variables
+            Plottitle5=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ResultsRow,1}.Data(1).FMIndex),obj.SMFSResults{ResultsRow,1}.Data(1).SumNumFcAnalysedAdhEneRet);
+            LegendyAxis5='Adhesion energy (aJ)';
+            NameSuffix5='_AdhEnergyRetract';
+            % Allocate data
+            yData5=obj.SMFSResults{ResultsRow}.Data.AdhEneRetConcat(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*-1e18;
+            % Create a gramm object
+            g5=gramm('x',xData,'y',yData5,...
+                'color',ColorData,...
+                'lightness',LightnessData,...
+                'marker',MarkerData);          
+            % Plot data 
+            g5.stat_boxplot('notch',true,...
+                'width',BoxplotWidthOverview,...
+                'dodge',2); % Plot data in boxplot
+            % Set options
+            g5.axe_property('xlim',[xDataMin-xAxisCorr xDataMax+xAxisCorr]) % Set x limit
+            if strcmpi(xArg,'DateTime')
+            g5.set_datetick('x',0,'keeplimits') % Format x-axis
+            end
+            g5.set_title(Plottitle5) %Set figure title
+            g5.set_names('x',LegendxAxis,'y',LegendyAxis5,'color',LegendColor,'lightness',LightnessName,'marker',MarkerName)   
+            g5.set_color_options('map','hcl',...
+                'n_color',6,...
+                'n_lightness',6,...
+                'legend','expand')      
+            g5.set_text_options('font','Helvetica','base_size',14,'label_scaling',1.2)
+            %g5.set_layout_options("legend",0) % Hide legend
+            g5.set_layout_options("legend",1) % Show legend
+            % Figure
+            h_fig5=figure(5);
+            h_fig5.Color='white'; % changes the background color of the figure
+            h_fig5.Units='pixel'; % Defines the units
+            h_fig5.OuterPosition=Res;
+            h_fig5.PaperOrientation='landscape';
+            h_fig5.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,FigNamePt4,xArg,NameSuffix5);
+            % The actual plotting
+            g5.draw()
+            % Save figure
+            FullName5=strcat(FigNamePt1,FigNamePt2,FigNamePt3,FigNamePt4,xArg,NameSuffix5);
+            print(h_fig5,FullName5,'-dpng'); 
+            print(h_fig5,FullName5,'-depsc');
+         %   g5.export('file_name',FullName5,file_type='pdf',width=42,height=29.7,units='centimeters'); 
+%             %% Create a gramm object 51
+%             g51=gramm('x',xData,'y',yData5,...
+%                 'color',ColorData,...
+%                 'lightness',LightnessData,...
+%                 'marker',MarkerData);
+%             % Plot data 
+%             g51.stat_boxplot('notch',true,...
+%                 'width',BoxplotWidth,...
+%                 'dodge',2); % Plot data in boxplot
+%             g51.geom_point()
+%             % Set options
+%             g51.axe_property('xlim',[xDataMin xDataPt20]) % Set x limit
+%             if strcmpi(xArg,'DateTime')
+%             g51.set_datetick('x',0,'keeplimits') % Format x-axis
+%             end
+%             g51.set_point_options('markers',MarkerStyle,'base_size',MarkerSize)
+%             g51.set_names('x',LegendxAxis,'y',LegendyAxis5,'color',LegendColor,'lightness',LightnessName)
+%             g51.set_color_options('map','hcl',...
+%                 'n_color',6,...
+%                 'n_lightness',6,...
+%                 'legend','expand')  
+%             %g51.no_legend()
+%             % Figure
+%             h_fig51=figure(51);
+%             h_fig51.Color='white'; % changes the background color of the figure
+%             h_fig51.Units='pixel'; % Defines the units
+%             h_fig51.OuterPosition=Res;
+%             h_fig51.PaperOrientation='landscape';
+%             h_fig51.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix5,GenNameSuffix1);
+%             % The actual plotting
+%             g51.draw()             
+%             % Save figure            
+%             FullName51=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix5,GenNameSuffix1);
+%             %%% Save the current figure in the current folder
+%             print(h_fig51,FullName51,'-dpng');
+%             %% Create a gramm object 52
+%             g52=gramm('x',xData,'y',yData5,...
+%                 'color',ColorData,...
+%                 'lightness',LightnessData,...
+%                 'marker',MarkerData);
+%             % Plot data            
+%             g52.stat_boxplot('notch',true,...
+%                 'width',BoxplotWidth,...
+%                 'dodge',2); % Plot data in boxplot
+%             g52.geom_point()
+%             % Set options
+%             g52.axe_property('xlim',[xDataPt20 xDataPt40]) % Set x limit
+%             if strcmpi(xArg,'DateTime')
+%             g52.set_datetick('x',0,'keeplimits') % Format x-axis
+%             end
+%             g52.set_point_options('markers',MarkerStyle,'base_size',MarkerSize)
+%             g52.set_names('x',LegendxAxis,'y',LegendyAxis5,'color',LegendColor,'lightness',LightnessName)
+%             g52.set_color_options('map','hcl',...
+%                 'n_color',6,...
+%                 'n_lightness',6,...
+%                 'legend','expand') 
+%             %g52.no_legend()
+%             % Figure
+%             h_fig52=figure(52);
+%             h_fig52.Color='white'; % changes the background color of the figure
+%             h_fig52.Units='pixel'; % Defines the units
+%             h_fig52.OuterPosition=Res;
+%             h_fig52.PaperOrientation='landscape';
+%             h_fig52.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix5,GenNameSuffix2);
+%             % The actual plotting
+%             g52.draw()             
+%             % Save figure            
+%             FullName52=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix5,GenNameSuffix2);
+%             %%% Save the current figure in the current folder
+%             print(h_fig52,FullName52,'-dpng');
+%             %% Create a gramm object 53
+%             g53=gramm('x',xData,'y',yData5,...
+%                 'color',ColorData,...
+%                 'lightness',LightnessData,...
+%                 'marker',MarkerData);
+%             % Plot data 
+%             g53.stat_boxplot('notch',true,...
+%                 'width',BoxplotWidth,...
+%                 'dodge',2); % Plot data in boxplot
+%             g53.geom_point()
+%             % Set options
+%             g53.axe_property('xlim',[xDataPt40 xDataPt60]) % Set x limit
+%             if strcmpi(xArg,'DateTime')
+%             g53.set_datetick('x',0,'keeplimits') % Format x-axis
+%             end
+%             g53.set_point_options('markers',MarkerStyle,'base_size',MarkerSize)
+%             g53.set_names('x',LegendxAxis,'y',LegendyAxis5,'color',LegendColor,'lightness',LightnessName)
+%             g53.set_color_options('map','hcl',...
+%                 'n_color',6,...
+%                 'n_lightness',6,...
+%                 'legend','expand')
+%             %g53.no_legend()
+%             % Figure
+%             h_fig53=figure(53);
+%             h_fig53.Color='white'; % changes the background color of the figure
+%             h_fig53.Units='pixel'; % Defines the units
+%             h_fig53.OuterPosition=Res;
+%             h_fig53.PaperOrientation='landscape';
+%             h_fig53.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix5,GenNameSuffix3);
+%             % The actual plotting
+%             g53.draw()             
+%             % Save figure            
+%             FullName53=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix5,GenNameSuffix3);
+%             %%% Save the current figure in the current folder
+%             print(h_fig53,FullName53,'-dpng');
+%             %% Create a gramm object 54
+%             g54=gramm('x',xData,'y',yData5,...
+%                 'color',ColorData,...
+%                 'lightness',LightnessData,...
+%                 'marker',MarkerData);
+%             % Plot data 
+%             g54.stat_boxplot('notch',true,...
+%                 'width',BoxplotWidth,...
+%                 'dodge',2); % Plot data in boxplot
+%             g54.geom_point()
+%             % Set options
+%             g54.axe_property('xlim',[xDataPt60 xDataMax]) % Set x limit
+%             if strcmpi(xArg,'DateTime')
+%             g54.set_datetick('x',0,'keeplimits') % Format x-axis
+%             end
+%             g54.set_point_options('markers',MarkerStyle,'base_size',MarkerSize)
+%             g54.set_names('x',LegendxAxis,'y',LegendyAxis5,'color',LegendColor,'lightness',LightnessName)
+%             g54.set_color_options('map','hcl',...
+%                 'n_color',6,...
+%                 'n_lightness',6,...
+%                 'legend','expand')
+%             %g54.no_legend()
+%             % Figure
+%             h_fig54=figure(54);
+%             h_fig54.Color='white'; % changes the background color of the figure
+%             h_fig54.Units='pixel'; % Defines the units
+%             h_fig54.OuterPosition=Res;
+%             h_fig54.PaperOrientation='landscape';
+%             h_fig54.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix5,GenNameSuffix4);
+%             % The actual plotting
+%             g54.draw()             
+%             % Save figure            
+%             FullName54=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix5,GenNameSuffix4);
+%             %%% Save the current figure in the current folder
+%             print(h_fig54,FullName54,'-dpng');              
+%             %% Create a gramm object 55
+%             g55=gramm('x',xData,'y',yData5,...
+%                 'color',ColorData,...
+%                 'lightness',LightnessData,...
+%                 'marker',MarkerData);
+%             % Plot data 
+%             g55.stat_boxplot('notch',true,...
+%                 'width',BoxplotWidth,...
+%                 'dodge',2); % Plot data in boxplot
+%             g55.geom_point()
+%             % Set options
+%             g55.axe_property('xlim',[xDataPt80 xDataMax]) % Set x limit
+%             if strcmpi(xArg,'DateTime')
+%             g55.set_datetick('x',0,'keeplimits') % Format x-axis
+%             end
+%             g55.set_point_options('markers',MarkerStyle,'base_size',MarkerSize)
+%             g55.set_names('x',LegendxAxis,'y',LegendyAxis5,'color',LegendColor,'lightness',LightnessName)
+%             g55.set_color_options('map','hcl',...
+%                 'n_color',6,...
+%                 'n_lightness',6,...
+%                 'legend','expand')
+%             %g55.no_legend()
+%             % Figure
+%             h_fig55=figure(55);
+%             h_fig55.Color='white'; % changes the background color of the figure
+%             h_fig55.Units='pixel'; % Defines the units
+%             h_fig55.OuterPosition=Res;
+%             h_fig55.PaperOrientation='landscape';
+%             h_fig55.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix5,GenNameSuffix5);
+%             % The actual plotting
+%             g55.draw()             
+%             % Save figure            
+%             FullName55=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix5,GenNameSuffix5);
+%             %%% Save the current figure in the current folder
+%             print(h_fig55,FullName55,'-dpng');    
+            
+            %% Gramm object 6
+            % Define variables
+            Plottitle6=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ResultsRow,1}.Data(1).FMIndex),obj.SMFSResults{ResultsRow,1}.Data(1).SumNumFcAnalysedyPullingLength);
+            LegendyAxis6='Pull-off length (nm)';
+            NameSuffix6='_Pullinglength';
+            % Allocate data
+            yData6=obj.SMFSResults{ResultsRow}.Data.yPullingLengthConcat(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*1e9;
+            % Create a gramm object
+            g6=gramm('x',xData,'y',yData6,...
+                'color',ColorData,...
+                'lightness',LightnessData,...
+                'marker',MarkerData);
+            % Plot data 
+            g6.geom_polygon('y',{LimitLengthRet1;LimitLengthRet2},'color',ColorBrewerMap1);
+            g6.stat_boxplot('notch',true,...
+                'width',BoxplotWidthOverview,...
+                'dodge',2); % Plot data in boxplot
+            % Set options
+            g6.axe_property('xlim',[xDataMin-xAxisCorr xDataMax+xAxisCorr]) % Set x limit
+            if strcmpi(xArg,'DateTime')
+            g6.set_datetick('x',0,'keeplimits') % Format x-axis
+            end
+            g6.set_title(Plottitle6) %Set figure title
+            g6.set_names('x',LegendxAxis,'y',LegendyAxis6,'color',LegendColor,'lightness',LightnessName,'marker',MarkerName)    
+            g6.set_color_options('map','hcl',...
+                'n_color',6,...
+                'n_lightness',6,...
+                'legend','expand')
+            g6.set_text_options('font','Helvetica','base_size',14,'label_scaling',1.2)
+            %g6.set_layout_options("legend",0) % Hide legend
+            g6.set_layout_options("legend",1) % Show legend
+            % Figure
+            h_fig6=figure(6);
+            h_fig6.Color='white'; % changes the background color of the figure
+            h_fig6.Units='pixel'; % Defines the units
+            h_fig6.OuterPosition=Res;
+            h_fig6.PaperOrientation='landscape';
+            h_fig6.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,FigNamePt4,xArg,NameSuffix6);
+            % The actual plotting
+            g6.draw()
+            % Save figure
+            FullName6=strcat(FigNamePt1,FigNamePt2,FigNamePt3,FigNamePt4,xArg,NameSuffix6);
+            print(h_fig6,FullName6,'-dpng');
+            print(h_fig6,FullName6,'-depsc');
+    %        g6.export('file_name',FullName6,file_type='pdf',width=42,height=29.7,units='centimeters');                               
+% %             %% Create a gramm object 61
+% %             g61=gramm('x',xData,'y',yData6,...
+% %                 'color',ColorData,...
+% %                 'lightness',LightnessData,...
+% %                 'marker',MarkerData);
+% %             % Plot data 
+% %             g61.geom_polygon('y',{LimitLength1;LimitLength2},'color',ColorBrewerMap1);
+% %             g61.stat_boxplot('notch',true,...
+% %                 'width',BoxplotWidth,...
+% %                 'dodge',2); % Plot data in boxplot
+% %             g61.geom_point()
+% %             % Set options
+% %             g61.axe_property('xlim',[xDataMin xDataPt20]) % Set x limit
+% %             if strcmpi(xArg,'DateTime')
+% %             g61.set_datetick('x',0,'keeplimits') % Format x-axis
+% %             end
+% %             g61.set_point_options('markers',MarkerStyle,'base_size',MarkerSize)
+% %             g61.set_names('x',LegendxAxis,'y',LegendyAxis6,'color',LegendColor,'lightness',LightnessName)
+% %             g61.set_color_options('map','hcl',...
+% %                 'n_color',6,...
+% %                 'n_lightness',6,...
+% %                 'legend','expand')  
+% %             g61.set_layout_options("legend",0) % Hide legend
+% %             % g61.set_layout_options("legend",1) % Show legend
+% %             % Figure
+% %             h_fig61=figure(61);
+% %             h_fig61.Color='white'; % changes the background color of the figure
+% %             h_fig61.Units='pixel'; % Defines the units
+% %             h_fig61.OuterPosition=Res;
+% %             h_fig61.PaperOrientation='landscape';
+% %             h_fig61.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix6,GenNameSuffix1);
+% %             % The actual plotting
+% %             g61.draw()             
+% %             % Save figure            
+% %             FullName61=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix6,GenNameSuffix1);
+% %             %%% Save the current figure in the current folder
+% %             print(h_fig61,FullName61,'-dpng');
+% %             %% Create a gramm object 62
+% %             g62=gramm('x',xData,'y',yData6,...
+% %                 'color',ColorData,...
+% %                 'lightness',LightnessData,...
+% %                 'marker',MarkerData);
+% %             % Plot data 
+% %             g62.set_point_options('markers',MarkerStyle,'base_size',MarkerSize)
+% %             g62.geom_polygon('y',{LimitLength1;LimitLength2},'color',ColorBrewerMap1);
+% %             g62.stat_boxplot('notch',true,...
+% %                 'width',BoxplotWidth,...
+% %                 'dodge',2); % Plot data in boxplot
+% %             g62.geom_point()
+% %             % Set options
+% %             g62.axe_property('xlim',[xDataPt20 xDataPt40]) % Set x limit
+% %             if strcmpi(xArg,'DateTime')
+% %             g62.set_datetick('x',0,'keeplimits') % Format x-axis
+% %             end
+% %             g62.set_names('x',LegendxAxis,'y',LegendyAxis6,'color',LegendColor,'lightness',LightnessName)
+% %             g62.set_color_options('map','hcl',...
+% %                 'n_color',6,...
+% %                 'n_lightness',6,...
+% %                 'legend','expand') 
+% %             g62.set_layout_options("legend",0) % Hide legend
+% %             % g62.set_layout_options("legend",1) % Show legend
+% %             % Figure
+% %             h_fig62=figure(62);
+% %             h_fig62.Color='white'; % changes the background color of the figure
+% %             h_fig62.Units='pixel'; % Defines the units
+% %             h_fig62.OuterPosition=Res;
+% %             h_fig62.PaperOrientation='landscape';
+% %             h_fig62.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix6,GenNameSuffix2);
+% %             % The actual plotting
+% %             g62.draw()             
+% %             % Save figure            
+% %             FullName62=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix6,GenNameSuffix2);
+% %             %%% Save the current figure in the current folder
+% %             print(h_fig62,FullName62,'-dpng');
+% %             %% Create a gramm object 63
+% %             g63=gramm('x',xData,'y',yData6,...
+% %                 'color',ColorData,...
+% %                 'lightness',LightnessData,...
+% %                 'marker',MarkerData);
+% %             % Plot data 
+% %             g63.geom_polygon('y',{LimitLength1;LimitLength2},'color',ColorBrewerMap1);
+% %             g63.stat_boxplot('notch',true,...
+% %                 'width',BoxplotWidth,...
+% %                 'dodge',2); % Plot data in boxplot
+% %             g63.geom_point()
+% %             % Set options
+% %             g63.axe_property('xlim',[xDataPt40 xDataPt60]) % Set x limit
+% %             if strcmpi(xArg,'DateTime')
+% %             g63.set_datetick('x',0,'keeplimits') % Format x-axis
+% %             end
+% %             g63.set_point_options('markers',MarkerStyle,'base_size',MarkerSize)
+% %             g63.set_names('x',LegendxAxis,'y',LegendyAxis6,'color',LegendColor,'lightness',LightnessName)
+% %             g63.set_color_options('map','hcl',...
+% %                 'n_color',6,...
+% %                 'n_lightness',6,...
+% %                 'legend','expand')
+% %             g63.set_layout_options("legend",0) % Hide legend
+% %             % g63.set_layout_options("legend",1) % Show legend
+% %             % Figure
+% %             h_fig63=figure(63);
+% %             h_fig63.Color='white'; % changes the background color of the figure
+% %             h_fig63.Units='pixel'; % Defines the units
+% %             h_fig63.OuterPosition=Res;
+% %             h_fig63.PaperOrientation='landscape';
+% %             h_fig63.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix6,GenNameSuffix3);
+% %             % The actual plotting
+% %             g63.draw()             
+% %             % Save figure            
+% %             FullName63=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix6,GenNameSuffix3);
+% %             %%% Save the current figure in the current folder
+% %             print(h_fig63,FullName63,'-dpng');
+% %             %% Create a gramm object 64
+% %             g64=gramm('x',xData,'y',yData6,...
+% %                 'color',ColorData,...
+% %                 'lightness',LightnessData,...
+% %                 'marker',MarkerData);
+% %             % Plot data 
+% %             g64.geom_polygon('y',{LimitLength1;LimitLength2},'color',ColorBrewerMap1);
+% %             g64.stat_boxplot('notch',true,...
+% %                 'width',BoxplotWidth,...
+% %                 'dodge',2); % Plot data in boxplot
+% %             g64.geom_point()
+% %             % Set options
+% %             g64.axe_property('xlim',[xDataPt60 xDataMax]) % Set x limit
+% %             if strcmpi(xArg,'DateTime')
+% %             g64.set_datetick('x',0,'keeplimits') % Format x-axis
+% %             end
+% %             g64.set_point_options('markers',MarkerStyle,'base_size',MarkerSize)
+% %             g64.set_names('x',LegendxAxis,'y',LegendyAxis6,'color',LegendColor,'lightness',LightnessName)
+% %             g64.set_color_options('map','hcl',...
+% %                 'n_color',6,...
+% %                 'n_lightness',6,...
+% %                 'legend','expand')
+% %             g64.set_layout_options("legend",0) % Hide legend
+% %             % g64.set_layout_options("legend",1) % Show legend
+% %             % Figure
+% %             h_fig64=figure(64);
+% %             h_fig64.Color='white'; % changes the background color of the figure
+% %             h_fig64.Units='pixel'; % Defines the units
+% %             h_fig64.OuterPosition=Res;
+% %             h_fig64.PaperOrientation='landscape';
+% %             h_fig64.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix6,GenNameSuffix4);
+% %             % The actual plotting
+% %             g64.draw()             
+% %             % Save figure            
+% %             FullName64=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix6,GenNameSuffix4);
+% %             %%% Save the current figure in the current folder
+% %             print(h_fig64,FullName64,'-dpng');              
+% %             %% Create a gramm object 65
+% %             g65=gramm('x',xData,'y',yData6,...
+% %                 'color',ColorData,...
+% %                 'lightness',LightnessData,...
+% %                 'marker',MarkerData);
+% %             % Plot data 
+% %             g65.geom_polygon('y',{LimitLength1;LimitLength2},'color',ColorBrewerMap1);
+% %             g65.stat_boxplot('notch',true,...
+% %                 'width',BoxplotWidth,...
+% %                 'dodge',2); % Plot data in boxplot
+% %             g65.geom_point()
+% %             % Set options
+% %             g65.axe_property('xlim',[xDataPt80 xDataMax]) % Set x limit
+% %             if strcmpi(xArg,'DateTime')
+% %             g65.set_datetick('x',0,'keeplimits') % Format x-axis
+% %             end
+% %             g65.set_point_options('markers',MarkerStyle,'base_size',MarkerSize)
+% %             g65.set_names('x',LegendxAxis,'y',LegendyAxis6,'color',LegendColor,'lightness',LightnessName)
+% %             g65.set_color_options('map','hcl',...
+% %                 'n_color',6,...
+% %                 'n_lightness',6,...
+% %                 'legend','expand')
+% %             g65.set_layout_options("legend",0) % Hide legend
+% %             % g65.set_layout_options("legend",1) % Show legend
+% %             % Figure
+% %             h_fig65=figure(65);
+% %             h_fig65.Color='white'; % changes the background color of the figure
+% %             h_fig65.Units='pixel'; % Defines the units
+% %             h_fig65.OuterPosition=Res;
+% %             h_fig65.PaperOrientation='landscape';
+% %             h_fig65.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix6,GenNameSuffix5);
+% %             % The actual plotting
+% %             g65.draw()             
+% %             % Save figure            
+% %             FullName65=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix6,GenNameSuffix5);
+% %             %%% Save the current figure in the current folder
+% %             print(h_fig65,FullName65,'-dpng'); 
+%             
+            
+            %% Gramm object 7
+            % Define variables
+            Plottitle7=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ResultsRow,1}.Data(1).FMIndex),obj.SMFSResults{ResultsRow,1}.Data(1).SumNumFcAnalysedySnapInLength);
+            LegendyAxis7='Snap-In length (nm)';
+            NameSuffix7='_SnapInLength';
+            % Allocate data
+            yData7=obj.SMFSResults{ResultsRow}.Data.ySnapInLengthConcat(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*1e9;
+            % Create a gramm object
+            g7=gramm('x',xData,'y',yData7,...
+                'color',ColorData,...
+                'lightness',LightnessData,...
+                'marker',MarkerData);
+            % Plot data 
+            g7.geom_polygon('y',{LimitLengthApp},'color',ColorBrewerMap1);
+            g7.stat_boxplot('notch',true,...
+                'width',BoxplotWidthOverview,...
+                'dodge',2); % Plot data in boxplot
+            % Set options
+            g7.axe_property('xlim',[xDataMin-xAxisCorr xDataMax+xAxisCorr]) % Set x limit
+            if strcmpi(xArg,'DateTime')
+            g7.set_datetick('x',0,'keeplimits') % Format x-axis
+            end
+            g7.set_title(Plottitle7) %Set figure title
+            g7.set_names('x',LegendxAxis,'y',LegendyAxis7,'color',LegendColor,'lightness',LightnessName,'marker',MarkerName)    
+            g7.set_color_options('map','hcl',...
+                'n_color',6,...
+                'n_lightness',6,...
+                'legend','expand')
+            g7.set_text_options('font','Helvetica','base_size',14,'label_scaling',1.2)
+            %g7.set_layout_options("legend",0) % Hide legend
+            g7.set_layout_options("legend",1) % Show legend
+            % Figure
+            h_fig7=figure(7);
+            h_fig7.Color='white'; % changes the background color of the figure
+            h_fig7.Units='pixel'; % Defines the units
+            h_fig7.OuterPosition=Res;
+            h_fig7.PaperOrientation='landscape';
+            h_fig7.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,FigNamePt4,xArg,NameSuffix7);
+            % The actual plotting
+            g7.draw()
+            % Save figure
+            FullName7=strcat(FigNamePt1,FigNamePt2,FigNamePt3,FigNamePt4,xArg,NameSuffix7);
+            print(h_fig7,FullName7,'-dpng');
+            print(h_fig7,FullName7,'-depsc');
+    %       g7.export('file_name',FullName6,file_type='pdf',width=42,height=29.7,units='centimeters');     
+                
+            % House keeping
+            close all
+        end
+        
+        function SM_results_gramm_boxplot2_publication(obj,ResultsRow,Linker,xArg,MarkerArg,LegendArg,CBar,Var)
+            % Input variables:
+            % ResultsRow: double ,e.g. 1
+            % Linker: string , either 'long' or 'short'
+            % xArg (x-axis argument): string, either 'Index' or 'DateTime'
+            % MarkerArg (Marker argument): string, either 'Y' or 'N'
+            % LegendArg (Legend argumend): string, either 'Y' or 'N'
+            % CBar (Color Bar): string, either 'Y' or 'N'
+            % Var (Variant): double, e.g. 2 (for Variant 2)
+
+            % Input variable adaptation
+            if nargin<2
+                ResultsRow=1;
+            end
+            % Define color bar
+            % For Row 6, from yLim(min) to
+            % yLim(min)+(yLim(max)-yLim(min))*0.01
+            xCBar1=[0 2 2 0];
+            xCBar2=[2 22 22 2];
+            xCBar3=[22 121 121 22];
+            xCBar4=[121 222 222 121];
+            y1CBar1=[-1.979322472 -1.979322472 -1.954352622 -1.954352622]; % [Ymin Ymax] [-1.991807398	0.505177615]
+            y1CBar2=[-1.979322472 -1.979322472 -1.954352622 -1.954352622];
+            y1CBar3=[-1.979322472 -1.979322472 -1.954352622 -1.954352622];
+            y1CBar4=[-1.979322472 -1.979322472 -1.954352622 -1.954352622];
+            y2CBar1=[-0.039028962 -0.039028962 -0.023139958 -0.023139958]; % [Ymin Ymax] [-0.046973464	1.541926985]
+            y2CBar2=[-0.039028962 -0.039028962 -0.023139958 -0.023139958];
+            y2CBar3=[-0.039028962 -0.039028962 -0.023139958 -0.023139958];
+            y2CBar4=[-0.039028962 -0.039028962 -0.023139958 -0.023139958];
+            y3CBar1=[-0.062989563 -0.062989563 -0.047588172 -0.047588172]; % [Ymin Ymax] [-0.070690259	1.469448862]
+            y3CBar2=[-0.062989563 -0.062989563 -0.047588172 -0.047588172];
+            y3CBar3=[-0.062989563 -0.062989563 -0.047588172 -0.047588172];
+            y3CBar4=[-0.062989563 -0.062989563 -0.047588172 -0.047588172];
+            y4CBar1=[-17.38622888 -17.38622888 -17.20313493 -17.20313493]; % [Ymin Ymax] [-17.47777586	0.831619188]
+            y4CBar2=[-17.38622888 -17.38622888 -17.20313493 -17.20313493];
+            y4CBar3=[-17.38622888 -17.38622888 -17.20313493 -17.20313493];
+            y4CBar4=[-17.38622888 -17.38622888 -17.20313493 -17.20313493];
+            y5CBar1=[-9.124934364 -9.124934364 -6.665029153 -6.665029153]; % [Ymin Ymax] [-10.35488697	235.6356341]
+            y5CBar2=[-9.124934364 -9.124934364 -6.665029153 -6.665029153];
+            y5CBar3=[-9.124934364 -9.124934364 -6.665029153 -6.665029153];
+            y5CBar4=[-9.124934364 -9.124934364 -6.665029153 -6.665029153];
+            y6CBar1=[12.83501146 12.83501146 22.51149482 22.51149482]; % [Ymin Ymax] [7.996769787	975.645105]
+            y6CBar2=[12.83501146 12.83501146 22.51149482 22.51149482];
+            y6CBar3=[12.83501146 12.83501146 22.51149482 22.51149482];
+            y6CBar4=[12.83501146 12.83501146 22.51149482 22.51149482];
+            y7CBar1=[-44.07197408 -44.07197408 -33.17775238 -33.17775238]; % [Ymin Ymax] [-49.51908493	1039.903085]
+            y7CBar2=[-44.07197408 -44.07197408 -33.17775238 -33.17775238];
+            y7CBar3=[-44.07197408 -44.07197408 -33.17775238 -33.17775238];
+            y7CBar4=[-44.07197408 -44.07197408 -33.17775238 -33.17775238];
+            % Color maps
+            ColorBrewerMap1=[[253 174 97]./255; % Ochreish
+                [116 173 209]./255]; % Steel blueish
+            ColorBarMap=[[54 163 0]./255; % Dark green HEX 8DB600
+                [206 22 32]./255; % Fire Engine Red HEX CE162
+                [0 24 204]./255; % Blue HEX 8DB600
+                [135 0 224]./255]; % Violet HEX 8F00FF
+            ColorMarkerMap=[[255 194 191]./255; % Light rose
+                [255 194 191]./255;
+                [209 217 161]./255;
+                [209 217 161]./255]; % Light green
+            % Change into the Folder of Interest
+            cd(obj.ExperimentFolder) % Move into the folder
+            % Create folders for saving the produced figures
+            foldername='SM_results_gramm_boxplot2_publication';    % Defines the folder name
+            mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
+            currpath=fullfile(obj.ExperimentFolder,foldername);
+            cd(currpath);
+            % Input variables
+            % Linker
+            if strcmpi(Linker,'Long')
+                LimitLengthRet1=[0 378];
+                LimitLengthRet2=[378 522];
+                LimitLengthApp=[50 120];
+            elseif strcmpi(Linker,'Short')
+                LimitLengthRet1=[0 333];
+                LimitLengthRet2=[333 463];
+                LimitLengthApp=[50 120];
+            end
+            % xArg
+            if strcmpi(xArg,'DateTime')
+                LegendxAxis='Date and Time';
+                xData=obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSort;
+                xDataMin=min(xData);
+                xDataMax=max(xData);
+                xAxisCorr=(xDataMax-xDataMin)*0.005;
+                BoxplotWidth=0.8;
+                BoxplotDodge=2;
+            elseif strcmpi(xArg,'Index')
+                LegendxAxis='Chronological force map order';
+                xData=obj.SMFSResults{ResultsRow}.Concatenate.FMNum;
+                xDataMin=min(xData);
+                xDataMax=max(xData);
+                xAxisCorr=(xDataMax-xDataMin)*0.005; % For BoxplotWidth=10
+                %xAxisCorr=(xDataMax-xDataMin)*0.02; % For BoxplotWidth=2 and BoxplotWidth=0.02
+                % BoxplotWidth=18;
+                 BoxplotWidth=10;
+                % BoxplotWidth=2;
+                % BoxplotWidth=0.02;
+                BoxplotDodge=1;
+            end
+            % Var
+            if Var==1
+                ColorName='Medium';
+                LightnessName='Substrate';
+                MarkerName='ChipCantilever';
+                LightnessData=obj.SMFSResults{ResultsRow}.Concatenate.FMSubstrate(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx);
+                ColorData=obj.SMFSResults{ResultsRow}.Concatenate.FMEnvCond(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx);
+                MarkerData=obj.SMFSResults{ResultsRow}.Concatenate.FMChipCant(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx);
+            elseif Var==2
+                ColorName='Approach velocity ($\mu$m/s)';
+                LightnessName='Retraction velocity ($\mu$m/s)';
+                MarkerName='Dwell Time (s)';
+                FMExtVeloData=obj.SMFSResults{ResultsRow}.Concatenate.FMExtVelocity(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*1e6;
+                FMRetVeloData=obj.SMFSResults{ResultsRow}.Concatenate.FMRetVelocity(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*1e6;
+                ColorData=FMExtVeloData;
+                LightnessData=FMRetVeloData;
+                MarkerData=obj.SMFSResults{ResultsRow}.Concatenate.FMHoldingTime(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx);
+            elseif Var==3
+                ColorName='Dwell Time (s)';
+                LightnessName='Retraction velocity ($\mu$m/s)';
+                MarkerName='Approach velocity ($\mu$m/s)';
+                FMExtVeloData=obj.SMFSResults{ResultsRow}.Concatenate.FMExtVelocity(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*1e6;
+                FMRetVeloData=obj.SMFSResults{ResultsRow}.Concatenate.FMRetVelocity(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*1e6;
+                ColorData=obj.SMFSResults{ResultsRow}.Concatenate.FMHoldingTime(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx);
+                LightnessData=FMRetVeloData;
+                MarkerData=FMExtVeloData;
+            end
+            NumColor=6;
+            NumLightness=6;
+            Res=[1 1 2560 1250]; % Define the figure resolution
+            MarkerStyle={'d' 's' 'v' 'o'};
+            MarkerSize=10;
+            BaseFontSize=24;
+            LabelScaling=1.2;
+            LegendScaling=1;
+            LineWidth=1.5;
+            %%
+            if obj.SMFSResults{ResultsRow}.Parameters.ExtendVelocity==0
+                ExtVelocityValueStr='All';
+            else
+                ExtVelocityValueStr=num2str(round(obj.SMFSResults{ResultsRow}.Parameters.ExtendVelocity*1e9));
+            end
+            if obj.SMFSResults{ResultsRow}.Parameters.RetractVelocity==0
+                RetVelocityValueStr='All';
+            else
+                RetVelocityValueStr=num2str(round(obj.SMFSResults{ResultsRow}.Parameters.RetractVelocity*1e9));
+            end
+            if obj.SMFSResults{ResultsRow}.Parameters.HoldingTime==-1
+                HoldingTimeValueStr='All';
+            else
+                HoldingTimeValueStr=num2str(obj.SMFSResults{ResultsRow}.Parameters.HoldingTime);
+            end
+            % General names
+            FigNamePt1=sprintf('SMFSResultRow%d_',ResultsRow);
+            FigNamePt2=strcat(ExtVelocityValueStr,{'_'},RetVelocityValueStr,{'_'},HoldingTimeValueStr,{'_'},obj.SMFSResults{ResultsRow}.Parameters.Substrate,{'_'},obj.SMFSResults{ResultsRow}.Parameters.Medium,{'_'},obj.SMFSResults{ResultsRow}.Parameters.ChipCantilever,{'_'},obj.SMFSResults{ResultsRow}.Parameters.Chipbox,{'_'},obj.SMFSResults{ResultsRow}.Parameters.Linker);
+            FigNamePt2=char(FigNamePt2);
+            FigNamePt3='_Boxplot2';
+            %% Gramm object 1
+            % Define variables
+            Plottitle1=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ResultsRow,1}.Data(1).FMIndex),obj.SMFSResults{ResultsRow,1}.Data(1).SumNumFcAnalysedAdhMaxApp);
+            LegendyAxis1='Adhesion force (nN)';
+            NameSuffix1='_MaxAdhesionForceApproach';
+            % Allocate data
+            yData1=obj.SMFSResults{ResultsRow}.Concatenate.AdhMaxApp(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*-1e9;
+            % Create a gramm object
+            if strcmpi(MarkerArg,'Y')
+                g1=gramm('x',xData,'y',yData1,...
+                    'color',ColorData,...
+                    'lightness',LightnessData,...
+                    'marker',MarkerData);
+            elseif strcmpi(MarkerArg,'N')
+                g1=gramm('x',xData,'y',yData1,...
+                    'color',ColorData,...
+                    'lightness',LightnessData);
+            end
+            % Plot data
+            if strcmpi(CBar,'Y')
+                g1.geom_polygon('x',{xCBar1;xCBar2;xCBar3;xCBar4},'y',{y1CBar1;y1CBar2;y1CBar3;y1CBar4},'color',ColorBarMap,'alpha',1);
+            else
+            end
+            g1.stat_boxplot('notch',true,...
+                'width',BoxplotWidth,...
+                'dodge',BoxplotDodge); % Plot data in boxplot
+            % Set options
+            g1.axe_property('TickLabelInterpreter','Latex','LineWidth',LineWidth,'xlim',[xDataMin-xAxisCorr xDataMax+xAxisCorr],'XTick',[0:10:220],'TickDir','out','TickLength',[0.005 0.005]);
+            if strcmpi(xArg,'DateTime')
+                g1.set_datetick('x',0,'keeplimits') % Format x-axis
+            end
+            g1.set_point_options('base_size',MarkerSize)
+            %g1.set_title(Plottitle1) %Set figure title
+            if strcmpi(MarkerArg,'Y')
+                g1.set_names('x',LegendxAxis,'y',LegendyAxis1,'color',ColorName,'lightness',LightnessName,'marker',MarkerName)
+            elseif strcmpi(MarkerArg,'N')
+                g1.set_names('x',LegendxAxis,'y',LegendyAxis1,'color',ColorName,'lightness',LightnessName)
+            end
+            g1.set_color_options('n_color',NumColor,...
+                'n_lightness',NumLightness,...
+                'legend','separate_gray')
+            g1.set_text_options('interpreter','latex','font','Helvetica','base_size',BaseFontSize,'label_scaling',LabelScaling,'legend_scaling',LegendScaling)
+            if strcmpi(LegendArg,'Y')
+                g1.set_layout_options("legend",1) % Don't show legend
+            elseif strcmpi(MarkerArg,'N')
+                g1.set_layout_options("legend",0) % Show legend
+            end
+            % Figure
+            h_fig1=figure(1);
+            h_fig1.Color='white'; % changes the background color of the figure
+            h_fig1.Units='pixel'; % Defines the units
+            h_fig1.OuterPosition=Res;
+            h_fig1.PaperOrientation='landscape';
+            h_fig1.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix1);
+            % The actual plotting
+            g1.draw()
+            % Save the figure
+            FullName1=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix1);
+            print(h_fig1,FullName1,'-dpng');
+            print(h_fig1,FullName1,'-depsc');
+
+            %% Gramm object 2
+            % Define variables
+            Plottitle2=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ResultsRow,1}.Data(1).FMIndex),obj.SMFSResults{ResultsRow,1}.Data(1).SumNumFcAnalysedAdhMaxRet);
+            LegendyAxis2='Adhesion force (nN)';
+            NameSuffix2='_MaxAdhesionForceRetract';
+            % Allocate data
+            yData2=obj.SMFSResults{ResultsRow}.Concatenate.AdhMaxRet(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*-1e9;
+            % Create a gramm object
+            if strcmpi(MarkerArg,'Y')
+                g2=gramm('x',xData,'y',yData2,...
+                    'color',ColorData,...
+                    'lightness',LightnessData,...
+                    'marker',MarkerData);
+            elseif strcmpi(MarkerArg,'N')
+                g2=gramm('x',xData,'y',yData2,...
+                    'color',ColorData,...
+                    'lightness',LightnessData);
+            end
+            % Plot data
+            if strcmpi(CBar,'Y')
+                g2.geom_polygon('x',{xCBar1;xCBar2;xCBar3;xCBar4},'y',{y2CBar1;y2CBar2;y2CBar3;y2CBar4},'color',ColorBarMap,'alpha',1);
+            else
+            end
+            g2.stat_boxplot('notch',true,...
+                'width',BoxplotWidth,...
+                'dodge',BoxplotDodge); % Plot data in boxplot
+            % Set options
+            g2.axe_property('TickLabelInterpreter','Latex','LineWidth',LineWidth,'xlim',[xDataMin-xAxisCorr xDataMax+xAxisCorr],'XTick',[0:10:220],'TickDir','out','TickLength',[0.005 0.005]);
+            if strcmpi(xArg,'DateTime')
+                g2.set_datetick('x',0,'keeplimits') % Format x-axis
+            end
+            g2.set_point_options('base_size',MarkerSize)
+            %g2.set_title(Plottitle2) %Set figure title
+            if strcmpi(MarkerArg,'Y')
+                g2.set_names('x',LegendxAxis,'y',LegendyAxis2,'color',ColorName,'lightness',LightnessName,'marker',MarkerName)
+            elseif strcmpi(MarkerArg,'N')
+                g2.set_names('x',LegendxAxis,'y',LegendyAxis2,'color',ColorName,'lightness',LightnessName)
+            end
+            g2.set_color_options('n_color',NumColor,...
+                'n_lightness',NumLightness,...
+                'legend','separate_gray')
+            g2.set_text_options('interpreter','latex','font','Helvetica','base_size',BaseFontSize,'label_scaling',LabelScaling,'legend_scaling',LegendScaling)
+            if strcmpi(LegendArg,'Y')
+                g2.set_layout_options("legend",1) % Don't show legend
+            elseif strcmpi(MarkerArg,'N')
+                g2.set_layout_options("legend",0) % Show legend
+            end
+            % Figure
+            h_fig2=figure(2);
+            h_fig2.Color='white'; % changes the background color of the figure
+            h_fig2.Units='pixel'; % Defines the units
+            h_fig2.OuterPosition=Res;
+            h_fig2.PaperOrientation='landscape';
+            h_fig2.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix2);
+            % The actual plotting
+            g2.draw()
+            % Save the figure
+            FullName2=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix2);
+            print(h_fig2,FullName2,'-dpng');
+            print(h_fig2,FullName2,'-depsc');
+            % g2.export('file_name',FullName2,file_type='pdf',width=42,height=29.7,units='centimeters');
+            %% Gramm object 3
+            % Define variables
+            Plottitle3=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ResultsRow,1}.Data(1).FMIndex),obj.SMFSResults{ResultsRow,1}.Data(1).SumNumFcAnalysedAdhUnbinding);
+            LegendyAxis3='Adhesion force (nN)';
+            NameSuffix3='_AdhForceUnbinding';
+            % Allocate data
+            yData3=obj.SMFSResults{ResultsRow}.Concatenate.AdhUnbinding(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*-1e9;
+            % Create a gramm object
+            if strcmpi(MarkerArg,'Y')
+                g3=gramm('x',xData,'y',yData3,...
+                    'color',ColorData,...
+                    'lightness',LightnessData,...
+                    'marker',MarkerData);
+            elseif strcmpi(MarkerArg,'N')
+                g3=gramm('x',xData,'y',yData3,...
+                    'color',ColorData,...
+                    'lightness',LightnessData);
+            end
+            % Plot data
+            if strcmpi(CBar,'Y')
+            g3.geom_polygon('x',{xCBar1;xCBar2;xCBar3;xCBar4},'y',{y3CBar1;y3CBar2;y3CBar3;y3CBar4},'color',ColorBarMap,'alpha',1);
+            else
+            end
+            g3.stat_boxplot('notch',true,...
+                'width',BoxplotWidth,...
+                'dodge',BoxplotDodge); % Plot data in boxplot
+            % Set options
+            g3.axe_property('TickLabelInterpreter','Latex','LineWidth',LineWidth,'xlim',[xDataMin-xAxisCorr xDataMax+xAxisCorr],'XTick',[0:10:220],'TickDir','out','TickLength',[0.005 0.005]);
+            if strcmpi(xArg,'DateTime')
+                g3.set_datetick('x',0,'keeplimits') % Format x-axis
+            end
+            g3.set_point_options('base_size',MarkerSize)
+            %g3.set_title(Plottitle3) %Set figure title
+            if strcmpi(MarkerArg,'Y')
+                g3.set_names('x',LegendxAxis,'y',LegendyAxis3,'color',ColorName,'lightness',LightnessName,'marker',MarkerName)
+            elseif strcmpi(MarkerArg,'N')
+                g3.set_names('x',LegendxAxis,'y',LegendyAxis3,'color',ColorName,'lightness',LightnessName)
+            end
+            g3.set_color_options('n_color',NumColor,...
+                'n_lightness',NumLightness,...
+                'legend','separate_gray')
+            g3.set_text_options('interpreter','latex','font','Helvetica','base_size',BaseFontSize,'label_scaling',LabelScaling,'legend_scaling',LegendScaling)
+            if strcmpi(LegendArg,'Y')
+                g3.set_layout_options("legend",1) % Don't show legend
+            elseif strcmpi(MarkerArg,'N')
+                g3.set_layout_options("legend",0) % Show legend
+            end
+            % Figure
+            h_fig3=figure(3);
+            h_fig3.Color='white'; % changes the background color of the figure
+            h_fig3.Units='pixel'; % Defines the units
+            h_fig3.OuterPosition=Res;
+            h_fig3.PaperOrientation='landscape';
+            h_fig3.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix3);
+            % The actual plotting
+            g3.draw()
+            % Save the figure
+            FullName3=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix3);
+            print(h_fig3,FullName3,'-dpng');
+            print(h_fig3,FullName3,'-depsc');
+            %         g3.export('file_name',FullName2,file_type='pdf',width=42,height=29.7,units='centimeters');
+
+            %% Gramm object 4
+            % Define variables
+            Plottitle4=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ResultsRow,1}.Data(1).FMIndex),obj.SMFSResults{ResultsRow,1}.Data(1).SumNumFcAnalysedAdhEneApp);
+            LegendyAxis4='Adhesion energry (aJ)';
+            NameSuffix4='_AdhEnergyApproach';
+            % Allocate data
+            yData4=obj.SMFSResults{ResultsRow}.Concatenate.AdhEneApp(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*-1e18;
+            % Create a gramm object
+            if strcmpi(MarkerArg,'Y')
+                g4=gramm('x',xData,'y',yData4,...
+                    'color',ColorData,...
+                    'lightness',LightnessData,...
+                    'marker',MarkerData);
+            elseif strcmpi(MarkerArg,'N')
+                g4=gramm('x',xData,'y',yData4,...
+                    'color',ColorData,...
+                    'lightness',LightnessData);
+            end
+            % Plot data
+            if strcmpi(CBar,'Y')
+                g4.geom_polygon('x',{xCBar1;xCBar2;xCBar3;xCBar4},'y',{y4CBar1;y4CBar2;y4CBar3;y4CBar4},'color',ColorBarMap,'alpha',1);
+            else
+            end
+            g4.stat_boxplot('notch',true,...
+                'width',BoxplotWidth,...
+                'dodge',BoxplotDodge); % Plot data in boxplot
+            % Set options
+            g4.axe_property('TickLabelInterpreter','Latex','LineWidth',LineWidth,'xlim',[xDataMin-xAxisCorr xDataMax+xAxisCorr],'XTick',[0:10:220],'TickDir','out','TickLength',[0.005 0.005]);
+            if strcmpi(xArg,'DateTime')
+                g4.set_datetick('x',0,'keeplimits') % Format x-axis
+            end
+            g4.set_point_options('base_size',MarkerSize)
+            %g4.set_title(Plottitle4) %Set figure title
+            if strcmpi(MarkerArg,'Y')
+                g4.set_names('x',LegendxAxis,'y',LegendyAxis4,'color',ColorName,'lightness',LightnessName,'marker',MarkerName)
+            elseif strcmpi(MarkerArg,'N')
+                g4.set_names('x',LegendxAxis,'y',LegendyAxis4,'color',ColorName,'lightness',LightnessName)
+            end
+            g4.set_color_options('n_color',NumColor,...
+                'n_lightness',NumLightness,...
+                'legend','separate_gray')
+            g4.set_text_options('interpreter','latex','font','Helvetica','base_size',BaseFontSize,'label_scaling',LabelScaling,'legend_scaling',LegendScaling)
+            if strcmpi(LegendArg,'Y')
+                g4.set_layout_options("legend",1) % Don't show legend
+            elseif strcmpi(MarkerArg,'N')
+                g4.set_layout_options("legend",0) % Show legend
+            end
+            % Figure
+            h_fig4=figure(4);
+            h_fig4.Color='white'; % changes the background color of the figure
+            h_fig4.Units='pixel'; % Defines the units
+            h_fig4.OuterPosition=Res;
+            h_fig4.PaperOrientation='landscape';
+            h_fig4.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix4);
+            % The actual plotting
+            g4.draw()
+            % Save the figure
+            FullName4=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix4);
+            print(h_fig4,FullName4,'-dpng');
+            print(h_fig4,FullName4,'-depsc');
+            %   g4.export('file_name',FullName5,file_type='pdf',width=42,height=29.7,units='centimeters');
+
+            %% Gramm object 5
+            % Define variables
+            Plottitle5=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ResultsRow,1}.Data(1).FMIndex),obj.SMFSResults{ResultsRow,1}.Data(1).SumNumFcAnalysedAdhEneRet);
+            LegendyAxis5='Adhesion energy (aJ)';
+            NameSuffix5='_AdhEnergyRetract';
+            % Allocate data
+            yData5=obj.SMFSResults{ResultsRow}.Concatenate.AdhEneRet(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*-1e18;
+            % Create a gramm object
+            if strcmpi(MarkerArg,'Y')
+                g5=gramm('x',xData,'y',yData5,...
+                    'color',ColorData,...
+                    'lightness',LightnessData,...
+                    'marker',MarkerData);
+            elseif strcmpi(MarkerArg,'N')
+                g5=gramm('x',xData,'y',yData5,...
+                    'color',ColorData,...
+                    'lightness',LightnessData);
+            end
+            % Plot data
+            if strcmpi(CBar,'Y')
+                g5.geom_polygon('x',{xCBar1;xCBar2;xCBar3;xCBar4},'y',{y5CBar1;y5CBar2;y5CBar3;y5CBar4},'color',ColorBarMap,'alpha',1);
+            else
+            end
+            g5.stat_boxplot('notch',true,...
+                'width',BoxplotWidth,...
+                'dodge',BoxplotDodge); % Plot data in boxplot
+            % Set options
+            g5.axe_property('TickLabelInterpreter','Latex','LineWidth',LineWidth,'xlim',[xDataMin-xAxisCorr xDataMax+xAxisCorr],'XTick',[0:10:220],'TickDir','out','TickLength',[0.005 0.005]);
+            if strcmpi(xArg,'DateTime')
+                g5.set_datetick('x',0,'keeplimits') % Format x-axis
+            end
+            g5.set_point_options('base_size',MarkerSize)
+            %g5.set_title(Plottitle5) %Set figure title
+            if strcmpi(MarkerArg,'Y')
+                g5.set_names('x',LegendxAxis,'y',LegendyAxis5,'color',ColorName,'lightness',LightnessName,'marker',MarkerName)
+            elseif strcmpi(MarkerArg,'N')
+                g5.set_names('x',LegendxAxis,'y',LegendyAxis5,'color',ColorName,'lightness',LightnessName)
+            end
+            g5.set_color_options('n_color',NumColor,...
+                'n_lightness',NumLightness,...
+                'legend','separate_gray')
+            g5.set_text_options('interpreter','latex','font','Helvetica','base_size',BaseFontSize,'label_scaling',LabelScaling,'legend_scaling',LegendScaling)
+            if strcmpi(LegendArg,'Y')
+                g5.set_layout_options("legend",1) % Don't show legend
+            elseif strcmpi(MarkerArg,'N')
+                g5.set_layout_options("legend",0) % Show legend
+            end
+            g5.set_layout_options('legend_position',[0.75,0.4,0.35,0.6]) %[left bottom width height]
+            % Figure
+            h_fig5=figure(5);
+            h_fig5.Color='white'; % changes the background color of the figure
+            h_fig5.Units='pixel'; % Defines the units
+            h_fig5.OuterPosition=Res;
+            h_fig5.PaperOrientation='landscape';
+            h_fig5.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix5);
+            % The actual plotting
+            g5.draw()
+            % Save the figure
+            FullName5=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix5);
+            print(h_fig5,FullName5,'-dpng');
+            print(h_fig5,FullName5,'-depsc');
+            %g5.export('file_name',FullName5,file_type='pdf',width=42,height=29.7,units='centimeters');
+
+            %% Gramm object 6
+            % Define variables
+            Plottitle6=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ResultsRow,1}.Data(1).FMIndex),obj.SMFSResults{ResultsRow,1}.Data(1).SumNumFcAnalysedyPullingLength);
+            LegendyAxis6='Pulling length (nm)';
+            NameSuffix6='_Pullinglength';
+            % Allocate data
+            yData6=obj.SMFSResults{ResultsRow}.Concatenate.PullingLength(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*1e9;
+            % Create a gramm object
+            if strcmpi(MarkerArg,'Y')
+                g6=gramm('x',xData,'y',yData6,...
+                    'color',ColorData,...
+                    'lightness',LightnessData,...
+                    'marker',MarkerData);
+            elseif strcmpi(MarkerArg,'N')
+                g6=gramm('x',xData,'y',yData6,...
+                    'color',ColorData,...
+                    'lightness',LightnessData);
+            end
+            % Plot data
+            g6.geom_polygon('y',{LimitLengthRet1;LimitLengthRet2},'color',ColorBrewerMap1);
+            if strcmpi(CBar,'Y')
+                g6.geom_polygon('x',{xCBar1;xCBar2;xCBar3;xCBar4},'y',{y6CBar1;y6CBar2;y6CBar3;y6CBar4},'color',ColorBarMap,'alpha',1);
+            else
+            end
+            g6.stat_boxplot('notch',true,...
+                'width',BoxplotWidth,...
+                'dodge',BoxplotDodge); % Plot data in boxplot
+            % Set options
+            g6.axe_property('TickLabelInterpreter','Latex','LineWidth',LineWidth,'xlim',[xDataMin-xAxisCorr xDataMax+xAxisCorr],'XTick',[0:10:220],'TickDir','out','TickLength',[0.005 0.005]);
+            if strcmpi(xArg,'DateTime')
+                g6.set_datetick('x',0,'keeplimits') % Format x-axis
+            end
+            g6.set_point_options('base_size',MarkerSize)
+            %g6.set_title(Plottitle6) %Set figure title
+            if strcmpi(MarkerArg,'Y')
+                g6.set_names('x',LegendxAxis,'y',LegendyAxis6,'color',ColorName,'lightness',LightnessName,'marker',MarkerName)
+            elseif strcmpi(MarkerArg,'N')
+                g6.set_names('x',LegendxAxis,'y',LegendyAxis6,'color',ColorName,'lightness',LightnessName)
+            end
+            g6.set_color_options('n_color',NumColor,...
+                'n_lightness',NumLightness,...
+                'legend','separate_gray')
+            g6.set_text_options('interpreter','latex','font','Helvetica','base_size',BaseFontSize,'label_scaling',LabelScaling,'legend_scaling',LegendScaling)
+            if strcmpi(LegendArg,'Y')
+                g6.set_layout_options("legend",1) % Don't show legend
+            elseif strcmpi(MarkerArg,'N')
+                g6.set_layout_options("legend",0) % Show legend
+            end
+            % Figure
+            h_fig6=figure(6);
+            h_fig6.Color='white'; % changes the background color of the figure
+            h_fig6.Units='pixel'; % Defines the units
+            h_fig6.OuterPosition=Res;
+            h_fig6.PaperOrientation='landscape';
+            h_fig6.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix6);
+            % The actual plotting
+            g6.draw()
+            % Save the figure
+            FullName6=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix6);
+            print(h_fig6,FullName6,'-dpng');
+            print(h_fig6,FullName6,'-depsc');
+            %g6.export('file_name',FullName6,file_type='pdf',width=42,height=29.7,units='centimeters');
+            
+            %% Gramm object 7
+            % Define variables
+            Plottitle7=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ResultsRow,1}.Data(1).FMIndex),obj.SMFSResults{ResultsRow,1}.Data(1).SumNumFcAnalysedySnapInLength);
+            LegendyAxis7='Snap-In length (nm)';
+            NameSuffix7='_SnapInLength';
+            % Allocate data
+            yData7=obj.SMFSResults{ResultsRow}.Concatenate.SnapInLength(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*1e9;
+            % Create a gramm object
+            if strcmpi(MarkerArg,'Y')
+                g7=gramm('x',xData,'y',yData7,...
+                    'color',ColorData,...
+                    'lightness',LightnessData,...
+                    'marker',MarkerData);
+            elseif strcmpi(MarkerArg,'N')
+                g7=gramm('x',xData,'y',yData7,...
+                    'color',ColorData,...
+                    'lightness',LightnessData);
+            end
+            % Plot data
+            if strcmpi(CBar,'Y')
+                g7.geom_polygon('x',{xCBar1;xCBar2;xCBar3;xCBar4},'y',{y7CBar1;y7CBar2;y7CBar3;y7CBar4},'color',ColorBarMap,'alpha',1);
+            else
+            end
+            g7.geom_polygon('y',{LimitLengthApp},'color',ColorBrewerMap1);
+            g7.stat_boxplot('notch',true,...
+                'width',BoxplotWidth,...
+                'dodge',BoxplotDodge); % Plot data in boxplot
+            % Set options
+            g7.axe_property('TickLabelInterpreter','Latex','LineWidth',LineWidth,'xlim',[xDataMin-xAxisCorr xDataMax+xAxisCorr],'XTick',[0:10:220],'TickDir','out','TickLength',[0.005 0.005]);
+            if strcmpi(xArg,'DateTime')
+                g7.set_datetick('x',0,'keeplimits') % Format x-axis
+            end
+            g7.set_point_options('base_size',MarkerSize)
+            %g7.set_title(Plottitle6) %Set figure title
+            if strcmpi(MarkerArg,'Y')
+                g7.set_names('x',LegendxAxis,'y',LegendyAxis7,'color',ColorName,'lightness',LightnessName,'marker',MarkerName)
+            elseif strcmpi(MarkerArg,'N')
+                g7.set_names('x',LegendxAxis,'y',LegendyAxis7,'color',ColorName,'lightness',LightnessName)
+            end
+            g7.set_color_options('n_color',NumColor,...
+                'n_lightness',NumLightness,...
+                'legend','separate_gray')
+            g7.set_text_options('interpreter','latex','font','Helvetica','base_size',BaseFontSize,'label_scaling',LabelScaling,'legend_scaling',LegendScaling)
+            if strcmpi(LegendArg,'Y')
+                g7.set_layout_options("legend",1) % Don't show legend
+            elseif strcmpi(MarkerArg,'N')
+                g7.set_layout_options("legend",0) % Show legend
+            end
+            % Figure
+            h_fig7=figure(7);
+            h_fig7.Color='white'; % changes the background color of the figure
+            h_fig7.Units='pixel'; % Defines the units
+            h_fig7.OuterPosition=Res;
+            h_fig7.PaperOrientation='landscape';
+            h_fig7.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix7);
+            % The actual plotting
+            g7.draw()
+            % Save the figure
+            FullName7=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix7);
+            print(h_fig7,FullName7,'-dpng');
+            print(h_fig7,FullName7,'-depsc');
+            %g7.export('file_name',FullName6,file_type='pdf',width=42,height=29.7,units='centimeters');
+             
+            % House keeping
+            close all
+        end
+
+
+
+  
+        function SM_results_gramm_boxplot4(obj,ii)
+           % For results of Trial14
+           % x-axis: Index
+           % Column: Cantilver
+           % Color: Medium
+
+           % Input variable adaptation
+           if nargin<2
+               ii=1;
+           end
+           % Output time and date for the dairy
+           datetime('now')
+           % Change into the Folder of Interest
+           cd(obj.ExperimentFolder) % Move into the folder
+           % Create folders for saving the produced figures
+           foldername='SM_results_gramm_boxplot4';    % Defines the folder name
+           mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
+           currpath=fullfile(obj.ExperimentFolder,foldername);
+           cd(currpath);
+           %% General variables 1
+           ColorMap1=[[0 25 255]./255;  % Blue
+               [26 255 0]./255; % Green
+               [255 102 0]./255; % Orange
+               [255 0 26]./255]; % Red
+           LimitForce1=[0 14e-3]; % Regime I - Entropic
+           LimitForce2=[14e-3 5]; %Regime II - Unfolding
+           LimitForce3=[5 22]; % Regime III - Backbone stretching
+           LimitLength1=[0 317]; % Regime I - Entropic
+           LimitLength2=[317 390]; %Regime II - Unfolding
+           LimitLength3=[390 452.6]; % Regime III - Backbone stretching
+           Res=[1 1 2560 1250]; % Define the figure resolution
+           if obj.SMFSResults{ii}.Parameters.ExtendVelocity==0
+               ExtVelocityValueStr='All';
+           else
+               ExtVelocityValueStr=num2str(round(obj.SMFSResults{ii}.Parameters.ExtendVelocity*1e9));
+           end
+           if obj.SMFSResults{ii}.Parameters.RetractVelocity==0
+               RetVelocityValueStr='All';
+           else
+               RetVelocityValueStr=num2str(round(obj.SMFSResults{ii}.Parameters.RetractVelocity*1e9));
+           end
+           if obj.SMFSResults{ii}.Parameters.HoldingTime==-1
+               HoldingTimeValueStr='All';
+           else
+               HoldingTimeValueStr=num2str(obj.SMFSResults{ii}.Parameters.HoldingTime);
+           end
+           FigNamePt1=sprintf('SMFSResultRow%d_',ii);
+           FigNamePt2=strcat(ExtVelocityValueStr,{'_'},RetVelocityValueStr,{'_'},HoldingTimeValueStr,{'_'},obj.SMFSResults{ii}.Parameters.Substrate,{'_'},obj.SMFSResults{ii}.Parameters.Medium,{'_'},obj.SMFSResults{ii}.Parameters.ChipCantilever,{'_'},obj.SMFSResults{ii}.Parameters.Chipbox,{'_'},obj.SMFSResults{ii}.Parameters.Linker);
+           FigNamePt2=char(FigNamePt2);
+           FigNamePt3='_Boxplot';
+           LegendxAxis='Index';
+           LegendColor='Cantilever';
+           LegendLightness='Medium';
+           % Allocate general data
+           xData=obj.SMFSResults{ii}.Concatenate.FMIndex;
+           LightnessData=obj.SMFSResults{ii}.Concatenate.FMEnvCond;
+           ColorData=obj.SMFSResults{ii}.Concatenate.FMChipCant;
+           BoxplotWidth=0.5;
+
+           %% Gramm object 2
+           % Define variables
+           Plottitle=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ii,1}.Data(1).FMIndex),obj.SMFSResults{ii,1}.Data(1).SumNumFcAnalysedAdhMaxRet);
+           LegendyAxis2='Adhesion force (nN)';
+           NameSuffix2='_MaxAdhesionForceRetract';
+           % Allocate data
+           yData2=obj.SMFSResults{ii}.Data.AdhMaxRetConcat*-1e9;
+           % Create a gramm object
+           g2=gramm('x',xData,'y',yData2,...
+               'color',ColorData,'lightness',LightnessData);
+           % Plot data
+           g2.geom_polygon('y',{LimitForce1;LimitForce2;LimitForce3},'color',ColorMap1);
+           g2.geom_jitter('width',0.2,...
+               'dodge',2.4); % Plot raw data as jitter
+           g2.stat_boxplot('notch',true,...
+               'width',BoxplotWidth,...
+               'dodge',2.4); % Plot data in boxplot
+           g2.set_color_options('map','d3_20')
+           g2.set_title(Plottitle) %Set figure title
+           % Legend
+           g2.set_names('x',LegendxAxis,'y',LegendyAxis2,'color',LegendColor,'lightness',LegendLightness)
+           % Figure
+           h_fig2=figure(2);
+           h_fig2.Color='white'; % changes the background color of the figure
+           h_fig2.Units='pixel'; % Defines the units
+           h_fig2.OuterPosition=Res;
+           h_fig2.PaperOrientation='landscape';
+           h_fig2.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,NameSuffix2);
+           % The actual plotting
+           g2.draw()
+           % Save figure
+           FullName2=strcat(FigNamePt1,FigNamePt2,FigNamePt3,NameSuffix2);
+           %%% Save the current figure in the current folder
+           print(h_fig2,FullName2,'-dpng');
+
+           %% Gramm object 5
+           % Define variables
+           Plottitle=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ii,1}.Data(1).FMIndex),obj.SMFSResults{ii,1}.Data(1).SumNumFcAnalysedAdhEneRet);
+           LegendyAxis5='Adhesion energy (nJ)';
+           NameSuffix5='_AdhEnergyRetract';
+           % Allocate data
+           yData5=obj.SMFSResults{ii}.Data.AdhEneRetConcat*-1e9;
+           % Create a gramm object
+           g5=gramm('x',xData,'y',yData5,...
+               'color',ColorData,'lightness',LightnessData);
+           % Plot data
+           g5.geom_jitter('width',0.2,...
+               'dodge',2.4); % Plot raw data as jitter
+           g5.stat_boxplot('notch',true,...
+               'width',BoxplotWidth,...
+               'dodge',2.4); % Plot data in boxplot
+           g5.set_color_options('map','d3_20')
+           g5.set_title(Plottitle) %Set figure title
+           % Legend
+           g5.set_names('x',LegendxAxis,'y',LegendyAxis5,'color',LegendColor,'lightness',LegendLightness)
+           % Figure
+           h_fig5=figure(5);
+           h_fig5.Color='white'; % changes the background color of the figure
+           h_fig5.Units='pixel'; % Defines the units
+           h_fig5.OuterPosition=Res;
+           h_fig5.PaperOrientation='landscape';
+           h_fig5.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,NameSuffix5);
+           % The actual plotting
+           g5.draw()
+           % Save figure
+           FullName5=strcat(FigNamePt1,FigNamePt2,FigNamePt3,NameSuffix5);
+           %%% Save the current figure in the current folder
+           print(h_fig5,FullName5,'-dpng');
+
+           %% Gramm object 6
+           % Define variables
+           Plottitle=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ii,1}.Data(1).FMIndex),obj.SMFSResults{ii,1}.Data(1).SumNumFcAnalysedyPullingLength);
+           LegendyAxis6='Pulling length (nm)';
+           NameSuffix6='_Pullinglength';
+           % Allocate data
+           yData6=obj.SMFSResults{ii}.Data.yPullingLengthConcat*1e9;
+           % Create a gramm object
+           g6=gramm('x',xData,'y',yData6,...
+               'color',ColorData,'lightness',LightnessData);
+           % Plot data
+           g6.geom_polygon('y',{LimitLength1;LimitLength2;LimitLength3},'color',ColorMap1);
+           g6.geom_jitter('width',0.2,...
+               'dodge',2.4); % Plot raw data as jitter
+           g6.stat_boxplot('notch',true,...
+               'width',BoxplotWidth,...
+               'dodge',2.4); % Plot data in boxplot
+           g6.set_color_options('map','d3_20')
+           g6.set_title(Plottitle) %Set figure title
+           % Legend
+           g6.set_names('x',LegendxAxis,'y',LegendyAxis6,'color',LegendColor,'lightness',LegendLightness)
+           % Figure
+           h_fig6=figure(6);
+           h_fig6.Color='white'; % changes the background color of the figure
+           h_fig6.Units='pixel'; % Defines the units
+           h_fig6.OuterPosition=Res;
+           h_fig6.PaperOrientation='landscape';
+           h_fig6.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,NameSuffix6);
+           % The actual plotting
+           g6.draw()
+           % Save figure
+           FullName6=strcat(FigNamePt1,FigNamePt2,FigNamePt3,NameSuffix6);
+           %%% Save the current figure in the current folder
+           print(h_fig6,FullName6,'-dpng');
+
+           % House keeping
+           close all
+       end
+
+       
+       function SM_results_gramm_plot(obj,ResultsRow,Linker,IdxShift,ChronoFMIdx,FMColour)
+           % ResultsRow - row index in the SMFSResultsParameters table
+           % Linker: string , either 'long' or 'short'
+           % FMShift - force map shift
+           % FMoI - force map of interest (corresponds to the number in the
+           % FMID)
+           % FMColour: 2 possibilities
+           % 1. 'FM': Each FM is coloured differently
+           % 2. 'Phase': Each deformation phase is coloured differently
+
+           % Input variable adaptation
+           if nargin<5
+               ResultsRow=1;
+               IdxShift=3;
+               ChronoFMIdx=1;
+               FMColour='FM';
+           end
+           % Output time and date for the dairy
+           datetime('now')
+           % Change into the Folder of Interest
+           cd(obj.ExperimentFolder) % Move into the folder
+           % Create folders for saving the produced figures
+           foldername='SM_results_gramm_plot';    % Defines the folder name
+           mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
+           currpath=fullfile(obj.ExperimentFolder,foldername);
+           cd(currpath);
+           %% General variables 1
+           ColorBrewerMap1=[[253 174 97]./255; % Ochreish
+               [116 173 209]./255]; % Steel blueish
+
+           CS1=[165 0 38]./255; % Dark reddish
+           CS2=[215 48 39]./255; % Light reddish
+           CS3=[244 109 67]./255; % Orangish
+           CS4=[253 174 97]./255; % Ochreish
+           CS5=[254 224 144]./255; % Yellowish
+           CS6=[224 243 248]./255; % Pastel blueish
+           CS7=[171 217 233]./255; % Light blueish
+           CS8=[116 173 209]./255; % Steel blueish
+           CS9=[69 117 180]./255; % Distant blueish
+           CS10=[49 54 149]./255; % Pale ultramarineish
+           ColorMap1=[[0 25 255]./255;  % Blue
+               [26 255 0]./255; % Green
+               [255 102 0]./255; % Orange
+               [255 0 26]./255]; % Red
+           ColorMap2=[[0 136 55]./255;  % Green
+               [215 25 28]./255; % Red
+               [5 113 176]./255; % Blue
+               [123 50 148]./255]; % Violet
+           ColorMapViolet=[123 50 148]./255;  % Violet
+           ColorMapBlue=[5 113 176]./255; % Blue
+           %% General variables 1
+            if strcmpi(Linker,'Long')
+            LimitLengthRet1=[0 378]; 
+            LimitLengthRet2=[378 522];
+            LimitLengthApp=[50 120];
+            elseif strcmpi(Linker,'Short')
+            LimitLengthRet1=[0 333]; 
+            LimitLengthRet2=[333 463];
+            LimitLengthApp=[50 120];
+            end
+           Res=[1 1 2560 1250]; % Define the figure resolution
+           LabelSize=3;
+           MarkerSize=10;
+           %MarkerSize=5;
+           AxesFontSize=38;
+           LegendxAxis='Force-distance curve number';
+           LegendColor='Force Map ID';
+           %% Allocate data
+           FMIdxFcArray=obj.SMFSResults{ResultsRow}.Concatenate.FMIndexChrono;
+           FMEnvCond=obj.SMFSResults{ResultsRow}.Concatenate.FMEnvCond(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx);
+           FMIdxArray=obj.SMFSResults{ResultsRow}.Data.FMIndex(obj.SMFSResults{ResultsRow}.Data.FMDateTimeSortIdx);
+           % FM ID of the selected FM 
+           FMoIID=FMIdxArray(ChronoFMIdx);
+           % Determine neighboring force maps based 
+           FMBeforeIdx=ChronoFMIdx-IdxShift;
+           if FMBeforeIdx<=0 % Correct for potential negative force map values
+               FMBeforeIdx=ChronoFMIdx;
+           end
+           FMBefore=FMIdxArray(FMBeforeIdx);
+            FMBeforeFcIdx=find(FMBefore==FMIdxFcArray); % Find indices of the FM of interest
+           FMAfterIdx=ChronoFMIdx+IdxShift;
+           if FMAfterIdx> length(obj.SMFSResults{ResultsRow}.Data.FMIndex)
+               FMAfterIdx=length(obj.SMFSResults{ResultsRow}.Data.FMIndex);
+           end
+           FMAfter=FMIdxArray(FMAfterIdx);
+            FMAfterFcIdx=find(FMAfter==FMIdxFcArray); % Find indices of the FM of interest
+           % Fc number
+           NumFm=FMAfterIdx-FMBeforeIdx+1; % Number of fm selected
+           FcNum(1:NumFm*100,1)=FMBeforeIdx*100-99:FMAfterIdx*100; % Corresponding fc number to the selected fm
+           % General variables
+           xData=(1:length(FcNum))';
+           % Colour condition
+           if strcmpi(FMColour,'FM')
+ %ColorData=FMIdxFcArray(FMBeforeFcIdx(1):FMAfterFcIdx(end));
+               ColorData=FMEnvCond(FMBeforeFcIdx(1):FMAfterFcIdx(end));
+               ColorMap='d3_20c';
+
+           elseif strcmpi(FMColour,'Phase')
+               ColorData=obj.SMFSResults{ResultsRow,1}.DeformPhase(1).Fc(FMBeforeFcIdx(1):FMAfterFcIdx(end));
+               ColorMap=ColorMap2;
+           end
+           % Transform results parameters to string
+           if obj.SMFSResults{ResultsRow}.Parameters.ExtendVelocity==0
+               ExtVelocityValueStr='All';
+           else
+               ExtVelocityValueStr=num2str(round(obj.SMFSResults{ResultsRow}.Parameters.ExtendVelocity*1e9));
+           end
+           if obj.SMFSResults{ResultsRow}.Parameters.RetractVelocity==0
+               RetVelocityValueStr='All';
+           else
+               RetVelocityValueStr=num2str(round(obj.SMFSResults{ResultsRow}.Parameters.RetractVelocity*1e9));
+           end
+           if obj.SMFSResults{ResultsRow}.Parameters.HoldingTime==-1
+               HoldingTimeValueStr='All';
+           else
+               HoldingTimeValueStr=num2str(obj.SMFSResults{ResultsRow}.Parameters.HoldingTime);
+           end
+           FigNamePt1=sprintf('SMFSResultRow%d_',ResultsRow);
+           FigNamePt2=strcat(ExtVelocityValueStr,{'_'},RetVelocityValueStr,{'_'},HoldingTimeValueStr,{'_'},obj.SMFSResults{ResultsRow}.Parameters.Substrate,{'_'},obj.SMFSResults{ResultsRow}.Parameters.Medium,{'_'},obj.SMFSResults{ResultsRow}.Parameters.ChipCantilever,{'_'},obj.SMFSResults{ResultsRow}.Parameters.Chipbox,{'_'},obj.SMFSResults{ResultsRow}.Parameters.Linker);
+           FigNamePt2=char(FigNamePt2);
+           FigNamePt3='_Boxplot';
+           Plottitle=strcat(obj.ExperimentName,sprintf('-%d is the chosen input FM-ID with a chronoclogical shift of %d FM',FMoIID,IdxShift));
+           %% Gramm object 1
+            % Define variables
+            LegendyAxis1='Adhesion force (nN)';
+            NameSuffix1='_MaxAdhesionForceApproach';
+            % Allocate data
+            yArray1=obj.SMFSResults{ResultsRow}.Data.AdhMaxAppConcat(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*-1e9;
+            yData1=yArray1(FMBeforeFcIdx(1):FMAfterFcIdx(end)); 
+           % Create a gramm object
+           g1=gramm('x',xData,'y',yData1,...
+               'color',ColorData);
+           % Plot data
+           g1.geom_point(); % Plot raw data as points
+           % Set options
+           g1.set_title(Plottitle) %Set figure title
+           g1.set_names('x',LegendxAxis,'y',LegendyAxis1,'color',LegendColor)
+           g1.set_text_options('label_scaling',LabelSize)
+           g1.set_point_options('base_size',MarkerSize)
+           g1.set_color_options('map',ColorMap)
+           g1.axe_property('FontSize',AxesFontSize);
+           g1.set_layout_options("legend",0) % Show legend
+           % g1.set_layout_options("legend",1) % Show legend
+           % Figure
+           h_fig1=figure(1);
+           h_fig1.Color='white'; % changes the background color of the figure
+           h_fig1.Units='pixel'; % Defines the units
+           h_fig1.OuterPosition=Res;
+           h_fig1.PaperOrientation='landscape';
+           h_fig1.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_ChronoFMIdx_',sprintf('%d',ChronoFMIdx),'_',FMColour,NameSuffix1);
+           % The actual plotting
+           g1.draw()
+          % Save figure
+           FullName1=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_ChronoFMIdx_',sprintf('%d',ChronoFMIdx),'_',FMColour,NameSuffix1);
+           print(h_fig1,FullName1,'-dpng'); % Save the current figure in the current folder
+           %% Gramm object 2
+           % Define variables
+           LegendyAxis2='Adhesion force (nN)';
+           NameSuffix2='_MaxAdhesionForceRetract';
+           % Allocate data
+           yArray2=obj.SMFSResults{ResultsRow}.Data.AdhMaxRetConcat(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*-1e9;
+           yData2=yArray2(FMBeforeFcIdx(1):FMAfterFcIdx(end));
+           % Create a gramm object
+           g2=gramm('x',xData,'y',yData2,...
+               'color',ColorData);
+           % Plot data
+           %    g2.geom_polygon('y',{LimitForce1},'color',ColorBrewerMap1);
+           g2.geom_point(); % Plot raw data as points
+           % Set options
+           g2.set_title(Plottitle) %Set figure title
+           g2.set_names('x',LegendxAxis,'y',LegendyAxis2,'color',LegendColor)
+           g2.set_text_options('label_scaling',LabelSize)
+           g2.set_point_options('base_size',MarkerSize)
+           g2.set_color_options('map',ColorMap)
+           g2.axe_property('FontSize',AxesFontSize);
+           g2.set_layout_options("legend",0) % Show legend
+           % g2.set_layout_options("legend",1) % Show legend
+           % Figure
+           h_fig2=figure(2);
+           h_fig2.Color='white'; % changes the background color of the figure
+           h_fig2.Units='pixel'; % Defines the units
+           h_fig2.OuterPosition=Res;
+           h_fig2.PaperOrientation='landscape';
+           h_fig2.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_ChronoFMIdx_',sprintf('%d',ChronoFMIdx),'_',FMColour,NameSuffix2);
+           % The actual plotting
+           g2.draw()
+           % Save figure
+           FullName2=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_ChronoFMIdx_',sprintf('%d',ChronoFMIdx),'_',FMColour,NameSuffix2);
+           print(h_fig2,FullName2,'-dpng'); % Save the current figure in the current folder
+           %% Gramm object 3
+           % Define variables
+           LegendyAxis3='Adhesion force (nN)';
+           NameSuffix3='_AdhForceUnbinding';
+           % Allocate data
+           yArray3=obj.SMFSResults{ResultsRow}.Data.AdhUnbindingConcat(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*-1e9;
+           yData3=yArray3(FMBeforeFcIdx(1):FMAfterFcIdx(end));
+           % Create a gramm object
+           g3=gramm('x',xData,'y',yData3,...
+               'color',ColorData);
+           % Plot data
+           g3.geom_point(); % Plot raw data as points
+           % Set options
+           g3.set_title(Plottitle) %Set figure title
+           g3.set_names('x',LegendxAxis,'y',LegendyAxis3,'color',LegendColor)
+           g3.set_text_options('label_scaling',LabelSize)
+           g3.set_point_options('base_size',MarkerSize)
+           g3.set_color_options('map',ColorMap)
+           g3.axe_property('FontSize',AxesFontSize);
+           g3.set_layout_options("legend",0) % Hide legend
+           %g3.set_layout_options("legend",1) % Show legend
+           % Figure
+           h_fig3=figure(3);
+           h_fig3.Color='white'; % changes the background color of the figure
+           h_fig3.Units='pixel'; % Defines the units
+           h_fig3.OuterPosition=Res;
+           h_fig3.PaperOrientation='landscape';
+           h_fig3.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_ChronoFMIdx_',sprintf('%d',ChronoFMIdx),'_',FMColour,NameSuffix3);
+           % The actual plotting
+           g3.draw()
+           % Save figure
+           FullName3=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_ChronoFMIdx_',sprintf('%d',ChronoFMIdx),'_',FMColour,NameSuffix3);
+           print(h_fig3,FullName3,'-dpng'); % Save the current figure in the current folder
+            %% Gramm object 4
+            % Define variables
+            LegendyAxis4='Adhesion energry (aJ)';
+            NameSuffix4='_AdhEnergyApproach';
+            % Allocate data
+            yArray4=obj.SMFSResults{ResultsRow}.Data.AdhEneAppConcat(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*-1e18;
+            yData4=yArray4(FMBeforeFcIdx(1):FMAfterFcIdx(end));
+            % Create a gramm object
+           g4=gramm('x',xData,'y',yData4,...
+               'color',ColorData);
+           % Plot data
+           g4.geom_point(); % Plot raw data as points
+           % Set options
+           g4.set_title(Plottitle) %Set figure title
+           g4.set_names('x',LegendxAxis,'y',LegendyAxis4,'color',LegendColor)
+           g4.set_text_options('label_scaling',LabelSize)
+           g4.set_point_options('base_size',MarkerSize)
+           g4.set_color_options('map',ColorMap)
+           g4.axe_property('FontSize',AxesFontSize);
+           g4.set_layout_options("legend",0) % Hide legend
+           %g4.set_layout_options("legend",1) % Show legend
+           % Figure
+           h_fig4=figure(4);
+           h_fig4.Color='white'; % changes the background color of the figure
+           h_fig4.Units='pixel'; % Defines the units
+           h_fig4.OuterPosition=Res;
+           h_fig4.PaperOrientation='landscape';
+           h_fig4.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_ChronoFMIdx_',sprintf('%d',ChronoFMIdx),'_',FMColour,NameSuffix4);
+           % The actual plotting
+           g4.draw()
+           % Save figure
+           FullName4=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_ChronoFMIdx_',sprintf('%d',ChronoFMIdx),'_',FMColour,NameSuffix4);
+           print(h_fig4,FullName4,'-dpng'); % Save the current figure in the current folder
+           %% Gramm object 5
+           % Define variables
+           LegendyAxis5='Adhesion energy (aJ)';
+           NameSuffix5='_AdhEnergyRetract';
+           % Allocate data
+           yArray5=obj.SMFSResults{ResultsRow}.Data.AdhEneRetConcat(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*-1e18;
+           yData5=yArray5(FMBeforeFcIdx(1):FMAfterFcIdx(end));
+           % Create a gramm object
+           g5=gramm('x',xData,'y',yData5,...
+               'color',ColorData);
+           % Plot data
+           g5.geom_point(); % Plot raw data as points
+           % Set options
+           g5.set_title(Plottitle) %Set figure title
+           g5.set_names('x',LegendxAxis,'y',LegendyAxis5,'color',LegendColor)
+           g5.set_text_options('label_scaling',LabelSize)
+           g5.set_point_options('base_size',MarkerSize)
+           g5.set_color_options('map',ColorMap)
+           g5.axe_property('FontSize',AxesFontSize);
+           g5.set_layout_options("legend",0) % Hide legend
+           %g5.set_layout_options("legend",1) % Show legend
+           % Figure
+           h_fig5=figure(5);
+           h_fig5.Color='white'; % changes the background color of the figure
+           h_fig5.Units='pixel'; % Defines the units
+           h_fig5.OuterPosition=Res;
+           h_fig5.PaperOrientation='landscape';
+           h_fig5.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_ChronoFMIdx_',sprintf('%d',ChronoFMIdx),'_',FMColour,NameSuffix5);
+           % The actual plotting
+           g5.draw()
+           % Save figure
+           FullName5=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_ChronoFMIdx_',sprintf('%d',ChronoFMIdx),'_',FMColour,NameSuffix5);
+           print(h_fig5,FullName5,'-dpng'); % Save the current figure in the current folder
+           %% Gramm object 6
+           % Define variables
+           NameSuffix6='_Pullinglength';
+           LegendyAxis6='Pull-off length (nm)';
+           % Allocate data
+           yArray6=obj.SMFSResults{ResultsRow}.Data.yPullingLengthConcat(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*1e9;
+           yData6=yArray6(FMBeforeFcIdx(1):FMAfterFcIdx(end));
+           % Create a gramm object
+           g6=gramm('x',xData,'y',yData6,...
+               'color',ColorData);
+           % Plot data
+           g6.geom_polygon('y',{LimitLengthRet1;LimitLengthRet2},'color',ColorBrewerMap1);
+           g6.geom_point(); % Plot raw data as points
+           % Set options
+           %      g6.set_title(Plottitle) %Set figure title
+           g6.set_names('x',LegendxAxis,'y',LegendyAxis6,'color',LegendColor)
+           g6.set_color_options('n_color',6,...
+               'n_lightness',6,...
+               'legend','expand')
+           g6.set_text_options('label_scaling',LabelSize)
+           g6.set_point_options('base_size',MarkerSize)
+           g6.set_color_options('map',ColorMapBlue)
+           g6.axe_property('FontSize',AxesFontSize);
+           g6.axe_property('ylim',[0 850]);
+           g6.set_layout_options("legend",0) % Hide legend
+           %g6.set_layout_options("legend",1) % Show legend
+           % Figure
+           h_fig6=figure(6);
+           h_fig6.Color='white'; % changes the background color of the figure
+           h_fig6.Units='pixel'; % Defines the units
+           h_fig6.OuterPosition=Res;
+           h_fig6.PaperOrientation='landscape';
+           h_fig6.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_ChronoFMIdx_',sprintf('%d',ChronoFMIdx),'_',FMColour,NameSuffix6);
+           % The actual plotting
+           g6.draw()
+           % Save figure
+           FullName6=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_ChronoFMIdx_',sprintf('%d',ChronoFMIdx),'_',FMColour,NameSuffix6);
+           print(h_fig6,FullName6,'-dpng'); % Save the current figure in the current folder
+            %% Gramm object 7
+            % Define variables
+            LegendyAxis7='Snap-In length (nm)';
+            NameSuffix7='_SnapInLength';
+            % Allocate data
+            yArray7=obj.SMFSResults{ResultsRow}.Data.ySnapInLengthConcat(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*1e9;
+            yData7=yArray7(FMBeforeFcIdx(1):FMAfterFcIdx(end));
+            % Create a gramm object
+           g7=gramm('x',xData,'y',yData7,...
+               'color',ColorData);
+           % Plot data
+           g7.geom_polygon('y',{LimitLengthApp},'color',ColorBrewerMap1);
+           g7.geom_point(); % Plot raw data as points
+           % Set options
+           %      g6.set_title(Plottitle) %Set figure title
+           g7.set_names('x',LegendxAxis,'y',LegendyAxis7,'color',LegendColor)
+           g7.set_text_options('label_scaling',LabelSize)
+           g7.set_point_options('base_size',MarkerSize)
+           g7.set_color_options('map',ColorMapBlue)
+           g7.axe_property('FontSize',AxesFontSize);
+           g7.axe_property('ylim',[0 850]);
+           g7.set_layout_options("legend",0) % Hide legend
+           %g6.set_layout_options("legend",1) % Show legend
+           % Figure
+           h_fig7=figure(7);
+           h_fig7.Color='white'; % changes the background color of the figure
+           h_fig7.Units='pixel'; % Defines the units
+           h_fig7.OuterPosition=Res;
+           h_fig7.PaperOrientation='landscape';
+           h_fig7.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_ChronoFMIdx_',sprintf('%d',ChronoFMIdx),'_',FMColour,NameSuffix7);
+           % The actual plotting
+           g7.draw()
+           % Save figure
+           FullName7=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_ChronoFMIdx_',sprintf('%d',ChronoFMIdx),'_',FMColour,NameSuffix7);
+           print(h_fig7,FullName7,'-dpng'); % Save the current figure in the current folder
+           % House keeping
+           close all
+       end
+      
+        function SM_results_gramm_plot2(obj,ResultsRow,Linker,xArg,MarkerArg)
+           % Input variables: 
+           % ResultsRow: double ,e.g. 1
+           % Linker: string , either 'long' or 'short'
+           % xArg (x-axis argument): string, either 'Index' or 'DateTime'
+           % MarkerArg: sting, either 'Y' or 'N' 
+           % Y stands for Yes, show marker
+           % N stands for No, do not show marker
+
+           % Input variable adaptation
+           if nargin<2
+               ResultsRow=1;
+           end
+           ColorBrewerMap1=[[253 174 97]./255; % Ochreish
+               [116 173 209]./255]; % Steel blueish
+           % Change into the Folder of Interest
+           cd(obj.ExperimentFolder) % Move into the folder
+           % Create folders for saving the produced figures
+           foldername='SM_results_gramm_plot2';    % Defines the folder name
+           mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
+           currpath=fullfile(obj.ExperimentFolder,foldername);
+           cd(currpath);
+           %% General variables 1
+            if strcmpi(Linker,'Long')
+            LimitLengthRet1=[0 378]; 
+            LimitLengthRet2=[378 522];
+            LimitLengthApp=[50 120];
+            elseif strcmpi(Linker,'Short')
+            LimitLengthRet1=[0 333]; 
+            LimitLengthRet2=[333 463];
+            LimitLengthApp=[50 120];
+            end
+           if strcmpi(xArg,'DateTime')
+               LegendxAxis='Date and Time';
+               xData=obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSort;
+               MarkerData=obj.SMFSResults{ResultsRow}.Concatenate.FMIndex(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx);
+               MarkerName='FM Index';
+               xDataMin=min(xData);
+               xDataMax=max(xData);
+               xAxisCorr=(xDataMax-xDataMin)*0.05;
+           elseif strcmpi(xArg,'Index')
+               LegendxAxis='Force curves in chronological order';
+               xData=obj.SMFSResults{ResultsRow}.Concatenate.FcNum;
+               MarkerData=obj.SMFSResults{ResultsRow}.Concatenate.FMIndex(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx);
+               MarkerName='FM Index';
+               xDataMin=min(xData);
+               xDataMax=max(xData);
+               xAxisCorr=(xDataMax-xDataMin)*0.05;
+           end
+           Res=[1 1 2560 1250]; % Define the figure resolution
+           LegendColor='Medium';
+           LightnessName='Substrate';
+           LightnessData=obj.SMFSResults{ResultsRow}.Concatenate.FMSubstrate(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx);
+           ColorData=obj.SMFSResults{ResultsRow}.Concatenate.FMEnvCond(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx);
+           MarkerSize=10;
+           BaseFontSize=24;
+           if obj.SMFSResults{ResultsRow}.Parameters.ExtendVelocity==0
+               ExtVelocityValueStr='All';
+           else
+               ExtVelocityValueStr=num2str(round(obj.SMFSResults{ResultsRow}.Parameters.ExtendVelocity*1e9));
+           end
+           if obj.SMFSResults{ResultsRow}.Parameters.RetractVelocity==0
+               RetVelocityValueStr='All';
+           else
+               RetVelocityValueStr=num2str(round(obj.SMFSResults{ResultsRow}.Parameters.RetractVelocity*1e9));
+           end
+           if obj.SMFSResults{ResultsRow}.Parameters.HoldingTime==-1
+               HoldingTimeValueStr='All';
+           else
+               HoldingTimeValueStr=num2str(obj.SMFSResults{ResultsRow}.Parameters.HoldingTime);
+           end
+           % General names
+           FigNamePt1=sprintf('SMFSResultRow%d_',ResultsRow);
+           FigNamePt2=strcat(ExtVelocityValueStr,{'_'},RetVelocityValueStr,{'_'},HoldingTimeValueStr,{'_'},obj.SMFSResults{ResultsRow}.Parameters.Substrate,{'_'},obj.SMFSResults{ResultsRow}.Parameters.Medium,{'_'},obj.SMFSResults{ResultsRow}.Parameters.ChipCantilever,{'_'},obj.SMFSResults{ResultsRow}.Parameters.Chipbox,{'_'},obj.SMFSResults{ResultsRow}.Parameters.Linker);
+           FigNamePt2=char(FigNamePt2);
+           FigNamePt3='_Plot2';
+            %% Gramm object 1
+            % Define variables
+            Plottitle1=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ResultsRow,1}.Data(1).FMIndex),obj.SMFSResults{ResultsRow,1}.Data(1).SumNumFcAnalysedAdhMaxApp);
+            LegendyAxis1='Adhesion force (N)';
+            NameSuffix1='_MaxAdhesionForceApproach';
+            % Allocate data
+            yData1=obj.SMFSResults{ResultsRow}.Data.AdhMaxAppConcat(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*-1; 
+            % Create a gramm object
+            if strcmpi(MarkerArg,'Y')
+            g1=gramm('x',xData,'y',yData1,...
+               'color',ColorData,...
+               'lightness',LightnessData,...
+               'marker',MarkerData);
+            elseif strcmpi(MarkerArg,'N')
+            g1=gramm('x',xData,'y',yData1,...
+               'color',ColorData,...
+               'lightness',LightnessData);
+            end
+           % Plot data
+           %      g1.geom_polygon('y',{LimitForce1;LimitForce2;LimitForce3},'color',ColorBrewerMap1);
+           g1.geom_point();
+           % Set options
+           g1.axe_property('xlim',[xDataMin-xAxisCorr xDataMax+xAxisCorr]) % Set x limit
+           if strcmpi(xArg,'DateTime')
+               g1.set_datetick('x',0,'keeplimits') % Format x-axis
+           end
+           g1.set_point_options('base_size',MarkerSize)
+           g1.set_title(Plottitle1) %Set figure title
+           if strcmpi(MarkerArg,'Y')
+           g1.set_names('x',LegendxAxis,'y',LegendyAxis1,'color',LegendColor,'lightness',LightnessName,'marker',MarkerName)
+           elseif strcmpi(MarkerArg,'N')
+           g1.set_names('x',LegendxAxis,'y',LegendyAxis1,'color',LegendColor,'lightness',LightnessName)
+           end
+           g1.set_color_options('map','hcl',...
+               'n_color',6,...
+               'n_lightness',6,...
+               'legend','expand')
+           g1.set_text_options('font','Helvetica','base_size',BaseFontSize,'label_scaling',1.2,'legend_scaling',1)
+           %g1.set_layout_options("legend",0) % Don't show legend
+           g1.set_layout_options("legend",1) % Show legend
+           % Figure
+           h_fig1=figure(1);
+           h_fig1.Color='white'; % changes the background color of the figure
+           h_fig1.Units='pixel'; % Defines the units
+           h_fig1.OuterPosition=Res;
+           h_fig1.PaperOrientation='landscape';
+           h_fig1.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix1);
+           % The actual plotting
+           g1.draw()
+ 
+           %% Gramm object 2
+           % Define variables
+           Plottitle2=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ResultsRow,1}.Data(1).FMIndex),obj.SMFSResults{ResultsRow,1}.Data(1).SumNumFcAnalysedAdhMaxRet);
+           LegendyAxis2='Adhesion force (nN)';
+           NameSuffix2='_MaxAdhesionForceRetract';
+           % Allocate data
+           yData2=obj.SMFSResults{ResultsRow}.Data.AdhMaxRetConcat(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*-1e9;
+           % Create a gramm object
+            if strcmpi(MarkerArg,'Y')
+            g2=gramm('x',xData,'y',yData2,...
+               'color',ColorData,...
+               'lightness',LightnessData,...
+               'marker',MarkerData);
+            elseif strcmpi(MarkerArg,'N')
+            g2=gramm('x',xData,'y',yData2,...
+               'color',ColorData,...
+               'lightness',LightnessData);
+            end
+           % Plot data
+           %      g2.geom_polygon('y',{LimitForce1;LimitForce2;LimitForce3},'color',ColorBrewerMap1);
+           g2.geom_point();
+           % Set options
+           g2.axe_property('xlim',[xDataMin-xAxisCorr xDataMax+xAxisCorr]) % Set x limit
+           if strcmpi(xArg,'DateTime')
+               g2.set_datetick('x',0,'keeplimits') % Format x-axis
+           end
+           g2.set_point_options('base_size',MarkerSize)
+           g2.set_title(Plottitle2) %Set figure title
+           if strcmpi(MarkerArg,'Y')
+           g2.set_names('x',LegendxAxis,'y',LegendyAxis2,'color',LegendColor,'lightness',LightnessName,'marker',MarkerName)
+           elseif strcmpi(MarkerArg,'N')
+           g2.set_names('x',LegendxAxis,'y',LegendyAxis2,'color',LegendColor,'lightness',LightnessName)
+           end
+           g2.set_color_options('n_color',6,...
+               'n_lightness',6,...
+               'legend','expand')
+           g2.set_text_options('font','Helvetica','base_size',BaseFontSize,'label_scaling',1.2,'legend_scaling',1)
+           %g2.set_layout_options("legend",0) % Don't show legend
+           g2.set_layout_options("legend",1) % Show legend
+           % Figure
+           h_fig2=figure(2);
+           h_fig2.Color='white'; % changes the background color of the figure
+           h_fig2.Units='pixel'; % Defines the units
+           h_fig2.OuterPosition=Res;
+           h_fig2.PaperOrientation='landscape';
+           h_fig2.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix2);
+           % The actual plotting
+           g2.draw()
+           % Save figure
+           FullName2=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix2);
+           %%% Save the current figure in the current folder
+           print(h_fig2,FullName2,'-dpng');
+           % g2.export('file_name',FullName2,file_type='pdf',width=42,height=29.7,units='centimeters');
+% 
+           
+            %% Gramm object 3
+            % Define variables
+            Plottitle3=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ResultsRow,1}.Data(1).FMIndex),obj.SMFSResults{ResultsRow,1}.Data(1).SumNumFcAnalysedAdhUnbinding); 
+            LegendyAxis3='Adhesion force (nN)';
+            NameSuffix3='_AdhForceUnbinding';
+            % Allocate data
+            yData3=obj.SMFSResults{ResultsRow}.Data.AdhUnbindingConcat(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*-1e9;
+            % Create a gramm object
+            if strcmpi(MarkerArg,'Y')
+            g3=gramm('x',xData,'y',yData3,...
+               'color',ColorData,...
+               'lightness',LightnessData,...
+               'marker',MarkerData);
+            elseif strcmpi(MarkerArg,'N')
+            g3=gramm('x',xData,'y',yData3,...
+               'color',ColorData,...
+               'lightness',LightnessData);
+            end
+           % Plot data
+           g3.geom_point()
+           % Set options
+           g3.axe_property('xlim',[xDataMin-xAxisCorr xDataMax+xAxisCorr]) % Set x limit
+           if strcmpi(xArg,'DateTime')
+               g3.set_datetick('x',0,'keeplimits') % Format x-axis
+           end
+           g3.set_point_options('base_size',MarkerSize)
+           g3.set_title(Plottitle3) %Set figure title
+           if strcmpi(MarkerArg,'Y')
+           g3.set_names('x',LegendxAxis,'y',LegendyAxis3,'color',LegendColor,'lightness',LightnessName,'marker',MarkerName)
+           elseif strcmpi(MarkerArg,'N')
+           g3.set_names('x',LegendxAxis,'y',LegendyAxis3,'color',LegendColor,'lightness',LightnessName)
+           end
+           g3.set_color_options('n_color',6,...
+               'n_lightness',6,...
+               'legend','expand')
+           g3.set_text_options('font','Helvetica','base_size',BaseFontSize,'label_scaling',1.2,'legend_scaling',1)
+           %g3.set_layout_options("legend",0) % Don't show legend
+           g3.set_layout_options("legend",1) % Show legend
+           % Figure
+           h_fig3=figure(3);
+           h_fig3.Color='white'; % changes the background color of the figure
+           h_fig3.Units='pixel'; % Defines the units
+           h_fig3.OuterPosition=Res;
+           h_fig3.PaperOrientation='landscape';
+           h_fig3.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix3);
+           % The actual plotting
+           g3.draw()            
+            % Save figure            
+            FullName3=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix3);
+            print(h_fig3,FullName3,'-dpng'); % Save the current figure in the current folder
+   %         g3.export('file_name',FullName2,file_type='pdf',width=42,height=29.7,units='centimeters');
+
+            %% Gramm object 4
+            % Define variables
+            Plottitle4=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ResultsRow,1}.Data(1).FMIndex),obj.SMFSResults{ResultsRow,1}.Data(1).SumNumFcAnalysedAdhEneApp);
+            LegendyAxis4='Adhesion energry (J)';
+            NameSuffix4='_AdhEnergyApproach';
+            % Allocate data
+            yData4=obj.SMFSResults{ResultsRow}.Data.AdhEneAppConcat(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*-1e18;
+            % Create a gramm object
+            if strcmpi(MarkerArg,'Y')
+            g4=gramm('x',xData,'y',yData4,...
+               'color',ColorData,...
+               'lightness',LightnessData,...
+               'marker',MarkerData);
+            elseif strcmpi(MarkerArg,'N')
+            g4=gramm('x',xData,'y',yData4,...
+               'color',ColorData,...
+               'lightness',LightnessData);
+            end
+           % Plot data
+           g4.geom_point()
+           % Set options
+           g4.axe_property('xlim',[xDataMin-xAxisCorr xDataMax+xAxisCorr]) % Set x limit
+           if strcmpi(xArg,'DateTime')
+               g4.set_datetick('x',0,'keeplimits') % Format x-axis
+           end
+           g4.set_point_options('base_size',MarkerSize)
+           g4.set_title(Plottitle4) %Set figure title
+           if strcmpi(MarkerArg,'Y')
+           g4.set_names('x',LegendxAxis,'y',LegendyAxis4,'color',LegendColor,'lightness',LightnessName,'marker',MarkerName)
+           elseif strcmpi(MarkerArg,'N')
+           g4.set_names('x',LegendxAxis,'y',LegendyAxis4,'color',LegendColor,'lightness',LightnessName)
+           end
+           g4.set_color_options('n_color',6,...
+               'n_lightness',6,...
+               'legend','expand')
+           g4.set_text_options('font','Helvetica','base_size',BaseFontSize,'label_scaling',1.2,'legend_scaling',1)
+           %g4.set_layout_options("legend",0) % Don't show legend
+           g4.set_layout_options("legend",1) % Show legend
+           % Figure
+           h_fig4=figure(4);
+           h_fig4.Color='white'; % changes the background color of the figure
+           h_fig4.Units='pixel'; % Defines the units
+           h_fig4.OuterPosition=Res;
+           h_fig4.PaperOrientation='landscape';
+           h_fig4.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix4);
+           % The actual plotting
+           g4.draw()
+            % Save figure
+            FullName4=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix4);
+            print(h_fig4,FullName4,'-dpng'); % Save the current figure in the current folder
+         %   g4.export('file_name',FullName5,file_type='pdf',width=42,height=29.7,units='centimeters');
+
+           %% Gramm object 5
+           % Define variables
+           Plottitle5=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ResultsRow,1}.Data(1).FMIndex),obj.SMFSResults{ResultsRow,1}.Data(1).SumNumFcAnalysedAdhEneRet);            
+           LegendyAxis5='Adhesion energy (aJ)';
+           NameSuffix5='_AdhEnergyRetract';
+           % Allocate data
+           yData5=obj.SMFSResults{ResultsRow}.Data.AdhEneRetConcat(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*-1e18;
+           % Create a gramm object
+            if strcmpi(MarkerArg,'Y')
+            g5=gramm('x',xData,'y',yData5,...
+               'color',ColorData,...
+               'lightness',LightnessData,...
+               'marker',MarkerData);
+            elseif strcmpi(MarkerArg,'N')
+            g5=gramm('x',xData,'y',yData5,...
+               'color',ColorData,...
+               'lightness',LightnessData);
+            end
+           % Plot data
+           g5.geom_point()
+           % Set options
+           g5.axe_property('xlim',[xDataMin-xAxisCorr xDataMax+xAxisCorr]) % Set x limit
+           if strcmpi(xArg,'DateTime')
+               g5.set_datetick('x',0,'keeplimits') % Format x-axis
+           end
+           g5.set_point_options('base_size',MarkerSize)
+           g5.set_title(Plottitle5) %Set figure title
+           if strcmpi(MarkerArg,'Y')
+           g5.set_names('x',LegendxAxis,'y',LegendyAxis5,'color',LegendColor,'lightness',LightnessName,'marker',MarkerName)
+           elseif strcmpi(MarkerArg,'N')
+           g5.set_names('x',LegendxAxis,'y',LegendyAxis5,'color',LegendColor,'lightness',LightnessName)
+           end
+           g5.set_color_options('n_color',6,...
+               'n_lightness',6,...
+               'legend','expand')
+           g5.set_text_options('font','Helvetica','base_size',BaseFontSize,'label_scaling',1.2,'legend_scaling',1)
+           %g5.set_layout_options("legend",0) % Don't show legend
+           g5.set_layout_options("legend",1) % Show legend
+           % Figure
+           h_fig5=figure(5);
+           h_fig5.Color='white'; % changes the background color of the figure
+           h_fig5.Units='pixel'; % Defines the units
+           h_fig5.OuterPosition=Res;
+           h_fig5.PaperOrientation='landscape';
+           h_fig5.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix5);
+           % The actual plotting
+           g5.draw()
+           % Save figure
+           FullName5=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix5);
+           %%% Save the current figure in the current folder
+           print(h_fig5,FullName5,'-dpng');
+           %g5.export('file_name',FullName5,file_type='pdf',width=42,height=29.7,units='centimeters');
+
+           %% Gramm object 6
+           % Define variables
+           Plottitle6=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ResultsRow,1}.Data(1).FMIndex),obj.SMFSResults{ResultsRow,1}.Data(1).SumNumFcAnalysedyPullingLength);
+           LegendyAxis6='Pulling length (nm)';
+           NameSuffix6='_Pullinglength';
+           % Allocate data
+           yData6=obj.SMFSResults{ResultsRow}.Data.yPullingLengthConcat(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*1e9;
+           % Create a gramm object
+            if strcmpi(MarkerArg,'Y')
+            g6=gramm('x',xData,'y',yData6,...
+               'color',ColorData,...
+               'lightness',LightnessData,...
+               'marker',MarkerData);
+            elseif strcmpi(MarkerArg,'N')
+            g6=gramm('x',xData,'y',yData6,...
+               'color',ColorData,...
+               'lightness',LightnessData);
+            end
+           % Plot data
+           g6.geom_polygon('y',{LimitLengthRet1;LimitLengthRet2},'color',ColorBrewerMap1);
+           g6.geom_point();
+           % Set options
+           g6.axe_property('xlim',[xDataMin-xAxisCorr xDataMax+xAxisCorr]) % Set x limit
+           if strcmpi(xArg,'DateTime')
+               g6.set_datetick('x',0,'keeplimits') % Format x-axis
+           end
+           g6.set_point_options('base_size',MarkerSize)
+           g6.set_title(Plottitle6) %Set figure title
+           if strcmpi(MarkerArg,'Y')
+           g6.set_names('x',LegendxAxis,'y',LegendyAxis6,'color',LegendColor,'lightness',LightnessName,'marker',MarkerName)
+           elseif strcmpi(MarkerArg,'N')
+           g6.set_names('x',LegendxAxis,'y',LegendyAxis6,'color',LegendColor,'lightness',LightnessName)
+           end
+           g6.set_color_options('n_color',6,...
+               'n_lightness',6,...
+               'legend','expand')
+           g6.set_text_options('font','Helvetica','base_size',BaseFontSize,'label_scaling',1.2,'legend_scaling',1)
+           %g6.set_layout_options("legend",0) % Don't show legend
+           g6.set_layout_options("legend",1) % Show legend
+           % Figure
+           h_fig6=figure(6);
+           h_fig6.Color='white'; % changes the background color of the figure
+           h_fig6.Units='pixel'; % Defines the units
+           h_fig6.OuterPosition=Res;
+           h_fig6.PaperOrientation='landscape';
+           h_fig6.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix6);
+           % The actual plotting
+           g6.draw()
+           % Save figure
+           FullName6=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix6);
+           %%% Save the current figure in the current folder
+           print(h_fig6,FullName6,'-r1200','-dpng');
+           %g6.export('file_name',FullName6,file_type='pdf',width=42,height=29.7,units='centimeters');
+
+            %% Gramm object 7
+            % Define variables
+            Plottitle7=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ResultsRow,1}.Data(1).FMIndex),obj.SMFSResults{ResultsRow,1}.Data(1).SumNumFcAnalysedySnapInLength);
+            LegendyAxis7='Snap-In length (nm)';
+            NameSuffix7='_SnapInLength';
+            % Allocate data
+            yData7=obj.SMFSResults{ResultsRow}.Data.ySnapInLengthConcat(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*1e9;
+            % Create a gramm object
+            if strcmpi(MarkerArg,'Y')
+            g7=gramm('x',xData,'y',yData7,...
+               'color',ColorData,...
+               'lightness',LightnessData,...
+               'marker',MarkerData);
+            elseif strcmpi(MarkerArg,'N')
+            g7=gramm('x',xData,'y',yData7,...
+               'color',ColorData,...
+               'lightness',LightnessData);
+            end
+           % Plot data
+           g7.geom_polygon('y',{LimitLengthApp},'color',ColorBrewerMap1);
+           g7.geom_point();
+           % Set options
+           g7.axe_property('xlim',[xDataMin-xAxisCorr xDataMax+xAxisCorr]) % Set x limit
+           if strcmpi(xArg,'DateTime')
+               g7.set_datetick('x',0,'keeplimits') % Format x-axis
+           end
+           g7.set_point_options('base_size',MarkerSize)
+           g7.set_title(Plottitle7) %Set figure title
+           if strcmpi(MarkerArg,'Y')
+           g7.set_names('x',LegendxAxis,'y',LegendyAxis7,'color',LegendColor,'lightness',LightnessName,'marker',MarkerName)
+           elseif strcmpi(MarkerArg,'N')
+           g7.set_names('x',LegendxAxis,'y',LegendyAxis7,'color',LegendColor,'lightness',LightnessName)
+           end
+           g7.set_color_options('n_color',6,...
+               'n_lightness',6,...
+               'legend','expand')
+           g7.set_text_options('font','Helvetica','base_size',BaseFontSize,'label_scaling',1.2,'legend_scaling',1)
+           %g7.set_layout_options("legend",0) % Don't show legend
+           g7.set_layout_options("legend",1) % Show legend
+           % Figure
+           h_fig7=figure(7);
+           h_fig7.Color='white'; % changes the background color of the figure
+           h_fig7.Units='pixel'; % Defines the units
+           h_fig7.OuterPosition=Res;
+           h_fig7.PaperOrientation='landscape';
+           h_fig7.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix6);
+           % The actual plotting
+           g7.draw()
+            % Save figure
+            FullName7=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix7);
+            print(h_fig7,FullName7,'-r1200','-dpng'); % Save the current figure in the current folder
+    %       g7.export('file_name',FullName6,file_type='pdf',width=42,height=29.7,units='centimeters');  
+
+           % House keeping
+           close all
+       end
+
+       function SM_results_gramm_plot2_publication(obj,ResultsRow,Linker,xArg,MarkerArg,LegendArg,CBar,Var)
+           % Input variables:
+           % ResultsRow: double ,e.g. 1
+           % Linker: string , either 'long' or 'short'
+           % xArg (x-axis argument): string, either 'Index' or 'DateTime'
+           % MarkerArg (Marker argument): string, either 'Y' or 'N'
+           % LegendArg (Legend argumend): string, either 'Y' or 'N'
+           % CBar (Color Bar): string, either 'Y' or 'N'
+           % Var (Variant): double, e.g. 2 (for Variant 2)
+
+           % Input variable adaptation
+           if nargin<2
+               ResultsRow=1;
+           end
+            % Define color bar
+            % For Row 6, from yLim(min) to
+            % yLim(min)+(yLim(max)-yLim(min))*0.01
+            xCBar1=[0 134 134 0];
+            xCBar2=[134 2200 2200 134];
+            xCBar3=[2200 12100 12100 2200];
+            xCBar4=[12100 22200 22200 12100];
+            y1CBar1=[0.188271 0.188271 0.190413 0.190413]; % [Ymin Ymax] [0.1872	0.4014]
+            y1CBar2=[0.188271 0.188271 0.190413 0.190413];
+            y1CBar3=[0.188271 0.188271 0.190413 0.190413];
+            y1CBar4=[0.188271 0.188271 0.190413 0.190413];
+            y2CBar1=[0.3020075 0.3020075 0.3074225 0.3074225]; % [Ymin Ymax] [0.2993	0.8408]
+            y2CBar2=[0.3020075 0.3020075 0.3074225 0.3074225];
+            y2CBar3=[0.3020075 0.3020075 0.3074225 0.3074225];
+            y2CBar4=[0.3020075 0.3020075 0.3074225 0.3074225];
+            y3CBar1=[-0.0197125 -0.0197125 -0.0141375 -0.0141375]; % [Ymin Ymax] [-0.0225	0.535]
+            y3CBar2=[-0.0197125 -0.0197125 -0.0141375 -0.0141375];
+            y3CBar3=[-0.0197125 -0.0197125 -0.0141375 -0.0141375];
+            y3CBar4=[-0.0197125 -0.0197125 -0.0141375 -0.0141375];
+            y4CBar1=[-15.8481195 -15.8481195 -15.7365585 -15.7365585]; % [Ymin Ymax] [-15.9039	-4.7478]
+            y4CBar2=[-15.8481195 -15.8481195 -15.7365585 -15.7365585];
+            y4CBar3=[-15.8481195 -15.8481195 -15.7365585 -15.7365585];
+            y4CBar4=[-15.8481195 -15.8481195 -15.7365585 -15.7365585];
+            y5CBar1=[22.0705525 22.0705525 23.4648575 23.4648575]; % [Ymin Ymax] [21.3734	160.8039]
+            y5CBar2=[22.0705525 22.0705525 23.4648575 23.4648575];
+            y5CBar3=[22.0705525 22.0705525 23.4648575 23.4648575];
+            y5CBar4=[22.0705525 22.0705525 23.4648575 23.4648575];
+            y6CBar1=[142.7977155 142.7977155 148.9121465 148.9121465]; % [Ymin Ymax] [139.7405	751.1836]
+            y6CBar2=[142.7977155 142.7977155 148.9121465 148.9121465];
+            y6CBar3=[142.7977155 142.7977155 148.9121465 148.9121465];
+            y6CBar4=[142.7977155 142.7977155 148.9121465 148.9121465];
+            y7CBar1=[73.6637695 73.6637695 80.5285085 80.5285085]; % [Ymin Ymax] [70.2314	756.7053]
+            y7CBar2=[73.6637695 73.6637695 80.5285085 80.5285085];
+            y7CBar3=[73.6637695 73.6637695 80.5285085 80.5285085];
+            y7CBar4=[73.6637695 73.6637695 80.5285085 80.5285085];
+            % Color maps
+           ColorBrewerMap1=[[253 174 97]./255; % Ochreish
+               [116 173 209]./255]; % Steel blueish
+           ColorBarMap=[[54 163 0]./255; % Dark green HEX 8DB600
+               [206 22 32]./255; % Fire Engine Red HEX CE162
+               [0 24 204]./255; % Blue HEX 8DB600
+               [135 0 224]./255]; % Violet HEX 8F00FF
+           ColorMarkerMap=[[255 194 191]./255; % Light rose
+               [255 194 191]./255;  % Light rose
+               [209 217 161]./255;  % Light green
+               [209 217 161]./255]; % Light green
+           % Change into the Folder of Interest
+           cd(obj.ExperimentFolder) % Move into the folder
+           % Create folders for saving the produced figures
+           foldername='SM_results_gramm_plot2_publication';    % Defines the folder name
+           mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
+           currpath=fullfile(obj.ExperimentFolder,foldername);
+           cd(currpath);
+           % Input variables
+           % Linker
+           if strcmpi(Linker,'Long')
+               LimitLengthRet1=[0 378];
+               LimitLengthRet2=[378 522];
+               LimitLengthApp=[50 120];
+           elseif strcmpi(Linker,'Short')
+               LimitLengthRet1=[0 333];
+               LimitLengthRet2=[333 463];
+               LimitLengthApp=[50 120];
+           end
+           % xArg
+           if strcmpi(xArg,'DateTime')
+               LegendxAxis='Date and Time';
+               xData=obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSort;
+               xDataMin=min(xData);
+               xDataMax=max(xData);
+               xAxisCorr=(xDataMax-xDataMin)*0.05;
+           elseif strcmpi(xArg,'Index')
+               LegendxAxis='Chronological force curve order';
+               xData=obj.SMFSResults{ResultsRow}.Concatenate.FcNum;
+               xDataMin=min(xData);
+               xDataMax=max(xData);
+               xAxisCorr=(xDataMax-xDataMin)*0.005;
+           end
+           % TrialNum
+           % Var
+           if Var==1
+               ColorName='Medium';
+               LightnessName='Substrate';
+               MarkerName='ChipCantilever';
+               LightnessData=obj.SMFSResults{ResultsRow}.Concatenate.FMSubstrate(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx);
+               ColorData=obj.SMFSResults{ResultsRow}.Concatenate.FMEnvCond(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx);
+               MarkerData=obj.SMFSResults{ResultsRow}.Concatenate.FMChipCant(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx);
+               NumColor=6;
+               NumLightness=6;
+           elseif Var==2
+               ColorName='Approach velocity ($\mu$m/s)';
+               LightnessName='Retraction velocity ($\mu$m/s)';
+               MarkerName='Dwell Time (s)';
+               FMExtVeloData=obj.SMFSResults{ResultsRow}.Concatenate.FMExtVelocity(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*1e6;
+               FMRetVeloData=obj.SMFSResults{ResultsRow}.Concatenate.FMRetVelocity(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*1e6;
+               ColorData=FMExtVeloData;
+               LightnessData=FMRetVeloData;
+               MarkerData=obj.SMFSResults{ResultsRow}.Concatenate.FMHoldingTime(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx);
+               NumColor=6;
+               NumLightness=6;
+           elseif Var==3
+                ColorName='Dwell Time (s)';
+                LightnessName='Retraction velocity ($\mu$m/s)';
+                MarkerName='Approach velocity ($\mu$m/s)';
+                FMExtVeloData=obj.SMFSResults{ResultsRow}.Concatenate.FMExtVelocity(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*1e6;
+                FMRetVeloData=obj.SMFSResults{ResultsRow}.Concatenate.FMRetVelocity(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*1e6;
+                ColorData=obj.SMFSResults{ResultsRow}.Concatenate.FMHoldingTime(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx);
+                LightnessData=FMRetVeloData;
+                MarkerData=FMExtVeloData;
+                NumColor=2;
+                NumLightness=2;
+           end
+           Res=[1 1 2560 1250]; % Define the figure resolution
+           MarkerSize=10;
+           BaseFontSize=24;
+           LabelScaling=1.2;
+           LegendScaling=1;
+           LineWidth=1.5;
+           %%
+           if obj.SMFSResults{ResultsRow}.Parameters.ExtendVelocity==0
+               ExtVelocityValueStr='All';
+           else
+               ExtVelocityValueStr=num2str(round(obj.SMFSResults{ResultsRow}.Parameters.ExtendVelocity*1e9));
+           end
+           if obj.SMFSResults{ResultsRow}.Parameters.RetractVelocity==0
+               RetVelocityValueStr='All';
+           else
+               RetVelocityValueStr=num2str(round(obj.SMFSResults{ResultsRow}.Parameters.RetractVelocity*1e9));
+           end
+           if obj.SMFSResults{ResultsRow}.Parameters.HoldingTime==-1
+               HoldingTimeValueStr='All';
+           else
+               HoldingTimeValueStr=num2str(obj.SMFSResults{ResultsRow}.Parameters.HoldingTime);
+           end
+           % General names
+           FigNamePt1=sprintf('SMFSResultRow%d_',ResultsRow);
+           FigNamePt2=strcat(ExtVelocityValueStr,{'_'},RetVelocityValueStr,{'_'},HoldingTimeValueStr,{'_'},obj.SMFSResults{ResultsRow}.Parameters.Substrate,{'_'},obj.SMFSResults{ResultsRow}.Parameters.Medium,{'_'},obj.SMFSResults{ResultsRow}.Parameters.ChipCantilever,{'_'},obj.SMFSResults{ResultsRow}.Parameters.Chipbox,{'_'},obj.SMFSResults{ResultsRow}.Parameters.Linker);
+           FigNamePt2=char(FigNamePt2);
+           FigNamePt3='_Plot2';
+           %% Gramm object 1
+           % Define variables
+           Plottitle1=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ResultsRow,1}.Data(1).FMIndex),obj.SMFSResults{ResultsRow,1}.Data(1).SumNumFcAnalysedAdhMaxApp);
+           LegendyAxis1='Adhesion force (nN)';
+           NameSuffix1='_MaxAdhesionForceApproach';
+           % Allocate data
+           yData1=obj.SMFSResults{ResultsRow}.Concatenate.AdhMaxApp(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*-1e9;
+           % Create a gramm object
+           if strcmpi(MarkerArg,'Y')
+               g1=gramm('x',xData,'y',yData1,...
+                   'color',ColorData,...
+                   'lightness',LightnessData,...
+                   'marker',MarkerData);
+           elseif strcmpi(MarkerArg,'N')
+               g1=gramm('x',xData,'y',yData1,...
+                   'color',ColorData,...
+                   'lightness',LightnessData);
+           end
+           % Plot data
+           if strcmpi(CBar,'Y')
+           g1.geom_polygon('x',{xCBar1;xCBar2;xCBar3;xCBar4},'y',{y1CBar1;y1CBar2;y1CBar3;y1CBar4},'color',ColorBarMap,'alpha',1);
+           else
+           end
+           g1.geom_point();
+           % Set options
+           g1.axe_property('TickLabelInterpreter','Latex','LineWidth',LineWidth,'xlim',[xDataMin-3 xDataMax+3],'TickDir','out','TickLength',[0.005 0.005]) % Set x limit
+           if strcmpi(xArg,'DateTime')
+               g1.set_datetick('x',0,'keeplimits') % Format x-axis
+           end
+           g1.set_point_options('base_size',MarkerSize)
+           %g1.set_title(Plottitle1) %Set figure title
+           if strcmpi(MarkerArg,'Y')
+               g1.set_names('x',LegendxAxis,'y',LegendyAxis1,'color',ColorName,'lightness',LightnessName,'marker',MarkerName)
+           elseif strcmpi(MarkerArg,'N')
+               g1.set_names('x',LegendxAxis,'y',LegendyAxis1,'color',ColorName,'lightness',LightnessName)
+           end
+           g1.set_color_options('Map',ColorMarkerMap,...
+               'n_color',NumColor,...
+               'n_lightness',NumLightness,...
+               'legend','separate_gray')
+           g1.set_text_options('interpreter','latex','font','Helvetica','base_size',BaseFontSize,'label_scaling',LabelScaling,'legend_scaling',LegendScaling)
+           if strcmpi(LegendArg,'Y')
+               g1.set_layout_options("legend",1) % Don't show legend
+           elseif strcmpi(MarkerArg,'N')
+               g1.set_layout_options("legend",0) % Show legend
+           end
+           % Figure
+           h_fig1=figure(1);
+           h_fig1.Color='white'; % changes the background color of the figure
+           h_fig1.Units='pixel'; % Defines the units
+           h_fig1.OuterPosition=Res;
+           h_fig1.PaperOrientation='landscape';
+           h_fig1.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix1);
+           % The actual plotting
+           g1.draw()
+           % Save the figure
+           FullName1=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix1);
+           print(h_fig1,FullName1,'-dpng');
+           print(h_fig1,FullName1,'-depsc');
+
+           %% Gramm object 2
+           % Define variables
+           Plottitle2=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ResultsRow,1}.Data(1).FMIndex),obj.SMFSResults{ResultsRow,1}.Data(1).SumNumFcAnalysedAdhMaxRet);
+           LegendyAxis2='Adhesion force (nN)';
+           NameSuffix2='_MaxAdhesionForceRetract';
+           % Allocate data
+           yData2=obj.SMFSResults{ResultsRow}.Concatenate.AdhMaxRet(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*-1e9;
+           % Create a gramm object
+           if strcmpi(MarkerArg,'Y')
+               g2=gramm('x',xData,'y',yData2,...
+                   'color',ColorData,...
+                   'lightness',LightnessData,...
+                   'marker',MarkerData);
+           elseif strcmpi(MarkerArg,'N')
+               g2=gramm('x',xData,'y',yData2,...
+                   'color',ColorData,...
+                   'lightness',LightnessData);
+           end
+           % Plot data
+           if strcmpi(CBar,'Y')
+           g2.geom_polygon('x',{xCBar1;xCBar2;xCBar3;xCBar4},'y',{y2CBar1;y2CBar2;y2CBar3;y2CBar4},'color',ColorBarMap,'alpha',1);
+           else
+           end
+           g2.geom_point();
+           % Set options
+           g2.axe_property('TickLabelInterpreter','Latex','LineWidth',LineWidth,'xlim',[xDataMin-3 xDataMax+3],'TickDir','out','TickLength',[0.005 0.005]) % Set x limit
+           if strcmpi(xArg,'DateTime')
+               g2.set_datetick('x',0,'keeplimits') % Format x-axis
+           end
+           g2.set_point_options('base_size',MarkerSize)
+           %g2.set_title(Plottitle2) %Set figure title
+           if strcmpi(MarkerArg,'Y')
+               g2.set_names('x',LegendxAxis,'y',LegendyAxis2,'color',ColorName,'lightness',LightnessName,'marker',MarkerName)
+           elseif strcmpi(MarkerArg,'N')
+               g2.set_names('x',LegendxAxis,'y',LegendyAxis2,'color',ColorName,'lightness',LightnessName)
+           end
+           g2.set_color_options('Map',ColorMarkerMap,...
+               'n_color',NumColor,...
+               'n_lightness',NumLightness,...
+               'legend','separate_gray')
+           g2.set_text_options('interpreter','latex','font','Helvetica','base_size',BaseFontSize,'label_scaling',LabelScaling,'legend_scaling',LegendScaling)
+           if strcmpi(LegendArg,'Y')
+               g2.set_layout_options("legend",1) % Don't show legend
+           elseif strcmpi(MarkerArg,'N')
+               g2.set_layout_options("legend",0) % Show legend
+           end
+           % Figure
+           h_fig2=figure(2);
+           h_fig2.Color='white'; % changes the background color of the figure
+           h_fig2.Units='pixel'; % Defines the units
+           h_fig2.OuterPosition=Res;
+           h_fig2.PaperOrientation='landscape';
+           h_fig2.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix2);
+           % The actual plotting
+           g2.draw()
+           % Save the figure
+           FullName2=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix2);
+           print(h_fig2,FullName2,'-dpng');
+           print(h_fig2,FullName2,'-depsc');
+           % g2.export('file_name',FullName2,file_type='pdf',width=42,height=29.7,units='centimeters');
+           %% Gramm object 3
+           % Define variables
+           Plottitle3=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ResultsRow,1}.Data(1).FMIndex),obj.SMFSResults{ResultsRow,1}.Data(1).SumNumFcAnalysedAdhUnbinding);
+           LegendyAxis3='Adhesion force (nN)';
+           NameSuffix3='_AdhForceUnbinding';
+           % Allocate data
+           yData3=obj.SMFSResults{ResultsRow}.Concatenate.AdhUnbinding(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*-1e9;
+           % Create a gramm object
+           if strcmpi(MarkerArg,'Y')
+               g3=gramm('x',xData,'y',yData3,...
+                   'color',ColorData,...
+                   'lightness',LightnessData,...
+                   'marker',MarkerData);
+           elseif strcmpi(MarkerArg,'N')
+               g3=gramm('x',xData,'y',yData3,...
+                   'color',ColorData,...
+                   'lightness',LightnessData);
+           end
+           % Plot data
+            if strcmpi(CBar,'Y')
+            g3.geom_polygon('x',{xCBar1;xCBar2;xCBar3;xCBar4},'y',{y3CBar1;y3CBar2;y3CBar3;y3CBar4},'color',ColorBarMap,'alpha',1);
+            else
+            end
+           g3.geom_point()
+           % Set options
+           g3.axe_property('TickLabelInterpreter','Latex','LineWidth',LineWidth,'xlim',[xDataMin-3 xDataMax+3],'TickDir','out','TickLength',[0.005 0.005]) % Set x limit
+           if strcmpi(xArg,'DateTime')
+               g3.set_datetick('x',0,'keeplimits') % Format x-axis
+           end
+           g3.set_point_options('base_size',MarkerSize)
+           %g3.set_title(Plottitle3) %Set figure title
+           if strcmpi(MarkerArg,'Y')
+               g3.set_names('x',LegendxAxis,'y',LegendyAxis3,'color',ColorName,'lightness',LightnessName,'marker',MarkerName)
+           elseif strcmpi(MarkerArg,'N')
+               g3.set_names('x',LegendxAxis,'y',LegendyAxis3,'color',ColorName,'lightness',LightnessName)
+           end
+           g3.set_color_options('Map',ColorMarkerMap,...
+               'n_color',NumColor,...
+               'n_lightness',NumLightness,...
+               'legend','separate_gray')
+           g3.set_text_options('interpreter','latex','font','Helvetica','base_size',BaseFontSize,'label_scaling',LabelScaling,'legend_scaling',LegendScaling)
+           if strcmpi(LegendArg,'Y')
+               g3.set_layout_options("legend",1) % Don't show legend
+           elseif strcmpi(MarkerArg,'N')
+               g3.set_layout_options("legend",0) % Show legend
+           end
+           % Figure
+           h_fig3=figure(3);
+           h_fig3.Color='white'; % changes the background color of the figure
+           h_fig3.Units='pixel'; % Defines the units
+           h_fig3.OuterPosition=Res;
+           h_fig3.PaperOrientation='landscape';
+           h_fig3.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix3);
+           % The actual plotting
+           g3.draw()
+           % Save the figure
+           FullName3=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix3);
+           print(h_fig3,FullName3,'-dpng');
+           print(h_fig3,FullName3,'-depsc');
+           %         g3.export('file_name',FullName2,file_type='pdf',width=42,height=29.7,units='centimeters');
+
+           %% Gramm object 4
+           % Define variables
+           Plottitle4=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ResultsRow,1}.Data(1).FMIndex),obj.SMFSResults{ResultsRow,1}.Data(1).SumNumFcAnalysedAdhEneApp);
+           LegendyAxis4='Adhesion energry (aJ)';
+           NameSuffix4='_AdhEnergyApproach';
+           % Allocate data
+           yData4=obj.SMFSResults{ResultsRow}.Concatenate.AdhEneApp(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*-1e18;
+           % Create a gramm object
+           if strcmpi(MarkerArg,'Y')
+               g4=gramm('x',xData,'y',yData4,...
+                   'color',ColorData,...
+                   'lightness',LightnessData,...
+                   'marker',MarkerData);
+           elseif strcmpi(MarkerArg,'N')
+               g4=gramm('x',xData,'y',yData4,...
+                   'color',ColorData,...
+                   'lightness',LightnessData);
+           end
+           % Plot data
+            if strcmpi(CBar,'Y')
+            g4.geom_polygon('x',{xCBar1;xCBar2;xCBar3;xCBar4},'y',{y4CBar1;y4CBar2;y4CBar3;y4CBar4},'color',ColorBarMap,'alpha',1);
+            else
+            end
+           g4.geom_point()
+           % Set options
+           g4.axe_property('TickLabelInterpreter','Latex','LineWidth',LineWidth,'xlim',[xDataMin-3 xDataMax+3],'TickDir','out','TickLength',[0.005 0.005]) % Set x limit
+           if strcmpi(xArg,'DateTime')
+               g4.set_datetick('x',0,'keeplimits') % Format x-axis
+           end
+           g4.set_point_options('base_size',MarkerSize)
+           %g4.set_title(Plottitle4) %Set figure title
+           if strcmpi(MarkerArg,'Y')
+               g4.set_names('x',LegendxAxis,'y',LegendyAxis4,'color',ColorName,'lightness',LightnessName,'marker',MarkerName)
+           elseif strcmpi(MarkerArg,'N')
+               g4.set_names('x',LegendxAxis,'y',LegendyAxis4,'color',ColorName,'lightness',LightnessName)
+           end
+           g4.set_color_options('Map',ColorMarkerMap,...
+               'n_color',NumColor,...
+               'n_lightness',NumLightness,...
+               'legend','separate_gray')
+           g4.set_text_options('interpreter','latex','font','Helvetica','base_size',BaseFontSize,'label_scaling',LabelScaling,'legend_scaling',LegendScaling)
+           if strcmpi(LegendArg,'Y')
+               g4.set_layout_options("legend",1) % Don't show legend
+           elseif strcmpi(MarkerArg,'N')
+               g4.set_layout_options("legend",0) % Show legend
+           end
+           % Figure
+           h_fig4=figure(4);
+           h_fig4.Color='white'; % changes the background color of the figure
+           h_fig4.Units='pixel'; % Defines the units
+           h_fig4.OuterPosition=Res;
+           h_fig4.PaperOrientation='landscape';
+           h_fig4.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix4);
+           % The actual plotting
+           g4.draw()
+           % Save the figure
+           FullName4=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix4);
+           print(h_fig4,FullName4,'-dpng');
+           print(h_fig4,FullName4,'-depsc');
+           %   g4.export('file_name',FullName5,file_type='pdf',width=42,height=29.7,units='centimeters');
+
+           %% Gramm object 5
+           % Define variables
+           Plottitle5=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ResultsRow,1}.Data(1).FMIndex),obj.SMFSResults{ResultsRow,1}.Data(1).SumNumFcAnalysedAdhEneRet);
+           LegendyAxis5='Adhesion energy (aJ)';
+           NameSuffix5='_AdhEnergyRetract';
+           % Allocate data
+           yData5=obj.SMFSResults{ResultsRow}.Concatenate.AdhEneRet(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*-1e18;
+           % Create a gramm object
+           if strcmpi(MarkerArg,'Y')
+               g5=gramm('x',xData,'y',yData5,...
+                   'color',ColorData,...
+                   'lightness',LightnessData,...
+                   'marker',MarkerData);
+           elseif strcmpi(MarkerArg,'N')
+               g5=gramm('x',xData,'y',yData5,...
+                   'color',ColorData,...
+                   'lightness',LightnessData);
+           end
+           % Plot data
+           if strcmpi(CBar,'Y')
+               g5.geom_polygon('x',{xCBar1;xCBar2;xCBar3;xCBar4},'y',{y5CBar1;y5CBar2;y5CBar3;y5CBar4},'color',ColorBarMap,'alpha',1);
+           else
+           end
+           g5.geom_point()
+           % Set options
+           g5.axe_property('TickLabelInterpreter','Latex','LineWidth',LineWidth,'xlim',[xDataMin-3 xDataMax+3],'TickDir','out','TickLength',[0.005 0.005]) % Set x limit
+           if strcmpi(xArg,'DateTime')
+               g5.set_datetick('x',0,'keeplimits') % Format x-axis
+           end
+           g5.set_point_options('base_size',MarkerSize)
+           %g5.set_title(Plottitle5) %Set figure title
+           if strcmpi(MarkerArg,'Y')
+               g5.set_names('x',LegendxAxis,'y',LegendyAxis5,'color',ColorName,'lightness',LightnessName,'marker',MarkerName)
+           elseif strcmpi(MarkerArg,'N')
+               g5.set_names('x',LegendxAxis,'y',LegendyAxis5,'color',ColorName,'lightness',LightnessName)
+           end
+           g5.set_color_options('Map',ColorMarkerMap,...
+               'n_color',NumColor,...
+               'n_lightness',NumLightness,...
+               'legend','separate_gray')
+           g5.set_text_options('interpreter','latex','font','Helvetica','base_size',BaseFontSize,'label_scaling',LabelScaling,'legend_scaling',LegendScaling)
+           if strcmpi(LegendArg,'Y')
+               g5.set_layout_options("legend",1) % Don't show legend
+           elseif strcmpi(MarkerArg,'N')
+               g5.set_layout_options("legend",0) % Show legend
+           end
+           % Figure
+           h_fig5=figure(5);
+           h_fig5.Color='white'; % changes the background color of the figure
+           h_fig5.Units='pixel'; % Defines the units
+           h_fig5.OuterPosition=Res;
+           h_fig5.PaperOrientation='landscape';
+           h_fig5.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix5);
+           % The actual plotting
+           g5.draw()
+           % Save the figure
+           FullName5=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix5);
+           print(h_fig5,FullName5,'-dpng');
+           print(h_fig5,FullName5,'-depsc');
+           %g5.export('file_name',FullName5,file_type='pdf',width=42,height=29.7,units='centimeters');
+
+           %% Gramm object 6
+           % Define variables
+           Plottitle6=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ResultsRow,1}.Data(1).FMIndex),obj.SMFSResults{ResultsRow,1}.Data(1).SumNumFcAnalysedyPullingLength);
+           LegendyAxis6='Pulling length (nm)';
+           NameSuffix6='_Pullinglength';
+           % Allocate data
+           yData6=obj.SMFSResults{ResultsRow}.Concatenate.PullingLength(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*1e9;
+           % Create a gramm object
+           if strcmpi(MarkerArg,'Y')
+               g6=gramm('x',xData,'y',yData6,...
+                   'color',ColorData,...
+                   'lightness',LightnessData,...
+                   'marker',MarkerData);
+           elseif strcmpi(MarkerArg,'N')
+               g6=gramm('x',xData,'y',yData6,...
+                   'color',ColorData,...
+                   'lightness',LightnessData);
+           end
+           % Plot data
+           g6.geom_polygon('y',{LimitLengthRet1;LimitLengthRet2},'color',ColorBrewerMap1);
+           if strcmpi(CBar,'Y')
+               g6.geom_polygon('x',{xCBar1;xCBar2;xCBar3;xCBar4},'y',{y6CBar1;y6CBar2;y6CBar3;y6CBar4},'color',ColorBarMap,'alpha',1);
+           else
+           end
+           g6.geom_point();
+           % Set options
+           g6.axe_property('TickLabelInterpreter','Latex','LineWidth',LineWidth,'xlim',[xDataMin-3 xDataMax+3],'TickDir','out','TickLength',[0.005 0.005]) % Set x limit
+           if strcmpi(xArg,'DateTime')
+               g6.set_datetick('x',0,'keeplimits') % Format x-axis
+           end
+           g6.set_point_options('base_size',MarkerSize)
+           %g6.set_title(Plottitle6) %Set figure title
+           if strcmpi(MarkerArg,'Y')
+               g6.set_names('x',LegendxAxis,'y',LegendyAxis6,'color',ColorName,'lightness',LightnessName,'marker',MarkerName)
+           elseif strcmpi(MarkerArg,'N')
+               g6.set_names('x',LegendxAxis,'y',LegendyAxis6,'color',ColorName,'lightness',LightnessName)
+           end
+           g6.set_color_options('Map',ColorMarkerMap,...
+               'n_color',NumColor,...
+               'n_lightness',NumLightness,...
+               'legend','separate_gray')
+           g6.set_text_options('interpreter','latex','font','Helvetica','base_size',BaseFontSize,'label_scaling',LabelScaling,'legend_scaling',LegendScaling)
+           if strcmpi(LegendArg,'Y')
+               g6.set_layout_options("legend",1) % Don't show legend
+           elseif strcmpi(MarkerArg,'N')
+               g6.set_layout_options("legend",0) % Show legend
+           end
+           % Figure
+           h_fig6=figure(6);
+           h_fig6.Color='white'; % changes the background color of the figure
+           h_fig6.Units='pixel'; % Defines the units
+           h_fig6.OuterPosition=Res;
+           h_fig6.PaperOrientation='landscape';
+           h_fig6.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix6);
+           % The actual plotting
+           g6.draw()
+           % Save the figure
+           FullName6=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix6);
+           print(h_fig6,FullName6,'-dpng');
+           print(h_fig6,FullName6,'-depsc');
+           %g6.export('file_name',FullName6,file_type='pdf',width=42,height=29.7,units='centimeters');
+
+           %% Gramm object 7
+           % Define variables
+           Plottitle7=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ResultsRow,1}.Data(1).FMIndex),obj.SMFSResults{ResultsRow,1}.Data(1).SumNumFcAnalysedySnapInLength);
+           LegendyAxis7='Snap-In length (nm)';
+           NameSuffix7='_SnapInLength';
+           % Allocate data
+           yData7=obj.SMFSResults{ResultsRow}.Concatenate.SnapInLength(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*1e9;
+           % Create a gramm object
+           if strcmpi(MarkerArg,'Y')
+               g7=gramm('x',xData,'y',yData7,...
+                   'color',ColorData,...
+                   'lightness',LightnessData,...
+                   'marker',MarkerData);
+           elseif strcmpi(MarkerArg,'N')
+               g7=gramm('x',xData,'y',yData7,...
+                   'color',ColorData,...
+                   'lightness',LightnessData);
+           end
+           % Plot data
+            if strcmpi(CBar,'Y')
+                g7.geom_polygon('x',{xCBar1;xCBar2;xCBar3;xCBar4},'y',{y7CBar1;y7CBar2;y7CBar3;y7CBar4},'color',ColorBarMap,'alpha',1);
+            else
+            end
+           g7.geom_polygon('y',{LimitLengthApp},'color',ColorBrewerMap1);
+           g7.geom_point();
+           g7.axe_property('TickLabelInterpreter','Latex','LineWidth',LineWidth,'xlim',[xDataMin-3 xDataMax+3],'TickDir','out','TickLength',[0.005 0.005]) % Set x limit
+           % Set options
+           g7.axe_property('TickLabelInterpreter','Latex','LineWidth',LineWidth,'xlim',[xDataMin-xAxisCorr xDataMax+xAxisCorr]) % Set x limit
+           if strcmpi(xArg,'DateTime')
+               g7.set_datetick('x',0,'keeplimits') % Format x-axis
+           end
+           g7.set_point_options('base_size',MarkerSize)
+           %g7.set_title(Plottitle7) %Set figure title
+           if strcmpi(MarkerArg,'Y')
+               g7.set_names('x',LegendxAxis,'y',LegendyAxis7,'color',ColorName,'lightness',LightnessName,'marker',MarkerName)
+           elseif strcmpi(MarkerArg,'N')
+               g7.set_names('x',LegendxAxis,'y',LegendyAxis7,'color',ColorName,'lightness',LightnessName)
+           end
+           g7.set_color_options('Map',ColorMarkerMap,...
+               'n_color',NumColor,...
+               'n_lightness',NumLightness,...
+               'legend','separate_gray')
+           g7.set_text_options('interpreter','latex','font','Helvetica','base_size',BaseFontSize,'label_scaling',LabelScaling,'legend_scaling',LegendScaling)
+           if strcmpi(LegendArg,'Y')
+               g7.set_layout_options("legend",1) % Don't show legend
+           elseif strcmpi(MarkerArg,'N')
+               g7.set_layout_options("legend",0) % Show legend
+           end
+           % Figure
+           h_fig7=figure(7);
+           h_fig7.Color='white'; % changes the background color of the figure
+           h_fig7.Units='pixel'; % Defines the units
+           h_fig7.OuterPosition=Res;
+           h_fig7.PaperOrientation='landscape';
+           h_fig7.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix6);
+           % The actual plotting
+           g7.draw()
+           % Save the figure
+           FullName7=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix7);
+           print(h_fig7,FullName7,'-dpng');
+           print(h_fig7,FullName7,'-depsc');
+           %       g7.export('file_name',FullName6,file_type='pdf',width=42,height=29.7,units='centimeters');
+
+           % House keeping
+           close all
+       end
+
+
+          function SM_results_gramm_plot_FM(obj,ResultsRow,MarkerArg,LegendArg,VarArg)
+           % Input variables: 
+           % ResultsRow: double ,e.g. 1
+           % Linker: string , either 'long' or 'short'
+           % xArg (x-axis argument): string, either 'Index' or 'DateTime'
+           % MarkerArg (Marker argument): string, either 'Y' or 'N'
+           % LegendArg (Legend argumend): string, either 'Y' or 'N'
+           % VarArg: double, e.g. 1 
+
+           % Input variable adaptation
+           if nargin<2
+               ResultsRow=1;
+           end
+           % Define color
+           ColorBarMap=[[54 163 0]./255; % Dark green HEX 8DB600
+                 [206 22 32]./255; % Fire Engine Red HEX CE162
+                 [0 24 204]./255; % Blue HEX 8DB600
+                 [135 0 224]./255]; % Violet HEX 8F00FF  
+           ColorMarkerMap=[[255 194 191]./255; % Light rose
+                 [255 194 191]./255;    
+                 [209 217 161]./255;
+                 [209 217 161]./255]; % Light green
+           % Change into the Folder of Interest
+           cd(obj.ExperimentFolder) % Move into the folder
+           % Create folders for saving the produced figures
+           foldername='SM_results_gramm_plot_FM';    % Defines the folder name
+           mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
+           currpath=fullfile(obj.ExperimentFolder,foldername);
+           cd(currpath);
+
+           % VarArg
+           if VarArg==1
+           NumColor=6;
+           NumLightness=6;
+           ColorName='Medium';
+           ColorData=obj.SMFSResults{ResultsRow}.Data.FMEnvCond(obj.SMFSResults{ResultsRow}.Data.FMDateTimeSortIdx);
+           LightnessName='Substrate';
+           LightnessData=obj.SMFSResults{ResultsRow}.Data.FMSubstrate(obj.SMFSResults{ResultsRow}.Data.FMDateTimeSortIdx);
+           MarkerName='FM Index';
+           MarkerData=obj.SMFSResults{ResultsRow}.Data.FMIndex(obj.SMFSResults{ResultsRow}.Data.FMDateTimeSortIdx);
+           elseif VarArg==2
+           FMExtVeloData=obj.SMFSResults{ResultsRow}.Data.FMExtVelocity(obj.SMFSResults{ResultsRow}.Data.FMDateTimeSortIdx);
+           FMRetVeloData=obj.SMFSResults{ResultsRow}.Data.FMRetVelocity(obj.SMFSResults{ResultsRow}.Data.FMDateTimeSortIdx);
+           ColorMap=ColorMarkerMap;
+           NumColor=2;
+           NumLightness=2;
+           ColorName='App. velo (m/s)';
+           ColorData=FMExtVeloData;
+           LightnessName='Ret. velo (m/s)';
+           LightnessData=FMRetVeloData;
+           MarkerName='Holding time';
+           MarkerData=obj.SMFSResults{ResultsRow}.Data.FMHoldingTime(obj.SMFSResults{ResultsRow}.Data.FMDateTimeSortIdx);
+           end
+                          LegendxAxis='Chronological force map order';
+               xData=1:length(obj.SMFSResults{ResultsRow}.Data.FMIndex);
+               xDataMin=min(xData);
+               xDataMax=max(xData);
+               xAxisCorr=(xDataMax-xDataMin)*0.015;
+           %Res=[1 1 2560 1250]; % Define the figure resolution
+           Res1=[1 1 70 50]; % Define the figure resolution
+           Res2a=[1 1 8 8]; % Define the figure resolution
+           Res2b=[1 1 8 4]; % Define the figure resolution
+           MarkerSize=9;
+           BaseFontSize=8;
+           BaseFontSizeMultiplier=2;
+          % BaseFontSizeMultiplier=4;
+           MarkerSizeMultiplier=2;
+          % MarkerSizeMultiplier=3;
+           %LegendOption='merge';
+           LegendOption='expand';
+           %%
+           if obj.SMFSResults{ResultsRow}.Parameters.ExtendVelocity==0
+               ExtVelocityValueStr='All';
+           else
+               ExtVelocityValueStr=num2str(round(obj.SMFSResults{ResultsRow}.Parameters.ExtendVelocity*1e9));
+           end
+           if obj.SMFSResults{ResultsRow}.Parameters.RetractVelocity==0
+               RetVelocityValueStr='All';
+           else
+               RetVelocityValueStr=num2str(round(obj.SMFSResults{ResultsRow}.Parameters.RetractVelocity*1e9));
+           end
+           if obj.SMFSResults{ResultsRow}.Parameters.HoldingTime==-1
+               HoldingTimeValueStr='All';
+           else
+               HoldingTimeValueStr=num2str(obj.SMFSResults{ResultsRow}.Parameters.HoldingTime);
+           end
+           % General names
+           FigNamePt1=sprintf('SMFSResultRow%d_',ResultsRow);
+           FigNamePt2=strcat(ExtVelocityValueStr,{'_'},RetVelocityValueStr,{'_'},HoldingTimeValueStr,{'_'},obj.SMFSResults{ResultsRow}.Parameters.Substrate,{'_'},obj.SMFSResults{ResultsRow}.Parameters.Medium,{'_'},obj.SMFSResults{ResultsRow}.Parameters.ChipCantilever,{'_'},obj.SMFSResults{ResultsRow}.Parameters.Chipbox,{'_'},obj.SMFSResults{ResultsRow}.Parameters.Linker);
+           FigNamePt2=char(FigNamePt2);
+           FigNamePt3='_FM_Timeline';
+            %% Gramm object 1
+            % Define variables
+            LegendyAxis1=[];
+            LegendxAxis='Chronological force map order';
+            % Allocate data
+            yData1=obj.SMFSResults{ResultsRow}.Data.FMDateTimeSortIdx;           
+            % Create a gramm object
+            if strcmpi(MarkerArg,'Y')
+            g1=gramm('x',xData,'y',yData1,...
+               'color',ColorData,...
+               'lightness',LightnessData,...
+               'marker',MarkerData);
+            elseif strcmpi(MarkerArg,'N')
+            g1=gramm('x',xData,...
+               'color',ColorData,...
+               'lightness',LightnessData);
+            end
+           % Plot data
+           %      g1.geom_polygon('y',{LimitForce1;LimitForce2;LimitForce3},'color',ColorBrewerMap1);
+           g1.geom_point();
+           %g1.geom_polygon();
+           % Set options
+           if strcmpi(LegendArg,'Y')
+           g1.axe_property('TickLabelInterpreter','Latex','xlim',[xDataMin-xAxisCorr xDataMax+xAxisCorr],'ylim',[0.98 1.2],'YTickLabel',[],'YColor','none','XTick',xDataMin:1:xDataMax) 
+           elseif strcmpi(LegendArg,'N')
+           g1.axe_property('TickLabelInterpreter','Latex','xlim',[xDataMin-xAxisCorr xDataMax+xAxisCorr],'ylim',[0.95 1.01],'YTickLabel',[],'YColor','none','XTick',xDataMin:1:xDataMax) 
+           end   
+           %g1.axe_property('TickLabelInterpreter','Latex','xlim',[xDataMin-xAxisCorr xDataMax+xAxisCorr],'ylim',[0.99 1.05],'YTickLabel',[],'YColor','none','XTick',xDataMin:1:xDataMax)
+           g1.set_limit_extra('x',[0 2])
+           if strcmpi(MarkerArg,'Y')
+
+           g1.set_names('x',LegendxAxis,'y',LegendyAxis1,'color',ColorName,'lightness',LightnessName,'marker',MarkerName)
+           elseif strcmpi(MarkerArg,'N')
+
+           g1.set_names('x',LegendxAxis,'y',LegendyAxis1,'color',ColorName,'lightness',LightnessName)
+           end
+           g1.set_color_options('n_color',NumColor,...
+               'n_lightness',NumLightness,...
+               'legend',LegendOption)       
+           if strcmpi(LegendArg,'Y')
+           g1.set_point_options('base_size',MarkerSize*MarkerSizeMultiplier)
+           g1.set_text_options('interpreter','latex','font','Helvetica','base_size',BaseFontSize*BaseFontSizeMultiplier,'label_scaling',1,'legend_scaling',1)
+       %   g1.set_layout_options("legend",1,'legend_position',[0.75 0.35 0.25 0.75])
+       %    g1.set_layout_options("legend",1,'legend_position',[0.35 0.35 0.25 0.75])
+           g1.set_layout_options("legend",1,'legend_position',[0.35 0.2 0.25 0.75])
+           elseif strcmpi(LegendArg,'N')
+           g1.set_point_options('base_size',MarkerSize)
+           g1.set_text_options('interpreter','latex','font','Helvetica','base_size',BaseFontSize,'label_scaling',1,'legend_scaling',1)
+           g1.set_layout_options("legend",0)
+           end          
+           % Figure
+           h_fig1=figure(1);
+           h_fig1.Color='white'; % changes the background color of the figure
+           h_fig1.Units='centimeters'; % Defines the units
+           if strcmpi(LegendArg,'Y')
+           h_fig1.OuterPosition=Res1;
+           elseif strcmpi(LegendArg,'N')
+           h_fig1.OuterPosition=Res2b;
+           end       
+           h_fig1.PaperOrientation='landscape';
+           h_fig1.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3);
+           % The actual plotting
+           g1.draw()
+           % Save the figure
+           FigNamePt4='_Legend';
+           FigNamePt5=sprintf('_Variant%d',VarArg);
+           if strcmpi(LegendArg,'Y')
+           FullName1=strcat(FigNamePt1,FigNamePt2,FigNamePt3,FigNamePt4,'Yes',FigNamePt5);
+           elseif strcmpi(LegendArg,'N')
+           FullName1=strcat(FigNamePt1,FigNamePt2,FigNamePt3,FigNamePt4,'No',FigNamePt5);
+           end       
+           print(h_fig1,FullName1,'-dpng');
+           print(h_fig1,FullName1,'-depsc');
+
+           % House keeping
+           close all
+       end
+ 
+       
+
+       function SM_fine_figure(obj,XMin,XMax,YMin,YMax,FmoI,FcoI,Linker)
+            %     function SM_fine_figure(obj,XMin,XMax,YMin,YMax,Fm,Fc)
+            % Function to plot individual fine figures for publication
+            % FmoI ... Force map of Interest
+            % FcoI ... Force curve of Interest
+            % FmoI = 0 => Select all several Force Maps
+            % FcoI = 0 => Select from 1:100
+            % Linker ... Long, short or none
+            if nargin < 3
+                XMin= -inf;
+                XMax= inf;
+                YMin= -inf;
+                YMax= inf;
+            end
+            % Figure visibility
+            set(groot,'defaultFigureVisible','off')
+            %set(groot,'defaultFigureVisible','on')
+            % Set figure position
+            set(groot,'defaultFigurePaperPositionMode','auto')
+            % Change into the Folder of Interest
+            cd(obj.ExperimentFolder) % Move into the folder            
+            % Run based on condition
+            if FmoI==0 && strcmp(Linker,'none')
+            % Create folders for saving the produced figures
+            foldername='SM_fine_figure';    % Defines the folder name
+            mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
+            currpath=fullfile(obj.ExperimentFolder,foldername);
+            cd(currpath);
+                for Fm=1:obj.NumForceMaps
+                %for Fm=1:26
+                    if ~obj.SMFSFlag.Preprocessed(Fm)
+                        continue
+                    end
+                    for Fc=1:100
+                        obj.FM{Fm}.fc_fine_figure(XMin,XMax,YMin,YMax,Fm,Fc,Linker)
+                    end
+                end
+            elseif FmoI==0
+            % Create folders for saving the produced figures
+            foldername='SM_fine_figure';    % Defines the folder name
+            mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
+            currpath=fullfile(obj.ExperimentFolder,foldername);
+            cd(currpath);
+                for Fm=1:obj.NumForceMaps
+                %for Fm=1
+                    if ~obj.SMFSFlag.Preprocessed(Fm)
+                        continue
+                    end
+                    for Fc=1:100
+%                         if ~obj.FM{Fm}.SMFSFlag.Uncorrupt(Fc) || ~obj.FM{Fm}.SMFSFlag.Selected(Fc) || ~obj.FM{Fm}.SMFSFlag.RetMinCrit(Fc) || ~obj.FM{Fm}.SMFSFlag.LengthRequisite(Fc)     % Condition if FM Flag Selected has been set: Exclude corrupted force curves or force curves showing no snap-in from the analysis
+%                        continue
+%                        end
+                        obj.FM{Fm}.fc_fine_figure(XMin,XMax,YMin,YMax,Fm,Fc,Linker)
+                    end
+                end
+            else
+            % Create folders for saving the produced figures
+            foldername='SM_fine_figure';    % Defines the folder name
+            mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
+            currpath=fullfile(obj.ExperimentFolder,foldername);
+            cd(currpath);
+                for Fm=FmoI  % debugging
+                    %                 if ~obj.SMFSFlag.Preprocessed(Fm)
+                    %                     continue
+                    %                 end
+                    for Fc=FcoI
+                        %                     if ~obj.FM{Fm}.SMFSFlag.Uncorrupt(Fc) || ~obj.FM{Fm}.SMFSFlag.Selected(Fc) || ~obj.FM{Fm}.SMFSFlag.RetMinCrit(Fc) || ~obj.FM{Fm}.SMFSFlag.LengthRequisite(Fc)     % Condition if FM Flag Selected has been set: Exclude corrupted force curves or force curves showing no snap-in from the analysis
+                        %                     continue
+                        %                     end
+                        obj.FM{Fm}.fc_fine_figure(XMin,XMax,YMin,YMax,Fm,Fc,Linker)
+                    end
+                end
+            end
+        end
+
+        function SM_fine_figure_publication(obj,XMin,XMax,YMin,YMax,Fm,Fc,Linker)
+            %     function SM_fine_figure(obj,XMin,XMax,YMin,YMax,Fm,Fc)
+            % Function to plot individual fine figures for publication
+            if nargin < 3
+                XMin= -inf;
+                XMax= inf;
+                YMin= -inf;
+                YMax= inf;
+            end
+            % Figure visibility
+            %set(groot,'defaultFigureVisible','off')
+            set(groot,'defaultFigureVisible','on')
+            % Set figure position
+            set(groot,'defaultFigurePaperPositionMode','auto')
+            % Change into the Folder of Interest
+            cd(obj.ExperimentFolder) % Move into the folder            
+            % Create folders for saving the produced figures
+            foldername='SM_fine_figure_publication';    % Defines the folder name
+            mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
+            currpath=fullfile(obj.ExperimentFolder,foldername);
+            cd(currpath);
+            % Run the chosen functions
+            obj.FM{Fm}.fc_fine_figure_publication(XMin,XMax,YMin,YMax,Fm,Fc,Linker)
+        end
+         
+
+        function SM_fine_figure2(obj,Fm1,Fm2,Fm3,Fc1,Fc2,Fc3)
+            % Function to plot individual fine figures for publication
+            if nargin < 2
+            Fm1=1;
+            Fm2=1;
+            Fm3=1;
+            Fc1=1;
+            Fc2=1;
+            Fc3=1;
+            end            
+           
+            % Figure visibility
+            %set(groot,'defaultFigureVisible','off')      
+            set(groot,'defaultFigureVisible','on') 
+            % Change into the Folder of Interest
+            cd(obj.ExperimentFolder) % Move into the folder
+            % Create folders for saving the produced figures
+            foldername='SM_fine_figure2';    % Defines the folder name
+            mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
+            currpath=fullfile(obj.ExperimentFolder,foldername);
+            cd(currpath)
+            % Define variables
+            nano=1e-9;
+            CS6=[224 243 248]./255; % Pastel blueish
+            CS7=[171 217 233]./255; % Light blueish
+            CS8=[116 173 209]./255; % Steel blueish
+            CS9=[69 117 180]./255; % Distant blueish
+            CS10=[49 54 149]./255; % Pale ultramarineish
+            % Define variables for the figure name
+            Fc1NumConvert=num2str(Fc1);
+            Fc2NumConvert=num2str(Fc2);
+            Fc3NumConvert=num2str(Fc3);
+            % Classification criteria
+           % figname=strcat(obj.FM{Fm1}.ID,{'_'},'Fc',Fc1NumConvert,{'_'},obj.FM{Fm1}.Date,{'_'},obj.FM{Fm1}.Time,{'_'},obj.FM{Fm2}.ID,{'_'},'Fc',Fc2NumConvert,{'_'},obj.FM{Fm2}.Date,{'_'},obj.FM{Fm2}.Time);
+            figname=strcat(obj.FM{Fm1}.ID,{'_'},'Fc',Fc1NumConvert,{'_'},obj.FM{Fm1}.Date,{'_'},obj.FM{Fm1}.Time,{'_'},obj.FM{Fm2}.ID,{'_'},'Fc',Fc2NumConvert,{'_'},obj.FM{Fm2}.Date,{'_'},obj.FM{Fm2}.Time,obj.FM{Fm3}.ID,{'_'},'Fc',Fc3NumConvert,{'_'},obj.FM{Fm3}.Date,{'_'},obj.FM{Fm3}.Time);
+            figname=char(figname);
+
+            %% Allocate data
+            xApp1=(obj.FM{Fm1}.THApp{Fc1}-obj.FM{Fm1}.CP_HardSurface(Fc1))/-nano; % Retraction x-data (m): Vertical tip height data corrected by the determined contact point using the hard surface method
+            xRet1=(obj.FM{Fm1}.THRet{Fc1}-obj.FM{Fm1}.CP_HardSurface(Fc1))/-nano; % Retraction x-data (m): Vertical tip height data corrected by the determined contact point using the hard surface method
+            yApp1=obj.FM{Fm1}.BasedApp{Fc1}/nano;
+            yRet1=obj.FM{Fm1}.BasedRet{Fc1}/nano;
+            xApp2=(obj.FM{Fm2}.THApp{Fc2}-obj.FM{Fm2}.CP_HardSurface(Fc2))/-nano; % Retraction x-data (m): Vertical tip height data corrected by the determined contact point using the hard surface method
+            xRet2=(obj.FM{Fm2}.THRet{Fc2}-obj.FM{Fm2}.CP_HardSurface(Fc2))/-nano; % Retraction x-data (m): Vertical tip height data corrected by the determined contact point using the hard surface method
+            yApp2=obj.FM{Fm2}.BasedApp{Fc2}/nano;
+            yRet2=obj.FM{Fm2}.BasedRet{Fc2}/nano;
+            xApp3=(obj.FM{Fm3}.THApp{Fc3}-obj.FM{Fm3}.CP_HardSurface(Fc3))/-nano; % Retraction x-data (m): Vertical tip height data corrected by the determined contact point using the hard surface method
+            xRet3=(obj.FM{Fm3}.THRet{Fc3}-obj.FM{Fm3}.CP_HardSurface(Fc3))/-nano; % Retraction x-data (m): Vertical tip height data corrected by the determined contact point using the hard surface method
+            yApp3=obj.FM{Fm3}.BasedApp{Fc3}/nano;
+            yRet3=obj.FM{Fm3}.BasedRet{Fc3}/nano;
+            %% Figure
+            % h_fig=figure(ii);
+            h_fig=figure(1);
+            h_fig.Color='white'; % changes the background color of the figure
+            h_fig.Units='normalized'; % Defines the units
+            h_fig.OuterPosition=[0 0 1 1];% changes the size of the to the whole screen
+            %h_fig.Units='pixel'; % Defines the units
+            %h_fig.OuterPosition=res;
+            h_fig.PaperOrientation='landscape';
+            h_fig.Name=figname;
+            % Plot
+            hold on
+            grid on
+            plot(xRet1,yRet1,'Color',CS7,'LineWidth',8);     
+            plot(xRet2,yRet2,'Color',CS8,'LineWidth',8); 
+            plot(xRet3,yRet3,'Color',CS9,'LineWidth',8); 
+            % Legend
+            FcLegend1=strcat(obj.FM{Fm1}.ID,',',sprintf('Fc%d',Fc1));
+            FcLegend2=strcat(obj.FM{Fm1}.ID,',',sprintf('Fc%d',Fc2));
+            FcLegend3=strcat(obj.FM{Fm1}.ID,',',sprintf('Fc%d',Fc3));
+            le=legend(FcLegend1,FcLegend2,FcLegend3,'Location','best');
+            le.FontSize = 48;
+            le.EdgeColor='w';
+            le.Box = 'off';
+            %%% Axes
+            ax = gca; % current axes
+            ax.FontSize = 48;
+            ax.LineWidth = 5;
+            %   ax.XTick=0:100:400;
+            % ax.XTickLabel=[];
+            %    ax.YTick=-0.3:0.1:0.2;
+            % ax.YTickLabel=[];
+            ax.XLabel.String = 'Tip-Substrate separation (nm)';
+            ax.XLabel.FontSize = 52;
+            ax.YLabel.String = 'Pull-off force (nN)';
+            ax.YLabel.FontSize = 52;
+            ax.YLimMode='manual';
+            %ax.XLim = [XMin XMax];
+            % ax.YLim = [YMin YMax];
+            ax.XLim = [-25 600];
+            ax.YLim = [-1 0.5];
+            %    ax.YLim = [YMin YMax];
+            %% Save figures
+            %%% Save the current figure in the current folder
+            print(gcf,figname,'-dpng');
+            % Close figure
+            close all
+        end
+
+        function [xSel,ySel]=SM_WLC_fitting(obj,Fm,Fc)
+
+            % Figure visibility
+            set(groot,'defaultFigureVisible','off')
+            %set(groot,'defaultFigureVisible','on')
+            % Set figure position
+            set(groot,'defaultFigurePaperPositionMode','auto')
+            % Change into the Folder of Interest
+            cd(obj.ExperimentFolder) % Move into the folder            
+            % Run based on condition
+            % Create folders for saving the produced figures
+             foldername='SM_WLC_fitting';    % Defines the folder name
+             mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
+             currpath=fullfile(obj.ExperimentFolder,foldername);
+             cd(currpath);
+            % Define Colors
+            RGB2=[255 119 0]./255; % Orange
+            RGB8=[80 200 204]./255; % Turquoise
+            % Parse unit scale function
+            [Xmultiplier,Xunit,~] = AFMImage.parse_unit_scale(1e+9,'nm',1);
+            [Ymultiplier,Yunit,~] = AFMImage.parse_unit_scale(1e+9,'nN',1);
+            % Define variables for the figure name         
+            FcNumConvert=num2str(Fc);
+            %
+            Pct=0.05
+            % Define limits
+            XMin=-10;
+            XMax=500;            
+            YMin=-0.5;
+            YMax=0.1;
+              figname=strcat(obj.FM{Fm}.Date,{'_'},obj.FM{Fm}.Time,{'_'},obj.FM{Fm}.ID,{'_'},'Fc',FcNumConvert);
+              figname=char(figname);
+            %% Allocate data       
+            xRet=(obj.FM{Fm}.THRet{Fc}-obj.FM{Fm}.CP_HardSurface(Fc))/-Xmultiplier; % Retraction x-data (m): Vertical tip height data corrected by the determined contact point using the hard surface method
+            yRet=obj.FM{Fm}.BasedRet{Fc}/Ymultiplier;
+
+            %% Figure
+            % h_fig=figure(ii);
+            h_fig=figure(1);
+            h_fig.Color='white'; % changes the background color of the figure
+            h_fig.Units='normalized'; % Defines the units
+            h_fig.OuterPosition=[0 0 1 1];% changes the size of the to the whole screen
+            %h_fig.Units='pixel'; % Defines the units
+            %h_fig.OuterPosition=res;
+            h_fig.PaperOrientation='landscape';
+            h_fig.Name=figname;
+            % Plot
+            hold on
+            grid on
+            plot(xRet,yRet,'Color',RGB2,'LineWidth',6);
+            % Axes
+            ax = gca; % current axes
+            ax.FontSize = 46;
+            ax.LineWidth = 5;
+            ax.XLabel.String = 'Tip-Substrate separation (nm)';
+            ax.XLabel.FontSize = 46;
+            ax.YLabel.String = 'Force (nN)';
+            ax.YLabel.FontSize = 46;
+            ax.XLim = [XMin XMax];
+            ax.YLim = [YMin YMax];
+            % Draw points
+            roi1 = drawpoint(ax); % Draw point in the figure
+            xPos1=roi1.Position(1); % Read out the x-value of the drawn point
+            roi2 = drawpoint(ax); % Draw point in the figure
+            xPos2=roi2.Position(1); % Read out the x-value of the drawn point
+            % Determine the lower and higher x-value
+            if xPos1<xPos2
+                xPtLow=xPos1;
+                xPtHigh=xPos2;
+            elseif xPos1>xPos2
+                xPtLow=xPos2;
+                xPtHigh=xPos1;
+            end
+            % Find indices
+            [~,PtLowIdx] = min(abs(xRet-xPtLow));
+            [~,PtHighIdx] = min(abs(xRet-xPtHigh));
+            % Select Data within the two indices
+            xSel=xRet(PtLowIdx:PtHighIdx);
+            ySel=yRet(PtLowIdx:PtHighIdx);
+            xSelPct=ceil(xSel(1:length(xSel)*Pct));
+            xSelPctMean=mean(xSelPct);
+            % Plot the selected data points
+            plot(xSel,ySel,'Color',RGB8,'LineWidth',6)
+            % Save figure
+            print(gcf,figname,'-dpng');
+            % Close figure
+            close all
+                %             
+            if ~isempty(obj.WLCFit)
+                Row=length(obj.WLCFit)+1;
+            else
+                Row=1;
+            end
+
+            % Allocate data
+            obj.WLCFit{Row,1}.ForceMap=Fm;
+            obj.WLCFit{Row,1}.ForceCurve=Fc;
+            obj.WLCFit{Row,1}.Data(1).xDataSelected=xSel;
+            obj.WLCFit{Row,1}.Data(1).xDataSelPctMean=xSelPctMean;
+            obj.WLCFit{Row,1}.Data(1).yDataSelected=ySel;
+        end
+
+  
+        % Individual ForceMap function related
+        
+        function SM_print_pulllength(obj)
+            % SM_print: A function to simply plot all force curves of all
+            % force maps loaded and calssified based on the SMFS Flag
+            % Needed function: obj.presorting
+
+            
+            % Figure visibility
+            set(groot,'defaultFigureVisible','off')      
+            %set(groot,'defaultFigureVisible','on')           
+            % Change into the Folder of Interest
+            cd(obj.ExperimentFolder) % Move into the folder 
+            % Create folders for saving the produced figures
+            %foldername='FM_test';    % for debugging
+            foldername='FM_Pulllength_MAD';    % Defines the folder name
+            mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
+            currpath=fullfile(obj.ExperimentFolder,foldername);
+            cd(currpath); 
+            
+            % Loop over the imported force maps
+            %for ii=1:obj.NumForceMaps
+            for ii=2 % Debugging
+               % Command window output
+               sprintf('Force Map No. %d of %d',ii,obj.NumForceMaps) % Gives current Force Map Position
+               % Run the chosen functions
+               obj.FM{ii}.fc_pulling_length_MAD;     
+            end    
+           end
+               
+        function SM_snap_in_length_MAD(obj)            
+            
+            % Figure visibility
+            %set(groot,'defaultFigureVisible','off')      
+             set(groot,'defaultFigureVisible','on')           
+            % Change into the Folder of Interest
+            cd(obj.ExperimentFolder) % Move into the folder 
+            % Create folders for saving the produced figures
+            %foldername='FM_test';    % for debugging
+            foldername='FM_SnapIn_MAD';    % Defines the folder name
+            mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
+            currpath=fullfile(obj.ExperimentFolder,foldername);
+            cd(currpath); 
+            
+            % Loop over the imported force maps
+            %for ii=1:obj.NumForceMaps
+            for ii=2 % Debugging
+               % Command window output
+               sprintf('Force Map No. %d of %d',ii,obj.NumForceMaps) % Gives current Force Map Position
+               % Run the chosen functions
+               obj.FM{ii}.fc_snap_in_length_MAD;
+            end 
+        end
+    
+        function SM_adh_force_max(obj)            
+            
+            % Figure visibility
+            set(groot,'defaultFigureVisible','off')      
+            %set(groot,'defaultFigureVisible','on')           
+            % Change into the Folder of Interest
+            cd(obj.ExperimentFolder) % Move into the folder 
+            % Create folders for saving the produced figures
+            %foldername='FM_test';    % for debugging
+            foldername='FM_Adh_Force';    % Defines the folder name
+            mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
+            currpath=fullfile(obj.ExperimentFolder,foldername);
+            cd(currpath); 
+            
+            % Loop over the imported force maps
+            %for ii=1:obj.NumForceMaps
+            for ii=11:13 % Debugging
+               % Command window output
+               sprintf('Force Map No. %d of %d',ii,obj.NumForceMaps) % Gives current Force Map Position
+               % Run the chosen functions
+               obj.FM{ii}.fc_adh_force_max;
+            end 
+        end
+   
+        function SM_min_max(obj)
+            
+
+            for ii=1:obj.NumForceMaps
+                %    obj.FM{ii}.base_and_tilt('linear');
+                %obj.FM{ii}.fc_min_max_values;
+                
+                if ii==1
+                    ConcatArrayMax=obj.FM{ii}.FMPullingLengthMax;
+                 %   ConcatArrayAdhEnergy=obj.FM{ii}.obj.MinRet;
+                else               
+                    ConcatArrayMax=horzcat(ConcatArrayMax,obj.FM{ii}.FMPullingLengthMax);
+                  %  ConcatArrayAdhEnergy=horzcat(ConcatArrayMax,obj.FM{ii}.FMPullingLengthMax);
+                end                
+            end
+             ExpPullingLengthMax=max(ConcatArrayMax)
+        end
+        
+        function [m,n,NumFigures] = adjust_tiled_layout(obj,NumFcMax)
+            
+            if nargin < 2
+                NumFcMax=25; % The maximum of allowed plots per figure
+            end
+            
+            for ii=1:obj.NumForceMaps
+                %for ii=1:8 %for debugging
+                NumFcUncorrupt(ii)=nnz(obj.FM{ii}.SMFSFlag.Uncorrupt); % Determine the number of uncorrupted force curves
+                if ~any(NumFcUncorrupt(ii))    
+                    continue
+                end
+                NumFigures=ceil(NumFcUncorrupt(ii)./NumFcMax); % Determine the number of figures
+                Remainder=mod(NumFcUncorrupt(ii),NumFcMax); % Check for remainder
+                if Remainder ~= 0
+                    m(ii)=floor(sqrt(Remainder)); % Determine the number of rows in the figure
+                    n(ii)=ceil(sqrt(Remainder)); % Determine the number of columns in the figure
+                else
+                    m(ii)=sqrt(NumFcMax);
+                    n(ii)=m(ii);
+                end
+            end
+        end
+   
+        function SM_testing_function(obj,Fm,Fc)
+            % Function to quickly loop over all force maps for testing and
+            % debugging
+
+
+             %   Fm=155
+             %   Fc=37
+               obj.FM{Fm}.fc_WLC_fitting(Fc)
+%  
+%              for fm=1:50
+%              for fm=1:obj.NumForceMaps
+%                 obj.FM{fm}.fc_testing
+% %            %   obj.FM{fm}.Linker='long'  
+% %                 obj.FM{fm}.SpringConstant=0.073
+%              end      
+% % 
+     
+%       NFM = obj.NumForceMaps;
+   
+  %              obj.SMFSFlagDown.AnalysedPreSelected = false(NFM,1);
+   %             obj.SMFSFlagDown.AnalysedPostSelected = false(NFM,1);
+
+    %            obj.SMFSFlag.AnalysedPreSelected = false(NFM,1);
+       %         obj.SMFSFlag.AnalysedPostSelected = false(NFM,1);
+    
+%               obj.SMFSFlag.PropertiesParameters = false(NFM,1);
+ %              obj.SMFSFlagDown.PropertiesParameters = false(NFM,1);
+
+        %        obj.SMFSFlag.AnalysedPostSelected(:,1)=1
+ %           obj.SMFSFlag.PropertiesParameters(:,1)=1
+
+
+        end
+     
+        % Old functions
+
+        function SM_statistics(obj)
+           
+            % Uncorrupt force curves
+            SumFcUncorrupt=sum(obj.NumFcUncorrupt);
+            SumFcCorrupt=obj.NumForceMaps*obj.FM{1}.NCurves;
+            PercentUncorrupt=SumFcUncorrupt/SumFcCorrupt*100;
+            PercentCorrupt=100-PercentUncorrupt;
+        end
+        
+
+        function SM_analysis_selction_fit(obj,VelocityValue,SubstrateValue,EnvCondValue,ChipCantValue,ChipboxValue,LinkerValue)
+                
+            % Output time and date for the dairy
+            datetime('now')
+            
+                % Define colors
+                RGB8=[80 200 204]./255; % Turquoise
+                RGB9=[0 181 26]./255; % Green
+                RGB10=[69 22 113]./255; % Violet
+                RGB11=[124 223 124]./255; % Light Green
+                % Loop
+                for ii=1:obj.NumForceMaps
+                    if (strcmpi(obj.FM{ii}.VelocityConvert,VelocityValue) || strcmpi(VelocityValue,'All')) ...
+                            && (strcmpi(obj.FM{ii}.Substrate,SubstrateValue) || strcmpi(SubstrateValue,'All')) ...
+                            && (strcmpi(obj.FM{ii}.EnvCond,EnvCondValue) || strcmpi(EnvCondValue,'All')) ...
+                            && (strcmpi(obj.FM{ii}.ChipCant,ChipCantValue) || strcmpi(ChipCantValue,'All')) ...
+                            && (strcmpi(obj.FM{ii}.Chipbox,ChipboxValue) || strcmpi(ChipboxValue,'All')) ...
+                            && (strcmpi(obj.FM{ii}.Linker,LinkerValue) || strcmpi(LinkerValue,'All'))
+                        % Define variables for the if condition 
+                        IdxArray(ii,1)=ii;
+                        IdxNonzero=find(IdxArray,1,'first');
+                        
+                        if ~isempty(IdxArray) && IdxNonzero==ii
+                            obj.FM{ii}.PullingLength(obj.FM{ii}.PullingLength==0)=nan;
+                            ConcatArrayPullingLength1=obj.FM{ii}.PullingLength(:);
+                            ConcatArrayPullingLength2=obj.FM{ii}.PullingLength(:);
+                            obj.FM{ii}.RetAdhEnergy_IdxMethod(obj.FM{ii}.RetAdhEnergy_IdxMethod==0)=nan;
+                            ConcatArrayRetAdhEnergy1=obj.FM{ii}.RetAdhEnergy_IdxMethod(:);
+                            ConcatArrayRetAdhEnergy2=obj.FM{ii}.RetAdhEnergy_IdxMethod(:);
+                            ConcatArrayRetForce=obj.FM{ii}.MinRet;
+                        else
+                            obj.FM{ii}.PullingLength(obj.FM{ii}.PullingLength==0)=nan;
+                            ConcatArrayPullingLength1=horzcat(ConcatArrayPullingLength1,obj.FM{ii}.PullingLength(:));
+                            ConcatArrayPullingLength2=vertcat(ConcatArrayPullingLength2,obj.FM{ii}.PullingLength(:));
+                            obj.FM{ii}.RetAdhEnergy_IdxMethod(obj.FM{ii}.RetAdhEnergy_IdxMethod==0)=nan;
+                            ConcatArrayRetAdhEnergy1=horzcat(ConcatArrayRetAdhEnergy1,obj.FM{ii}.RetAdhEnergy_IdxMethod(:));
+                            ConcatArrayRetAdhEnergy2=vertcat(ConcatArrayRetAdhEnergy2,obj.FM{ii}.RetAdhEnergy_IdxMethod(:));
+                            ConcatArrayRetForce=obj.FM{ii}.MinRet;
+                        end
+                    end
+                end
+                ConcatArrayRetAdhEnergy1=ConcatArrayRetAdhEnergy1*-1; % Multiply with -1 to bring the ahdesion energy values into quadrant I
+                ConcatArrayRetAdhEnergy2=ConcatArrayRetAdhEnergy2*-1; % Multiply with -1 to bring the ahdesion energy values into quadrant I
+                
+                % Change into the Folder of Interest
+                cd(obj.ExperimentFolder) % Move into the folder
+                % Create folders for saving the produced figures
+                foldername='FM_test';    % for debugging
+                %foldername='FM_analysis_fit';    % Defines the folder name
+                mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
+                currpath=fullfile(obj.ExperimentFolder,foldername);
+                cd(currpath);
+                
+                % Define names
+                figname=strcat(obj.ExperimentName,{'_'},VelocityValue,{'_'},SubstrateValue,{'_'},EnvCondValue,{'_'},ChipCantValue,{'_'},ChipboxValue,{'_'},LinkerValue,{'_'});
+                figname=char(figname);
+                parttitle1='PullingLength';
+                parttitle2='AdhesionEnergy';
+                fulltitle1=strcat(parttitle1,{'_'},figname);
+                fulltitle2=strcat(parttitle2,{'_'},figname);
+                
+                % Define variables
+                pdname='Lognormal'; % Chooses the probability distribution 
+                
+                % Calculate statistic values
+                MaxPullingLength=max(ConcatArrayPullingLength2);
+                MinPullingLength=min(ConcatArrayPullingLength2);
+                MeanArrayRetForce=mean(ConcatArrayRetForce);
+                
+                NumFC=sum(~isnan(ConcatArrayRetAdhEnergy2))
+                             
+                % Fitting the data
+                distLognormalRetAdh=fitdist(ConcatArrayRetAdhEnergy2,pdname); % Fits probability distribution object to data
+                distLognormalPullLen=fitdist(ConcatArrayPullingLength2,pdname); % Fits probability distribution object to data
+                % Calculate the mode (peak) of the log-normal distribution 
+                LogNormalModeRetAdh=exp(distLognormalRetAdh.mu-distLognormalRetAdh.sigma^2);
+                LogNormalModePullLen=exp(distLognormalPullLen.mu-distLognormalPullLen.sigma^2);
+                % Calculate the mode (peak) of the log-normal distribution                
+                LogNormalMedianPullLen=exp(distLognormalPullLen.mu);
+                % Calculate the variance of the log-normal distribution 
+                LogNormalVarRetAdh=exp((distLognormalRetAdh.sigma^2)-1)*exp(2*distLognormalRetAdh.mu+distLognormalRetAdh.sigma^2);
+                LogNormalVarPullLen=exp((distLognormalPullLen.sigma^2)-1)*exp(2*distLognormalPullLen.mu+distLognormalPullLen.sigma^2);
+                % Determine the probability density function for the plot
+                pdfLognormalRetAdh=pdf(distLognormalRetAdh,linspace(0,max(ConcatArrayRetAdhEnergy2),1000));    
+                pdfLognormalPullLen=pdf(distLognormalPullLen,linspace(0,max(ConcatArrayPullingLength2),1000));    
+                % pdfLognormal=distLognormal.pdf(linspace(0,max(ConcatArrayRetAdhEnergy2),1000))
+         
+%                 % Figure 1
+%                 h_fig1=figure(1);
+%                 h_fig1.Color='white'; % changes the background color of the figure
+%                 h_fig1.Units='normalized'; % Defines the units
+%                 h_fig1.OuterPosition=[0 0 1 1];% changes the size of the to the whole screen
+%                 h_fig1.PaperOrientation='landscape';
+%                 h_fig1.Name=figname;
+%                 % Histogram
+%                  % Histogram
+%                 hold on
+%                 yyaxis left               
+%                 h1=histogram(ConcatArrayPullingLength2(~isnan(ConcatArrayPullingLength2)));
+%                 yyaxis right
+%                 plot(linspace(0,max(ConcatArrayPullingLength2),1000),pdfLognormalPullLen)
+%                 xlim([0 max(ConcatArrayPullingLength2)])
+%               %  h3.BinWidth=20e-9;
+%                 h1.FaceAlpha=1;
+%                 h1.FaceColor='b';
+%                 h1.EdgeColor='k';
+%                 % title 
+%                 t1=title(fulltitle1);
+%                 % axes
+%                 ax1=gca;
+%                 ax1.FontSize = 16;
+%                 ax1.XLabel.String = 'PullingLength (m)';
+%                 ax1.XLabel.FontSize = 20;
+%                 ax1.YLabel.String = 'Frequency count (1)';
+%                 ax1.YLabel.FontSize = 20;               
+%                 hold on;
+%                 % text 
+%                 NE = [max(xlim) max(ylim)]-[diff(xlim) diff(ylim)]*0.2;   % Define the position in the plot    
+%                 SE = [max(xlim) min(ylim)]+[-diff(xlim) diff(ylim)]*0.1;
+%                 partstrA1='median=';
+%                 partstrA2=num2str( LogNormalMedianPullLen);
+%                 partstrB1='min=';
+%                 partstrB2=num2str(MinPullingLength);
+%                 partstrC1='max=';
+%                 partstrC2=num2str(MaxPullingLength);
+%                 fullstrA=strcat(partstrA1,partstrA2); % Define the string that shall be shown in the plot
+%                 fullstrB=strcat(partstrB1,partstrB2); % Define the string that shall be shown in the plot
+%                 fullstrC=strcat(partstrC1,partstrC2); % Define the string that shall be shown in the plot
+%                 fullstrBC=strcat(fullstrB,{'  '},fullstrC);
+%                 te11=text(NE(1), NE(2),fullstrA, 'VerticalAlignment','top', 'HorizontalAlignment','right');
+%                 te11.FontSize = 22;
+%                 te2=text(SE(1), SE(2),fullstrBC, 'VerticalAlignment','top', 'HorizontalAlignment','right');
+%                 te2.FontSize = 22;
+%                 % Save figure
+%                 %%% Define the name for the figure title
+%                 partname='histo';
+%                 % fullname=sprintf('%s%s',figname,partname);
+%                 fullname3=strcat(figname,{'_'},parttitle1,{'_'},partname);
+%                 fullname3=char(fullname3);
+%                 %%% Save the current figure in the current folder
+%                 print(gcf,fullname3,'-dpng');
+%                 
+%                 % Figure 2
+%                 h_fig2=figure(2);
+%                 h_fig2.Color='white'; % changes the background color of the figure
+%                 h_fig2.Units='normalized'; % Defines the units
+%                 h_fig2.OuterPosition=[0 0 1 1];% changes the size of the to the whole screen
+%                 h_fig2.PaperOrientation='landscape';
+%                 h_fig2.Name=figname;
+%                 % Histogram
+%                 hold on
+%                 yyaxis left               
+%                 h2=histogram(ConcatArrayRetAdhEnergy2(~isnan(ConcatArrayRetAdhEnergy2))); 
+%                 h2.BinWidth=20e-19;
+%                 yyaxis right
+%                 plot(linspace(0,max(ConcatArrayRetAdhEnergy2),1000),pdfLognormalRetAdh)
+%                 xlim([0 max(ConcatArrayRetAdhEnergy2)])               
+%                 h2.FaceAlpha=1;
+%                 h2.FaceColor='g';
+%                 h2.EdgeColor='k';
+%                 % title
+%                 t2=title(fulltitle2);
+%                 % axes
+%                 ax2=gca;
+%                 ax2.FontSize = 16;
+%                 %ax4.YScale='log';
+%                 ax2.XLabel.String = 'Adhesion Energy (J)';
+%                 ax2.XLabel.FontSize = 20;
+%                 ax2.YLabel.String = 'Frequency count (1)';
+%                 ax2.YLabel.FontSize = 20;               
+%                 hold on;
+%                 % text 
+%                 NE = [max(xlim) max(ylim)]-[diff(xlim) diff(ylim)]*0.2;   % Define the position in the plot
+%                 SE = [max(xlim) min(ylim)]+[-diff(xlim) diff(ylim)]*0.1;   % Define the position in the plot       
+%                 partstrA1='Mode=';
+%                 partstrA2=num2str(LogNormalModeRetAdh);                                 
+%                 partstrB1='Variance=';
+%                 partstrB2=num2str(LogNormalVarRetAdh);
+%                 partstrC1='Num fc analysed=';
+%                 partstrC2=num2str(NumFC);           
+%                 fullstrA=strcat(partstrA1,partstrA2); % Define the string that shall be shown in the plot
+%                 fullstrB=strcat(partstrB1,partstrB2); % Define the string that shall be shown in the plot               
+%                 fullstrAB=strcat(fullstrA,{'  '},fullstrB);
+%                 fullstrC=strcat(partstrC1,partstrC2); % Define the string that shall be shown in the plot               
+%                 te21=text(NE(1), NE(2),fullstrAB, 'VerticalAlignment','top', 'HorizontalAlignment','right');
+%                 te21.FontSize = 22;
+%                 te22=text(SE(1), SE(2),fullstrC, 'VerticalAlignment','top', 'HorizontalAlignment','right');
+%                 te22.FontSize = 22;
+%                 
+                % Fine Figure
+                h_fig10=figure(10);
+                h_fig10.Color='white'; % changes the background color of the figure
+                h_fig10.Units='normalized'; % Defines the units
+                h_fig10.OuterPosition=[0 0 1 1];% changes the size of the to the whole screen
+                h_fig10.PaperOrientation='landscape';
+                h_fig10.Name=figname;
+                % Histogram
+                hold on
+                yyaxis left
+                h10=histogram(ConcatArrayRetAdhEnergy2(~isnan(ConcatArrayRetAdhEnergy2)),'LineWidth',6); 
+                %h10.BinWidth=5e-19;
+                h10.BinWidth=15e-19;
+                yyaxis right
+                ax10=gca
+                plot(linspace(0,max(ConcatArrayRetAdhEnergy2),1000),pdfLognormalRetAdh,'Color',RGB10,'LineWidth',6)
+                xlim([0 max(ConcatArrayRetAdhEnergy2)])               
+                h10.FaceAlpha=1;
+                h10.FaceColor=RGB11;
+                h10.EdgeColor='k';
+                % legend
+                le10=legend('Frequency count','Log normal fit','Location','best');
+                le10.FontSize = 48;      
+                le10.EdgeColor='w';
+                % axes
+                yyaxis left
+                ax10.FontSize = 48;
+                ax10.LineWidth = 5;
+                ax10.XLim =[1.5e-17 7e-17];
+                ax10.YAxis(1).Color='k';
+                ax10.YAxis(2).Color='w';
+                ax10.YAxis(2).TickLabel=[];
+                ax10.TickDir='out';
+                ax10.XLabel.String = 'Adhesion Energy (J)';
+                ax10.XLabel.FontSize = 52;
+                ax10.YLabel.String = 'Frequency count (1)';
+                ax10.YLabel.FontSize = 52;               
+                hold on;
+                        
+                % Save figure
+                %%% Define the name for the figure title
+                partname='histo';
+                % fullname=sprintf('%s%s',figname,partname);
+                fullname4=strcat(figname,{'_'},parttitle2,{'_'},partname);
+                fullname4=char(fullname4);
+                %%% Save the current figure in the current folder
+                print(gcf,fullname4,'-dpng');
+                %% House keeping
+                close all
+        end
+       
+        
+        function SM_boxplot(obj,XMin,XMax,YMin,YMax) % fc ... force curve
+            %
+            % Output time and date for the dairy
+            datetime('now')
+            
+            if nargin < 2
+                XMin= -inf;
+                XMax= inf;
+                YMin= -inf;
+                YMax= inf;
+            end
+
+         
+                % Figure 1
+                h_fig=figure(1);
+                h_fig.Color='white'; % changes the background color of the figure
+                h_fig.Units='normalized'; % Defines the units
+                h_fig.OuterPosition=[0 0 1 1];% changes the size of the to the whole screen
+                h_fig.PaperOrientation='landscape';
+                h_fig.Name='Concatenated FM Data Boxplot';
+                    %% Plot loop                   
+                    for jj=1:length(obj.SMFSResults)
+                        % Allocate saved parameters
+                        if obj.SMFSResults{jj}.Parameters.ExtendVelocity==0
+                            ExtVelocityValueStr='All';
+                        else
+                            ExtVelocityValueStr=num2str(obj.SMFSResults{jj}.Parameters.ExtendVelocity);
+                        end
+                        if obj.SMFSResults{jj}.Parameters.RetractVelocity==0
+                            RetVelocityValueStr='All';
+                        else
+                            RetVelocityValueStr=num2str(obj.SMFSResults{jj}.Parameters.RetractVelocity);
+                        end
+                        if obj.SMFSResults{jj}.Parameters.HoldingTime==-1
+                            HoldingTimeValueStr='All';
+                        else
+                            HoldingTimeValueStr=num2str(obj.SMFSResults{jj}.Parameters.HoldingTime);
+                        end            
+                        SubstrateValue=obj.SMFSResults{jj}.Parameters.Substrate;
+                        EnvCondValue=obj.SMFSResults{jj}.Parameters.Medium;
+                        ChipCantValue=obj.SMFSResults{jj}.Parameters.ChipCantilever;
+                        ChipboxValue=obj.SMFSResults{jj}.Parameters.Chipbox;
+                        LinkerValue=obj.SMFSResults{jj}.Parameters.Linker;
+
+                        % Define variables
+                          PlotTitle=strcat(obj.ExperimentName,{' '},ExtVelocityValueStr,{' '},RetVelocityValueStr,{' '},HoldingTimeValueStr,{' '},SubstrateValue,{' '},EnvCondValue,{' '},ChipCantValue,{' '},ChipboxValue,{' '},LinkerValue);
+                          PlotTitle=char(PlotTitle);                   
+                            ax=nexttile;
+                            ax.XLim = [XMin XMax];
+                            ax.YLim = [YMin YMax];                             
+                            %ax.YLim = [obj.MinPullingLength obj.MaxPullingLength];
+                            hold on
+                            grid on                           
+                            boxplot(nonzeros(obj.SMFSResults{jj}.Data.AdhMaxApp));                       
+                            % Title for each Subplot
+                            %ti=title(sprintf('%i',jj),'Color','k');
+                            ti=title(num2str(PlotTitle));
+                            ti.Units='normalized'; % Set units to 'normalized'
+                            ti.Position=[0.5,1]; % Position the subplot title within the subplot                     
+                    end                  
+              
+                    
+                    % Figure 2
+                h_fig=figure(2);
+                h_fig.Color='white'; % changes the background color of the figure
+                h_fig.Units='normalized'; % Defines the units
+                h_fig.OuterPosition=[0 0 1 1];% changes the size of the to the whole screen
+                h_fig.PaperOrientation='landscape';
+                h_fig.Name='FM Boxplot';
+                    %% Plot loop                   
+                    for jj=1:length(obj.SMFSResults)
+                        % Allocate saved parameters
+                        if obj.SMFSResults{jj}.Parameters.ExtendVelocity==0
+                            ExtVelocityValueStr='All';
+                        else
+                            ExtVelocityValueStr=num2str(obj.SMFSResults{jj}.Parameters.ExtendVelocity);
+                        end
+                        if obj.SMFSResults{jj}.Parameters.RetractVelocity==0
+                            RetVelocityValueStr='All';
+                        else
+                            RetVelocityValueStr=num2str(obj.SMFSResults{jj}.Parameters.RetractVelocity);
+                        end
+                        if obj.SMFSResults{jj}.Parameters.HoldingTime==-1
+                            HoldingTimeValueStr='All';
+                        else
+                            HoldingTimeValueStr=num2str(obj.SMFSResults{jj}.Parameters.HoldingTime);
+                        end            
+                        SubstrateValue=obj.SMFSResults{jj}.Parameters.Substrate;
+                        EnvCondValue=obj.SMFSResults{jj}.Parameters.Medium;
+                        ChipCantValue=obj.SMFSResults{jj}.Parameters.ChipCantilever;
+                        ChipboxValue=obj.SMFSResults{jj}.Parameters.Chipbox;
+                        LinkerValue=obj.SMFSResults{jj}.Parameters.Linker;
+                    end
+                    
+                       
+            FCperFM=100
+g1 = repmat({'First'},FCperFM,1);
+g2 = repmat({'Second'},FCperFM,1);
+g = [g1; g2];
+
+PlotData=obj.SMFSResults{jj}.Data.AdhMaxAppConcat
+
+          boxplot(PlotData,g)
+          
+            
+                    
+                        % Define variables
+                          PlotTitle=strcat(obj.ExperimentName,{' '},ExtVelocityValueStr,{' '},RetVelocityValueStr,{' '},HoldingTimeValueStr,{' '},SubstrateValue,{' '},EnvCondValue,{' '},ChipCantValue,{' '},ChipboxValue,{' '},LinkerValue);
+                          PlotTitle=char(PlotTitle);                   
+                            hold on
+                            grid on                           
+                            boxplot(nonzeros(obj.SMFSResults{jj}.Data.AdhMaxApp));                       
+                            % Title for each Subplot
+                            %ti=title(sprintf('%i',jj),'Color','k');
+                            ti=title(num2str(PlotTitle));
+                            ti.Units='normalized'; % Set units to 'normalized'
+                            ti.Position=[0.5,1]; % Position the subplot title within the subplot                     
+                            
+                   
+                             % Figure 3
+                h_fig=figure(3);
+                h_fig.Color='white'; % changes the background color of the figure
+                h_fig.Units='normalized'; % Defines the units
+                h_fig.OuterPosition=[0 0 1 1];% changes the size of the to the whole screen
+                h_fig.PaperOrientation='landscape';
+                h_fig.Name='Concatenated FM Data Boxplot';
+                    %% Plot loop                   
+                    for jj=1:length(obj.SMFSResults)
+                        % Allocate saved parameters
+                        if obj.SMFSResults{jj}.Parameters.ExtendVelocity==0
+                            ExtVelocityValueStr='All';
+                        else
+                            ExtVelocityValueStr=num2str(obj.SMFSResults{jj}.Parameters.ExtendVelocity);
+                        end
+                        if obj.SMFSResults{jj}.Parameters.RetractVelocity==0
+                            RetVelocityValueStr='All';
+                        else
+                            RetVelocityValueStr=num2str(obj.SMFSResults{jj}.Parameters.RetractVelocity);
+                        end
+                        if obj.SMFSResults{jj}.Parameters.HoldingTime==-1
+                            HoldingTimeValueStr='All';
+                        else
+                            HoldingTimeValueStr=num2str(obj.SMFSResults{jj}.Parameters.HoldingTime);
+                        end            
+                        SubstrateValue=obj.SMFSResults{jj}.Parameters.Substrate;
+                        EnvCondValue=obj.SMFSResults{jj}.Parameters.Medium;
+                        ChipCantValue=obj.SMFSResults{jj}.Parameters.ChipCantilever;
+                        ChipboxValue=obj.SMFSResults{jj}.Parameters.Chipbox;
+                        LinkerValue=obj.SMFSResults{jj}.Parameters.Linker;
+                    end
+                        % Define variables
+                          PlotTitle=strcat(obj.ExperimentName,{' '},ExtVelocityValueStr,{' '},RetVelocityValueStr,{' '},HoldingTimeValueStr,{' '},SubstrateValue,{' '},EnvCondValue,{' '},ChipCantValue,{' '},ChipboxValue,{' '},LinkerValue);
+                          PlotTitle=char(PlotTitle);                   
+                            ax=nexttile;
+                            ax.XLim = [XMin XMax];
+                            ax.YLim = [YMin YMax];                             
+                            %ax.YLim = [obj.MinPullingLength obj.MaxPullingLength];
+                            hold on
+                            grid on                           
+                            boxplot(obj.SMFSResults{jj}.Data.AdhMaxApp,obj.SMFSResults{jj}.Concatenate.FMID);                       
+                            % Title for each Subplot
+                            %ti=title(sprintf('%i',jj),'Color','k');
+                            ti=title(num2str(PlotTitle));
+                            ti.Units='normalized'; % Set units to 'normalized'
+                            ti.Position=[0.5,1]; % Position the subplot title within the subplot                     
+                                    
+              
+                            
+                            
+%                 %% Save figures
+%                 %%% Define the name for the figure title
+%                 partname=sprintf('-p%d',ii);
+%                 % fullname=sprintf('%s%s',figname,partname);
+%                 fullname=sprintf('%s%s',figname,partname);
+%                 %%% Save the current figure in the current folder
+%                 print(gcf,fullname,'-dpng');
+           
+        %    close all
+        
+        
+           
+        end
+             
+        function SM_statistics_hypothesis_tests(obj,ResultsRow)
+
+           % Lilliefors test for nomral distribution
+           % Null hypothesis: Testing data is normally distributed
+           % Alternative hypothesis: Testing data is not normally distributed
+           % If lillietest result is 1 than the test rejects the null hypothesis at the 5% significance level
+           % Lilliefors test result = 1 -> Data is not normally distributed
+           % If lillietest result is 0 than the test confirms the null hypothesis at the 5% significance level
+           % Lilliefors test result = 0 -> Data is normally distributed
+
+           % Wilcoxon rank sum test
+           % The Wilcoxon rank sum test is a nonparametric test for two populations when samples are independent. If X and Y are independent samples with different sample sizes, the test statistic which ranksum returns is the rank sum of the first sample.
+           % The Wilcoxon rank sum test is equivalent to the Mann-Whitney U-test. The Mann-Whitney U-test is a nonparametric test for equality of population medians of two independent samples X and Y.
+           % If the test result is 1, this indicates rejection of the null hypothesis at the 100 * alpha% significance level.
+           % Wilcoxon test result = 1 -> Medians of the tested data are
+           % not equal
+           % If the test result is 0, this indicates a failure to reject the null hypothesis at the 100 * alpha% significance level.
+           % Wilcoxon test result = 0 -> Medians of the tested data are
+           % equal
+
+           % Figure visibility
+           set(groot,'defaultFigureVisible','off')
+           % set(groot,'defaultFigureVisible','on')
+
+           % Input variable adaptation
+           if nargin<2
+               ResultsRow=1;
+           end
+           % Output time and date for the dairy
+           datetime('now')
+           % Change into the Folder of Interest
+           cd(obj.ExperimentFolder) % Move into the folder
+           % Create folders for saving the produced figures
+           foldername='SM_statistics_hypothesis_tests';    % Defines the folder name
+           mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
+           currpath=fullfile(obj.ExperimentFolder,foldername);
+           cd(currpath);
+
+           % Define general variables
+           LengthResultsParameters=length(obj.SMFSResults); % Read out the number of entries in the SMFSResults structure
+           %% 1a qqplots
+           % Define variables
+           IdxVar=1;
+           Res=[1 1 2560 1250]; % Define the figure resolution
+           pd = makedist('Normal'); % Define the distribution
+           if obj.SMFSResults{ResultsRow}.Parameters.ExtendVelocity==0
+               ExtVelocityValueStr='All';
+           else
+               ExtVelocityValueStr=num2str(round(obj.SMFSResults{ResultsRow}.Parameters.ExtendVelocity*1e9));
+           end
+           if obj.SMFSResults{ResultsRow}.Parameters.RetractVelocity==0
+               RetVelocityValueStr='All';
+           else
+               RetVelocityValueStr=num2str(round(obj.SMFSResults{ResultsRow}.Parameters.RetractVelocity*1e9));
+           end
+           if obj.SMFSResults{ResultsRow}.Parameters.HoldingTime==-1
+               HoldingTimeValueStr='All';
+           else
+               HoldingTimeValueStr=num2str(obj.SMFSResults{ResultsRow}.Parameters.HoldingTime);
+           end
+           FigNamePt2=strcat(ExtVelocityValueStr,{'_'},RetVelocityValueStr,{'_'},HoldingTimeValueStr,{'_'},obj.SMFSResults{ResultsRow}.Parameters.Substrate,{'_'},obj.SMFSResults{ResultsRow}.Parameters.Medium,{'_'},obj.SMFSResults{ResultsRow}.Parameters.ChipCantilever,{'_'},obj.SMFSResults{ResultsRow}.Parameters.Chipbox,{'_'},obj.SMFSResults{ResultsRow}.Parameters.Linker);
+           FigNamePt2=char(FigNamePt2);
+           %% Figures
+           for ii=ResultsRow:LengthResultsParameters
+               % Plot condition
+               if  ~obj.DebugFlag.Plot % Suppress plotting
+                   % if  obj.DebugFlag.Plot % Allow plotting
+                   continue
+               end
+               %% Figure 2
+               % Define variables
+               FigNamePt1=sprintf('SMFSResultRow%d_',ii);
+               Plottitle=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ii,1}.Data(1).FMIndex),obj.SMFSResults{ii,1}.Data(1).SumNumFcAnalysedAdhMaxRet);
+               NameSuffix2='_MaxAdhesionForceRetract';
+               % Allocate data
+               xData2=obj.SMFSResults{ii}.Data.AdhMaxRetConcat;
+               % Figure
+               h_fig2=figure(2);
+               h_fig2.Color='white'; % changes the background color of the figure
+               h_fig2.Units='pixel'; % Defines the units
+               h_fig2.OuterPosition=Res;
+               h_fig2.PaperOrientation='landscape';
+               h_fig2.Name=strcat(FigNamePt1,FigNamePt2,NameSuffix2);
+               % The actual plotting
+               qqplot(xData2,pd)
+               % Title
+               title(Plottitle)
+               % Save the current figure in the current folder
+               FullName2=strcat(FigNamePt1,FigNamePt2,NameSuffix2);
+               print(h_fig2,FullName2,'-dpng');
+               %% Figure 3
+               % Define variables
+               Plottitle=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ii,1}.Data(1).FMIndex),obj.SMFSResults{ii,1}.Data(1).SumNumFcAnalysedAdhUnbinding);
+               NameSuffix3='_AdhForceUnbinding';
+               % Allocate data
+               xData3=obj.SMFSResults{ii}.Data.AdhUnbindingConcat;
+               % Figure
+               h_fig3=figure(3);
+               h_fig3.Color='white'; % changes the background color of the figure
+               h_fig3.Units='pixel'; % Defines the units
+               h_fig3.OuterPosition=Res;
+               h_fig3.PaperOrientation='landscape';
+               h_fig3.Name=strcat(FigNamePt1,FigNamePt2);
+               % The actual plotting
+               qqplot(xData3,pd)
+               % Title
+               title(Plottitle)
+               % Save the current figure in the current folder
+               FullName3=strcat(FigNamePt1,FigNamePt2,NameSuffix3);
+               print(h_fig3,FullName3,'-dpng');
+               %% Figure 4
+               % Define variables
+               Plottitle=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ii,1}.Data(1).FMIndex),obj.SMFSResults{ii,1}.Data(1).SumNumFcAnalysedAdhEneApp);
+               NameSuffix4='_AdhEnergyApproach';
+               % Allocate data
+               xData4=obj.SMFSResults{ii}.Data.AdhEneAppConcat;
+               % Figure
+               h_fig4=figure(4);
+               h_fig4.Color='white'; % changes the background color of the figure
+               h_fig4.Units='pixel'; % Defines the units
+               h_fig4.OuterPosition=Res;
+               h_fig4.PaperOrientation='landscape';
+               h_fig4.Name=strcat(FigNamePt1,FigNamePt2);
+               % The actual plotting
+               qqplot(xData4,pd)
+               % Title
+               title(Plottitle)
+               % Save the current figure in the current folder
+               FullName4=strcat(FigNamePt1,FigNamePt2,NameSuffix4);
+               print(h_fig4,FullName4,'-dpng');
+               %% Figure 5
+               % Define variables
+               Plottitle=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ii,1}.Data(1).FMIndex),obj.SMFSResults{ii,1}.Data(1).SumNumFcAnalysedAdhEneRet);
+               NameSuffix5='_AdhEnergyRetract';
+               % Allocate data
+               xData5=obj.SMFSResults{ii}.Data.AdhEneRetConcat;
+               % Figure
+               h_fig5=figure(5);
+               h_fig5.Color='white'; % changes the background color of the figure
+               h_fig5.Units='pixel'; % Defines the units
+               h_fig5.OuterPosition=Res;
+               h_fig5.PaperOrientation='landscape';
+               h_fig5.Name=strcat(FigNamePt1,FigNamePt2);
+               % The actual plotting
+               qqplot(xData5,pd)
+               % Title
+               title(Plottitle)
+               % Save the current figure in the current folder
+               FullName5=strcat(FigNamePt1,FigNamePt2,NameSuffix5);
+               print(h_fig5,FullName5,'-dpng');
+               %% Figure 6
+               % Define variables
+               Plottitle=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ii,1}.Data(1).FMIndex),obj.SMFSResults{ii,1}.Data(1).SumNumFcAnalysedyPullingLength);
+               NameSuffix6='_Pullinglength';
+               % Allocate data
+               xData6=obj.SMFSResults{ii}.Data.yPullingLengthConcat;
+               % Figure
+               h_fig6=figure(6);
+               h_fig6.Color='white'; % changes the background color of the figure
+               h_fig6.Units='pixel'; % Defines the units
+               h_fig6.OuterPosition=Res;
+               h_fig6.PaperOrientation='landscape';
+               h_fig6.Name=strcat(FigNamePt1,FigNamePt2);
+               % The actual plotting
+               qqplot(xData6,pd)
+               % Title
+               title(Plottitle)
+               % Save figure
+               FullName6=strcat(FigNamePt1,FigNamePt2,NameSuffix6);
+               %%% Save the current figure in the current folder
+               print(h_fig6,FullName6,'-dpng');
+           end
+           close all
+           %% 1b Hypothesis testing for nomal distribution using the lillietest
+           % AdhMaxApp
+           for ii=ResultsRow:LengthResultsParameters
+               % Allocate data
+               TestingData1=obj.SMFSResults{ii}.Data.AdhMaxAppConcat;
+               % Testing
+               if nnz(~isnan(TestingData1))<=5
+                   continue
+               end
+               SumDataAdhMaxApp=nnz(~isnan(TestingData1));
+               [Hyp1, p1]=lillietest(TestingData1);
+               % Allocate data
+               obj.SMFSLillieAdhMaxApp(IdxVar,:)={IdxVar,ii,SumDataAdhMaxApp,Hyp1,p1};
+               IdxVar=IdxVar+1;
+           end
+           % AdhMaxRet
+           IdxVar=1;
+           for ii=ResultsRow:LengthResultsParameters
+               % Allocate data
+               TestingData2=obj.SMFSResults{ii}.Data.AdhMaxRetConcat;
+               % Testing
+               if nnz(~isnan(TestingData2))<=5
+                   continue
+               end
+               SumDataAdhMaxRet=nnz(~isnan(TestingData2));
+               [Hyp2, p2]=lillietest(TestingData2);
+               % Allocate data
+               obj.SMFSLillieAdhMaxRet(IdxVar,:)={IdxVar,ii,SumDataAdhMaxRet,Hyp2,p2};
+
+               IdxVar=IdxVar+1;
+           end
+           % AdhUnbinding
+           IdxVar=1;
+           for ii=ResultsRow:LengthResultsParameters
+               % Allocate data
+               TestingData3=obj.SMFSResults{ii}.Data.AdhUnbindingConcat;
+               % Testing
+               if nnz(~isnan(TestingData3))<=5
+                   continue
+               end
+               SumDataAdhUnbinding=nnz(~isnan(TestingData3));
+               [Hyp3, p3]=lillietest(TestingData3);
+               % Allocate data
+               obj.SMFSLillieAdhUnbinding(IdxVar,:)={IdxVar,ii,SumDataAdhUnbinding,Hyp3,p3};
+
+               IdxVar=IdxVar+1;
+           end
+           % AdhEneApp
+           IdxVar=1;
+           for ii=ResultsRow:LengthResultsParameters
+               % Allocate data
+               TestingData4=obj.SMFSResults{ii}.Data.AdhEneAppConcat;
+               % Testing
+               if nnz(~isnan(TestingData4))<=5
+                   continue
+               end
+               SumDataAdhEneApp=nnz(~isnan(TestingData4));
+               [Hyp4, p4]=lillietest(TestingData4);
+               % Allocate data
+               obj.SMFSLillieAdhEneApp(IdxVar,:)={IdxVar,ii,SumDataAdhEneApp,Hyp4,p4};
+
+               IdxVar=IdxVar+1;
+           end
+           % AdhEneRet
+           IdxVar=1;
+           for ii=ResultsRow:LengthResultsParameters
+               % Allocate data
+               TestingData5=obj.SMFSResults{ii}.Data.AdhEneRetConcat;
+               % Testing
+               if nnz(~isnan(TestingData5))<=5
+                   continue
+               end
+               SumDataAdhEneRet=nnz(~isnan(TestingData5));
+               [Hyp5, p5]=lillietest(TestingData5);
+               % Allocate data
+               obj.SMFSLillieAdhEneRet(IdxVar,:)={IdxVar,ii,SumDataAdhEneRet,Hyp5,p5};
+               IdxVar=IdxVar+1;
+           end
+           % PullingLength
+           IdxVar=1;
+           for ii=ResultsRow:LengthResultsParameters
+               % Allocate data
+               TestingData6=obj.SMFSResults{ii}.Data.yPullingLengthConcat;
+               % Testing
+               if nnz(~isnan(TestingData6))<=5
+                   continue
+               end
+               SumDatayPulling=nnz(~isnan(TestingData6));
+               [Hyp6, p6]=lillietest(TestingData6);
+               % Allocate data
+               obj.SMFSLilliePullingLength(IdxVar,:)={IdxVar,ii,SumDatayPulling,Hyp6,p6};
+
+               IdxVar=IdxVar+1;
+           end
+           % SnapInLength
+           IdxVar=1;
+           for ii=ResultsRow:LengthResultsParameters
+               % Allocate data
+               TestingData7=obj.SMFSResults{ii}.Data.ySnapInLengthConcat;
+               % Testing
+               if nnz(~isnan(TestingData7))<=5
+                   continue
+               end
+               SumDataSnapInLength=nnz(~isnan(TestingData7));
+               [Hyp7, p7]=lillietest(TestingData7);
+               % Allocate data
+               obj.SMFSLillieSnapInLength(IdxVar,:)={IdxVar,ii,SumDataSnapInLength,Hyp7,p7};
+
+               IdxVar=IdxVar+1;
+           end
+
+           %% 2. Wilcoxon rank sum test
+           % AdhMaxApp
+           IdxVar=1;
+           for ii=ResultsRow:LengthResultsParameters
+               TestingData1=obj.SMFSResults{ii}.Data.AdhMaxAppConcat;
+               NoNaNs1=nnz(~isnan(TestingData1));
+               if NoNaNs1==0
+                   continue
+               end
+               for jj=ResultsRow:LengthResultsParameters
+                   TestingData2=obj.SMFSResults{ii}.Data.AdhMaxAppConcat;
+                   NoNaNs2=nnz(~isnan(TestingData2));
+                   if NoNaNs2==0
+                       continue
+                   end
+                   [p,Hyp] = ranksum(TestingData1,TestingData2);
+                   SumFcTestingData1=nnz(~isnan(TestingData1));
+                   SumFcTestingData2=nnz(~isnan(TestingData2));
+                   % Allocate data
+                   obj.SMFSWilcoxonAdhMaxApp(IdxVar,:)={IdxVar,ii,SumFcTestingData1,jj,SumFcTestingData2,Hyp,p};
+                   % Adjust variable
+                   IdxVar=IdxVar+1;
+               end
+           end
+           % AdhMaxRet
+           IdxVar=1;
+           for ii=ResultsRow:LengthResultsParameters
+               TestingData1=obj.SMFSResults{ii}.Data.AdhMaxRetConcat;
+               NoNaNs1=nnz(~isnan(TestingData1));
+               if NoNaNs1==0
+                   continue
+               end
+               for jj=ResultsRow:LengthResultsParameters
+                   TestingData2=obj.SMFSResults{ii}.Data.AdhMaxRetConcat;
+                   NoNaNs2=nnz(~isnan(TestingData2));
+                   if NoNaNs2==0
+                       continue
+                   end
+                   [p,Hyp] = ranksum(TestingData1,TestingData2);
+                   SumFcTestingData1=nnz(~isnan(TestingData1));
+                   SumFcTestingData2=nnz(~isnan(TestingData2));
+                   % Allocate data
+                   obj.SMFSWilcoxonAdhMaxRet(IdxVar,:)={IdxVar,ii,SumFcTestingData1,jj,SumFcTestingData2,Hyp,p};
+                   % Adjust variable
+                   IdxVar=IdxVar+1;
+               end
+           end
+           % AdhUnbinding
+           IdxVar=1;
+           for ii=ResultsRow:LengthResultsParameters
+               TestingData1=obj.SMFSResults{ii}.Data.AdhUnbindingConcat;
+               NoNaNs1=nnz(~isnan(TestingData1));
+               if NoNaNs1==0
+                   continue
+               end
+               for jj=ResultsRow:LengthResultsParameters
+                   TestingData2=obj.SMFSResults{ii}.Data.AdhUnbindingConcat;
+                   NoNaNs2=nnz(~isnan(TestingData2));
+                   if NoNaNs2==0
+                       continue
+                   end
+                   [p,Hyp] = ranksum(TestingData1,TestingData2);
+                   SumFcTestingData1=nnz(~isnan(TestingData1));
+                   SumFcTestingData2=nnz(~isnan(TestingData2));
+                   % Allocate data
+                   obj.SMFSWilcoxonAdhUnbinding(IdxVar,:)={IdxVar,ii,SumFcTestingData1,jj,SumFcTestingData2,Hyp,p};
+                   % Adjust variable
+                   IdxVar=IdxVar+1;
+               end
+           end
+           % AdhEneApp
+           IdxVar=1;
+           for ii=ResultsRow:LengthResultsParameters
+               TestingData1=obj.SMFSResults{ii}.Data.AdhEneAppConcat;
+               NoNaNs1=nnz(~isnan(TestingData1));
+               if NoNaNs1==0
+                   continue
+               end
+               for jj=ResultsRow:LengthResultsParameters
+                   TestingData2=obj.SMFSResults{ii}.Data.AdhEneAppConcat;
+                   NoNaNs2=nnz(~isnan(TestingData2));
+                   if NoNaNs2==0
+                       continue
+                   end
+                   [p,Hyp] = ranksum(TestingData1,TestingData2);
+                   SumFcTestingData1=nnz(~isnan(TestingData1));
+                   SumFcTestingData2=nnz(~isnan(TestingData2));
+                   % Allocate data
+                   obj.SMFSWilcoxonAdhEneApp(IdxVar,:)={IdxVar,ii,SumFcTestingData1,jj,SumFcTestingData2,Hyp,p};
+                   % Adjust variable
+                   IdxVar=IdxVar+1;
+               end
+           end
+           % AdhEneRet
+           IdxVar=1;
+           for ii=ResultsRow:LengthResultsParameters
+               TestingData1=obj.SMFSResults{ii}.Data.AdhEneRetConcat;
+               NoNaNs1=nnz(~isnan(TestingData1));
+               if NoNaNs1==0
+                   continue
+               end
+               for jj=ResultsRow:LengthResultsParameters
+                   TestingData2=obj.SMFSResults{ii}.Data.AdhEneRetConcat;
+                   NoNaNs2=nnz(~isnan(TestingData2));
+                   if NoNaNs2==0
+                       continue
+                   end
+                   [p,Hyp] = ranksum(TestingData1,TestingData2);
+                   SumFcTestingData1=nnz(~isnan(TestingData1));
+                   SumFcTestingData2=nnz(~isnan(TestingData2));
+                   % Allocate data
+                   obj.SMFSWilcoxonAdhEneRet(IdxVar,:)={IdxVar,ii,SumFcTestingData1,jj,SumFcTestingData2,Hyp,p};
+                   % Adjust variable
+                   IdxVar=IdxVar+1;
+               end
+           end
+           % PullingLength
+           for ii=ResultsRow:LengthResultsParameters
+               TestingData1=obj.SMFSResults{ii}.Data.yPullingLengthConcat;
+               NoNaNs1=nnz(~isnan(TestingData1));
+               if NoNaNs1==0
+                   continue
+               end
+               for jj=ResultsRow:LengthResultsParameters
+                   TestingData2=obj.SMFSResults{jj}.Data.yPullingLengthConcat;
+                   NoNaNs2=nnz(~isnan(TestingData2));
+                   if NoNaNs2==0
+                       continue
+                   end
+                   [p,Hyp] = ranksum(TestingData1,TestingData2);
+                   SumFcTestingData1=nnz(~isnan(TestingData1));
+                   SumFcTestingData2=nnz(~isnan(TestingData2));
+                   % Allocate data
+                   obj.SMFSWilcoxonPullingLength(IdxVar,:)={IdxVar,ii,SumFcTestingData1,jj,SumFcTestingData2,Hyp,p};
+                   % Adjust variable
+                   IdxVar=IdxVar+1;
+               end
+           end
+           % SnapInLength
+           IdxVar=1;
+           for ii=ResultsRow:LengthResultsParameters
+               TestingData1=obj.SMFSResults{ii}.Data.ySnapInLengthConcat;
+               NoNaNs1=nnz(~isnan(TestingData1));
+               if NoNaNs1==0
+                   continue
+               end
+               for jj=ResultsRow:LengthResultsParameters
+                   TestingData2=obj.SMFSResults{ii}.Data.ySnapInLengthConcat;
+                   NoNaNs2=nnz(~isnan(TestingData2));
+                   if NoNaNs2==0
+                       continue
+                   end
+                   [p,Hyp] = ranksum(TestingData1,TestingData2);
+                   SumFcTestingData1=nnz(~isnan(TestingData1));
+                   SumFcTestingData2=nnz(~isnan(TestingData2));
+                   % Allocate data
+                   obj.SMFSWilcoxonSnapInLength(IdxVar,:)={IdxVar,ii,SumFcTestingData1,jj,SumFcTestingData2,Hyp,p};
+                   % Adjust variable
+                   IdxVar=IdxVar+1;
+               end
+           end
+       end
+
+        function SM_results_gramm_boxplot_ESB(obj,ii)
+
+           % Input variable adaptation
+           if nargin<2
+               ii=1;
+           end
+
+           CS1=[165 0 38]./255; % Dark reddish
+           CS2=[215 48 39]./255; % Light reddish
+           CS3=[244 109 67]./255; % Orangish
+           CS4=[253 174 97]./255; % Ochreish
+           CS5=[254 224 144]./255; % Yellowish
+           CS6=[224 243 248]./255; % Pastel blueish
+           CS7=[171 217 233]./255; % Light blueish
+           CS8=[116 173 209]./255; % Steel blueish
+           CS9=[69 117 180]./255; % Distant blueish
+           CS10=[49 54 149]./255; % Pale ultramarineish
+
+           % Output time and date for the dairy
+           datetime('now')
+           % Change into the Folder of Interest
+           cd(obj.ExperimentFolder) % Move into the folder
+           % Create folders for saving the produced figures
+           foldername='SM_results_gramm_boxplot_ESB';    % Defines the folder name
+           mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
+           currpath=fullfile(obj.ExperimentFolder,foldername);
+           cd(currpath);
+           %% General variables 1
+           ColorMap1=[CS10;  % Pale ultramarineish
+               %      CS7;    % Light blueish
+               CS4; % Ochreish
+               CS2]; % Light reddish
+           LimitForce1=[0 14e-3]; % Regime I - Entropic
+           LimitForce2=[14e-3 5]; %Regime II - Unfolding
+           LimitForce3=[5 22]; % Regime III - Backbone stretching
+           LimitLength1=[0 317]; % Regime I - Entropic
+           LimitLength2=[317 390]; %Regime II - Unfolding
+           LimitLength3=[390 452.6]; % Regime III - Backbone stretching
+           Res=[1 1 2560 1250]; % Define the figure resolution
+           if obj.SMFSResults{ii}.Parameters.ExtendVelocity==0
+               ExtVelocityValueStr='All';
+           else
+               ExtVelocityValueStr=num2str(round(obj.SMFSResults{ii}.Parameters.ExtendVelocity*1e9));
+           end
+           if obj.SMFSResults{ii}.Parameters.RetractVelocity==0
+               RetVelocityValueStr='All';
+           else
+               RetVelocityValueStr=num2str(round(obj.SMFSResults{ii}.Parameters.RetractVelocity*1e9));
+           end
+           if obj.SMFSResults{ii}.Parameters.HoldingTime==-1
+               HoldingTimeValueStr='All';
+           else
+               HoldingTimeValueStr=num2str(obj.SMFSResults{ii}.Parameters.HoldingTime);
+           end
+           FigNamePt1=strcat(ExtVelocityValueStr,{'_'},RetVelocityValueStr,{'_'},HoldingTimeValueStr,{'_'},obj.SMFSResults{ii}.Parameters.Substrate,{'_'},obj.SMFSResults{ii}.Parameters.Medium,{'_'},obj.SMFSResults{ii}.Parameters.ChipCantilever,{'_'},obj.SMFSResults{ii}.Parameters.Chipbox,{'_'},obj.SMFSResults{ii}.Parameters.Linker);
+           FigNamePt1=char(FigNamePt1);
+           FigNamePt2=sprintf('_SMFSResultRow%d',ii);
+           FigNamePt3='_Boxplot';
+           %            Plottitle=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ii,1}.Data(1).FMIndex),obj.SMFSResults{ii,1}.Data(1).SumNumFcAnalysedAdhMaxRet);
+           LegendxAxis='Holding Time (s)';
+           LegendColor='Approach velocity (m/s)';
+           ColumnName='Retraction velocity (m/s)';
+           NameSuffix='_MaxAdhesionForceRetract_Pullinglength';
+           % Allocate data
+           xData=obj.SMFSResults{ii}.Concatenate.FMHoldingTime;
+           FMExtVeloData=obj.SMFSResults{ii}.Concatenate.FMExtVelocity;
+           FMRetVeloData=obj.SMFSResults{ii}.Concatenate.FMRetVelocity;
+           ColorData=FMExtVeloData;
+           ColumnData=FMRetVeloData;
+           %% Gramm object 2
+           % Allocate data
+           yData2=obj.SMFSResults{ii}.Data.AdhMaxRetConcat*-1e9;
+           % Define variables
+           LegendyAxis2='Pull-off force (nN)';
+           % Create a gramm object
+           g(1,1)=gramm('x',xData,'y',yData2,...
+               'color',ColorData);
+           g(1,1).facet_grid([],ColumnData) % Subdivide the data in subplots horizontally
+           % Plot data
+           g(1,1).geom_polygon('y',{LimitForce1;LimitForce2;LimitForce3},'color',ColorMap1);
+           g(1,1).geom_jitter('width',0.6,...
+               'dodge',0.4); % Plot raw data as jitter
+           g(1,1).stat_boxplot('notch',true,...
+               'width',0.6,...
+               'dodge',0.4); % Plot data in boxplot
+           %g(1,1).set_title(Plottitle) %Set figure title
+           g(1,1).set_text_options('base_size',32) % Set font size
+           % Legend
+           g(1,1).set_names('x',LegendxAxis,'y',LegendyAxis2,'color',LegendColor,'column',ColumnName)
+           %% Gramm object 6
+           % Allocate data
+           yData6=obj.SMFSResults{ii}.Data.yPullingLengthConcat*1e9;
+           % Define variables
+           LegendyAxis2='Pulling length (nm)';
+           % Create a gramm object
+           g(1,2)=gramm('x',xData,'y',yData6,...
+               'color',ColorData);
+           g(1,2).facet_grid([],ColumnData) % Subdivide the data in subplots horizontally
+           % Plot data
+           g(1,2).geom_polygon('y',{LimitLength1;LimitLength2;LimitLength3},'color',ColorMap1);
+           g(1,2).geom_jitter('width',0.6,...
+               'dodge',0.4); % Plot raw data as jitter
+           g(1,2).stat_boxplot('notch',true,...
+               'width',0.6,...
+               'dodge',0.4); % Plot data in boxplot
+           %g(1,2).set_title(Plottitle) % Set figure title
+           g(1,2).set_text_options('base_size',32) % Set font size
+           % Legend
+           g(1,2).set_names('x',LegendxAxis,'y',LegendyAxis2,'color',LegendColor,'column',ColumnName)
+           % Figure
+           h_fig2=figure(2);
+           h_fig2.Color='white'; % changes the background color of the figure
+           h_fig2.Units='pixel'; % Defines the units
+           h_fig2.OuterPosition=Res;
+           h_fig2.PaperOrientation='landscape';
+           h_fig2.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3);
+           % The actual plotting
+           g.draw()
+           % Save figure
+           FullName2=strcat(FigNamePt1,FigNamePt2,FigNamePt3,NameSuffix);
+           %%% Save the current figure in the current folder
+           print(h_fig2,FullName2,'-dpng');
+
+           % House keeping
+           close all
+       end
+
+
+        function SM_results_gramm_qqplot(obj,ii)
+
+           % Input variable adaptation
+           if nargin<2
+               ii=1;
+           end
+           % Output time and date for the dairy
+           datetime('now')
+           % Change into the Folder of Interest
+           cd(obj.ExperimentFolder) % Move into the folder
+           % Create folders for saving the produced figures
+           foldername='SM_results_gramm';    % Defines the folder name
+           mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
+           currpath=fullfile(obj.ExperimentFolder,foldername);
+           cd(currpath);
+           %% General variables 1
+           Res=[1 1 2560 1250]; % Define the figure resolution
+           if obj.SMFSResults{ii}.Parameters.ExtendVelocity==0
+               ExtVelocityValueStr='All';
+           else
+               ExtVelocityValueStr=num2str(round(obj.SMFSResults{ii}.Parameters.ExtendVelocity*1e9));
+           end
+           if obj.SMFSResults{ii}.Parameters.RetractVelocity==0
+               RetVelocityValueStr='All';
+           else
+               RetVelocityValueStr=num2str(round(obj.SMFSResults{ii}.Parameters.RetractVelocity*1e9));
+           end
+           if obj.SMFSResults{ii}.Parameters.HoldingTime==-1
+               HoldingTimeValueStr='All';
+           else
+               HoldingTimeValueStr=num2str(obj.SMFSResults{ii}.Parameters.HoldingTime);
+           end
+           FigNamePt1=strcat(ExtVelocityValueStr,{'_'},RetVelocityValueStr,{'_'},HoldingTimeValueStr,{'_'},obj.SMFSResults{ii}.Parameters.Substrate,{'_'},obj.SMFSResults{ii}.Parameters.Medium,{'_'},obj.SMFSResults{ii}.Parameters.ChipCantilever,{'_'},obj.SMFSResults{ii}.Parameters.Chipbox,{'_'},obj.SMFSResults{ii}.Parameters.Linker);
+           FigNamePt1=char(FigNamePt1);
+           FigNamePt2=sprintf('_SMFSResultRow%d',ii);
+           FigNamePt3='_Boxplot';
+
+           %% Gramm object 1
+           % Define variables
+           %             FMExtVeloData=obj.SMFSResults{ii}.Concatenate.FMExtVelocity;
+           %             FMRetVeloData=obj.SMFSResults{ii}.Concatenate.FMRetVelocity;
+           %             Plottitle=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ii,1}.Data(1).FMIndex),obj.SMFSResults{ii,1}.Data(1).SumNumFcAnalysedAdhMaxApp);
+           %             LegendxAxis='Adhesion force (N))';
+           %             LegendyAxis='Adhesion force (N)';
+           %             LegendColor='Approach velocity (m/s)';
+           %             ColumnName='Retraction velocity (m/s)';
+           %             NameSuffix1='_MaxAdhesionForceApproach';
+           %             % Allocate data
+           %             xData1=obj.SMFSResults{ii}.Data.AdhMaxAppConcat;
+           %             ColorData1=FMExtVeloData;
+           %             ColumnData1=FMRetVeloData;
+           %
+           %             % Create a gramm object
+           %             g1=gramm('x',xData1);
+           %       %      g1.facet_grid([],ColumnData1) % Subdivide the data in subplots horizontally
+           %             % Plot data
+           %      %       g1.geom_jitter('width',0.2,...
+           %       %          'dodge',2.4); % Plot raw data as jitter
+           %             g1.stat_qq('distribution',makedist('Lognormal')); % Plot data in boxplot
+           %             g1.set_title(Plottitle) %Set figure title
+           %             % Legend
+           %             g1.set_names('x',LegendxAxis,'y',LegendyAxis,'color',LegendColor,'column',ColumnName)
+           %             % Figure
+           %             h_fig1=figure(1);
+           %             h_fig1.Color='white'; % changes the background color of the figure
+           %             h_fig1.Units='pixel'; % Defines the units
+           %             h_fig1.OuterPosition=Res;
+           %             h_fig1.PaperOrientation='landscape';
+           %             h_fig1.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3);
+           %             % The actual plotting
+           %             g1.draw()
+           %             % Save figure
+           %             FullName1=strcat(FigNamePt1,FigNamePt2,FigNamePt3,NameSuffix1);
+           %             %%% Save the current figure in the current folder
+           %             print(h_fig1,FullName1,'-dpng');
+
+           %           %% Gramm object 2
+           %             % Define variables
+           %             FMExtVeloData=obj.SMFSResults{ii}.Concatenate.FMExtVelocity;
+           %             FMRetVeloData=obj.SMFSResults{ii}.Concatenate.FMRetVelocity;
+           %             Plottitle=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ii,1}.Data(1).FMIndex),obj.SMFSResults{ii,1}.Data(1).SumNumFcAnalysedAdhMaxRet);
+           %             LegendxAxis='Holding Time (s)';
+           %             LegendyAxis='Adhesion force (N)';
+           %             LegendColor='Approach velocity (m/s)';
+           %             ColumnName='Retraction velocity (m/s)';
+           %             NameSuffix2='_MaxAdhesionForceRetract';
+           %             % Allocate data
+           %             xData2=obj.SMFSResults{ii}.Data.AdhMaxRetConcat;
+           %             ColorData2=FMExtVeloData;
+           %             ColumnData2=FMRetVeloData;
+           %             % Create a gramm object
+           %             g2=gramm('x',xData2,'y',yData2,...
+           %                 'color',ColorData2);
+           %             g2.facet_grid([],ColumnData2) % Subdivide the data in subplots horizontally
+           %             % Plot data
+           %             g2.geom_jitter('width',0.2,...
+           %                 'dodge',2.4); % Plot raw data as jitter
+           %             g2.stat_qq(); % Plot data in boxplot
+           %             g2.set_title(Plottitle) %Set figure title
+           %             % Legend
+           %             g2.set_names('x',LegendxAxis,'y',LegendyAxis,'color',LegendColor,'column',ColumnName)
+           %             % Figure
+           %             h_fig2=figure(2);
+           %             h_fig2.Color='white'; % changes the background color of the figure
+           %             h_fig2.Units='pixel'; % Defines the units
+           %             h_fig2.OuterPosition=Res;
+           %             h_fig2.PaperOrientation='landscape';
+           %             h_fig2.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3);
+           %             % The actual plotting
+           %             g2.draw()
+           %             % Save figure
+           %             FullName2=strcat(FigNamePt1,FigNamePt2,FigNamePt3,NameSuffix2);
+           %             %%% Save the current figure in the current folder
+           %             print(h_fig2,FullName2,'-dpng');
+           %
+           %             %% Gramm object 3
+           %             % Define variables
+           %             FMExtVeloData=obj.SMFSResults{ii}.Concatenate.FMExtVelocity;
+           %             FMRetVeloData=obj.SMFSResults{ii}.Concatenate.FMRetVelocity;
+           %             Plottitle=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ii,1}.Data(1).FMIndex),obj.SMFSResults{ii,1}.Data(1).SumNumFcAnalysedAdhUnbinding);
+           %             LegendxAxis='Holding Time (s)';
+           %             LegendyAxis='Adhesion force (N)';
+           %             LegendColor='Approach velocity (m/s)';
+           %             ColumnName='Retraction velocity (m/s)';
+           %             NameSuffix3='_AdhForceUnbinding';
+           %             % Allocate data
+           %             xData3=obj.SMFSResults{ii}.Data.AdhUnbindingConcat;
+           %             ColorData3=FMExtVeloData;
+           %             ColumnData3=FMRetVeloData;
+           %             % Create a gramm object
+           %             g3=gramm();
+           %             g3.facet_grid([],ColumnData3) % Subdivide the data in subplots horizontally
+           %             % Plot data
+           %             g3.geom_jitter('width',0.2,...
+           %                 'dodge',2.4); % Plot raw data as jitter
+           %             g3.stat_qq(); % Plot data in boxplot
+           %             g3.set_title(Plottitle) %Set figure title
+           %             % Legend
+           %             g3.set_names('x',LegendxAxis,'y',LegendyAxis,'color',LegendColor,'column',ColumnName)
+           %             % Figure
+           %             h_fig3=figure(3);
+           %             h_fig3.Color='white'; % changes the background color of the figure
+           %             h_fig3.Units='pixel'; % Defines the units
+           %             h_fig3.OuterPosition=Res;
+           %             h_fig3.PaperOrientation='landscape';
+           %             h_fig3.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3);
+           %             % The actual plotting
+           %             g3.draw()
+           %             % Save figure
+           %             FullName3=strcat(FigNamePt1,FigNamePt2,FigNamePt3,NameSuffix3);
+           %             %%% Save the current figure in the current folder
+           %             print(h_fig3,FullName3,'-dpng');
+           %
+           %             %% Gramm object 4
+           %             % Define variables
+           %             FMExtVeloData=obj.SMFSResults{ii}.Concatenate.FMExtVelocity;
+           %             FMRetVeloData=obj.SMFSResults{ii}.Concatenate.FMRetVelocity;
+           %             Plottitle=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ii,1}.Data(1).FMIndex),obj.SMFSResults{ii,1}.Data(1).SumNumFcAnalysedAdhEneApp);
+           %             LegendxAxis='Holding Time (s)';
+           %             LegendyAxis='Adhesion energry';
+           %             LegendColor='Approach velocity (m/s)';
+           %             ColumnName='Retraction velocity (m/s)';
+           %             NameSuffix4='_AdhEnergyApproach';
+           %             % Allocate data
+           %             xData4=obj.SMFSResults{ii}.Data.AdhEneAppConcat;
+           %             ColorData4=FMExtVeloData;
+           %             ColumnData4=FMRetVeloData;
+           %             % Create a gramm object
+           %             g4=gramm('x',xData4,'y',yData4,...
+           %                 'color',ColorData4);
+           %             g4.facet_grid([],ColumnData4) % Subdivide the data in subplots horizontally
+           %             % Plot data
+           %             g4.geom_jitter('width',0.2,...
+           %                 'dodge',2.4); % Plot raw data as jitter
+           %             g4.stat_qq(); % Plot data in boxplot
+           %             g4.set_title(Plottitle) %Set figure title
+           %             % Legend
+           %             g4.set_names('x',LegendxAxis,'y',LegendyAxis,'color',LegendColor,'column',ColumnName)
+           %             % Figure
+           %             h_fig4=figure(4);
+           %             h_fig4.Color='white'; % changes the background color of the figure
+           %             h_fig4.Units='pixel'; % Defines the units
+           %             h_fig4.OuterPosition=Res;
+           %             h_fig4.PaperOrientation='landscape';
+           %             h_fig4.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3);
+           %             % The actual plotting
+           %             g4.draw()
+           %             % Save figure
+           %             FullName4=strcat(FigNamePt1,FigNamePt2,FigNamePt3,NameSuffix4);
+           %             %%% Save the current figure in the current folder
+           %             print(h_fig4,FullName4,'-dpng');
+           %
+           %             %% Gramm object 5
+           %             % Define variables
+           %             FMExtVeloData=obj.SMFSResults{ii}.Concatenate.FMExtVelocity;
+           %             FMRetVeloData=obj.SMFSResults{ii}.Concatenate.FMRetVelocity;
+           %             Plottitle=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ii,1}.Data(1).FMIndex),obj.SMFSResults{ii,1}.Data(1).SumNumFcAnalysedAdhEneRet);
+           %             LegendxAxis='Holding Time (s)';
+           %             LegendyAxis='Adhesion energy';
+           %             LegendColor='Approach velocity (m/s)';
+           %             ColumnName='Retraction velocity (m/s)';
+           %             NameSuffix5='_AdhEnergyRetract';
+           %             % Allocate data
+           %             xData5=obj.SMFSResults{ii}.Data.AdhEneRetConcat;
+           %             ColorData5=FMExtVeloData;
+           %             ColumnData5=FMRetVeloData;
+           %             % Create a gramm object
+           %             g5=gramm('x',xData5,'y',yData5,...
+           %                 'color',ColorData5);
+           %             g5.facet_grid([],ColumnData5) % Subdivide the data in subplots horizontally
+           %             % Plot data
+           %             g5.geom_jitter('width',0.2,...
+           %                 'dodge',2.4); % Plot raw data as jitter
+           %             g5.stat_qq(); % Plot data in boxplot
+           %             g5.set_title(Plottitle) %Set figure title
+           %             % Legend
+           %             g5.set_names('x',LegendxAxis,'y',LegendyAxis,'color',LegendColor,'column',ColumnName)
+           %             % Figure
+           %             h_fig5=figure(5);
+           %             h_fig5.Color='white'; % changes the background color of the figure
+           %             h_fig5.Units='pixel'; % Defines the units
+           %             h_fig5.OuterPosition=Res;
+           %             h_fig5.PaperOrientation='landscape';
+           %             h_fig5.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3);
+           %             % The actual plotting
+           %             g5.draw()
+           %             % Save figure
+           %             FullName5=strcat(FigNamePt1,FigNamePt2,FigNamePt3,NameSuffix5);
+           %             %%% Save the current figure in the current folder
+           %             print(h_fig5,FullName5,'-dpng');
+           %
+           %% Gramm object 6
+           % Define variables
+           FMExtVeloData=obj.SMFSResults{ii}.Concatenate.FMExtVelocity;
+           FMRetVeloData=obj.SMFSResults{ii}.Concatenate.FMRetVelocity;
+           Plottitle=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ii,1}.Data(1).FMIndex),obj.SMFSResults{ii,1}.Data(1).SumNumFcAnalysedyPullingLength);
+           LegendxAxis='Holding Time (s)';
+           LegendyAxis='Pulling length (m)';
+           LegendColor='Approach velocity (m/s)';
+           ColumnName='Retraction velocity (m/s)';
+           NameSuffix6='_Pullinglength';
+           % Allocate data
+           xData6=obj.SMFSResults{ii}.Data.yPullingLengthConcat;
+           yData6=obj.SMFSResults{ii}.Data.yPullingLengthConcat;
+           ColorData6=FMExtVeloData;
+           ColumnData6=FMRetVeloData;
+           RowData6=obj.SMFSResults{ii}.Concatenate.FMHoldingTime;
+           pd=makedist('Lognormal')
+           % Create a gramm object
+           g6=gramm('x',xData6,'y',yData6,...
+               'color',ColorData6);
+           g6.facet_grid(RowData6,ColumnData6) % Subdivide the data in subplots horizontally
+           % Plot data
+           %             g6.geom_jitter('width',0.2,...
+           %                 'dodge',2.4); % Plot raw data as jitter
+           %    g6.stat_qq('distribution',pd);  % Plot data in boxplot
+           g6.stat_qq('distribution','y');  % Plot data in boxplot
+
+           g6.set_title(Plottitle) %Set figure title
+           % Legend
+           g6.set_names('x',LegendxAxis,'y',LegendyAxis,'color',LegendColor,'column',ColumnName)
+           % Figure
+           h_fig6=figure(6);
+           h_fig6.Color='white'; % changes the background color of the figure
+           h_fig6.Units='pixel'; % Defines the units
+           h_fig6.OuterPosition=Res;
+           h_fig6.PaperOrientation='landscape';
+           h_fig6.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3);
+           % The actual plotting
+           g6.draw()
+           plot(g6.facet_axes_handles(1,2),[0 1],[0 1],'k--')
+           % Save figure
+           FullName6=strcat(FigNamePt1,FigNamePt2,FigNamePt3,NameSuffix6);
+           %%% Save the current figure in the current folder
+           print(h_fig6,FullName6,'-dpng');
+
+           hf=figure(17)
+           h_fig6.Color='white'; % changes the background color of the figure
+           h_fig6.Units='pixel'; % Defines the units
+           h_fig6.OuterPosition=Res;
+           h_fig6.PaperOrientation='landscape';
+           pd=makedist('Lognormal')
+           qqplot(xData6,pd)
+
+
+           %
+           %             %% Gramm object 7
+           %             % Define variables
+           %             FMExtVeloData=obj.SMFSResults{ii}.Concatenate.FMExtVelocity;
+           %             FMRetVeloData=obj.SMFSResults{ii}.Concatenate.FMRetVelocity;
+           %             Plottitle=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ii,1}.Data(1).FMIndex),obj.SMFSResults{ii,1}.Data(1).SumNumFcAnalysedySnapInLength);
+           %             LegendxAxis='Holding Time (s)';
+           %             LegendyAxis='Snap-In length (m)';
+           %             LegendColor='Approach velocity (m/s)';
+           %             ColumnName='Retraction velocity (m/s)';
+           %             NameSuffix7='_SnapInLength';
+           %             % Allocate data
+           %             xData7=obj.SMFSResults{ii}.Data.ySnapInLengthConcat;
+           %             ColorData7=FMExtVeloData;
+           %             ColumnData7=FMRetVeloData;
+           %             % Create a gramm object
+           %             g7=gramm('x',xData7,'y',yData7,...
+           %                 'color',ColorData7);
+           %             g7.facet_grid([],ColumnData7) % Subdivide the data in subplots horizontally
+           %             % Plot data
+           %             g7.geom_jitter('width',0.2,...
+           %                 'dodge',2.4); % Plot raw data as jitter
+           %             g7.stat_qq(); % Plot data in boxplot
+           %             g7.set_title(Plottitle) %Set figure title
+           %             % Legend
+           %             g7.set_names('x',LegendxAxis,'y',LegendyAxis,'color',LegendColor,'column',ColumnName)
+           %             % Figure
+           %             h_fig7=figure(7);
+           %             h_fig7.Color='white'; % changes the background color of the figure
+           %             h_fig7.Units='pixel'; % Defines the units
+           %             h_fig7.OuterPosition=Res;
+           %             h_fig7.PaperOrientation='landscape';
+           %             h_fig7.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3);
+           %             % The actual plotting
+           %             g7.draw()
+           %             % Save figure
+           %             FullName7=strcat(FigNamePt1,FigNamePt2,FigNamePt3,NameSuffix7);
+           %             %%% Save the current figure in the current folder
+           %            print(h_fig7,FullName7,'-dpng');
+           % House keeping
+           close all
+       end
+
+
+        function SM_analysis_dashboard(obj,ExtVelocityValue,RetVelocityValue,HoldingTimeValue,SubstrateValue,EnvCondValue,ChipCantValue,ChipboxValue,LinkerValue)
+           % I all velocities should be selected use input variable: 0
+
+           % Output time and date for the dairy
+           datetime('now')
+           % Write to log file
+           obj.write_to_log_file('Function: SM_analysis_dashboard','Trial15','start')
+           obj.write_to_log_file('Extend Velocity',num2str(ExtVelocityValue))
+           obj.write_to_log_file('Retention Velocity',num2str(RetVelocityValue))
+           obj.write_to_log_file('Holding Time',num2str(HoldingTimeValue))
+           obj.write_to_log_file('Substrate',SubstrateValue)
+           obj.write_to_log_file('Linker',EnvCondValue)
+           obj.write_to_log_file('Chip',ChipCantValue)
+           obj.write_to_log_file('Chipbox',ChipboxValue)
+           obj.write_to_log_file('Linker',LinkerValue)
+           obj.write_to_log_file('','','end')
+           % Define variables
+           jj=1;
+           IdxArray=[];
+           for ii=1:obj.NumForceMaps
+               %% Debugging
+               %for ii=1:10 % for debugging
+               % sprintf('Force curve No. %d',ii) % Gives current Force curve
+               % Parameters
+               if ((obj.FM{ii}.ExtendVelocity==ExtVelocityValue || ExtVelocityValue==0) ...
+                       && (obj.FM{ii}.RetractVelocity==RetVelocityValue || RetVelocityValue==0) ...
+                       && (obj.FM{ii}.HoldingTime==HoldingTimeValue || HoldingTimeValue==-1) ...
+                       && (strcmpi(obj.FM{ii}.Substrate,SubstrateValue) || strcmpi(SubstrateValue,'All')) ...
+                       && (strcmpi(obj.FM{ii}.EnvCond,EnvCondValue) || strcmpi(EnvCondValue,'All')) ...
+                       && (strcmpi(obj.FM{ii}.ChipCant,ChipCantValue) || strcmpi(ChipCantValue,'All')) ...
+                       && (strcmpi(obj.FM{ii}.Chipbox,ChipboxValue) || strcmpi(ChipboxValue,'All')) ...
+                       && (strcmpi(obj.FM{ii}.Linker,LinkerValue) || strcmpi(LinkerValue,'All')))
+                   % Define variables for the if condition
+                   IdxArray(jj,1)=ii;
+                   % Adjust variable
+                   jj=jj+1;
+               end
+           end
+           % If condition to handle an empty index array
+           if isempty(IdxArray)
+               return
+           else
+           end
+           % Define variables
+           ExtVelocityValueStr=num2str(ExtVelocityValue);
+           RetVelocityValueStr=num2str(RetVelocityValue);
+           HoldingTimeValueStr=num2str(HoldingTimeValue);
+           RGB11=[200 255 150]./255;
+           % Change into the Folder of Interest
+           cd(obj.ExperimentFolder) % Move into the folder
+           % Create folders for saving the produced figures
+           %foldername='FM_test';    % for debugging
+           foldername='FM_analysis_dashboard';    % Defines the folder name
+           mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
+           currpath=fullfile(obj.ExperimentFolder,foldername);
+           cd(currpath);
+           % Define names
+           figname=strcat(obj.ExperimentName,{'_'},ExtVelocityValueStr,{'_'},RetVelocityValueStr,{'_'},HoldingTimeValueStr,{'_'},SubstrateValue,{'_'},EnvCondValue,{'_'},ChipCantValue,{'_'},ChipboxValue,{'_'},LinkerValue);
+           figname=char(figname);
+           parttitle1='Data';
+           %% Figure 1
+           h_fig1=figure(1);
+           h_fig1.Color='white'; % changes the background color of the figure
+           h_fig1.Units='normalized'; % Defines the units
+           h_fig1.OuterPosition=[0 0 1 1];% changes the size of the to the whole screen
+           h_fig1.PaperOrientation='landscape';
+           h_fig1.Name=figname;
+           %% Plotting the tiles
+           t = tiledlayout(3,3);
+           t.TileSpacing = 'compact';
+           t.Padding = 'compact';
+           %t.TileSpacing = 'none'; % To reduce the spacing between the tiles
+           %t.Padding = 'none'; % To reduce the padding of perimeter of a tile
+           % Define variables
+           ConcateArray1=zeros(1,1);
+           ConcateArray2=zeros(1,1);
+           ConcateArray3=zeros(1,1);
+           ConcateArray4=zeros(1,1);
+           ConcateArray5=zeros(1,1);
+           ConcateArray6=zeros(1,1);
+           ConcateArray7=zeros(1,1);
+
+           % for loop
+           for ff=1:length(IdxArray)
+               %% Debugging
+               %for ff=6 % for debugging
+               sprintf('Force curve No. %d',ff) % Gives current Force curve
+               % Allocate data
+               yAdhMaxApp=obj.FM{IdxArray(ff)}.AdhForceMaxRet;
+               yAdhMaxApp(yAdhMaxApp==0)=nan; % Replace zero entries by nan´s
+               yAdhMaxRet=obj.FM{IdxArray(ff)}.AdhForceMaxApp;
+               yAdhMaxRet(yAdhMaxRet==0)=nan; % Replace zero entries by nan´s
+               yAdhUnbinding=obj.FM{IdxArray(ff)}.AdhForceUnbinding;
+               yAdhUnbinding(yAdhUnbinding==0)=nan; % Replace zero entries by nan´s
+               yAdhEneApp=obj.FM{IdxArray(ff)}.AppAdhEnergy_IdxMethod;
+               yAdhEneApp(yAdhEneApp==0)=nan; % Replace zero entries by nan´s
+               yAdhEneRet=obj.FM{IdxArray(ff)}.RetAdhEnergy_IdxMethod;
+               yAdhEneRet(yAdhEneRet==0)=nan; % Replace zero entries by nan´s
+               yPullingLength=obj.FM{IdxArray(ff)}.PullingLength;
+               yPullingLength(yPullingLength==0)=nan; % Replace zero entries by nan´s
+               ySnapInLength=obj.FM{IdxArray(ff)}.SnapInLength;
+               ySnapInLength(ySnapInLength==0)=nan; % Replace zero entries by nan´s
+               FMID=obj.FM{ff}.ID;
+               %% Concatenate arrays
+               % FCs of each FM in seperate column
+               yAdhMaxAppAll(:,ff)=yAdhMaxApp'.*obj.FM{ff}.SMFSFlag.Selected';
+               yAdhMaxRetAll(:,ff)=yAdhMaxRet'.*obj.FM{ff}.SMFSFlag.Selected';
+               yAdhUnbindingAll(:,ff)=yAdhUnbinding'.*obj.FM{ff}.SMFSFlag.Selected';
+               yAdhEneAppAll(:,ff)=yAdhEneApp'.*obj.FM{ff}.SMFSFlag.Selected';
+               yAdhEneRetAll(:,ff)=yAdhEneRet'.*obj.FM{ff}.SMFSFlag.Selected';
+               yPullingLengthAll(:,ff)=yPullingLength'.*obj.FM{ff}.SMFSFlag.Selected';
+               ySnapInLengthAll(:,ff)=ySnapInLength'.*obj.FM{ff}.SMFSFlag.Selected';
+               % All FCs of all FM in one column
+               if ~isempty(yAdhMaxApp)
+                   % Determine the number of rows per force map
+                   ArrayLength=length(yAdhMaxApp); % Define the length of the array
+                   row_start = ((ff-1) * ArrayLength) + 1; % Define the appropriate row start to append the new data
+                   row_end   = ff * ArrayLength; % Define the appropriate row end to append the new data
+                   % Concatenated data
+                   ConcateArray1(row_start:row_end,:)=yAdhMaxApp'; % Append the new data into the concatenated vector
+                   ConcateArray1(row_start:row_end,:)=ConcateArray1(row_start:row_end,:).*obj.FM{ff}.SMFSFlag.Selected'; % Set non-selected force curves from the concatenated arrays to zero
+                   ConcateArray1(ConcateArray1==0)=nan; % Replace zero entries by nan´s
+                   FMIDArray(row_start:row_end,:)={FMID}; % Allocate the FM ID to each row
+                   % Save the number of force curves per force map
+                   FCperFM(ff,1)=row_end;
+               else
+               end
+               if ~isempty(yAdhMaxRet)
+                   % Determine the number of rows per force map
+                   ArrayLength=length(yAdhMaxRet); % Define the length of the array
+                   row_start = ((ff-1) * ArrayLength) + 1; % Define the appropriate row start to append the new data
+                   row_end   = ff * ArrayLength; % Define the appropriate row end to append the new data
+                   % Concatenated data
+                   ConcateArray2(row_start:row_end,:)=yAdhMaxRet'; % Append the new data into the concatenated vector
+                   ConcateArray2(row_start:row_end,:)=ConcateArray2(row_start:row_end,:).*obj.FM{ff}.SMFSFlag.Selected'; % Set non-selected force curves from the concatenated arrays to zero
+                   ConcateArray2(ConcateArray2==0)=nan; % Replace zero entries by nan´s
+               else
+               end
+               if ~isempty(yAdhUnbinding)
+                   % Determine the number of rows per force map
+                   ArrayLength=length(yAdhUnbinding); % Define the length of the array
+                   row_start = ((ff-1) * ArrayLength) + 1; % Define the appropriate row start to append the new data
+                   row_end   = ff * ArrayLength; % Define the appropriate row end to append the new data
+                   % Concatenated data
+                   ConcateArray3(row_start:row_end,:)=yAdhUnbinding'; % Append the new data into the concatenated vector
+                   ConcateArray3(row_start:row_end,:)=ConcateArray3(row_start:row_end,:).*obj.FM{ff}.SMFSFlag.Selected'; % Set non-selected force curves from the concatenated arrays to zero
+                   ConcateArray3(ConcateArray3==0)=nan; % Replace zero entries by nan´s
+               else
+               end
+               if ~isempty(yAdhEneApp)
+                   % Determine the number of rows per force map
+                   ArrayLength=length(yAdhEneApp); % Define the length of the array
+                   row_start = ((ff-1) * ArrayLength) + 1; % Define the appropriate row start to append the new data
+                   row_end   = ff * ArrayLength; % Define the appropriate row end to append the new data
+                   % Concatenated data
+                   ConcateArray4(row_start:row_end,:)=yAdhEneApp'; % Append the new data into the concatenated vector
+                   ConcateArray4(row_start:row_end,:)=ConcateArray4(row_start:row_end,:).*obj.FM{ff}.SMFSFlag.Selected'; % Set non-selected force curves from the concatenated arrays to zero
+                   ConcateArray4(ConcateArray4==0)=nan; % Replace zero entries by nan´s
+               else
+               end
+               if ~isempty(yAdhEneRet)
+                   % Determine the number of rows per force map
+                   ArrayLength=length(yAdhEneRet); % Define the length of the array
+                   row_start = ((ff-1) * ArrayLength) + 1; % Define the appropriate row start to append the new data
+                   row_end   = ff * ArrayLength; % Define the appropriate row end to append the new data
+                   % Concatenated data
+                   ConcateArray5(row_start:row_end,:)=yAdhEneRet'; % Append the new data into the concatenated vector
+                   ConcateArray5(row_start:row_end,:)=ConcateArray5(row_start:row_end,:).*obj.FM{ff}.SMFSFlag.Selected'; % Set non-selected force curves from the concatenated arrays to zero
+                   ConcateArray5(ConcateArray5==0)=nan; % Replace zero entries by nan´s
+               else
+               end
+               if ~isempty(yPullingLength)
+                   % Determine the number of rows per force map
+                   ArrayLength=length(yPullingLength); % Define the length of the array
+                   row_start = ((ff-1) * ArrayLength) + 1; % Define the appropriate row start to append the new data
+                   row_end   = ff * ArrayLength; % Define the appropriate row end to append the new data
+                   % Concatenated data
+                   ConcateArray6(row_start:row_end,:)=yPullingLength'; % Append the new data into the concatenated vector
+                   ConcateArray6(row_start:row_end,:)=ConcateArray6(row_start:row_end,:).*obj.FM{ff}.SMFSFlag.Selected'; % Set non-selected force curves from the concatenated arrays to zero
+                   ConcateArray6(ConcateArray6==0)=nan; % Replace zero entries by nan´s
+               else
+               end
+               if ~isempty(ySnapInLength)
+                   % Determine the number of rows per force map
+                   ArrayLength=length(ySnapInLength); % Define the length of the array
+                   row_start = ((ff-1) * ArrayLength) + 1; % Define the appropriate row start to append the new data
+                   row_end   = ff * ArrayLength; % Define the appropriate row end to append the new data
+                   % Concatenated data
+                   ConcateArray7(row_start:row_end,:)=ySnapInLength'; % Append the new data into the concatenated vector
+                   ConcateArray7(row_start:row_end,:)=ConcateArray7(row_start:row_end,:).*obj.FM{ff}.SMFSFlag.Selected'; % Set non-selected force curves from the concatenated arrays to zero
+                   ConcateArray7(ConcateArray7==0)=nan; % Replace zero entries by nan´s
+               else
+               end
+
+               % Statistics
+               AdhMaxAppSelMean=mean(ConcateArray1,'omitnan');
+               AdhMaxAppSelStd=std(ConcateArray1,'omitnan');
+               AdhMaxRetSelMean=mean(ConcateArray2,'omitnan');
+               AdhMaxRetSelStd=std(ConcateArray2,'omitnan');
+               AdhMaxRetSelUnbindingMean=mean(ConcateArray3,'omitnan');
+               AdhMaxRetSelUnbindingStd=std(ConcateArray3,'omitnan');
+               AdhEneAppSelMean=mean(ConcateArray4,'omitnan');
+               AdhEneAppSelStd=std(ConcateArray4,'omitnan');
+               AdhEneRetSelMean=mean(ConcateArray5,'omitnan');
+               AdhEneRetSelStd=std(ConcateArray5,'omitnan');
+               PullLengthMedian=median(ConcateArray6,'omitnan');
+               PullLengthMin=min(ConcateArray6,[],'omitnan');
+               PullLengthMax=max(ConcateArray6,[],'omitnan');
+               SnapInMedian=median(ConcateArray7,'omitnan');
+               SnapInMin=min(ConcateArray7,[],'omitnan');
+               SnapInMax=max(ConcateArray7,[],'omitnan');
+               %% Tiles
+               % Tile 1 - Max. adhesion force approach
+               ax1=nexttile(1);
+               hold on
+               plot(nonzeros(yAdhMaxApp),'o')
+               % Title for each Subplot
+               ti=title('Max. Adhesion Force Approach');
+               ti.Units='normalized'; % Set units to 'normalized'
+               ti.Position=[0.5,0.95]; % Position the subplot title within the subplot
+               % Tile 2 - Max. adhesion force retract
+               ax2=nexttile(2);
+               hold on
+               plot(nonzeros(yAdhMaxRet),'o')
+               ti=title('Max. Adhesion Force Retraction');
+               ti.Units='normalized'; % Set units to 'normalized'
+               ti.Position=[0.5,0.95]; % Position the subplot title within the subplot
+               % Tile 3 - Unbinding adhesion force (retract)
+               ax3=nexttile(3);
+               hold on
+               plot(nonzeros(yAdhUnbinding),'o')
+               ti=title('Unbinding Adhesion Force (Retraction)');
+               ti.Units='normalized'; % Set units to 'normalized'
+               ti.Position=[0.5,0.95]; % Position the subplot title within the subplot
+               % Tile 4 - Adhesion energy approach
+               ax4=nexttile(4);
+               hold on
+               plot(nonzeros(yAdhEneApp),'o')
+               ti=title('Adhesion Energy Approach');
+               ti.Units='normalized'; % Set units to 'normalized'
+               ti.Position=[0.5,0.95]; % Position the subplot title within the subplot
+               % Tile 5 - Adhesion energy retraction
+               ax5=nexttile(5);
+               hold on
+               plot(nonzeros(yAdhEneRet),'o')
+               ti=title('Adhesion Energy Retraction');
+               ti.Units='normalized'; % Set units to 'normalized'
+               ti.Position=[0.5,0.95]; % Position the subplot title within the subplot
+               % Tile 6 - Pulling length
+               ax6=nexttile(6);
+               hold on
+               plot(nonzeros(yPullingLength),'o')
+               ti=title('Pulling Length');
+               ti.Units='normalized'; % Set units to 'normalized'
+               ti.Position=[0.5,0.95]; % Position the subplot title within the subplot
+               % Tile 7 - Snap-in length
+               ax7=nexttile(7);
+               hold on
+               plot(nonzeros(ySnapInLength),'o')
+               ti=title('Snap-In Length');
+               ti.Units='normalized'; % Set units to 'normalized'
+               ti.Position=[0.5,0.95]; % Position the subplot title within the subplot
+               % Tile 8
+               ax8=nexttile(8);
+               ax8.Color=RGB11;
+               ax8.Box='on';
+               ax8.LineWidth = 10;
+               ax8.XTick=[];
+               ax8.XTickLabel=[];
+               ax8.YTick=[];
+               ax8.YTickLabel=[];
+               % Tile 9
+               ax9=nexttile(9);
+               ax9.Color=RGB11;
+               ax9.Box='on';
+               ax9.LineWidth = 10;
+               ax9.XTick=[];
+               ax9.XTickLabel=[];
+               ax9.YTick=[];
+               ax9.YTickLabel=[];
+           end
+           % Axes
+           ax1.FontSize = 12;
+           ax1.XLabel.String = 'Index (1)';
+           ax1.XLabel.FontSize = 10;
+           ax1.YLabel.String = 'Adhesion Force (N)';
+           ax1.YLabel.FontSize = 10;
+           ax2.FontSize = 12;
+           ax2.XLabel.String = 'Index (1)';
+           ax2.XLabel.FontSize = 10;
+           ax2.YLabel.String = 'Adhesion Force (N)';
+           ax2.YLabel.FontSize = 10;
+           ax3.FontSize = 12;
+           ax3.XLabel.String = 'Index (1)';
+           ax3.XLabel.FontSize = 10;
+           ax3.YLabel.String = 'Adhesion Force (N)';
+           ax3.YLabel.FontSize = 10;
+           ax4.FontSize = 12;
+           ax4.XLabel.String = 'Index (1)';
+           ax4.XLabel.FontSize = 10;
+           ax4.YLabel.String = 'Adhesion Energy (J)';
+           ax4.YLabel.FontSize = 10;
+           ax5.FontSize = 12;
+           ax5.XLabel.String = 'Index (1)';
+           ax5.XLabel.FontSize = 10;
+           ax5.YLabel.String = 'Adhesion Energy (J)';
+           ax5.YLabel.FontSize = 10;
+           ax6.FontSize = 12;
+           ax6.XLabel.String = 'Index (1)';
+           ax6.XLabel.FontSize = 10;
+           ax6.YLabel.String = 'Pulling length (m)';
+           ax6.YLabel.FontSize = 10;
+           ax7.FontSize = 12;
+           ax7.XLabel.String = 'Index (1)';
+           ax7.XLabel.FontSize = 10;
+           ax7.YLabel.String = 'Snap-in length (m)';
+           ax7.YLabel.FontSize = 10;
+           % Add text to plot
+           % Tile 1 - Max. adhesion force approach
+           ax1TextPos = [max(ax1.XLim) max(ax1.YLim)]; % Define the position in the plot
+           partstr11a='Mean=';
+           partstr12a=num2str(AdhMaxAppSelMean);
+           partstr11b='Std=';
+           partstr12b=num2str(AdhMaxAppSelStd);
+           partstr13=' N';
+           fullstr1a=strcat(partstr11a,partstr12a,partstr13); % Define the string that shall be shown in the plot
+           fullstr1b=strcat(partstr11b,partstr12b,partstr13); % Define the string that shall be shown in the plot
+           te1=text(ax1,ax1TextPos(1), ax1TextPos(2),{fullstr1a, fullstr1b}, 'VerticalAlignment','top', 'HorizontalAlignment','right');
+           te1.FontSize = 12;
+           te1.BackgroundColor=RGB11;
+           % Tile 2 - Max. adhesion force retract
+           ax2TextPos = [max(ax2.XLim) max(ax2.YLim)]-[diff(ax2.XLim) diff(ax2.YLim)]*0.01; % Define the position in the plot
+           partstr21a='Mean=';
+           partstr22a=num2str(AdhMaxRetSelMean);
+           partstr21b='Std=';
+           partstr22b=num2str(AdhMaxRetSelStd);
+           fullstr2a=strcat(partstr21a,partstr22a,partstr13); % Define the string that shall be shown in the plot
+           fullstr2b=strcat(partstr21b,partstr22b,partstr13); % Define the string that shall be shown in the plot
+           te2=text(ax2,ax2TextPos(1), ax2TextPos(2),{fullstr2a, fullstr2b}, 'VerticalAlignment','top', 'HorizontalAlignment','right');
+           te2.FontSize = 12;
+           te2.BackgroundColor=RGB11;
+           % Tile 3 - Unbinding adhesion force (retract)
+           ax3TextPos = [max(ax3.XLim) max(ax3.YLim)]-[diff(ax3.XLim) diff(ax3.YLim)]*0.01; % Define the position in the plot
+           partstr31a='Mean=';
+           partstr32a=num2str(AdhMaxRetSelUnbindingMean);
+           partstr31b='Std=';
+           partstr32b=num2str(AdhMaxRetSelUnbindingStd);
+           fullstr3a=strcat(partstr31a,partstr32a,partstr13); % Define the string that shall be shown in the plot
+           fullstr3b=strcat(partstr31b,partstr32b,partstr13); % Define the string that shall be shown in the plot
+           te3=text(ax3,ax3TextPos(1), ax3TextPos(2),{fullstr3a, fullstr3b}, 'VerticalAlignment','top', 'HorizontalAlignment','right');
+           te3.FontSize = 12;
+           te3.BackgroundColor=RGB11;
+           % Tile 4 - Adhesion energy approach
+           ax4TextPos = [max(ax4.XLim) max(ax4.YLim)]; % Define the position in the plot
+           partstr41a='Mean=';
+           partstr42a=num2str(AdhEneAppSelMean);
+           partstr41b='Std=';
+           partstr42b=num2str(AdhEneAppSelStd);
+           partstr43=' J';
+           fullstr4a=strcat(partstr41a,partstr42a,partstr43); % Define the string that shall be shown in the plot
+           fullstr4b=strcat(partstr41b,partstr42b,partstr43); % Define the string that shall be shown in the plot
+           te4=text(ax4,ax4TextPos(1), ax4TextPos(2),{fullstr4a, fullstr4b}, 'VerticalAlignment','top', 'HorizontalAlignment','right');
+           te4.FontSize = 12;
+           te4.BackgroundColor=RGB11;
+           % Tile 5 - Adhesion energy retraction
+           ax5TextPos = [max(ax5.XLim) max(ax5.YLim)]; % Define the position in the plot
+           partstr51a='Mean=';
+           partstr52a=num2str(AdhEneRetSelMean);
+           partstr51b='Std=';
+           partstr52b=num2str(AdhEneRetSelStd);
+           fullstr5a=strcat(partstr51a,partstr52a,partstr43); % Define the string that shall be shown in the plot
+           fullstr5b=strcat(partstr51b,partstr52b,partstr43); % Define the string that shall be shown in the plot
+           te5=text(ax5,ax5TextPos(1), ax5TextPos(2),{fullstr5a, fullstr5b}, 'VerticalAlignment','top', 'HorizontalAlignment','right');
+           te5.FontSize = 12;
+           te5.BackgroundColor=RGB11;
+           % Tile 6 - Pulling length
+           ax6TextPos = [max(ax6.XLim) max(ax6.YLim)]; % Define the position in the plot
+           partstr61a='Median=';
+           partstr62a=num2str(PullLengthMedian);
+           partstr61b='Min=';
+           partstr72b=num2str(PullLengthMin);
+           partstr71c='Max=';
+           partstr72c=num2str(PullLengthMax);
+           partstr63=' m';
+           fullstr6a=strcat(partstr61a,partstr62a,partstr63); % Define the string that shall be shown in the plot
+           fullstr6b=strcat(partstr61b,partstr72b,partstr63); % Define the string that shall be shown in the plot
+           fullstr6c=strcat(partstr71c,partstr72c,partstr63); % Define the string that shall be shown in the plot
+           te6=text(ax6,ax6TextPos(1), ax6TextPos(2),{fullstr6a, fullstr6b, fullstr6c}, 'VerticalAlignment','top', 'HorizontalAlignment','right');
+           te6.FontSize = 12;
+           te6.BackgroundColor=RGB11;
+           % Tile 7 - Snap-in length
+           ax7TextPos = [max(ax7.XLim) max(ax7.YLim)]-[diff(ax7.XLim) diff(ax7.YLim)]*0.01; % Define the position in the plot
+           partstr71a='Median=';
+           partstr72a=num2str(SnapInMedian);
+           partstr71b='Min=';
+           partstr72b=num2str(SnapInMin);
+           partstr71c='Max=';
+           partstr72c=num2str(SnapInMax);
+           fullstr7a=strcat(partstr71a,partstr72a,partstr63); % Define the string that shall be shown in the plot
+           fullstr7b=strcat(partstr71b,partstr72b,partstr63); % Define the string that shall be shown in the plot
+           fullstr7c=strcat(partstr71c,partstr72c,partstr63); % Define the string that shall be shown in the plot
+           te7=text(ax7,ax7TextPos(1), ax7TextPos(2),{fullstr7a, fullstr7b, fullstr7c}, 'VerticalAlignment','top', 'HorizontalAlignment','right');
+           te7.FontSize = 12;
+           te7.BackgroundColor=RGB11;
+           % Tile 8
+           ax8TextPos = [max(ax8.XLim)*0.5 max(ax8.YLim)*0.5];  % Define the position in the plot
+           partstr81a='Extend Velocity: ';
+           if ExtVelocityValue==0
+               partstr82a='All';
+               partstr83a='';
+           else
+               partstr82a=num2str(ExtVelocityValueStr);
+               partstr83a='m*s^{-1}';
+           end
+           fullstr8a=strcat(partstr81a,partstr82a,partstr83a); % Define the string that shall be shown in the plot
+           partstr81b='Retract Velocity: ';
+           if RetVelocityValue==0
+               partstr82b='All';
+               partstr83b='';
+           else
+               partstr82b=num2str(RetVelocityValueStr);
+               partstr83b='m*s^{-1}';
+           end
+           fullstr8b=strcat(partstr81b,partstr82b,partstr83b); % Define the string that shall be shown in the plot
+           partstr81c='Holding time: ';
+           if HoldingTimeValue==-1
+               partstr82c='All';
+               partstr83c='';
+           else
+               partstr82c=num2str(HoldingTimeValueStr);
+               partstr83c='s';
+           end
+           fullstr8c=strcat(partstr81c,partstr82c,partstr83c); % Define the string that shall be shown in the plot
+           partstr81d='Substrate: ';
+           partstr82d=num2str(SubstrateValue);
+           fullstr8d=strcat(partstr81d,partstr82d); % Define the string that shall be shown in the plot
+           partstr81e='Medium: ';
+           partstr82e=num2str(EnvCondValue);
+           fullstr8e=strcat(partstr81e,partstr82e); % Define the string that shall be shown in the plot
+           partstr81f='Chip & Cantilever: ';
+           partstr82f=num2str(ChipCantValue);
+           fullstr8f=strcat(partstr81f,partstr82f); % Define the string that shall be shown in the plot
+           partstr81g='Chipbox: ';
+           partstr82g=num2str(ChipboxValue);
+           fullstr8g=strcat(partstr81g,partstr82g); % Define the string that shall be shown in the plot
+           partstr81h='Linker: ';
+           partstr82h=num2str(ChipboxValue);
+           fullstr8h=strcat(partstr81h,partstr82h); % Define the string that shall be shown in the plot
+           te8=text(ax8,ax8TextPos(1), ax8TextPos(2),{fullstr8a, fullstr8b, fullstr8c, fullstr8d, fullstr8e, fullstr8f, fullstr8g, fullstr8h}, 'VerticalAlignment','middle', 'HorizontalAlignment','center');
+           te8.FontSize = 18;
+           % Tile 9
+           ax9TextPos = [max(ax9.XLim)*0.5 max(ax9.YLim)*0.5];  % Define the position in the plot
+           fullstr9a='Number of force curves analysed: ';
+           if ~isempty(yAdhMaxApp)
+               partstr91b='Max. Adhesion Force Approach: ';
+               partstr92b=num2str(length(nonzeros(ConcateArray1)));
+               fullstr9b=strcat(partstr91b,partstr92b); % Define the string that shall be shown in the plot
+           else
+           end
+           if ~isempty(yAdhMaxRet)
+               partstr91c='Max. Adhesion Force Retraction:';
+               partstr92c=num2str(length(nonzeros(ConcateArray2)));
+               fullstr9c=strcat(partstr91c,partstr92c); % Define the string that shall be shown in the plot
+           else
+           end
+           if ~isempty(yAdhUnbinding)
+               partstr91d='Unbinding Adhesion Force (Retraction): ';
+               partstr92d=num2str(length(nonzeros(ConcateArray3)));
+               fullstr9d=strcat(partstr91d,partstr92d); % Define the string that shall be shown in the plot
+           else
+           end
+           if ~isempty(yAdhEneApp)
+               partstr91e='Adhesion Energy Approach: ';
+               partstr92e=num2str(length(nonzeros(ConcateArray4)));
+               fullstr9e=strcat(partstr91e,partstr92e); % Define the string that shall be shown in the plot
+           else
+           end
+           if ~isempty(yAdhEneRet)
+               partstr91d='Adhesion Energy Retraction: ';
+               partstr92d=num2str(length(nonzeros(ConcateArray5)));
+               fullstr9d=strcat(partstr91d,partstr92d); % Define the string that shall be shown in the plot
+           else
+           end
+           if ~isempty(yPullingLength)
+               partstr91e='Pulling Length: ';
+               partstr92e=num2str(length(nonzeros(ConcateArray6)));
+               fullstr9e=strcat(partstr91e,partstr92e); % Define the string that shall be shown in the plot
+           else
+           end
+           if ~isempty(ySnapInLength)
+               partstr91f='Snap-In Length: ';
+               partstr92f=num2str(length(nonzeros(ConcateArray7)));
+               fullstr9f=strcat(partstr91f,partstr92f); % Define the string that shall be shown in the plot
+           else
+           end
+           te9=text(ax9,ax9TextPos(1), ax9TextPos(2),{fullstr9a, fullstr9b, fullstr9c, fullstr9d, fullstr9e, fullstr9f},'VerticalAlignment','middle', 'HorizontalAlignment','center');
+           te9.FontSize = 18;
+           % Save figure
+           %%% Define the name for the figure title
+           partname='Dashboard';
+           % fullname=sprintf('%s%s',figname,partname);
+           fullname1=strcat(figname,{'_'},parttitle1,{'_'},partname);
+           fullname1=char(fullname1);
+           %%% Save the current figure in the current folder
+           print(h_fig1,fullname1,'-dpng');
+
+           % Define the probability distribution for the qqplots
+           Distname1='Normal';
+           Distname2='Lognormal';
+           Pd=makedist(Distname1);
+           %% Figure 2
+           parttitle2=Pd.DistributionName;
+           SubtitlePt1=(' Distribution');
+           h_fig2=figure(2);
+           h_fig2.Color='white'; % changes the background color of the figure
+           h_fig2.Units='normalized'; % Defines the units
+           h_fig2.OuterPosition=[0 0 1 1];% changes the size of the to the whole screen
+           h_fig2.PaperOrientation='landscape';
+           h_fig2.Name=figname;
+           %% Plotting the tiles
+           t = tiledlayout(3,3);
+           t.TileSpacing = 'compact';
+           t.Padding = 'compact';
+           %t.TileSpacing = 'none'; % To reduce the spacing between the tiles
+           %t.Padding = 'none'; % To reduce the padding of perimeter of a tile
+           % for loop
+           for ff=1:length(IdxArray)
+               %% Debugging
+               %for ff=6 % for debugging
+               sprintf('Force curve No. %d',ff) % Gives current Force curve
+               %% Tiles
+               % Tile 1 - Max. adhesion force approach
+               ax1=nexttile(1);
+               hold on
+               qqplot(nonzeros(yAdhMaxApp),Pd)
+               % Title for each Subplot
+               ti=title('Max. Adhesion Force Approach');
+               ti.Units='normalized'; % Set units to 'normalized'
+               ti.Position=[0.5,0.95]; % Position the subplot title within the subplot
+               st=subtitle(strcat(Pd.DistributionName,SubtitlePt1));
+               st.Units='normalized'; % Set units to 'normalized'
+               st.Position=[0.5,0.88]; % Position the subplot title within the subplot
+               % Tile 2 - Max. adhesion force retract
+               ax2=nexttile(2);
+               hold on
+               qqplot(nonzeros(yAdhMaxRet),Pd)
+               ti=title('Max. Adhesion Force Retraction');
+               ti.Units='normalized'; % Set units to 'normalized'
+               ti.Position=[0.5,0.95]; % Position the subplot title within the subplot
+               st=subtitle(strcat(Pd.DistributionName,SubtitlePt1));
+               st.Units='normalized'; % Set units to 'normalized'
+               st.Position=[0.5,0.88]; % Position the subplot title within the subplot
+               % Tile 3 - Unbinding adhesion force (retract)
+               ax3=nexttile(3);
+               hold on
+               qqplot(nonzeros(yAdhUnbinding),Pd)
+               ti=title('Unbinding Adhesion Force (Retraction)');
+               ti.Units='normalized'; % Set units to 'normalized'
+               ti.Position=[0.5,0.95]; % Position the subplot title within the subplot
+               st=subtitle(strcat(Pd.DistributionName,SubtitlePt1));
+               st.Units='normalized'; % Set units to 'normalized'
+               st.Position=[0.5,0.88]; % Position the subplot title within the subplot
+               % Tile 4 - Adhesion energy approach
+               ax4=nexttile(4);
+               hold on
+               qqplot(nonzeros(yAdhEneApp),Pd)
+               ti=title('Adhesion Energy Approach');
+               ti.Units='normalized'; % Set units to 'normalized'
+               ti.Position=[0.5,0.95]; % Position the subplot title within the subplot
+               st=subtitle(strcat(Pd.DistributionName,SubtitlePt1));
+               st.Units='normalized'; % Set units to 'normalized'
+               st.Position=[0.5,0.88]; % Position the subplot title within the subplot
+               % Tile 5 - Adhesion energy retraction
+               ax5=nexttile(5);
+               hold on
+               qqplot(nonzeros(yAdhEneRet),Pd)
+               ti=title('Adhesion Energy Retraction');
+               ti.Units='normalized'; % Set units to 'normalized'
+               ti.Position=[0.5,0.95]; % Position the subplot title within the subplot
+               st=subtitle(strcat(Pd.DistributionName,SubtitlePt1));
+               st.Units='normalized'; % Set units to 'normalized'
+               st.Position=[0.5,0.88]; % Position the subplot title within the subplot
+               % Tile 6 - Pulling length
+               ax6=nexttile(6);
+               hold on
+               qqplot(nonzeros(yPullingLength),Pd)
+               ti=title('Pulling Length');
+               ti.Units='normalized'; % Set units to 'normalized'
+               ti.Position=[0.5,0.95]; % Position the subplot title within the subplot
+               st=subtitle(strcat(Pd.DistributionName,SubtitlePt1));
+               st.Units='normalized'; % Set units to 'normalized'
+               st.Position=[0.5,0.88]; % Position the subplot title within the subplot
+               % Tile 7 - Snap-in length
+               ax7=nexttile(7);
+               hold on
+               qqplot(nonzeros(ySnapInLength),Pd)
+               ti=title('Snap-In Length');
+               ti.Units='normalized'; % Set units to 'normalized'
+               ti.Position=[0.5,0.95]; % Position the subplot title within the subplot
+               st=subtitle(strcat(Pd.DistributionName,SubtitlePt1));
+               st.Units='normalized'; % Set units to 'normalized'
+               st.Position=[0.5,0.88]; % Position the subplot title within the subplot
+               % Tile 8
+               ax8=nexttile(8);
+               ax8.Color=RGB11;
+               ax8.Box='on';
+               ax8.LineWidth = 10;
+               ax8.XTick=[];
+               ax8.XTickLabel=[];
+               ax8.YTick=[];
+               ax8.YTickLabel=[];
+               % Tile 9
+               ax9=nexttile(9);
+               ax9.Color=RGB11;
+               ax9.Box='on';
+               ax9.LineWidth = 10;
+               ax9.XTick=[];
+               ax9.XTickLabel=[];
+               ax9.YTick=[];
+               ax9.YTickLabel=[];
+           end
+           % Axes
+           ax1.FontSize = 12;
+           ax1.XLabel.String = 'Standard Normal Quantiles';
+           ax1.XLabel.FontSize = 10;
+           ax1.YLabel.String = 'Quantiles of Sample';
+           ax1.YLabel.FontSize = 10;
+           ax2.FontSize = 12;
+           ax2.XLabel.String = 'Standard Normal Quantiles';
+           ax2.XLabel.FontSize = 10;
+           ax2.YLabel.String = 'Quantiles of Sample';
+           ax2.YLabel.FontSize = 10;
+           ax3.FontSize = 12;
+           ax3.XLabel.String = 'Standard Normal Quantiles';
+           ax3.XLabel.FontSize = 10;
+           ax3.YLabel.String = 'Quantiles of Sample';
+           ax3.YLabel.FontSize = 10;
+           ax4.FontSize = 12;
+           ax4.XLabel.String = 'Standard Normal Quantiles';
+           ax4.XLabel.FontSize = 10;
+           ax4.YLabel.String = 'Quantiles of Sample';
+           ax4.YLabel.FontSize = 10;
+           ax5.FontSize = 12;
+           ax5.XLabel.String = 'Standard Normal Quantiles';
+           ax5.XLabel.FontSize = 10;
+           ax5.YLabel.String = 'Quantiles of Sample';
+           ax5.YLabel.FontSize = 10;
+           ax6.FontSize = 12;
+           ax6.XLabel.String = 'Standard Normal Quantiles';
+           ax6.XLabel.FontSize = 10;
+           ax6.YLabel.String = 'Quantiles of Sample';
+           ax6.YLabel.FontSize = 10;
+           ax7.FontSize = 12;
+           ax7.XLabel.String = 'Standard Normal Quantiles';
+           ax7.XLabel.FontSize = 10;
+           ax7.YLabel.String = 'Quantiles of Sample';
+           ax7.YLabel.FontSize = 10;
+           % Tile 8
+           ax8TextPos = [max(ax8.XLim)*0.5 max(ax8.YLim)*0.5];  % Define the position in the plot
+           partstr81a='Extend Velocity: ';
+           if ExtVelocityValue==0
+               partstr82a='All';
+               partstr83a='';
+           else
+               partstr82a=num2str(ExtVelocityValueStr);
+               partstr83a='m*s^{-1}';
+           end
+           fullstr8a=strcat(partstr81a,partstr82a,partstr83a); % Define the string that shall be shown in the plot
+           partstr81b='Retract Velocity: ';
+           if RetVelocityValue==0
+               partstr82b='All';
+               partstr83b='';
+           else
+               partstr82b=num2str(RetVelocityValueStr);
+               partstr83b='m*s^{-1}';
+           end
+           fullstr8b=strcat(partstr81b,partstr82b,partstr83b); % Define the string that shall be shown in the plot
+           partstr81c='Holding time: ';
+           if HoldingTimeValue==-1
+               partstr82c='All';
+               partstr83c='';
+           else
+               partstr82c=num2str(HoldingTimeValueStr);
+               partstr83c='s';
+           end
+           fullstr8c=strcat(partstr81c,partstr82c,partstr83c); % Define the string that shall be shown in the plot
+           partstr81d='Substrate: ';
+           partstr82d=num2str(SubstrateValue);
+           fullstr8d=strcat(partstr81d,partstr82d); % Define the string that shall be shown in the plot
+           partstr81e='Medium: ';
+           partstr82e=num2str(EnvCondValue);
+           fullstr8e=strcat(partstr81e,partstr82e); % Define the string that shall be shown in the plot
+           partstr81f='Chip & Cantilever: ';
+           partstr82f=num2str(ChipCantValue);
+           fullstr8f=strcat(partstr81f,partstr82f); % Define the string that shall be shown in the plot
+           partstr81g='Chipbox: ';
+           partstr82g=num2str(ChipboxValue);
+           fullstr8g=strcat(partstr81g,partstr82g); % Define the string that shall be shown in the plot
+           partstr81h='Linker: ';
+           partstr82h=num2str(ChipboxValue);
+           fullstr8h=strcat(partstr81h,partstr82h); % Define the string that shall be shown in the plot
+           te8=text(ax8,ax8TextPos(1), ax8TextPos(2),{fullstr8a, fullstr8b, fullstr8c, fullstr8d, fullstr8e, fullstr8f, fullstr8g, fullstr8h}, 'VerticalAlignment','middle', 'HorizontalAlignment','center');
+           te8.FontSize = 18;
+           % Tile 9
+           ax9TextPos = [max(ax9.XLim)*0.5 max(ax9.YLim)*0.5];  % Define the position in the plot
+           fullstr9a='Number of force curves analysed: ';
+           if ~isempty(yAdhMaxApp)
+               partstr91b='Max. Adhesion Force Approach: ';
+               partstr92b=num2str(length(nonzeros(ConcateArray1)));
+               fullstr9b=strcat(partstr91b,partstr92b); % Define the string that shall be shown in the plot
+           else
+           end
+           if ~isempty(yAdhMaxRet)
+               partstr91c='Max. Adhesion Force Retraction:';
+               partstr92c=num2str(length(nonzeros(ConcateArray2)));
+               fullstr9c=strcat(partstr91c,partstr92c); % Define the string that shall be shown in the plot
+           else
+           end
+           if ~isempty(yAdhUnbinding)
+               partstr91d='Unbinding Adhesion Force (Retraction): ';
+               partstr92d=num2str(length(nonzeros(ConcateArray3)));
+               fullstr9d=strcat(partstr91d,partstr92d); % Define the string that shall be shown in the plot
+           else
+           end
+           if ~isempty(yAdhEneApp)
+               partstr91e='Adhesion Energy Approach: ';
+               partstr92e=num2str(length(nonzeros(ConcateArray4)));
+               fullstr9e=strcat(partstr91e,partstr92e); % Define the string that shall be shown in the plot
+           else
+           end
+           if ~isempty(yAdhEneRet)
+               partstr91d='Adhesion Energy Retraction: ';
+               partstr92d=num2str(length(nonzeros(ConcateArray5)));
+               fullstr9d=strcat(partstr91d,partstr92d); % Define the string that shall be shown in the plot
+           else
+           end
+           if ~isempty(yPullingLength)
+               partstr91e='Pulling Length: ';
+               partstr92e=num2str(length(nonzeros(ConcateArray6)));
+               fullstr9e=strcat(partstr91e,partstr92e); % Define the string that shall be shown in the plot
+           else
+           end
+           if ~isempty(ySnapInLength)
+               partstr91f='Snap-In Length: ';
+               partstr92f=num2str(length(nonzeros(ConcateArray7)));
+               fullstr9f=strcat(partstr91f,partstr92f); % Define the string that shall be shown in the plot
+           else
+           end
+           te9=text(ax9,ax9TextPos(1), ax9TextPos(2),{fullstr9a, fullstr9b, fullstr9c, fullstr9d, fullstr9e, fullstr9f},'VerticalAlignment','middle', 'HorizontalAlignment','center');
+           te9.FontSize = 18;
+           % Save figure
+           %%% Define the name for the figure title
+           partname='qqplots';
+           % fullname=sprintf('%s%s',figname,partname);
+           fullname1=strcat(figname,{'_'},parttitle2,{'_'},partname);
+           fullname1=char(fullname1);
+           %%% Save the current figure in the current folder
+           print(h_fig2,fullname1,'-dpng');
+
+           %% SMFS Results structure
+           % Check entry
+           if ~isempty(obj.SMFSResults)
+               jj=length(obj.SMFSResults)+1;
+           else
+               jj=1;
+           end
+           % Debugging
+           % jj=4
+           % Append the new data into the concatenated array
+           yAdhMaxAppAll(:,ff)=yAdhMaxApp';
+           yAdhMaxRetAll(:,ff)=yAdhMaxRet';
+           yAdhUnbindingAll(:,ff)=yAdhUnbinding';
+           yAdhEneAppAll(:,ff)=yAdhEneApp';
+           yAdhEneRetAll(:,ff)=yAdhEneRet';
+           yPullingLengthAll(:,ff)=yPullingLength';
+           ySnapInLengthAll(:,ff)=ySnapInLength';
+
+           obj.SMFSResults{jj,1}.Data(1).AdhMaxApp=yAdhMaxAppAll;
+           obj.SMFSResults{jj,1}.Data(1).AdhMaxRet=yAdhMaxRetAll;
+           obj.SMFSResults{jj,1}.Data(1).AdhUnbinding=yAdhUnbindingAll;
+           obj.SMFSResults{jj,1}.Data(1).AdhEneApp=yAdhEneAppAll;
+           obj.SMFSResults{jj,1}.Data(1).AdhEneRet=yAdhEneRetAll;
+           obj.SMFSResults{jj,1}.Data(1).yPullingLength=yPullingLengthAll;
+           obj.SMFSResults{jj,1}.Data(1).ySnapInLength=ySnapInLengthAll;
+           obj.SMFSResults{jj,1}.Data(1).AdhMaxAppConcat=ConcateArray1;
+           obj.SMFSResults{jj,1}.Data(1).AdhMaxRetConcat= ConcateArray2;
+           obj.SMFSResults{jj,1}.Data(1).AdhUnbindingConcat=ConcateArray3;
+           obj.SMFSResults{jj,1}.Data(1).AdhEneAppConcat=ConcateArray4;
+           obj.SMFSResults{jj,1}.Data(1).AdhEneRetConcat=ConcateArray5;
+           obj.SMFSResults{jj,1}.Data(1).yPullingLengthConcat=ConcateArray6;
+           obj.SMFSResults{jj,1}.Data(1).ySnapInLengthConcat=ConcateArray7;
+           obj.SMFSResults{jj,1}.Parameters(1).ExtendVelocity=ExtVelocityValue;
+           obj.SMFSResults{jj,1}.Parameters(1).RetractVelocity=RetVelocityValue;
+           obj.SMFSResults{jj,1}.Parameters(1).HoldingTime=HoldingTimeValue;
+           obj.SMFSResults{jj,1}.Parameters(1).Substrate=SubstrateValue;
+           obj.SMFSResults{jj,1}.Parameters(1).Medium=EnvCondValue;
+           obj.SMFSResults{jj,1}.Parameters(1).ChipCantilever=ChipCantValue;
+           obj.SMFSResults{jj,1}.Parameters(1).Chipbox=ChipboxValue;
+           obj.SMFSResults{jj,1}.Parameters(1).Linker=LinkerValue;
+           obj.SMFSResults{jj,1}.Concatenate(1).FMIndex=IdxArray;
+           obj.SMFSResults{jj,1}.Concatenate(1).FCperFM=FCperFM;
+           obj.SMFSResults{jj,1}.Concatenate(1).FMID=FMIDArray;
+           obj.SMFSResults{jj,1}.Results(1).AdhMaxAppMean=AdhMaxAppSelMean;
+           obj.SMFSResults{jj,1}.Results(1).AdhMaxAppMean=AdhMaxAppSelMean;
+           obj.SMFSResults{jj,1}.Results(1).AdhMaxAppStd=AdhMaxAppSelStd;
+           obj.SMFSResults{jj,1}.Results(1).AdhMaxRetMean=AdhMaxRetSelMean;
+           obj.SMFSResults{jj,1}.Results(1).AdhMaxRetStd=AdhMaxRetSelStd;
+           obj.SMFSResults{jj,1}.Results(1).AdhMaxRetUnbindingMean=AdhMaxRetSelUnbindingMean;
+           obj.SMFSResults{jj,1}.Results(1).AdhMaxRetUnbindingStd=AdhMaxRetSelUnbindingStd;
+           obj.SMFSResults{jj,1}.Results(1).AdhEneAppMean=AdhEneAppSelMean;
+           obj.SMFSResults{jj,1}.Results(1).AdhEneAppStd=AdhEneAppSelStd;
+           obj.SMFSResults{jj,1}.Results(1).AdhEneRetMean=AdhEneRetSelMean;
+           obj.SMFSResults{jj,1}.Results(1).AdhEneRetStd=AdhEneRetSelStd;
+           obj.SMFSResults{jj,1}.Results(1).PullLengthMedian=PullLengthMedian;
+           obj.SMFSResults{jj,1}.Results(1).PullLengthMin=PullLengthMin;
+           obj.SMFSResults{jj,1}.Results(1).PullLengthMax=PullLengthMax;
+           obj.SMFSResults{jj,1}.Results(1).SnapInMedian=SnapInMedian;
+           obj.SMFSResults{jj,1}.Results(1).SnapInMin=SnapInMin;
+           obj.SMFSResults{jj,1}.Results(1).SnapInMax=SnapInMax;
+
+           %% House keeping
+           close all
+       end
+
+            
+        end
+   
+    
     methods
         % Methods for data visualization spanning all the data
        
@@ -1381,7 +9641,7 @@ classdef Experiment < matlab.mixin.Copyable
             h.B(1) = uicontrol('style','togglebutton',...
                 'String','Cross Section',...
                 'units','normalized',...
-                'position',[.85 .5 .1 .05],...
+                'position',[.85 .45 .1 .05],...
                 'Callback',@cross_section_toggle);
             
             [ClassPopUp,ClassIndex] = obj.string_of_existing_class_instances();
@@ -1393,25 +9653,25 @@ classdef Experiment < matlab.mixin.Copyable
             h.B(4) = uicontrol('style','text',...
                 'String','Channel 1',...
                 'units','normalized',...
-                'position',[.85 .9 .15 .05]);
+                'position',[.85 .95 .15 .04]);
             
             
             h.B(16) = uicontrol('style','popupmenu',...
                 'String',ClassPopUp,...
                 'units','normalized',...
-                'position',[.85 .85 .15 .05],...
+                'position',[.85 .9 .15 .05],...
                 'Callback',@draw_channel_1);
             
             h.B(2) = uicontrol('style','popupmenu',...
                 'String',PopUp,...
                 'units','normalized',...
-                'position',[.85 .8 .1 .05],...
+                'position',[.85 .85 .15 .05],...
                 'Callback',@draw_channel_1);
             
             h.B(5) = uicontrol('style','text',...
                 'String','Channel 2',...
                 'units','normalized',...
-                'position',[.85 .7 .15 .05]);
+                'position',[.85 .7 .15 .04]);
             
             h.B(17) = uicontrol('style','popupmenu',...
                 'String',ClassPopUp,...
@@ -1422,7 +9682,7 @@ classdef Experiment < matlab.mixin.Copyable
             h.B(3) = uicontrol('style','popupmenu',...
                 'String',PopUp,...
                 'units','normalized',...
-                'position',[.85 .6 .1 .05],...
+                'position',[.85 .6 .15 .05],...
                 'Callback',@draw_channel_2);
             
             h.B(6) = uicontrol('style','pushbutton',...
@@ -1440,13 +9700,13 @@ classdef Experiment < matlab.mixin.Copyable
             h.B(8) = uicontrol('style','slider',...
                 'Value',1,...
                 'Units','normalized',...
-                'Position',[.85 .78 .1 .02],...
+                'Position',[.85 .83 .1 .02],...
                 'Callback',@changed_slider);
             
             h.B(9) = uicontrol('style','slider',...
                 'Value',0,...
                 'Units','normalized',...
-                'Position',[.85 .76 .1 .02],...
+                'Position',[.85 .81 .1 .02],...
                 'Callback',@changed_slider);
             
             h.B(10) = uicontrol('style','slider',...
@@ -1464,12 +9724,12 @@ classdef Experiment < matlab.mixin.Copyable
             h.B(12) = uicontrol('style','text',...
                 'String','Max',...
                 'Units','normalized',...
-                'Position',[.95 .78 .03 .02]);
+                'Position',[.95 .83 .03 .02]);
             
             h.B(13) = uicontrol('style','text',...
                 'String','Min',...
                 'Units','normalized',...
-                'Position',[.95 .76 .03 .02]);
+                'Position',[.95 .81 .03 .02]);
             
             h.B(14) = uicontrol('style','text',...
                 'String','Max',...
@@ -1486,7 +9746,7 @@ classdef Experiment < matlab.mixin.Copyable
                 'Value',0,...
                 'Tooltip','Green, if both Channels have the same size scaling',...
                 'Units','normalized',...
-                'Position',[.85 .47 .1 .03],...
+                'Position',[.85 .42 .1 .03],...
                 'Callback',@checked_both_cross_sections);
             
             h.B(19) = uicontrol('style','checkbox',...
@@ -1498,7 +9758,7 @@ classdef Experiment < matlab.mixin.Copyable
             h.B(20) = uicontrol('style','checkbox',...
                 'String','Lock Channels',...
                 'units','normalized',...
-                'position',[.85 .25 .1 .04],...
+                'position',[.85 .3   .1 .04],...
                 'Callback',@lock_channels);
             
             h.B(21) = uicontrol('style','checkbox',...
@@ -1513,6 +9773,57 @@ classdef Experiment < matlab.mixin.Copyable
                 'position',[.85 .25 .1 .04],...
                 'Callback',@statistical_cmapping);
             
+            h.B(23) = uicontrol('style','edit',...
+                'String','',...
+                'units','normalized',...
+                'position',[.85 .75 .035 .05],...
+                'Callback',@set_scale);
+            
+            h.B(24) = uicontrol('style','edit',...
+                'String','',...
+                'units','normalized',...
+                'position',[.925 .75 .035 .05],...
+                'Callback',@set_scale);
+            
+            h.B(25) = uicontrol('style','edit',...
+                'String','',...
+                'units','normalized',...
+                'position',[.85 .5 .035 .05],...
+                'Callback',@set_scale);
+            
+            h.B(26) = uicontrol('style','edit',...
+                'String','',...
+                'units','normalized',...
+                'position',[.925 .5 .035 .05],...
+                'Callback',@set_scale);
+            
+            h.B(27) = uicontrol('style','text',...
+                'String',{'Min','[]'},...
+                'Units','normalized',...
+                'Position',[.885 .75 .04 .05]);
+            
+            h.B(28) = uicontrol('style','text',...
+                'String',{'Max','[]'},...
+                'Units','normalized',...
+                'Position',[.96 .75 .04 .05]);
+            
+            h.B(29) = uicontrol('style','text',...
+                'String',{'Min','[]'},...
+                'Units','normalized',...
+                'Position',[.885 .5 .04 .05]);
+            
+            h.B(30) = uicontrol('style','text',...
+                'String',{'Max','[]'},...
+                'Units','normalized',...
+                'Position',[.96 .5 .04 .05]);
+            
+            h.B(31) = uicontrol('Style','checkbox',...
+                'String','Use Overlay',...
+                'Value',0,...
+                'Tooltip','Green, if both Channels share an overlay',...
+                'Units','normalized',...
+                'Position',[.85 .39 .1 .03]);
+            
             h.Channel1Max = 1;
             h.Channel1Min = 0;
             h.Channel2Max = 1;
@@ -1525,7 +9836,6 @@ classdef Experiment < matlab.mixin.Copyable
             h.MainLine = [];
             h.ChildLine = [];
             h.hasCrossSection = 0;
-            h.hasBothCrossSections = 0;
             h.hasChannel2 = 0;
             h.isUpscaled = false;
             h.lockedChannels = h.B(20).Value;
@@ -1594,7 +9904,8 @@ classdef Experiment < matlab.mixin.Copyable
                 h.OnePass = false;
             end
             
-            function moving_cross_section(src,evt)
+            function moving_cross_section_channel_1(src,evt)
+                evname = evt.EventName;
                 if ~get(h.B(1),'Value')
                     return
                 end
@@ -1602,17 +9913,13 @@ classdef Experiment < matlab.mixin.Copyable
                 h.ImAx(3) = [];
                 Pos1 = [h.MainLine.Position(1,1) h.MainLine.Position(1,2)];
                 Pos2 = [h.MainLine.Position(2,1) h.MainLine.Position(2,2)];
-                MainProfile = improfile(h.Image{h.MainIndex},[Pos1(1) Pos2(1)],[Pos1(2) Pos2(2)]);
+                MainProfile = improfile(h.Image{h.MainIndex},[Pos1(1) Pos2(1)],[Pos1(2) Pos2(2)],'bicubic');
                 Len = norm(Pos1-Pos2)/h.NumPixelsX(h.MainIndex)*h.ScanSizeX(h.MainIndex);
                 Points = [0:1/(length(MainProfile)-1):1].*Len;
                 [MainMultiplierY,UnitY,~] = AFMImage.parse_unit_scale(range(MainProfile),h.BaseUnit{h.MainIndex},1);
                 [MultiplierX,UnitX,~] = AFMImage.parse_unit_scale(range(Points),'m',1);
                 h.ImAx(3) = subplot(10,10,[71:78 81:88 91:98]);
-                h.P = plot(Points.*MultiplierX,MainProfile.*MainMultiplierY);
-                if h.hasBothCrossSections && (h.hasChannel2 && h.hasChannel1)
-                    yyaxis left
-                end
-                hold on
+                P = plot(Points.*MultiplierX,Profile.*MultiplierY);
                 grid on
                 CurrentAxHeight = round(h.Fig.Position(4)*h.ImAx(h.MainIndex).Position(4));
                 h.ImAx(3).Color = h.ColorMode(h.ColorIndex).Background;
@@ -1622,7 +9929,7 @@ classdef Experiment < matlab.mixin.Copyable
                 h.ImAx(3).YColor = h.ColorMode(h.ColorIndex).Profile1;
                 h.ImAx(3).GridColor = h.ColorMode(h.ColorIndex).Text;
                 xlabel(sprintf('[%s]',UnitX))
-                ylabel(sprintf('%s [%s]',h.Channel{h.MainIndex},UnitY))
+                ylabel(sprintf('%s [%s]',h.Channel{1},UnitY))
                 xlim([0 Points(end).*MultiplierX])
                 h.P.LineWidth = 2;
                 h.P.Color = h.ColorMode(h.ColorIndex).Profile1;
@@ -1633,14 +9940,47 @@ classdef Experiment < matlab.mixin.Copyable
                         end
                     end
                     h.ChildLine.Visible = 'off';
-                    h.ChildLine = drawline('Position',h.MainLine.Position,...
+                    
+                    if h.B(31).Value && ...
+                            Class{h.MainIndex}.OverlayGroup.hasOverlayGroup &&...
+                            Class{h.ChildIndex}.OverlayGroup.hasOverlayGroup &&...
+                            isequal(Class{h.MainIndex}.OverlayGroup.Names,Class{h.ChildIndex}.OverlayGroup.Names)
+                        XDiff = Class{h.MainIndex}.Channel(1).OriginX - Class{h.ChildIndex}.Channel(1).OriginX;
+                        SizePerPixelX = Class{h.ChildIndex}.Channel(1).ScanSizeX./Class{h.ChildIndex}.Channel(1).NumPixelsX;
+                        XDiff = XDiff/SizePerPixelX;
+                        YDiff = Class{h.MainIndex}.Channel(1).OriginY - Class{h.ChildIndex}.Channel(1).OriginY;
+                        SizePerPixelY = Class{h.ChildIndex}.Channel(1).ScanSizeY./Class{h.ChildIndex}.Channel(1).NumPixelsY;
+                        YDiff = YDiff/SizePerPixelY;
+                        AngleDiff = Class{h.MainIndex}.Channel(1).ScanAngle - Class{h.ChildIndex}.Channel(1).ScanAngle;
+                        AngleDiff = deg2rad(-AngleDiff);
+                        
+                        InitPos = h.MainLine.Position;
+                        
+                        CPos1 = [InitPos(1,1) InitPos(1,2)];
+                        CPos2 = [InitPos(2,1) InitPos(2,2)];
+                        
+                        ImCenter = [Class{h.ChildIndex}.Channel(1).NumPixelsX/2 Class{h.ChildIndex}.Channel(1).NumPixelsY/2];
+                        
+                        TempCP1 = CPos1 - ImCenter;
+                        TempCP2 = CPos2 - ImCenter;
+                        
+                        RotationMatrix = [cos(AngleDiff) -sin(AngleDiff);sin(AngleDiff) cos(AngleDiff)];
+                        
+                        CPos1 = [RotationMatrix*TempCP1']' + ImCenter + [XDiff -YDiff];
+                        CPos2 = [RotationMatrix*TempCP2']' + ImCenter + [XDiff -YDiff];
+                        
+                        InitPos = [CPos1(1) CPos1(2); CPos2(1) CPos2(2)];
+                    else
+                        InitPos = h.MainLine.Position;
+                    end
+                    h.ChildLine = drawline('Position',InitPos,...
                         'Parent',h.ImAx(h.ChildIndex),'Color',h.ColorMode(h.ColorIndex).Profile2,...
                         'LineWidth',h.ProfileLineWidth);
                     addlistener(h.ChildLine,'MovingROI',@moving_cross_section);
                     addlistener(h.ChildLine,'ROIMoved',@moving_cross_section);
                     CPos1 = [h.ChildLine.Position(1,1) h.ChildLine.Position(1,2)];
                     CPos2 = [h.ChildLine.Position(2,1) h.ChildLine.Position(2,2)];
-                    ChildProfile = improfile(h.Image{h.ChildIndex},[CPos1(1) CPos2(1)],[CPos1(2) CPos2(2)]);
+                    ChildProfile = improfile(h.Image{h.ChildIndex},[CPos1(1) CPos2(1)],[CPos1(2) CPos2(2)],'bicubic');
                     ChildPoints = [0:1/(length(ChildProfile)-1):1].*Len;
                     [ChildMultiplierY,UnitY,~] = AFMImage.parse_unit_scale(range(ChildProfile),h.BaseUnit{h.ChildIndex},1);
                     yyaxis right
@@ -1677,44 +10017,88 @@ classdef Experiment < matlab.mixin.Copyable
                 hold off
             end
             
-            function checked_both_cross_sections(varargin)
-                h.hasBothCrossSections = ~h.hasBothCrossSections;
-                try
-                    delete(h.ImAx(3));
-                catch
-                end
-                draw_channel_1
-                draw_channel_2
-            end
-            
-            function get_and_draw_profile(varargin)
+            function moving_cross_section_channel_2(src,evt)
+                evname = evt.EventName;
                 if ~get(h.B(1),'Value')
                     return
                 end
-                if ~isempty(h.MainLine)
-                    if ~isvalid(h.MainLine)
-                        h.MainLine = [];
+                Pos1 = [h.Line.Position(1,1) h.Line.Position(1,2)];
+                Pos2 = [h.Line.Position(2,1) h.Line.Position(2,2)];
+                if norm(Pos1-Pos2)==0
+                    get_and_draw_profile;
+                    return
+                end
+                Profile = improfile(h.Image{2},[Pos1(1) Pos2(1)],[Pos1(2) Pos2(2)]);
+                Len = norm(Pos1-Pos2)/Class{2}.NumPixelsX*Class{2}.ScanSizeX;
+                Points = [0:1/(length(Profile)-1):1].*Len;
+                [MultiplierY,UnitY,~] = AFMImage.parse_unit_scale(range(Profile),h.BaseUnit{2},1);
+                [MultiplierX,UnitX,~] = AFMImage.parse_unit_scale(range(Points),'m',1);
+                h.ImAx(3) = subplot(10,10,[71:78 81:88 91:98]);
+                P = plot(Points.*MultiplierX,Profile.*MultiplierY);
+                grid on
+                CurrentAxHeight = round(h.Fig.Position(4)*h.ImAx(2).Position(4));
+                h.ImAx(3).Color = 'k';
+                h.ImAx(3).LineWidth = 1;
+                h.ImAx(3).FontSize = round(22*(CurrentAxHeight/756));
+                h.ImAx(3).XColor = 'w';
+                h.ImAx(3).YColor = 'w';
+                h.ImAx(3).GridColor = 'w';
+                xlabel(sprintf('[%s]',UnitX))
+                ylabel(sprintf('%s [%s]',h.Channel{2},UnitY))
+                xlim([0 Points(end).*MultiplierX])
+                P.LineWidth = 2;
+                P.Color = 'b';
+            end
+            
+            function get_and_draw_profile_channel_1(varargin)
+                if ~get(h.B(1),'Value')
+                    return
+                end
+                if ~isempty(h.Line)
+                    if ~isvalid(h.Line)
+                        h.Line = [];
                     end
                 end
-                h.MainLine.Visible = 'off';
-                if h.hasBothCrossSections && (h.hasChannel2 && h.hasChannel1)
-                    if ~isempty(h.ChildLine)
-                        if ~isvalid(h.ChildLine)
-                            h.ChildLine = [];
-                        end
+                h.Line.Visible = 'off';
+                h.Line = drawline('Color','b','Parent',h.ImAx(1));
+                addlistener(h.Line,'MovingROI',@moving_cross_section_channel_1);
+                addlistener(h.Line,'ROIMoved',@moving_cross_section_channel_1);
+                Pos1 = [h.Line.Position(1,1) h.Line.Position(1,2)];
+                Pos2 = [h.Line.Position(2,1) h.Line.Position(2,2)];
+                if norm(Pos1-Pos2)==0
+                    get_and_draw_profile_channel_1;
+                    return
+                end
+                Profile = improfile(h.Image{1},[Pos1(1) Pos2(1)],[Pos1(2) Pos2(2)]);
+                Len = norm(Pos1-Pos2)/Class{1}.NumPixelsX*Class{1}.ScanSizeX;
+                Points = [0:1/(length(Profile)-1):1].*Len;
+                [MultiplierY,UnitY,~] = AFMImage.parse_unit_scale(range(Profile),h.BaseUnit{1},1);
+                [MultiplierX,UnitX,~] = AFMImage.parse_unit_scale(range(Points),'m',1);
+                h.ImAx(3) = subplot(10,10,[71:78 81:88 91:98]);
+                P = plot(Points.*MultiplierX,Profile.*MultiplierY);
+                grid on
+                CurrentAxHeight = round(h.Fig.Position(4)*h.ImAx(1).Position(4));
+                h.ImAx(3).Color = 'k';
+                h.ImAx(3).LineWidth = 1;
+                h.ImAx(3).FontSize = round(22*(CurrentAxHeight/756));
+                h.ImAx(3).XColor = 'w';
+                h.ImAx(3).YColor = 'w';
+                h.ImAx(3).GridColor = 'w';
+                xlabel(sprintf('[%s]',UnitX))
+                ylabel(sprintf('%s [%s]',h.Channel{1},UnitY))
+                xlim([0 Points(end).*MultiplierX])
+                P.LineWidth = 2;
+                P.Color = 'b';
+            end
+            
+            function get_and_draw_profile_channel_2(varargin)
+                if ~get(h.B(1),'Value')
+                    return
+                end
+                if ~isempty(h.Line)
+                    if ~isvalid(h.Line)
+                        h.Line = [];
                     end
-                    h.ChildLine.Visible = 'off';
-                end
-                if isequal(varargin{1}.Parent,h.ImAx(1))
-                    h.MainIndex = 1;
-                    h.ChildIndex = 2;
-                elseif isequal(varargin{1}.Parent,h.ImAx(2))
-                    h.MainIndex = 2;
-                    h.ChildIndex = 1;
-                end
-                try
-                    delete(h.ImAx(3))
-                catch
                 end
                 h.MainLine = drawline('Color',h.ColorMode(h.ColorIndex).Profile1,...
                     'Parent',varargin{1}.Parent,'LineWidth',h.ProfileLineWidth);
@@ -1723,20 +10107,16 @@ classdef Experiment < matlab.mixin.Copyable
                 Pos1 = [h.MainLine.Position(1,1) h.MainLine.Position(1,2)];
                 Pos2 = [h.MainLine.Position(2,1) h.MainLine.Position(2,2)];
                 if norm(Pos1-Pos2)==0
-                    get_and_draw_profile;
+                    get_and_draw_profile_channel_2;
                     return
                 end
-                MainProfile = improfile(h.Image{h.MainIndex},[Pos1(1) Pos2(1)],[Pos1(2) Pos2(2)]);
+                MainProfile = improfile(h.Image{h.MainIndex},[Pos1(1) Pos2(1)],[Pos1(2) Pos2(2)],'bicubic');
                 Len = norm(Pos1-Pos2)/h.NumPixelsX(h.MainIndex)*h.ScanSizeX(h.MainIndex);
                 Points = [0:1/(length(MainProfile)-1):1].*Len;
                 [MainMultiplierY,UnitY,~] = AFMImage.parse_unit_scale(range(MainProfile),h.BaseUnit{h.MainIndex},1);
                 [MultiplierX,UnitX,~] = AFMImage.parse_unit_scale(range(Points),'m',1);
                 h.ImAx(3) = subplot(10,10,[71:78 81:88 91:98]);
-                h.P = plot(Points.*MultiplierX,MainProfile.*MainMultiplierY);
-                if h.hasBothCrossSections && (h.hasChannel2 && h.hasChannel1)
-                    yyaxis left
-                end
-                hold on
+                P = plot(Points.*MultiplierX,Profile.*MultiplierY);
                 grid on
                 CurrentAxHeight = round(h.Fig.Position(4)*h.ImAx(h.MainIndex).Position(4));
                 h.ImAx(3).Color = h.ColorMode(h.ColorIndex).Background;
@@ -1746,19 +10126,52 @@ classdef Experiment < matlab.mixin.Copyable
                 h.ImAx(3).YColor = h.ColorMode(h.ColorIndex).Profile1;
                 h.ImAx(3).GridColor = h.ColorMode(h.ColorIndex).Text;
                 xlabel(sprintf('[%s]',UnitX))
-                ylabel(sprintf('%s [%s]',h.Channel{h.MainIndex},UnitY))
+                ylabel(sprintf('%s [%s]',h.Channel{2},UnitY))
                 xlim([0 Points(end).*MultiplierX])
                 h.P.LineWidth = 2;
                 h.P.Color = h.ColorMode(h.ColorIndex).Profile1;
                 if h.hasBothCrossSections && (h.hasChannel2 && h.hasChannel1)
-                    h.ChildLine = drawline('Position',h.MainLine.Position,...
+                    
+                    if h.B(31).Value && ...
+                            Class{h.MainIndex}.OverlayGroup.hasOverlayGroup &&...
+                            Class{h.ChildIndex}.OverlayGroup.hasOverlayGroup &&...
+                            isequal(Class{h.MainIndex}.OverlayGroup.Names,Class{h.ChildIndex}.OverlayGroup.Names)
+                        XDiff = Class{h.MainIndex}.Channel(1).OriginX - Class{h.ChildIndex}.Channel(1).OriginX;
+                        SizePerPixelX = Class{h.ChildIndex}.Channel(1).ScanSizeX./Class{h.ChildIndex}.Channel(1).NumPixelsX;
+                        XDiff = XDiff/SizePerPixelX;
+                        YDiff = Class{h.MainIndex}.Channel(1).OriginY - Class{h.ChildIndex}.Channel(1).OriginY;
+                        SizePerPixelY = Class{h.ChildIndex}.Channel(1).ScanSizeY./Class{h.ChildIndex}.Channel(1).NumPixelsY;
+                        YDiff = YDiff/SizePerPixelY;
+                        AngleDiff = Class{h.MainIndex}.Channel(1).ScanAngle - Class{h.ChildIndex}.Channel(1).ScanAngle;
+                        AngleDiff = deg2rad(-AngleDiff);
+                        
+                        InitPos = h.MainLine.Position;
+                        
+                        CPos1 = [InitPos(1,1) InitPos(1,2)];
+                        CPos2 = [InitPos(2,1) InitPos(2,2)];
+                        
+                        ImCenter = [Class{h.ChildIndex}.Channel(1).NumPixelsX/2 Class{h.ChildIndex}.Channel(1).NumPixelsY/2];
+                        
+                        TempCP1 = CPos1 - ImCenter;
+                        TempCP2 = CPos2 - ImCenter;
+                        
+                        RotationMatrix = [cos(AngleDiff) -sin(AngleDiff);sin(AngleDiff) cos(AngleDiff)];
+                        
+                        CPos1 = [RotationMatrix*TempCP1']' + ImCenter + [XDiff -YDiff];
+                        CPos2 = [RotationMatrix*TempCP2']' + ImCenter + [XDiff -YDiff];
+                        
+                        InitPos = [CPos1(1) CPos1(2); CPos2(1) CPos2(2)];
+                    else
+                        InitPos = h.MainLine.Position;
+                    end
+                    h.ChildLine = drawline('Position',InitPos,...
                         'Parent',h.ImAx(h.ChildIndex),'Color',h.ColorMode(h.ColorIndex).Profile2,...
                         'LineWidth',h.ProfileLineWidth);
                     addlistener(h.ChildLine,'MovingROI',@moving_cross_section);
                     addlistener(h.ChildLine,'ROIMoved',@moving_cross_section);
                     CPos1 = [h.ChildLine.Position(1,1) h.ChildLine.Position(1,2)];
                     CPos2 = [h.ChildLine.Position(2,1) h.ChildLine.Position(2,2)];
-                    ChildProfile = improfile(h.Image{h.ChildIndex},[CPos1(1) CPos2(1)],[CPos1(2) CPos2(2)]);
+                    ChildProfile = improfile(h.Image{h.ChildIndex},[CPos1(1) CPos2(1)],[CPos1(2) CPos2(2)],'bicubic');
                     ChildPoints = [0:1/(length(ChildProfile)-1):1].*Len;
                     [ChildMultiplierY,UnitY,~] = AFMImage.parse_unit_scale(range(ChildProfile),h.BaseUnit{h.ChildIndex},1);
                     yyaxis right
@@ -1844,14 +10257,8 @@ classdef Experiment < matlab.mixin.Copyable
                 PopUp = Class{Index}.string_of_existing();
                 set(h.B(1+Index),'String',PopUp)
                 
-                IdxOfSameChannel = find(strcmp(PopUp,CurrentChannelName));
-                
-                if isempty(IdxOfSameChannel)
-                    set(h.B(1+Index),'Value',2);
-                elseif sum(IdxOfSameChannel == h.B(1+Index).Value)
-                    set(h.B(1+Index),'Value',IdxOfSameChannel(find(IdxOfSameChannel == h.B(1+Index).Value)));
-                else
-                    set(h.B(1+Index),'Value',IdxOfSameChannel(1));
+                if h.B(1+Index).Value > (length(Class{Index}.Channel) + 1)
+                    set(h.B(1+Index),'Value',1)
                 end
                 
                 h.Channel{Index} = h.B(1+Index).String{h.B(1+Index).Value};
@@ -1925,6 +10332,20 @@ classdef Experiment < matlab.mixin.Copyable
                     end
                 end
                 
+                MinIndex = 21+2*Index;
+                MaxIndex = 22+2*Index;
+                
+                [h.Multiplier{Index},h.Unit{Index},~] = AFMImage.parse_unit_scale(FinalRange,h.BaseUnit{Index},1);
+                
+                if ~isempty(get(h.B(MinIndex),'String')) && ~isempty(get(h.B(MaxIndex),'String'))
+                    MinValue = str2double(get(h.B(MinIndex),'String'))/h.Multiplier{Index};
+                    MaxValue = str2double(get(h.B(MaxIndex),'String'))/h.Multiplier{Index};
+                    if isnan(MinValue) || isnan(MaxValue)
+                    else
+                        CutMin = MinValue;
+                        CutMax = MaxValue;
+                    end
+                end
                 
                 CurImage(CurImage>CutMax) = CutMax;
                 CurImage(CurImage<CutMin) = CutMin;
@@ -1936,19 +10357,24 @@ classdef Experiment < matlab.mixin.Copyable
                     CurImage(end,end) = CutMin;
                 end
                 
-                [Multiplier,Unit,~] = AFMImage.parse_unit_scale(FinalRange,h.BaseUnit{Index},1);
-                h.I(Index) = imshow(CurImage*Multiplier,[],'Colormap',ColorPattern);
+                FinalRange = abs(CutMax - CutMin);
+                
+                [h.Multiplier{Index},h.Unit{Index},~] = AFMImage.parse_unit_scale(FinalRange,h.BaseUnit{Index},1);
+                h.I(Index) = imshow(CurImage*h.Multiplier{Index},[],'Colormap',ColorPattern);
                 h.I(Index).ButtonDownFcn = @get_and_draw_profile;
                 hold on
                 CurrentAxHeight = round(h.Fig.Position(4)*h.ImAx(Index).Position(4));
                 CurrentAxWidth = round(h.Fig.Position(3)*h.ImAx(Index).Position(3));
                 AFMImage.draw_scalebar_into_current_image(Channel.NumPixelsX,Channel.NumPixelsY,Channel.ScanSizeX,BarToImageRatio,CurrentAxHeight,CurrentAxWidth);
-                c = colorbar;
+                c = colorbar('northoutside');
                 c.FontSize = round(h.ReferenceFontSize*(CurrentAxHeight/756));
                 c.Color = h.ColorMode(h.ColorIndex).Text;
-                c.Label.String = sprintf('%s [%s]',h.Channel{Index},Unit);
+                c.Label.String = sprintf('%s [%s]',h.Channel{Index},h.Unit{Index});
                 c.Label.FontSize = round(h.ReferenceFontSize*(CurrentAxHeight/756));
                 c.Label.Color = h.ColorMode(h.ColorIndex).Text;
+                
+                set(h.B(MinIndex+4),'String',{'Min',sprintf('[%s]',h.Unit{Index})});
+                set(h.B(MaxIndex+4),'String',{'Max',sprintf('[%s]',h.Unit{Index})});
                 
                 try
                     if (h.ScanSizeX(1) == h.ScanSizeX(2)) &&...
@@ -1992,7 +10418,7 @@ classdef Experiment < matlab.mixin.Copyable
                 filter = {'*.png';'*.tif'};
                 [file, path] = uiputfile(filter);
                 FullFile = fullfile(path,file);
-                exportgraphics(h.Fig,FullFile,'Resolution',200,'BackgroundColor','current')
+                exportgraphics(h.Fig,FullFile,'Resolution',300,'BackgroundColor','current')
             end
             
             function changed_color(varargin)
@@ -2047,6 +10473,12 @@ classdef Experiment < matlab.mixin.Copyable
                 draw_channel_2
             end
             
+            function set_scale(varargin)
+                
+                draw_channel_1
+                draw_channel_2
+            end
+            
             function statistical_cmapping(varargin)
                 draw_channel_1
                 draw_channel_2
@@ -2055,7 +10487,109 @@ classdef Experiment < matlab.mixin.Copyable
             uiwait(h.Fig)
         end
         
+        function [Fig,DataMat] = visualize_listed_data(obj,Property,YAxisName,BaseUnit,Method,ErrorBars,UseGrouping,ListOfIndizes)
+            % [Fig,DataMat] = visualize_listed_data(obj,Property,YAxisName,BaseUnit,Method,ErrorBars,UseGrouping,ListOfIndizes)
+            %
+            % visualize_listed_data(varargin)
+            % Input arbitrary ForceMap listed Property
+            % e.g. 'EModOliverPharr' or 'IndentationDepth'
+            % Methods are 'Boxplot', 'Barplot', 'BarMedian'
+            % ErrorBars, 'std'...standard deviation
+            %            'ste'...standard error
+            %            'ci'...confidence interval
+            
+            if nargin < 8
+                ListOfIndizes = 1:obj.NumForceMaps;
+            end
+            
+            k = 1;
+            if UseGrouping
+                for i=1:length(obj.GroupFM)
+                    TempArray = [];
+                    for j=1:length(obj.GroupFM(i).Indices)
+                        TempArray = cat(1,TempArray,reshape(obj.FM{obj.GroupFM(i).Indices(j)}.get(Property),[],1));
+                    end
+                    Data(k).Values = TempArray;
+                    [Data(k).Multiplier,Data(k).Unit] = AFMImage.parse_unit_scale(range(Data(k).Values),BaseUnit,5);
+                    Data(k).Name = obj.GroupFM(i).Name;
+                    Data(k).Length = length(Data(k).Values);
+                    if isequal(ErrorBars,'std')
+                        Data(k).Bars = nanstd(Data(k).Values);
+                    elseif isequal(ErrorBars,'ste')
+                        Data(k).Bars = nanstd(Data(k).Values)/sqrt(length(Data(k).Values(~isnan(Data(k).Values))));
+                    elseif isequal(ErrorBars,'ci')
+                        [~,~,Data(k).Bars,~] = ttest(Data(k).Values(~isnan(Data(k).Values)),nanmean(Data(k).Values));
+                    end
+                    k = k + 1;
+                end
+            else
+                for i=ListOfIndizes
+                    Data(k).Values = obj.FM{i}.get(Property);
+                    [Data(k).Multiplier,Data(k).Unit] = AFMImage.parse_unit_scale(range(Data(k).Values),BaseUnit,5);
+                    Data(k).Name = obj.FM{i}.Name;
+                    Data(k).Length = length(Data(k).Values);
+                    if isequal(ErrorBars,'std')
+                        Data(k).Bars = nanstd(Data(k).Values);
+                    elseif isequal(ErrorBars,'ste')
+                        Data(k).Bars = nanstd(Data(k).Values)/sqrt(length(Data(k).Values(~isnan(Data(k).Values))));
+                    elseif isequal(ErrorBars,'ci')
+                        [~,~,Data(k).Bars,~] = ttest(Data(k).Values(~isnan(Data(k).Values)),nanmean(Data(k).Values));
+                    end
+                    k = k + 1;
+                end
+            end
+            
+            [MaxMult,MaxIdx] = max([Data(:).Multiplier],[],'all','linear');
+            MaxLen = max([Data(:).Length]);
+            
+            Scale = MaxMult;
+            Unit = Data(MaxIdx).Unit;
+            YAxisLabel = sprintf('%s [%s]',YAxisName,Unit);
+            XTickLabels = {Data(:).Name};
+            
+            Fig = figure('Color','w');
+            DataMat = nan(MaxLen,length(Data));
+            for i=1:length(Data)
+                DataMat(1:Data(i).Length,i) = Data(i).Values;
+                Data(i).Bars = Data(i).Bars.*Scale;
+            end
+            DataMat = DataMat.*Scale;
+            if isequal(Method,'Boxplot')
+                boxplot(DataMat)
+                title(sprintf('Boxplot of %s',YAxisName))
+            elseif isequal(Method,'Barplot')
+                bar(nanmean(DataMat,1));
+                hold on
+                for i=1:length(Data)
+                    errorbar(i,nanmean(DataMat(:,i)),-Data(i).Bars(1),Data(i).Bars(end),'Color','k','LineWidth',1.5);
+                end
+                title(sprintf('Barplot of %s',YAxisName))
+            elseif isequal(Method,'BarMedian')
+                bar(nanmedian(DataMat,1));
+                hold on
+                for i=1:length(Data)
+                    errorbar(i,nanmedian(DataMat(:,i)),-Data(i).Bars(1),Data(i).Bars(end),'Color','k','LineWidth',1.5);
+                end
+                title(sprintf('Median Barplot of %s',YAxisName))
+            end
+            ax = gca;
+            ax.LineWidth = 1;
+            ax.FontSize = 16;
+            ax.TickLabelInterpreter = 'latex';
+            ax.XTickLabel = XTickLabels;
+            ylabel(YAxisLabel)
+            xlim([.5 length(Data)+.5])
+        end
+        
+        function visualize_depth_dependend_tip_radius(obj,CantileverTipIndex)
+            
+            TipClass = obj.CantileverTips{CantileverTipIndex};
+            DepthRadii = TipClass.DepthDependendTipRadius;
+            
+            
+        end
     end
+    
     methods
         %%%   WARNING! %%%
         % The following methods were programmed for specific use cases
@@ -2113,6 +10647,11 @@ classdef Experiment < matlab.mixin.Copyable
             
             DataMeansOP = nanmean(DataOP,2);
             DataMeansHS = nanmean(DataHS,2);
+            
+            for i=1:obj.NumForceMaps
+                obj.FM{i}.FibrilEModOliverPharr = DataMeansOP(i);
+                obj.FM{i}.FibrilEModHertz = DataMeansHS(i);
+            end
             
             figure('Name','OliverPharr vs HertzSneddon','Color','w');
             plot(DataMeansHS,DataMeansOP,'bO')
@@ -2238,6 +10777,8 @@ classdef Experiment < matlab.mixin.Copyable
                 'Units','normalized',...
                 'FontSize',12,...
                 'HorizontalAlignment','center')
+            
+            
             
         end
         
@@ -2515,9 +11056,14 @@ classdef Experiment < matlab.mixin.Copyable
             % create the appropriate inputdlg for assigning the groups show
             % a table with numbered map-names in background
             Names = obj.ForceMapNames;
-            Fig = figure('Units', 'Normalized', 'Position',[0.2 0.2 0.4 8],'Color','w');
-            T = table(Names');
-            uitable('Data',T{:,:},'Units', 'Normalized', 'Position',[0, 0, 1, 1]);
+            Fig = figure('Units', 'Normalized', 'Position',[0.2 0.2 0.2 .7],'Color','w');
+            Names = reshape(Names,[],1);
+            T = table(Names);
+            Widths = cell(1,length(Names));
+            for i=1:length(Widths)
+                Widths{i} = 10000;
+            end
+            uitable('Data',T{:,:},'Units', 'Normalized', 'Position',[0, 0, 1, 1],'ColumnWidth', Widths);
             
             for i=1:2:2*NGroups
                 prompts{i} = sprintf('Whats the Name of Group %i?',(i+1)/2);
@@ -2596,22 +11142,24 @@ classdef Experiment < matlab.mixin.Copyable
     methods
         % auxiliary methods
         
-        function RadiusNM = calculate_tip_radius(obj,TipDepthNM)
+        function RadiusNM = calculate_tip_radius(obj,TipDepthNM,TipIndex)
             if nargin < 2
                 TipDepthNM = 20;
             end
+            Chan = obj.CantileverTips{TipIndex}.get_channel('Eroded Tip');
+            TipImage = -Chan.Image;
             m = 1;
-            Niter = 200;
+            Niter = 100;
             Cumulative = zeros(Niter,1);
             for n=1:Niter
                 k = 1;
-                SizeArray = size(obj.CantileverTip.data);
+                SizeArray = size(TipImage);
                 for i=1:SizeArray(1)
                     for j=1:SizeArray(2)
-                        if obj.CantileverTip.data(i,j) > -TipDepthNM*1e-9
-                            X(k) = (i-1)*obj.CantileverTip.XaxisSizeUM*1e-6/SizeArray(1);
-                            Y(k) = (j-1)*obj.CantileverTip.YaxisSizeUM*1e-6/SizeArray(2);
-                            Z(k) = obj.CantileverTip.data(i,j);
+                        if TipImage(i,j) > -TipDepthNM*1e-9
+                            X(k) = (i-1)*obj.CantileverTips{TipIndex}.ScanSizeX/SizeArray(1);
+                            Y(k) = (j-1)*obj.CantileverTips{TipIndex}.ScanSizeY/SizeArray(2);
+                            Z(k) = TipImage(i,j);
                             k = k + 1;
                         end
                     end
@@ -2662,26 +11210,10 @@ classdef Experiment < matlab.mixin.Copyable
             end
             Sorted = sort(Cumulative);
             RadiusNM = mean(Sorted(1:round(Niter/2)));
-            obj.CantileverTip.RadiusNM = RadiusNM;
-            for i=1:obj.NumForceMaps
-                obj.FM{i}.TipRadius = RadiusNM;
-            end
-        end
-        
-        function show_tip_data(obj)
-            figure('Name','Cantilever Tip',...
-                'Units','normalized','Position',[0.7 0.1 0.3 0.8],'Color','w');
-            subplot(3,1,1)
-            surf(obj.CantileverTip.data,'LineStyle','none','FaceLighting','gouraud','FaceColor','interp')
-            light('Style','local')
-            subplot(3,1,2)
-            plot(1:length(obj.CantileverTip.ProjArea),obj.CantileverTip.ProjArea)
-            xlabel('Indentation Depth [nm]')
-            ylabel('Projected Area [m^2]')
-            subplot(3,1,3)
-            plot(1:30,obj.CantileverTip.ProjArea(1:30))
-            xlabel('Typical Indentation Depth [nm]')
-            ylabel('Projected Area [m^2]')
+%             obj.CantileverTip.RadiusNM = RadiusNM;
+%             for i=1:obj.NumForceMaps
+%                 obj.FM{i}.TipRadius = RadiusNM;
+%             end
         end
         
         function check_for_new_host(obj)
@@ -2712,7 +11244,7 @@ classdef Experiment < matlab.mixin.Copyable
             
             Methods = false(6,1);
             Methods(DefaultOption) = true;
-            ChosenMethod = obj.reference_slope_parser_gui(Methods);
+            [ChosenMethod, AppRetSwitch] = obj.reference_slope_parser_gui(Methods);
             Methods = false(6,1);
             Methods(ChosenMethod) = true;
             
@@ -2722,6 +11254,7 @@ classdef Experiment < matlab.mixin.Copyable
             obj.ReferenceSlopeFlag.FromArea = Methods(4);
             obj.ReferenceSlopeFlag.AutomaticFibril = Methods(5);
             obj.ReferenceSlopeFlag.Automatic = Methods(6);
+            obj.ReferenceSlopeFlag.AppRetSwitch = AppRetSwitch;
             
             % Process all the RefSlope-Methods that can be done frontloaded
             if obj.ReferenceSlopeFlag.SetAllToValue
@@ -2736,10 +11269,10 @@ classdef Experiment < matlab.mixin.Copyable
                 end
             elseif obj.ReferenceSlopeFlag.FromArea
                 for i=1:obj.NumForceMaps
-                    obj.FM{i}.RefSlopeMask = obj.FM{i}.create_mask_general;
+                    Mask = obj.FM{i}.create_mask_general;
+                    obj.FM{i}.calculate_reference_slope_from_area(Mask)
                 end
             end
-            
         end
         
         function reference_slope_calculator(obj,Index)
@@ -2780,14 +11313,14 @@ classdef Experiment < matlab.mixin.Copyable
                     obj.FM{i}.HasRefSlope = true;
                 end
             elseif obj.ReferenceSlopeFlag.AutomaticFibril
-                Mask = ~obj.FM{i}.FibMask;
-                obj.FM{i}.calculate_reference_slope_from_area(Mask)
+                Mask = obj.FM{i}.BackgroundMask;
+                obj.FM{i}.calculate_reference_slope_from_area(Mask,obj.ReferenceSlopeFlag.AppRetSwitch)
             elseif obj.ReferenceSlopeFlag.Automatic
                 obj.FM{i}.create_automatic_background_mask(.8)
                 Mask = obj.FM{i}.BackgroundMask;
-                obj.FM{i}.calculate_reference_slope_from_area(Mask)
+                obj.FM{i}.calculate_reference_slope_from_area(Mask,obj.ReferenceSlopeFlag.AppRetSwitch)
             elseif obj.ReferenceSlopeFlag.FromArea
-                obj.FM{i}.calculate_reference_slope_from_area(obj.FM{i}.RefSlopeMask)
+                obj.FM{i}.calculate_reference_slope_from_area(obj.FM{i}.RefSlopeMask,obj.ReferenceSlopeFlag.AppRetSwitch)
             end
         end
         
@@ -2922,7 +11455,16 @@ classdef Experiment < matlab.mixin.Copyable
         end
         
         function initialize_flags(obj)
-            
+                
+            NFM = obj.NumForceMaps;
+                obj.SMFSFlagDown.SelectFM = false(NFM,1);
+                obj.SMFSFlagDown.PropertiesParameters = false(NFM,1);
+                obj.SMFSFlagDown.Preprocessed = false(NFM,1);
+                obj.SMFSFlagDown.Presorted = false(NFM,1);
+                obj.SMFSFlagDown.AnalysedPreSelected = false(NFM,1);
+                obj.SMFSFlagDown.AnalysedPostSelected = false(NFM,1);
+                obj.SMFSFlagDown.NumForceCurves = false(NFM,1);
+
             if isempty(obj.FMFlag)
                 NFM = obj.NumForceMaps;
                 obj.FMFlag.FibrilAnalysis = false(NFM,1);
@@ -2932,9 +11474,16 @@ classdef Experiment < matlab.mixin.Copyable
                 NSPM = obj.NumSurfacePotentialMaps;
                 obj.SPMFlag.FibrilAnalysis = false(NSPM,1);
                 obj.SPMFlag.Grouping = false;
+                % SMFSFlag
                 obj.SMFSFlag.SelectFM = false(NFM,1);
+                obj.SMFSFlag.PropertiesParameters = false(NFM,1);               
                 obj.SMFSFlag.Preprocessed = false(NFM,1);
+                obj.SMFSFlag.Presorted = false(NFM,1);
+                obj.SMFSFlag.AnalysedPreSelected = false(NFM,1);
+                obj.SMFSFlag.AnalysedPostSelected = false(NFM,1);
+                obj.SMFSFlag.NumForceCurves = false(NFM,1);
                 
+                obj.DebugFlag.Plot= false(NFM,1);
                 obj.CantileverTipFlag = false;
                 if obj.NumCantileverTips > 0
                     obj.CantileverTipFlag = true;
@@ -2969,7 +11518,12 @@ classdef Experiment < matlab.mixin.Copyable
                 obj.SPMFlag.FibrilAnalysis(end+1:NSPM) = false(DiffSPM,1);
                 obj.SPMFlag.Grouping = false;
                 obj.SMFSFlag.SelectFM(end+1:NFM) = false(DiffFM,1);
+                obj.SMFSFlag.PropertiesParameters = false(DiffFM,1);  
                 obj.SMFSFlag.Preprocessed(end+1:NFM) = false(DiffFM,1);
+                obj.SMFSFlag.Presorted(end+1:NFM) = false(DiffFM,1);
+                obj.SMFSFlag.AnalysedPreSelected = false(DiffFM,1);
+                obj.SMFSFlag.AnalysedPostSelected = false(DiffFM,1);
+
                 
                 obj.CantileverTipFlag = false;
                 if obj.NumCantileverTips > 0
@@ -3045,10 +11599,14 @@ classdef Experiment < matlab.mixin.Copyable
                     cd(obj.ExperimentFolder);
                     
                     obj.write_to_log_file('Date and Time',datestr(now,0))
-                    obj.write_to_log_file('Branch',GitInfo.branch)
-                    obj.write_to_log_file('Hash of current commit',GitInfo.hash)
-                    obj.write_to_log_file('Remote',GitInfo.remote)
-                    obj.write_to_log_file('URL',GitInfo.url)
+                    if isempty(GitInfo)
+                        obj.write_to_log_file('GitHub Error','Could not determine GitInfo')
+                    else
+                        obj.write_to_log_file('Branch',GitInfo.branch)
+                        obj.write_to_log_file('Hash of current commit',GitInfo.hash)
+                        obj.write_to_log_file('Remote',GitInfo.remote)
+                        obj.write_to_log_file('URL',GitInfo.url)
+                    end
                 elseif isequal(lower(StartEnd),'end')
                     obj.write_to_log_file('Analysis ended successfully',':D')
                     obj.CurrentLogFile = [];
@@ -3166,7 +11724,7 @@ classdef Experiment < matlab.mixin.Copyable
             fclose(fid);
         end
         
-        function Out = reference_slope_parser_gui(Methods)
+        function [Out, AppRetSwitch] = reference_slope_parser_gui(Methods)
             % Create figure
             left = 0.3;
             bottom = 0.4;
@@ -3176,7 +11734,7 @@ classdef Experiment < matlab.mixin.Copyable
                 'toolbar','none','menu','none');
             
             h.bg = uibuttongroup('Visible','off',...
-                  'Position',[0.1 0.15 0.8 0.8]);
+                  'Position',[0.1 0.15 0.5 0.8]);
             
             % Create checkboxes
             c(1) = uicontrol(h.bg,'style','radiobutton','units','normalized',...
@@ -3196,6 +11754,18 @@ classdef Experiment < matlab.mixin.Copyable
             
             h.bg.Visible = 'on';
             
+            
+            h.bgAR = uibuttongroup('Visible','off',...
+                  'Position',[0.65 0.15 0.3 0.8]);
+            
+            % Create checkboxes
+            cAR(1) = uicontrol(h.bgAR,'style','radiobutton','units','normalized',...
+                'position',[0.05 0.6 0.9 1/7],'string','From Approach');
+            cAR(2) = uicontrol(h.bgAR,'style','radiobutton','units','normalized',...
+                'position',[0.05 0.3 0.9 1/7],'string','From Retract');
+            
+            h.bgAR.Visible = 'on';
+            
             % Create OK pushbutton
             h.p = uicontrol('style','pushbutton','units','normalized',...
                 'position',[0.4 0.05 0.2 0.1],'string','OK',...
@@ -3212,12 +11782,15 @@ classdef Experiment < matlab.mixin.Copyable
                 vals = get(c,'Value');
                 checked = find([vals{:}]);
                 Out = checked;
+                valsAR = get(cAR,'Value');
+                checkedAR = find([valsAR{:}]);
+                AppRetSwitch = checkedAR - 1;
                 close(h.f)
             end
             uiwait(h.f)
         end
         
-        function [FileTypes,OutStruct,IsValid] = constructor_user_input_parser(ExperimentName,OS)
+        function [FileTypes,OutStruct,IsValid,BigData] = constructor_user_input_parser(ExperimentName,OS)
             
             IsValid = false;
             OutStruct = struct('FullFile',{cell(1,1),cell(1,1),cell(1,1),cell(1,1),cell(1,1)});
@@ -3282,6 +11855,10 @@ classdef Experiment < matlab.mixin.Copyable
             c(15) = uicontrol(h.f,'style','pushbutton','units','normalized',...
                 'position',[.15 .16 .1 .05],'string','Delete Selected',...
                 'Callback',@delete_selected);
+            c(16) = uicontrol(h.f,'style','checkbox','units','normalized',...
+                'position',[.3 .025 .2 .05],'string','Big Data mode',...
+                'tooltip','Recomme2nded when processing >~100000 force curves',...
+                'FontSize',18);
             
             HeightPos = [.82 .64 .46 .28 .1];
             
@@ -3305,9 +11882,9 @@ classdef Experiment < matlab.mixin.Copyable
                 DropListener(jAxis, ... % The component to be observed
                     'DropFcn', @(s, e)onDrop(h.f, s, e)); % Function to call on drop operation
                 h.DragNDrop = uicontrol(h.f,'style','text','units','normalized',...
-                    'position',[.3 .025 .65 .05],...
-                    'string','Drag and Drop files into boxes (excl. to Windows and Linux) or load from browser',...
-                    'FontSize',18);
+                    'position',[.5 .025 .5 .05],...
+                    'string',sprintf('Drag and Drop files into boxes\n (excl. to Windows and Linux) or load from browser'),...
+                    'FontSize',16);
 %             end
             
             % Create OK pushbutton
@@ -3335,6 +11912,7 @@ classdef Experiment < matlab.mixin.Copyable
                     end
                 end
                 IsValid = true;
+                BigData = c(16).Value;
                 close(h.f)
             end
             
@@ -3370,7 +11948,7 @@ classdef Experiment < matlab.mixin.Copyable
                                 (isequal(FileExtension,'jpk-force-map') || isequal(FileExtension,'jpk-qi-data'))
                             % All Good
                         elseif ((Index == 3) || (Index == 5)) &&...
-                                (isequal(FileExtension,'jpk'))
+                                (isequal(FileExtension,'jpk') || isequal(FileExtension,'jpk-qi-image'))
                             % All Good
                         elseif (Index == 4)&&...
                                 (isequal(FileExtension,'sdf'))
@@ -3443,16 +12021,16 @@ classdef Experiment < matlab.mixin.Copyable
                 switch ButtonPos(2)
                     case .16
                         Index = 5;
-                        AllowedFiles = {'*.jpk',...
-                            'Valid Types (*.jpk)'};
+                        AllowedFiles = {'*.jpk;*.jpk-qi-image',...
+                            'Valid Types (*.jpk,*.jpk-qi-image)'};
                     case .34
                         Index = 4;
                         AllowedFiles = {'*.sdf',...
                             'Valid Types (*.sdf)'};
                     case .53
                         Index = 3;
-                        AllowedFiles = {'*.jpk',...
-                            'Valid Types (*.jpk)'};
+                        AllowedFiles = {'*.jpk;*.jpk-qi-image',...
+                            'Valid Types (*.jpk,*.jpk-qi-image)'};
                     case .7
                         Index = 2;
                         AllowedFiles = {'*.jpk-force-map;*.jpk-qi-data',...
@@ -3509,6 +12087,7 @@ classdef Experiment < matlab.mixin.Copyable
                 
                 
                 set(h.ListBox(Index),'String',NewFiles)
+                OutStruct(Index).FullFile
             end
             
             function delete_selected(varargin)
