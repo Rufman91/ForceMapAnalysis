@@ -4523,7 +4523,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
             
             clear tline;
             frewind(FileID);
-            B=strfind(A,'vDeflection');
+            B=regexp(A,'lcd-info\.\d+\.channel\.name=vDeflection');
             tline = A(B:end);
             vDefNum = regexp(tline,exp1,'match','once');
             
@@ -5268,7 +5268,9 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
                                 fprintf('Dynamically adjusting MiniBatchSize = %i\n',obj.MiniBatchSize)
                                 HasFailed = true;
                             otherwise
-                                rethrow(ME)
+                                obj.MiniBatchSize = ceil(obj.MiniBatchSize*3/4);
+                                fprintf('Dynamically adjusting MiniBatchSize = %i\n',obj.MiniBatchSize)
+                                HasFailed = true;
                         end
                     end
                 end
@@ -5302,7 +5304,11 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
             if obj.BigDataFlag
                 if obj.PythonLoaderFlag
                     TempFolderName = 'DataStore';
-                    mkdir(DataFolder,TempFolderName);
+                    % Check if the directory already exists
+                    if ~exist(fullfile(DataFolder, TempFolderName), 'dir')
+                        % Create the directory if it does not exist
+                        mkdir(DataFolder, TempFolderName);
+                    end
                     TempFolder = fullfile(DataFolder,TempFolderName);
                 else
                     TempFolderName = sprintf('FM_DataStore_%s',obj.ID);
