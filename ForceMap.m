@@ -5268,7 +5268,9 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
                                 fprintf('Dynamically adjusting MiniBatchSize = %i\n',obj.MiniBatchSize)
                                 HasFailed = true;
                             otherwise
-                                rethrow(ME)
+                                obj.MiniBatchSize = ceil(obj.MiniBatchSize*3/4);
+                                fprintf('Dynamically adjusting MiniBatchSize = %i\n',obj.MiniBatchSize)
+                                HasFailed = true;
                         end
                     end
                 end
