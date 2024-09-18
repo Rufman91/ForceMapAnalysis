@@ -84,7 +84,7 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & dynam
                 Preprocess = true;
             end
             
-            obj. CMap = obj.define_afm_color_map(0);
+            obj.CMap = obj.define_afm_color_map(0);
             
             obj.initialize_flags
             
