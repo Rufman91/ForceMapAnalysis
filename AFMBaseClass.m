@@ -9,6 +9,7 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
         HostOS = ''         % Operating System
         HostName = ''       % Name of hosting system
         FileType = 'Image'
+        NHF_FileInfo = []
         ScanSizeX = []          % Size of imaged window in X-direction
         ScanSizeY = []           % Size of imaged window in Y-direction
         ScanAngle = 0   % in degrees (°)
@@ -334,7 +335,7 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             if isequal(obj.FileType, 'quantitative-imaging-map')
                 obj.Map2List = k_mat';
                 obj.List2Map = [j_mat(:), i_mat(:)];
-            elseif isequal(obj.FileType, 'force-scan-map')
+            elseif isequal(obj.FileType, 'force-scan-map') || isequal(obj.FileType, 'nhf-spectroscopy')
                 for i=1:obj.NumPixelsX
                     if ~mod(i,2)
                         for j=1:obj.NumPixelsY
@@ -534,7 +535,11 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             % Write to Channel
             [~,Index] = obj.get_channel(Channel.Name);
             if isempty(Index)
-                obj.Channel(end+1) = Channel;
+                if isempty(obj.Channel)
+                    obj.Channel = Channel;
+                else
+                    obj.Channel(end+1) = Channel;
+                end
             else
                 if ~ReplaceSameNamed
                     if ~isempty(regexp(Channel.Name(end-4:end),'.\(\d\d\)','once'))
@@ -560,6 +565,24 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
                 obj.Channel(i).OriginY = OriginY;
                 obj.Channel(i).ScanAngle = ScanAngle;
             end
+        end
+        
+        function preprocess_image(obj,AlternativeChannelName)
+            
+            if nargin < 2
+                AlternativeChannelName = '';
+            end
+            
+            Map = obj.flatten_image_by_vertical_rov(AlternativeChannelName);
+            Map = AFMImage.find_and_replace_outlier_lines(Map,10);
+            
+            % write to Channel
+            Processed = obj.create_standard_channel(Map,'Processed','m');
+            
+            obj.add_channel(Processed,true);
+            
+            obj.create_pixel_difference_channel;
+            
         end
         
         function create_pixel_difference_channel(obj,useSlowScanDirBool)
@@ -3212,6 +3235,79 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             OutSegment = SegmentStruct(Index);
         end
         
+        function [AttributeValue,SegmentIndex,AttributeIndex] = nhf_get_segment_attribute_value(GroupInfo,GroupName,AttributeName)
+            
+            i = 1;
+            SegmentIndex = [];
+            while i<=numel(GroupInfo.Groups) && isempty(SegmentIndex)
+                Attributes = GroupInfo.Groups(i).Attributes;
+                if isequal(Attributes(find(contains({Attributes.Name},'segment_name'))).Value,GroupName)
+                    SegmentIndex = i;
+                end
+                i = i + 1;
+            end
+            
+            Attributes = GroupInfo.Groups(SegmentIndex).Attributes;
+            
+            AttributeIndex = find(contains({Attributes.Name},AttributeName));
+            AttributeValue = Attributes(AttributeIndex).Value;
+            
+        end
+        
+        function [Value, Unit] = nhf_get_json_name_value(ConfigString, Name)
+            
+            % Initialize output variables
+            Value = [];
+            Unit = [];
+            
+            % Escape periods in the name for regex matching, since periods have a special meaning
+            Name = strrep(Name, '.', '\.');
+            
+            % Create a regular expression pattern to find the 'value' field associated with the given name
+            valuePattern = sprintf('"%s":\\{"value":"(.*?)"', Name);
+            
+            % Find the value using the regex pattern
+            valueMatch = regexp(ConfigString, valuePattern, 'tokens', 'once');
+            
+            if ~isempty(valueMatch)
+                Value = valueMatch{1};  % Extract the value from the match
+            else
+                error('Value for field "%s" not found in the configuration string.', Name);
+            end
+            
+            % Create a regular expression pattern to find the 'unit' field associated with the given name
+            unitPattern = sprintf('"%s":\\{"value":".*?","unit":"(.*?)"', Name);
+            
+            % Find the unit using the regex pattern
+            unitMatch = regexp(ConfigString, unitPattern, 'tokens', 'once');
+            
+            if ~isempty(unitMatch)
+                Unit = unitMatch{1};  % Extract the unit from the match
+            else
+                Unit = '';  % If no unit is found, return an empty string
+            end
+        end
+        
+        function [DatasetIndex,AttributeIndex] = nhf_search_dataset_with_matching_attribute_name_value(Dataset,Name,Value)
+            
+            TestName = [];
+            TestValue = [];
+            i = 1;
+            while i <= numel(Dataset) && (~isequal(TestName,Name) && ~isequal(TestValue,Value))
+                j = 1;
+                while j <= numel(Dataset(i).Attributes) && ~(isequal(TestName,Name) && isequal(TestValue,Value))
+                    TestName = Dataset(i).Attributes(j).Name;
+                    TestValue = Dataset(i).Attributes(j).Value;
+                    j = j + 1;
+                end
+                i = i + 1;
+            end
+            
+            DatasetIndex = i-1;
+            AttributeIndex = j-1;
+            
+        end
+
     end
     methods
         % auxiliary methods
@@ -3646,6 +3742,29 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             
         end
         
+        function [AttributeValue,Group_UUID,GroupIndex,AttributeIndex] = nhf_get_group_attribute_value(obj,GroupName,AttributeName)
+            
+            if isempty(obj.NHF_FileInfo)
+                error('Requested AFMBaseClass Instance is not derived from an .nhf file')
+            end
+            
+            i = 1;
+            GroupIndex = [];
+            while i<=numel(obj.NHF_FileInfo.Groups) && isempty(GroupIndex)
+                Attributes = obj.NHF_FileInfo.Groups(i).Attributes;
+                if isequal(Attributes(find(contains({Attributes.Name},'group_type'))).Value,GroupName)
+                    GroupIndex = i;
+                end
+                i = i + 1;
+            end
+            
+            Attributes = obj.NHF_FileInfo.Groups(GroupIndex).Attributes;
+            
+            Group_UUID = Attributes(find(contains({Attributes.Name},'group_uuid'))).Value;
+            AttributeIndex = find(contains({Attributes.Name},AttributeName));
+            AttributeValue = Attributes(AttributeIndex).Value;
+            
+        end
         
     end
 end

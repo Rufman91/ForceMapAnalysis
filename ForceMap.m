@@ -268,7 +268,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
             obj.check_for_new_host
             
             % Unpack jpk-force-map with according to data loader choice
-            obj.unpack_jpk_force_map(MapFullFile,DataFolder);
+            obj.unpack_force_map_data(MapFullFile,DataFolder);
             
             Index = regexp(obj.ID,'(?<=\-).','all');
             LoadMessage = sprintf('loading data into ForceMap Nr.%s',obj.ID(Index(end):end));
@@ -279,8 +279,19 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
             obj.SelectedCurves = true(obj.NCurves,1);
             obj.CorruptedCurves = false(obj.NCurves,1);
             
+            obj.construct_list_to_map_relations
+            
             try
-                obj.read_jpk_images_from_files
+                if isequal(obj.FileType,'nhf-spectroscopy')
+                    obj.nhf_create_map_from_spectroscopy_data('Position Z','Height (measured)','m')
+                    obj.preprocess_image;
+                    Processed = obj.get_channel('Processed');
+                    obj.HeightMap = Processed.Image;
+                    obj.nhf_create_map_from_spectroscopy_data('Deflection','Maximum Force','N')
+                    obj.nhf_create_map_from_spectroscopy_data('Lateral','Lateral Force','N')
+                else
+                    obj.read_jpk_images_from_files
+                end
             catch ME
                 warning(['Could not read standard Image Channels from file ' MapFullFile])
             end
@@ -297,7 +308,6 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
             obj.ExclMask = logical(ones(obj.NumPixelsX,obj.NumPixelsY));
             obj.FibMask = logical(zeros(obj.NumPixelsX,obj.NumPixelsY));
             
-            obj.construct_list_to_map_relations
             try
                 obj.create_pixel_difference_channel
                 obj.set_channel_positions(obj.OriginX,obj.OriginY,obj.ScanAngle);
@@ -1272,7 +1282,6 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
             obj.CP = obj.CP_HardSurface;
             obj.CPFlag.HardSurface = 1;
         end
-        
         
         function estimate_cp_curve_origin(obj)
             % contact point estimation for force curves assuming the curve
@@ -5299,7 +5308,9 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
             
         end
         
-        function unpack_jpk_force_map(obj,MapFullFile,DataFolder)
+        function unpack_force_map_data(obj,MapFullFile,DataFolder)
+            
+            FileExtension = regexp(MapFullFile, '\.[^.]+$', 'match', 'once');
             
             if obj.BigDataFlag
                 if obj.PythonLoaderFlag
@@ -5364,31 +5375,49 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
                 copyfile(MapFullFile,TempFolder)
                 Split = split(MapFullFile,filesep);
                 obj.RawDataFilePath = fullfile(TempFolder,Split{end});
-                obj.load_zipped_files_with_python
+                switch FileExtension
+                    case '.nhf'
+                        obj.NHF_FileInfo = h5info(MapFullFile);
+                    case {'.jpk-qi-data','.jpk-force-map'}
+                        obj.load_zipped_files_with_python
+                end
             end
             
             
             Strings = split(MapFullFile,filesep);
-            %%% Define the search expressions
-            % Comment: JPK includes a few attributes of a measurement into the name:
-            % The name attachement is the same for all experiments:
-            % 'Typedname'+'-'+'data'+'-'+'year'+'.'+'months'+'.'+'day'+'-hour'+'.'+'minute'+'.'+'second'+'.'+'thousandths'+'.'+'jpk file extension'
-            exp1 = '.*(?=\-data)'; % Finds the typed-in name of the user during the AFM experiment
-            exp2 = '\d{4}\.\d{2}\.\d{2}'; % Finds the date
-            exp3 = '\d{2}\.\d{2}\.\d{2}\.\d{3}'; % Finds the time
-            obj.Name = regexp(Strings(end,1), exp1, 'match');
-            obj.Name = char(obj.Name{1});
-            if isequal(obj.Name,'')
-                exp4 = '.*(?=.jpk)';
-                obj.Name = regexp(Strings(end,1), exp4, 'match');
-                obj.Name = char(obj.Name{1});
+            switch FileExtension
+                case '.nhf'
+                    exp1 = '.*'; % Finds the typed-in name of the user during the AFM experiment
+                    NameCell = regexp(Strings(end,1), exp1, 'match');
+                    obj.Name = NameCell{1}{1};
+                    DateTime = obj.nhf_get_group_attribute_value('spectroscopy','created');
+                    parts = regexp(DateTime, '([0-9-]+)T([0-9:.]+)Z', 'tokens');
+                    obj.Date = parts{1}{1};
+                    obj.Time = parts{1}{2};
+                    obj.Time=strrep(obj.Time,'.','-'); % Remove dots in obj.Time
+                    obj.Time=strrep(obj.Time,':','-'); % Remove dots in obj.Time
+                case {'.jpk-force-map','.jpk-qi-data'}
+                    %%% Define the search expressions
+                    % Comment: JPK includes a few attributes of a measurement into the name:
+                    % The name attachement is the same for all experiments:
+                    % 'Typedname'+'-'+'data'+'-'+'year'+'.'+'months'+'.'+'day'+'-hour'+'.'+'minute'+'.'+'second'+'.'+'thousandths'+'.'+'jpk file extension'
+                    exp1 = '.*(?=\-data)'; % Finds the typed-in name of the user during the AFM experiment
+                    exp2 = '\d{4}\.\d{2}\.\d{2}'; % Finds the date
+                    exp3 = '\d{2}\.\d{2}\.\d{2}\.\d{3}'; % Finds the time
+                    obj.Name = regexp(Strings(end,1), exp1, 'match');
+                    obj.Name = char(obj.Name{1});
+                    if isequal(obj.Name,'')
+                        exp4 = '.*(?=.jpk)';
+                        obj.Name = regexp(Strings(end,1), exp4, 'match');
+                        obj.Name = char(obj.Name{1});
+                    end
+                    obj.Date = regexp(Strings(end,1), exp2, 'match');
+                    obj.Date = char(obj.Date{1});
+                    obj.Time = regexp(Strings(end,1), exp3, 'match');
+                    obj.Time = char(obj.Time{1});
+                    obj.Date=strrep(obj.Date,'.','-'); % Remove dots in obj.Date
+                    obj.Time=strrep(obj.Time,'.','-'); % Remove dots in obj.Time
             end
-            obj.Date = regexp(Strings(end,1), exp2, 'match');
-            obj.Date = char(obj.Date{1});
-            obj.Time = regexp(Strings(end,1), exp3, 'match');
-            obj.Time = char(obj.Time{1});
-            obj.Date=strrep(obj.Date,'.','-'); % Remove dots in obj.Date
-            obj.Time=strrep(obj.Time,'.','-'); % Remove dots in obj.Time
             
             obj.Folder = [DataFolder replace(obj.Name,'.','') '-' obj.ID];
             obj.DataStoreFolder = TempFolder;
@@ -5396,8 +5425,60 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
         end
         
         function read_in_header_properties(obj)
-            % Check for jpk-software version and get important ForceMap
+            % Check for file type and get important ForceMap
             % properties
+            
+            FileExtension = regexp(obj.RawDataFilePath, '\.[^.]+$', 'match', 'once');
+            
+            switch FileExtension
+                case {'.jpk-force-map','.jpk-qi-data'}
+                obj.jpk_read_in_header_properties;
+                case '.nhf'
+                obj.nhf_read_in_header_properties;
+            end
+            
+        end
+        
+        function nhf_read_in_header_properties(obj)
+            
+            obj.FileType = 'nhf-spectroscopy';
+            
+            obj.FileVersion = obj.nhf_get_group_attribute_value('spectroscopy','software_version');
+            RectAxisSize = obj.nhf_get_group_attribute_value('spectroscopy','rect_axis_size');
+            obj.NCurves = double(RectAxisSize(1)*RectAxisSize(2));
+            obj.NumPixelsX = double(RectAxisSize(1));
+            obj.NumPixelsY = double(RectAxisSize(2));
+            [RectAxisRange,~,GroupIndex] = obj.nhf_get_group_attribute_value('spectroscopy','rect_axis_range');
+            obj.ScanSizeX = double(RectAxisRange(1));
+            obj.ScanSizeY = double(RectAxisRange(2));
+            obj.SpringConstant = double(obj.nhf_get_group_attribute_value('spectroscopy','spm_probe_calibration_spring_constant'));
+            obj.Sensitivity = double(obj.nhf_get_group_attribute_value('spectroscopy','spm_probe_calibration_deflection_sensitivity'));
+            obj.TipRadius = double(obj.nhf_get_group_attribute_value('spectroscopy','spm_probe_nominal_tip_radius'));
+            obj.Medium = obj.nhf_get_group_attribute_value('spectroscopy','measurement_environment');
+            obj.ScanAngle = double(obj.nhf_get_group_attribute_value('spectroscopy','rect_rotation'));
+            
+            JSONConfigApp = AFMBaseClass.nhf_get_segment_attribute_value(...
+                obj.NHF_FileInfo.Groups(GroupIndex),'Advance to Setpoint 1','segment_configuration');
+            JSONConfigRet = AFMBaseClass.nhf_get_segment_attribute_value(...
+                obj.NHF_FileInfo.Groups(GroupIndex),'Retract 1','segment_configuration');
+            JSONConfigHold = AFMBaseClass.nhf_get_segment_attribute_value(...
+                obj.NHF_FileInfo.Groups(GroupIndex),'Wait 1','segment_configuration');
+            
+            obj.MaxPointsPerCurve =  double(string(AFMBaseClass.nhf_get_json_name_value(JSONConfigApp,'datapoints')));
+            obj.NumSegments = numel(obj.NHF_FileInfo.Groups(GroupIndex).Groups);
+            obj.HoldingTime = double(string(AFMBaseClass.nhf_get_json_name_value(JSONConfigHold,'duration')));
+            obj.ExtendTime = double(string(AFMBaseClass.nhf_get_json_name_value(JSONConfigApp,'duration')));
+            obj.ExtendZLength =  double(string(AFMBaseClass.nhf_get_json_name_value(JSONConfigApp,'length')));
+            obj.RetractTime = double(string(AFMBaseClass.nhf_get_json_name_value(JSONConfigRet,'duration')));
+            obj.RetractZLength =  double(string(AFMBaseClass.nhf_get_json_name_value(JSONConfigRet,'length')));
+            obj.ExtendVelocity =  double(string(AFMBaseClass.nhf_get_json_name_value(JSONConfigApp,'speed')));
+            obj.RetractVelocity =  double(string(AFMBaseClass.nhf_get_json_name_value(JSONConfigRet,'speed')));
+            obj.HHType = 'Position Z';
+            obj.Setpoint =  double(string(AFMBaseClass.nhf_get_json_name_value(JSONConfigApp,'setpoint')))...
+                *obj.Sensitivity*obj.SpringConstant;
+        end
+        
+        function jpk_read_in_header_properties(obj)
             
             if obj.PythonLoaderFlag
                 current = what;
@@ -6014,23 +6095,32 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
                 if obj.CorruptedCurves(CurveNumber)
                     error('skip this one')
                 end
-                if obj.PythonLoaderFlag
-                    TempHeight = obj.load_single_curve_channel_data_with_python(string(CurveNumber-1),string(AppRetSwitch),obj.HHType);
-                    OutvDef = obj.load_single_curve_channel_data_with_python(string(CurveNumber-1),string(AppRetSwitch),'vDeflection');
-                else
-                    [TempHeight,OutvDef,SC,Sens]=...
-                        obj.writedata(HeaderFileDirectory,SegmentHeaderFileDirectory,...
-                        HeightDataDirectory,vDefDataDirectory,obj.HHType);
-                end
-                if isempty(obj.Sensitivity)
-                    obj.Sensitivity = Sens;
-                end
-                if isempty(obj.SpringConstant)
-                    obj.SpringConstant = SC;
-                end
                 
-                OutHeight = -TempHeight;
-                OutvDef = OutvDef.*obj.SpringConstant;
+                if isequal(obj.FileType,'nhf-spectroscopy')
+                    
+                    TempHeight = obj.nhf_load_single_curve_channel_data(CurveNumber,AppRetSwitch,obj.HHType);
+                    OutHeight = -TempHeight;
+                    OutvDef = obj.nhf_load_single_curve_channel_data(CurveNumber,AppRetSwitch,'Deflection');
+                    
+                elseif isequal(obj.FileType,'jpk-force-map') || isequal(obj.FileType,'jpk-qi-data')
+                    if obj.PythonLoaderFlag
+                        TempHeight = obj.load_single_curve_channel_data_with_python(string(CurveNumber-1),string(AppRetSwitch),obj.HHType);
+                        OutvDef = obj.load_single_curve_channel_data_with_python(string(CurveNumber-1),string(AppRetSwitch),'vDeflection');
+                    else
+                        [TempHeight,OutvDef,SC,Sens]=...
+                            obj.writedata(HeaderFileDirectory,SegmentHeaderFileDirectory,...
+                            HeightDataDirectory,vDefDataDirectory,obj.HHType);
+                    end
+                    if isempty(obj.Sensitivity)
+                        obj.Sensitivity = Sens;
+                    end
+                    if isempty(obj.SpringConstant)
+                        obj.SpringConstant = SC;
+                    end
+                    
+                    OutHeight = -TempHeight;
+                    OutvDef = OutvDef.*obj.SpringConstant;
+                end
                 
                 if AppRetSwitch==0 && BaselineCorrection==0 && TipHeightCorrection==0
                 elseif AppRetSwitch==1 && BaselineCorrection==0 && TipHeightCorrection==0
@@ -6133,6 +6223,140 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
             end
         end
         
+        function OutVector = nhf_load_single_curve_channel_data(obj,Index,Segment,ChannelName)
+            
+            if ~Segment
+                SegmentName = 'Advance to Setpoint 1';
+            else
+                SegmentName = 'Retract 1';
+            end
+            
+            [~,~,GroupIndex] = obj.nhf_get_group_attribute_value('spectroscopy','');
+            [~,SegmentIndex] = AFMBaseClass.nhf_get_segment_attribute_value(...
+                obj.NHF_FileInfo.Groups(GroupIndex),SegmentName,'segment_configuration');
+            
+            ChannelIndex = obj.nhf_search_dataset_with_matching_attribute_name_value(...
+                obj.NHF_FileInfo.Groups(GroupIndex).Groups(SegmentIndex).Datasets,'signal_name',ChannelName);
+            
+            BlockSizeID = obj.NHF_FileInfo.Groups(GroupIndex).Groups(SegmentIndex).Datasets(ChannelIndex).Attributes(...
+                find(contains({obj.NHF_FileInfo.Groups(GroupIndex).Groups(SegmentIndex).Datasets(ChannelIndex).Attributes.Name},'dataset_block_size_source'))).Value;
+            
+            ChunkingIndex = obj.nhf_search_dataset_with_matching_attribute_name_value(...
+                obj.NHF_FileInfo.Groups(GroupIndex).Groups(SegmentIndex).Datasets,'dataset_block_size_id',BlockSizeID);
+            
+            ChunkingData = h5read(obj.RawDataFilePath,...
+                ['/group_' sprintf('%04d',(GroupIndex - 1)) '/subgroup_' sprintf('%04d',(SegmentIndex - 1)) '/dataset_' sprintf('%04d',(ChunkingIndex - 1))]);
+            
+            ChunkIndizes = [1 ; cumsum(ChunkingData)]+1;
+            
+            Start = double(ChunkIndizes(Index));
+            Count = double(ChunkingData(Index));
+            
+            Data = h5read(obj.RawDataFilePath,...
+                ['/group_' sprintf('%04d',(GroupIndex - 1)) '/subgroup_' sprintf('%04d',(SegmentIndex - 1)) '/dataset_' sprintf('%04d',(ChannelIndex - 1))],...
+                Start,Count);
+            
+            % Calibrate Data
+            Data = obj.nhf_calibrate_channel_data(Data,GroupIndex,SegmentIndex,ChannelIndex);
+            
+            OutVector = Data;
+            %             OutVector = Data(ChunkIndizes(Index)+1:ChunkIndizes(Index+1));
+            %             OutVector = Data(ChunkIndizes(2:end)-Index);
+        end
+        
+        function [OutVector,ChunkIndizes,ChunkingData] = nhf_load_full_channel_data(obj,Segment,ChannelName)
+            
+            if ~Segment
+                SegmentName = 'Advance to Setpoint 1';
+            else
+                SegmentName = 'Retract 1';
+            end
+            
+            [~,~,GroupIndex] = obj.nhf_get_group_attribute_value('spectroscopy','');
+            [~,SegmentIndex] = AFMBaseClass.nhf_get_segment_attribute_value(...
+                obj.NHF_FileInfo.Groups(GroupIndex),SegmentName,'segment_configuration');
+            
+            ChannelIndex = obj.nhf_search_dataset_with_matching_attribute_name_value(...
+                obj.NHF_FileInfo.Groups(GroupIndex).Groups(SegmentIndex).Datasets,'signal_name',ChannelName);
+            
+            BlockSizeID = obj.NHF_FileInfo.Groups(GroupIndex).Groups(SegmentIndex).Datasets(ChannelIndex).Attributes(...
+                find(contains({obj.NHF_FileInfo.Groups(GroupIndex).Groups(SegmentIndex).Datasets(ChannelIndex).Attributes.Name},'dataset_block_size_source'))).Value;
+            
+            ChunkingIndex = obj.nhf_search_dataset_with_matching_attribute_name_value(...
+                obj.NHF_FileInfo.Groups(GroupIndex).Groups(SegmentIndex).Datasets,'dataset_block_size_id',BlockSizeID);
+            
+            ChunkingData = h5read(obj.RawDataFilePath,...
+                ['/group_' sprintf('%04d',(GroupIndex - 1)) '/subgroup_' sprintf('%04d',(SegmentIndex - 1)) '/dataset_' sprintf('%04d',(ChunkingIndex - 1))]);
+            
+            ChunkIndizes = [1 ; cumsum(ChunkingData)];
+            
+            Data = h5read(obj.RawDataFilePath,...
+                ['/group_' sprintf('%04d',(GroupIndex - 1)) '/subgroup_' sprintf('%04d',(SegmentIndex - 1)) '/dataset_' sprintf('%04d',(ChannelIndex - 1))]);
+            
+            % Calibrate Data
+            Data = obj.nhf_calibrate_channel_data(Data,GroupIndex,SegmentIndex,ChannelIndex);
+            
+            OutVector = Data;
+%             OutVector = Data(ChunkIndizes(Index)+1:ChunkIndizes(Index+1));
+%             OutVector = Data(ChunkIndizes(2:end)-Index);
+        end
+        
+        function nhf_create_map_from_spectroscopy_data(obj,ChannelName,FancyName,Unit)
+            
+            [Data,ChunkIndizes] = obj.nhf_load_full_channel_data(0,ChannelName);
+            
+            MapData = Data(ChunkIndizes(2:end));
+            
+            Image = obj.convert_data_list_to_map(MapData);
+            
+            ImageChannel = obj.create_standard_channel(Image,FancyName,Unit);
+            
+            obj.add_channel(ImageChannel);
+        end
+        
+        function Data = nhf_calibrate_channel_data(obj,Data,GroupIndex,SegmentIndex,ChannelIndex)
+            
+            [~,~,CalibrationIndex] = obj.nhf_get_group_attribute_value('calibration','');
+            CalibrationSource = 'signal_calibration_source';
+            
+            % How many Calibration steps?
+            NumCalibs = sum(contains({obj.NHF_FileInfo.Groups(GroupIndex).Groups(SegmentIndex).Datasets(ChannelIndex).Attributes.Name},CalibrationSource));
+            
+            if NumCalibs == 1
+                CalibSourceNames = {CalibrationSource};
+            else
+                for i=1:NumCalibs
+                    CalibSourceNames{i} = [CalibrationSource sprintf('_%d',i-1)];
+                end
+            end
+            
+            Data = double(Data);
+            for i=1:NumCalibs
+                CalibrationUUID = obj.NHF_FileInfo.Groups(GroupIndex).Groups(SegmentIndex).Datasets(ChannelIndex).Attributes(...
+                    find(contains({obj.NHF_FileInfo.Groups(GroupIndex).Groups(SegmentIndex).Datasets(ChannelIndex).Attributes.Name},CalibSourceNames{i}))).Value;
+                
+                % Find Calibration source
+                CalibDataIndex = obj.nhf_search_dataset_with_matching_attribute_name_value(obj.NHF_FileInfo.Groups(CalibrationIndex).Datasets,'signal_calibration_id',CalibrationUUID);
+                
+                MappingType = obj.NHF_FileInfo.Groups(CalibrationIndex).Datasets(CalibDataIndex).Attributes(...
+                    find(contains({obj.NHF_FileInfo.Groups(CalibrationIndex).Datasets(CalibDataIndex).Attributes.Name},'signal_mapping_type'))).Value;
+                
+                MappingParameters = obj.NHF_FileInfo.Groups(CalibrationIndex).Datasets(CalibDataIndex).Attributes(...
+                    find(contains({obj.NHF_FileInfo.Groups(CalibrationIndex).Datasets(CalibDataIndex).Attributes.Name},'signal_mapping_parameters'))).Value;
+                
+                switch MappingType
+                    case {'linear','linear_non_invertible'}
+                        Data = Data.*MappingParameters(1) + MappingParameters(2);
+                    case 'exponential'
+                        Data = MappingParameters(2).*exp((Data - MappingParameters(3))./MappingParameters(1));
+                    case 'logarithmic'
+                        Data = MappingParameters(1).*log(Data./MappingParameters(2)) + MappingParameters(3);
+                end
+                
+            end
+            
+        end
+        
         function initialize_flags(obj)
             % initialize all flags related to the ForceMap class
             
@@ -6189,13 +6413,30 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
         function temporary_data_load_in(obj,OnOffBool)
             
             if OnOffBool && obj.BigDataFlag
-                for i=1:obj.NCurves
-                    [obj.App{i},obj.HHApp{i}] = obj.get_force_curve_data(i,'AppRetSwitch',0,...
-                    'BaselineCorrection',0,'TipHeightCorrection',0,...
-                    'Sensitivity','original','Unit','N');
-                    [obj.Ret{i},obj.HHRet{i}] = obj.get_force_curve_data(i,'AppRetSwitch',1,...
-                    'BaselineCorrection',0,'TipHeightCorrection',0,...
-                    'Sensitivity','original','Unit','N');
+                if isequal(obj.FileType,'nhf-spectroscopy')
+                    [DefAppData,DefAppChunkIndizes,DefAppChunkSizes] = ...
+                        obj.nhf_load_full_channel_data(0,'Deflection');
+                    [HHAppData,HHAppChunkIndizes,HHAppChunkSizes] = ...
+                        obj.nhf_load_full_channel_data(0,'Position Z');
+                    [DefRetData,DefRetChunkIndizes,DefRetChunkSizes] = ...
+                        obj.nhf_load_full_channel_data(1,'Deflection');
+                    [HHRetData,HHRetChunkIndizes,HHRetChunkSizes] = ...
+                        obj.nhf_load_full_channel_data(1,'Position Z');
+                    for i=1:obj.NCurves
+                        obj.App{i} = DefAppData(DefAppChunkIndizes(i)+1:DefAppChunkIndizes(i+1));
+                        obj.HHApp{i} = -HHAppData(HHAppChunkIndizes(i)+1:HHAppChunkIndizes(i+1));
+                        obj.Ret{i} = DefRetData(DefRetChunkIndizes(i)+1:DefRetChunkIndizes(i+1));
+                        obj.HHRet{i} = -HHRetData(HHRetChunkIndizes(i)+1:HHRetChunkIndizes(i+1));
+                    end
+                else
+                    for i=1:obj.NCurves
+                        [obj.App{i},obj.HHApp{i}] = obj.get_force_curve_data(i,'AppRetSwitch',0,...
+                            'BaselineCorrection',0,'TipHeightCorrection',0,...
+                            'Sensitivity','original','Unit','N');
+                        [obj.Ret{i},obj.HHRet{i}] = obj.get_force_curve_data(i,'AppRetSwitch',1,...
+                            'BaselineCorrection',0,'TipHeightCorrection',0,...
+                            'Sensitivity','original','Unit','N');
+                    end
                 end
                 obj.BigDataFlag = 0;
             elseif ~OnOffBool
@@ -6252,6 +6493,11 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
             
             if nargin < 2
                 AskIfLoadDialogueBool = false;
+            end
+            
+            if isequal(obj.FileType,'nhf-spectroscopy')
+                IsLoaded = true;
+                return
             end
             
             if obj.PythonLoaderFlag && obj.BigDataFlag

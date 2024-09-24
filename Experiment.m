@@ -2032,12 +2032,17 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                     end
                     
                     waitbar(i/NLoop,h,sprintf('Processing Force Map %i/%i\nReading out data...',i,NLoop));
-                    
-                    if ~obj.KeepPythonFilesOpen && obj.PythonLoaderFlag && obj.BigDataFlag
-                        obj.load_python_files_to_memory(i,[])
-                    end
-                    if TemporaryLoadIn && obj.BigDataFlag
-                        obj.FM{i}.temporary_data_load_in(true);
+                    if isequal(obj.FM{i}.FileType,'nhf-spectroscopy')
+                        if TemporaryLoadIn && obj.BigDataFlag
+                            obj.FM{i}.temporary_data_load_in(true);
+                        end
+                    else
+                        if ~obj.KeepPythonFilesOpen && obj.PythonLoaderFlag && obj.BigDataFlag
+                            obj.load_python_files_to_memory(i,[])
+                        end
+                        if TemporaryLoadIn && obj.BigDataFlag
+                            obj.FM{i}.temporary_data_load_in(true);
+                        end
                     end
                     
                     waitbar(i/NLoop,h,sprintf('Processing Force Map %i/%i\nCreating and levelling Height Map',i,NLoop));
@@ -11415,7 +11420,9 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                         SplitName = split(TempTempFile{i},'.');
                         FileExtension = SplitName{end};
                         if ((Index == 1) || (Index == 2)) &&...
-                                (isequal(FileExtension,'jpk-force-map') || isequal(FileExtension,'jpk-qi-data'))
+                                (isequal(FileExtension,'jpk-force-map') ||...
+                                isequal(FileExtension,'jpk-qi-data') ||...
+                                isequal(FileExtension,'nhf'))
                             % All Good
                         elseif ((Index == 3) || (Index == 5)) &&...
                                 (isequal(FileExtension,'jpk') || isequal(FileExtension,'jpk-qi-image'))
@@ -11503,12 +11510,12 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                             'Valid Types (*.jpk,*.jpk-qi-image)'};
                     case .7
                         Index = 2;
-                        AllowedFiles = {'*.jpk-force-map;*.jpk-qi-data',...
-                            'Valid Types (*.jpk-force-map,*.jpk-qi-data)'};
+                        AllowedFiles = {'*.jpk-force-map;*.jpk-qi-data;*.nhf',...
+                            'Valid Types (*.jpk-force-map,*.jpk-qi-data,*.nhf)'};
                     case .88
                         Index = 1;
-                        AllowedFiles = {'*.jpk-force-map;*.jpk-qi-data',...
-                            'Valid Types (*.jpk-force-map,*.jpk-qi-data)'};
+                        AllowedFiles = {'*.jpk-force-map;*.jpk-qi-data;*.nhf',...
+                            'Valid Types (*.jpk-force-map,*.jpk-qi-data,*.nhf)'};
                 end
                 
                 current = what();

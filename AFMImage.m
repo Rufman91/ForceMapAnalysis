@@ -112,24 +112,6 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & dynam
             
         end
         
-        function preprocess_image(obj,AlternativeChannelName)
-            
-            if nargin < 2
-                AlternativeChannelName = '';
-            end
-            
-            Map = obj.flatten_image_by_vertical_rov(AlternativeChannelName);
-            Map = AFMImage.find_and_replace_outlier_lines(Map,10);
-            
-            % write to Channel
-            Processed = obj.create_standard_channel(Map,'Processed','m');
-            
-            obj.add_channel(Processed,true);
-            
-            obj.create_pixel_difference_channel;
-            
-        end
-        
         function deconvolute_cantilever_tip(obj,StepSize,ChannelName,Preprocessing)
             
             if nargin < 3
