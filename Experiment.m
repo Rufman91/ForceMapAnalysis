@@ -59,7 +59,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
         AssignedCantileverTips
     end
     
-    % SMFS related
+    % SM related
     properties
         SMFSFMParameters
         SMFSResults
@@ -1346,19 +1346,20 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             Vid.close
             close(Fig)
         end
+    end     
         
-        %% SMFS section
-               
+    methods  % method block concerning SM (single molecule) related data analysis 
+        
         function SM_initialize_arrays(obj)
             % Description: A function to initialize flags of the object which are used from various functions during an analysis.      
             % Required input variables:
             % obj
             
             %% Function body
-%             TableSize=[1 13];
-%             VarTypes = {'double','string','string','string','string','double','double','double','string','string','string','string','string'};
-%             VarNames = {'FM row number','FM ID','Name','Date','Time','Extend velocity','Retraction velocity','Holding time','Linker','Substrate','Medium','Chip cantilever number','Chipbox number'};
-%             obj.SMFSFMParameters=table('Size',TableSize,'VariableTypes',VarTypes,'VariableNames',VarNames);
+ %           TableSize=[1 13];
+ %           VarTypes = {'double','string','string','string','string','double','double','double','string','string','string','string','string'};
+ %           VarNames = {'FM row number','FM ID','Name','Date','Time','Extend velocity','Retraction velocity','Holding time','Linker','Substrate','Medium','Chip cantilever number','Chipbox number'};
+ %           obj.SMFSFMParameters=table('Size',TableSize,'VariableTypes',VarTypes,'VariableNames',VarNames);
 
             TableSize=[1 9];
             VarTypes = {'double','string','string','string','string','string','double','double','double'};
@@ -1388,33 +1389,33 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
 %             obj.SMFSWilcoxonSnapInLength=table('Size',TableSize,'VariableTypes',VarTypes,'VariableNames',VarNames);
         end
         
-%         function SM_initialize_flags(obj)
-% 
-%             obj.initialize_flags
-%             NFM = obj.NumForceMaps;
-% 
-%              obj.SMFSFlag.PropertiesParameters = false(NFM,1);
-%                          for Fm=1:obj.NumForceMaps
-%                               obj.FM{Fm}.initialize_flags
-%                          end
-% 
-%             NFM = obj.NumForceMaps;
-% 
-%             obj.SMFSFlagDown.AnalysedPreSelected = false(NFM,1);
-%             obj.SMFSFlagDown.AnalysedPostSelected = false(NFM,1);
-% 
-%             if isempty(obj.FMFlag)
-%                 obj.SMFSFlag.AnalysedPreSelected = false(NFM,1);
-%                 obj.SMFSFlag.AnalysedPostSelected = false(NFM,1);
-%             else
-%                 PrevNFM = length(obj.FMFlag.FibrilAnalysis);
-%                 NFM = obj.NumForceMaps;
-%                 DiffFM = NFM - PrevNFM;
-%                 obj.SMFSFlag.AnalysedPreSelected = false(DiffFM,1);
-%                 obj.SMFSFlag.AnalysedPostSelected = false(DiffFM,1);
-%             end
-% 
-%         end
+        function SM_initialize_flags(obj)
+
+            obj.initialize_flags
+            NFM = obj.NumForceMaps;
+
+             obj.SMFSFlag.PropertiesParameters = false(NFM,1);
+                         for Fm=1:obj.NumForceMaps
+                              obj.FM{Fm}.initialize_flags
+                         end
+
+            NFM = obj.NumForceMaps;
+
+            obj.SMFSFlagDown.AnalysedPreSelected = false(NFM,1);
+            obj.SMFSFlagDown.AnalysedPostSelected = false(NFM,1);
+
+            if isempty(obj.FMFlag)
+                obj.SMFSFlag.AnalysedPreSelected = false(NFM,1);
+                obj.SMFSFlag.AnalysedPostSelected = false(NFM,1);
+            else
+                PrevNFM = length(obj.FMFlag.FibrilAnalysis);
+                NFM = obj.NumForceMaps;
+                DiffFM = NFM - PrevNFM;
+                obj.SMFSFlag.AnalysedPreSelected = false(DiffFM,1);
+                obj.SMFSFlag.AnalysedPostSelected = false(DiffFM,1);
+            end
+
+        end
 
 
         function SM_properties_parameters(obj,SetNumFcValue)
@@ -1501,8 +1502,8 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             % force map loop
             
             %for Fm=1:obj.NumForceMaps   
-            for Fm=164:obj.NumForceMaps  % debugging
-            % for Fm=1 % debugging
+            for Fm=263:obj.NumForceMaps  % debugging
+            %for Fm=272 % debugging
                 if isequal(KeepFlagged,'Yes') && obj.SMFSFlag.Preprocessed(Fm) == 1
                     KeepFlagged = questdlg(sprintf('Some maps have been processed already.\nDo you want to skip them and keep old results?'),...
                     'Processing Options',...
@@ -1588,31 +1589,22 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             close(h);
         end
       
-        function SM_visual_selection(obj,XMin,XMax,YMin,YMax,NumFcMax)
+        function SM_visual_selection_pre(obj,XMin,XMax,YMin,YMax,NumFcMax)
             % Description: 
-            % In this function force curves are plotted and selected based on selection criteria the user has to check for in each force curve individually. 
-            % Based on the input variable 'NumFcMax' a if condition is
-            % excecuted allowing to process only force maps with set
-            % 'SMFSFlag.Preprocessed' or 
-            % processed. 
-            % 
-            % three lengths defined by the input variables
-            % (xLimit1,xLimit2,xLimit3) are determined.
-            % Second, thresholds defined by the input variables (AppThreshValue,RetThreshValue) are used to flag force curves.
-            % The flags indicate if interactions on the approach part
-            % and/or retraction part are present.
+            % In this function force curves are plotted for selection by a user. 
+            % Only force maps with set 'SMFSFlag.Preprocessed' are processed. 
             % Required input variables:
-            % XMin
-            % XMax
-            % YMin
-            % YMax
-            % NumFcMax
+            % XMin ... Minimum limit of the X-axis in nanometers (nm)
+            % XMax ... Maximum limit of the X-axis in nanometers (nm)
+            % YMin ... Minimum limit of the Y-axis in nanoNewtons (nN)
+            % YMax ... Maximum limit of the Y-axis in nanoNewtons (nN)
+            % NumFcMax ... Maximum number of force curves per figure
             % Typical input variables used for AFM SMAD of tropocollagen 
-            % XMin= -inf;     % Limit of the X-axis in meters (m)
-            % XMax= 50e-9;      % Limit of the X-axis in meters (m)
-            % YMin= -inf;     % Limit of the Y-axis in Newtons (N)
-            % YMax= 100e-12;      % Limit of the Y-axis in Newtons (N)    
-            % NumFcMax = 25;   % Maximum number of force curves per figure
+            % XMin= -inf;
+            % XMax= 800;     
+            % YMin= -1.5;     
+            % YMax= 0.100;         
+            % NumFcMax = 25;    
             %% Function body
             % Figure visibility
             % set(groot,'defaultFigureVisible','off')      
@@ -1620,11 +1612,11 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             % Change into the Folder of Interest
             cd(obj.ExperimentFolder) % Move into the folder 
             % Create folders for saving the produced figures
-            foldername='SM_visual_selection';    % Defines the folder name
+      %      foldername='SM_visual_selection';    % OLD
+            foldername='SM_visual_selection_pre';    % Defines the folder name
             mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
             currpath=fullfile(obj.ExperimentFolder,foldername);
-            cd(currpath); 
-            
+            cd(currpath);             
             % Loop over the imported force maps
             for fm=1:obj.NumForceMaps
             %for fm=38:53 % Debugging
@@ -1633,30 +1625,38 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 end
                % Command window output
                sprintf('Force Map No. %d of %d',fm,obj.NumForceMaps) % Gives current Force Map Position
-               % Run the FM functions depending on input variable 'NumFcMax'
-               if NumFcMax>1
-               obj.FM{fm}.fc_visual_selection_flag_Uncorrupt(XMin,XMax,YMin,YMax,NumFcMax)
-               else
-               obj.FM{fm}.fc_visual_selection_all(XMin,XMax,YMin,YMax);
-               end 
+               % Call the function
+               obj.FM{fm}.fc_visual_selection_flag_pre(XMin,XMax,YMin,YMax,NumFcMax)
             end    
         end
       
-        function SM_analysis(obj,SelectedFlagStatus)
-            % This function allows to analyse different force curve
-            % criteria, i.e. pulling length, adhesion energy. 
-            % Input option:
-            % SelectedFlagStatus: 
-            % - 'Pre'
-            % - 'Post'
-            % Stands for before or after the SMFSFlag.Selected has been set
-           
-            % Output time and date for the dairy
-            datetime('now')
-             h = waitbar(0,'setting up','Units','normalized','Position',[0.4 0.3 0.2 0.1]);
+        function SM_analysis(obj,SelectedFlagStatus)           
+            % Description: 
+            % In this function the determination of the force curves features takes place. 
+            % First, a possible snap-in length on the approach part is
+            % determined.
+            % Second, the pull-off length on the retraction part is
+            % determined.
+            % Third, the maximum adhesion force of the approach and
+            % retraction part are determined. Additionally, the maximum
+            % adhesion force of the last unbinding event is determined.
+            % Fourth, the adhesion energies of the approach and retraction
+            % part are determined.
+            % Force maps that have passed through are flagged at the end of the function. The flagging is based on the input variable 'SelectedFlagStatus'. Either 'SMFSFlag.AnalysedPreSelected' or 'SMFSFlag.AnalysedPostSelected' is set.
+            % Required input variables:
+            % SelectedFlagStatus ... Indicates if only 'SM_visual_selection_pre' or also 'SM_visual_selection_post' have been executed 
+            % Input variable options
+            % pre ... 'SM_visual_selection_pre' has been executed 
+            % post ... 'SM_visual_selection_post' has been executed 
+            % Flags:
+            % SMFSFlag.AnalysedPreSelected
+            % SMFSFlag.AnalysedPostSelected
+     
+            %% Function body
+            h = waitbar(0,'setting up','Units','normalized','Position',[0.4 0.3 0.2 0.1]);
             NLoop = length(obj.ForceMapNames);
-            switch SelectedFlagStatus
-                case 'Pre'
+            switch upper(SelectedFlagStatus)
+                case 'PRE'
                 if sum(obj.SMFSFlag.AnalysedPreSelected) >= 1
                     KeepFlagged = questdlg(sprintf('Some maps have been processed already.\nDo you want to skip them and keep old results?'),...
                     'Processing Options',...
@@ -1666,7 +1666,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 else
                 KeepFlagged = 'No';
                 end    
-                case 'Post'
+                case 'POST'
                 if sum(obj.SMFSFlag.AnalysedPostSelected) >= 1
                 KeepFlagged = questdlg(sprintf('Some maps have been processed already.\nDo you want to skip them and keep old results?'),...
                     'Processing Options',...
@@ -1710,39 +1710,41 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             close(h);
         end
                  
-        function SM_visual_selection_analysed(obj,XMin,XMax,YMin,YMax,NumFcMax)
-       
-            % 
-            if nargin<2
-                XMin= -inf;     % Limit of the X-axis in meters (m)
-                XMax= 50e-9;      % Limit of the X-axis in meters (m)
-                YMin= -0.3e-9;     % Limit of the Y-axis in Newtons (N)
-                YMax= 100e-12;      % Limit of the Y-axis in Newtons (N)    
-                NumFcMax = 25;   % Maximum number of force curves per figure
-            end
-            
-            % Output time and date for the dairy
-            datetime('now')
-            
+        function SM_visual_selection_post(obj,XMin,XMax,YMin,YMax,NumFcMax)
+            % Description: 
+            % In this function force curves are plotted, including determined force curve features, for selection by a user. 
+            % Required input variables:
+            % XMin ... Minimum limit of the X-axis in nanometers (nm)
+            % XMax ... Maximum limit of the X-axis in nanometers (nm)
+            % YMin ... Minimum limit of the Y-axis in nanoNewtons (nN)
+            % YMax ... Maximum limit of the Y-axis in nanoNewtons (nN)
+            % NumFcMax ... Maximum number of force curves per figure
+            % Typical input variables used for AFM SMAD of tropocollagen 
+            % XMin= -inf;
+            % XMax= 800;     
+            % YMin= -1.5;     
+            % YMax= 0.100;         
+            % NumFcMax = 25;
+
+            %% Function body
             % Figure visibility
             % set(groot,'defaultFigureVisible','off')      
             set(groot,'defaultFigureVisible','on')  
             % Change into the Folder of Interest
             cd(obj.ExperimentFolder) % Move into the folder 
             % Create folders for saving the produced figures
-            foldername='SM_visual_selection_analysed';    % Defines the folder name
+      %      foldername='SM_visual_selection_analysed';    % OLD
+            foldername='SM_visual_selection_post';    % Defines the folder name
             mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
             currpath=fullfile(obj.ExperimentFolder,foldername);
-            cd(currpath); 
-            
+            cd(currpath);           
             % Loop over the imported force maps
             for Fm=1:obj.NumForceMaps
             %for Fm=27 % Debugging
                % Command window output
                sprintf('Force Map No. %d of %d',Fm,obj.NumForceMaps) % Gives current Force Map Position
                % Run the chosen functions
-                obj.FM{Fm}.fc_visual_selection_analysed(XMin,XMax,YMin,YMax,NumFcMax)
-               %obj.save_experiment;        % Save immediately after each force curve
+                obj.FM{Fm}.fc_visual_selection_post(XMin,XMax,YMin,YMax,NumFcMax)
             end    
         end
       
@@ -3730,7 +3732,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             BoxplotWidth=2;
             BoxplotWidthOverview=0.8;
             elseif strcmpi(xArg,'Index')
-            LegendxAxis='Chronological force map order';
+            LegendxAxis='Chronological force map order';  
             xData=obj.SMFSResults{ResultsRow}.Concatenate.FMNum;
             xDataMin=min(xData);
             xDataMax=max(xData);               
@@ -4667,8 +4669,8 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             % For Row 6, from yLim(min) to
             % yLim(min)+(yLim(max)-yLim(min))*0.01
             xCBar1=[0 2 2 0];
-            xCBar2=[2 22 22 2];
-            xCBar3=[22 121 121 22];
+            xCBar2=[2 21 21 2];
+            xCBar3=[21 121 121 21];
             xCBar4=[121 222 222 121];
             y1CBar1=[-1.979322472 -1.979322472 -1.954352622 -1.954352622]; % [Ymin Ymax] [-1.991807398	0.505177615]
             y1CBar2=[-1.979322472 -1.979322472 -1.954352622 -1.954352622];
@@ -4737,15 +4739,15 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 BoxplotWidth=0.8;
                 BoxplotDodge=2;
             elseif strcmpi(xArg,'Index')
-                LegendxAxis='Chronological force map order';
+                LegendxAxis='Chronological force set index';
                 xData=obj.SMFSResults{ResultsRow}.Concatenate.FMNum;
                 xDataMin=min(xData);
                 xDataMax=max(xData);
                 xAxisCorr=(xDataMax-xDataMin)*0.005; % For BoxplotWidth=10
                 %xAxisCorr=(xDataMax-xDataMin)*0.02; % For BoxplotWidth=2 and BoxplotWidth=0.02
                 % BoxplotWidth=18;
-                 BoxplotWidth=10;
-                % BoxplotWidth=2;
+                % BoxplotWidth=10;
+                 BoxplotWidth=8;
                 % BoxplotWidth=0.02;
                 BoxplotDodge=1;
             end
@@ -4758,8 +4760,8 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 ColorData=obj.SMFSResults{ResultsRow}.Concatenate.FMEnvCond(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx);
                 MarkerData=obj.SMFSResults{ResultsRow}.Concatenate.FMChipCant(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx);
             elseif Var==2
-                ColorName='Approach velocity ($\mu$m/s)';
-                LightnessName='Retraction velocity ($\mu$m/s)';
+                ColorName='Approach speed ($\mu$m/s)';
+                LightnessName='Retraction speed ($\mu$m/s)';
                 MarkerName='Dwell Time (s)';
                 FMExtVeloData=obj.SMFSResults{ResultsRow}.Concatenate.FMExtVelocity(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*1e6;
                 FMRetVeloData=obj.SMFSResults{ResultsRow}.Concatenate.FMRetVelocity(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*1e6;
@@ -4768,8 +4770,8 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 MarkerData=obj.SMFSResults{ResultsRow}.Concatenate.FMHoldingTime(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx);
             elseif Var==3
                 ColorName='Dwell Time (s)';
-                LightnessName='Retraction velocity ($\mu$m/s)';
-                MarkerName='Approach velocity ($\mu$m/s)';
+                LightnessName='Retraction speed ($\mu$m/s)';
+                MarkerName='Approach speed ($\mu$m/s)';
                 FMExtVeloData=obj.SMFSResults{ResultsRow}.Concatenate.FMExtVelocity(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*1e6;
                 FMRetVeloData=obj.SMFSResults{ResultsRow}.Concatenate.FMRetVelocity(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*1e6;
                 ColorData=obj.SMFSResults{ResultsRow}.Concatenate.FMHoldingTime(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx);
@@ -4781,7 +4783,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             Res=[1 1 2560 1250]; % Define the figure resolution
             MarkerStyle={'d' 's' 'v' 'o'};
             MarkerSize=10;
-            BaseFontSize=24;
+            BaseFontSize=32;
             LabelScaling=1.2;
             LegendScaling=1;
             LineWidth=1.5;
@@ -4833,7 +4835,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 'width',BoxplotWidth,...
                 'dodge',BoxplotDodge); % Plot data in boxplot
             % Set options
-            g1.axe_property('TickLabelInterpreter','Latex','LineWidth',LineWidth,'xlim',[xDataMin-xAxisCorr xDataMax+xAxisCorr],'XTick',[0:10:220],'TickDir','out','TickLength',[0.005 0.005]);
+            g1.axe_property('LineWidth',LineWidth,'xlim',[xDataMin-xAxisCorr xDataMax+xAxisCorr],'XTick',[0:10:220],'TickDir','out','TickLength',[0.005 0.005]);
             if strcmpi(xArg,'DateTime')
                 g1.set_datetick('x',0,'keeplimits') % Format x-axis
             end
@@ -4847,7 +4849,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             g1.set_color_options('n_color',NumColor,...
                 'n_lightness',NumLightness,...
                 'legend','separate_gray')
-            g1.set_text_options('interpreter','latex','font','Helvetica','base_size',BaseFontSize,'label_scaling',LabelScaling,'legend_scaling',LegendScaling)
+            g1.set_text_options('font','Helvetica','base_size',BaseFontSize,'label_scaling',LabelScaling,'legend_scaling',LegendScaling)
             if strcmpi(LegendArg,'Y')
                 g1.set_layout_options("legend",1) % Don't show legend
             elseif strcmpi(MarkerArg,'N')
@@ -4894,7 +4896,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 'width',BoxplotWidth,...
                 'dodge',BoxplotDodge); % Plot data in boxplot
             % Set options
-            g2.axe_property('TickLabelInterpreter','Latex','LineWidth',LineWidth,'xlim',[xDataMin-xAxisCorr xDataMax+xAxisCorr],'XTick',[0:10:220],'TickDir','out','TickLength',[0.005 0.005]);
+            g2.axe_property('LineWidth',LineWidth,'xlim',[xDataMin-xAxisCorr xDataMax+xAxisCorr],'XTick',[0:10:220],'TickDir','out','TickLength',[0.005 0.005]);
             if strcmpi(xArg,'DateTime')
                 g2.set_datetick('x',0,'keeplimits') % Format x-axis
             end
@@ -4908,7 +4910,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             g2.set_color_options('n_color',NumColor,...
                 'n_lightness',NumLightness,...
                 'legend','separate_gray')
-            g2.set_text_options('interpreter','latex','font','Helvetica','base_size',BaseFontSize,'label_scaling',LabelScaling,'legend_scaling',LegendScaling)
+            g2.set_text_options('font','Helvetica','base_size',BaseFontSize,'label_scaling',LabelScaling,'legend_scaling',LegendScaling)
             if strcmpi(LegendArg,'Y')
                 g2.set_layout_options("legend",1) % Don't show legend
             elseif strcmpi(MarkerArg,'N')
@@ -4955,7 +4957,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 'width',BoxplotWidth,...
                 'dodge',BoxplotDodge); % Plot data in boxplot
             % Set options
-            g3.axe_property('TickLabelInterpreter','Latex','LineWidth',LineWidth,'xlim',[xDataMin-xAxisCorr xDataMax+xAxisCorr],'XTick',[0:10:220],'TickDir','out','TickLength',[0.005 0.005]);
+            g3.axe_property('LineWidth',LineWidth,'xlim',[xDataMin-xAxisCorr xDataMax+xAxisCorr],'XTick',[0:10:220],'TickDir','out','TickLength',[0.005 0.005]);
             if strcmpi(xArg,'DateTime')
                 g3.set_datetick('x',0,'keeplimits') % Format x-axis
             end
@@ -4969,7 +4971,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             g3.set_color_options('n_color',NumColor,...
                 'n_lightness',NumLightness,...
                 'legend','separate_gray')
-            g3.set_text_options('interpreter','latex','font','Helvetica','base_size',BaseFontSize,'label_scaling',LabelScaling,'legend_scaling',LegendScaling)
+            g3.set_text_options('font','Helvetica','base_size',BaseFontSize,'label_scaling',LabelScaling,'legend_scaling',LegendScaling)
             if strcmpi(LegendArg,'Y')
                 g3.set_layout_options("legend",1) % Don't show legend
             elseif strcmpi(MarkerArg,'N')
@@ -5017,7 +5019,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 'width',BoxplotWidth,...
                 'dodge',BoxplotDodge); % Plot data in boxplot
             % Set options
-            g4.axe_property('TickLabelInterpreter','Latex','LineWidth',LineWidth,'xlim',[xDataMin-xAxisCorr xDataMax+xAxisCorr],'XTick',[0:10:220],'TickDir','out','TickLength',[0.005 0.005]);
+            g4.axe_property('LineWidth',LineWidth,'xlim',[xDataMin-xAxisCorr xDataMax+xAxisCorr],'XTick',[0:10:220],'TickDir','out','TickLength',[0.005 0.005]);
             if strcmpi(xArg,'DateTime')
                 g4.set_datetick('x',0,'keeplimits') % Format x-axis
             end
@@ -5031,7 +5033,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             g4.set_color_options('n_color',NumColor,...
                 'n_lightness',NumLightness,...
                 'legend','separate_gray')
-            g4.set_text_options('interpreter','latex','font','Helvetica','base_size',BaseFontSize,'label_scaling',LabelScaling,'legend_scaling',LegendScaling)
+            g4.set_text_options('font','Helvetica','base_size',BaseFontSize,'label_scaling',LabelScaling,'legend_scaling',LegendScaling)
             if strcmpi(LegendArg,'Y')
                 g4.set_layout_options("legend",1) % Don't show legend
             elseif strcmpi(MarkerArg,'N')
@@ -5079,7 +5081,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 'width',BoxplotWidth,...
                 'dodge',BoxplotDodge); % Plot data in boxplot
             % Set options
-            g5.axe_property('TickLabelInterpreter','Latex','LineWidth',LineWidth,'xlim',[xDataMin-xAxisCorr xDataMax+xAxisCorr],'XTick',[0:10:220],'TickDir','out','TickLength',[0.005 0.005]);
+            g5.axe_property('LineWidth',LineWidth,'xlim',[xDataMin-xAxisCorr xDataMax+xAxisCorr],'XTick',[0:10:220],'TickDir','out','TickLength',[0.005 0.005]);
             if strcmpi(xArg,'DateTime')
                 g5.set_datetick('x',0,'keeplimits') % Format x-axis
             end
@@ -5093,13 +5095,13 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             g5.set_color_options('n_color',NumColor,...
                 'n_lightness',NumLightness,...
                 'legend','separate_gray')
-            g5.set_text_options('interpreter','latex','font','Helvetica','base_size',BaseFontSize,'label_scaling',LabelScaling,'legend_scaling',LegendScaling)
+            g5.set_text_options('font','Helvetica','base_size',BaseFontSize,'label_scaling',LabelScaling,'legend_scaling',LegendScaling)
             if strcmpi(LegendArg,'Y')
                 g5.set_layout_options("legend",1) % Don't show legend
             elseif strcmpi(MarkerArg,'N')
                 g5.set_layout_options("legend",0) % Show legend
             end
-            g5.set_layout_options('legend_position',[0.75,0.4,0.35,0.6]) %[left bottom width height]
+            %g5.set_layout_options('legend_position',[0.75,0.4,0.35,0.6]) %[left bottom width height]
             % Figure
             h_fig5=figure(5);
             h_fig5.Color='white'; % changes the background color of the figure
@@ -5118,7 +5120,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             %% Gramm object 6
             % Define variables
             Plottitle6=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ResultsRow,1}.Data(1).FMIndex),obj.SMFSResults{ResultsRow,1}.Data(1).SumNumFcAnalysedyPullingLength);
-            LegendyAxis6='Pulling length (nm)';
+            LegendyAxis6='Pull-off length (nm)';
             NameSuffix6='_Pullinglength';
             % Allocate data
             yData6=obj.SMFSResults{ResultsRow}.Concatenate.PullingLength(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*1e9;
@@ -5143,7 +5145,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 'width',BoxplotWidth,...
                 'dodge',BoxplotDodge); % Plot data in boxplot
             % Set options
-            g6.axe_property('TickLabelInterpreter','Latex','LineWidth',LineWidth,'xlim',[xDataMin-xAxisCorr xDataMax+xAxisCorr],'XTick',[0:10:220],'TickDir','out','TickLength',[0.005 0.005]);
+            g6.axe_property('LineWidth',LineWidth,'xlim',[xDataMin-xAxisCorr xDataMax+xAxisCorr],'XTick',[0:10:220],'TickDir','out','TickLength',[0.005 0.005]);
             if strcmpi(xArg,'DateTime')
                 g6.set_datetick('x',0,'keeplimits') % Format x-axis
             end
@@ -5157,7 +5159,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             g6.set_color_options('n_color',NumColor,...
                 'n_lightness',NumLightness,...
                 'legend','separate_gray')
-            g6.set_text_options('interpreter','latex','font','Helvetica','base_size',BaseFontSize,'label_scaling',LabelScaling,'legend_scaling',LegendScaling)
+            g6.set_text_options('font','Helvetica','base_size',BaseFontSize,'label_scaling',LabelScaling,'legend_scaling',LegendScaling)
             if strcmpi(LegendArg,'Y')
                 g6.set_layout_options("legend",1) % Don't show legend
             elseif strcmpi(MarkerArg,'N')
@@ -5206,7 +5208,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 'width',BoxplotWidth,...
                 'dodge',BoxplotDodge); % Plot data in boxplot
             % Set options
-            g7.axe_property('TickLabelInterpreter','Latex','LineWidth',LineWidth,'xlim',[xDataMin-xAxisCorr xDataMax+xAxisCorr],'XTick',[0:10:220],'TickDir','out','TickLength',[0.005 0.005]);
+            g7.axe_property('LineWidth',LineWidth,'xlim',[xDataMin-xAxisCorr xDataMax+xAxisCorr],'XTick',[0:10:220],'TickDir','out','TickLength',[0.005 0.005]);
             if strcmpi(xArg,'DateTime')
                 g7.set_datetick('x',0,'keeplimits') % Format x-axis
             end
@@ -5220,7 +5222,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             g7.set_color_options('n_color',NumColor,...
                 'n_lightness',NumLightness,...
                 'legend','separate_gray')
-            g7.set_text_options('interpreter','latex','font','Helvetica','base_size',BaseFontSize,'label_scaling',LabelScaling,'legend_scaling',LegendScaling)
+            g7.set_text_options('font','Helvetica','base_size',BaseFontSize,'label_scaling',LabelScaling,'legend_scaling',LegendScaling)
             if strcmpi(LegendArg,'Y')
                 g7.set_layout_options("legend",1) % Don't show legend
             elseif strcmpi(MarkerArg,'N')
@@ -6247,10 +6249,10 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             % Define color bar
             % For Row 6, from yLim(min) to
             % yLim(min)+(yLim(max)-yLim(min))*0.01
-            xCBar1=[0 134 134 0];
-            xCBar2=[134 2200 2200 134];
-            xCBar3=[2200 12100 12100 2200];
-            xCBar4=[12100 22200 22200 12100];
+            xCBar1=[0 134 134 0]; % Native
+            xCBar2=[134 2100 2100 134]; % Sliding
+            xCBar3=[2200 12100 12100 2200]; % Unraveled
+            xCBar4=[12100 22200 22200 12100]; % Dissociated
             y1CBar1=[0.188271 0.188271 0.190413 0.190413]; % [Ymin Ymax] [0.1872	0.4014]
             y1CBar2=[0.188271 0.188271 0.190413 0.190413];
             y1CBar3=[0.188271 0.188271 0.190413 0.190413];
@@ -6286,10 +6288,15 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                [206 22 32]./255; % Fire Engine Red HEX CE162
                [0 24 204]./255; % Blue HEX 8DB600
                [135 0 224]./255]; % Violet HEX 8F00FF
-           ColorMarkerMap=[[255 194 191]./255; % Light rose
+            ColorMarkerMap=[[255 194 191]./255; % Light rose
                [255 194 191]./255;  % Light rose
                [209 217 161]./255;  % Light green
-               [209 217 161]./255]; % Light green
+               [209 217 161]./255; % Light green
+               [0 136 255]./255; % Light blue
+               [0 136 255]./255; % Light blue
+               [200 0 200]./255; % Pink
+               [200 0 200]./255]; % Pink
+ %          ColorMarkerMap='parula'; 
            % Change into the Folder of Interest
            cd(obj.ExperimentFolder) % Move into the folder
            % Create folders for saving the produced figures
@@ -6331,11 +6338,11 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                LightnessData=obj.SMFSResults{ResultsRow}.Concatenate.FMSubstrate(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx);
                ColorData=obj.SMFSResults{ResultsRow}.Concatenate.FMEnvCond(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx);
                MarkerData=obj.SMFSResults{ResultsRow}.Concatenate.FMChipCant(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx);
-               NumColor=6;
-               NumLightness=6;
+               NumColor=2;
+               NumLightness=2;
            elseif Var==2
-               ColorName='Approach velocity ($\mu$m/s)';
-               LightnessName='Retraction velocity ($\mu$m/s)';
+               ColorName='Approach speed ($\mu$m/s)';
+               LightnessName='Retraction speed ($\mu$m/s)';
                MarkerName='Dwell Time (s)';
                FMExtVeloData=obj.SMFSResults{ResultsRow}.Concatenate.FMExtVelocity(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*1e6;
                FMRetVeloData=obj.SMFSResults{ResultsRow}.Concatenate.FMRetVelocity(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*1e6;
@@ -6358,10 +6365,11 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
            end
            Res=[1 1 2560 1250]; % Define the figure resolution
            MarkerSize=10;
-           BaseFontSize=24;
+           BaseFontSize=46;
            LabelScaling=1.2;
            LegendScaling=1;
            LineWidth=1.5;
+           FontName='Helvetica';
            %%
            if obj.SMFSResults{ResultsRow}.Parameters.ExtendVelocity==0
                ExtVelocityValueStr='All';
@@ -6408,7 +6416,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
            end
            g1.geom_point();
            % Set options
-           g1.axe_property('TickLabelInterpreter','Latex','LineWidth',LineWidth,'xlim',[xDataMin-3 xDataMax+3],'TickDir','out','TickLength',[0.005 0.005]) % Set x limit
+           g1.axe_property('LineWidth',LineWidth,'xlim',[xDataMin-3 xDataMax+3],'TickDir','out','TickLength',[0.005 0.005]) % Set x limit
            if strcmpi(xArg,'DateTime')
                g1.set_datetick('x',0,'keeplimits') % Format x-axis
            end
@@ -6423,11 +6431,11 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                'n_color',NumColor,...
                'n_lightness',NumLightness,...
                'legend','separate_gray')
-           g1.set_text_options('interpreter','latex','font','Helvetica','base_size',BaseFontSize,'label_scaling',LabelScaling,'legend_scaling',LegendScaling)
+           g1.set_text_options('font',FontName,'base_size',BaseFontSize,'label_scaling',LabelScaling,'legend_scaling',LegendScaling)
            if strcmpi(LegendArg,'Y')
-               g1.set_layout_options("legend",1) % Don't show legend
-           elseif strcmpi(MarkerArg,'N')
-               g1.set_layout_options("legend",0) % Show legend
+               g1.set_layout_options("legend",1) % Show legend
+           elseif strcmpi(LegendArg,'N')
+               g1.set_layout_options("legend",0) % Don't show legend
            end
            % Figure
            h_fig1=figure(1);
@@ -6468,7 +6476,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
            end
            g2.geom_point();
            % Set options
-           g2.axe_property('TickLabelInterpreter','Latex','LineWidth',LineWidth,'xlim',[xDataMin-3 xDataMax+3],'TickDir','out','TickLength',[0.005 0.005]) % Set x limit
+           g2.axe_property('LineWidth',LineWidth,'xlim',[xDataMin-3 xDataMax+3],'TickDir','out','TickLength',[0.005 0.005]) % Set x limit
            if strcmpi(xArg,'DateTime')
                g2.set_datetick('x',0,'keeplimits') % Format x-axis
            end
@@ -6483,11 +6491,11 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                'n_color',NumColor,...
                'n_lightness',NumLightness,...
                'legend','separate_gray')
-           g2.set_text_options('interpreter','latex','font','Helvetica','base_size',BaseFontSize,'label_scaling',LabelScaling,'legend_scaling',LegendScaling)
+           g2.set_text_options('font',FontName,'base_size',BaseFontSize,'label_scaling',LabelScaling,'legend_scaling',LegendScaling)
            if strcmpi(LegendArg,'Y')
-               g2.set_layout_options("legend",1) % Don't show legend
-           elseif strcmpi(MarkerArg,'N')
-               g2.set_layout_options("legend",0) % Show legend
+               g2.set_layout_options("legend",1) % Show legend
+           elseif strcmpi(LegendArg,'N')
+               g2.set_layout_options("legend",0) % Don't show legend
            end
            % Figure
            h_fig2=figure(2);
@@ -6528,7 +6536,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             end
            g3.geom_point()
            % Set options
-           g3.axe_property('TickLabelInterpreter','Latex','LineWidth',LineWidth,'xlim',[xDataMin-3 xDataMax+3],'TickDir','out','TickLength',[0.005 0.005]) % Set x limit
+           g3.axe_property('LineWidth',LineWidth,'xlim',[xDataMin-3 xDataMax+3],'TickDir','out','TickLength',[0.005 0.005]) % Set x limit
            if strcmpi(xArg,'DateTime')
                g3.set_datetick('x',0,'keeplimits') % Format x-axis
            end
@@ -6543,11 +6551,11 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                'n_color',NumColor,...
                'n_lightness',NumLightness,...
                'legend','separate_gray')
-           g3.set_text_options('interpreter','latex','font','Helvetica','base_size',BaseFontSize,'label_scaling',LabelScaling,'legend_scaling',LegendScaling)
+           g3.set_text_options('font',FontName,'base_size',BaseFontSize,'label_scaling',LabelScaling,'legend_scaling',LegendScaling)
            if strcmpi(LegendArg,'Y')
-               g3.set_layout_options("legend",1) % Don't show legend
-           elseif strcmpi(MarkerArg,'N')
-               g3.set_layout_options("legend",0) % Show legend
+               g3.set_layout_options("legend",1) % Show legend
+           elseif strcmpi(LegendArg,'N')
+               g3.set_layout_options("legend",0) % Don't show legend
            end
            % Figure
            h_fig3=figure(3);
@@ -6567,7 +6575,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
            %% Gramm object 4
            % Define variables
            Plottitle4=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ResultsRow,1}.Data(1).FMIndex),obj.SMFSResults{ResultsRow,1}.Data(1).SumNumFcAnalysedAdhEneApp);
-           LegendyAxis4='Adhesion energry (aJ)';
+           LegendyAxis4='Adhesion energy (aJ)';
            NameSuffix4='_AdhEnergyApproach';
            % Allocate data
            yData4=obj.SMFSResults{ResultsRow}.Concatenate.AdhEneApp(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*-1e18;
@@ -6589,7 +6597,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             end
            g4.geom_point()
            % Set options
-           g4.axe_property('TickLabelInterpreter','Latex','LineWidth',LineWidth,'xlim',[xDataMin-3 xDataMax+3],'TickDir','out','TickLength',[0.005 0.005]) % Set x limit
+           g4.axe_property('LineWidth',LineWidth,'xlim',[xDataMin-3 xDataMax+3],'TickDir','out','TickLength',[0.005 0.005]) % Set x limit
            if strcmpi(xArg,'DateTime')
                g4.set_datetick('x',0,'keeplimits') % Format x-axis
            end
@@ -6604,11 +6612,11 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                'n_color',NumColor,...
                'n_lightness',NumLightness,...
                'legend','separate_gray')
-           g4.set_text_options('interpreter','latex','font','Helvetica','base_size',BaseFontSize,'label_scaling',LabelScaling,'legend_scaling',LegendScaling)
+           g4.set_text_options('font',FontName,'base_size',BaseFontSize,'label_scaling',LabelScaling,'legend_scaling',LegendScaling)
            if strcmpi(LegendArg,'Y')
-               g4.set_layout_options("legend",1) % Don't show legend
-           elseif strcmpi(MarkerArg,'N')
-               g4.set_layout_options("legend",0) % Show legend
+               g4.set_layout_options("legend",1) % Show legend
+           elseif strcmpi(LegendArg,'N')
+               g4.set_layout_options("legend",0) % Don't show legend
            end
            % Figure
            h_fig4=figure(4);
@@ -6650,7 +6658,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
            end
            g5.geom_point()
            % Set options
-           g5.axe_property('TickLabelInterpreter','Latex','LineWidth',LineWidth,'xlim',[xDataMin-3 xDataMax+3],'TickDir','out','TickLength',[0.005 0.005]) % Set x limit
+           g5.axe_property('LineWidth',LineWidth,'xlim',[xDataMin-3 xDataMax+3],'TickDir','out','TickLength',[0.005 0.005]) % Set x limit
            if strcmpi(xArg,'DateTime')
                g5.set_datetick('x',0,'keeplimits') % Format x-axis
            end
@@ -6665,11 +6673,11 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                'n_color',NumColor,...
                'n_lightness',NumLightness,...
                'legend','separate_gray')
-           g5.set_text_options('interpreter','latex','font','Helvetica','base_size',BaseFontSize,'label_scaling',LabelScaling,'legend_scaling',LegendScaling)
+           g5.set_text_options('font',FontName,'base_size',BaseFontSize,'label_scaling',LabelScaling,'legend_scaling',LegendScaling)
            if strcmpi(LegendArg,'Y')
-               g5.set_layout_options("legend",1) % Don't show legend
-           elseif strcmpi(MarkerArg,'N')
-               g5.set_layout_options("legend",0) % Show legend
+               g5.set_layout_options("legend",1) % Show legend
+           elseif strcmpi(LegendArg,'N')
+               g5.set_layout_options("legend",0) % Don't show legend           
            end
            % Figure
            h_fig5=figure(5);
@@ -6689,7 +6697,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
            %% Gramm object 6
            % Define variables
            Plottitle6=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ResultsRow,1}.Data(1).FMIndex),obj.SMFSResults{ResultsRow,1}.Data(1).SumNumFcAnalysedyPullingLength);
-           LegendyAxis6='Pulling length (nm)';
+           LegendyAxis6='Pull-off length (nm)';
            NameSuffix6='_Pullinglength';
            % Allocate data
            yData6=obj.SMFSResults{ResultsRow}.Concatenate.PullingLength(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*1e9;
@@ -6712,7 +6720,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
            end
            g6.geom_point();
            % Set options
-           g6.axe_property('TickLabelInterpreter','Latex','LineWidth',LineWidth,'xlim',[xDataMin-3 xDataMax+3],'TickDir','out','TickLength',[0.005 0.005]) % Set x limit
+           g6.axe_property('LineWidth',LineWidth,'xlim',[xDataMin-3 xDataMax+3],'TickDir','out','TickLength',[0.005 0.005]) % Set x limit
            if strcmpi(xArg,'DateTime')
                g6.set_datetick('x',0,'keeplimits') % Format x-axis
            end
@@ -6727,12 +6735,13 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                'n_color',NumColor,...
                'n_lightness',NumLightness,...
                'legend','separate_gray')
-           g6.set_text_options('interpreter','latex','font','Helvetica','base_size',BaseFontSize,'label_scaling',LabelScaling,'legend_scaling',LegendScaling)
+           g6.set_text_options('font',FontName,'base_size',BaseFontSize,'label_scaling',LabelScaling,'legend_scaling',LegendScaling)
            if strcmpi(LegendArg,'Y')
-               g6.set_layout_options("legend",1) % Don't show legend
-           elseif strcmpi(MarkerArg,'N')
-               g6.set_layout_options("legend",0) % Show legend
+               g6.set_layout_options("legend",1) % Show legend
+           elseif strcmpi(LegendArg,'N')
+               g6.set_layout_options("legend",0) % Don't show legend
            end
+           %g6.set_layout_options('legend_position',[0.75,0.4,0.35,0.6]) %[left bottom width height]
            % Figure
            h_fig6=figure(6);
            h_fig6.Color='white'; % changes the background color of the figure
@@ -6773,9 +6782,9 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             end
            g7.geom_polygon('y',{LimitLengthApp},'color',ColorBrewerMap1);
            g7.geom_point();
-           g7.axe_property('TickLabelInterpreter','Latex','LineWidth',LineWidth,'xlim',[xDataMin-3 xDataMax+3],'TickDir','out','TickLength',[0.005 0.005]) % Set x limit
            % Set options
-           g7.axe_property('TickLabelInterpreter','Latex','LineWidth',LineWidth,'xlim',[xDataMin-xAxisCorr xDataMax+xAxisCorr]) % Set x limit
+           g7.axe_property('LineWidth',LineWidth,'xlim',[xDataMin-3 xDataMax+3],'TickDir','out','TickLength',[0.005 0.005]) % Set x limit
+      %     g7.axe_property('LineWidth',LineWidth,'xlim',[xDataMin-xAxisCorr xDataMax+xAxisCorr]) % Set x limit
            if strcmpi(xArg,'DateTime')
                g7.set_datetick('x',0,'keeplimits') % Format x-axis
            end
@@ -6790,11 +6799,11 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                'n_color',NumColor,...
                'n_lightness',NumLightness,...
                'legend','separate_gray')
-           g7.set_text_options('interpreter','latex','font','Helvetica','base_size',BaseFontSize,'label_scaling',LabelScaling,'legend_scaling',LegendScaling)
+           g7.set_text_options('font',FontName,'base_size',BaseFontSize,'label_scaling',LabelScaling,'legend_scaling',LegendScaling)
            if strcmpi(LegendArg,'Y')
-               g7.set_layout_options("legend",1) % Don't show legend
-           elseif strcmpi(MarkerArg,'N')
-               g7.set_layout_options("legend",0) % Show legend
+               g7.set_layout_options("legend",1) % Show legend
+           elseif strcmpi(LegendArg,'N')
+               g7.set_layout_options("legend",0) % Don't show legend
            end
            % Figure
            h_fig7=figure(7);
@@ -7062,9 +7071,9 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             end
         end
 
-        function SM_fine_figure_publication(obj,XMin,XMax,YMin,YMax,Fm,Fc,Linker)
+        function SM_fine_figure_publication(obj,XMin,XMax,YMin,YMax,Fm,Fc,Linker,CArea)
             %     function SM_fine_figure(obj,XMin,XMax,YMin,YMax,Fm,Fc)
-            % Function to plot individual fine figures for publication
+            % Function to plot individual figures in publication quality
             if nargin < 3
                 XMin= -inf;
                 XMax= inf;
@@ -7084,7 +7093,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             currpath=fullfile(obj.ExperimentFolder,foldername);
             cd(currpath);
             % Run the chosen functions
-            obj.FM{Fm}.fc_fine_figure_publication(XMin,XMax,YMin,YMax,Fm,Fc,Linker)
+            obj.FM{Fm}.fc_fine_figure_publication(XMin,XMax,YMin,YMax,Fm,Fc,Linker,CArea)
         end
          
 
@@ -7289,6 +7298,239 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             obj.WLCFit{Row,1}.Data(1).yDataSelected=ySel;
         end
 
+        function SM_force_landscape(obj,Var)
+            % Function to quickly loop over all force maps for testing and
+            % debugging
+
+            if Var==1
+                % Input dialog
+                prompt = {'Enter the force map number you do not want to have included in the "SMFSResults"-structure (For multiple selections just use the space key to separeat entries)'};
+                definput = {''};
+                opts.Interpreter = 'tex';
+                FMIdxArray=inputdlg(prompt,'Select all - except of ...',[1 150],definput,opts);
+                FMIdxArray=str2num(FMIdxArray{1}); % Convert the cell array to numerals
+            elseif Var==2
+                warning('This variation requires that a none parameter based selection row in the "SMFSResults"-structure exists (Typically row 1)')
+                dlgtitle='Enter the "SMFSResults"-structure row the chronologcial data will be taken from';
+                prompt = {'ResultsRow'};
+                definput={'1'};
+                dims=[1 150];
+                ResultsRow = inputdlg(prompt,dlgtitle,dims,definput);
+                ResultsRow=str2num(ResultsRow{1});
+                dlgtitle='Enter the chronological force map index of the first and last force map you want to have included in the "SMFSResults"-structure';
+                prompt = {'First','Last'};
+                dims=[1 150; 1 150];
+                FMIdxChrono = inputdlg(prompt,dlgtitle,dims);
+                FMIdxChrono1=str2num(FMIdxChrono{1});
+                FMIdxChrono2=str2num(FMIdxChrono{2});
+                % Allocate the force maps in chronological order as defined by
+                % the input dialog box
+                FMIdxArray=obj.SMFSResults{ResultsRow}.Data.FMDateTimeSortIdx(FMIdxChrono1:FMIdxChrono2);
+            end
+            % If condition to handle an empty index array
+            if isempty(FMIdxArray)
+                return
+            else
+            end
+
+            % Allocate the force maps in chronological order as defined by
+            % the input dialog box
+            FMIdxArray=obj.SMFSResults{ResultsRow}.Data.FMDateTimeSortIdx(FMIdxChrono1:FMIdxChrono2);
+
+            % Change into the Folder of Interest
+            cd(obj.ExperimentFolder) % Move into the folder
+            % Create folders for saving the produced figures
+            foldername='SM_force_landscape';    % Defines the folder name
+            mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
+            currpath=fullfile(obj.ExperimentFolder,foldername);
+            cd(currpath);
+            % Force Landscape variables
+
+            FcCount = 0; % Force curve count
+            for ii=FMIdxArray'
+                FcCount = FcCount + obj.FM{ii}.NCurves;
+            end
+            ResY = FcCount; % y-axis resolution
+            ResX = 4096; % x-axis resolution
+            % Allocate data
+            MaxRange = 0;   
+            SkippedCurves = 0;
+            kk=1;
+            for FM=1:length(FMIdxArray)
+                for Fc=1:obj.FM{FMIdxArray(FM)}.NCurves
+                    if ~obj.FM{FMIdxArray(FM)}.SMFSFlag.Selected(Fc)
+                        SkippedCurves=SkippedCurves+1;
+                        continue
+                    else
+                    end
+                    % Allocate data
+            	    xApp=(obj.FM{FMIdxArray(FM)}.THApp{Fc}-obj.FM{FMIdxArray(FM)}.CP_HardSurface(Fc,1))*1e9; % Approach x-data
+                    xRet=(obj.FM{FMIdxArray(FM)}.THRet{Fc}-obj.FM{FMIdxArray(FM)}.CP_HardSurface(Fc,1))*1e9; % Retraction x-data
+                    yApp=obj.FM{FMIdxArray(FM)}.BasedApp{Fc}*1e9;
+                    yRet=obj.FM{FMIdxArray(FM)}.BasedRet{Fc}*1e9;
+
+
+                    %% Concatenate arrays
+                    % FCs of each FM in seperate column
+
+                    xAppAll{kk}=xApp-max(xApp);
+                    xRetAll{kk}=xRet-max(xRet);
+
+                    yAppAll{kk}=yApp;
+                    yRetAll{kk}=yRet;
+
+                    % Define range of x-axis   
+                  %  MaxRange = max(range(xAppAll{kk}),MaxRange);
+                    MaxRange = max(range(xRetAll{kk}),MaxRange);
+
+                    kk=kk+1;
+                end
+            end
+            
+            % Define axes properties
+            XQ = linspace(0,-MaxRange,ResX); % Query points on x-axis
+            ResY = ResY - SkippedCurves; % y-axis resolution
+            % Preallocate
+            FcMapApp = zeros(ResY, ResX);
+            FcMapRet = zeros(ResY, ResX);
+            % Interpolate data and fill Force curves maps
+            for ii=1:ResY
+                FcMapApp(ii,:) = interp1(xAppAll{ii},yAppAll{ii},XQ);
+                FcMapRet(ii,:) = interp1(xRetAll{ii},yRetAll{ii},XQ);
+            end
+            % Cut out the first few nm of the curves
+            FcMapApp(:,1:5)=[]; 
+            FcMapRet(:,1:15)=[];
+            % Reduce the resolution of the map
+            FcMapApp=imresize(FcMapApp,[1024,1024]);
+            FcMapRet1=imresize(FcMapRet,[1024,1024]);
+            FcMapRet2=imresize(FcMapRet,[4096,4096]);
+
+            %% Figures
+           FigNamePt1=sprintf('SMFSResultRow%d_',ResultsRow);
+           FigNamePt2=sprintf('FM%d_to_FM%d',FMIdxChrono1,FMIdxChrono1);
+           FigNamePt3App='App';
+           FigNamePt3Ret='Ret';
+           FigNamePt4='ForceLandscape';
+
+          %  figure
+          %  mesh(FcMapApp)
+          %  figure
+          %  mesh(-FcMapRet)
+          %  figure
+          %  imshow(FcMapApp,[])
+          %  figure
+          %  imshow(-FcMapRet,[])
+            
+         % figure
+         % imshow(FcMapApp,[])
+           %% Figure 0
+%             fig=figure(10);
+%             fig.Color='white'; % changes the background color of the figure
+%             fig.Units='normalized'; % Defines the units
+%             fig.OuterPosition=[0 0 2 2];% changes the size of the to the whole screen
+%             fig.PaperOrientation='landscape';
+%             % Plot
+%             surf(FcMapRet)
+%             shading flat
+%             colormap turbo
+% %            % Axes
+%              ax = gca; % current axes
+%              ax.FontName='Helvetica';
+%              ax.FontSize = 40;
+%              ax.LineWidth = 5;
+%           %   ax.XTick=0:100:1000;
+%           %   ax.ZTick=-0.5:0.1:0.1;
+%              ax.XLabel.String = 'Tip-Surface separation distance (nm)';
+%              ax.XLabel.FontSize = 40;
+%              ax.ZLabel.String = 'Force (nN)';
+%              ax.ZLabel.FontSize = 40;
+
+            %% Figure 1
+            fig1=figure(1);
+            fig1.Color='white'; % changes the background color of the figure
+            fig1.Units='normalized'; % Defines the units
+            fig1.OuterPosition=[0 0 2 2];% changes the size of the to the whole screen
+            fig1.PaperOrientation='landscape';
+            % Plot
+            surf(FcMapApp)
+            shading flat
+            colormap turbo
+%            % Axes
+             ax1 = gca; % current axes
+             ax1.FontName='Helvetica';
+             ax1.FontSize = 40;
+             ax1.LineWidth = 5;
+             ax1.XTick=0:100:1000;
+             ax1.ZTick=-0.5:0.1:0.1;
+      %       ax1.XLabel.String = 'Tip-Surface separation distance (nm)';
+             ax1.XLabel.FontSize = 40;
+             ax1.ZLabel.String = 'Force (nN)';
+             ax1.ZLabel.FontSize = 40;
+            % Save figure
+            fullname=sprintf('%s%s%s%s',FigNamePt1,FigNamePt2,FigNamePt3App,FigNamePt4);
+            print(gcf,fullname,'-dpng');
+            print(gcf,fullname,'-depsc');
+           % figure
+           % imshow(-FcMapRet1,[])
+
+            %% Figure 2
+            fig2=figure(2);
+            fig2.Color='white'; % changes the background color of the figure
+            fig2.Units='normalized'; % Defines the units
+            fig2.OuterPosition=[0 0 2 2];% changes the size of the to the whole screen
+            fig2.PaperOrientation='landscape';
+            % Plot 
+            surf(-FcMapRet1)
+            shading flat
+            colormap turbo
+            % Axes
+            ax2 = gca; % current axes
+            ax2.FontName='Helvetica';
+             ax2.FontSize = 40;
+             ax2.LineWidth = 5;
+             ax2.XTick=0:100:1000;
+             ax2.ZTick=0.0:0.1:1.0;
+      %       ax2.XLabel.String = 'Tip-Surface separation distance (nm)';
+             ax2.XLabel.FontSize = 40;
+             ax2.ZLabel.String = 'Force (nN)';
+             ax2.ZLabel.FontSize = 40;
+            % Save figure
+            fullname=sprintf('%s%s%s%s',FigNamePt1,FigNamePt2,FigNamePt3Ret,FigNamePt4);
+            print(gcf,fullname,'-dpng');
+            print(gcf,fullname,'-depsc');
+
+           % figure
+           % imshow(-FcMapRet2,[])
+
+             %% Figure 3
+%             fig3=figure(3);
+%             fig3.Color='white'; % changes the background color of the figure
+%             fig3.Units='normalized'; % Defines the units
+%             fig3.OuterPosition=[0 0 2 2];% changes the size of the figure object to the whole screen          
+%             fig3.PaperOrientation='landscape';
+%             % Plot
+%             surf(-FcMapRet2)
+%             shading flat
+%             colormap turbo
+%             ax3 = gca; % current axes
+%             ax3.FontName='Helvetica';
+%              ax3.FontSize = 40;
+%              ax3.LineWidth = 5;
+%              ax3.XTick=0:100:1000;
+%              ax3.ZTick=0.0:0.1:1.0;
+%              ax3.XLabel.String = 'Tip-Surface separation distance (nm)';
+%              ax3.XLabel.FontSize = 40;
+%              ax3.ZLabel.String = 'Force (nN)';
+%              ax3.ZLabel.FontSize = 40;
+
+
+            %% House keeping
+            close all
+
+        end
+
+       
   
         % Individual ForceMap function related
         
@@ -7410,41 +7652,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             end
         end
    
-        function SM_testing_function(obj,Fm,Fc)
-            % Function to quickly loop over all force maps for testing and
-            % debugging
-
-
-             %   Fm=155
-             %   Fc=37
-               obj.FM{Fm}.fc_WLC_fitting(Fc)
-%  
-%              for fm=1:50
-%              for fm=1:obj.NumForceMaps
-%                 obj.FM{fm}.fc_testing
-% %            %   obj.FM{fm}.Linker='long'  
-% %                 obj.FM{fm}.SpringConstant=0.073
-%              end      
-% % 
-     
-%       NFM = obj.NumForceMaps;
-   
-  %              obj.SMFSFlagDown.AnalysedPreSelected = false(NFM,1);
-   %             obj.SMFSFlagDown.AnalysedPostSelected = false(NFM,1);
-
-    %            obj.SMFSFlag.AnalysedPreSelected = false(NFM,1);
-       %         obj.SMFSFlag.AnalysedPostSelected = false(NFM,1);
-    
-%               obj.SMFSFlag.PropertiesParameters = false(NFM,1);
- %              obj.SMFSFlagDown.PropertiesParameters = false(NFM,1);
-
-        %        obj.SMFSFlag.AnalysedPostSelected(:,1)=1
- %           obj.SMFSFlag.PropertiesParameters(:,1)=1
-
-
-        end
-     
-        % Old functions
+       % Old functions
 
         function SM_statistics(obj)
            
