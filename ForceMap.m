@@ -5474,8 +5474,21 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
             obj.ExtendVelocity =  double(string(AFMBaseClass.nhf_get_json_name_value(JSONConfigApp,'speed')));
             obj.RetractVelocity =  double(string(AFMBaseClass.nhf_get_json_name_value(JSONConfigRet,'speed')));
             obj.HHType = 'Position Z';
-            obj.Setpoint =  double(string(AFMBaseClass.nhf_get_json_name_value(JSONConfigApp,'setpoint')))...
-                *obj.Sensitivity*obj.SpringConstant;
+            try
+                obj.Setpoint =  double(string(AFMBaseClass.nhf_get_json_name_value(JSONConfigApp,'setpoint')))...
+                    *obj.Sensitivity*obj.SpringConstant;
+            catch
+                obj.Setpoint = [];
+            end
+            if isempty(obj.Setpoint)
+                try
+                    obj.Setpoint =  double(string(AFMBaseClass.nhf_get_json_name_value(JSONConfigApp,'set_point')))...
+                        *obj.Sensitivity*obj.SpringConstant;
+                catch
+                    obj.Setpoint = [];
+                end
+            end
+            
         end
         
         function jpk_read_in_header_properties(obj)
