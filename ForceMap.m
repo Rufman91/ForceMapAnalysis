@@ -139,6 +139,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
         EModOliverPharr = [] % List of reduced sample E-Modulus based on the Oliver-Pharr method
         FibrilEModOliverPharr = []
         FibrilEModHertz = []
+        HertzFitStore = []
         HertzFit = []        % HertzFit model generated in the calculate_e_mod_hertz method
         HertzFitType = ''
         HertzFitCoeffNames = ''
@@ -1605,7 +1606,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
                     catch ME
                         EMod{i} = nan;
 %                         Hertzfit{i}.a = 0;
-%                         if AllowXShiload('/home/manuel/Downloads/ForceMapAnalysis-Options_15-May-2024_10-44-02.mat')ft
+%                         if AllowXShift
 %                             Hertzfit{i}.b = 0;
 %                         end
                     end
@@ -1615,6 +1616,65 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
                     warning('off','all');
                     try
                         Hertzfit{i}.a = Hertzfit{i}.a*RangeF{i}/RangeTH{i}.^(3/2);
+                        if contains(TipShape,'parabolic on thin film')
+                            % Regular expression pattern to match constants
+                            if AllowXShift
+                                pattern = '\+([-\d\.eE]+)\*\(x-b\)\^\([\d/]+\)';
+                            else
+                                pattern = '\+([-\d\.eE]+)\*x\^\([\d/]+\)';
+                            end
+                            func_str = formula(Hertzfit{i});
+                            
+                            % Extract constants using regexp
+                            tokens = regexp(func_str, pattern, 'tokens');
+                            
+                            % Convert tokens to numerical values
+                            constants = cellfun(@(c) str2double(c{1}), tokens);
+                            
+                            % Rescaling factors for each constant
+                            x_range_powers = [0.5, 1, 1.5, 2]; % Corresponding powers of x_range
+                            
+                            % Rescale the constants
+                            rescaled_constants = constants ./ (RangeTH{i}.^ x_range_powers);
+                            
+                            % Create a copy of the original function string to modify
+                            new_func_str = func_str;
+                            
+                            % Prepare formatted strings of rescaled constants
+                            formatted_constants = arrayfun(@(c) sprintf('%.8e', c), rescaled_constants, 'UniformOutput', false);
+                            
+                            % Regular expression pattern to match constants in the original string
+                            if AllowXShift
+                                pattern_replace = '(\+)([-\d\.eE]+)(\*\(x-b\)\^\([\d/]+\))';
+                            else
+                                pattern_replace = '(\+)([-\d\.eE]+)(\*x\^\([\d/]+\))';
+                            end
+                            % Use regexp to find positions of constants to replace
+                            [match_starts, match_ends] = regexp(new_func_str, pattern_replace);
+                            
+                            % Loop over each match and replace the constant
+                            for j = 1:length(match_starts)
+                                % Extract the full matched substring
+                                original_substring = new_func_str(match_starts(j):match_ends(j));
+                                
+                                % Extract the parts of the substring
+                                parts = regexp(original_substring, pattern_replace, 'tokens');
+                                parts = parts{1};
+                                
+                                % Reassemble the substring with the rescaled constant
+                                new_substring = [parts{1}, formatted_constants{j}, parts{3}];
+                                
+                                % Replace the original substring with the new substring
+                                new_func_str = [new_func_str(1:match_starts(j)-1), new_substring, new_func_str(match_ends(j)+1:end)];
+                                
+                                % Adjust positions for next iteration due to change in string length
+                                offset = length(new_substring) - length(original_substring);
+                                match_starts = match_starts + offset;
+                                match_ends = match_ends + offset;
+                            end
+                        else
+                            new_func_str = formula(Hertzfit{i});
+                        end
                         if AllowXShift
                             Hertzfit{i}.b = Hertzfit{i}.b*RangeTH{i};
                             obj.CP_HertzFitted(iRange(i),1) = CP(i,1)-Hertzfit{i}.b;
@@ -1627,7 +1687,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
                         warning('on','all');
                         %                         obj.HertzFit{iRange(i)} = Hertzfit{i};
                         try
-                            obj.HertzFitType = formula(Hertzfit{i});
+                            obj.HertzFitType{iRange(i)} = new_func_str;
                             obj.HertzFitCoeffNames = coeffnames(Hertzfit{i});
                         catch
                         end
@@ -1689,6 +1749,16 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
                 obj.CPFlag.HertzFitted = 1;
             end
             
+            % Write current fit parameters to HertzFitStore
+            if isempty(obj.HertzFitStore)
+                obj.HertzFitStore(1).FMA_ID = obj.CurrentFMA_ID;
+            else
+                obj.HertzFitStore(end + 1).FMA_ID = obj.CurrentFMA_ID;
+            end
+            obj.HertzFitStore(end).HertzFitType = obj.HertzFitType;
+            obj.HertzFitStore(end).HertzFitCoeffNames = obj.HertzFitCoeffNames;
+            obj.HertzFitStore(end).HertzFitValues = obj.HertzFitValues;
+            
         end
         
         function calculate_predictive_rsquare_hertz(obj,CorrectSensitivity,...
@@ -1697,9 +1767,14 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
             Range = find(obj.SelectedCurves);
             PredictiveRSquare = ones(obj.NCurves,1).*NaN;
             
-            FitFunction = fittype(obj.HertzFitType);
+            if ~iscell(obj.HertzFitType)
+                FitFunction = fittype(obj.HertzFitType);
+            end
             
             for i=Range'
+                if iscell(obj.HertzFitType)
+                    FitFunction = fittype(obj.HertzFitType{i});
+                end
                 if CorrectSensitivity
                     if isequal(SensitivityCorrectionMethod,'Adaptive')
                         [App,HHApp] = obj.get_force_curve_data(i,...

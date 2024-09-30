@@ -417,23 +417,72 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             
         end
         
-        function [ChannelStruct,Index] = get_channel(obj,ChannelName)
-            k = 0;
-            for i=1:length(obj.Channel)
-                if isequal(obj.Channel(i).Name,ChannelName)
-                    ChannelStruct = obj.Channel(i);
-                    Index = i;
-                    k = k+1;
+        function [ChannelStruct, Index] = get_channel(obj, ChannelName, FMA_ID)
+            % GET_CHANNEL Retrieves channel information based on ChannelName and optional FMA_ID.
+            %
+            % Syntax:
+            %   [ChannelStruct, Index] = get_channel(obj, ChannelName)
+            %   [ChannelStruct, Index] = get_channel(obj, ChannelName, FMA_ID)
+            %
+            % Inputs:
+            %   obj         - The object containing the Channel struct array.
+            %   ChannelName - The name of the channel to search for.
+            %   FMA_ID      - (Optional) The FMA_ID to match against the channel's FMA_ID field.
+            %
+            % Outputs:
+            %   ChannelStruct - The matching channel struct. Empty if no match found.
+            %   Index         - The index of the matching channel in obj.Channel. Empty if no match found.
+            
+            % Initialize outputs
+            ChannelStruct = [];
+            Index = [];
+            k = 0;  % Counter for matching channels
+            
+            % Iterate through all channels
+            for i = 1:length(obj.Channel)
+                currentChannel = obj.Channel(i);
+                
+                if nargin < 3 || isempty(FMA_ID)
+                    % Case when FMA_ID is not provided: exact match on ChannelName
+                    nameMatch = isequal(currentChannel.Name, ChannelName);
+                    if nameMatch
+                        ChannelStruct = currentChannel;
+                        Index = i;
+                        k = k + 1;
+                    end
+                else
+                    % Case when FMA_ID is provided
+                    % Define pattern: ChannelName or ChannelName (NN), where NN is 01-99
+                    pattern = sprintf('^%s(?: \\((0[1-9]|[1-9][0-9])\\))?$', regexptranslate('escape', ChannelName));
+                    nameMatch = ~isempty(regexp(currentChannel.Name, pattern, 'once'));
+                    fmaMatch = isequal(currentChannel.FMA_ID, FMA_ID);
+                    
+                    if nameMatch && fmaMatch
+                        ChannelStruct = currentChannel;
+                        Index = i;
+                        k = k + 1;
+                    end
                 end
             end
+            
+            % Handle warnings based on the number of matches
             if k > 1
-                warning(sprintf('Caution! There are more than one channels named %s (%i)',ChannelName,k))
-            end
-            if k == 0
+                if nargin < 3 || isempty(FMA_ID)
+                    warning('Caution! There are more than one channels named %s (%i matches).', ChannelName, k);
+                else
+                    warning('Caution! There are more than one channels matching name "%s" with FMA_ID "%s" (%i matches).', ChannelName, FMA_ID, k);
+                end
+            elseif k == 0
+                if nargin < 3 || isempty(FMA_ID)
+%                     warning('No channel found with the name "%s".', ChannelName);
+                else
+                    warning('No channel found matching name "%s" with FMA_ID "%s".', ChannelName, FMA_ID);
+                end
                 ChannelStruct = [];
                 Index = [];
             end
         end
+
         
         function [Channel,Index,FoundRequested] = get_unprocessed_height_channel(obj,ChannelName)
             % Goes over all possible variations of height channels in a

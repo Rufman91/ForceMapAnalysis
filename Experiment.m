@@ -24,6 +24,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
         ShowImageSettings = Experiment.set_default_show_image_settings()
         ForceMapAnalysisOptions = Experiment.set_default_fma_options()
         CurrentFMA_ID = 'none'
+        FMAOptionsStoreStruct = []
         FMAExitErrorStack
         FiberSegmentProcessingOptions = Experiment.set_default_fsp_options()
         GrammOptions = Experiment.set_default_gramm_options()
@@ -1905,6 +1906,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 obj.broadcast_current_fma_id(FMA_ID);
                 OptionsSnapshot = sprintf('ForceMapAnalysis-Options_%s.mat',Time);
                 save(OptionsSnapshot,'FMA','FMA_ID');
+                obj.add_fma_options_to_storestruct(FMA,FMA_ID,Time) 
                 cd(current.path)
                 CPOption = obj.ForceMapAnalysisOptions.ContactPointOption;
                 EModOption = obj.ForceMapAnalysisOptions.EModOption.Type;
@@ -4717,6 +4719,52 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             function set_volume_data_tab_ui()
                 
                 % Volume Data Buttons
+                
+                h.FVM(10) = uicontrol('style','text',...
+                    'String','Max %',...
+                    'ForegroundColor',h.ColorMode(obj.ShowImageSettings.ColorIndex).ButtonText,...
+                    'BackgroundColor',h.ColorMode(obj.ShowImageSettings.ColorIndex).Buttons,...
+                    'Visible',obj.ShowImageSettings.VolumeMenuValue,...
+                    'Units','normalized',...
+                    'Position',[.97 .39 .03 .03]);
+                
+                h.FVM(11) = uicontrol('style','text',...
+                    'String','Min %',...
+                    'ForegroundColor',h.ColorMode(obj.ShowImageSettings.ColorIndex).ButtonText,...
+                    'BackgroundColor',h.ColorMode(obj.ShowImageSettings.ColorIndex).Buttons,...
+                    'Visible',obj.ShowImageSettings.VolumeMenuValue,...
+                    'Units','normalized',...
+                    'Position',[.89 .39 .03 .03]);
+                
+                h.FVM(12) = uicontrol('style','edit',...
+                    'String','',...
+                    'units','normalized',...
+                    'ForegroundColor',h.ColorMode(obj.ShowImageSettings.ColorIndex).ButtonText,...
+                    'BackgroundColor',h.ColorMode(obj.ShowImageSettings.ColorIndex).Buttons,...
+                    'Visible',obj.ShowImageSettings.VolumeMenuValue,...
+                    'position',[.85 .39 .035 .03],...
+                    'Callback',@draw_volume_information);
+                
+                h.FVM(13) = uicontrol('style','edit',...
+                    'String','',...
+                    'ForegroundColor',h.ColorMode(obj.ShowImageSettings.ColorIndex).ButtonText,...
+                    'BackgroundColor',h.ColorMode(obj.ShowImageSettings.ColorIndex).Buttons,...
+                    'Visible',obj.ShowImageSettings.VolumeMenuValue,...
+                    'units','normalized',...
+                    'position',[.925 .39 .035 .03],...
+                    'Callback',@draw_volume_information);
+                
+                h.FVM(14) = uicontrol('style','radiobutton',...
+                    'String','LogLog Plot',...
+                    'Tooltip','Plots the data on a double log scale',...
+                    'ForegroundColor',h.ColorMode(obj.ShowImageSettings.ColorIndex).ButtonText,...
+                    'BackgroundColor',h.ColorMode(obj.ShowImageSettings.ColorIndex).Buttons,...
+                    'Units','normalized',...
+                    'Value',obj.ShowImageSettings.LogLog,...
+                    'Visible',obj.ShowImageSettings.VolumeMenuValue,...
+                    'Position',[.875 .36 .1 .03],...
+                    'Callback',@changed_log_log_plot);
+                
                 h.FVM(1) = uicontrol('style','radiobutton',...
                     'String','Baseline corrected',...
                     'Tooltip','Subtracts a baseline from the data',...
@@ -4806,7 +4854,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                     'Position',[.875 .12 .1 .03],...
                     'Callback',@changed_extended_information);
                 
-                    h.ToggledVolumeMenuIndizes = [1 2 3 4 5 6 7 8 9];
+                    h.ToggledVolumeMenuIndizes = [1 2 3 4 5 6 7 8 9 10 11 12 13 14];
                 
             end
             
@@ -6198,9 +6246,39 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 % Add HertzFit, if requested
                 if obj.ShowImageSettings.ShowHertzFit && ...
                         obj.ShowImageSettings.TipHeight
-                    FitFunction = fittype(h.Class{h.VolumeStruct.Index}.HertzFitType);
-                    FitCoeffValues = ...
-                        h.Class{h.VolumeStruct.Index}.HertzFitValues{h.VolumeStruct.ListIndex};
+                    % Look for FMA Options and associated channels.
+                    % Otherwise use default Hertzian options
+                    Channel = h.Class{h.VolumeStruct.Index}.get_channel(h.Channel{h.VolumeStruct.Index});
+                    if isfield(Channel,'FMA_ID') &&...
+                            ~isequal(Channel.FMA_ID,'none')...
+                            && ~isempty(h.Class{h.VolumeStruct.Index}.HertzFitStore)
+                        FMA_ID = Channel.FMA_ID;
+%                         FMAOptions = obj.search_fma_options_matching_fma_id(FMA_ID);
+                        
+                        ID_Index = find(contains(...
+                            {h.Class{h.VolumeStruct.Index}.HertzFitStore.FMA_ID},...
+                            FMA_ID));
+                        
+                        if iscell(h.Class{h.VolumeStruct.Index}.HertzFitStore(ID_Index).HertzFitType)
+                            FitFunction = ...
+                                fittype(h.Class{h.VolumeStruct.Index}.HertzFitStore(ID_Index).HertzFitType{h.VolumeStruct.ListIndex});
+                        else
+                            FitFunction = ...
+                                fittype(h.Class{h.VolumeStruct.Index}.HertzFitStore(ID_Index).HertzFitType);
+                        end
+                        FitCoeffValues = ...
+                            h.Class{h.VolumeStruct.Index}.HertzFitStore(ID_Index).HertzFitValues{h.VolumeStruct.ListIndex};
+                    else
+                        if iscell(h.Class{h.VolumeStruct.Index}.HertzFitType)
+                            FitFunction = ...
+                                fittype(h.Class{h.VolumeStruct.Index}.HertzFitType{h.VolumeStruct.ListIndex});
+                        else
+                            FitFunction = ...
+                                fittype(h.Class{h.VolumeStruct.Index}.HertzFitType);
+                        end
+                        FitCoeffValues = ...
+                            h.Class{h.VolumeStruct.Index}.HertzFitValues{h.VolumeStruct.ListIndex};
+                    end
                     if length(FitCoeffValues) == 1
                         Fit = cfit(FitFunction,FitCoeffValues);
                     elseif length(FitCoeffValues) == 2
@@ -6262,7 +6340,20 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
 %                 end
                 
                 % plot data
-                h.VolumeStruct.Plot = plot(X1,Y1,X2,Y2,X3,Y3);
+                if ~obj.ShowImageSettings.LogLog
+                    h.VolumeStruct.Plot = plot(X1,Y1,X2,Y2,X3,Y3);
+                else
+                    if ~isempty(X3)
+                        X3(isnan(Y3)) = [];
+                        Y3(isnan(Y3)) = [];
+                        X1 = X1 - min(X3);
+                        X2 = X2 - min(X3);
+                        X3 = X3 - min(X3);
+                    end
+                    warning('off')
+                    h.VolumeStruct.Plot = loglog(X1,Y1,X2,Y2,X3,Y3);
+                    warning('on')
+                end
                 hold on
                 grid on
                 CurrentAxHeight = ...
@@ -6299,6 +6390,24 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 Legend.Color = ...
                     h.ColorMode(obj.ShowImageSettings.ColorIndex).Backdrop;
                 Legend.Location = 'northwest';
+                
+                if ~isnan(str2double(h.FVM(12).String)) && ~isnan(str2double(h.FVM(13).String))
+                    MinX = min([X1 ; X2 ; X3],[],'all');
+                    MaxX = max([X1 ; X2 ; X3],[],'all');
+                    RangeX = MaxX - MinX;
+                    LowerXLim = str2double(h.FVM(12).String)/100*RangeX + MinX;
+                    UpperXLim = str2double(h.FVM(13).String)/100*RangeX + MinX;
+                    xlim([LowerXLim UpperXLim])
+                end
+                
+            end
+            
+            function changed_log_log_plot(varargin)
+                
+                obj.ShowImageSettings.LogLog = ...
+                    h.FVM(14).Value;
+                
+                draw_volume_information
             end
             
             function changed_baseline_corrected(varargin)
@@ -11060,6 +11169,60 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             end
         end
         
+        function add_fma_options_to_storestruct(obj,FMA,FMA_ID,Time)
+            
+            if nargin < 4
+                Time = '';
+            end
+            
+            if isempty(obj.FMAOptionsStoreStruct)
+                obj.FMAOptionsStoreStruct.FMAOptions = FMA;
+                obj.FMAOptionsStoreStruct.Time = Time;
+                obj.FMAOptionsStoreStruct.FMA_ID = FMA_ID;
+            else
+                obj.FMAOptionsStoreStruct(end+1).FMAOptions = FMA;
+                obj.FMAOptionsStoreStruct(end).Time = Time;
+                obj.FMAOptionsStoreStruct(end).FMA_ID = FMA_ID;
+            end
+            
+        end
+        
+        function FMAOptions = search_fma_options_matching_fma_id(obj,Matched_FMA_ID)
+            
+            FMAOptions = [];
+            
+            % First look in FMAOptionStoreStruct
+            if ~isempty(obj.FMAOptionsStoreStruct)
+                MatchingIndex = find(contains({obj.FMAOptionsStoreStruct.FMA_ID},Matched_FMA_ID));
+                if numel(MatchingIndex) > 1
+                    warning('More than one matching FMAOption struct found in FMAOptionStoreStruct. Returning first one')
+                    MatchingIndex(2:end) = [];
+                end
+                if ~isempty(MatchingIndex)
+                    FMAOptions = obj.FMAOptionsStoreStruct(MatchingIndex).FMAOptions;
+                end
+            end
+            
+            % Look in Experiment Folder. if FMAO files found, load them in
+            % and store in FMAOptionsStoreStruct. Then, call function again
+            if isempty(FMAOptions)
+                Current = what;
+                cd(obj.ExperimentFolder)
+                EF = what;
+                FMAOFiles = find(contains(EF.mat,'ForceMapAnalysis-Options_'));
+                if ~isempty(FMAOFiles)
+                    for i=FMAOFiles'
+                        load(EF.mat{i});
+                        obj.add_fma_options_to_storestruct(FMA, FMA_ID);
+                    end
+                    FMAOptions = obj.search_fma_options_matching_fma_id(Matched_FMA_ID);
+                else
+                    warning('no matching FMA_ID found')
+                end
+                cd(Current.path)
+            end
+        end
+        
     end
     methods(Static)
         % Static auxilary methods mainly for tip deconvolution (code by Orestis Andriotis)
@@ -11827,6 +11990,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 'UseOverlay',0,...
                 'StatisticalCMap',0,...
                 'IsUpscaled',0,...
+                'LogLog',0,...
                 'BaselineCorrected',1,...
                 'TipHeight',1,...
                 'ContactPointShifted',1,...
