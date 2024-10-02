@@ -6190,7 +6190,10 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
                     OutHeight = -TempHeight;
                     OutvDef = obj.nhf_load_single_curve_channel_data(CurveNumber,AppRetSwitch,'Deflection');
                     
-                elseif isequal(obj.FileType,'jpk-force-map') || isequal(obj.FileType,'jpk-qi-data')
+                elseif isequal(obj.FileType,'jpk-force-map') ||...
+                        isequal(obj.FileType,'jpk-qi-data') ||...
+                        isequal(obj.FileType,'force-scan-map') ||...
+                        isequal(obj.FileType,'quantitative-imaging-map')
                     if obj.PythonLoaderFlag
                         TempHeight = obj.load_single_curve_channel_data_with_python(string(CurveNumber-1),string(AppRetSwitch),obj.HHType);
                         OutvDef = obj.load_single_curve_channel_data_with_python(string(CurveNumber-1),string(AppRetSwitch),'vDeflection');
