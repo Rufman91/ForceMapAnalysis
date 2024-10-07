@@ -1423,6 +1423,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             
             E.ExperimentFolder = Path;
             
+            E.check_and_assert_channel_image_sizes;
         end
         
         function delete_folderstructure(FolderPath)
@@ -2162,7 +2163,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                         end
                     end
                     if isequal(lower(EModOption),'oliverpharr') || isequal(lower(EModOption),'both')
-                        obj.FM{i}.CP = obj.FM{i}.CP_HertzFitted; % DELETE ME AFTER THIS USE!
+%                         obj.FM{i}.CP = obj.FM{i}.CP_HertzFitted; % DELETE ME AFTER THIS USE!
                         obj.FM{i}.calculate_e_mod_oliverpharr(obj.CantileverTips{obj.WhichTip(i)}.ProjectedTipArea,...
                             obj.ForceMapAnalysisOptions.EModOption.OliverPharr.CurvePercent,...
                             obj.ForceMapAnalysisOptions.KeepOldResults);
@@ -2419,7 +2420,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                     k = k + 1;
                 end
                 catch ME
-                    warning(ME)
+                    warning(ME.identifier,'%s',ME.message)
                 end
             end
         end
@@ -9359,7 +9360,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
         end
     end
     methods
-        % auxiliary methods
+        % auxiliary methodsE.I{1}.Segment(2).ROIObject.Position()
         
         function reset_segmentations(obj)
             % function reset_segmentations(obj)
@@ -10999,6 +11000,61 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             
         end
         
+        function check_and_assert_channel_image_sizes(obj)
+            
+            for i=1:obj.NumAFMImages
+                for j=1:numel(obj.I{i}.Channel)
+                    [NPX,NPY] = size(obj.I{i}.Channel(j).Image);
+                    if NPX ~= obj.I{i}.Channel(j).NumPixelsX ||...
+                            NPY ~= obj.I{i}.Channel(j).NumPixelsY
+                        warning(sprintf('Channel %s in %s has mismatched image dimensions and NumPixel values.\nAdjusted to \nNumPixelsX = %i and NumPixelsY = %i',...
+                            obj.I{i}.Channel(j).Name,obj.I{i}.Name,NPX,NPY));
+                    end
+                    obj.I{i}.Channel(j).NumPixelsX = NPX;
+                    obj.I{i}.Channel(j).NumPixelsY = NPY;
+                end
+            end
+            
+            for i=1:obj.NumForceMaps
+                for j=1:numel(obj.FM{i}.Channel)
+                    [NPX,NPY] = size(obj.FM{i}.Channel(j).Image);
+                    if NPX ~= obj.FM{i}.Channel(j).NumPixelsX ||...
+                            NPY ~= obj.FM{i}.Channel(j).NumPixelsY
+                        warning(sprintf('Channel %s in %s has mismatched image dimensions and NumPixel values.\nAdjusted to \nNumPixelsX = %i and NumPixelsY = %i',...
+                            obj.FM{i}.Channel(j).Name,obj.FM{i}.Name,NPX,NPY));
+                    end
+                    obj.FM{i}.Channel(j).NumPixelsX = NPX;
+                    obj.FM{i}.Channel(j).NumPixelsY = NPY;
+                end
+            end
+            
+            for i=1:obj.NumReferenceForceMaps
+                for j=1:numel(obj.RefFM{i}.Channel)
+                    [NPX,NPY] = size(obj.RefFM{i}.Channel(j).Image);
+                    if NPX ~= obj.RefFM{i}.Channel(j).NumPixelsX ||...
+                            NPY ~= obj.RefFM{i}.Channel(j).NumPixelsY
+                        warning(sprintf('Channel %s in %s has mismatched image dimensions and NumPixel values.\nAdjusted to \nNumPixelsX = %i and NumPixelsY = %i',...
+                            obj.RefFM{i}.Channel(j).Name,obj.RefFM{i}.Name,NPX,NPY));
+                    end
+                    obj.RefFM{i}.Channel(j).NumPixelsX = NPX;
+                    obj.RefFM{i}.Channel(j).NumPixelsY = NPY;
+                end
+            end
+            
+            for i=1:obj.NumCantileverTips
+                for j=1:numel(obj.CantileverTips{i}.Channel)
+                    [NPX,NPY] = size(obj.CantileverTips{i}.Channel(j).Image);
+                    if NPX ~= obj.CantileverTips{i}.Channel(j).NumPixelsX ||...
+                            NPY ~= obj.CantileverTips{i}.Channel(j).NumPixelsY
+                        warning(sprintf('Channel %s in %s has mismatched image dimensions and NumPixel values.\nAdjusted to \nNumPixelsX = %i and NumPixelsY = %i',...
+                            obj.CantileverTips{i}.Channel(j).Name,obj.CantileverTips{i}.Name,NPX,NPY));
+                    end
+                    obj.CantileverTips{i}.Channel(j).NumPixelsX = NPX;
+                    obj.CantileverTips{i}.Channel(j).NumPixelsY = NPY;
+                end
+            end
+        end
+        
     end
     methods(Static)
         % Static auxilary methods mainly for tip deconvolution (code by Orestis Andriotis)
@@ -12345,6 +12401,121 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             close(h)
             toc
         end
+        
+        function SummaryStruct = multiexperiment_create_and_save_data_table(FilterNonSnapped)
+            
+            if nargin < 1
+                FilterNonSnapped = false;
+            end
+            
+            k = 1;
+            LoadMore = 'Yes';
+            FullFile = {}; % Initialize FullFile to avoid potential issues with empty cells
+            
+            % File selection loop
+            while isequal(LoadMore, 'Yes')
+                [File, Path] = uigetfile('*.mat', 'Choose Experiment .mat from folder');
+                
+                % Check if the user selected a file
+                if isequal(File, 0) || isequal(Path, 0)
+                    disp('No file selected, exiting the selection loop.');
+                    break;
+                end
+                
+                FullFile{k} = fullfile(Path, File);
+                k = k + 1;
+                
+                LoadMore = questdlg('Do you want to add more Experiments?', ...
+                    'Multiexperiment loader', ...
+                    'Yes', ...
+                    'No', ...
+                    'No');
+            end
+            
+            % Remove empty entries in FullFile
+            FullFile = FullFile(~cellfun('isempty', FullFile));
+            NumExperiments = length(FullFile);
+            
+            % If no experiments are loaded, exit early
+            if NumExperiments == 0
+                disp('No experiments were loaded. Exiting the function.');
+                SummaryStruct = [];
+                return;
+            end
+            
+            % Initialize SummaryStruct
+            SummaryStruct(1:NumExperiments) = struct(...
+                'AnalysisSuccessful', true, ...
+                'ErrorStack', []);
+            
+            tic
+            h = waitbar(0, 'Setting up...');
+            
+            for i = 1:NumExperiments
+                waitbar((i) / NumExperiments, h, ...
+                    ['Loading Experiment ' num2str(i) ' of ' num2str(NumExperiments)]);
+                try
+                    % Load experiment data
+                    E = Experiment.load(FullFile{i});
+                    
+                    waitbar((i) / NumExperiments, h, ...
+                        ['Processing Experiment ' num2str(i) ' of ' num2str(NumExperiments)]);
+                    
+                    % Compile data into a table
+                    T = E.compile_experiment_content_to_table_sqldatabase;
+                    
+                    isTableFiltered = false;
+                    
+                    % Apply filtering if needed
+                    if FilterNonSnapped
+                        columnName = 'SegmentName';
+                        isColumnPresent = ismember(columnName, T.Properties.VariableNames);
+                        
+                        if isColumnPresent
+                            rows = ~contains(T.SegmentName, 'Snapped');
+                            T(rows, :) = [];
+                            isTableFiltered = true;
+                        else
+                            fprintf('\nData Table does not contain a Column named "SegmentName".\n');
+                            fprintf('Is your Data properly Segmented?\nSaving full Table instead...\n');
+                        end
+                    end
+                    
+                    % Generate timestamped filename
+                    currentDateTime = datetime('now');
+                    formattedDateTime = datestr(currentDateTime, 'yyyy_mm_dd_HH_MM');
+                    
+                    if isTableFiltered
+                        FileName = ['DataTable_', 'Filtered_', formattedDateTime, '.mat'];
+                    else
+                        FileName = ['DataTable_', formattedDateTime, '.mat'];
+                    end
+                    
+                    % Save the table
+                    try
+                        current = what;
+                        cd(E.ExperimentFolder)
+                        save(FileName, 'T', '-v7.3');
+                        cd(current.path)
+                    catch saveError
+                        warning('Failed to save the file: %s\nError: %s', FileName, saveError.message);
+                        SummaryStruct(i).AnalysisSuccessful = false;
+                        SummaryStruct(i).ErrorStack = saveError;
+                    end
+                    
+                    clear T
+                    
+                catch ME
+                    SummaryStruct(i).ErrorStack = ME;
+                    SummaryStruct(i).AnalysisSuccessful = false;
+                    clear T
+                end
+            end
+            
+            close(h)
+            toc
+        end
+
         
     end
 end

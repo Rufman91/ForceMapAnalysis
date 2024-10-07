@@ -301,7 +301,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
             try
                 obj.create_pixel_difference_channel
                 obj.set_channel_positions(obj.OriginX,obj.OriginY,obj.ScanAngle);
-            catch
+            catch ME
                 warning(['Could not create Pixel Difference Channel for ' MapFullFile])
             end
             
@@ -4523,7 +4523,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
             
             clear tline;
             frewind(FileID);
-            B=strfind(A,'vDeflection');
+            B=regexp(A,'lcd-info\.\d+\.channel\.name=vDeflection');
             tline = A(B:end);
             vDefNum = regexp(tline,exp1,'match','once');
             
@@ -5041,7 +5041,9 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
             if obj.PythonLoaderFlag
                 current = what;
                 TempFolder = fullfile(obj.DataStoreFolder,obj.ID);
+                warning('off', 'all');
                 mkdir(TempFolder)
+                warning('on', 'all');
                 cd(TempFolder)
                 if isequal(obj.FileType,'quantitative-imaging-map')
                     obj.OpenZipFile.extract('data-image.jpk-qi-image');
@@ -5063,29 +5065,11 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
                 end
             end
             
+            I.preprocess_image;
+            
             obj.Channel = I.Channel;
             
-            Height = obj.get_channel('Height');
-            obj.HeightMap = Height.Image;
-            
-            if size(obj.HeightMap,1) < 128
-                Map = imresize(obj.HeightMap,[256 256],'nearest');
-            elseif size(obj.HeightMap,1) < 512
-                Map = imresize(obj.HeightMap,[512 512],'nearest');
-            else
-                Map = imresize(obj.HeightMap,[1024 1024],'nearest');
-            end
-            for i=1:5
-                Map = AFMImage.subtract_line_fit_vertical_rov(Map,.2,0);
-            end
-            Map = imresize(Map,[obj.NumPixelsX obj.NumPixelsY],'nearest');
-            
-            Map = AFMImage.find_and_replace_outlier_lines(Map,10);
-            
-            % write to Channel
-            Processed = obj.create_standard_channel(Map,'Processed','m');
-            
-            obj.add_channel(Processed,true);
+            Processed = obj.get_channel('Processed');
             
             obj.HeightMap = Processed.Image;
             
@@ -5284,7 +5268,9 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
                                 fprintf('Dynamically adjusting MiniBatchSize = %i\n',obj.MiniBatchSize)
                                 HasFailed = true;
                             otherwise
-                                rethrow(ME)
+                                obj.MiniBatchSize = ceil(obj.MiniBatchSize*3/4);
+                                fprintf('Dynamically adjusting MiniBatchSize = %i\n',obj.MiniBatchSize)
+                                HasFailed = true;
                         end
                     end
                 end
@@ -5318,7 +5304,11 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
             if obj.BigDataFlag
                 if obj.PythonLoaderFlag
                     TempFolderName = 'DataStore';
-                    mkdir(DataFolder,TempFolderName);
+                    % Check if the directory already exists
+                    if ~exist(fullfile(DataFolder, TempFolderName), 'dir')
+                        % Create the directory if it does not exist
+                        mkdir(DataFolder, TempFolderName);
+                    end
                     TempFolder = fullfile(DataFolder,TempFolderName);
                 else
                     TempFolderName = sprintf('FM_DataStore_%s',obj.ID);

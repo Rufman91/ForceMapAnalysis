@@ -29,6 +29,7 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
         % allows for image cropping, image-overlays and easy addition of
         % other kinds of image-data (e.g. AdhesionMaps, EModMaps)
         Channel
+        NumChannels = []
         CMap = AFMImage.define_afm_color_map
     end
     properties
@@ -454,7 +455,7 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             for i=1:length(HeightChannelList)
                 [Channel,Index] = obj.get_channel(HeightChannelList{i});
                 if ~isempty(Channel)
-                    warning(sprintf('Could not find a Channel named "%s", loaded Channel "%s" instead',ChannelName,HeightChannelList{i}))
+%                     warning(sprintf('Could not find a Channel named "%s", loaded Channel "%s" instead',ChannelName,HeightChannelList{i}))
                     FoundRequested = false;
                     return
                 end
@@ -578,6 +579,10 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             end
             
             OutImage = AFMImage.create_pixel_difference_map(InImage);
+            
+            if useSlowScanDirBool
+                OutImage = imrotate(OutImage,-90);
+            end
             
             OutChannel = obj.create_standard_channel(OutImage,'Pixel Difference','m');
             
@@ -1470,7 +1475,7 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
                                 (round(ForbiddenY(jj))<1 || round(ForbiddenY(jj))>Size(2)) 
                             continue
                         end
-                        if ~IgnoreMask(round(ForbiddenY(jj)),round(ForbiddenX(jj)))
+                        if ~IgnoreMask(round(ForbiddenX(jj)),round(ForbiddenY(jj)))
                             ForbiddenX(jj) = [];
                             ForbiddenY(jj) = [];
                             ForbiddenProfile(jj) = [];
@@ -1642,12 +1647,12 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
                 end
                 % find out overall segment pathlength
                 for m=size(SegmentPositions,1):-1:1
-                    if SegmentPositions(m,1)>Channel.NumPixelsX ||...
+                    if SegmentPositions(m,1)>Channel.NumPixelsY ||...
                             SegmentPositions(m,1)<0
                         SegmentPositions(m,:) = [];
                         continue
                     end
-                    if SegmentPositions(m,2)>Channel.NumPixelsY ||...
+                    if SegmentPositions(m,2)>Channel.NumPixelsX ||...
                             SegmentPositions(m,2)<0
                         SegmentPositions(m,:) = [];
                     end
@@ -2219,7 +2224,7 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             if nargin == 2
                 Height = obj.get_channel(SourceChannelName);
                 if isempty(Height)
-                    warning(sprintf('Channel %s not found, getting unprocessed height channel instead',SourceChannelName))
+%                     warning(sprintf('Channel %s not found, getting unprocessed height channel instead',SourceChannelName))
                     Height = obj.get_unprocessed_height_channel('Height (Trace)');
                 end
             else
@@ -2227,23 +2232,25 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             end
             
             if isempty(Height)
-                warning("Could not find height channel needed for preprocessing")
+                warning(sprintf("Could not find height channel needed for preprocessing.\nNo Channel named '%s'.\nNor where any of these backup channels found:\n'Height (measured) (Trace)','Height (Trace)','Height (measured)','Height','Height (measured) (Retrace)','Height (Retrace)'",SourceChannelName))
                 return
             end
             
-            if size(Height.Image,1) < 128
-                Map = imresize(Height.Image,[256 256],'nearest');
-            elseif size(Height.Image,1) < 512
-                Map = imresize(Height.Image,[512 512],'nearest');
+            if max(size(Height.Image)) < 128
+                Map = imresize(Height.Image,[256 256],'bilinear');
+            elseif max(size(Height.Image)) < 512
+                Map = imresize(Height.Image,[512 512],'bilinear');
+            elseif max(size(Height.Image)) <= 1024
+                Map = imresize(Height.Image,[1024 1024],'bilinear');
             else
-                Map = imresize(Height.Image,[1024 1024],'nearest');
+                Map = imresize(Height.Image,[max(size(Height.Image)) max(size(Height.Image))],'nearest');
             end
             FitParams = zeros(size(Map,1),2);
             for i=1:5
                 [Map,TempFitParams] = AFMImage.subtract_line_fit_vertical_rov(Map,.2,0);
                 FitParams = FitParams + TempFitParams;
             end
-            Map = imresize(Map,[obj.NumPixelsX obj.NumPixelsY],'nearest');
+            Map = imresize(Map,[obj.NumPixelsX obj.NumPixelsY],'bilinear');
             
         end
         
@@ -2793,7 +2800,7 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             verbose = p.Results.Verbose;
             
             if verbose
-                figure
+                figure('Position',[200 200 30*50 9*50],'Color','w')
             end
             
             % Extract image data
@@ -2873,6 +2880,13 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             tipHeightMapRescaled = -tipHeightMapRescaled;
             tipHeightMapRescaled = tipHeightMapRescaled + maxTipHeight;
             
+            if verbose
+                % Define video writer object
+                v = VideoWriter('local_contact_area.avi', 'Uncompressed AVI');  % Create a VideoWriter object
+                v.FrameRate = 60;  % Set frame rate to 60 FPS
+                open(v);  % Open the video file for writing
+            end
+            
             % Iterate over each pixel in the sample height map
             for i = 1:sampleNumPixelsY
                 for j = 1:sampleNumPixelsX
@@ -2904,16 +2918,20 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
                             % Calculate contact area
                             contactAreas(i, j) = sum(overlapMask(:)) * pixelArea;
                             
-                            if verbose && mod(j,256)==0
+                            if verbose && mod(j,1)==0 && i>=256 && i<=260
                                 subplot(2,3,1)
                                 imshow(overlapMask,[])
+                                title('Pixels in Contact')
                                 subplot(2,3,2)
                                 imshow(contactAreas,[])
+                                title('Contact Area Map')
                                 
                                 subplot(2,3,4)
                                 imshow(overlapRegionSample,[])
+                                title('Sample')
                                 subplot(2,3,5)
                                 imshowpair(overlapRegionSample,-tipHeightMapRescaled)
+                                title('Tip on Sample')
                                 
                                 subplot(2,3,[3 6])
                                 mesh((overlapRegionSample - sampleHeightMap(i,j)))
@@ -2921,7 +2939,15 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
                                 mesh((tipHeightMapRescaled - indentationDepthMap(i,j)))
                                 hold off
                                 zlim([-3e-7 4e-7])
+                                daspect([1 1 0.01*abs(-3e-7 - 4e-7)]);
+                                view(220, 37.5);
+                                title('Tip Scanning Over Sample')
+                                
                                 drawnow
+                                
+                                % Capture the current frame and write it to the video
+                                frame = getframe(gcf);  % Capture the current figure as a frame
+                                writeVideo(v, frame);   % Write the frame to the video
                             end
                         else
                             fprintf('somethings wrong %i,%i \n',i,j)
@@ -2932,6 +2958,9 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             
             % Debugging and visualization
             if verbose
+                % Close the video file
+                close(v);
+                
                 figure;
                 subplot(1, 3, 1);
                 imagesc(sampleHeightMapRescaled);
@@ -3216,175 +3245,72 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             
         end
         
-        function map_fiber_segment_properties_to_image_pixels(obj,PoolingMethod)
-            
-            if nargin < 2
-                PoolingMethod = 'Median';
-            end
-            
-            NumSegments = length(obj.Segment);
-            
-            FieldsList = {'Height','WidthHalfHeight',...
-                'Prominence','WidthHalfProminence',...
-                'SegmentLength','Mean_WidthHalfHeight',...
-                'Median_WidthHalfHeight','Mean_Height',...
-                'Median_Height','Mean_WidthHalfProminence',...
-                'Median_WidthHalfProminence','Mean_Prominence',...
-                'Median_Prominence','Area','Mean_Area','Median_Area',...
-                'WidthBase','Mean_WidthBase','Median_WidthBase',...
-                'AspectRatioHalfHeight','Mean_AspectRatioHalfHeight',...
-                'Median_AspectRatioHalfHeight','AspectRatioBaseHeight',...
-                'Mean_AspectRatioBaseHeight','Median_AspectRatioBaseHeight',...
-                'AreaDerivedDiameter','Mean_AreaDerivedDiameter',...
-                'Median_AreaDerivedDiameter',...
-                'Ellipse_a','Mean_Ellipse_a','Median_Ellipse_a',...
-                'Ellipse_b','Mean_Ellipse_b','Median_Ellipse_b',...
-                'Ellipse_AspectRatio','Mean_Ellipse_AspectRatio',...
-                'Median_Ellipse_AspectRatio',...
-                'Ellipse_Area','Mean_Ellipse_Area','Median_Ellipse_Area',...
-                'Ellipse_Height','Mean_Ellipse_Height',...
-                'Median_Ellipse_Height',...
-                'Ellipse_WidthHalfHeight','Mean_Ellipse_WidthHalfHeight',...
-                'Median_Ellipse_WidthHalfHeight',...
-                'RelativePixelPosition','RelativePosition'};
-            
-            switch PoolingMethod
-                case 'Mean'
-                    PoolingFcn = @(x)mean(x,'omitnan');
-                case 'Median'
-                    PoolingFcn = @(x)median(x,'omitnan');
-                case 'Max'
-                    PoolingFcn = @(x)max(x,'omitnan');
-                case 'Min'
-                    PoolingFcn = @(x)min(x,'omitnan');
-            end
-            
-            h = waitbar(0,'setting up...',...
-                    'Name',obj.Name);
-            % initialize object properties
-            obj.SegmentName = cell(obj.NumPixelsX*obj.NumPixelsY,1);
-            obj.SubSegmentName = cell(obj.NumPixelsX*obj.NumPixelsY,1);
-            obj.SubSegmentFullName = cell(obj.NumPixelsX*obj.NumPixelsY,1);
-            [obj.SegmentName(:)] = {''};
-            [obj.SubSegmentName(:)] = {''};
-            [obj.SubSegmentFullName(:)] = {''};
-            for i=1:length(FieldsList)
-                for j=1:length(obj.Segment)
-                    if ~isfield(obj.Segment(j),FieldsList{i}) || isempty(obj.Segment(j).(FieldsList{i}))
-                        continue
-                    elseif isnumeric(obj.Segment(j).(FieldsList{i}))
-                        obj.(['FiberSegment_' FieldsList{i}]) = ones(obj.NumPixelsX*obj.NumPixelsY,1).*NaN;
-                    else
-                        obj.(['FiberSegment_' FieldsList{i}]) = cell(obj.NumPixelsX*obj.NumPixelsY,1);
-                        [obj.(['FiberSegment_' FieldsList{i}])(:)] = {''};
-                    end
-                end
-            end
-            
-            % skip non polyline segments
-            for i=1:NumSegments
-                waitbar(i/NumSegments,h,obj.Segment(i).Name,...
-                    'Name',obj.Name)
-                if ~isfield(obj.Segment(i),'SegmentPixelIndex') ||...
-                        ~isfield(obj.Segment(i),'ROIObject') ||...
-                        ~isfield(obj.Segment(i),'CorrespondingPixelIndex') ||...
-                        isempty(obj.Segment(i).SegmentPixelIndex) ||...
-                        isempty(obj.Segment(i).ROIObject) ||...
-                        isempty(obj.Segment(i).CorrespondingPixelIndex) ||...
-                        ~isequal(obj.Segment(i).Type,'polyline')
-                    continue
-                end
-                CorrespondingPixelIndex = obj.Segment(i).CorrespondingPixelIndex;
-                SegLength = size(CorrespondingPixelIndex,1);
-                Processed = false(SegLength,1);
-                while ~all(Processed)
-                    Unprocessed = find(Processed == 0);
-                    FirstUnprocessed = Unprocessed(1);
-                    CurrentPixel = CorrespondingPixelIndex(FirstUnprocessed,:);
-                    Indizes = find(CorrespondingPixelIndex(:,1) == CurrentPixel(1) &...
-                        CorrespondingPixelIndex(:,2) == CurrentPixel(2));
-                    if CurrentPixel(1) < 1 ||...
-                            CurrentPixel(1) > obj.NumPixelsY ||...
-                            CurrentPixel(2) < 1 ||...
-                            CurrentPixel(2) > obj.NumPixelsX
-                        Processed(Indizes) = true;
-                        continue
-                    end
-                    % Pool data by PoolingMethod and assign to
-                    % corresponding image pixel
-                    for j=1:length(FieldsList)
-                        if length(obj.Segment(i).(FieldsList{j})) == SegLength
-                            Values = obj.Segment(i).(FieldsList{j})(Indizes);
-                            PooledValue = PoolingFcn(Values);
-                        elseif size(obj.Segment(i).(FieldsList{j})) == size([1])
-                            PooledValue = obj.Segment(i).(FieldsList{j});
-                        else
-                            PooledValue = NaN;
-                        end
-                        try
-                        obj.(['FiberSegment_' FieldsList{j}])...
-                            (obj.Map2List(CurrentPixel(2),CurrentPixel(1))) = PooledValue;
-                        catch
-                            warning("Couldn't assign property")
-                            i
-                            j
-                        end
-                    end
-                    obj.SegmentName{obj.Map2List(CurrentPixel(2),CurrentPixel(1))} =...
-                        obj.Segment(i).Name;
-                    obj.SubSegmentName{obj.Map2List(CurrentPixel(2),CurrentPixel(1))} =...
-                        obj.Segment(i).SubSegmentName;
-                    obj.SubSegmentFullName{obj.Map2List(CurrentPixel(2),CurrentPixel(1))} =...
-                        [obj.Segment(i).Name '-' obj.Segment(i).SubSegmentName];
-                    Processed(Indizes) = true;
-                end
-            end
-            close(h)
-        end
-        
         function map_segments_to_image_pixels(obj)
             
-            h = waitbar(0,'setting up...',...
-                'Name',obj.Name);
+            h = waitbar(0,'Setting up...', 'Name', obj.Name);
             
-            
+            % Create a figure
             F = figure;
             
+            % Draw segments onto the figure and obtain ROI objects
             ROIObjects = obj.draw_segments_to_figure(F);
             
-            % initialize object properties
-            obj.SegmentName = cell(obj.NumPixelsX*obj.NumPixelsY,1);
-            obj.SubSegmentName = cell(obj.NumPixelsX*obj.NumPixelsY,1);
-            obj.SubSegmentFullName = cell(obj.NumPixelsX*obj.NumPixelsY,1);
-            [obj.SegmentName(:)] = {''};
-            [obj.SubSegmentName(:)] = {''};
-            [obj.SubSegmentFullName(:)] = {''};
+            % Initialize object properties for storing segment information
+            obj.SegmentName = cell(obj.NumPixelsX * obj.NumPixelsY, 1);
+            obj.SubSegmentName = cell(obj.NumPixelsX * obj.NumPixelsY, 1);
+            obj.SubSegmentFullName = cell(obj.NumPixelsX * obj.NumPixelsY, 1);
+            
+            % Set all elements to empty strings initially
+            [obj.SegmentName{:}] = deal('');
+            [obj.SubSegmentName{:}] = deal('');
+            [obj.SubSegmentFullName{:}] = deal('');
             
             NumSegments = numel(obj.Segment);
             
-            UniqueMask = zeros(obj.NumPixelsX,obj.NumPixelsY);
-            UnionMask = zeros(obj.NumPixelsX,obj.NumPixelsY);
+            % Initialize masks
+            UniqueMask = zeros(obj.NumPixelsX, obj.NumPixelsY);
+            % UnionMask = zeros(obj.NumPixelsX, obj.NumPixelsY); % To handle overlaps (commented out)
             
-            for i=1:NumSegments
-                waitbar(i/NumSegments,h,obj.Segment(i).Name,...
-                    'Name',obj.Name)
-                if ~isfield(obj.Segment(i),'ROIObject') ||...
-                        isempty(obj.Segment(i).ROIObject)
-                    continue
+            % Loop through each segment
+            for i = 1:NumSegments
+                waitbar(i / NumSegments, h, obj.Segment(i).Name, 'Name', obj.Name);
+                
+                if ~isfield(obj.Segment(i), 'ROIObject') || isempty(obj.Segment(i).ROIObject)
+                    continue;
                 end
+                
+                % Create a binary mask for the current segment
                 CurMask = ROIObjects{i}.createMask;
-%                 CurList = obj.convert_map_to_data_list(CurMask);
-%                 [obj.UnionSegmentName(CurList)] = {obj.Segment(i).Name};
-                UniqueMask = xor(CurMask,UniqueMask);
-%                 [obj.UniqueSegmentName(CurList)] = {obj.Segment(i).Name};
+                
+                % Convert mask to list of pixel indices
+                CurList = logical(obj.convert_map_to_data_list(CurMask));
+                
+                % Update SegmentName, SubSegmentName, and SubSegmentFullName
+                obj.SegmentName(CurList) = {obj.Segment(i).Name};
+                obj.SubSegmentName(CurList) = {obj.Segment(i).SubSegmentName};
+                obj.SubSegmentFullName(CurList) = obj.get_full_names_from_segment_indizes(i);
+                
+                % Update the UniqueMask to reflect the current segment's mask
+                UniqueMask = CurMask; % Simply overwrite with the new segment
+                
+                % To handle overlaps (commented out)
+                % UnionMask = UnionMask | CurMask;
             end
-            for i=1:NumSegments
-                CurMask = ROIObjects{i}.createMask;
-                UniqueList = obj.convert_map_to_data_list(UniqueMask & CurMask);
-                [obj.UniqueSegmentName(CurList)] = {obj.Segment(i).Name};
-            end
-            close(h)
             
+            % Second loop could be used to handle overlap cases (commented out)
+            % for i = 1:NumSegments
+            %     CurMask = ROIObjects{i}.createMask;
+            %     UniqueList = obj.convert_map_to_data_list(UniqueMask & CurMask);
+            %     [obj.UniqueSegmentName(UniqueList)] = {obj.Segment(i).Name};
+            %
+            %     OverlapList = obj.convert_map_to_data_list(UnionMask & CurMask & ~UniqueMask);
+            %     [obj.OverlapSegmentName(OverlapList)] = {obj.Segment(i).Name};  % Assuming this is how overlaps might be stored
+            %
+            %     UnionMask = UnionMask | CurMask;  % Update UnionMask to include the current segment
+            % end
+            
+            close(F)
+            close(h);
         end
         
         function [DynPropNames,ChannelNames] = write_unrolled_channels_to_dynamic_properties(obj)
