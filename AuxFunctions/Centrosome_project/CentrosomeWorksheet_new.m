@@ -69,7 +69,7 @@ E.set_force_map_analysis_options
 E.ForceMapAnalysisOptions.EModOption.Hertz.TopographyHeightChannel = 'Contact Height Smoothed';
 
 % Analyze!
-E.force_map_analysis_generalab
+E.force_map_analysis_general
 
 
 %% Create an artificial AFM tip for devonvolution

@@ -146,7 +146,7 @@ for m = 1:E.NumForceMaps
         TipAreaCsInden = TipAreaFX(round(CsIndenAvrg*1e+9));
         TipRadiusCsInden = sqrt(TipAreaCsInden/pi);
 
-        % px size
+        % Pixel size
         pxSize = (ChannelContactHeight.ScanSizeX/ChannelContactHeight.NumPixelsX);
 
         CsProps = regionprops(erodedBW2, 'Area','EquivDiameter');
@@ -197,8 +197,8 @@ for m = 1:E.NumForceMaps
         
         % Angle-based segmentation
         T2 = 1.45; % 83.0788802939694 deg % multithresh(AngleImage); 
-        AngleCsBW = imbinarize(AngleImage,T2).*erodedBW2; % exclude flat areas outside centrosome
-        AngleBkgBW = imbinarize(AngleImage,T2).*imcomplement(dilatedBW2); % glass background area
+        AngleCsBW = imbinarize(AngleImage,T2).*erodedBW2; % Exclude flat areas outside centrosome
+        AngleBkgBW = imbinarize(AngleImage,T2).*imcomplement(dilatedBW2); % Glass background area
         figure('name', 'Topography angle segmented','visible',show_fig)
         subplot(1,2,1); hold on
         imagesc(AngleCsBW); axis image; title('centrosome'); axis off 

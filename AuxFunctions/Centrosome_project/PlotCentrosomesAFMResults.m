@@ -1,6 +1,7 @@
 % clear
 % E = Experiment.load;
 cd(E.ExperimentFolder)
+close all
 
 msg1 = "Do you need to exclude force maps?";
 opts1 = ["Yes" "No"];
@@ -50,7 +51,7 @@ for i = 1:E.NumForceMaps
         %         CsRadiusXY_data(i) = CsRadiusXY;
         %         CsAspectRatio(i) = mean(CsFlatHeight(:),'omitnan')/(CsRadiusXY*2);
         %         CsFlatArea_data(i) = CsFlatArea;
-        CsVolume_data(i) = CsVolume*1e+18; % From automatic segmentation
+        CsVolume_Otsu_data(i) = CsVolume*1e+18; % From Otsu's segmentation
         CsVolumeSphereCap_data(i) = CsVolumeSphereCap*1e+18;
 
         Height{i} = E.FM{i}.get_segment_data_from_channel('Contact Height Smoothed', 'MatchString', 'Seg-02'); % Total centrosome height
@@ -61,7 +62,7 @@ for i = 1:E.NumForceMaps
         Volumes(i) = Volume*1e+18;
 
         % Equivalent radius of a sphere of the same volume
-        EquivalentRadii(i) = ((3 * Volumes(i) / (4 * pi))^(1/3))*1000;
+        EquivalentRadii_mnl(i) = ((3 * Volumes(i) / (4 * pi))^(1/3))*1000;
     end
 end
 
@@ -69,11 +70,12 @@ CsEModHertz_mean(CsEModHertz_mean == 0) = NaN;
 CsEModHertz_std(CsEModHertz_std == 0) = NaN;
 CsFlatHeight_mean(CsFlatHeight_mean == 0) = NaN;
 CsFlatPrctile_data(CsFlatPrctile_data == 0) = NaN; 
-CsVolume_data(CsVolume_data == 0) = NaN;
+CsVolume_Otsu_data(CsVolume_Otsu_data == 0) = NaN;
 CsVolumeSphereCap_data(CsVolumeSphereCap_data == 0) = NaN;
 Volumes(Volumes == 0) = NaN; 
 % Equivalent radius of a sphere of the same volume
-EquivalentRadii = (4.*Volumes./(3*pi)).^(1/3)*1000; % Use here Volumes (manual) or CsVolume_data (auto)
+EquivalentRadii_mnl = (4.*Volumes./(3*pi)).^(1/3)*1000; 
+EquivalentRadii_auto = (4.*CsVolume_Otsu_data./(3*pi)).^(1/3)*1000; 
 
 % figure('name', 'Maximum height dependence'); hold on
 % box on; set(gca,'FontSize', 16, 'Linewidth', 1.5);
@@ -94,20 +96,30 @@ elseif choice3 == 2
     c = [77/255 175/255 74/255]; % Thin film + topography
 end
 
-figure('name', 'Volume dependence'); hold on
+figure('name', 'Centrosome volume dependence'); hold on
 box on; set(gca,'FontSize', 18, 'Linewidth', 1.5);
-for i = 1:E.NumForceMaps
-    scatter(EquivalentRadii(i), CsEModHertz_mean(i), 50, c, "filled");
-end
+scatter(EquivalentRadii_mnl, CsEModHertz_mean, 60, c, "filled");
+errorbar(EquivalentRadii_mnl, CsEModHertz_mean, CsEModHertz_std, 'o', 'Color', c);
 ylabel('Indentation modulus [kPa]');
 xlabel('Centrosome equivalent radius [nm]');
 xlim([0 1600]); ylim([-50 350])
 
-figure('name', 'Mean height dependence'); hold on
+RobustFit = false;
+
+% Find indices where any of the arrays have NaN values
+nanIndices = isnan(EquivalentRadii_mnl) | isnan(CsEModHertz_mean);
+
+% Remove NaN values from each array
+EquivalentRadii_clean = EquivalentRadii_mnl(~nanIndices);
+CsEModHertz_mean_clean = CsEModHertz_mean(~nanIndices);
+addCorrelationInfo(EquivalentRadii_clean, CsEModHertz_mean_clean, RobustFit);
+
+
+figure('name', 'Centrosome height dependence'); hold on
 box on; set(gca,'FontSize', 18, 'Linewidth', 1.5);
-for i = 1:E.NumForceMaps
-    scatter(CsFlatHeight_mean(i), CsEModHertz_mean(i), 50, c, "filled");
-end
+scatter(CsFlatPrctile_data, CsEModHertz_mean, 50, c, "filled");
+errorbar(CsFlatPrctile_data, CsEModHertz_mean, CsEModHertz_std, 'o', 'Color', c);
+
 % hold on
 % [xData, yData] = prepareCurveData( CsHeight_mean, CsEModHertz_mean );
 % 
@@ -119,22 +131,96 @@ end
 % 
 % % Fit model to data.
 % [fitresult, gof] = fit( xData, yData, ft, opts );
-% 
+
 % % Plot fit with data.
 % h = plot( fitresult, xData, yData );
 ylabel('Indentation modulus [kPa]');
-xlabel('Centrosome mean height [nm]');
+xlabel('Centrosome max. height [nm]');
 ylim([-50 350]); xlim([0, 1100])
-% legend boxoff
 
-figure('name', 'Maximum height vs. volume'); hold on
+RobustFit = false;
+
+% Find indices where any of the arrays have NaN values
+nanIndices = isnan(CsFlatPrctile_data) | isnan(CsEModHertz_mean);
+
+% Remove NaN values from each array
+CsFlatPrctile_data_clean = CsFlatPrctile_data(~nanIndices);
+CsEModHertz_mean_clean = CsEModHertz_mean(~nanIndices);
+addCorrelationInfo(CsFlatPrctile_data_clean, CsEModHertz_mean_clean, RobustFit);
+
+figure('name', 'Centrosome maximum height vs. Manual volume'); hold on
 box on; set(gca,'FontSize', 18, 'Linewidth', 1.5);
-for i = 1:E.NumForceMaps
-    scatter(EquivalentRadii(i), CsFlatPrctile_data(i), 50, [0 0.4470 0.7410], "filled");
-end
+scatter(EquivalentRadii_mnl, CsFlatPrctile_data, 60, [0 0.4470 0.7410], "filled");
 ylabel('Centrosome maximum height [nm]'); 
-xlabel('Centrosome equivalent radius [nm]');
+xlabel('Centrosome equivalent radius [nm] - Manual segmentation');
 ylim([0, 1100]); xlim([0 1800])
+
+% Linear regression fit
+validIdx = ~isnan(EquivalentRadii_mnl) & ~isnan(CsFlatPrctile_data); % Remove NaN values from both variables
+EquivalentRadii_valid = EquivalentRadii_mnl(validIdx);
+CsFlatPrctile_data_valid = CsFlatPrctile_data(validIdx);
+[p, S] = polyfit(EquivalentRadii_valid, CsFlatPrctile_data_valid, 1);  % Linear fit
+yfit = polyval(p, EquivalentRadii_valid);  % Predicted values based on fit
+correlation_coefficient = corr(EquivalentRadii_valid', CsFlatPrctile_data_valid', 'Type', 'Pearson');
+
+% Calculate the confidence intervals for the slope and intercept
+[fit_ci, ~] = polyconf(p, EquivalentRadii_valid, S, 'alpha', 0.05); % 95% CI for the fit
+
+% Calculate R-squared
+SS_res = sum((CsFlatPrctile_data_valid - yfit).^2);  % Sum of squares of residuals
+SS_tot = sum((CsFlatPrctile_data_valid - mean(CsFlatPrctile_data_valid)).^2);  % Total sum of squares
+R_squared = 1 - (SS_res / SS_tot);
+
+% Linear equation
+slope = p(1);
+intercept = p(2);
+
+% Add the linear regression line
+hold on;
+plot(EquivalentRadii_valid, yfit, '-r', 'LineWidth', 1);  % Plot fit line
+% Plot the confidence intervals for the fit line
+plot(EquivalentRadii_valid, fit_ci, 'r--', 'LineWidth', 1);  % Plot confidence intervals
+% Display correlation, R-squared, and linear equation in the legend
+legend('Data points', ['Linear fit: y = ' num2str(slope, '%.2f') 'x + ' num2str(intercept, '%.2f')], ['R^2 = ', num2str(R_squared, '%.2f')]); legend boxoff
+hold off
+
+figure('name', 'Centrosome maximum height vs. Otsu volume'); hold on
+box on; set(gca,'FontSize', 18, 'Linewidth', 1.5);
+scatter(EquivalentRadii_auto, CsFlatPrctile_data, 50, [0 0.4470 0.7410], "filled");
+ylabel('Centrosome maximum height [nm]'); 
+xlabel('Centrosome equivalent radius [nm] - Otsu thresholding');
+ylim([0, 1100]); xlim([0 1800])
+
+% Linear regression fit
+validIdx = ~isnan(EquivalentRadii_auto) & ~isnan(CsFlatPrctile_data); % Remove NaN values from both variables
+EquivalentRadii_valid = EquivalentRadii_auto(validIdx);
+CsFlatPrctile_data_valid = CsFlatPrctile_data(validIdx);
+[p, S] = polyfit(EquivalentRadii_valid, CsFlatPrctile_data_valid, 1);  % Linear fit
+yfit = polyval(p, EquivalentRadii_valid);  % Predicted values based on fit
+correlation_coefficient = corr(EquivalentRadii_valid', CsFlatPrctile_data_valid', 'Type', 'Pearson');
+
+% Calculate the confidence intervals for the slope and intercept
+[fit_ci, delta] = polyconf(p, EquivalentRadii_valid, S, 'alpha', 0.05); % 95% CI for the fit
+
+% Calculate R-squared
+SS_res = sum((CsFlatPrctile_data_valid - yfit).^2);  % Sum of squares of residuals
+SS_tot = sum((CsFlatPrctile_data_valid - mean(CsFlatPrctile_data_valid)).^2);  % Total sum of squares
+R_squared = 1 - (SS_res / SS_tot);
+
+% Linear equation
+slope = p(1);
+intercept = p(2);
+
+% Add the linear regression line
+hold on;
+plot(EquivalentRadii_valid, yfit, '-r', 'LineWidth', 1);  % Plot fit line
+% Plot the confidence intervals for the fit line
+plot(EquivalentRadii_valid, fit_ci, 'r--', 'LineWidth', 1);  % Plot confidence intervals
+% Display correlation, R-squared, and linear equation in the legend
+legend('Data points', ['Linear fit: y = ' num2str(slope, '%.2f') 'x + ' num2str(intercept, '%.2f')], ['R^2 = ', num2str(R_squared, '%.2f')]); legend boxoff
+hold off
+
+
  
 % figure('name', 'Compression vs. maximum height'); hold on
 % box on; set(gca,'FontSize', 16, 'Linewidth', 1.5);
@@ -145,26 +231,6 @@ ylim([0, 1100]); xlim([0 1800])
 % ylabel('Compression [%]')
 
 
-RobustFit = false;
-
-% Find indices where any of the arrays have NaN values
-nanIndices = isnan(EquivalentRadii) | isnan(CsEModHertz_mean) | isnan(CsEModHertz_std);
-
-% Remove NaN values from each array
-EquivalentRadii_clean = EquivalentRadii(~nanIndices);
-CsEModHertz_mean_clean = CsEModHertz_mean(~nanIndices);
-CsEModHertz_std_clean = CsEModHertz_std(~nanIndices);
-
-RobustFit = false;
-
-figure;
-errorbar(EquivalentRadii_clean, CsEModHertz_mean_clean, CsEModHertz_std_clean, 'o');
-xlabel('Centrosome equivalent radius');
-ylabel('Mean EMod K1000+Thin Film'); % Simple
-title('Mean EMod K1000+Thin Film vs. Centrosome volume');
-addCorrelationInfo(EquivalentRadii_clean, CsEModHertz_mean_clean, RobustFit);
-box on; set(gca,'FontSize', 18, 'Linewidth', 1.5);
-ylim([-50 350]); xlim([0 1600])
 
 function addCorrelationInfo(x, y, useRobustFit)
     % Calculate correlation coefficient and p-value
@@ -197,4 +263,3 @@ function addCorrelationInfo(x, y, useRobustFit)
          'EdgeColor', 'black', 'BackgroundColor', 'white', 'Margin', 5);
     hold off;
 end
-
