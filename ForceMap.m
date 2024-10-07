@@ -667,7 +667,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
             % bunch of points before and after the current point. the point with the
             % biggest ratio is the returned contact point [Nuria Gavara, 2016]
             if nargin<2
-                WindowSize = 20;
+                WindowSize = ceil(20*obj.MaxPointsPerCurve/300);
             end
             Range = find(obj.SelectedCurves);
             h = waitbar(0,'Setting up...','Name',obj.Name);
@@ -1795,28 +1795,32 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
                         'Sensitivity','original',...
                         'Unit','N');
                 end
-                % Trim everything below CP_Hertz
-                FitCoeffValues = obj.HertzFitValues{i};
-                if length(FitCoeffValues) == 1
-                    Fit = cfit(FitFunction,FitCoeffValues);
-                    FitCoeffValues(2) = 0;
-                elseif length(FitCoeffValues) == 2
-                    Fit = cfit(FitFunction,FitCoeffValues(1),FitCoeffValues(2));
+                try
+                    % Trim everything below CP_Hertz
+                    FitCoeffValues = obj.HertzFitValues{i};
+                    if length(FitCoeffValues) == 1
+                        Fit = cfit(FitFunction,FitCoeffValues);
+                        FitCoeffValues(2) = 0;
+                    elseif length(FitCoeffValues) == 2
+                        Fit = cfit(FitFunction,FitCoeffValues(1),FitCoeffValues(2));
+                    end
+                    if SortHeightData
+                        HHApp = sort(HHApp,'ascend');
+                    end
+                    X = HHApp - obj.CP(i,1);
+                    Y = App - obj.CP(i,2);
+                    X(X<0-FitCoeffValues(2)) = [];
+                    Y(1:end-length(X)) = [];
+                    YFitted = feval(Fit,X);
+                    % Now calculate the RSquare
+                    YMean = mean(Y);
+                    L = length(Y);
+                    SSTot = sum((Y - YMean).^2);
+                    SSRes = sum((Y - YFitted).^2);
+                    PredictiveRSquare(i) = 1 - SSRes./SSTot;
+                catch
+                    PredictiveRSquare(i) = NaN;
                 end
-                if SortHeightData
-                    HHApp = sort(HHApp,'ascend');
-                end
-                X = HHApp - obj.CP(i,1);
-                Y = App - obj.CP(i,2);
-                X(X<0-FitCoeffValues(2)) = [];
-                Y(1:end-length(X)) = [];
-                YFitted = feval(Fit,X);
-                % Now calculate the RSquare
-                YMean = mean(Y);
-                L = length(Y);
-                SSTot = sum((Y - YMean).^2);
-                SSRes = sum((Y - YFitted).^2);
-                PredictiveRSquare(i) = 1 - SSRes./SSTot;
                 %Debug
 %                 plot(X,Y,'bx',X,YFitted,'r-')
 %                 title(sprintf('R-Square = %f   SSRes = %e   SSTot = %e',PredictiveRSquare(i),SSRes,SSTot))
@@ -5322,10 +5326,14 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
             len = size(X,4);
             if obj.CPFlag.CNNopt == 0
                 CantHandle = true;
-                obj.MiniBatchSize = 1024;
+                obj.MiniBatchSize = min(1024,len);
                 DynMBSdone = false;
                 HasFailed = false;
+                NumIter = 0;
                 while CantHandle == true
+                    if NumIter >= 20
+                        error('Neural Net keeps failing despite adjusting MiniBatchSize. Call your programm administrator and an exorcist')
+                    end
                     try
                         predict(NeuralNet,X,'MiniBatchSize',obj.MiniBatchSize,'Acceleration','auto',...
                                         'ExecutionEnvironment',obj.NeuralNetAccelerator);
@@ -5357,6 +5365,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
                                 HasFailed = true;
                         end
                     end
+                    NumIter = NumIter + 1;
                 end
                 obj.CPFlag.CNNopt = 1;
             end
