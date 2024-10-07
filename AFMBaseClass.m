@@ -482,7 +482,6 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
                 Index = [];
             end
         end
-
         
         function [Channel,Index,FoundRequested] = get_unprocessed_height_channel(obj,ChannelName)
             % Goes over all possible variations of height channels in a
@@ -516,12 +515,31 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             end
         end
         
-        function delete_channel(obj,ChannelName)
+        function delete_channel(obj,ChannelName,FMA_ID)
+            
+            LookForID = true;
+            if nargin < 3
+                FMA_ID = [];
+                LookForID = false;
+            end
             k = 0;
             Index = [];
             for i=1:length(obj.Channel)
-                if isequal(obj.Channel(i).Name,ChannelName)
-                    ChannelStruct = obj.Channel(i);
+                if LookForID
+                    % Case when FMA_ID is provided
+                    % Define pattern: ChannelName or ChannelName (NN), where NN is 01-99
+                    pattern = sprintf('^%s(?: \\((0[1-9]|[1-9][0-9])\\))?$', regexptranslate('escape', ChannelName));
+                    nameMatch = ~isempty(regexp(obj.Channel(i).Name, pattern, 'once'));
+                    fmaMatch = isequal(obj.Channel(i).FMA_ID, FMA_ID);
+                    
+                    if nameMatch && fmaMatch
+                        Index(k+1) = i;
+                        k = k + 1;
+                    elseif isempty(ChannelName) && fmaMatch
+                        Index(k+1) = i;
+                        k = k + 1;
+                    end
+                elseif isequal(obj.Channel(i).Name,ChannelName)
                     Index(k+1) = i;
                     k = k+1;
                 end
@@ -616,14 +634,18 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             end
         end
         
-        function preprocess_image(obj,AlternativeChannelName)
+        function preprocess_image(obj,AlternativeChannelName,OutlierIQRMult)
             
+            if nargin <3
+                OutlierIQRMult =10;
+            end
             if nargin < 2
                 AlternativeChannelName = '';
+                OutlierIQRMult = 10;
             end
             
             Map = obj.flatten_image_by_vertical_rov(AlternativeChannelName);
-            Map = AFMImage.find_and_replace_outlier_lines(Map,10);
+            Map = AFMImage.find_and_replace_outlier_lines(Map,OutlierIQRMult);
             
             % write to Channel
             Processed = obj.create_standard_channel(Map,'Processed','m');

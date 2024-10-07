@@ -4483,7 +4483,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                     'ForegroundColor',h.ColorMode(obj.ShowImageSettings.ColorIndex).ButtonText,...
                     'BackgroundColor',h.ColorMode(obj.ShowImageSettings.ColorIndex).Buttons,...
                     'units','normalized',...
-                    'position',[.85 .85 .15 .05],...
+                    'position',[.85 .85 .135 .05],...
                     'Callback',@draw_channel_1);
                 
                 h.B(5) = uicontrol('style','text',...
@@ -4508,7 +4508,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                     'ForegroundColor',h.ColorMode(obj.ShowImageSettings.ColorIndex).ButtonText,...
                     'BackgroundColor',h.ColorMode(obj.ShowImageSettings.ColorIndex).Buttons,...
                     'units','normalized',...
-                    'position',[.85 .6 .15 .05],...
+                    'position',[.85 .6 .135 .05],...
                     'Callback',@draw_channel_2);
                 
                 h.B(6) = uicontrol('style','pushbutton',...
@@ -4712,8 +4712,31 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                     'Position',[.875 .3 .1 .03],...
                     'Callback',@changed_use_overlay);
                 
-                    h.ToggledMainMenuIndizes = [18 19 20 21 22 31 1];
-                    
+                h.B(32) = uicontrol('Style', 'pushbutton', ...
+                    'String', 'ℹ', ... % Space before symbol for better appearance
+                    'FontSize', 12, ...
+                    'FontWeight', 'bold', ...
+                    'Units','normalized',...
+                    'position',[.85+0.135 .85 .015 .05],...
+                    'ForegroundColor',h.ColorMode(obj.ShowImageSettings.ColorIndex).ButtonText,...
+                    'BackgroundColor',h.ColorMode(obj.ShowImageSettings.ColorIndex).Buttons,...
+                    'Visible',true,...
+                    'TooltipString', 'Click for FMA information on current subchannel...', ...
+                    'Callback', @(src, event)infoButtonCallback(1));
+                
+                h.B(33) = uicontrol('Style', 'pushbutton', ...
+                    'String', 'ℹ', ... % Space before symbol for better appearance
+                    'FontSize', 12, ...
+                    'FontWeight', 'bold', ...
+                    'Units','normalized',...
+                    'position',[.85+0.135 .6 .015 .05],...
+                    'TooltipString', 'Click for FMA information on current subchannel...', ...
+                    'Callback', @(src, event)infoButtonCallback(2));
+                
+                        
+                
+                h.ToggledMainMenuIndizes = [18 19 20 21 22 31 1];
+                
             end
             
             function set_volume_data_tab_ui()
@@ -7074,6 +7097,22 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 
             end
             
+            function infoButtonCallback(ChannelNumber)
+                % infoButtonCallback Callback function for the Info button.
+                
+                
+                Channel = h.Class{ChannelNumber}.get_channel(h.Channel{ChannelNumber});
+                
+                s = obj.search_fma_options_matching_fma_id(Channel.FMA_ID);
+                
+                NoFMA_Info = isempty(s);
+                if NoFMA_Info
+                    s = struct('Warning',{'The current subchannel can not be associated to a Force Map Analysis run'});
+                end
+                
+                Experiment.option_display_show(s,['FMA Information for "' h.Class{ChannelNumber}.Name '" with FMA_ID: ' Channel.FMA_ID ]);
+            end
+            
             uiwait(h.Fig)
         end
         
@@ -7594,7 +7633,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 end
                 BarToImageRatio = 1/5;
                 try
-                    CurrentZoomX = h.ImAx(Index).XLim; 
+                    CurrentZoomX = h.ImAx(Index).XLim;
                     CurrentZoomY = h.ImAx(Index).YLim;
                     delete(h.ImAx(Index));
                     delete(h.I(Index));
@@ -7604,17 +7643,17 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                     h.ImAx(Index) = axes(h.Fig,'Position',[0.1 0.1 .6 .8]);
                 elseif isequal(FullPart,'FullTwo')
                     if isequal(LeftRight,'Left')
-                    h.ImAx(Index) = axes(h.Fig,'Position',[0.12 0.1 .3 .8]);
+                        h.ImAx(Index) = axes(h.Fig,'Position',[0.12 0.1 .3 .8]);
                     else
-                    h.ImAx(Index) = axes(h.Fig,'Position',[.47 0.1 .3 .8]);
+                        h.ImAx(Index) = axes(h.Fig,'Position',[.47 0.1 .3 .8]);
                     end
                 elseif isequal(FullPart,'PartOne')
                     h.ImAx(Index) = axes(h.Fig,'Position',[0.1 .35 .6 .6]);
                 elseif isequal(FullPart,'PartTwo')
                     if isequal(LeftRight,'Left')
-                    h.ImAx(Index) = axes(h.Fig,'Position',[0.12 .35 .3 .6]);
+                        h.ImAx(Index) = axes(h.Fig,'Position',[0.12 .35 .3 .6]);
                     else
-                    h.ImAx(Index) = axes(h.Fig,'Position',[0.47 .35 .3 .6]);
+                        h.ImAx(Index) = axes(h.Fig,'Position',[0.47 .35 .3 .6]);
                     end
                 end
                 
@@ -7856,7 +7895,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 else
                     exportgraphics(h.Fig,FullFile,'Resolution',300,'BackgroundColor','current')
                 end
-                    
+                
             end
             
             function changed_color(varargin)
@@ -7926,11 +7965,11 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 
                 
                 if h.hasChannel2 &&...
-                            ~isempty(Class{1}.OverlayGroup) &&...
-                            ~isempty(Class{2}.OverlayGroup) &&...
-                            Class{1}.OverlayGroup.hasOverlayGroup &&...
-                            Class{2}.OverlayGroup.hasOverlayGroup &&...
-                            isequal(Class{1}.OverlayGroup.Names,Class{2}.OverlayGroup.Names)
+                        ~isempty(Class{1}.OverlayGroup) &&...
+                        ~isempty(Class{2}.OverlayGroup) &&...
+                        Class{1}.OverlayGroup.hasOverlayGroup &&...
+                        Class{2}.OverlayGroup.hasOverlayGroup &&...
+                        isequal(Class{1}.OverlayGroup.Names,Class{2}.OverlayGroup.Names)
                     h.B(31).BackgroundColor = 'g';
                 else
                     h.B(31).BackgroundColor = 'r';
@@ -8086,7 +8125,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                                     'Label',sprintf('%s || %s',Class{1}.Segment(i).Name,Class{1}.Segment(i).SubSegmentName),...
                                     'LabelAlpha',0.6);
                         end
-                            addlistener(h.ROIObjects{i},'ROIMoved',@moved_roi);
+                        addlistener(h.ROIObjects{i},'ROIMoved',@moved_roi);
                         if isequal(CurrentDrawMode,'polyline')
                             addlistener(h.ROIObjects{i},'VertexAdded',@moved_roi);
                             addlistener(h.ROIObjects{i},'VertexDeleted',@moved_roi);
@@ -8314,30 +8353,30 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             
             function moved_roi(varargin)
                 
-                    CurrentDrawMode = Class{1}.Segment(h.CurrentIndex).Type;
-                    switch CurrentDrawMode
-                        case 'line'
-                        case 'freehand'
-                        case 'circle'
-                            Class{1}.Segment(h.CurrentIndex).ROIObject.Center = [];
-                            Class{1}.Segment(h.CurrentIndex).ROIObject.Radius = [];
-                            Class{1}.Segment(h.CurrentIndex).ROIObject.Center = h.ROIObjects{h.CurrentIndex}.Center;
-                            Class{1}.Segment(h.CurrentIndex).ROIObject.Radius = h.ROIObjects{h.CurrentIndex}.Radius;
-                        case 'ellipse'
-                            Class{1}.Segment(h.CurrentIndex).ROIObject.Center = [];
-                            Class{1}.Segment(h.CurrentIndex).ROIObject.SemiAxes = [];
-                            Class{1}.Segment(h.CurrentIndex).ROIObject.RotationAngle = [];
-                            Class{1}.Segment(h.CurrentIndex).ROIObject.Center = h.ROIObjects{h.CurrentIndex}.Center;
-                            Class{1}.Segment(h.CurrentIndex).ROIObject.SemiAxes = h.ROIObjects{h.CurrentIndex}.SemiAxes;
-                            Class{1}.Segment(h.CurrentIndex).ROIObject.RotationAngle = h.ROIObjects{h.CurrentIndex}.RotationAngle;
-                        case 'polygon'
-                        case 'rectangle'
-                            Class{1}.Segment(h.CurrentIndex).ROIObject.RotationAngle = [];
-                            Class{1}.Segment(h.CurrentIndex).ROIObject.RotationAngle = h.ROIObjects{h.CurrentIndex}.RotationAngle;
-                        case 'crosshair'
-                        case 'point'
-                        case 'assisted'
-                    end
+                CurrentDrawMode = Class{1}.Segment(h.CurrentIndex).Type;
+                switch CurrentDrawMode
+                    case 'line'
+                    case 'freehand'
+                    case 'circle'
+                        Class{1}.Segment(h.CurrentIndex).ROIObject.Center = [];
+                        Class{1}.Segment(h.CurrentIndex).ROIObject.Radius = [];
+                        Class{1}.Segment(h.CurrentIndex).ROIObject.Center = h.ROIObjects{h.CurrentIndex}.Center;
+                        Class{1}.Segment(h.CurrentIndex).ROIObject.Radius = h.ROIObjects{h.CurrentIndex}.Radius;
+                    case 'ellipse'
+                        Class{1}.Segment(h.CurrentIndex).ROIObject.Center = [];
+                        Class{1}.Segment(h.CurrentIndex).ROIObject.SemiAxes = [];
+                        Class{1}.Segment(h.CurrentIndex).ROIObject.RotationAngle = [];
+                        Class{1}.Segment(h.CurrentIndex).ROIObject.Center = h.ROIObjects{h.CurrentIndex}.Center;
+                        Class{1}.Segment(h.CurrentIndex).ROIObject.SemiAxes = h.ROIObjects{h.CurrentIndex}.SemiAxes;
+                        Class{1}.Segment(h.CurrentIndex).ROIObject.RotationAngle = h.ROIObjects{h.CurrentIndex}.RotationAngle;
+                    case 'polygon'
+                    case 'rectangle'
+                        Class{1}.Segment(h.CurrentIndex).ROIObject.RotationAngle = [];
+                        Class{1}.Segment(h.CurrentIndex).ROIObject.RotationAngle = h.ROIObjects{h.CurrentIndex}.RotationAngle;
+                    case 'crosshair'
+                    case 'point'
+                    case 'assisted'
+                end
                 Class{1}.Segment(h.CurrentIndex).ROIObject.Position = [];
                 Class{1}.Segment(h.CurrentIndex).ROIObject.Position = h.ROIObjects{h.CurrentIndex}.Position;
                 
@@ -8526,9 +8565,9 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 
                 if length(Class{1}.Segment) == 0
                     Class{1}.Segment = struct('Name',[],...
-                            'Type',[],...
-                            'SubSegmentName',[],...
-                            'ROIObject',[]);
+                        'Type',[],...
+                        'SubSegmentName',[],...
+                        'ROIObject',[]);
                 end
                 
                 set(h.SegmentBox,'Value',1);
@@ -8553,9 +8592,9 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 
                 if length(Class{1}.Segment) == 0
                     Class{1}.Segment = struct('Name',[],...
-                            'Type',[],...
-                            'SubSegmentName',[],...
-                            'ROIObject',[]);
+                        'Type',[],...
+                        'SubSegmentName',[],...
+                        'ROIObject',[]);
                 end
                 
                 set(h.SubsegmentBox,'Value',length(h.SubsegmentBox.String)-1);
@@ -11169,7 +11208,13 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             end
         end
         
-        function add_fma_options_to_storestruct(obj,FMA,FMA_ID,Time)
+        function add_fma_options_to_storestruct(obj, FMA, FMA_ID, Time)
+            % Adds FMA options to the store structure
+            % Inputs:
+            %   obj     - Object containing FMAOptionsStoreStruct
+            %   FMA     - FMA options data
+            %   FMA_ID  - Identifier for the FMA options
+            %   Time    - (Optional) Timestamp or related information
             
             if nargin < 4
                 Time = '';
@@ -11184,44 +11229,77 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 obj.FMAOptionsStoreStruct(end).Time = Time;
                 obj.FMAOptionsStoreStruct(end).FMA_ID = FMA_ID;
             end
-            
         end
         
-        function FMAOptions = search_fma_options_matching_fma_id(obj,Matched_FMA_ID)
+        function FMAOptions = search_fma_options_matching_fma_id(obj, Matched_FMA_ID, isRecursing)
+            % Searches for FMA options matching a specific FMA_ID
+            % Inputs:
+            %   obj           - Object containing FMAOptionsStoreStruct and ExperimentFolder
+            %   Matched_FMA_ID - The FMA_ID to match
+            %   isRecursing    - (Optional) Flag indicating if the function is in a recursive call
+            % Output:
+            %   FMAOptions    - Matching FMA options, if found
+            
+            if nargin < 3
+                isRecursing = false; % Initialize the recursion flag
+            end
             
             FMAOptions = [];
             
-            % First look in FMAOptionStoreStruct
+            % First, search within the existing FMAOptionsStoreStruct
             if ~isempty(obj.FMAOptionsStoreStruct)
-                MatchingIndex = find(contains({obj.FMAOptionsStoreStruct.FMA_ID},Matched_FMA_ID));
+                FMA_IDs = {obj.FMAOptionsStoreStruct.FMA_ID};
+                MatchingIndex = find(strcmp(FMA_IDs, Matched_FMA_ID)); % Use strcmp for exact match
+                
                 if numel(MatchingIndex) > 1
-                    warning('More than one matching FMAOption struct found in FMAOptionStoreStruct. Returning first one')
-                    MatchingIndex(2:end) = [];
+                    warning('More than one matching FMAOption struct found in FMAOptionsStoreStruct. Returning the first one.');
+                    MatchingIndex = MatchingIndex(1);
                 end
+                
                 if ~isempty(MatchingIndex)
                     FMAOptions = obj.FMAOptionsStoreStruct(MatchingIndex).FMAOptions;
+                    return; % Exit early if found
                 end
             end
             
-            % Look in Experiment Folder. if FMAO files found, load them in
-            % and store in FMAOptionsStoreStruct. Then, call function again
-            if isempty(FMAOptions)
-                Current = what;
-                cd(obj.ExperimentFolder)
-                EF = what;
-                FMAOFiles = find(contains(EF.mat,'ForceMapAnalysis-Options_'));
-                if ~isempty(FMAOFiles)
-                    for i=FMAOFiles'
-                        load(EF.mat{i});
-                        obj.add_fma_options_to_storestruct(FMA, FMA_ID);
+            % If not found and not already recursing, attempt to load FMAO files
+            if isempty(FMAOptions) && ~isRecursing
+                try
+                    originalPath = pwd; % Save the current directory
+                    cd(obj.ExperimentFolder); % Change to the ExperimentFolder
+                    
+                    EF = what; % Get list of files in ExperimentFolder
+                    FMAOFiles = find(contains(EF.mat, 'ForceMapAnalysis-Options_'));
+                    
+                    if ~isempty(FMAOFiles)
+                        for i = FMAOFiles'
+                            matFileName = EF.mat{i};
+                            loadedData = load(matFileName); % Load the .mat file
+                            
+                            % Validate that necessary variables exist in the loaded file
+                            if isfield(loadedData, 'FMA') && isfield(loadedData, 'FMA_ID')
+                                obj.add_fma_options_to_storestruct(loadedData.FMA, loadedData.FMA_ID);
+                            else
+                                warning('Loaded file %s does not contain required variables FMA and FMA_ID.', matFileName);
+                            end
+                        end
+                        
+                        % Recursive call with the recursion flag set to true
+                        FMAOptions = obj.search_fma_options_matching_fma_id(Matched_FMA_ID, true);
+                    else
+                        warning('No ForceMapAnalysis-Options_*.mat files found in ExperimentFolder.');
                     end
-                    FMAOptions = obj.search_fma_options_matching_fma_id(Matched_FMA_ID);
-                else
-                    warning('no matching FMA_ID found')
+                    
+                    cd(originalPath); % Restore the original directory
+                catch ME
+                    warning('An error occurred while searching for FMA options: %s', ME.message);
+                    cd(originalPath); % Ensure we return to the original directory even if an error occurs
                 end
-                cd(Current.path)
+            elseif isempty(FMAOptions)
+                warning('No matching FMA_ID found after attempting to load FMAO files.');
             end
         end
+        
         
     end
     methods(Static)
@@ -12338,6 +12416,131 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
     
     methods(Static)
         % General static auxilary methods
+        
+        function option_display_show(s,TextBoxTitle)
+            % displayStructOptions Display struct options in a popup window.
+            %
+            % This function takes a MATLAB struct `s`, processes its fields recursively,
+            % excludes fields starting with 'Allowed', 'DType', or 'Tooltip',
+            % and displays the structured information in a scrollable popup window.
+            %
+            % Usage:
+            %   displayStructOptions(yourStruct)
+            
+            if nargin < 2
+                TextBoxTitle = 'Struct Information';
+            end
+            
+            % Convert struct to formatted text
+            text = Experiment.option_display_structToText(s);
+            
+            % Create a figure window for the popup
+            hFig = figure('Name', TextBoxTitle, ...
+                'NumberTitle', 'off', ...
+                'Position', [100 100 600 400], ...
+                'MenuBar', 'none', ...
+                'Toolbar', 'none', ...
+                'Resize', 'on');
+            
+            % Create a scrollable text area using uicontrol with 'edit' style
+            hEdit = uicontrol('Parent', hFig, ...
+                'Style', 'edit', ...
+                'Max', 2, ... % Allows multiline and scrolling
+                'Min', 0, ...
+                'HorizontalAlignment', 'left', ...
+                'FontName', 'Courier', ...
+                'FontSize', 10, ...
+                'Units', 'normalized', ...
+                'Position', [0.02 0.02 0.96 0.96], ...
+                'String', text, ...
+                'Enable', 'inactive', ... % Make it read-only
+                'BackgroundColor', 'white'); % Optional: Set background color
+        end
+        
+        function text = option_display_structToText(s, indent)
+            % option_display_structToText Recursively convert a struct to formatted text.
+            %
+            % Parameters:
+            %   s      - The struct to process.
+            %   indent - Current indentation string (for nested structs).
+            %
+            % Returns:
+            %   text   - Formatted string representation of the struct.
+            
+            if nargin < 2
+                indent = '';
+            end
+            
+            fields = fieldnames(s);
+            lines = {};
+            
+            for i = 1:length(fields)
+                field = fields{i};
+                
+                % Skip fields starting with 'Allowed', 'DType', or 'Tooltip'
+                if startsWith(field, 'Allowed') || startsWith(field, 'DType') || startsWith(field, 'Tooltip')
+                    continue;
+                end
+                
+                value = s.(field);
+                
+                if isstruct(value)
+                    % Add the field name with a colon
+                    lines{end+1} = sprintf('%s%s:', indent, field);
+                    % Recursively process the nested struct with increased indentation
+                    nestedText = Experiment.option_display_structToText(value, [indent '    ']);
+                    lines{end+1} = nestedText;
+                else
+                    % Format the value based on its type
+                    valStr = Experiment.option_display_formatValue(value);
+                    % Add the formatted line
+                    lines{end+1} = sprintf('%s%s: %s', indent, field, valStr);
+                end
+            end
+            
+            % Combine all lines into a single string with line breaks
+            text = strjoin(lines, '\n');
+        end
+        
+        function valStr = option_display_formatValue(value)
+            % option_display_formatValue Convert a value to its string representation.
+            %
+            % Parameters:
+            %   value - The value to convert.
+            %
+            % Returns:
+            %   valStr - String representation of the value.
+            
+            if ischar(value) || isstring(value)
+                % Enclose strings in single quotes
+                valStr = ['''', char(value), ''''];
+            elseif isnumeric(value)
+                if isscalar(value)
+                    % Represent scalar numbers directly
+                    valStr = num2str(value);
+                else
+                    % Represent vectors and matrices in brackets
+                    valStr = mat2str(value);
+                end
+            elseif islogical(value)
+                % Convert logicals to 'true' or 'false'
+                valStr = mat2str(value);
+            elseif iscell(value)
+                % Represent cell arrays with curly braces and comma-separated values
+                if isempty(value)
+                    valStr = '{}';
+                else
+                    cellContents = cellfun(@Experiment.option_display_formatValue, value, 'UniformOutput', false);
+                    valStr = ['{', strjoin(cellContents, ', '), '}'];
+                end
+            elseif isempty(value)
+                % Represent empty arrays as []
+                valStr = '[]';
+            else
+                % For other types, use the class name
+                valStr = ['<', class(value), '>'];
+            end
+        end
         
         function [UnitCell,FancyNameCell] = assign_units_and_fancy_names_to_properties(InCell)
             % UnitCell = assign_units_to_properties(InCell)
