@@ -1307,7 +1307,7 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             if nargin < 2
                 SampleDistanceMeters = 20e-9;
                 WidthLocalWindowMeters = 200e-9;
-                SmoothingWindowSize = 41;
+                SmoothingWindowSize = 81;
                 SmoothingWindowWeighting = 'localreg1';
             end
             
@@ -1460,7 +1460,7 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             [Channel,XMult,YMult] = AFMBaseClass.resize_channel_to_same_size_per_pixel(Channel);
             
             % Convert inputs from meters to pixels
-            SizePerPixel = Channel.ScanSizeX/Channel.NumPixelsX;
+            SizePerPixel = Channel.ScanSizeY/Channel.NumPixelsX;
             WidthLocalWindowPixels = WidthLocalWindowMeters/SizePerPixel;
             MinPeakDistancePixels = MinPeakDistanceMeters/SizePerPixel;
             
@@ -1546,6 +1546,7 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
                 LocalEllipse_Area = zeros(length(SegmentPositions(:,1)),1);
                 LocalEllipse_Height = zeros(length(SegmentPositions(:,1)),1);
                 LocalEllipse_WidthHalfHeight = zeros(length(SegmentPositions(:,1)),1);
+                TempCorrespondingPixelIndex = zeros(length(SegmentPositions(:,1)),2);
                 for j=1:length(SegmentPositions(:,1))
                     PerpendicularVector(j,:) = [LocalDirectionVector(j,2) -LocalDirectionVector(j,1)]/norm(LocalDirectionVector(j,:));
                     WindowStart =SegmentPositions(j,:) + PerpendicularVector(j,:).*WidthLocalWindowPixels/2;
@@ -1565,11 +1566,11 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
                     ForbiddenLocalDistance = LocalDistance;
                     isForbidden = true(size(LocalX));
                     for jj=length(ForbiddenX):-1:1
-                        if (round(ForbiddenX(jj))<1 || round(ForbiddenX(jj))>Size(1)) ||...
-                                (round(ForbiddenY(jj))<1 || round(ForbiddenY(jj))>Size(2)) 
+                        if (round(ForbiddenX(jj))<1 || round(ForbiddenX(jj))>Size(2)) ||...
+                                (round(ForbiddenY(jj))<1 || round(ForbiddenY(jj))>Size(1)) 
                             continue
                         end
-                        if ~IgnoreMask(round(ForbiddenX(jj)),round(ForbiddenY(jj)))
+                        if ~IgnoreMask(round(ForbiddenY(jj)),round(ForbiddenX(jj)))
                             ForbiddenX(jj) = [];
                             ForbiddenY(jj) = [];
                             ForbiddenProfile(jj) = [];
