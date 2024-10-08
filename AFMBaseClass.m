@@ -795,7 +795,7 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
                         OriginalVertices(1,:) = [];
                     end
                     OutOfBounds = or(or(NewVertices(:,1) < 1,NewVertices(:,2) < 1),...
-                        or(NewVertices(:,1) > Channel.NumPixelsX,NewVertices(:,2) > Channel.NumPixelsX));
+                        or(NewVertices(:,1) > Channel.NumPixelsY,NewVertices(:,2) > Channel.NumPixelsX));
                     NewVertices(OutOfBounds,:) = [];
                     if size(NewVertices,1) < 3
                         continue
