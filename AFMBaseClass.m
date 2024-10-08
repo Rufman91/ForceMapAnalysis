@@ -3412,6 +3412,132 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             
         end
         
+        function map_fiber_segment_properties_to_image_pixels(obj,PoolingMethod)
+            
+            if nargin < 2
+                PoolingMethod = 'Median';
+            end
+            
+            NumSegments = length(obj.Segment);
+            
+            FieldsList = {'Height','WidthHalfHeight',...
+                'Prominence','WidthHalfProminence',...
+                'SegmentLength','Mean_WidthHalfHeight',...
+                'Median_WidthHalfHeight','Mean_Height',...
+                'Median_Height','Mean_WidthHalfProminence',...
+                'Median_WidthHalfProminence','Mean_Prominence',...
+                'Median_Prominence','Area','Mean_Area','Median_Area',...
+                'WidthBase','Mean_WidthBase','Median_WidthBase',...
+                'AspectRatioHalfHeight','Mean_AspectRatioHalfHeight',...
+                'Median_AspectRatioHalfHeight','AspectRatioBaseHeight',...
+                'Mean_AspectRatioBaseHeight','Median_AspectRatioBaseHeight',...
+                'AreaDerivedDiameter','Mean_AreaDerivedDiameter',...
+                'Median_AreaDerivedDiameter',...
+                'Ellipse_a','Mean_Ellipse_a','Median_Ellipse_a',...
+                'Ellipse_b','Mean_Ellipse_b','Median_Ellipse_b',...
+                'Ellipse_AspectRatio','Mean_Ellipse_AspectRatio',...
+                'Median_Ellipse_AspectRatio',...
+                'Ellipse_Area','Mean_Ellipse_Area','Median_Ellipse_Area',...
+                'Ellipse_Height','Mean_Ellipse_Height',...
+                'Median_Ellipse_Height',...
+                'Ellipse_WidthHalfHeight','Mean_Ellipse_WidthHalfHeight',...
+                'Median_Ellipse_WidthHalfHeight',...
+                'RelativePixelPosition','RelativePosition'};
+            
+            switch PoolingMethod
+                case 'Mean'
+                    PoolingFcn = @(x)mean(x,'omitnan');
+                case 'Median'
+                    PoolingFcn = @(x)median(x,'omitnan');
+                case 'Max'
+                    PoolingFcn = @(x)max(x,'omitnan');
+                case 'Min'
+                    PoolingFcn = @(x)min(x,'omitnan');
+            end
+            
+            h = waitbar(0,'setting up...',...
+                    'Name',obj.Name);
+            % initialize object properties
+            obj.SegmentName = cell(obj.NumPixelsX*obj.NumPixelsY,1);
+            obj.SubSegmentName = cell(obj.NumPixelsX*obj.NumPixelsY,1);
+            obj.SubSegmentFullName = cell(obj.NumPixelsX*obj.NumPixelsY,1);
+            [obj.SegmentName(:)] = {''};
+            [obj.SubSegmentName(:)] = {''};
+            [obj.SubSegmentFullName(:)] = {''};
+            for i=1:length(FieldsList)
+                for j=1:length(obj.Segment)
+                    if ~isfield(obj.Segment(j),FieldsList{i}) || isempty(obj.Segment(j).(FieldsList{i}))
+                        continue
+                    elseif isnumeric(obj.Segment(j).(FieldsList{i}))
+                        obj.(['FiberSegment_' FieldsList{i}]) = ones(obj.NumPixelsX*obj.NumPixelsY,1).*NaN;
+                    else
+                        obj.(['FiberSegment_' FieldsList{i}]) = cell(obj.NumPixelsX*obj.NumPixelsY,1);
+                        [obj.(['FiberSegment_' FieldsList{i}])(:)] = {''};
+                    end
+                end
+            end
+            
+            % skip non polyline segments
+            for i=1:NumSegments
+                waitbar(i/NumSegments,h,obj.Segment(i).Name,...
+                    'Name',obj.Name)
+                if ~isfield(obj.Segment(i),'SegmentPixelIndex') ||...
+                        ~isfield(obj.Segment(i),'ROIObject') ||...
+                        ~isfield(obj.Segment(i),'CorrespondingPixelIndex') ||...
+                        isempty(obj.Segment(i).SegmentPixelIndex) ||...
+                        isempty(obj.Segment(i).ROIObject) ||...
+                        isempty(obj.Segment(i).CorrespondingPixelIndex) ||...
+                        ~isequal(obj.Segment(i).Type,'polyline')
+                    continue
+                end
+                CorrespondingPixelIndex = obj.Segment(i).CorrespondingPixelIndex;
+                SegLength = size(CorrespondingPixelIndex,1);
+                Processed = false(SegLength,1);
+                while ~all(Processed)
+                    Unprocessed = find(Processed == 0);
+                    FirstUnprocessed = Unprocessed(1);
+                    CurrentPixel = CorrespondingPixelIndex(FirstUnprocessed,:);
+                    Indizes = find(CorrespondingPixelIndex(:,1) == CurrentPixel(1) &...
+                        CorrespondingPixelIndex(:,2) == CurrentPixel(2));
+                    if CurrentPixel(1) < 1 ||...
+                            CurrentPixel(1) > obj.NumPixelsY ||...
+                            CurrentPixel(2) < 1 ||...
+                            CurrentPixel(2) > obj.NumPixelsX
+                        Processed(Indizes) = true;
+                        continue
+                    end
+                    % Pool data by PoolingMethod and assign to
+                    % corresponding image pixel
+                    for j=1:length(FieldsList)
+                        if length(obj.Segment(i).(FieldsList{j})) == SegLength
+                            Values = obj.Segment(i).(FieldsList{j})(Indizes);
+                            PooledValue = PoolingFcn(Values);
+                        elseif size(obj.Segment(i).(FieldsList{j})) == size([1])
+                            PooledValue = obj.Segment(i).(FieldsList{j});
+                        else
+                            PooledValue = NaN;
+                        end
+                        try
+                        obj.(['FiberSegment_' FieldsList{j}])...
+                            (obj.Map2List(CurrentPixel(2),CurrentPixel(1))) = PooledValue;
+                        catch
+                            warning("Couldn't assign property")
+                            i
+                            j
+                        end
+                    end
+                    obj.SegmentName{obj.Map2List(CurrentPixel(2),CurrentPixel(1))} =...
+                        obj.Segment(i).Name;
+                    obj.SubSegmentName{obj.Map2List(CurrentPixel(2),CurrentPixel(1))} =...
+                        obj.Segment(i).SubSegmentName;
+                    obj.SubSegmentFullName{obj.Map2List(CurrentPixel(2),CurrentPixel(1))} =...
+                        [obj.Segment(i).Name '-' obj.Segment(i).SubSegmentName];
+                    Processed(Indizes) = true;
+                end
+            end
+            close(h)
+        end
+        
         function map_segments_to_image_pixels(obj)
             
             h = waitbar(0,'Setting up...', 'Name', obj.Name);
