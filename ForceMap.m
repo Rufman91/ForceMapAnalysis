@@ -2295,6 +2295,122 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
             obj.DZSlopeCorrected = DZslopeCorrected;            
         end
         
+        function [NCMEnergy,PreCPNCMEnergy] = calculate_non_contact_model_energy(obj,varargin)
+            % function [NCMEnergy,PreCPNCMEnergy] = calculate_non_contact_model_energy(obj,varargin)
+            %
+            % <FUNCTION DESCRIPTION HERE>
+            %
+            %
+            % Required inputs
+            % obj ... <VARIABLE DESCRIPTION>
+            %
+            % Name-Value pairs
+            % "FMA_ID" ... <NAMEVALUE DESCRIPTION>
+            % "SensitivityCorrectionMethod" ... <NAMEVALUE DESCRIPTION>
+            % "KeepOldResults" ... <NAMEVALUE DESCRIPTION>
+            
+            p = inputParser;
+            p.FunctionName = "calculate_non_contact_model_energy";
+            p.CaseSensitive = false;
+            p.PartialMatching = true;
+            
+            % Required inputs
+            validobj = @(x)true;
+            addRequired(p,"obj",validobj);
+            
+            % NameValue inputs
+            defaultFMA_ID = obj.CurrentFMA_ID;
+            defaultSensitivityCorrectionMethod = 'original';
+            defaultKeepOldResults = true;
+            validFMA_ID = @(x)true;
+            validSensitivityCorrectionMethod = @(x)true;
+            validKeepOldResults = @(x)true;
+            addParameter(p,"FMA_ID",defaultFMA_ID,validFMA_ID);
+            addParameter(p,"SensitivityCorrectionMethod",defaultSensitivityCorrectionMethod,validSensitivityCorrectionMethod);
+            addParameter(p,"KeepOldResults",defaultKeepOldResults,validKeepOldResults);
+            
+            parse(p,obj,varargin{:});
+            
+            % Assign parsing results to named variables
+            obj = p.Results.obj;
+            FMA_ID = p.Results.FMA_ID;
+            SensitivityCorrectionMethod = p.Results.SensitivityCorrectionMethod;
+            KeepOldResults = p.Results.KeepOldResults;
+            
+            
+            NCMEnergy = ones(obj.NCurves,1)*NaN;
+            PreCPNCMEnergy = ones(obj.NCurves,1)*NaN;
+            HertzEnergy = ones(obj.NCurves,1)*NaN;
+            
+            Range = find(obj.SelectedCurves);
+            
+            
+            ID_Index = find(contains(...
+                {obj.HertzFitStore.FMA_ID},...
+                FMA_ID));
+            if isempty(ID_Index)
+                warning(sprintf('Found no Hertz fit data with ID: %s', FMA_ID))
+                return
+            end
+            
+            % first, calculate all the DZ-Slopes
+            for i=Range'
+                [Force,Height] = obj.get_force_curve_data(i,'AppRetSwitch',0,...
+                    'BaselineCorrection',1,'TipHeightCorrection',1,...
+                    'Sensitivity',SensitivityCorrectionMethod);
+                
+                if iscell(obj.HertzFitStore(ID_Index).HertzFitType)
+                    FitFunction = ...
+                        fittype(obj.HertzFitStore(ID_Index).HertzFitType{i});
+                else
+                    FitFunction = ...
+                        fittype(obj.HertzFitStore(ID_Index).HertzFitType);
+                end
+                FitCoeffValues = ...
+                    obj.HertzFitStore(ID_Index).HertzFitValues{i};
+                if length(FitCoeffValues) == 1
+                    Fit = cfit(FitFunction,FitCoeffValues);
+                elseif length(FitCoeffValues) == 2
+                    Fit = cfit(FitFunction,FitCoeffValues(1),FitCoeffValues(2));
+                end
+                CP = obj.CP(i,:);
+                Force = Force(Height - CP(1) >= 0);
+                X3 = Height(Height - CP(1) >= 0) - CP(1);
+                Y3 = feval(Fit,X3);
+%                 Y3 = Y3 - CP(2);
+                
+                % Compute Energies
+                FullEnergy = trapz(X3,Force);
+                
+                HertzEnergy(i) = trapz(X3(~isnan(Y3)), Y3(~isnan(Y3)));
+                
+                NCMEnergy(i) = FullEnergy - HertzEnergy(i);
+                if length(FitCoeffValues) == 2
+                    try
+                        PreCPNCMEnergy(i) = trapz(X3(X3 >= 0 & X3 < -FitCoeffValues(2)),Force(X3 >= 0 & X3 < -FitCoeffValues(2)));
+                    catch
+                    end
+                end
+                
+                clear FullEnergy
+            end
+            
+            HertzEnergyMap = obj.convert_data_list_to_map(HertzEnergy);
+            Channel = obj.create_standard_channel(HertzEnergyMap,'Contact Model Energy','J');
+            obj.add_channel(Channel,~KeepOldResults)
+            
+            NCMEnergyMap = obj.convert_data_list_to_map(NCMEnergy);
+            Channel = obj.create_standard_channel(NCMEnergyMap,'Non-Contact-Model Energy','J');
+            obj.add_channel(Channel,~KeepOldResults)
+            
+            if length(FitCoeffValues) == 2
+                PreCPNCMEnergyMap = obj.convert_data_list_to_map(PreCPNCMEnergy);
+                Channel = obj.create_standard_channel(PreCPNCMEnergyMap,'Pre-Non-Contact-Model Energy','J');
+                obj.add_channel(Channel,~KeepOldResults)
+            end
+            
+        end
+        
         function create_and_level_height_map_by_current_cp(obj,KeepOldResults)
             
             Map = obj.convert_data_list_to_map(-obj.CP(:,1));
