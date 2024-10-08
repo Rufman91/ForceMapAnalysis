@@ -11292,7 +11292,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                     
                     cd(originalPath); % Restore the original directory
                 catch ME
-                    warning('An error occurred while searching for FMA options: %s', ME.message);
+                    warning(ME.identifier,'An error occurred while searching for FMA options: %s', ME.message);
                     cd(originalPath); % Ensure we return to the original directory even if an error occurs
                 end
             elseif isempty(FMAOptions)
