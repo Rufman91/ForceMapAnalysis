@@ -6631,7 +6631,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
     methods
         % methods for visualization, plotting, statistics and quality control
         
-        function show_force_curve(obj,ZoomMult,k,fig)
+        function plotting_show_force_curve(obj,ZoomMult,k,fig)
             if nargin < 2
                 jRange = find(obj.SelectedCurves);
                 k = jRange(randi(length(jRange)));
@@ -6836,7 +6836,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
             end
         end
         
-        function Fig = show_analyzed_fibril(obj)
+        function Fig = plotting_show_analyzed_fibril(obj)
             T = sprintf('Height Map of %s\nwith chosen indentation points',obj.Name);
             Fig = figure('Name',T,'Units','normalized','Color','w','Position',[0.5 0.1 0.5 0.8]);
             
@@ -6886,7 +6886,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
             title('Indentation Modulus Map')
         end
         
-        function show_height_map(obj)
+        function plotting_show_height_map(obj)
             T = sprintf('Height Map of %s',obj.Name);
             Fig = figure('Name',T,'Units','normalized','Color','w','Position',[0.5 0.1 0.5 0.8]);
             
@@ -6908,7 +6908,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
             
         end
         
-        function show_e_mod_map(obj)
+        function plotting_show_e_mod_map(obj)
             Title = sprintf('Indentation Modulus Map of %s',obj.Name);
             figure('Name',Title);
             subplot(2,2,1)
@@ -6933,7 +6933,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
             light('Style','local')
         end
         
-        function quality_control_oliver_pharr_fibril(obj,PauseTime)
+        function plotting_quality_control_oliver_pharr_fibril(obj,PauseTime)
             % shows some relevant plots for the E-Mod calculation
             % rectified apex force curves
             
@@ -7050,7 +7050,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
             end
         end
         
-        function quality_control_hertz_sneddon_fibril(obj,PauseTime)
+        function plotting_quality_control_hertz_sneddon_fibril(obj,PauseTime)
             % shows some relevant plots for the E-Mod calculation
             % rectified apex force curves
             
@@ -7172,7 +7172,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
             end
         end
         
-        function quality_control_oliver_pharr(obj,PauseTime)
+        function plotting_quality_control_oliver_pharr(obj,PauseTime)
             % shows some relevant plots for the E-Mod calculation
             
             if nargin < 2
@@ -7285,7 +7285,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
             end
         end
         
-        function quality_control_hertz_sneddon(obj,PauseTime)
+        function plotting_quality_control_hertz_sneddon(obj,PauseTime)
             % shows some relevant plots for the E-Mod calculation
             % rectified apex force curves
             
@@ -7402,7 +7402,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
             end
         end
         
-        function compare_hertz_oliver_fibril(obj)
+        function plotting_compare_hertz_oliver_fibril(obj)
             % Boxplots comparing the two methods of elastic modulus
             % calculation
             figure('Name',obj.Name)
@@ -7431,6 +7431,46 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
             plot(1:obj.NumPixelsX,obj.EModHertz(obj.RectApexIndex)*1e-6,'rO')
             xlabel('Index')
             ylabel('Apparent Indentation Modulus [MPa]')
+        end
+        
+        function plotting_compare_loglog_with_shifted_cp(obj,CurveI)
+            
+            if nargin < 2
+                CurveI = randi(obj.NCurves);
+            end
+            
+            figure('Name',['compare loglog with shifted cp. curve nr.: ' num2str(CurveI)],...
+                'Color','w',...
+                'Position',[100 100 1480 850]);
+            
+            [Force,TH] = obj.get_force_curve_data(CurveI,'AppRetSwitch',0,...
+                'BaselineCorrection',1,'TipHeightCorrection',1,...
+                'Sensitivity','original','Unit','N');
+            TH = TH - obj.CP_CNN(CurveI,1);
+            TH = TH.*1e6;
+            Force = Force.*1e9;
+            VarVec = [-1:.2:1].*max(TH)*0.5;
+            for i=1:length(VarVec)
+                ax1 = subplot(2,1,1);
+                plot(TH - VarVec(i),Force)
+                hold on
+                xlabel('Tip Height [\mum]')
+                ylabel('Force [nN]')
+                ax2 = subplot(2,1,2);
+                loglog(TH - VarVec(i),Force)
+                hold on
+                if i==length(VarVec)
+                    loglog(TH,10*TH.^(3/2),'Color','k','LineWidth',1.5)
+                    hold on
+                    TextBoxI = find(TH>0);
+                    text(TH(TextBoxI(1)),10*TH(TextBoxI(1)).^(3/2),'Hertzian contact slope: 3/2','FontSize',22,'EdgeColor','k')
+                end
+                xlabel('Tip Height [\mum]')
+                ylabel('Force [nN]')
+            end
+            FS = 18;
+            ax1.FontSize = FS;
+            ax2.FontSize = FS;
         end
         
     end
