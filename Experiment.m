@@ -12390,7 +12390,9 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
         function OutPath = replace_fileseps(InPath)
             
             OutPath = strrep(InPath,'/',filesep);
-            OutPath = strrep(InPath,'\',filesep);
+            if isequal(InPath,OutPath)
+                OutPath = strrep(InPath,'\',filesep);
+            end
             
         end
         
