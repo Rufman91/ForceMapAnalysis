@@ -20,7 +20,7 @@ choice2 = menu(msg2,opts2);
 
 if choice2 == 1
     msg3 = "Which ForceMapAnalysisOptions do you want to apply?";
-    opts3 = ["01" "02" "03" "04"];
+    opts3 = ["01" "02" "03" "04" "05"];
     choice3 = menu(msg3,opts3);
 
     s1 = ' Fit Range';

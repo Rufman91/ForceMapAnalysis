@@ -13,7 +13,7 @@ choice2 = menu(msg2,opts2);
 
 if choice2 == 1
     msg3 = "Which ForceMapAnalysisOptions do you want to apply?";
-    opts3 = ["01" "02" "03" "04"];
+    opts3 = ["01" "02" "03" "04" "05"];
     choice3 = menu(msg3,opts3);
     s2 = ' ('+opts3(choice3)+')';
 else
@@ -47,22 +47,20 @@ for i = 1:E.NumForceMaps
         CsFlatHeight_mean(i) = mean(CsFlatHeight(:),'omitnan').*1e9;
         CsFlatPrctile_data(i) = CsFlatPrctile*1e9;
         %         CsFlatMax_data(i) = CsFlatMax*1e9;
-        %         CsInden_mean(i) = mean(CsFlatInden(:),'omitnan').*1e9;
+        CsInden_mean(i) = mean(CsFlatInden(:),'omitnan').*1e9;
         %         CsRadiusXY_data(i) = CsRadiusXY;
         %         CsAspectRatio(i) = mean(CsFlatHeight(:),'omitnan')/(CsRadiusXY*2);
         %         CsFlatArea_data(i) = CsFlatArea;
         CsVolume_Otsu_data(i) = CsVolume*1e+18; % From Otsu's segmentation
-        CsVolumeSphereCap_data(i) = CsVolumeSphereCap*1e+18;
+        %         CsVolumeSphereCap_data(i) = CsVolumeSphereCap*1e+18;
 
+        % Calculate volume using manual segmentation
         Height{i} = E.FM{i}.get_segment_data_from_channel('Contact Height Smoothed', 'MatchString', 'Seg-02'); % Total centrosome height
-
-        % Calculate volume (treat negative heights as zero)
-        positiveHeight = max(Height{i}, 0);
+        positiveHeight = max(Height{i}, 0); % Treat negative heights as zero
         Volume = sum(positiveHeight) * (E.FM{i}.ScanSizeX/E.FM{i}.NumPixelsX * E.FM{i}.ScanSizeY/E.FM{i}.NumPixelsY); % Total centrosome volume from Seg-02
         Volumes(i) = Volume*1e+18;
-
-        % Equivalent radius of a sphere of the same volume
-        EquivalentRadii_mnl(i) = ((3 * Volumes(i) / (4 * pi))^(1/3))*1000;
+        %         % Equivalent radius of a sphere of the same volume
+        %         EquivalentRadii_mnl(i) = ((3 * Volumes(i) / (4 * pi))^(1/3))*1000;
     end
 end
 
@@ -70,9 +68,10 @@ CsEModHertz_mean(CsEModHertz_mean == 0) = NaN;
 CsEModHertz_std(CsEModHertz_std == 0) = NaN;
 CsFlatHeight_mean(CsFlatHeight_mean == 0) = NaN;
 CsFlatPrctile_data(CsFlatPrctile_data == 0) = NaN; 
+CsInden_mean(CsInden_mean == 0) = NaN; 
 CsVolume_Otsu_data(CsVolume_Otsu_data == 0) = NaN;
-CsVolumeSphereCap_data(CsVolumeSphereCap_data == 0) = NaN;
 Volumes(Volumes == 0) = NaN; 
+
 % Equivalent radius of a sphere of the same volume
 EquivalentRadii_mnl = (4.*Volumes./(3*pi)).^(1/3)*1000; 
 EquivalentRadii_auto = (4.*CsVolume_Otsu_data./(3*pi)).^(1/3)*1000; 
@@ -89,11 +88,15 @@ EquivalentRadii_auto = (4.*CsVolume_Otsu_data./(3*pi)).^(1/3)*1000;
 if isempty(choice3)
     c =  [55/255 126/255 184/255];
 elseif choice3 == 1
-    c =  [152/255 78/255 163/255]; % Thin film
+    c =  [152/255 78/255 163/255]; % Thin film (not bonded)
 elseif choice3 == 2
     c = [255/255 127/255 0/255]; % Topography
-    elseif choice3 == 3
-    c = [77/255 175/255 74/255]; % Thin film + topography
+elseif choice3 == 3
+    c = [77/255 175/255 74/255]; % Thin film (not bonded) + topography
+elseif choice3 == 4
+    c = [228/255 26/255 28/255]; % Thin film (bonded)
+elseif choice3 == 5
+    c = [153/255 153/255 153/255]; % Thin film (bonded) + topography
 end
 
 figure('name', 'Centrosome volume dependence'); hold on
@@ -114,10 +117,9 @@ EquivalentRadii_clean = EquivalentRadii_mnl(~nanIndices);
 CsEModHertz_mean_clean = CsEModHertz_mean(~nanIndices);
 addCorrelationInfo(EquivalentRadii_clean, CsEModHertz_mean_clean, RobustFit);
 
-
 figure('name', 'Centrosome height dependence'); hold on
 box on; set(gca,'FontSize', 18, 'Linewidth', 1.5);
-scatter(CsFlatPrctile_data, CsEModHertz_mean, 50, c, "filled");
+scatter(CsFlatPrctile_data, CsEModHertz_mean, 60, c, "filled");
 errorbar(CsFlatPrctile_data, CsEModHertz_mean, CsEModHertz_std, 'o', 'Color', c);
 
 % hold on
@@ -186,7 +188,7 @@ hold off
 
 figure('name', 'Centrosome maximum height vs. Otsu volume'); hold on
 box on; set(gca,'FontSize', 18, 'Linewidth', 1.5);
-scatter(EquivalentRadii_auto, CsFlatPrctile_data, 50, [0 0.4470 0.7410], "filled");
+scatter(EquivalentRadii_auto, CsFlatPrctile_data, 60, [0 0.4470 0.7410], "filled");
 ylabel('Centrosome maximum height [nm]'); 
 xlabel('Centrosome equivalent radius [nm] - Otsu thresholding');
 ylim([0, 1100]); xlim([0 1800])
@@ -220,16 +222,60 @@ plot(EquivalentRadii_valid, fit_ci, 'r--', 'LineWidth', 1);  % Plot confidence i
 legend('Data points', ['Linear fit: y = ' num2str(slope, '%.2f') 'x + ' num2str(intercept, '%.2f')], ['R^2 = ', num2str(R_squared, '%.2f')]); legend boxoff
 hold off
 
-
  
-% figure('name', 'Compression vs. maximum height'); hold on
-% box on; set(gca,'FontSize', 16, 'Linewidth', 1.5);
-% for i = 1:E.NumForceMaps
-%         scatter(CsFlatPrctile_data(i), (CsInden_mean(i)/CsFlatHeight_mean(i))*100, 50, [0.4940 0.1840 0.5560], "filled");  
-% end
-% xlabel('Centrosome height [nm]');
-% ylabel('Compression [%]')
+figure('name', 'Compression vs. height'); hold on
+box on; set(gca,'FontSize', 16, 'Linewidth', 1.5);
+for i = 1:E.NumForceMaps
+        Compression = (CsInden_mean(i)/CsFlatHeight_mean(i))*100; 
+        scatter(CsFlatPrctile_data(i), Compression, 60, c, "filled");  
+end
+xlabel('Centrosome maximum height [nm]');
+ylabel('Compression [%]')
+xlim([0, 1100]); ylim([0 70])
 
+
+figure('name', 'Compression vs. height'); 
+hold on;
+box on; 
+set(gca,'FontSize', 16, 'Linewidth', 1.5);
+
+lowCompIdx = [];
+midCompIdx = [];
+highCompIdx = [];
+edgeColor = [153/255 153/255 153/255];
+lowColor = [145/255 207/255 96/255];
+midColor = [255/255 255/255 191/255];
+highColor = [252/255 141/255 89/255];
+
+for i = 1:E.NumForceMaps
+    Compression = (CsInden_mean(i) / CsFlatHeight_mean(i)) * 100;
+    
+    % Color code based on Compression value
+    if Compression < 25
+        c = lowColor; % Green for Compression < 25%
+        lowCompIdx = [lowCompIdx i]; 
+    elseif Compression >= 25 && Compression <= 35
+        c = midColor; % Yellow for Compression between 25-35%
+        midCompIdx = [midCompIdx i]; 
+    else
+        c = highColor; % Red for Compression > 35%
+        highCompIdx = [highCompIdx i];
+    end
+    
+    % Plot the data point
+  scatter(CsFlatPrctile_data(i), CsEModHertz_mean(i), 60, 'MarkerEdgeColor', edgeColor, 'MarkerFaceColor', c);
+  errorbar(CsFlatPrctile_data, CsEModHertz_mean, CsEModHertz_std, 'o', 'Color', edgeColor);
+end
+
+ylabel('Indentation modulus [kPa]');
+xlabel('Centrosome max. height [nm]');
+ylim([-50 350]); xlim([0, 1100])
+% Add dummy scatter plots for legend
+h1 = scatter(nan, nan, 60, 'MarkerEdgeColor', edgeColor, 'MarkerFaceColor', lowColor);
+h2 = scatter(nan, nan, 60, 'MarkerEdgeColor', edgeColor, 'MarkerFaceColor', midColor);
+h3 = scatter(nan, nan, 60, 'MarkerEdgeColor', edgeColor, 'MarkerFaceColor', highColor);
+% Create legend
+legend([h1, h2, h3], '< 25% Compression', '25-35% Compression', '> 35% Compression', 'Location', 'best');
 
 
 function addCorrelationInfo(x, y, useRobustFit)
