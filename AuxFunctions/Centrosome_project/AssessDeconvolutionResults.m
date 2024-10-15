@@ -1,7 +1,7 @@
 % clear
 % E = Experiment.load;
 cd(E.ExperimentFolder)
-close all
+% close all
 
 msg1 = "Do you need to exclude force maps?";
 opts1 = ["Yes" "No"];
@@ -114,9 +114,10 @@ Volumes_deconv(Volumes_deconv == 0) = NaN;
 EquivalentRadii = (4.*Volumes./(3*pi)).^(1/3)*1000; 
 EquivalentRadii_deconv = (4.*Volumes_deconv./(3*pi)).^(1/3)*1000; 
 
-c = [0 0.4470 0.7410]; 
-c = [255/255 127/255 0/255];
-c = [153/255 153/255 153/255];
+c = [166/255 54/255 3/255];
+% c = [230/255 85/255 13/255];
+% c = [253/255 190/255 133/255]; 
+
 figure('name', 'Centrosome volume deconvolution'); hold on
 box on; set(gca,'FontSize', 18, 'Linewidth', 1.5);
 scatter(EquivalentRadii, EquivalentRadii_deconv, 60, c, "filled");
@@ -153,7 +154,6 @@ legend('Data points', ['Linear fit: y = ' num2str(slope, '%.2f') 'x + ' num2str(
 hold off
 
 
-c = [0 0.4470 0.7410]; 
 figure('name', 'Centrosome volume dependence'); hold on
 box on; set(gca,'FontSize', 18, 'Linewidth', 1.5);
 scatter(EquivalentRadii_deconv, CsEModHertz_mean, 60, c, "filled");

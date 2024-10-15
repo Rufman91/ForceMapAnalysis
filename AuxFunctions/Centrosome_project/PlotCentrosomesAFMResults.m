@@ -86,11 +86,11 @@ EquivalentRadii_auto = (4.*CsVolume_Otsu_data./(3*pi)).^(1/3)*1000;
 % xlabel('Centrosome height [nm]');
 
 if isempty(choice3)
-    c =  [55/255 126/255 184/255];
+    c =  [255/255 127/255 0/255];
 elseif choice3 == 1
     c =  [152/255 78/255 163/255]; % Thin film (not bonded)
 elseif choice3 == 2
-    c = [255/255 127/255 0/255]; % Topography
+    c = [55/255 126/255 184/255]; % Topography
 elseif choice3 == 3
     c = [77/255 175/255 74/255]; % Thin film (not bonded) + topography
 elseif choice3 == 4
@@ -221,9 +221,8 @@ plot(EquivalentRadii_valid, fit_ci, 'r--', 'LineWidth', 1);  % Plot confidence i
 % Display correlation, R-squared, and linear equation in the legend
 legend('Data points', ['Linear fit: y = ' num2str(slope, '%.2f') 'x + ' num2str(intercept, '%.2f')], ['R^2 = ', num2str(R_squared, '%.2f')]); legend boxoff
 hold off
-
  
-figure('name', 'Compression vs. height'); hold on
+figure('name', 'Compression Indentation modulus dependence'); hold on
 box on; set(gca,'FontSize', 16, 'Linewidth', 1.5);
 for i = 1:E.NumForceMaps
         Compression = (CsInden_mean(i)/CsFlatHeight_mean(i))*100; 
@@ -233,10 +232,9 @@ xlabel('Centrosome maximum height [nm]');
 ylabel('Compression [%]')
 xlim([0, 1100]); ylim([0 70])
 
-
+% Color-code based on compression % 
 figure('name', 'Compression vs. height'); 
-hold on;
-box on; 
+hold on; box on; 
 set(gca,'FontSize', 16, 'Linewidth', 1.5);
 
 lowCompIdx = [];
@@ -270,6 +268,7 @@ end
 ylabel('Indentation modulus [kPa]');
 xlabel('Centrosome max. height [nm]');
 ylim([-50 350]); xlim([0, 1100])
+
 % Add dummy scatter plots for legend
 h1 = scatter(nan, nan, 60, 'MarkerEdgeColor', edgeColor, 'MarkerFaceColor', lowColor);
 h2 = scatter(nan, nan, 60, 'MarkerEdgeColor', edgeColor, 'MarkerFaceColor', midColor);
@@ -277,6 +276,51 @@ h3 = scatter(nan, nan, 60, 'MarkerEdgeColor', edgeColor, 'MarkerFaceColor', high
 % Create legend
 legend([h1, h2, h3], '< 25% Compression', '25-35% Compression', '> 35% Compression', 'Location', 'best');
 
+% Color-code based on acquisition day
+figure('name', 'Acquisition day/cantilever tip dependence'); 
+hold on; box on; 
+set(gca,'FontSize', 16, 'Linewidth', 1.5);
+
+day1Color = [224/255 236/255 244/255];
+day2Color = [158/255 188/255 218/255];
+day3Color = [136/255 86/255 167/255];
+day4Color = [254/255 232/255 200/255];
+day5Color = [253/255 187/255 132/255];
+day6Color = [227/255 74/255 51/255];
+for i = 1:E.NumForceMaps
+    % Color code based on acquisition day
+    if i >= 1 && i <= 13
+        c = day1Color;
+    elseif i >= 14 && i <= 32
+        c = day2Color;
+    elseif i >= 33 && i <= 45
+        c = day3Color;
+    elseif i >= 46 && i <= 47
+        c = day4Color;
+    elseif i >= 48 && i <= 52
+        c = day5Color;
+    elseif i >= 53
+        c = day6Color;
+    end
+
+    % Plot the data point
+    scatter(CsFlatPrctile_data(i), CsEModHertz_mean(i), 60, 'MarkerEdgeColor', edgeColor, 'MarkerFaceColor', c);
+    errorbar(CsFlatPrctile_data, CsEModHertz_mean, CsEModHertz_std, 'o', 'Color', edgeColor);
+end
+
+ylabel('Indentation modulus [kPa]');
+xlabel('Centrosome max. height [nm]');
+ylim([-50 350]); xlim([0, 1100])
+
+% Add dummy scatter plots for legend
+h1 = scatter(nan, nan, 60, 'MarkerEdgeColor', edgeColor, 'MarkerFaceColor', day1Color);
+h2 = scatter(nan, nan, 60, 'MarkerEdgeColor', edgeColor, 'MarkerFaceColor', day2Color);
+h3 = scatter(nan, nan, 60, 'MarkerEdgeColor', edgeColor, 'MarkerFaceColor', day3Color);
+h4 = scatter(nan, nan, 60, 'MarkerEdgeColor', edgeColor, 'MarkerFaceColor', day4Color);
+h5 = scatter(nan, nan, 60, 'MarkerEdgeColor', edgeColor, 'MarkerFaceColor', day5Color);
+h6 = scatter(nan, nan, 60, 'MarkerEdgeColor', edgeColor, 'MarkerFaceColor', day6Color);
+% Create legend
+legend([h1, h2, h3, h4, h5, h6], 'Day 1', 'Day 2', 'Day 3', 'Day 4', 'Day 5', 'Day 6', 'Location', 'best');
 
 function addCorrelationInfo(x, y, useRobustFit)
     % Calculate correlation coefficient and p-value
