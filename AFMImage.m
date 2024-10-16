@@ -2962,54 +2962,105 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & dynam
             box on;  % Turn on the box around the axes
         end
 
-        function [Fig,Scatter] = plot_scatter3_point_cloud_to_scale(X,Y,Z)
-            % function [Fig,Scatter] = plot_scatter3_point_cloud_to_scale(X,Y,Z)
+        function [Fig, Scatter] = plot_scatter3_point_cloud_to_scale(X, Y, Z)
+            % function [Fig, Scatter] = plot_scatter3_point_cloud_to_scale(X, Y, Z)
             %
-            % <FUNCTION DESCRIPTION HERE>
+            % Plots a 3D scatter plot of a point cloud with axes scaled to real-world sizes
+            % and sets the font size of all textual elements in the figure.
             %
+            % Required inputs:
+            %   X - Vector of X-coordinates (real-world units)
+            %   Y - Vector of Y-coordinates (real-world units)
+            %   Z - Vector of Z-coordinates (real-world units)
             %
-            % Required inputs
-            % X ... <VARIABLE DESCRIPTION>
-            % Y ... <VARIABLE DESCRIPTION>
-            % Z ... <VARIABLE DESCRIPTION>
+            % Outputs:
+            %   Fig    - Handle to the created figure
+            %   Scatter - Handle to the scatter3 plot object
             
+            % Input validation
             p = inputParser;
             p.FunctionName = "plot_scatter3_point_cloud_to_scale";
             p.CaseSensitive = false;
             p.PartialMatching = true;
             
-            % Required inputs
-            validX = @(x)true;
-            validY = @(x)true;
-            validZ = @(x)true;
-            addRequired(p,"X",validX);
-            addRequired(p,"Y",validY);
-            addRequired(p,"Z",validZ);
+            % Define validation for inputs
+            validVector = @(x) isnumeric(x) && isvector(x) && length(x) > 0;
+            addRequired(p, "X", validVector);
+            addRequired(p, "Y", validVector);
+            addRequired(p, "Z", validVector);
             
-            parse(p,X,Y,Z);
+            parse(p, X, Y, Z);
             
             % Assign parsing results to named variables
             X = p.Results.X;
             Y = p.Results.Y;
             Z = p.Results.Z;
             
+            % Ensure that X, Y, Z are column vectors for consistency
+            X = X(:);
+            Y = Y(:);
+            Z = Z(:);
             
-            Fig = figure('Color','w');
+            % Check that all inputs have the same length
+            if ~(length(X) == length(Y) && length(Y) == length(Z))
+                error('X, Y, and Z must be vectors of the same length.');
+            end
             
-            Scatter = scatter3(X,Y,Z);
+            % Create the figure
+            Fig = figure('Color', 'w');
+            FS = 18; % Font size
             
-            AspectRangeX = range(X);
-            AspectRangeY = range(Y);
-            AspectRangeZ = range(Z);
+            % Plot the 3D scatter plot
+            Scatter = scatter3(X, Y, Z, 36, Z, 'filled'); % Size 36, colored by Z
             
+            % Enhance the visualization
+            colormap jet;          % Set a colormap
+            colorbarHandle = colorbar; % Display a color scale
+            colorbarHandle.Label.String = 'Z Value'; % Label for colorbar
+            colorbarHandle.Label.FontSize = FS;      % Set font size for colorbar label
+            
+            % Set axis limits based on data ranges
             Scatter.Parent.XLim = [min(X) max(X)];
             Scatter.Parent.YLim = [min(Y) max(Y)];
             Scatter.Parent.ZLim = [min(Z) max(Z)];
             
+            % Adjust the PlotBoxAspectRatio to reflect data dimensions
+            AspectRangeX = range(X);
+            AspectRangeY = range(Y);
+            AspectRangeZ = range(Z);
             Scatter.Parent.PlotBoxAspectRatio = [AspectRangeX AspectRangeY AspectRangeZ];
             
+            % Label the axes with specified font size
+            xlabel('X (units)', 'FontSize', FS);
+            ylabel('Y (units)', 'FontSize', FS);
+            zlabel('Z (units)', 'FontSize', FS);
+            
+            % Set the axes font size (affects tick labels)
+            Scatter.Parent.FontSize = FS;
+            
+            % Optionally, add a title with specified font size
+            % title('3D Scatter Plot of Point Cloud', 'FontSize', FS);
+            
+            % Set the view angle for better visualization
+            view(3); % 3D view
+            
+            % Optional Enhancements:
+            grid on;    % Turn on the grid
+            box on;     % Turn on the box around the axes
+            
+            % Improve tick label readability
+            Scatter.Parent.TickDir = 'out';
+            Scatter.Parent.TickLength = [0.02, 0.02];
+            
+            % Ensure the aspect ratio is maintained
+            axis vis3d;
+            
+            % Optional: Adjust marker properties for better visibility
+            % Scatter.SizeData = 36; % Marker size
+            % Scatter.MarkerFaceAlpha = 0.7; % Transparency
+            
         end
-        
+
         function ProjectedArea = calculate_projected_area_histcumsum(InChannel,BinSize)
             % function ProjecedArea = calculate_projected_area_histcumsum(InChannel,BinSize)
             %
