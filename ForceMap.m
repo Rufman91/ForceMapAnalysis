@@ -6781,7 +6781,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
             end
             
             
-            subplot(2,1,1)
+            ax1 = subplot(2,1,1)
+            ax1.FontSize = 18;
             title(sprintf('Curve Nr.%i of %s',k,obj.Name))
             hold on
             [MultiplierX,UnitX,~] = AFMImage.parse_unit_scale(range(RetX),'m',10);
