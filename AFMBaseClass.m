@@ -698,23 +698,73 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             end
         end
         
-        function snap_line_segments_to_local_perpendicular_maximum(obj,SampleDistanceMeters,WidthLocalWindowMeters,SmoothingWindowSize,SmoothingWindowWeighting,Indizes)
-            % snap_line_segments_to_local_perpendicular_maximum(obj,SampleDistanceMeters,WidthLocalWindowMeters,SmoothingWindowSize,SmoothingWindowWeighting)
+        function snap_line_segments_to_local_perpendicular_maximum(obj,varargin)
+            % function snap_line_segments_to_local_perpendicular_maximum(obj,varargin)
             %
-            % SampleDistanceMeters ...(def=50e-9) determines the distance
+            % <FUNCTION DESCRIPTION HERE>
+            %
+            %
+            % Required inputs
+            % obj ... AFMBaseClass instance or any child Class instance
+            %
+            % Name-Value pairs
+            % "SampleDistanceMeters" ... (def=50e-9) determines the distance
             %   between polyline vertices created for snap-in
-            % WidthLocalWindowMeters ...(def=300e-9) determines the full
+            % "WidthLocalWindowMeters" ... (def=300e-9) determines the full
             %   Length of the perpendicular line from which the local
             %   profile is drawn
-            % SmoothingWindowSize ...(def=1) determines how many vertices
+            % "SmoothingWindowSize" ... (def=1) determines how many vertices
             %   are used for several smoothing steps during the process
-            % SmoothingWindowWeighting ...(def='flat') determines smoothing
+            % "SmoothingWindowWeighting" ... (def='flat') determines smoothing
             %   window weighting; possible options:
             %         'flat','linear','gaussian','localregN' with N being a
             %         number between 1 and 9, representing an Nth grade
             %         polynomial fit
-            % Indizes ... Indizes of Segments to be snapped. Snap all if
+            % "Indizes" ... Indizes of Segments to be snapped. Snap all if
             %               empty
+            % "ChannelName" ... Image Channel that is used as referenced height topography
+            
+            p = inputParser;
+            p.FunctionName = "snap_line_segments_to_local_perpendicular_maximum";
+            p.CaseSensitive = false;
+            p.PartialMatching = true;
+            
+            % Required inputs
+            validobj = @(x)true;
+            addRequired(p,"obj",validobj);
+            
+            % NameValue inputs
+            defaultSampleDistanceMeters = 50e-9;
+            defaultWidthLocalWindowMeters = 300e-9;
+            defaultSmoothingWindowSize = 21;
+            defaultSmoothingWindowWeighting = 'flat';
+            defaultIndizes = [];
+            defaultChannelName = 'Processed';
+            validSampleDistanceMeters = @(x)true;
+            validWidthLocalWindowMeters = @(x)true;
+            validSmoothingWindowSize = @(x)true;
+            validSmoothingWindowWeighting = @(x)true;
+            validIndizes = @(x)true;
+            validChannelName = @(x)true;
+            addParameter(p,"SampleDistanceMeters",defaultSampleDistanceMeters,validSampleDistanceMeters);
+            addParameter(p,"WidthLocalWindowMeters",defaultWidthLocalWindowMeters,validWidthLocalWindowMeters);
+            addParameter(p,"SmoothingWindowSize",defaultSmoothingWindowSize,validSmoothingWindowSize);
+            addParameter(p,"SmoothingWindowWeighting",defaultSmoothingWindowWeighting,validSmoothingWindowWeighting);
+            addParameter(p,"Indizes",defaultIndizes,validIndizes);
+            addParameter(p,"ChannelName",defaultChannelName,validChannelName);
+            
+            parse(p,obj,varargin{:});
+            
+            % Assign parsing results to named variables
+            obj = p.Results.obj;
+            SampleDistanceMeters = p.Results.SampleDistanceMeters;
+            WidthLocalWindowMeters = p.Results.WidthLocalWindowMeters;
+            SmoothingWindowSize = p.Results.SmoothingWindowSize;
+            SmoothingWindowWeighting = p.Results.SmoothingWindowWeighting;
+            Indizes = p.Results.Indizes;
+            ChannelName = p.Results.ChannelName;
+            
+            
             
             if nargin < 6
                 Indizes = [];
@@ -753,9 +803,10 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             NumSnaps = length(Indizes);
             h = waitbar(0,sprintf('Preparing to snap %i Segments',NumSnaps));
             
-            Channel = obj.get_channel('Processed');
+            Channel = obj.get_channel(ChannelName);
             if isempty(Channel)
-                warning('No Channel "Processed" found. Need flattened height channel for snap to local maximum')
+                warning('No Channel %s found. Need flattened height channel for snap to local maximum',ChannelName)
+                close(h)
                 return
             end
             
