@@ -2770,84 +2770,198 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & dynam
             OutChannel.ScanAngle = 0;
         end
         
-        function [Fig,Surf] = plot_surf_channel_to_scale(Channel)
-            % function [Fig,Surf] = plot_surf_channel_to_scale(Channel)
+        function [Fig, Surf] = plot_surf_channel_to_scale(Channel)
+            % function [Fig, Surf] = plot_mesh_channel_to_scale(Channel)
             %
-            % <FUNCTION DESCRIPTION HERE>
+            % Plots a mesh from the Channel data with axes scaled to real-world sizes
+            % and sets the font size of all text in the figure.
             %
-            %
-            % Required inputs
-            % Channel ... <VARIABLE DESCRIPTION>
+            % Required inputs:
+            %   Channel - A structure containing the following fields:
+            %             - Image: 2D matrix representing the data to plot
+            %             - NumPixelsX: Number of pixels along the X-axis
+            %             - NumPixelsY: Number of pixels along the Y-axis
+            %             - ScanSizeX: Real-world size of the scan along the X-axis (e.g., microns)
+            %             - ScanSizeY: Real-world size of the scan along the Y-axis (e.g., microns)
             
-            p = inputParser;
-            p.FunctionName = "plot_surf_channel_to_scale";
-            p.CaseSensitive = false;
-            p.PartialMatching = true;
-            
-            % Required inputs
-            validChannel = @(x)isstruct(x);
-            addRequired(p,"Channel",validChannel);
-            
-            parse(p,Channel);
-            
-            % Assign parsing results to named variables
-            Channel = p.Results.Channel;
-            
-            Fig = figure('Color','w');
-            
-            Surf = surf(Channel.Image);
-            
-            AspectRangeX = Channel.ScanSizeX;
-            AspectRangeY = Channel.ScanSizeY;
-            AspectRangeZ = range(Channel.Image,'all');
-            
-            Surf.Parent.XLim = [0 Channel.NumPixelsY];
-            Surf.Parent.YLim = [0 Channel.NumPixelsX];
-            Surf.Parent.ZLim = [min(Channel.Image,[],'all') max(Channel.Image,[],'all')];
-            
-            Surf.Parent.PlotBoxAspectRatio = [AspectRangeX AspectRangeY AspectRangeZ];
-            
-        end
-        
-        function [Fig,Mesh] = plot_mesh_channel_to_scale(Channel)
-            % function [Fig,Surf] = plot_mesh_channel_to_scale(Channel)
-            %
-            % <FUNCTION DESCRIPTION HERE>
-            %
-            %
-            % Required inputs
-            % Channel ... <VARIABLE DESCRIPTION>
-            
+            % Input validation
             p = inputParser;
             p.FunctionName = "plot_mesh_channel_to_scale";
             p.CaseSensitive = false;
             p.PartialMatching = true;
             
-            % Required inputs
-            validChannel = @(x)isstruct(x);
-            addRequired(p,"Channel",validChannel);
+            % Define validation for Channel structure
+            validChannel = @(x) isstruct(x) && ...
+                isfield(x, 'Image') && isfield(x, 'NumPixelsX') && ...
+                isfield(x, 'NumPixelsY') && isfield(x, 'ScanSizeX') && ...
+                isfield(x, 'ScanSizeY');
+            addRequired(p, "Channel", validChannel);
             
-            parse(p,Channel);
+            parse(p, Channel);
             
             % Assign parsing results to named variables
             Channel = p.Results.Channel;
             
-            Fig = figure('Color','w');
+            % Create the figure
+            Fig = figure('Color', 'w','Position',[800 718 860 620]);
+            FS = 18; % Font size
             
-            Mesh = mesh(Channel.Image);
+            % Generate coordinate vectors based on real-world scan sizes
+            % X corresponds to columns (NumPixelsX), Y corresponds to rows (NumPixelsY)
             
+            [MultiplierX, UnitX, ~] = AFMImage.parse_unit_scale(Channel.ScanSizeX, 'm', 1);
+            [MultiplierY, UnitY, ~] = AFMImage.parse_unit_scale(Channel.ScanSizeY, 'm', 1);
+            [MultiplierZ, UnitZ, ~] = AFMImage.parse_unit_scale(range(Channel.Image, 'all'), Channel.Unit, 1);
+            
+            ScanSizeX = Channel.ScanSizeX * MultiplierX;
+            ScanSizeY = Channel.ScanSizeY * MultiplierY;
+            Image = Channel.Image .* MultiplierZ;
+            
+            X = linspace(0, ScanSizeX, Channel.NumPixelsX);
+            Y = linspace(0, ScanSizeY, Channel.NumPixelsY);
+            
+            % Create a meshgrid for the mesh plot
+            [XGrid, YGrid] = meshgrid(X, Y);
+            
+            % Plot the mesh with scaled axes
+            Surf = surf(XGrid, YGrid, Image, 'EdgeColor', 'interp');
+            
+            % Enhance the visualization
+            shading interp;        % Smooth color transitions
+            c = colorbar;          % Display a color scale
+            colormap jet;          % Set a colormap (optional)
+            
+            c.Label.String = [Channel.Name ' [' UnitZ ']'];
+            
+            % Set axis limits based on real-world sizes
+            Surf.Parent.XLim = [0 ScanSizeX];
+            Surf.Parent.YLim = [0 ScanSizeY];
+            Surf.Parent.ZLim = [min(Image, [], 'all'), max(Image, [], 'all')];
+            
+            % Adjust the PlotBoxAspectRatio to reflect real-world dimensions
             AspectRangeX = Channel.ScanSizeX;
             AspectRangeY = Channel.ScanSizeY;
-            AspectRangeZ = range(Channel.Image,'all');
+            AspectRangeZ = range(Channel.Image, 'all');
+            Surf.Parent.PlotBoxAspectRatio = [AspectRangeX AspectRangeY AspectRangeZ];
             
-            Mesh.Parent.XLim = [0 Channel.NumPixelsY];
-            Mesh.Parent.YLim = [0 Channel.NumPixelsX];
-            Mesh.Parent.ZLim = [min(Channel.Image,[],'all') max(Channel.Image,[],'all')];
+            % Label the axes with specified font size
+            xlabel(['X [' UnitX ']'], 'FontSize', FS);
+            ylabel(['Y [' UnitY ']'], 'FontSize', FS);
+            zlabel(c.Label.String, 'FontSize', FS); % Adjust label based on what Channel.Image represents
             
-            Mesh.Parent.PlotBoxAspectRatio = [AspectRangeX AspectRangeY AspectRangeZ];
+            % Set the colorbar label font size
+            c.Label.FontSize = FS;
             
+            % Set the axes font size (affects tick labels)
+            Surf.Parent.FontSize = FS;
+            
+            % Optionally, set the title font size if you add a title
+            % title('Your Title Here', 'FontSize', FS);
+            
+            % Set the view angle
+            view(3); % 3D view
+            
+            % Optional: Improve the overall appearance
+            grid on; % Turn on the grid
+            box on;  % Turn on the box around the axes
         end
-        
+
+        function [Fig, Surf] = plot_mesh_channel_to_scale(Channel)
+            % function [Fig, Surf] = plot_mesh_channel_to_scale(Channel)
+            %
+            % Plots a mesh from the Channel data with axes scaled to real-world sizes
+            % and sets the font size of all text in the figure.
+            %
+            % Required inputs:
+            %   Channel - A structure containing the following fields:
+            %             - Image: 2D matrix representing the data to plot
+            %             - NumPixelsX: Number of pixels along the X-axis
+            %             - NumPixelsY: Number of pixels along the Y-axis
+            %             - ScanSizeX: Real-world size of the scan along the X-axis (e.g., microns)
+            %             - ScanSizeY: Real-world size of the scan along the Y-axis (e.g., microns)
+            
+            % Input validation
+            p = inputParser;
+            p.FunctionName = "plot_mesh_channel_to_scale";
+            p.CaseSensitive = false;
+            p.PartialMatching = true;
+            
+            % Define validation for Channel structure
+            validChannel = @(x) isstruct(x) && ...
+                isfield(x, 'Image') && isfield(x, 'NumPixelsX') && ...
+                isfield(x, 'NumPixelsY') && isfield(x, 'ScanSizeX') && ...
+                isfield(x, 'ScanSizeY');
+            addRequired(p, "Channel", validChannel);
+            
+            parse(p, Channel);
+            
+            % Assign parsing results to named variables
+            Channel = p.Results.Channel;
+            
+            % Create the figure
+            Fig = figure('Color', 'w','Position',[800 718 860 620]);
+            FS = 18; % Font size
+            
+            % Generate coordinate vectors based on real-world scan sizes
+            % X corresponds to columns (NumPixelsX), Y corresponds to rows (NumPixelsY)
+            
+            [MultiplierX, UnitX, ~] = AFMImage.parse_unit_scale(Channel.ScanSizeX, 'm', 1);
+            [MultiplierY, UnitY, ~] = AFMImage.parse_unit_scale(Channel.ScanSizeY, 'm', 1);
+            [MultiplierZ, UnitZ, ~] = AFMImage.parse_unit_scale(range(Channel.Image, 'all'), Channel.Unit, 1);
+            
+            ScanSizeX = Channel.ScanSizeX * MultiplierX;
+            ScanSizeY = Channel.ScanSizeY * MultiplierY;
+            Image = Channel.Image .* MultiplierZ;
+            
+            X = linspace(0, ScanSizeX, Channel.NumPixelsX);
+            Y = linspace(0, ScanSizeY, Channel.NumPixelsY);
+            
+            % Create a meshgrid for the mesh plot
+            [XGrid, YGrid] = meshgrid(X, Y);
+            
+            % Plot the mesh with scaled axes
+            Surf = mesh(XGrid, YGrid, Image, 'EdgeColor', 'interp');
+            
+            % Enhance the visualization
+            shading interp;        % Smooth color transitions
+            c = colorbar;          % Display a color scale
+            colormap jet;          % Set a colormap (optional)
+            
+            c.Label.String = [Channel.Name ' [' UnitZ ']'];
+            
+            % Set axis limits based on real-world sizes
+            Surf.Parent.XLim = [0 ScanSizeX];
+            Surf.Parent.YLim = [0 ScanSizeY];
+            Surf.Parent.ZLim = [min(Image, [], 'all'), max(Image, [], 'all')];
+            
+            % Adjust the PlotBoxAspectRatio to reflect real-world dimensions
+            AspectRangeX = Channel.ScanSizeX;
+            AspectRangeY = Channel.ScanSizeY;
+            AspectRangeZ = range(Channel.Image, 'all');
+            Surf.Parent.PlotBoxAspectRatio = [AspectRangeX AspectRangeY AspectRangeZ];
+            
+            % Label the axes with specified font size
+            xlabel(['X [' UnitX ']'], 'FontSize', FS);
+            ylabel(['Y [' UnitY ']'], 'FontSize', FS);
+            zlabel(c.Label.String, 'FontSize', FS); % Adjust label based on what Channel.Image represents
+            
+            % Set the colorbar label font size
+            c.Label.FontSize = FS;
+            
+            % Set the axes font size (affects tick labels)
+            Surf.Parent.FontSize = FS;
+            
+            % Optionally, set the title font size if you add a title
+            % title('Your Title Here', 'FontSize', FS);
+            
+            % Set the view angle
+            view(3); % 3D view
+            
+            % Optional: Improve the overall appearance
+            grid on; % Turn on the grid
+            box on;  % Turn on the box around the axes
+        end
+
         function [Fig,Scatter] = plot_scatter3_point_cloud_to_scale(X,Y,Z)
             % function [Fig,Scatter] = plot_scatter3_point_cloud_to_scale(X,Y,Z)
             %
