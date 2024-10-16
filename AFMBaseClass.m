@@ -9,6 +9,7 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
         HostOS = ''         % Operating System
         HostName = ''       % Name of hosting system
         FileType = 'Image'
+        NHF_FileInfo = []
         ScanSizeX = []          % Size of imaged window in X-direction
         ScanSizeY = []           % Size of imaged window in Y-direction
         ScanAngle = 0   % in degrees (°)
@@ -334,7 +335,7 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             if isequal(obj.FileType, 'quantitative-imaging-map')
                 obj.Map2List = k_mat';
                 obj.List2Map = [j_mat(:), i_mat(:)];
-            elseif isequal(obj.FileType, 'force-scan-map')
+            elseif isequal(obj.FileType, 'force-scan-map') || isequal(obj.FileType, 'nhf-spectroscopy')
                 for i=1:obj.NumPixelsX
                     if ~mod(i,2)
                         for j=1:obj.NumPixelsY
@@ -416,19 +417,67 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             
         end
         
-        function [ChannelStruct,Index] = get_channel(obj,ChannelName)
-            k = 0;
-            for i=1:length(obj.Channel)
-                if isequal(obj.Channel(i).Name,ChannelName)
-                    ChannelStruct = obj.Channel(i);
-                    Index = i;
-                    k = k+1;
+        function [ChannelStruct, Index] = get_channel(obj, ChannelName, FMA_ID)
+            % GET_CHANNEL Retrieves channel information based on ChannelName and optional FMA_ID.
+            %
+            % Syntax:
+            %   [ChannelStruct, Index] = get_channel(obj, ChannelName)
+            %   [ChannelStruct, Index] = get_channel(obj, ChannelName, FMA_ID)
+            %
+            % Inputs:
+            %   obj         - The object containing the Channel struct array.
+            %   ChannelName - The name of the channel to search for.
+            %   FMA_ID      - (Optional) The FMA_ID to match against the channel's FMA_ID field.
+            %
+            % Outputs:
+            %   ChannelStruct - The matching channel struct. Empty if no match found.
+            %   Index         - The index of the matching channel in obj.Channel. Empty if no match found.
+            
+            % Initialize outputs
+            ChannelStruct = [];
+            Index = [];
+            k = 0;  % Counter for matching channels
+            
+            % Iterate through all channels
+            for i = 1:length(obj.Channel)
+                currentChannel = obj.Channel(i);
+                
+                if nargin < 3 || isempty(FMA_ID)
+                    % Case when FMA_ID is not provided: exact match on ChannelName
+                    nameMatch = isequal(currentChannel.Name, ChannelName);
+                    if nameMatch
+                        ChannelStruct = currentChannel;
+                        Index = i;
+                        k = k + 1;
+                    end
+                else
+                    % Case when FMA_ID is provided
+                    % Define pattern: ChannelName or ChannelName (NN), where NN is 01-99
+                    pattern = sprintf('^%s(?: \\((0[1-9]|[1-9][0-9])\\))?$', regexptranslate('escape', ChannelName));
+                    nameMatch = ~isempty(regexp(currentChannel.Name, pattern, 'once'));
+                    fmaMatch = isequal(currentChannel.FMA_ID, FMA_ID);
+                    
+                    if nameMatch && fmaMatch
+                        ChannelStruct = currentChannel;
+                        Index = i;
+                        k = k + 1;
+                    end
                 end
             end
+            
+            % Handle warnings based on the number of matches
             if k > 1
-                warning(sprintf('Caution! There are more than one channels named %s (%i)',ChannelName,k))
-            end
-            if k == 0
+                if nargin < 3 || isempty(FMA_ID)
+                    warning('Caution! There are more than one channels named %s (%i matches).', ChannelName, k);
+                else
+                    warning('Caution! There are more than one channels matching name "%s" with FMA_ID "%s" (%i matches).', ChannelName, FMA_ID, k);
+                end
+            elseif k == 0
+                if nargin < 3 || isempty(FMA_ID)
+%                     warning('No channel found with the name "%s".', ChannelName);
+                else
+                    warning('No channel found matching name "%s" with FMA_ID "%s".', ChannelName, FMA_ID);
+                end
                 ChannelStruct = [];
                 Index = [];
             end
@@ -466,12 +515,31 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             end
         end
         
-        function delete_channel(obj,ChannelName)
+        function delete_channel(obj,ChannelName,FMA_ID)
+            
+            LookForID = true;
+            if nargin < 3
+                FMA_ID = [];
+                LookForID = false;
+            end
             k = 0;
             Index = [];
             for i=1:length(obj.Channel)
-                if isequal(obj.Channel(i).Name,ChannelName)
-                    ChannelStruct = obj.Channel(i);
+                if LookForID
+                    % Case when FMA_ID is provided
+                    % Define pattern: ChannelName or ChannelName (NN), where NN is 01-99
+                    pattern = sprintf('^%s(?: \\((0[1-9]|[1-9][0-9])\\))?$', regexptranslate('escape', ChannelName));
+                    nameMatch = ~isempty(regexp(obj.Channel(i).Name, pattern, 'once'));
+                    fmaMatch = isequal(obj.Channel(i).FMA_ID, FMA_ID);
+                    
+                    if nameMatch && fmaMatch
+                        Index(k+1) = i;
+                        k = k + 1;
+                    elseif isempty(ChannelName) && fmaMatch
+                        Index(k+1) = i;
+                        k = k + 1;
+                    end
+                elseif isequal(obj.Channel(i).Name,ChannelName)
                     Index(k+1) = i;
                     k = k+1;
                 end
@@ -534,7 +602,11 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             % Write to Channel
             [~,Index] = obj.get_channel(Channel.Name);
             if isempty(Index)
-                obj.Channel(end+1) = Channel;
+                if isempty(obj.Channel)
+                    obj.Channel = Channel;
+                else
+                    obj.Channel(end+1) = Channel;
+                end
             else
                 if ~ReplaceSameNamed
                     if ~isempty(regexp(Channel.Name(end-4:end),'.\(\d\d\)','once'))
@@ -560,6 +632,28 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
                 obj.Channel(i).OriginY = OriginY;
                 obj.Channel(i).ScanAngle = ScanAngle;
             end
+        end
+        
+        function preprocess_image(obj,AlternativeChannelName,OutlierIQRMult)
+            
+            if nargin <3
+                OutlierIQRMult =10;
+            end
+            if nargin < 2
+                AlternativeChannelName = '';
+                OutlierIQRMult = 10;
+            end
+            
+            Map = obj.flatten_image_by_vertical_rov(AlternativeChannelName);
+            Map = AFMImage.find_and_replace_outlier_lines(Map,OutlierIQRMult);
+            
+            % write to Channel
+            Processed = obj.create_standard_channel(Map,'Processed','m');
+            
+            obj.add_channel(Processed,true);
+            
+            obj.create_pixel_difference_channel;
+            
         end
         
         function create_pixel_difference_channel(obj,useSlowScanDirBool)
@@ -604,23 +698,73 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             end
         end
         
-        function snap_line_segments_to_local_perpendicular_maximum(obj,SampleDistanceMeters,WidthLocalWindowMeters,SmoothingWindowSize,SmoothingWindowWeighting,Indizes)
-            % snap_line_segments_to_local_perpendicular_maximum(obj,SampleDistanceMeters,WidthLocalWindowMeters,SmoothingWindowSize,SmoothingWindowWeighting)
+        function snap_line_segments_to_local_perpendicular_maximum(obj,varargin)
+            % function snap_line_segments_to_local_perpendicular_maximum(obj,varargin)
             %
-            % SampleDistanceMeters ...(def=50e-9) determines the distance
+            % <FUNCTION DESCRIPTION HERE>
+            %
+            %
+            % Required inputs
+            % obj ... AFMBaseClass instance or any child Class instance
+            %
+            % Name-Value pairs
+            % "SampleDistanceMeters" ... (def=50e-9) determines the distance
             %   between polyline vertices created for snap-in
-            % WidthLocalWindowMeters ...(def=300e-9) determines the full
+            % "WidthLocalWindowMeters" ... (def=300e-9) determines the full
             %   Length of the perpendicular line from which the local
             %   profile is drawn
-            % SmoothingWindowSize ...(def=1) determines how many vertices
+            % "SmoothingWindowSize" ... (def=1) determines how many vertices
             %   are used for several smoothing steps during the process
-            % SmoothingWindowWeighting ...(def='flat') determines smoothing
+            % "SmoothingWindowWeighting" ... (def='flat') determines smoothing
             %   window weighting; possible options:
             %         'flat','linear','gaussian','localregN' with N being a
             %         number between 1 and 9, representing an Nth grade
             %         polynomial fit
-            % Indizes ... Indizes of Segments to be snapped. Snap all if
+            % "Indizes" ... Indizes of Segments to be snapped. Snap all if
             %               empty
+            % "ChannelName" ... Image Channel that is used as referenced height topography
+            
+            p = inputParser;
+            p.FunctionName = "snap_line_segments_to_local_perpendicular_maximum";
+            p.CaseSensitive = false;
+            p.PartialMatching = true;
+            
+            % Required inputs
+            validobj = @(x)true;
+            addRequired(p,"obj",validobj);
+            
+            % NameValue inputs
+            defaultSampleDistanceMeters = 50e-9;
+            defaultWidthLocalWindowMeters = 300e-9;
+            defaultSmoothingWindowSize = 21;
+            defaultSmoothingWindowWeighting = 'flat';
+            defaultIndizes = [];
+            defaultChannelName = 'Processed';
+            validSampleDistanceMeters = @(x)true;
+            validWidthLocalWindowMeters = @(x)true;
+            validSmoothingWindowSize = @(x)true;
+            validSmoothingWindowWeighting = @(x)true;
+            validIndizes = @(x)true;
+            validChannelName = @(x)true;
+            addParameter(p,"SampleDistanceMeters",defaultSampleDistanceMeters,validSampleDistanceMeters);
+            addParameter(p,"WidthLocalWindowMeters",defaultWidthLocalWindowMeters,validWidthLocalWindowMeters);
+            addParameter(p,"SmoothingWindowSize",defaultSmoothingWindowSize,validSmoothingWindowSize);
+            addParameter(p,"SmoothingWindowWeighting",defaultSmoothingWindowWeighting,validSmoothingWindowWeighting);
+            addParameter(p,"Indizes",defaultIndizes,validIndizes);
+            addParameter(p,"ChannelName",defaultChannelName,validChannelName);
+            
+            parse(p,obj,varargin{:});
+            
+            % Assign parsing results to named variables
+            obj = p.Results.obj;
+            SampleDistanceMeters = p.Results.SampleDistanceMeters;
+            WidthLocalWindowMeters = p.Results.WidthLocalWindowMeters;
+            SmoothingWindowSize = p.Results.SmoothingWindowSize;
+            SmoothingWindowWeighting = p.Results.SmoothingWindowWeighting;
+            Indizes = p.Results.Indizes;
+            ChannelName = p.Results.ChannelName;
+            
+            
             
             if nargin < 6
                 Indizes = [];
@@ -659,9 +803,10 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             NumSnaps = length(Indizes);
             h = waitbar(0,sprintf('Preparing to snap %i Segments',NumSnaps));
             
-            Channel = obj.get_channel('Processed');
+            Channel = obj.get_channel(ChannelName);
             if isempty(Channel)
-                warning('No Channel "Processed" found. Need flattened height channel for snap to local maximum')
+                warning('No Channel %s found. Need flattened height channel for snap to local maximum',ChannelName)
+                close(h)
                 return
             end
             
@@ -701,7 +846,7 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
                         OriginalVertices(1,:) = [];
                     end
                     OutOfBounds = or(or(NewVertices(:,1) < 1,NewVertices(:,2) < 1),...
-                        or(NewVertices(:,1) > Channel.NumPixelsX,NewVertices(:,2) > Channel.NumPixelsX));
+                        or(NewVertices(:,1) > Channel.NumPixelsY,NewVertices(:,2) > Channel.NumPixelsX));
                     NewVertices(OutOfBounds,:) = [];
                     if size(NewVertices,1) < 3
                         continue
@@ -1213,7 +1358,7 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             if nargin < 2
                 SampleDistanceMeters = 20e-9;
                 WidthLocalWindowMeters = 200e-9;
-                SmoothingWindowSize = 41;
+                SmoothingWindowSize = 81;
                 SmoothingWindowWeighting = 'localreg1';
             end
             
@@ -1366,7 +1511,7 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             [Channel,XMult,YMult] = AFMBaseClass.resize_channel_to_same_size_per_pixel(Channel);
             
             % Convert inputs from meters to pixels
-            SizePerPixel = Channel.ScanSizeX/Channel.NumPixelsX;
+            SizePerPixel = Channel.ScanSizeY/Channel.NumPixelsX;
             WidthLocalWindowPixels = WidthLocalWindowMeters/SizePerPixel;
             MinPeakDistancePixels = MinPeakDistanceMeters/SizePerPixel;
             
@@ -1452,6 +1597,7 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
                 LocalEllipse_Area = zeros(length(SegmentPositions(:,1)),1);
                 LocalEllipse_Height = zeros(length(SegmentPositions(:,1)),1);
                 LocalEllipse_WidthHalfHeight = zeros(length(SegmentPositions(:,1)),1);
+                TempCorrespondingPixelIndex = zeros(length(SegmentPositions(:,1)),2);
                 for j=1:length(SegmentPositions(:,1))
                     PerpendicularVector(j,:) = [LocalDirectionVector(j,2) -LocalDirectionVector(j,1)]/norm(LocalDirectionVector(j,:));
                     WindowStart =SegmentPositions(j,:) + PerpendicularVector(j,:).*WidthLocalWindowPixels/2;
@@ -1471,11 +1617,11 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
                     ForbiddenLocalDistance = LocalDistance;
                     isForbidden = true(size(LocalX));
                     for jj=length(ForbiddenX):-1:1
-                        if (round(ForbiddenX(jj))<1 || round(ForbiddenX(jj))>Size(1)) ||...
-                                (round(ForbiddenY(jj))<1 || round(ForbiddenY(jj))>Size(2)) 
+                        if (round(ForbiddenX(jj))<1 || round(ForbiddenX(jj))>Size(2)) ||...
+                                (round(ForbiddenY(jj))<1 || round(ForbiddenY(jj))>Size(1)) 
                             continue
                         end
-                        if ~IgnoreMask(round(ForbiddenX(jj)),round(ForbiddenY(jj)))
+                        if ~IgnoreMask(round(ForbiddenY(jj)),round(ForbiddenX(jj)))
                             ForbiddenX(jj) = [];
                             ForbiddenY(jj) = [];
                             ForbiddenProfile(jj) = [];
@@ -3212,6 +3358,79 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             OutSegment = SegmentStruct(Index);
         end
         
+        function [AttributeValue,SegmentIndex,AttributeIndex] = nhf_get_segment_attribute_value(GroupInfo,GroupName,AttributeName)
+            
+            i = 1;
+            SegmentIndex = [];
+            while i<=numel(GroupInfo.Groups) && isempty(SegmentIndex)
+                Attributes = GroupInfo.Groups(i).Attributes;
+                if isequal(Attributes(find(contains({Attributes.Name},'segment_name'))).Value,GroupName)
+                    SegmentIndex = i;
+                end
+                i = i + 1;
+            end
+            
+            Attributes = GroupInfo.Groups(SegmentIndex).Attributes;
+            
+            AttributeIndex = find(contains({Attributes.Name},AttributeName));
+            AttributeValue = Attributes(AttributeIndex).Value;
+            
+        end
+        
+        function [Value, Unit] = nhf_get_json_name_value(ConfigString, Name)
+            
+            % Initialize output variables
+            Value = [];
+            Unit = [];
+            
+            % Escape periods in the name for regex matching, since periods have a special meaning
+            Name = strrep(Name, '.', '\.');
+            
+            % Create a regular expression pattern to find the 'value' field associated with the given name
+            valuePattern = sprintf('"%s":\\{"value":"(.*?)"', Name);
+            
+            % Find the value using the regex pattern
+            valueMatch = regexp(ConfigString, valuePattern, 'tokens', 'once');
+            
+            if ~isempty(valueMatch)
+                Value = valueMatch{1};  % Extract the value from the match
+            else
+                error('Value for field "%s" not found in the configuration string.', Name);
+            end
+            
+            % Create a regular expression pattern to find the 'unit' field associated with the given name
+            unitPattern = sprintf('"%s":\\{"value":".*?","unit":"(.*?)"', Name);
+            
+            % Find the unit using the regex pattern
+            unitMatch = regexp(ConfigString, unitPattern, 'tokens', 'once');
+            
+            if ~isempty(unitMatch)
+                Unit = unitMatch{1};  % Extract the unit from the match
+            else
+                Unit = '';  % If no unit is found, return an empty string
+            end
+        end
+        
+        function [DatasetIndex,AttributeIndex] = nhf_search_dataset_with_matching_attribute_name_value(Dataset,Name,Value)
+            
+            TestName = [];
+            TestValue = [];
+            i = 1;
+            while i <= numel(Dataset) && (~isequal(TestName,Name) && ~isequal(TestValue,Value))
+                j = 1;
+                while j <= numel(Dataset(i).Attributes) && ~(isequal(TestName,Name) && isequal(TestValue,Value))
+                    TestName = Dataset(i).Attributes(j).Name;
+                    TestValue = Dataset(i).Attributes(j).Value;
+                    j = j + 1;
+                end
+                i = i + 1;
+            end
+            
+            DatasetIndex = i-1;
+            AttributeIndex = j-1;
+            
+        end
+
     end
     methods
         % auxiliary methods
@@ -3243,6 +3462,132 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
                 k=k+1;
             end
             
+        end
+        
+        function map_fiber_segment_properties_to_image_pixels(obj,PoolingMethod)
+            
+            if nargin < 2
+                PoolingMethod = 'Median';
+            end
+            
+            NumSegments = length(obj.Segment);
+            
+            FieldsList = {'Height','WidthHalfHeight',...
+                'Prominence','WidthHalfProminence',...
+                'SegmentLength','Mean_WidthHalfHeight',...
+                'Median_WidthHalfHeight','Mean_Height',...
+                'Median_Height','Mean_WidthHalfProminence',...
+                'Median_WidthHalfProminence','Mean_Prominence',...
+                'Median_Prominence','Area','Mean_Area','Median_Area',...
+                'WidthBase','Mean_WidthBase','Median_WidthBase',...
+                'AspectRatioHalfHeight','Mean_AspectRatioHalfHeight',...
+                'Median_AspectRatioHalfHeight','AspectRatioBaseHeight',...
+                'Mean_AspectRatioBaseHeight','Median_AspectRatioBaseHeight',...
+                'AreaDerivedDiameter','Mean_AreaDerivedDiameter',...
+                'Median_AreaDerivedDiameter',...
+                'Ellipse_a','Mean_Ellipse_a','Median_Ellipse_a',...
+                'Ellipse_b','Mean_Ellipse_b','Median_Ellipse_b',...
+                'Ellipse_AspectRatio','Mean_Ellipse_AspectRatio',...
+                'Median_Ellipse_AspectRatio',...
+                'Ellipse_Area','Mean_Ellipse_Area','Median_Ellipse_Area',...
+                'Ellipse_Height','Mean_Ellipse_Height',...
+                'Median_Ellipse_Height',...
+                'Ellipse_WidthHalfHeight','Mean_Ellipse_WidthHalfHeight',...
+                'Median_Ellipse_WidthHalfHeight',...
+                'RelativePixelPosition','RelativePosition'};
+            
+            switch PoolingMethod
+                case 'Mean'
+                    PoolingFcn = @(x)mean(x,'omitnan');
+                case 'Median'
+                    PoolingFcn = @(x)median(x,'omitnan');
+                case 'Max'
+                    PoolingFcn = @(x)max(x,'omitnan');
+                case 'Min'
+                    PoolingFcn = @(x)min(x,'omitnan');
+            end
+            
+            h = waitbar(0,'setting up...',...
+                    'Name',obj.Name);
+            % initialize object properties
+            obj.SegmentName = cell(obj.NumPixelsX*obj.NumPixelsY,1);
+            obj.SubSegmentName = cell(obj.NumPixelsX*obj.NumPixelsY,1);
+            obj.SubSegmentFullName = cell(obj.NumPixelsX*obj.NumPixelsY,1);
+            [obj.SegmentName(:)] = {''};
+            [obj.SubSegmentName(:)] = {''};
+            [obj.SubSegmentFullName(:)] = {''};
+            for i=1:length(FieldsList)
+                for j=1:length(obj.Segment)
+                    if ~isfield(obj.Segment(j),FieldsList{i}) || isempty(obj.Segment(j).(FieldsList{i}))
+                        continue
+                    elseif isnumeric(obj.Segment(j).(FieldsList{i}))
+                        obj.(['FiberSegment_' FieldsList{i}]) = ones(obj.NumPixelsX*obj.NumPixelsY,1).*NaN;
+                    else
+                        obj.(['FiberSegment_' FieldsList{i}]) = cell(obj.NumPixelsX*obj.NumPixelsY,1);
+                        [obj.(['FiberSegment_' FieldsList{i}])(:)] = {''};
+                    end
+                end
+            end
+            
+            % skip non polyline segments
+            for i=1:NumSegments
+                waitbar(i/NumSegments,h,obj.Segment(i).Name,...
+                    'Name',obj.Name)
+                if ~isfield(obj.Segment(i),'SegmentPixelIndex') ||...
+                        ~isfield(obj.Segment(i),'ROIObject') ||...
+                        ~isfield(obj.Segment(i),'CorrespondingPixelIndex') ||...
+                        isempty(obj.Segment(i).SegmentPixelIndex) ||...
+                        isempty(obj.Segment(i).ROIObject) ||...
+                        isempty(obj.Segment(i).CorrespondingPixelIndex) ||...
+                        ~isequal(obj.Segment(i).Type,'polyline')
+                    continue
+                end
+                CorrespondingPixelIndex = obj.Segment(i).CorrespondingPixelIndex;
+                SegLength = size(CorrespondingPixelIndex,1);
+                Processed = false(SegLength,1);
+                while ~all(Processed)
+                    Unprocessed = find(Processed == 0);
+                    FirstUnprocessed = Unprocessed(1);
+                    CurrentPixel = CorrespondingPixelIndex(FirstUnprocessed,:);
+                    Indizes = find(CorrespondingPixelIndex(:,1) == CurrentPixel(1) &...
+                        CorrespondingPixelIndex(:,2) == CurrentPixel(2));
+                    if CurrentPixel(1) < 1 ||...
+                            CurrentPixel(1) > obj.NumPixelsY ||...
+                            CurrentPixel(2) < 1 ||...
+                            CurrentPixel(2) > obj.NumPixelsX
+                        Processed(Indizes) = true;
+                        continue
+                    end
+                    % Pool data by PoolingMethod and assign to
+                    % corresponding image pixel
+                    for j=1:length(FieldsList)
+                        if length(obj.Segment(i).(FieldsList{j})) == SegLength
+                            Values = obj.Segment(i).(FieldsList{j})(Indizes);
+                            PooledValue = PoolingFcn(Values);
+                        elseif size(obj.Segment(i).(FieldsList{j})) == size([1])
+                            PooledValue = obj.Segment(i).(FieldsList{j});
+                        else
+                            PooledValue = NaN;
+                        end
+                        try
+                        obj.(['FiberSegment_' FieldsList{j}])...
+                            (obj.Map2List(CurrentPixel(2),CurrentPixel(1))) = PooledValue;
+                        catch
+                            warning("Couldn't assign property")
+                            i
+                            j
+                        end
+                    end
+                    obj.SegmentName{obj.Map2List(CurrentPixel(2),CurrentPixel(1))} =...
+                        obj.Segment(i).Name;
+                    obj.SubSegmentName{obj.Map2List(CurrentPixel(2),CurrentPixel(1))} =...
+                        obj.Segment(i).SubSegmentName;
+                    obj.SubSegmentFullName{obj.Map2List(CurrentPixel(2),CurrentPixel(1))} =...
+                        [obj.Segment(i).Name '-' obj.Segment(i).SubSegmentName];
+                    Processed(Indizes) = true;
+                end
+            end
+            close(h)
         end
         
         function map_segments_to_image_pixels(obj)
@@ -3646,6 +3991,29 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             
         end
         
+        function [AttributeValue,Group_UUID,GroupIndex,AttributeIndex] = nhf_get_group_attribute_value(obj,GroupName,AttributeName)
+            
+            if isempty(obj.NHF_FileInfo)
+                error('Requested AFMBaseClass Instance is not derived from an .nhf file')
+            end
+            
+            i = 1;
+            GroupIndex = [];
+            while i<=numel(obj.NHF_FileInfo.Groups) && isempty(GroupIndex)
+                Attributes = obj.NHF_FileInfo.Groups(i).Attributes;
+                if isequal(Attributes(find(contains({Attributes.Name},'group_type'))).Value,GroupName)
+                    GroupIndex = i;
+                end
+                i = i + 1;
+            end
+            
+            Attributes = obj.NHF_FileInfo.Groups(GroupIndex).Attributes;
+            
+            Group_UUID = Attributes(find(contains({Attributes.Name},'group_uuid'))).Value;
+            AttributeIndex = find(contains({Attributes.Name},AttributeName));
+            AttributeValue = Attributes(AttributeIndex).Value;
+            
+        end
         
     end
 end

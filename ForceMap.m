@@ -139,6 +139,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
         EModOliverPharr = [] % List of reduced sample E-Modulus based on the Oliver-Pharr method
         FibrilEModOliverPharr = []
         FibrilEModHertz = []
+        HertzFitStore = []
         HertzFit = []        % HertzFit model generated in the calculate_e_mod_hertz method
         HertzFitType = ''
         HertzFitCoeffNames = ''
@@ -268,7 +269,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
             obj.check_for_new_host
             
             % Unpack jpk-force-map with according to data loader choice
-            obj.unpack_jpk_force_map(MapFullFile,DataFolder);
+            obj.unpack_force_map_data(MapFullFile,DataFolder);
             
             Index = regexp(obj.ID,'(?<=\-).','all');
             LoadMessage = sprintf('loading data into ForceMap Nr.%s',obj.ID(Index(end):end));
@@ -279,8 +280,19 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
             obj.SelectedCurves = true(obj.NCurves,1);
             obj.CorruptedCurves = false(obj.NCurves,1);
             
+            obj.construct_list_to_map_relations
+            
             try
-                obj.read_jpk_images_from_files
+                if isequal(obj.FileType,'nhf-spectroscopy')
+                    obj.nhf_create_map_from_spectroscopy_data('Position Z','Height (measured)','m')
+                    obj.preprocess_image;
+                    Processed = obj.get_channel('Processed');
+                    obj.HeightMap = Processed.Image;
+                    obj.nhf_create_map_from_spectroscopy_data('Deflection','Maximum Force','N')
+                    obj.nhf_create_map_from_spectroscopy_data('Lateral','Lateral Force','N')
+                else
+                    obj.read_jpk_images_from_files
+                end
             catch ME
                 warning(['Could not read standard Image Channels from file ' MapFullFile])
             end
@@ -297,7 +309,6 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
             obj.ExclMask = logical(ones(obj.NumPixelsX,obj.NumPixelsY));
             obj.FibMask = logical(zeros(obj.NumPixelsX,obj.NumPixelsY));
             
-            obj.construct_list_to_map_relations
             try
                 obj.create_pixel_difference_channel
                 obj.set_channel_positions(obj.OriginX,obj.OriginY,obj.ScanAngle);
@@ -656,7 +667,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
             % bunch of points before and after the current point. the point with the
             % biggest ratio is the returned contact point [Nuria Gavara, 2016]
             if nargin<2
-                WindowSize = 20;
+                WindowSize = ceil(20*obj.MaxPointsPerCurve/300);
             end
             Range = find(obj.SelectedCurves);
             h = waitbar(0,'Setting up...','Name',obj.Name);
@@ -1273,7 +1284,6 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
             obj.CPFlag.HardSurface = 1;
         end
         
-        
         function estimate_cp_curve_origin(obj)
             % contact point estimation for force curves assuming the curve
             % starts at contact point (this is useful in very
@@ -1596,7 +1606,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
                     catch ME
                         EMod{i} = nan;
 %                         Hertzfit{i}.a = 0;
-%                         if AllowXShiload('/home/manuel/Downloads/ForceMapAnalysis-Options_15-May-2024_10-44-02.mat')ft
+%                         if AllowXShift
 %                             Hertzfit{i}.b = 0;
 %                         end
                     end
@@ -1606,6 +1616,65 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
                     warning('off','all');
                     try
                         Hertzfit{i}.a = Hertzfit{i}.a*RangeF{i}/RangeTH{i}.^(3/2);
+                        if contains(TipShape,'parabolic on thin film')
+                            % Regular expression pattern to match constants
+                            if AllowXShift
+                                pattern = '\+([-\d\.eE]+)\*\(x-b\)\^\([\d/]+\)';
+                            else
+                                pattern = '\+([-\d\.eE]+)\*x\^\([\d/]+\)';
+                            end
+                            func_str = formula(Hertzfit{i});
+                            
+                            % Extract constants using regexp
+                            tokens = regexp(func_str, pattern, 'tokens');
+                            
+                            % Convert tokens to numerical values
+                            constants = cellfun(@(c) str2double(c{1}), tokens);
+                            
+                            % Rescaling factors for each constant
+                            x_range_powers = [0.5, 1, 1.5, 2]; % Corresponding powers of x_range
+                            
+                            % Rescale the constants
+                            rescaled_constants = constants ./ (RangeTH{i}.^ x_range_powers);
+                            
+                            % Create a copy of the original function string to modify
+                            new_func_str = func_str;
+                            
+                            % Prepare formatted strings of rescaled constants
+                            formatted_constants = arrayfun(@(c) sprintf('%.8e', c), rescaled_constants, 'UniformOutput', false);
+                            
+                            % Regular expression pattern to match constants in the original string
+                            if AllowXShift
+                                pattern_replace = '(\+)([-\d\.eE]+)(\*\(x-b\)\^\([\d/]+\))';
+                            else
+                                pattern_replace = '(\+)([-\d\.eE]+)(\*x\^\([\d/]+\))';
+                            end
+                            % Use regexp to find positions of constants to replace
+                            [match_starts, match_ends] = regexp(new_func_str, pattern_replace);
+                            
+                            % Loop over each match and replace the constant
+                            for j = 1:length(match_starts)
+                                % Extract the full matched substring
+                                original_substring = new_func_str(match_starts(j):match_ends(j));
+                                
+                                % Extract the parts of the substring
+                                parts = regexp(original_substring, pattern_replace, 'tokens');
+                                parts = parts{1};
+                                
+                                % Reassemble the substring with the rescaled constant
+                                new_substring = [parts{1}, formatted_constants{j}, parts{3}];
+                                
+                                % Replace the original substring with the new substring
+                                new_func_str = [new_func_str(1:match_starts(j)-1), new_substring, new_func_str(match_ends(j)+1:end)];
+                                
+                                % Adjust positions for next iteration due to change in string length
+                                offset = length(new_substring) - length(original_substring);
+                                match_starts = match_starts + offset;
+                                match_ends = match_ends + offset;
+                            end
+                        else
+                            new_func_str = formula(Hertzfit{i});
+                        end
                         if AllowXShift
                             Hertzfit{i}.b = Hertzfit{i}.b*RangeTH{i};
                             obj.CP_HertzFitted(iRange(i),1) = CP(i,1)-Hertzfit{i}.b;
@@ -1618,7 +1687,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
                         warning('on','all');
                         %                         obj.HertzFit{iRange(i)} = Hertzfit{i};
                         try
-                            obj.HertzFitType = formula(Hertzfit{i});
+                            obj.HertzFitType{iRange(i)} = new_func_str;
                             obj.HertzFitCoeffNames = coeffnames(Hertzfit{i});
                         catch
                         end
@@ -1680,6 +1749,16 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
                 obj.CPFlag.HertzFitted = 1;
             end
             
+            % Write current fit parameters to HertzFitStore
+            if isempty(obj.HertzFitStore)
+                obj.HertzFitStore(1).FMA_ID = obj.CurrentFMA_ID;
+            else
+                obj.HertzFitStore(end + 1).FMA_ID = obj.CurrentFMA_ID;
+            end
+            obj.HertzFitStore(end).HertzFitType = obj.HertzFitType;
+            obj.HertzFitStore(end).HertzFitCoeffNames = obj.HertzFitCoeffNames;
+            obj.HertzFitStore(end).HertzFitValues = obj.HertzFitValues;
+            
         end
         
         function calculate_predictive_rsquare_hertz(obj,CorrectSensitivity,...
@@ -1688,9 +1767,14 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
             Range = find(obj.SelectedCurves);
             PredictiveRSquare = ones(obj.NCurves,1).*NaN;
             
-            FitFunction = fittype(obj.HertzFitType);
+            if ~iscell(obj.HertzFitType)
+                FitFunction = fittype(obj.HertzFitType);
+            end
             
             for i=Range'
+                if iscell(obj.HertzFitType)
+                    FitFunction = fittype(obj.HertzFitType{i});
+                end
                 if CorrectSensitivity
                     if isequal(SensitivityCorrectionMethod,'Adaptive')
                         [App,HHApp] = obj.get_force_curve_data(i,...
@@ -1711,28 +1795,32 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
                         'Sensitivity','original',...
                         'Unit','N');
                 end
-                % Trim everything below CP_Hertz
-                FitCoeffValues = obj.HertzFitValues{i};
-                if length(FitCoeffValues) == 1
-                    Fit = cfit(FitFunction,FitCoeffValues);
-                    FitCoeffValues(2) = 0;
-                elseif length(FitCoeffValues) == 2
-                    Fit = cfit(FitFunction,FitCoeffValues(1),FitCoeffValues(2));
+                try
+                    % Trim everything below CP_Hertz
+                    FitCoeffValues = obj.HertzFitValues{i};
+                    if length(FitCoeffValues) == 1
+                        Fit = cfit(FitFunction,FitCoeffValues);
+                        FitCoeffValues(2) = 0;
+                    elseif length(FitCoeffValues) == 2
+                        Fit = cfit(FitFunction,FitCoeffValues(1),FitCoeffValues(2));
+                    end
+                    if SortHeightData
+                        HHApp = sort(HHApp,'ascend');
+                    end
+                    X = HHApp - obj.CP(i,1);
+                    Y = App - obj.CP(i,2);
+                    X(X<0-FitCoeffValues(2)) = [];
+                    Y(1:end-length(X)) = [];
+                    YFitted = feval(Fit,X);
+                    % Now calculate the RSquare
+                    YMean = mean(Y);
+                    L = length(Y);
+                    SSTot = sum((Y - YMean).^2);
+                    SSRes = sum((Y - YFitted).^2);
+                    PredictiveRSquare(i) = 1 - SSRes./SSTot;
+                catch
+                    PredictiveRSquare(i) = NaN;
                 end
-                if SortHeightData
-                    HHApp = sort(HHApp,'ascend');
-                end
-                X = HHApp - obj.CP(i,1);
-                Y = App - obj.CP(i,2);
-                X(X<0-FitCoeffValues(2)) = [];
-                Y(1:end-length(X)) = [];
-                YFitted = feval(Fit,X);
-                % Now calculate the RSquare
-                YMean = mean(Y);
-                L = length(Y);
-                SSTot = sum((Y - YMean).^2);
-                SSRes = sum((Y - YFitted).^2);
-                PredictiveRSquare(i) = 1 - SSRes./SSTot;
                 %Debug
 %                 plot(X,Y,'bx',X,YFitted,'r-')
 %                 title(sprintf('R-Square = %f   SSRes = %e   SSTot = %e',PredictiveRSquare(i),SSRes,SSTot))
@@ -2205,6 +2293,122 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
             
             % Assign property
             obj.DZSlopeCorrected = DZslopeCorrected;            
+        end
+        
+        function [NCMEnergy,PreCPNCMEnergy] = calculate_non_contact_model_energy(obj,varargin)
+            % function [NCMEnergy,PreCPNCMEnergy] = calculate_non_contact_model_energy(obj,varargin)
+            %
+            % <FUNCTION DESCRIPTION HERE>
+            %
+            %
+            % Required inputs
+            % obj ... <VARIABLE DESCRIPTION>
+            %
+            % Name-Value pairs
+            % "FMA_ID" ... <NAMEVALUE DESCRIPTION>
+            % "SensitivityCorrectionMethod" ... <NAMEVALUE DESCRIPTION>
+            % "KeepOldResults" ... <NAMEVALUE DESCRIPTION>
+            
+            p = inputParser;
+            p.FunctionName = "calculate_non_contact_model_energy";
+            p.CaseSensitive = false;
+            p.PartialMatching = true;
+            
+            % Required inputs
+            validobj = @(x)true;
+            addRequired(p,"obj",validobj);
+            
+            % NameValue inputs
+            defaultFMA_ID = obj.CurrentFMA_ID;
+            defaultSensitivityCorrectionMethod = 'original';
+            defaultKeepOldResults = true;
+            validFMA_ID = @(x)true;
+            validSensitivityCorrectionMethod = @(x)true;
+            validKeepOldResults = @(x)true;
+            addParameter(p,"FMA_ID",defaultFMA_ID,validFMA_ID);
+            addParameter(p,"SensitivityCorrectionMethod",defaultSensitivityCorrectionMethod,validSensitivityCorrectionMethod);
+            addParameter(p,"KeepOldResults",defaultKeepOldResults,validKeepOldResults);
+            
+            parse(p,obj,varargin{:});
+            
+            % Assign parsing results to named variables
+            obj = p.Results.obj;
+            FMA_ID = p.Results.FMA_ID;
+            SensitivityCorrectionMethod = p.Results.SensitivityCorrectionMethod;
+            KeepOldResults = p.Results.KeepOldResults;
+            
+            
+            NCMEnergy = ones(obj.NCurves,1)*NaN;
+            PreCPNCMEnergy = ones(obj.NCurves,1)*NaN;
+            HertzEnergy = ones(obj.NCurves,1)*NaN;
+            
+            Range = find(obj.SelectedCurves);
+            
+            
+            ID_Index = find(contains(...
+                {obj.HertzFitStore.FMA_ID},...
+                FMA_ID));
+            if isempty(ID_Index)
+                warning(sprintf('Found no Hertz fit data with ID: %s', FMA_ID))
+                return
+            end
+            
+            % first, calculate all the DZ-Slopes
+            for i=Range'
+                [Force,Height] = obj.get_force_curve_data(i,'AppRetSwitch',0,...
+                    'BaselineCorrection',1,'TipHeightCorrection',1,...
+                    'Sensitivity',SensitivityCorrectionMethod);
+                
+                if iscell(obj.HertzFitStore(ID_Index).HertzFitType)
+                    FitFunction = ...
+                        fittype(obj.HertzFitStore(ID_Index).HertzFitType{i});
+                else
+                    FitFunction = ...
+                        fittype(obj.HertzFitStore(ID_Index).HertzFitType);
+                end
+                FitCoeffValues = ...
+                    obj.HertzFitStore(ID_Index).HertzFitValues{i};
+                if length(FitCoeffValues) == 1
+                    Fit = cfit(FitFunction,FitCoeffValues);
+                elseif length(FitCoeffValues) == 2
+                    Fit = cfit(FitFunction,FitCoeffValues(1),FitCoeffValues(2));
+                end
+                CP = obj.CP(i,:);
+                Force = Force(Height - CP(1) >= 0);
+                X3 = Height(Height - CP(1) >= 0) - CP(1);
+                Y3 = feval(Fit,X3);
+%                 Y3 = Y3 - CP(2);
+                
+                % Compute Energies
+                FullEnergy = trapz(X3,Force);
+                
+                HertzEnergy(i) = trapz(X3(~isnan(Y3)), Y3(~isnan(Y3)));
+                
+                NCMEnergy(i) = FullEnergy - HertzEnergy(i);
+                if length(FitCoeffValues) == 2
+                    try
+                        PreCPNCMEnergy(i) = trapz(X3(X3 >= 0 & X3 < -FitCoeffValues(2)),Force(X3 >= 0 & X3 < -FitCoeffValues(2)));
+                    catch
+                    end
+                end
+                
+                clear FullEnergy
+            end
+            
+            HertzEnergyMap = obj.convert_data_list_to_map(HertzEnergy);
+            Channel = obj.create_standard_channel(HertzEnergyMap,'Contact Model Energy','J');
+            obj.add_channel(Channel,~KeepOldResults)
+            
+            NCMEnergyMap = obj.convert_data_list_to_map(NCMEnergy);
+            Channel = obj.create_standard_channel(NCMEnergyMap,'Non-Contact-Model Energy','J');
+            obj.add_channel(Channel,~KeepOldResults)
+            
+            if length(FitCoeffValues) == 2
+                PreCPNCMEnergyMap = obj.convert_data_list_to_map(PreCPNCMEnergy);
+                Channel = obj.create_standard_channel(PreCPNCMEnergyMap,'Pre-Non-Contact-Model Energy','J');
+                obj.add_channel(Channel,~KeepOldResults)
+            end
+            
         end
         
         function create_and_level_height_map_by_current_cp(obj,KeepOldResults)
@@ -5238,10 +5442,14 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
             len = size(X,4);
             if obj.CPFlag.CNNopt == 0
                 CantHandle = true;
-                obj.MiniBatchSize = 1024;
+                obj.MiniBatchSize = min(1024,len);
                 DynMBSdone = false;
                 HasFailed = false;
+                NumIter = 0;
                 while CantHandle == true
+                    if NumIter >= 20
+                        error('Neural Net keeps failing despite adjusting MiniBatchSize. Call your programm administrator and an exorcist')
+                    end
                     try
                         predict(NeuralNet,X,'MiniBatchSize',obj.MiniBatchSize,'Acceleration','auto',...
                                         'ExecutionEnvironment',obj.NeuralNetAccelerator);
@@ -5273,6 +5481,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
                                 HasFailed = true;
                         end
                     end
+                    NumIter = NumIter + 1;
                 end
                 obj.CPFlag.CNNopt = 1;
             end
@@ -5299,7 +5508,9 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
             
         end
         
-        function unpack_jpk_force_map(obj,MapFullFile,DataFolder)
+        function unpack_force_map_data(obj,MapFullFile,DataFolder)
+            
+            FileExtension = regexp(MapFullFile, '\.[^.]+$', 'match', 'once');
             
             if obj.BigDataFlag
                 if obj.PythonLoaderFlag
@@ -5364,31 +5575,49 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
                 copyfile(MapFullFile,TempFolder)
                 Split = split(MapFullFile,filesep);
                 obj.RawDataFilePath = fullfile(TempFolder,Split{end});
-                obj.load_zipped_files_with_python
+                switch FileExtension
+                    case '.nhf'
+                        obj.NHF_FileInfo = h5info(MapFullFile);
+                    case {'.jpk-qi-data','.jpk-force-map'}
+                        obj.load_zipped_files_with_python
+                end
             end
             
             
             Strings = split(MapFullFile,filesep);
-            %%% Define the search expressions
-            % Comment: JPK includes a few attributes of a measurement into the name:
-            % The name attachement is the same for all experiments:
-            % 'Typedname'+'-'+'data'+'-'+'year'+'.'+'months'+'.'+'day'+'-hour'+'.'+'minute'+'.'+'second'+'.'+'thousandths'+'.'+'jpk file extension'
-            exp1 = '.*(?=\-data)'; % Finds the typed-in name of the user during the AFM experiment
-            exp2 = '\d{4}\.\d{2}\.\d{2}'; % Finds the date
-            exp3 = '\d{2}\.\d{2}\.\d{2}\.\d{3}'; % Finds the time
-            obj.Name = regexp(Strings(end,1), exp1, 'match');
-            obj.Name = char(obj.Name{1});
-            if isequal(obj.Name,'')
-                exp4 = '.*(?=.jpk)';
-                obj.Name = regexp(Strings(end,1), exp4, 'match');
-                obj.Name = char(obj.Name{1});
+            switch FileExtension
+                case '.nhf'
+                    exp1 = '.*'; % Finds the typed-in name of the user during the AFM experiment
+                    NameCell = regexp(Strings(end,1), exp1, 'match');
+                    obj.Name = NameCell{1}{1};
+                    DateTime = obj.nhf_get_group_attribute_value('spectroscopy','created');
+                    parts = regexp(DateTime, '([0-9-]+)T([0-9:.]+)Z', 'tokens');
+                    obj.Date = parts{1}{1};
+                    obj.Time = parts{1}{2};
+                    obj.Time=strrep(obj.Time,'.','-'); % Remove dots in obj.Time
+                    obj.Time=strrep(obj.Time,':','-'); % Remove dots in obj.Time
+                case {'.jpk-force-map','.jpk-qi-data'}
+                    %%% Define the search expressions
+                    % Comment: JPK includes a few attributes of a measurement into the name:
+                    % The name attachement is the same for all experiments:
+                    % 'Typedname'+'-'+'data'+'-'+'year'+'.'+'months'+'.'+'day'+'-hour'+'.'+'minute'+'.'+'second'+'.'+'thousandths'+'.'+'jpk file extension'
+                    exp1 = '.*(?=\-data)'; % Finds the typed-in name of the user during the AFM experiment
+                    exp2 = '\d{4}\.\d{2}\.\d{2}'; % Finds the date
+                    exp3 = '\d{2}\.\d{2}\.\d{2}\.\d{3}'; % Finds the time
+                    obj.Name = regexp(Strings(end,1), exp1, 'match');
+                    obj.Name = char(obj.Name{1});
+                    if isequal(obj.Name,'')
+                        exp4 = '.*(?=.jpk)';
+                        obj.Name = regexp(Strings(end,1), exp4, 'match');
+                        obj.Name = char(obj.Name{1});
+                    end
+                    obj.Date = regexp(Strings(end,1), exp2, 'match');
+                    obj.Date = char(obj.Date{1});
+                    obj.Time = regexp(Strings(end,1), exp3, 'match');
+                    obj.Time = char(obj.Time{1});
+                    obj.Date=strrep(obj.Date,'.','-'); % Remove dots in obj.Date
+                    obj.Time=strrep(obj.Time,'.','-'); % Remove dots in obj.Time
             end
-            obj.Date = regexp(Strings(end,1), exp2, 'match');
-            obj.Date = char(obj.Date{1});
-            obj.Time = regexp(Strings(end,1), exp3, 'match');
-            obj.Time = char(obj.Time{1});
-            obj.Date=strrep(obj.Date,'.','-'); % Remove dots in obj.Date
-            obj.Time=strrep(obj.Time,'.','-'); % Remove dots in obj.Time
             
             obj.Folder = [DataFolder replace(obj.Name,'.','') '-' obj.ID];
             obj.DataStoreFolder = TempFolder;
@@ -5396,8 +5625,73 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
         end
         
         function read_in_header_properties(obj)
-            % Check for jpk-software version and get important ForceMap
+            % Check for file type and get important ForceMap
             % properties
+            
+            FileExtension = regexp(obj.RawDataFilePath, '\.[^.]+$', 'match', 'once');
+            
+            switch FileExtension
+                case {'.jpk-force-map','.jpk-qi-data'}
+                obj.jpk_read_in_header_properties;
+                case '.nhf'
+                obj.nhf_read_in_header_properties;
+            end
+            
+        end
+        
+        function nhf_read_in_header_properties(obj)
+            
+            obj.FileType = 'nhf-spectroscopy';
+            
+            obj.FileVersion = obj.nhf_get_group_attribute_value('spectroscopy','software_version');
+            RectAxisSize = obj.nhf_get_group_attribute_value('spectroscopy','rect_axis_size');
+            obj.NCurves = double(RectAxisSize(1)*RectAxisSize(2));
+            obj.NumPixelsX = double(RectAxisSize(1));
+            obj.NumPixelsY = double(RectAxisSize(2));
+            [RectAxisRange,~,GroupIndex] = obj.nhf_get_group_attribute_value('spectroscopy','rect_axis_range');
+            obj.ScanSizeX = double(RectAxisRange(1));
+            obj.ScanSizeY = double(RectAxisRange(2));
+            obj.SpringConstant = double(obj.nhf_get_group_attribute_value('spectroscopy','spm_probe_calibration_spring_constant'));
+            obj.Sensitivity = double(obj.nhf_get_group_attribute_value('spectroscopy','spm_probe_calibration_deflection_sensitivity'));
+            obj.TipRadius = double(obj.nhf_get_group_attribute_value('spectroscopy','spm_probe_nominal_tip_radius'));
+            obj.Medium = obj.nhf_get_group_attribute_value('spectroscopy','measurement_environment');
+            obj.ScanAngle = double(obj.nhf_get_group_attribute_value('spectroscopy','rect_rotation'));
+            
+            JSONConfigApp = AFMBaseClass.nhf_get_segment_attribute_value(...
+                obj.NHF_FileInfo.Groups(GroupIndex),'Advance to Setpoint 1','segment_configuration');
+            JSONConfigRet = AFMBaseClass.nhf_get_segment_attribute_value(...
+                obj.NHF_FileInfo.Groups(GroupIndex),'Retract 1','segment_configuration');
+            JSONConfigHold = AFMBaseClass.nhf_get_segment_attribute_value(...
+                obj.NHF_FileInfo.Groups(GroupIndex),'Wait 1','segment_configuration');
+            
+            obj.MaxPointsPerCurve =  double(string(AFMBaseClass.nhf_get_json_name_value(JSONConfigApp,'datapoints')));
+            obj.NumSegments = numel(obj.NHF_FileInfo.Groups(GroupIndex).Groups);
+            obj.HoldingTime = double(string(AFMBaseClass.nhf_get_json_name_value(JSONConfigHold,'duration')));
+            obj.ExtendTime = double(string(AFMBaseClass.nhf_get_json_name_value(JSONConfigApp,'duration')));
+            obj.ExtendZLength =  double(string(AFMBaseClass.nhf_get_json_name_value(JSONConfigApp,'length')));
+            obj.RetractTime = double(string(AFMBaseClass.nhf_get_json_name_value(JSONConfigRet,'duration')));
+            obj.RetractZLength =  double(string(AFMBaseClass.nhf_get_json_name_value(JSONConfigRet,'length')));
+            obj.ExtendVelocity =  double(string(AFMBaseClass.nhf_get_json_name_value(JSONConfigApp,'speed')));
+            obj.RetractVelocity =  double(string(AFMBaseClass.nhf_get_json_name_value(JSONConfigRet,'speed')));
+            obj.HHType = 'Position Z';
+            try
+                obj.Setpoint =  double(string(AFMBaseClass.nhf_get_json_name_value(JSONConfigApp,'setpoint')))...
+                    *obj.Sensitivity*obj.SpringConstant;
+            catch
+                obj.Setpoint = [];
+            end
+            if isempty(obj.Setpoint)
+                try
+                    obj.Setpoint =  double(string(AFMBaseClass.nhf_get_json_name_value(JSONConfigApp,'set_point')))...
+                        *obj.Sensitivity*obj.SpringConstant;
+                catch
+                    obj.Setpoint = [];
+                end
+            end
+            
+        end
+        
+        function jpk_read_in_header_properties(obj)
             
             if obj.PythonLoaderFlag
                 current = what;
@@ -6014,23 +6308,35 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
                 if obj.CorruptedCurves(CurveNumber)
                     error('skip this one')
                 end
-                if obj.PythonLoaderFlag
-                    TempHeight = obj.load_single_curve_channel_data_with_python(string(CurveNumber-1),string(AppRetSwitch),obj.HHType);
-                    OutvDef = obj.load_single_curve_channel_data_with_python(string(CurveNumber-1),string(AppRetSwitch),'vDeflection');
-                else
-                    [TempHeight,OutvDef,SC,Sens]=...
-                        obj.writedata(HeaderFileDirectory,SegmentHeaderFileDirectory,...
-                        HeightDataDirectory,vDefDataDirectory,obj.HHType);
-                end
-                if isempty(obj.Sensitivity)
-                    obj.Sensitivity = Sens;
-                end
-                if isempty(obj.SpringConstant)
-                    obj.SpringConstant = SC;
-                end
                 
-                OutHeight = -TempHeight;
-                OutvDef = OutvDef.*obj.SpringConstant;
+                if isequal(obj.FileType,'nhf-spectroscopy')
+                    
+                    TempHeight = obj.nhf_load_single_curve_channel_data(CurveNumber,AppRetSwitch,obj.HHType);
+                    OutHeight = -TempHeight;
+                    OutvDef = obj.nhf_load_single_curve_channel_data(CurveNumber,AppRetSwitch,'Deflection');
+                    
+                elseif isequal(obj.FileType,'jpk-force-map') ||...
+                        isequal(obj.FileType,'jpk-qi-data') ||...
+                        isequal(obj.FileType,'force-scan-map') ||...
+                        isequal(obj.FileType,'quantitative-imaging-map')
+                    if obj.PythonLoaderFlag
+                        TempHeight = obj.load_single_curve_channel_data_with_python(string(CurveNumber-1),string(AppRetSwitch),obj.HHType);
+                        OutvDef = obj.load_single_curve_channel_data_with_python(string(CurveNumber-1),string(AppRetSwitch),'vDeflection');
+                    else
+                        [TempHeight,OutvDef,SC,Sens]=...
+                            obj.writedata(HeaderFileDirectory,SegmentHeaderFileDirectory,...
+                            HeightDataDirectory,vDefDataDirectory,obj.HHType);
+                    end
+                    if isempty(obj.Sensitivity)
+                        obj.Sensitivity = Sens;
+                    end
+                    if isempty(obj.SpringConstant)
+                        obj.SpringConstant = SC;
+                    end
+                    
+                    OutHeight = -TempHeight;
+                    OutvDef = OutvDef.*obj.SpringConstant;
+                end
                 
                 if AppRetSwitch==0 && BaselineCorrection==0 && TipHeightCorrection==0
                 elseif AppRetSwitch==1 && BaselineCorrection==0 && TipHeightCorrection==0
@@ -6133,6 +6439,140 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
             end
         end
         
+        function OutVector = nhf_load_single_curve_channel_data(obj,Index,Segment,ChannelName)
+            
+            if ~Segment
+                SegmentName = 'Advance to Setpoint 1';
+            else
+                SegmentName = 'Retract 1';
+            end
+            
+            [~,~,GroupIndex] = obj.nhf_get_group_attribute_value('spectroscopy','');
+            [~,SegmentIndex] = AFMBaseClass.nhf_get_segment_attribute_value(...
+                obj.NHF_FileInfo.Groups(GroupIndex),SegmentName,'segment_configuration');
+            
+            ChannelIndex = obj.nhf_search_dataset_with_matching_attribute_name_value(...
+                obj.NHF_FileInfo.Groups(GroupIndex).Groups(SegmentIndex).Datasets,'signal_name',ChannelName);
+            
+            BlockSizeID = obj.NHF_FileInfo.Groups(GroupIndex).Groups(SegmentIndex).Datasets(ChannelIndex).Attributes(...
+                find(contains({obj.NHF_FileInfo.Groups(GroupIndex).Groups(SegmentIndex).Datasets(ChannelIndex).Attributes.Name},'dataset_block_size_source'))).Value;
+            
+            ChunkingIndex = obj.nhf_search_dataset_with_matching_attribute_name_value(...
+                obj.NHF_FileInfo.Groups(GroupIndex).Groups(SegmentIndex).Datasets,'dataset_block_size_id',BlockSizeID);
+            
+            ChunkingData = h5read(obj.RawDataFilePath,...
+                ['/group_' sprintf('%04d',(GroupIndex - 1)) '/subgroup_' sprintf('%04d',(SegmentIndex - 1)) '/dataset_' sprintf('%04d',(ChunkingIndex - 1))]);
+            
+            ChunkIndizes = [1 ; cumsum(ChunkingData)]+1;
+            
+            Start = double(ChunkIndizes(Index));
+            Count = double(ChunkingData(Index));
+            
+            Data = h5read(obj.RawDataFilePath,...
+                ['/group_' sprintf('%04d',(GroupIndex - 1)) '/subgroup_' sprintf('%04d',(SegmentIndex - 1)) '/dataset_' sprintf('%04d',(ChannelIndex - 1))],...
+                Start,Count);
+            
+            % Calibrate Data
+            Data = obj.nhf_calibrate_channel_data(Data,GroupIndex,SegmentIndex,ChannelIndex);
+            
+            OutVector = Data;
+            %             OutVector = Data(ChunkIndizes(Index)+1:ChunkIndizes(Index+1));
+            %             OutVector = Data(ChunkIndizes(2:end)-Index);
+        end
+        
+        function [OutVector,ChunkIndizes,ChunkingData] = nhf_load_full_channel_data(obj,Segment,ChannelName)
+            
+            if ~Segment
+                SegmentName = 'Advance to Setpoint 1';
+            else
+                SegmentName = 'Retract 1';
+            end
+            
+            [~,~,GroupIndex] = obj.nhf_get_group_attribute_value('spectroscopy','');
+            [~,SegmentIndex] = AFMBaseClass.nhf_get_segment_attribute_value(...
+                obj.NHF_FileInfo.Groups(GroupIndex),SegmentName,'segment_configuration');
+            
+            ChannelIndex = obj.nhf_search_dataset_with_matching_attribute_name_value(...
+                obj.NHF_FileInfo.Groups(GroupIndex).Groups(SegmentIndex).Datasets,'signal_name',ChannelName);
+            
+            BlockSizeID = obj.NHF_FileInfo.Groups(GroupIndex).Groups(SegmentIndex).Datasets(ChannelIndex).Attributes(...
+                find(contains({obj.NHF_FileInfo.Groups(GroupIndex).Groups(SegmentIndex).Datasets(ChannelIndex).Attributes.Name},'dataset_block_size_source'))).Value;
+            
+            ChunkingIndex = obj.nhf_search_dataset_with_matching_attribute_name_value(...
+                obj.NHF_FileInfo.Groups(GroupIndex).Groups(SegmentIndex).Datasets,'dataset_block_size_id',BlockSizeID);
+            
+            ChunkingData = h5read(obj.RawDataFilePath,...
+                ['/group_' sprintf('%04d',(GroupIndex - 1)) '/subgroup_' sprintf('%04d',(SegmentIndex - 1)) '/dataset_' sprintf('%04d',(ChunkingIndex - 1))]);
+            
+            ChunkIndizes = [1 ; cumsum(ChunkingData)];
+            
+            Data = h5read(obj.RawDataFilePath,...
+                ['/group_' sprintf('%04d',(GroupIndex - 1)) '/subgroup_' sprintf('%04d',(SegmentIndex - 1)) '/dataset_' sprintf('%04d',(ChannelIndex - 1))]);
+            
+            % Calibrate Data
+            Data = obj.nhf_calibrate_channel_data(Data,GroupIndex,SegmentIndex,ChannelIndex);
+            
+            OutVector = Data;
+%             OutVector = Data(ChunkIndizes(Index)+1:ChunkIndizes(Index+1));
+%             OutVector = Data(ChunkIndizes(2:end)-Index);
+        end
+        
+        function nhf_create_map_from_spectroscopy_data(obj,ChannelName,FancyName,Unit)
+            
+            [Data,ChunkIndizes] = obj.nhf_load_full_channel_data(0,ChannelName);
+            
+            MapData = Data(ChunkIndizes(2:end));
+            
+            Image = obj.convert_data_list_to_map(MapData);
+            
+            ImageChannel = obj.create_standard_channel(Image,FancyName,Unit);
+            
+            obj.add_channel(ImageChannel);
+        end
+        
+        function Data = nhf_calibrate_channel_data(obj,Data,GroupIndex,SegmentIndex,ChannelIndex)
+            
+            [~,~,CalibrationIndex] = obj.nhf_get_group_attribute_value('calibration','');
+            CalibrationSource = 'signal_calibration_source';
+            
+            % How many Calibration steps?
+            NumCalibs = sum(contains({obj.NHF_FileInfo.Groups(GroupIndex).Groups(SegmentIndex).Datasets(ChannelIndex).Attributes.Name},CalibrationSource));
+            
+            if NumCalibs == 1
+                CalibSourceNames = {CalibrationSource};
+            else
+                for i=1:NumCalibs
+                    CalibSourceNames{i} = [CalibrationSource sprintf('_%d',i-1)];
+                end
+            end
+            
+            Data = double(Data);
+            for i=1:NumCalibs
+                CalibrationUUID = obj.NHF_FileInfo.Groups(GroupIndex).Groups(SegmentIndex).Datasets(ChannelIndex).Attributes(...
+                    find(contains({obj.NHF_FileInfo.Groups(GroupIndex).Groups(SegmentIndex).Datasets(ChannelIndex).Attributes.Name},CalibSourceNames{i}))).Value;
+                
+                % Find Calibration source
+                CalibDataIndex = obj.nhf_search_dataset_with_matching_attribute_name_value(obj.NHF_FileInfo.Groups(CalibrationIndex).Datasets,'signal_calibration_id',CalibrationUUID);
+                
+                MappingType = obj.NHF_FileInfo.Groups(CalibrationIndex).Datasets(CalibDataIndex).Attributes(...
+                    find(contains({obj.NHF_FileInfo.Groups(CalibrationIndex).Datasets(CalibDataIndex).Attributes.Name},'signal_mapping_type'))).Value;
+                
+                MappingParameters = obj.NHF_FileInfo.Groups(CalibrationIndex).Datasets(CalibDataIndex).Attributes(...
+                    find(contains({obj.NHF_FileInfo.Groups(CalibrationIndex).Datasets(CalibDataIndex).Attributes.Name},'signal_mapping_parameters'))).Value;
+                
+                switch MappingType
+                    case {'linear','linear_non_invertible'}
+                        Data = Data.*MappingParameters(1) + MappingParameters(2);
+                    case 'exponential'
+                        Data = MappingParameters(2).*exp((Data - MappingParameters(3))./MappingParameters(1));
+                    case 'logarithmic'
+                        Data = MappingParameters(1).*log(Data./MappingParameters(2)) + MappingParameters(3);
+                end
+                
+            end
+            
+        end
+        
         function initialize_flags(obj)
             % initialize all flags related to the ForceMap class
             
@@ -6189,13 +6629,30 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
         function temporary_data_load_in(obj,OnOffBool)
             
             if OnOffBool && obj.BigDataFlag
-                for i=1:obj.NCurves
-                    [obj.App{i},obj.HHApp{i}] = obj.get_force_curve_data(i,'AppRetSwitch',0,...
-                    'BaselineCorrection',0,'TipHeightCorrection',0,...
-                    'Sensitivity','original','Unit','N');
-                    [obj.Ret{i},obj.HHRet{i}] = obj.get_force_curve_data(i,'AppRetSwitch',1,...
-                    'BaselineCorrection',0,'TipHeightCorrection',0,...
-                    'Sensitivity','original','Unit','N');
+                if isequal(obj.FileType,'nhf-spectroscopy')
+                    [DefAppData,DefAppChunkIndizes,DefAppChunkSizes] = ...
+                        obj.nhf_load_full_channel_data(0,'Deflection');
+                    [HHAppData,HHAppChunkIndizes,HHAppChunkSizes] = ...
+                        obj.nhf_load_full_channel_data(0,'Position Z');
+                    [DefRetData,DefRetChunkIndizes,DefRetChunkSizes] = ...
+                        obj.nhf_load_full_channel_data(1,'Deflection');
+                    [HHRetData,HHRetChunkIndizes,HHRetChunkSizes] = ...
+                        obj.nhf_load_full_channel_data(1,'Position Z');
+                    for i=1:obj.NCurves
+                        obj.App{i} = DefAppData(DefAppChunkIndizes(i)+1:DefAppChunkIndizes(i+1));
+                        obj.HHApp{i} = -HHAppData(HHAppChunkIndizes(i)+1:HHAppChunkIndizes(i+1));
+                        obj.Ret{i} = DefRetData(DefRetChunkIndizes(i)+1:DefRetChunkIndizes(i+1));
+                        obj.HHRet{i} = -HHRetData(HHRetChunkIndizes(i)+1:HHRetChunkIndizes(i+1));
+                    end
+                else
+                    for i=1:obj.NCurves
+                        [obj.App{i},obj.HHApp{i}] = obj.get_force_curve_data(i,'AppRetSwitch',0,...
+                            'BaselineCorrection',0,'TipHeightCorrection',0,...
+                            'Sensitivity','original','Unit','N');
+                        [obj.Ret{i},obj.HHRet{i}] = obj.get_force_curve_data(i,'AppRetSwitch',1,...
+                            'BaselineCorrection',0,'TipHeightCorrection',0,...
+                            'Sensitivity','original','Unit','N');
+                    end
                 end
                 obj.BigDataFlag = 0;
             elseif ~OnOffBool
@@ -6254,6 +6711,11 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
                 AskIfLoadDialogueBool = false;
             end
             
+            if isequal(obj.FileType,'nhf-spectroscopy')
+                IsLoaded = true;
+                return
+            end
+            
             if obj.PythonLoaderFlag && obj.BigDataFlag
                 Meta = metaclass(obj.OpenZipFile);
                 if ~isequal(Meta.Name,'py.zipfile.ZipFile')
@@ -6285,7 +6747,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
     methods
         % methods for visualization, plotting, statistics and quality control
         
-        function show_force_curve(obj,ZoomMult,k,fig)
+        function plotting_show_force_curve(obj,ZoomMult,k,fig)
             if nargin < 2
                 jRange = find(obj.SelectedCurves);
                 k = jRange(randi(length(jRange)));
@@ -6319,7 +6781,8 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
             end
             
             
-            subplot(2,1,1)
+            ax1 = subplot(2,1,1)
+            ax1.FontSize = 18;
             title(sprintf('Curve Nr.%i of %s',k,obj.Name))
             hold on
             [MultiplierX,UnitX,~] = AFMImage.parse_unit_scale(range(RetX),'m',10);
@@ -6490,7 +6953,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
             end
         end
         
-        function Fig = show_analyzed_fibril(obj)
+        function Fig = plotting_show_analyzed_fibril(obj)
             T = sprintf('Height Map of %s\nwith chosen indentation points',obj.Name);
             Fig = figure('Name',T,'Units','normalized','Color','w','Position',[0.5 0.1 0.5 0.8]);
             
@@ -6540,7 +7003,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
             title('Indentation Modulus Map')
         end
         
-        function show_height_map(obj)
+        function plotting_show_height_map(obj)
             T = sprintf('Height Map of %s',obj.Name);
             Fig = figure('Name',T,'Units','normalized','Color','w','Position',[0.5 0.1 0.5 0.8]);
             
@@ -6562,7 +7025,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
             
         end
         
-        function show_e_mod_map(obj)
+        function plotting_show_e_mod_map(obj)
             Title = sprintf('Indentation Modulus Map of %s',obj.Name);
             figure('Name',Title);
             subplot(2,2,1)
@@ -6587,7 +7050,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
             light('Style','local')
         end
         
-        function quality_control_oliver_pharr_fibril(obj,PauseTime)
+        function plotting_quality_control_oliver_pharr_fibril(obj,PauseTime)
             % shows some relevant plots for the E-Mod calculation
             % rectified apex force curves
             
@@ -6704,7 +7167,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
             end
         end
         
-        function quality_control_hertz_sneddon_fibril(obj,PauseTime)
+        function plotting_quality_control_hertz_sneddon_fibril(obj,PauseTime)
             % shows some relevant plots for the E-Mod calculation
             % rectified apex force curves
             
@@ -6826,7 +7289,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
             end
         end
         
-        function quality_control_oliver_pharr(obj,PauseTime)
+        function plotting_quality_control_oliver_pharr(obj,PauseTime)
             % shows some relevant plots for the E-Mod calculation
             
             if nargin < 2
@@ -6939,7 +7402,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
             end
         end
         
-        function quality_control_hertz_sneddon(obj,PauseTime)
+        function plotting_quality_control_hertz_sneddon(obj,PauseTime)
             % shows some relevant plots for the E-Mod calculation
             % rectified apex force curves
             
@@ -7056,7 +7519,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
             end
         end
         
-        function compare_hertz_oliver_fibril(obj)
+        function plotting_compare_hertz_oliver_fibril(obj)
             % Boxplots comparing the two methods of elastic modulus
             % calculation
             figure('Name',obj.Name)
@@ -7085,6 +7548,46 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle  & dyna
             plot(1:obj.NumPixelsX,obj.EModHertz(obj.RectApexIndex)*1e-6,'rO')
             xlabel('Index')
             ylabel('Apparent Indentation Modulus [MPa]')
+        end
+        
+        function plotting_compare_loglog_with_shifted_cp(obj,CurveI)
+            
+            if nargin < 2
+                CurveI = randi(obj.NCurves);
+            end
+            
+            figure('Name',['compare loglog with shifted cp. curve nr.: ' num2str(CurveI)],...
+                'Color','w',...
+                'Position',[100 100 1480 850]);
+            
+            [Force,TH] = obj.get_force_curve_data(CurveI,'AppRetSwitch',0,...
+                'BaselineCorrection',1,'TipHeightCorrection',1,...
+                'Sensitivity','original','Unit','N');
+            TH = TH - obj.CP_CNN(CurveI,1);
+            TH = TH.*1e6;
+            Force = Force.*1e9;
+            VarVec = [-1:.2:1].*max(TH)*0.5;
+            for i=1:length(VarVec)
+                ax1 = subplot(2,1,1);
+                plot(TH - VarVec(i),Force)
+                hold on
+                xlabel('Tip Height [\mum]')
+                ylabel('Force [nN]')
+                ax2 = subplot(2,1,2);
+                loglog(TH - VarVec(i),Force)
+                hold on
+                if i==length(VarVec)
+                    loglog(TH,10*TH.^(3/2),'Color','k','LineWidth',1.5)
+                    hold on
+                    TextBoxI = find(TH>0);
+                    text(TH(TextBoxI(1)),10*TH(TextBoxI(1)).^(3/2),'Hertzian contact slope: 3/2','FontSize',22,'EdgeColor','k')
+                end
+                xlabel('Tip Height [\mum]')
+                ylabel('Force [nN]')
+            end
+            FS = 18;
+            ax1.FontSize = FS;
+            ax2.FontSize = FS;
         end
         
     end

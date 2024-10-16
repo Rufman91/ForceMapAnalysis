@@ -84,7 +84,7 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & dynam
                 Preprocess = true;
             end
             
-            obj. CMap = obj.define_afm_color_map(0);
+            obj.CMap = obj.define_afm_color_map(0);
             
             obj.initialize_flags
             
@@ -109,24 +109,6 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & dynam
             if Preprocess
                 obj.preprocess_image
             end
-            
-        end
-        
-        function preprocess_image(obj,AlternativeChannelName)
-            
-            if nargin < 2
-                AlternativeChannelName = '';
-            end
-            
-            Map = obj.flatten_image_by_vertical_rov(AlternativeChannelName);
-            Map = AFMImage.find_and_replace_outlier_lines(Map,10);
-            
-            % write to Channel
-            Processed = obj.create_standard_channel(Map,'Processed','m');
-            
-            obj.add_channel(Processed,true);
-            
-            obj.create_pixel_difference_channel;
             
         end
         
@@ -2265,7 +2247,7 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & dynam
             R.LineWidth = 2;
             
             FontSize = round(42*FontSizeMult);
-            A = text((Left*1.13)*NumPixelsY,(1.005*Bottom-3*BoxDeltaY/6)*NumPixelsX,sprintf('%i %s',SnapTo,Unit),'HorizontalAlignment','center');
+            A = text((Left*1.13)*NumPixelsY,(1.005*Bottom-3*BoxDeltaY/6)*NumPixelsX,sprintf('%g %s',SnapTo,Unit),'HorizontalAlignment','center');
             A.Color = 'w';
             A.FontSize = FontSize;
             A.FontWeight = 'bold';
@@ -2274,126 +2256,135 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & dynam
             
         end
         
-        function [Multiplier,Unit,SnapTo] = parse_unit_scale(ScanSize,Unit,Mult)
+        function [Multiplier, OutUnit, SnapTo] = parse_unit_scale(ScanSize, Unit, Mult)
+            % parse_unit_scale adjusts the unit prefix and multiplier based on the scan size.
+            % It correctly handles units with exponents (e.g., m^2, m2, m^3, m3).
+            %
+            % Parameters:
+            %   ScanSize - The size to be scaled.
+            %   Unit     - The unit string, possibly with an exponent (e.g., 'm^2', 'm2').
+            %   Mult     - A multiplier to apply to ScanSize before scaling.
+            %
+            % Returns:
+            %   Multiplier - The scaling multiplier applied based on the SI prefix and exponent.
+            %   Unit        - The adjusted unit string with the appropriate SI prefix.
+            %   SnapTo      - The scaled and rounded size.
             
-            ScaleSize = abs(ScanSize*Mult);
+            OutUnit = Unit;
             
-            if (ScaleSize < 1e-11)
-                Multiplier = 1e12;
-                Prefix = 'p';
-                SnapTo = round(ScaleSize*Multiplier,0);
-            elseif (ScaleSize < 1e-10) && (ScaleSize >= 1e-11)
-                Multiplier = 1e12;
-                Prefix = 'p';
-                SnapTo = round(ScaleSize*Multiplier,-1);
-            elseif (ScaleSize < 1e-9) && (ScaleSize >= 1e-10)
-                Multiplier = 1e12;
-                Prefix = 'p';
-                SnapTo = round(ScaleSize*Multiplier,-2);
-            elseif (ScaleSize < 1e-8) && (ScaleSize >= 1e-9)
-                Multiplier = 1e9;
-                Prefix = 'n';
-                SnapTo = round(ScaleSize*Multiplier,0);
-            elseif (ScaleSize < 1e-7) && (ScaleSize >= 1e-8)
-                Multiplier = 1e9;
-                Prefix = 'n';
-                SnapTo = round(ScaleSize*Multiplier,-1);
-            elseif (ScaleSize < 1e-6) && (ScaleSize >= 1e-7)
-                Multiplier = 1e9;
-                Prefix = 'n';
-                SnapTo = round(ScaleSize*Multiplier,-2);
-            elseif (ScaleSize < 1e-5) && (ScaleSize >= 1e-6)
-                Multiplier = 1e6;
-                Prefix = '\mu';
-                SnapTo = round(ScaleSize*Multiplier,0);
-            elseif (ScaleSize < 1e-4) && (ScaleSize >= 1e-5)
-                Multiplier = 1e6;
-                Prefix = '\mu';
-                SnapTo = round(ScaleSize*Multiplier,-1);
-            elseif (ScaleSize < 1e-3) && (ScaleSize >= 1e-4)
-                Multiplier = 1e6;
-                Prefix = '\mu';
-                SnapTo = round(ScaleSize*Multiplier,-2);
-            elseif (ScaleSize < 1e-4) && (ScaleSize >= 1e-3)
-                Multiplier = 1e3;
-                Prefix = 'm';
-                SnapTo = round(ScaleSize*Multiplier,0);
-            elseif (ScaleSize < 1e-3) && (ScaleSize >= 1e-2)
-                Multiplier = 1e3;
-                Prefix = 'm';
-                SnapTo = round(ScaleSize*Multiplier,-1);
-            elseif (ScaleSize < 1e-2) && (ScaleSize >= 1e-1)
-                Multiplier = 1e3;
-                Prefix = 'm';
-                SnapTo = round(ScaleSize*Multiplier,-2);
-            elseif (ScaleSize < 1e1) && (ScaleSize >= 1e0)
-                Multiplier = 1e0;
-                Prefix = '';
-                SnapTo = round(ScaleSize*Multiplier,0);
-            elseif (ScaleSize < 1e2) && (ScaleSize >= 1e1)
-                Multiplier = 1e0;
-                Prefix = '';
-                SnapTo = round(ScaleSize*Multiplier,-1);
-            elseif (ScaleSize < 1e3) && (ScaleSize >= 1e2)
-                Multiplier = 1e0;
-                Prefix = '';
-                SnapTo = round(ScaleSize*Multiplier,-2);
-            elseif (ScaleSize < 1e4) && (ScaleSize >= 1e3)
-                Multiplier = 1e-3;
-                Prefix = 'k';
-                SnapTo = round(ScaleSize*Multiplier,0);
-            elseif (ScaleSize < 1e5) && (ScaleSize >= 1e4)
-                Multiplier = 1e-3;
-                Prefix = 'k';
-                SnapTo = round(ScaleSize*Multiplier,-1);
-            elseif (ScaleSize < 1e6) && (ScaleSize >= 1e5)
-                Multiplier = 1e-3;
-                Prefix = 'k';
-                SnapTo = round(ScaleSize*Multiplier,-2);
-            elseif (ScaleSize < 1e7) && (ScaleSize >= 1e6)
-                Multiplier = 1e-6;
-                Prefix = 'M';
-                SnapTo = round(ScaleSize*Multiplier,0);
-            elseif (ScaleSize < 1e8) && (ScaleSize >= 1e7)
-                Multiplier = 1e-6;
-                Prefix = 'M';
-                SnapTo = round(ScaleSize*Multiplier,-1);
-            elseif (ScaleSize < 1e9) && (ScaleSize >= 1e8)
-                Multiplier = 1e-6;
-                Prefix = 'M';
-                SnapTo = round(ScaleSize*Multiplier,-2);
-            elseif (ScaleSize < 1e10) && (ScaleSize >= 1e9)
-                Multiplier = 1e-9;
-                Prefix = 'G';
-                SnapTo = round(ScaleSize*Multiplier,0);
-            elseif (ScaleSize < 1e11) && (ScaleSize >= 1e10)
-                Multiplier = 1e-9;
-                Prefix = 'G';
-                SnapTo = round(ScaleSize*Multiplier,-1);
-            elseif (ScaleSize < 1e12) && (ScaleSize >= 1e11)
-                Multiplier = 1e-9;
-                Prefix = 'G';
-                SnapTo = round(ScaleSize*Multiplier,-2);
-            elseif (ScaleSize < 1e13) && (ScaleSize >= 1e12)
-                Multiplier = 1e-12;
-                Prefix = 'T';
-                SnapTo = round(ScaleSize*Multiplier,0);
-            elseif (ScaleSize < 1e14) && (ScaleSize >= 1e13)
-                Multiplier = 1e-12;
-                Prefix = 'T';
-                SnapTo = round(ScaleSize*Multiplier,-1);
-            elseif (ScaleSize < 1e15) && (ScaleSize >= 1e14)
-                Multiplier = 1e-12;
-                Prefix = 'T';
-                SnapTo = round(ScaleSize*Multiplier,-2);
-            else
-                Multiplier = 1;
-                Prefix = '';
-                SnapTo = round(ScaleSize*Multiplier);
+            % Extract the base unit and exponent
+            [baseUnit, exponent] = AFMImage.extract_unit_and_exponent(Unit);
+            
+            % Compute the absolute scale size
+            ScaleSize = abs(ScanSize * Mult);
+            
+            % If the exponent is not a positive integer, throw an error
+            if ~isnumeric(exponent) || exponent < 1 || mod(exponent,1) ~= 0
+                error('Exponent must be a positive integer.');
             end
             
-            Unit = sprintf('%s%s',Prefix,Unit);
+            % Compute the scaling factor per unit exponent
+            ScaleSizePerUnit = ScaleSize^(1/exponent);
             
+            % Define possible SI prefixes and their corresponding multipliers
+            prefixes = {'p', 'n', '\mu', 'm', '', 'k', 'M', 'G', 'T'};
+            multipliers = [1e-12, 1e-9, 1e-6, 1e-3, 1e0, 1e3, 1e6, 1e9, 1e12];
+            
+            % Find the prefix multiplier closest to ScaleSizePerUnit
+            [~, idx] = min(abs(ScaleSizePerUnit - multipliers));
+            if log10(abs(ScaleSizePerUnit)) < log10(multipliers(1))
+                idx = 1;
+            elseif log10(abs(ScaleSizePerUnit)) > log10(multipliers(end))
+                idx = length(multipliers);
+            end
+            Prefix = prefixes{idx};
+            PrefixMult = multipliers(idx);
+            
+            % Calculate the overall Multiplier considering the exponent
+            Multiplier = PrefixMult^exponent;
+            
+            % Adjust the scaled size by dividing instead of multiplying
+            ScaledSize = ScaleSize / Multiplier;
+            
+            Multiplier = 1/Multiplier;
+            
+            decimalPlaces = floor(log10(1/Multiplier) - log10(ScaleSize) + 1);
+            
+            % Round the scaled size
+            SnapTo = round(ScaledSize, decimalPlaces);
+            
+            % Reconstruct the unit with the prefix and exponent
+            OutUnit = sprintf('%s%s', Prefix, OutUnit);
+        end
+        
+        function [baseUnit, exponent] = extract_unit_and_exponent(Unit)
+            % extract_unit_and_exponent parses the unit string to separate the base unit and its exponent.
+            % It handles both 'm^2' and 'm2' formats without using regex.
+            %
+            % Parameters:
+            %   Unit - The unit string, possibly with an exponent.
+            %
+            % Returns:
+            %   baseUnit - The base unit without the exponent.
+            %   exponent - The exponent as a positive integer. Defaults to 1 if not specified.
+            
+            % Initialize default exponent
+            exponent = 1;
+            
+            
+            % Check if the unit string is empty
+            if isempty(Unit)
+                baseUnit = '';
+                return
+            end
+            
+            % Remove any leading/trailing whitespace
+            Unit = strtrim(Unit);
+            
+            % Check if the unit string is empty
+            if isempty(Unit)
+                baseUnit = '';
+                return
+            end
+            
+            % Find the position where letters end and numbers (and possible '^') begin
+            n = length(Unit);
+            i = 1;
+            while i <= n && ~isstrprop(Unit(i),'digit')
+                i = i + 1;
+            end
+            
+            % Extract base unit
+            baseUnit = Unit(1:i-1);
+            
+            % If entire string is letters, exponent remains 1
+            if i > n
+                return;
+            end
+            
+            % Check if the next character is '^'
+            if Unit(i) == '^'
+                i = i + 1;
+                if i > n
+                    error('Invalid unit format: "%s". Exponent expected after "^".', Unit);
+                end
+            end
+            
+            % Extract the exponent string
+            exponentStr = Unit(i:end);
+            
+            % Validate that exponentStr contains only digits
+            if isempty(exponentStr) || ~all(isstrprop(exponentStr, 'digit'))
+                error('Invalid exponent in unit "%s". Exponent must be a positive integer.', Unit);
+            end
+            
+            % Convert exponent string to number
+            exponent = str2double(exponentStr);
+            
+            % Validate exponent
+            if isnan(exponent) || exponent < 1 || mod(exponent,1) ~= 0
+                error('Invalid exponent in unit "%s". Exponent must be a positive integer.', Unit);
+            end
         end
         
         function [pBest,IndizesBest,GoFBest,SweepGoF] = line_fit_sweep(Line,StepSizePercent)
@@ -2779,84 +2770,198 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & dynam
             OutChannel.ScanAngle = 0;
         end
         
-        function [Fig,Surf] = plot_surf_channel_to_scale(Channel)
-            % function [Fig,Surf] = plot_surf_channel_to_scale(Channel)
+        function [Fig, Surf] = plot_surf_channel_to_scale(Channel)
+            % function [Fig, Surf] = plot_mesh_channel_to_scale(Channel)
             %
-            % <FUNCTION DESCRIPTION HERE>
+            % Plots a mesh from the Channel data with axes scaled to real-world sizes
+            % and sets the font size of all text in the figure.
             %
-            %
-            % Required inputs
-            % Channel ... <VARIABLE DESCRIPTION>
+            % Required inputs:
+            %   Channel - A structure containing the following fields:
+            %             - Image: 2D matrix representing the data to plot
+            %             - NumPixelsX: Number of pixels along the X-axis
+            %             - NumPixelsY: Number of pixels along the Y-axis
+            %             - ScanSizeX: Real-world size of the scan along the X-axis (e.g., microns)
+            %             - ScanSizeY: Real-world size of the scan along the Y-axis (e.g., microns)
             
-            p = inputParser;
-            p.FunctionName = "plot_surf_channel_to_scale";
-            p.CaseSensitive = false;
-            p.PartialMatching = true;
-            
-            % Required inputs
-            validChannel = @(x)isstruct(x);
-            addRequired(p,"Channel",validChannel);
-            
-            parse(p,Channel);
-            
-            % Assign parsing results to named variables
-            Channel = p.Results.Channel;
-            
-            Fig = figure('Color','w');
-            
-            Surf = surf(Channel.Image);
-            
-            AspectRangeX = Channel.ScanSizeX;
-            AspectRangeY = Channel.ScanSizeY;
-            AspectRangeZ = range(Channel.Image,'all');
-            
-            Surf.Parent.XLim = [0 Channel.NumPixelsY];
-            Surf.Parent.YLim = [0 Channel.NumPixelsX];
-            Surf.Parent.ZLim = [min(Channel.Image,[],'all') max(Channel.Image,[],'all')];
-            
-            Surf.Parent.PlotBoxAspectRatio = [AspectRangeX AspectRangeY AspectRangeZ];
-            
-        end
-        
-        function [Fig,Mesh] = plot_mesh_channel_to_scale(Channel)
-            % function [Fig,Surf] = plot_mesh_channel_to_scale(Channel)
-            %
-            % <FUNCTION DESCRIPTION HERE>
-            %
-            %
-            % Required inputs
-            % Channel ... <VARIABLE DESCRIPTION>
-            
+            % Input validation
             p = inputParser;
             p.FunctionName = "plot_mesh_channel_to_scale";
             p.CaseSensitive = false;
             p.PartialMatching = true;
             
-            % Required inputs
-            validChannel = @(x)isstruct(x);
-            addRequired(p,"Channel",validChannel);
+            % Define validation for Channel structure
+            validChannel = @(x) isstruct(x) && ...
+                isfield(x, 'Image') && isfield(x, 'NumPixelsX') && ...
+                isfield(x, 'NumPixelsY') && isfield(x, 'ScanSizeX') && ...
+                isfield(x, 'ScanSizeY');
+            addRequired(p, "Channel", validChannel);
             
-            parse(p,Channel);
+            parse(p, Channel);
             
             % Assign parsing results to named variables
             Channel = p.Results.Channel;
             
-            Fig = figure('Color','w');
+            % Create the figure
+            Fig = figure('Color', 'w','Position',[800 718 860 620]);
+            FS = 18; % Font size
             
-            Mesh = mesh(Channel.Image);
+            % Generate coordinate vectors based on real-world scan sizes
+            % X corresponds to columns (NumPixelsX), Y corresponds to rows (NumPixelsY)
             
+            [MultiplierX, UnitX, ~] = AFMImage.parse_unit_scale(Channel.ScanSizeX, 'm', 1);
+            [MultiplierY, UnitY, ~] = AFMImage.parse_unit_scale(Channel.ScanSizeY, 'm', 1);
+            [MultiplierZ, UnitZ, ~] = AFMImage.parse_unit_scale(range(Channel.Image, 'all'), Channel.Unit, 1);
+            
+            ScanSizeX = Channel.ScanSizeX * MultiplierX;
+            ScanSizeY = Channel.ScanSizeY * MultiplierY;
+            Image = Channel.Image .* MultiplierZ;
+            
+            X = linspace(0, ScanSizeX, Channel.NumPixelsX);
+            Y = linspace(0, ScanSizeY, Channel.NumPixelsY);
+            
+            % Create a meshgrid for the mesh plot
+            [XGrid, YGrid] = meshgrid(X, Y);
+            
+            % Plot the mesh with scaled axes
+            Surf = surf(XGrid, YGrid, Image, 'EdgeColor', 'interp');
+            
+            % Enhance the visualization
+            shading interp;        % Smooth color transitions
+            c = colorbar;          % Display a color scale
+            colormap jet;          % Set a colormap (optional)
+            
+            c.Label.String = [Channel.Name ' [' UnitZ ']'];
+            
+            % Set axis limits based on real-world sizes
+            Surf.Parent.XLim = [0 ScanSizeX];
+            Surf.Parent.YLim = [0 ScanSizeY];
+            Surf.Parent.ZLim = [min(Image, [], 'all'), max(Image, [], 'all')];
+            
+            % Adjust the PlotBoxAspectRatio to reflect real-world dimensions
             AspectRangeX = Channel.ScanSizeX;
             AspectRangeY = Channel.ScanSizeY;
-            AspectRangeZ = range(Channel.Image,'all');
+            AspectRangeZ = range(Channel.Image, 'all');
+            Surf.Parent.PlotBoxAspectRatio = [AspectRangeX AspectRangeY AspectRangeZ];
             
-            Mesh.Parent.XLim = [0 Channel.NumPixelsY];
-            Mesh.Parent.YLim = [0 Channel.NumPixelsX];
-            Mesh.Parent.ZLim = [min(Channel.Image,[],'all') max(Channel.Image,[],'all')];
+            % Label the axes with specified font size
+            xlabel(['X [' UnitX ']'], 'FontSize', FS);
+            ylabel(['Y [' UnitY ']'], 'FontSize', FS);
+            zlabel(c.Label.String, 'FontSize', FS); % Adjust label based on what Channel.Image represents
             
-            Mesh.Parent.PlotBoxAspectRatio = [AspectRangeX AspectRangeY AspectRangeZ];
+            % Set the colorbar label font size
+            c.Label.FontSize = FS;
             
+            % Set the axes font size (affects tick labels)
+            Surf.Parent.FontSize = FS;
+            
+            % Optionally, set the title font size if you add a title
+            % title('Your Title Here', 'FontSize', FS);
+            
+            % Set the view angle
+            view(3); % 3D view
+            
+            % Optional: Improve the overall appearance
+            grid on; % Turn on the grid
+            box on;  % Turn on the box around the axes
         end
-        
+
+        function [Fig, Surf] = plot_mesh_channel_to_scale(Channel)
+            % function [Fig, Surf] = plot_mesh_channel_to_scale(Channel)
+            %
+            % Plots a mesh from the Channel data with axes scaled to real-world sizes
+            % and sets the font size of all text in the figure.
+            %
+            % Required inputs:
+            %   Channel - A structure containing the following fields:
+            %             - Image: 2D matrix representing the data to plot
+            %             - NumPixelsX: Number of pixels along the X-axis
+            %             - NumPixelsY: Number of pixels along the Y-axis
+            %             - ScanSizeX: Real-world size of the scan along the X-axis (e.g., microns)
+            %             - ScanSizeY: Real-world size of the scan along the Y-axis (e.g., microns)
+            
+            % Input validation
+            p = inputParser;
+            p.FunctionName = "plot_mesh_channel_to_scale";
+            p.CaseSensitive = false;
+            p.PartialMatching = true;
+            
+            % Define validation for Channel structure
+            validChannel = @(x) isstruct(x) && ...
+                isfield(x, 'Image') && isfield(x, 'NumPixelsX') && ...
+                isfield(x, 'NumPixelsY') && isfield(x, 'ScanSizeX') && ...
+                isfield(x, 'ScanSizeY');
+            addRequired(p, "Channel", validChannel);
+            
+            parse(p, Channel);
+            
+            % Assign parsing results to named variables
+            Channel = p.Results.Channel;
+            
+            % Create the figure
+            Fig = figure('Color', 'w','Position',[800 718 860 620]);
+            FS = 18; % Font size
+            
+            % Generate coordinate vectors based on real-world scan sizes
+            % X corresponds to columns (NumPixelsX), Y corresponds to rows (NumPixelsY)
+            
+            [MultiplierX, UnitX, ~] = AFMImage.parse_unit_scale(Channel.ScanSizeX, 'm', 1);
+            [MultiplierY, UnitY, ~] = AFMImage.parse_unit_scale(Channel.ScanSizeY, 'm', 1);
+            [MultiplierZ, UnitZ, ~] = AFMImage.parse_unit_scale(range(Channel.Image, 'all'), Channel.Unit, 1);
+            
+            ScanSizeX = Channel.ScanSizeX * MultiplierX;
+            ScanSizeY = Channel.ScanSizeY * MultiplierY;
+            Image = Channel.Image .* MultiplierZ;
+            
+            X = linspace(0, ScanSizeX, Channel.NumPixelsX);
+            Y = linspace(0, ScanSizeY, Channel.NumPixelsY);
+            
+            % Create a meshgrid for the mesh plot
+            [XGrid, YGrid] = meshgrid(X, Y);
+            
+            % Plot the mesh with scaled axes
+            Surf = mesh(XGrid, YGrid, Image, 'EdgeColor', 'interp');
+            
+            % Enhance the visualization
+            shading interp;        % Smooth color transitions
+            c = colorbar;          % Display a color scale
+            colormap jet;          % Set a colormap (optional)
+            
+            c.Label.String = [Channel.Name ' [' UnitZ ']'];
+            
+            % Set axis limits based on real-world sizes
+            Surf.Parent.XLim = [0 ScanSizeX];
+            Surf.Parent.YLim = [0 ScanSizeY];
+            Surf.Parent.ZLim = [min(Image, [], 'all'), max(Image, [], 'all')];
+            
+            % Adjust the PlotBoxAspectRatio to reflect real-world dimensions
+            AspectRangeX = Channel.ScanSizeX;
+            AspectRangeY = Channel.ScanSizeY;
+            AspectRangeZ = range(Channel.Image, 'all');
+            Surf.Parent.PlotBoxAspectRatio = [AspectRangeX AspectRangeY AspectRangeZ];
+            
+            % Label the axes with specified font size
+            xlabel(['X [' UnitX ']'], 'FontSize', FS);
+            ylabel(['Y [' UnitY ']'], 'FontSize', FS);
+            zlabel(c.Label.String, 'FontSize', FS); % Adjust label based on what Channel.Image represents
+            
+            % Set the colorbar label font size
+            c.Label.FontSize = FS;
+            
+            % Set the axes font size (affects tick labels)
+            Surf.Parent.FontSize = FS;
+            
+            % Optionally, set the title font size if you add a title
+            % title('Your Title Here', 'FontSize', FS);
+            
+            % Set the view angle
+            view(3); % 3D view
+            
+            % Optional: Improve the overall appearance
+            grid on; % Turn on the grid
+            box on;  % Turn on the box around the axes
+        end
+
         function [Fig,Scatter] = plot_scatter3_point_cloud_to_scale(X,Y,Z)
             % function [Fig,Scatter] = plot_scatter3_point_cloud_to_scale(X,Y,Z)
             %
