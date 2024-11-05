@@ -220,8 +220,8 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             end
             
             PPHasUnequalSPP = false;
-            [PP,XMult,YMult] = AFMBaseClass.resize_channel_to_padded_same_size_per_pixel_square_image(Processed);
-            ET = AFMBaseClass.resize_channel_to_padded_same_size_per_pixel_square_image(ErodedTip);
+            [PP,XMult,YMult] = AFMBaseClass.resize_channel_to_padded_same_size_per_pixel_square_image(Processed,'PaddingType','Same');
+            ET = AFMBaseClass.resize_channel_to_padded_same_size_per_pixel_square_image(ErodedTip,'PaddingType','Same');
             
             if XMult ~= 1 || YMult ~= 1
                 PPHasUnequalSPP = true;
@@ -247,16 +247,16 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             PaddingSizePost = ceil(PaddingSize./2);
             if size(PP.Image,1) >= size(ET.Image,1)
                 ET.Image = padarray(ET.Image,PaddingSizePre,...
-                    min(ET.Image,[],'all'),'pre');
+                    'replicate','pre');
                 ET.Image = padarray(ET.Image,PaddingSizePost,...
-                    min(ET.Image,[],'all'),'post');
+                    'replicate','post');
                 ETPadded = true;
                 PPPadded = false;
             else
                 PP.Image = padarray(PP.Image,PaddingSizePre,...
-                    min(PP.Image,[],'all'),'pre');
+                    'replicate','pre');
                 PP.Image = padarray(PP.Image,PaddingSizePost,...
-                    min(PP.Image,[],'all'),'post');
+                    'replicate','post');
                 ETPadded = false;
                 PPPadded = true;
             end
@@ -2554,18 +2554,28 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             end
         end
         
-        function [OutChannel,XMultiplier,YMultiplier] = resize_channel_to_padded_same_size_per_pixel_square_image(InChannel,varargin)
-            % function OutChannel = resize_channel_to_padded_same_size_per_pixel_square_image(InChannel,varargin)
+        function [OutChannel, XMultiplier, YMultiplier] = resize_channel_to_padded_same_size_per_pixel_square_image(InChannel, varargin)
+            % resize_channel_to_padded_same_size_per_pixel_square_image
             %
-            % <FUNCTION DESCRIPTION HERE>
+            % Resizes the input channel to a square image with equal size-per-pixel
+            % relation by padding the image. The padding can be of type 'Min', 'Max',
+            % 'Zero', or 'Same'. When 'Same' is selected, the padding is filled with
+            % the outermost pixel values of the image borders.
             %
+            % Required inputs:
+            %   InChannel - The input channel structure containing the image and
+            %               related metadata.
             %
-            % Required inputs
-            % InChannel ... <VARIABLE DESCRIPTION>
+            % Name-Value pairs:
+            %   'PaddingType'      - Type of padding to apply ('Min', 'Max', 'Zero', 'Same').
+            %                        Default is 'Min'.
+            %   'TargetResolution' - The desired target resolution. If not specified,
+            %                        defaults to the maximum of InChannel.NumPixelsX and InChannel.NumPixelsY.
             %
-            % Name-Value pairs
-            % "PaddingType" ... <NAMEVALUE DESCRIPTION>
-            % "TargetResolution" ... <NAMEVALUE DESCRIPTION>
+            % Outputs:
+            %   OutChannel    - The resized and padded output channel.
+            %   XMultiplier   - The scaling factor applied in the X dimension.
+            %   YMultiplier   - The scaling factor applied in the Y dimension.
             
             p = inputParser;
             p.FunctionName = "resize_channel_to_padded_same_size_per_pixel_square_image";
@@ -2573,18 +2583,18 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             p.PartialMatching = true;
             
             % Required inputs
-            validInChannel = @(x)true;
-            addRequired(p,"InChannel",validInChannel);
+            validInChannel = @(x) true;  % You can add more specific validation if needed
+            addRequired(p, "InChannel", validInChannel);
             
             % NameValue inputs
             defaultPaddingType = 'Min';
-            defaultTargetResolution = max(InChannel.NumPixelsX,InChannel.NumPixelsY);
-            validPaddingType = @(x)any(validatestring(x,{'Min','Max','Zero'}));
-            validTargetResolution = @(x)true;
-            addParameter(p,"PaddingType",defaultPaddingType,validPaddingType);
-            addParameter(p,"TargetResolution",defaultTargetResolution,validTargetResolution);
+            defaultTargetResolution = max(InChannel.NumPixelsX, InChannel.NumPixelsY);
+            validPaddingType = @(x) any(validatestring(x, {'Min', 'Max', 'Zero', 'Same'}));
+            validTargetResolution = @(x) isnumeric(x) && isscalar(x) && x > 0;
+            addParameter(p, "PaddingType", defaultPaddingType, validPaddingType);
+            addParameter(p, "TargetResolution", defaultTargetResolution, validTargetResolution);
             
-            parse(p,InChannel,varargin{:});
+            parse(p, InChannel, varargin{:});
             
             % Assign parsing results to named variables
             InChannel = p.Results.InChannel;
@@ -2592,33 +2602,61 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & d
             TargetResolution = p.Results.TargetResolution;
             
             % First, equalize the size-per-pixel relation
-            [OutChannel,XMultiplier,YMultiplier] = AFMBaseClass.resize_channel_to_same_size_per_pixel(InChannel);
+            [OutChannel, XMultiplier, YMultiplier] = AFMBaseClass.resize_channel_to_same_size_per_pixel(InChannel);
             
-            if isequal(lower(PaddingType),'min')
-                PaddingValue = min(OutChannel.Image,[],'all');
-            elseif isequal(lower(PaddingType),'max')
-                PaddingValue = max(OutChannel.Image,[],'all');
-            elseif isequal(lower(PaddingType),'zero')
-                PaddingValue = 0;
+            % Determine padding value based on PaddingType
+            switch lower(PaddingType)
+                case 'min'
+                    PaddingValue = min(OutChannel.Image, [], 'all');
+                case 'max'
+                    PaddingValue = max(OutChannel.Image, [], 'all');
+                case 'zero'
+                    PaddingValue = 0;
+                case 'same'
+                    % No PaddingValue needed for 'Same'; handled separately
             end
             
-            %Padd the side wih less pixels
+            % Pad the side with fewer pixels
             if OutChannel.NumPixelsX < OutChannel.NumPixelsY
+                % Need to pad rows
                 PixelDiff = OutChannel.NumPixelsY - OutChannel.NumPixelsX;
-                OutChannel.Image(end+1:end+PixelDiff,:) = PaddingValue;
+                if ~strcmpi(PaddingType, 'Same')
+                    % For 'Min', 'Max', 'Zero' padding types
+                    paddingRow = PaddingValue;
+                    % Create a matrix of paddingRow replicated PixelDiff times
+                    paddingMatrix = repmat(paddingRow, PixelDiff, size(OutChannel.Image, 2));
+                    OutChannel.Image(end+1:end+PixelDiff, :) = paddingMatrix;
+                else
+                    % For 'Same' padding type, replicate the last row
+                    lastRow = OutChannel.Image(end, :);
+                    replicatedRows = repmat(lastRow, PixelDiff, 1);
+                    OutChannel.Image(end+1:end+PixelDiff, :) = replicatedRows;
+                end
                 OutChannel.NumPixelsX = OutChannel.NumPixelsY;
                 OutChannel.ScanSizeY = OutChannel.ScanSizeX;
             else
+                % Need to pad columns
                 PixelDiff = OutChannel.NumPixelsX - OutChannel.NumPixelsY;
-                OutChannel.Image(:,end+1:end+PixelDiff) = PaddingValue;
+                if ~strcmpi(PaddingType, 'Same')
+                    % For 'Min', 'Max', 'Zero' padding types
+                    paddingColumn = PaddingValue;
+                    % Create a matrix of paddingColumn replicated PixelDiff times
+                    paddingMatrix = repmat(paddingColumn, size(OutChannel.Image, 1), PixelDiff);
+                    OutChannel.Image(:, end+1:end+PixelDiff) = paddingMatrix;
+                else
+                    % For 'Same' padding type, replicate the last column
+                    lastColumn = OutChannel.Image(:, end);
+                    replicatedColumns = repmat(lastColumn, 1, PixelDiff);
+                    OutChannel.Image(:, end+1:end+PixelDiff) = replicatedColumns;
+                end
                 OutChannel.NumPixelsY = OutChannel.NumPixelsX;
                 OutChannel.ScanSizeX = OutChannel.ScanSizeY;
             end
             
-            OutChannel = AFMBaseClass.resize_channel(OutChannel,TargetResolution,true);
-            
+            % Resize the channel to the target resolution
+            OutChannel = AFMBaseClass.resize_channel(OutChannel, TargetResolution, true);
         end
-        
+
         function [OutChannel1,OutChannel2] = resize_channels_to_same_physical_size_per_pixel(InChannel1,InChannel2,varargin)
             % function [OutChannel1,OutChannel2] = resize_channels_to_same_physical_size_per_pixel(InChannel1,InChannel2,varargin)
             %

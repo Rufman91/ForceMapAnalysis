@@ -3107,5 +3107,20 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & dynam
             
         end
         
+        function [ShiftedImage,XPix,YPix,XPos,YPos] = find_image_center_of_mass(InImage)
+            
+            XCum = sum(InImage,1);
+            YCum = sum(InImage,2);
+            
+            XPos = sum(XCum.*[1:length(XCum)])/sum(XCum);
+            YPos = sum(YCum.*[1:length(YCum)]')/sum(YCum);
+            
+            XPix = round(XPos);
+            YPix = round(YPos);
+            
+            ShiftedImage = circshift(InImage,[-(YPix - length(YCum)/2) -(XPix - length(XCum)/2)]);
+            
+        end
+        
     end
 end
