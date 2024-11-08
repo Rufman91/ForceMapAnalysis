@@ -77,16 +77,17 @@ E.force_map_analysis_general
 % E.create_artificial_cantilever_tip('HalfsphereTip','halfsphere','Radius',1e-6,'TipHeight',2e-6,'ImageResolution',128)
 
 % E.create_artificial_cantilever_tip('HalfsphereTip','halfsphere',...
-%     'Radius',1e-6,'TipHeight',2e-6,'ImageResolution',128,...
+%     'Radius',0.5e-6,'TipHeight',2e-6,'ImageResolution',128,...
 %     'FuseMethod','linear',...
-%     'TipApexChannel',[],...
-%     'HeightDifference',33e-9);
-% AFMImage.plot_mesh_channel_to_scale(E.CantileverTips{end}.get_channel('Eroded Tip'))
+%     'TipApexChannel',E.CantileverTips{2}.get_channel('Eroded Tip'),...
+%     'HeightDifference',33e-9); % Change Cantilever tip index 
+
 E.create_artificial_cantilever_tip('HalfsphereTip','halfsphere',...
-    'Radius',1e-6,'TipHeight',2e-6,'ImageResolution',128,...
+    'Radius',0.5e-6,'TipHeight',2e-6,'ImageResolution',128,...
     'FuseMethod','linear',...
-    'TipApexChannel',E.CantileverTips{2}.get_channel('Eroded Tip'),...
-    'HeightDifference',33e-9); % Change Cantilever tip index 
+    'TipApexChannel',[],...
+    'HeightDifference',[]); % Change Cantilever tip index 
+
 AFMImage.plot_mesh_channel_to_scale(E.CantileverTips{end}.get_channel('Eroded Tip'))
 % E.assign_cantilever_tips
 
@@ -94,12 +95,17 @@ AFMImage.plot_mesh_channel_to_scale(E.CantileverTips{end}.get_channel('Eroded Ti
 
 for i=1:E.NumForceMaps
     if i <= 45
-        TipIdx = 5;
+        TipIdx = 7;
     else
-        TipIdx = 6;
+        TipIdx = 8;
     end
     E.FM{i}.deconvolute_image(E.CantileverTips{TipIdx},'Contact Height Smoothed',1024,true);  
 end
+
+% for i=1:E.NumForceMaps
+%     TipIdx = 9;
+%     E.FM{i}.deconvolute_image(E.CantileverTips{TipIdx},'Contact Height Smoothed',1024,true);
+% end
 
 %% Indentation modulus readout after having segmented Seg 01 as Background 
 % and Seg 02 as Centrosome. 'IncludeIndexVector',[2] makes sure, just

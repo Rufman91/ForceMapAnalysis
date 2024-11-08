@@ -10,7 +10,7 @@ choice3 = 2;
 s2 = ' ('+opts3(choice3)+')';
 
 % msg2 = "Do you want to apply a subsequent ForceMapAnalysisOptions?";
-% opts2 = ["Yes" "No"];
+% opts2 = ["Yes" "No"];Deconvoluted (01)
 % choice2 = menu(msg2,opts2);
 
 % if choice2 == 1
@@ -95,7 +95,7 @@ for i = 1:E.NumForceMaps
         Volumes(i) = Volume*1e+18;
 
         % Calculate volume from deconvoluted channel
-        Height_deconv{i} = E.FM{i}.get_segment_data_from_channel('Deconvoluted', 'MatchString', 'Seg-02'); % Total centrosome height
+        Height_deconv{i} = E.FM{i}.get_segment_data_from_channel('Deconvoluted (01)', 'MatchString', 'Seg-02'); % Total centrosome height
         positiveHeight_deconv = max(Height_deconv{i}, 0); % Treat negative heights as zero
         Volume_deconv = sum(positiveHeight_deconv) * (E.FM{i}.ScanSizeX/E.FM{i}.NumPixelsX * E.FM{i}.ScanSizeY/E.FM{i}.NumPixelsY); % Total centrosome volume from Seg-02
         Volumes_deconv(i) = Volume_deconv*1e+18;
@@ -153,7 +153,6 @@ plot(EquivalentRadii_valid, fit_ci, 'r--', 'LineWidth', 1);  % Plot confidence i
 legend('Data points', ['Linear fit: y = ' num2str(slope, '%.2f') 'x + ' num2str(intercept, '%.2f')], ['R^2 = ', num2str(R_squared, '%.2f')]); legend boxoff
 hold off
 
-
 figure('name', 'Centrosome volume dependence'); hold on
 box on; set(gca,'FontSize', 18, 'Linewidth', 1.5);
 scatter(EquivalentRadii_deconv, CsEModHertz_mean, 60, c, "filled");
@@ -203,4 +202,3 @@ function addCorrelationInfo(x, y, useRobustFit)
          'EdgeColor', 'black', 'BackgroundColor', 'white', 'Margin', 5);
     hold off;
 end
-

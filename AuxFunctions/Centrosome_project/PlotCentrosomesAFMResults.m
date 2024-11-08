@@ -115,6 +115,33 @@ nanIndices = isnan(EquivalentRadii_mnl) | isnan(CsEModHertz_mean);
 % Remove NaN values from each array
 EquivalentRadii_clean = EquivalentRadii_mnl(~nanIndices);
 CsEModHertz_mean_clean = CsEModHertz_mean(~nanIndices);
+
+% Calculate distance correlation
+x = EquivalentRadii_clean'; 
+y = CsEModHertz_mean_clean'; 
+dcor_observed = distcorr(x, y);
+
+% Permutation test 
+num_permutations = 10000; 
+dcor_permuted = zeros(1, num_permutations);
+
+% Permutation test
+for i = 1:num_permutations
+    % Randomly shuffle the y-values
+    y_permuted = y(randperm(length(y)));
+    
+    % Calculate the distance correlation for the permuted data
+    dcor_permuted(i) = distcorr(x, y_permuted);
+end
+
+% Calculate the p-value
+p_value = mean(dcor_permuted >= dcor_observed);
+
+% Display the results
+fprintf('Observed distance correlation: %.4f\n', dcor_observed);
+fprintf('p-value: %.4f\n', p_value);
+
+% Calculate linear correlation
 addCorrelationInfo(EquivalentRadii_clean, CsEModHertz_mean_clean, RobustFit);
 
 figure('name', 'Centrosome height dependence'); hold on
