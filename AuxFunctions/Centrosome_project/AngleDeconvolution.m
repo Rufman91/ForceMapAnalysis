@@ -237,10 +237,15 @@ for m = 1:E.NumForceMaps
         CsVolume = sum(CsVolume_voxel(:)); 
         CsVolumeSphereCap = (pi * CsFlatMax^2 / 3) * (3*CsRadiusXY - CsFlatMax);
 
+        % Effective radius between the tip and the sample
+        ChannelEffectiveRadius = E.FM{m}.get_channel(strcat('Effective Radius Hertz',s2));
+        CsEffectiveRadius = ChannelEffectiveRadius.Image.*AngleCsBW.*QFits; 
+        CsEffectiveRadius(CsEffectiveRadius==0) = NaN;
+        
         % Save 
         cd(folderPath) 
         filename = strcat('Processed',s2);
-        save(filename,'CsArea','CsRadiusXY','CsEModHertz','CsFlatArea','CsFlatHeight','CsFlatMax', 'CsFlatPrctile', 'CsFlatInden','CsVolume', 'CsVolumeSphereCap')
+        save(filename,'CsArea','CsRadiusXY','CsEModHertz','CsFlatArea','CsFlatHeight','CsFlatMax', 'CsFlatPrctile', 'CsFlatInden','CsVolume', 'CsVolumeSphereCap', 'CsEffectiveRadius')
 
         cd ..
         close all

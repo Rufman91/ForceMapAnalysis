@@ -48,6 +48,9 @@ for i = 1:E.NumForceMaps
         CsFlatPrctile_data(i) = CsFlatPrctile*1e9;
         %         CsFlatMax_data(i) = CsFlatMax*1e9;
         CsInden_mean(i) = mean(CsFlatInden(:),'omitnan').*1e9;
+        CsInden_std(i) = std(CsFlatInden(:),'omitnan').*1e9;
+        CsEffectiveRadius_mean(i) = mean(CsEffectiveRadius(:),'omitnan').*1e9;
+        CsEffectiveRadius_std(i) = std(CsEffectiveRadius(:),'omitnan').*1e9;
         %         CsRadiusXY_data(i) = CsRadiusXY;
         %         CsAspectRatio(i) = mean(CsFlatHeight(:),'omitnan')/(CsRadiusXY*2);
         %         CsFlatArea_data(i) = CsFlatArea;
@@ -69,6 +72,9 @@ CsEModHertz_std(CsEModHertz_std == 0) = NaN;
 CsFlatHeight_mean(CsFlatHeight_mean == 0) = NaN;
 CsFlatPrctile_data(CsFlatPrctile_data == 0) = NaN; 
 CsInden_mean(CsInden_mean == 0) = NaN; 
+CsInden_std(CsInden_std == 0) = NaN; 
+CsEffectiveRadius_mean(CsEffectiveRadius_mean == 0) = NaN; 
+CsEffectiveRadius_std(CsEffectiveRadius_std == 0) = NaN; 
 CsVolume_Otsu_data(CsVolume_Otsu_data == 0) = NaN;
 Volumes(Volumes == 0) = NaN; 
 
@@ -348,6 +354,36 @@ h5 = scatter(nan, nan, 60, 'MarkerEdgeColor', edgeColor, 'MarkerFaceColor', day5
 h6 = scatter(nan, nan, 60, 'MarkerEdgeColor', edgeColor, 'MarkerFaceColor', day6Color);
 % Create legend
 legend([h1, h2, h3, h4, h5, h6], 'Day 1', 'Day 2', 'Day 3', 'Day 4', 'Day 5', 'Day 6', 'Location', 'best');
+
+% Effective radius between tip and the sample
+figure(); hold on
+box on; set(gca,'FontSize', 18, 'Linewidth', 1.5);
+scatter(CsInden_mean, CsEffectiveRadius_mean, 60, c, "filled");
+errorbar(CsInden_mean, CsEffectiveRadius_mean, CsEffectiveRadius_std, 'o', 'Color', c);
+xlabel('Indentation depth [nm]');
+ylabel('Effective radius [nm]');
+xlim([0 200]);ylim([0 600])
+
+figure(); hold on
+box on; set(gca,'FontSize', 18, 'Linewidth', 1.5);
+scatter( CsEffectiveRadius_mean, CsEModHertz_mean, 60, c, "filled");
+errorbar(CsEffectiveRadius_mean, CsEModHertz_mean, CsEModHertz_std, 'o', 'Color', c);
+ylabel('Indentation modulus [kPa]');
+xlabel('Effective radius [nm]');
+xlim([0 600])
+
+
+% Find indices where any of the arrays have NaN values
+nanIndices = isnan(CsInden_mean) | isnan(CsEffectiveRadius_mean);
+
+% Remove NaN values from each array
+CsEffectiveRadius_mean_clean = CsEffectiveRadius_mean(~nanIndices);
+CsEffectiveRadius_std_clean = CsEffectiveRadius_std(~nanIndices);
+CsInden_mean_clean = CsInden_mean(~nanIndices);
+CsInden_std_clean = CsInden_std(~nanIndices);
+CsEModHertz_mean_clean 
+CsEModHertz_std_clean
+
 
 function addCorrelationInfo(x, y, useRobustFit)
     % Calculate correlation coefficient and p-value
