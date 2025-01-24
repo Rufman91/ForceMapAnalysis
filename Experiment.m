@@ -5767,6 +5767,9 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 end
                 
                 FinalRange = abs(CutMax - CutMin);
+                if FinalRange == 0
+                    FinalRange = CutMax
+                end
                 
                 [h.Multiplier{Index},h.Unit{Index},~] = AFMImage.parse_unit_scale(FinalRange,h.BaseUnit{Index},1);
                 h.I(Index) = imshow(CurImage*h.Multiplier{Index},[],'Colormap',ColorPattern);
@@ -6236,7 +6239,20 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                     TipHeightSwitch = 0;
                 end
                 if obj.ShowImageSettings.ContactPointShifted
-                    CP = h.Class{h.VolumeStruct.Index}.CP(h.VolumeStruct.ListIndex,:);
+                    Channel = h.Class{h.VolumeStruct.Index}.get_channel(h.Channel{h.VolumeStruct.Index});
+                    if isfield(Channel,'FMA_ID') &&...
+                            ~isequal(Channel.FMA_ID,'none')
+                        
+                        FMA_ID = Channel.FMA_ID;
+                        IDChannel = h.Class{h.VolumeStruct.Index}.get_channel('Indentation Depth', FMA_ID);
+                        CP = [0 0];
+                        
+                        App = ((RawApp - polyval(BaseParams,RawHHApp)) - CP(2)).*(CorrectedSens/Sens);
+                        
+                        CP(1) = RawHHApp(end) - IDChannel.Image(h.Class{h.VolumeStruct.Index}.List2Map(h.VolumeStruct.ListIndex)) - App(end)/SpringConstant;
+                    else
+                        CP = h.Class{h.VolumeStruct.Index}.CP(h.VolumeStruct.ListIndex,:);
+                    end
                 else
                     CP = [0 0];
                 end

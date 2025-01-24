@@ -2275,6 +2275,10 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & dynam
             % Extract the base unit and exponent
             [baseUnit, exponent] = AFMImage.extract_unit_and_exponent(Unit);
             
+            if ScanSize == 0
+                ScanSize = 1;
+            end
+            
             % Compute the absolute scale size
             ScaleSize = abs(ScanSize * Mult);
             
