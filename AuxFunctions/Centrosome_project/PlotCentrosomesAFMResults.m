@@ -111,7 +111,58 @@ scatter(EquivalentRadii_mnl, CsEModHertz_mean, 60, c, "filled");
 errorbar(EquivalentRadii_mnl, CsEModHertz_mean, CsEModHertz_std, 'o', 'Color', c);
 ylabel('Indentation modulus [kPa]');
 xlabel('Centrosome equivalent radius [nm]');
-xlim([0 1600]); ylim([-50 350])
+xlim([0 1500]); ylim([0 400])
+
+%%%% Color-code based on centrosome radius 
+figure('Name', 'Centrosome volume dependence'); 
+hold on;
+box on; 
+set(gca,'FontSize', 18, 'Linewidth', 1.5);
+
+% Create color vector based on radius threshold
+c = zeros(length(EquivalentRadii_mnl), 3); % Initialize color matrix
+orange = [0.8500 0.3250 0.0980]; % MATLAB default orange
+blue = [0 0.4470 0.7410]; % MATLAB default blue
+
+% Assign colors based on radius
+for i = 1:length(EquivalentRadii_mnl)
+    if EquivalentRadii_mnl(i) > 500
+        c(i,:) = orange;
+    else
+        c(i,:) = blue;
+    end
+end
+
+% Create scatter plot with colored points
+sc = scatter(EquivalentRadii_mnl, CsEModHertz_mean, 60, c, "filled");
+
+% Add error bars with matching colors
+for i = 1:length(EquivalentRadii_mnl)
+    if EquivalentRadii_mnl(i) > 500
+        errorbar(EquivalentRadii_mnl(i), CsEModHertz_mean(i), CsEModHertz_std(i), ...
+                'o', 'Color', orange, 'MarkerFaceColor', orange);
+    else
+        errorbar(EquivalentRadii_mnl(i), CsEModHertz_mean(i), CsEModHertz_std(i), ...
+                'o', 'Color', blue, 'MarkerFaceColor', blue);
+    end
+end
+
+% Add labels and limits
+ylabel('Indentation modulus [kPa]');
+xlabel('Centrosome equivalent radius [nm]');
+xlim([0 1500]); 
+ylim([0 400]);
+
+% Add legend
+h = zeros(2,1);
+h(1) = plot(NaN,NaN,'o','MarkerEdgeColor',blue,'MarkerFaceColor',blue);
+h(2) = plot(NaN,NaN,'o','MarkerEdgeColor',orange,'MarkerFaceColor',orange);
+legend(h, {'Radius ≤ 500 nm', 'Radius > 500 nm'}, 'Location', 'best');
+legend box off
+
+% % Optional: Add reference line at 500 nm
+% xline(500, '--k', 'LineWidth', 1, 'Alpha', 0.5);
+%%%%
 
 RobustFit = false;
 
@@ -372,7 +423,6 @@ ylabel('Indentation modulus [kPa]');
 xlabel('Effective radius [nm]');
 xlim([0 600])
 
-
 % Find indices where any of the arrays have NaN values
 nanIndices = isnan(CsInden_mean) | isnan(CsEffectiveRadius_mean);
 
@@ -381,8 +431,8 @@ CsEffectiveRadius_mean_clean = CsEffectiveRadius_mean(~nanIndices);
 CsEffectiveRadius_std_clean = CsEffectiveRadius_std(~nanIndices);
 CsInden_mean_clean = CsInden_mean(~nanIndices);
 CsInden_std_clean = CsInden_std(~nanIndices);
-CsEModHertz_mean_clean 
-CsEModHertz_std_clean
+CsEModHertz_mean_clean = CsEModHertz_mean(~nanIndices); 
+CsEModHertz_std_clean = CsEModHertz_std(~nanIndices);
 
 
 function addCorrelationInfo(x, y, useRobustFit)
