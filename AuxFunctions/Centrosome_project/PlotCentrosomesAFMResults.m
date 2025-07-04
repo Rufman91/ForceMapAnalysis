@@ -120,29 +120,53 @@ box on;
 set(gca,'FontSize', 18, 'Linewidth', 1.5);
 
 % Create color vector based on radius threshold
-c = zeros(length(EquivalentRadii_mnl), 3); % Initialize color matrix
+clrs = zeros(length(EquivalentRadii_mnl), 3); % Initialize color matrix
 orange = [0.8500 0.3250 0.0980]; % MATLAB default orange
 blue = [0 0.4470 0.7410]; % MATLAB default blue
+
+filtered_radii = [];
+filtered_moduli = [];
+filtered_stds = [];
+filtered_colors = [];
 
 % Assign colors based on radius
 for i = 1:length(EquivalentRadii_mnl)
     if EquivalentRadii_mnl(i) > 500
-        c(i,:) = orange;
+        clrs(i,:) = orange;
     else
-        c(i,:) = blue;
+        clrs(i,:) = blue;
     end
 end
 
-% Create scatter plot with colored points
-sc = scatter(EquivalentRadii_mnl, CsEModHertz_mean, 60, c, "filled");
-
 % Add error bars with matching colors
 for i = 1:length(EquivalentRadii_mnl)
+    % Skip indices 14-32 (Day 2)
+    if i >= 14 && i <= 32
+        continue;
+    end
+    % Add to filtered arrays
+    filtered_radii(end+1) = EquivalentRadii_mnl(i);
+    filtered_moduli(end+1) = CsEModHertz_mean(i);
+    filtered_stds(end+1) = CsEModHertz_std(i);
+
+    % Assign color based on radius
     if EquivalentRadii_mnl(i) > 500
-        errorbar(EquivalentRadii_mnl(i), CsEModHertz_mean(i), CsEModHertz_std(i), ...
+        filtered_colors(end+1,:) = orange;
+    else
+        filtered_colors(end+1,:) = blue;
+    end
+end
+
+% Create scatter plot with filtered data
+scatter(filtered_radii, filtered_moduli, 60, filtered_colors, "filled");
+
+% Add error bars with matching colors
+for i = 1:length(filtered_radii)
+    if filtered_radii(i) > 500
+        errorbar(filtered_radii(i), filtered_moduli(i), filtered_stds(i), ...
                 'o', 'Color', orange, 'MarkerFaceColor', orange);
     else
-        errorbar(EquivalentRadii_mnl(i), CsEModHertz_mean(i), CsEModHertz_std(i), ...
+        errorbar(filtered_radii(i), filtered_moduli(i), filtered_stds(i), ...
                 'o', 'Color', blue, 'MarkerFaceColor', blue);
     end
 end
@@ -151,7 +175,7 @@ end
 ylabel('Indentation modulus [kPa]');
 xlabel('Centrosome equivalent radius [nm]');
 xlim([0 1500]); 
-ylim([0 400]);
+ylim([0 350]);
 
 % Add legend
 h = zeros(2,1);
@@ -162,16 +186,34 @@ legend box off
 
 % % Optional: Add reference line at 500 nm
 % xline(500, '--k', 'LineWidth', 1, 'Alpha', 0.5);
+
+% Count non-NaN values in original data
+original_nonnan = sum(~isnan(EquivalentRadii_mnl) & ~isnan(CsEModHertz_mean) & ~isnan(CsEModHertz_std));
+fprintf('Original data points (non-NaN): %d\n', original_nonnan);
+
+% Count non-NaN values in filtered data
+filtered_nonnan = sum(~isnan(filtered_radii) & ~isnan(filtered_moduli) & ~isnan(filtered_stds));
+fprintf('Filtered data points (non-NaN): %d\n', filtered_nonnan);
+
+% Count how many were excluded by index filter
+excluded_by_index = sum((1:length(EquivalentRadii_mnl)) >= 14 & (1:length(EquivalentRadii_mnl)) <= 32);
+fprintf('Points excluded by index filter: %d\n', excluded_by_index);
+
+% Count how many non-NaN points were excluded
+valid_indices = ~isnan(EquivalentRadii_mnl) & ~isnan(CsEModHertz_mean) & ~isnan(CsEModHertz_std);
+excluded_nonnan = sum(valid_indices & ((1:length(EquivalentRadii_mnl)) >= 14 & (1:length(EquivalentRadii_mnl)) <= 32));
+fprintf('Valid non-NaN points excluded: %d\n', excluded_nonnan);
+
 %%%%
 
 RobustFit = false;
 
 % Find indices where any of the arrays have NaN values
-nanIndices = isnan(EquivalentRadii_mnl) | isnan(CsEModHertz_mean);
+nanIndices = isnan(filtered_radii) | isnan(filtered_moduli);
 
 % Remove NaN values from each array
-EquivalentRadii_clean = EquivalentRadii_mnl(~nanIndices);
-CsEModHertz_mean_clean = CsEModHertz_mean(~nanIndices);
+EquivalentRadii_clean = filtered_radii(~nanIndices);
+CsEModHertz_mean_clean = filtered_moduli(~nanIndices);
 
 % Calculate distance correlation
 x = EquivalentRadii_clean'; 
@@ -201,10 +243,56 @@ fprintf('p-value: %.4f\n', p_value);
 % Calculate linear correlation
 addCorrelationInfo(EquivalentRadii_clean, CsEModHertz_mean_clean, RobustFit);
 
-figure('name', 'Centrosome height dependence'); hold on
-box on; set(gca,'FontSize', 18, 'Linewidth', 1.5);
-scatter(CsFlatPrctile_data, CsEModHertz_mean, 60, c, "filled");
-errorbar(CsFlatPrctile_data, CsEModHertz_mean, CsEModHertz_std, 'o', 'Color', c);
+% Get indices for each group
+idx_large = filtered_radii > 500;
+idx_small = filtered_radii <= 500;
+
+% Extract moduli for each group
+moduli_large = filtered_moduli(idx_large);
+moduli_small = filtered_moduli(idx_small);
+
+mean_large = mean(moduli_large, 'omitnan');
+mean_small = mean(moduli_small, 'omitnan');
+
+std_large = std(moduli_large, 'omitnan');
+std_small = std(moduli_small, 'omitnan');
+
+fold_change = mean_small / mean_large;
+
+% Check normality
+[h_large, p_large] = lillietest(moduli_large);
+[h_small, p_small] = lillietest(moduli_small);
+
+if p_large >= 0.05 && p_small >= 0.05
+    % Both normal → check variances
+    [~, p_var] = vartest2(moduli_large, moduli_small);
+    if p_var >= 0.05
+        % Equal variances → standard t-test
+        [h, p] = ttest2(moduli_large, moduli_small);
+        test_used = 'Student''s t-test (equal variances)';
+    else
+        % Unequal variances → Welch’s t-test
+        [h, p] = ttest2(moduli_large, moduli_small, 'Vartype', 'unequal');
+        test_used = 'Welch''s t-test (unequal variances)';
+    end
+else
+    % Non-normal → Mann-Whitney U test
+    [p, h] = ranksum(moduli_large, moduli_small);
+    test_used = 'Mann-Whitney U test';
+end
+
+fprintf('\nSelected test: %s\n', test_used);
+fprintf('p-value = %.4f\n', p);
+if h == 1
+    fprintf('Conclusion: Significant difference (p < 0.05)\n');
+else
+    fprintf('Conclusion: No significant difference (p ≥ 0.05)\n');
+end
+
+% figure('name', 'Centrosome height dependence'); hold on
+% box on; set(gca,'FontSize', 18, 'Linewidth', 1.5);
+% scatter(CsFlatPrctile_data, CsEModHertz_mean, 60, c, "filled");
+% errorbar(CsFlatPrctile_data, CsEModHertz_mean, CsEModHertz_std, 'o', 'Color', c);
 
 % hold on
 % [xData, yData] = prepareCurveData( CsHeight_mean, CsEModHertz_mean );
@@ -220,9 +308,9 @@ errorbar(CsFlatPrctile_data, CsEModHertz_mean, CsEModHertz_std, 'o', 'Color', c)
 
 % % Plot fit with data.
 % h = plot( fitresult, xData, yData );
-ylabel('Indentation modulus [kPa]');
-xlabel('Centrosome max. height [nm]');
-ylim([-50 350]); xlim([0, 1100])
+% ylabel('Indentation modulus [kPa]');
+% xlabel('Centrosome max. height [nm]');
+% ylim([-50 350]); xlim([0, 1100])
 
 RobustFit = false;
 
@@ -316,7 +404,8 @@ xlabel('Centrosome maximum height [nm]');
 ylabel('Compression [%]')
 xlim([0, 1100]); ylim([0 70])
 
-% Color-code based on compression % 
+
+%% Color-code based on compression 
 figure('name', 'Compression vs. height'); 
 hold on; box on; 
 set(gca,'FontSize', 16, 'Linewidth', 1.5);
@@ -329,25 +418,46 @@ lowColor = [145/255 207/255 96/255];
 midColor = [255/255 255/255 191/255];
 highColor = [252/255 141/255 89/255];
 
+% Create logical index of points to include (not between 14-32)
+includeIdx = true(1, E.NumForceMaps);
+includeIdx(14:32) = false;
+
+% Pre-allocate arrays for plotting
+plot_x = [];
+plot_y = [];
+plot_err = [];
+
 for i = 1:E.NumForceMaps
+    % Skip indices 14-32 (Day 2)
+    if ~includeIdx(i)
+        continue;
+    end
+
     Compression = (CsInden_mean(i) / CsFlatHeight_mean(i)) * 100;
-    
+
     % Color code based on Compression value
     if Compression < 25
         c = lowColor; % Green for Compression < 25%
-        lowCompIdx = [lowCompIdx i]; 
+        lowCompIdx = [lowCompIdx i];
     elseif Compression >= 25 && Compression <= 35
         c = midColor; % Yellow for Compression between 25-35%
-        midCompIdx = [midCompIdx i]; 
+        midCompIdx = [midCompIdx i];
     else
         c = highColor; % Red for Compression > 35%
         highCompIdx = [highCompIdx i];
     end
-    
+
     % Plot the data point
-  scatter(CsFlatPrctile_data(i), CsEModHertz_mean(i), 60, 'MarkerEdgeColor', edgeColor, 'MarkerFaceColor', c);
-  errorbar(CsFlatPrctile_data, CsEModHertz_mean, CsEModHertz_std, 'o', 'Color', edgeColor);
+    scatter(CsFlatPrctile_data(i), CsEModHertz_mean(i), 60, 'MarkerEdgeColor', edgeColor, 'MarkerFaceColor', c);
+    
+    % Store values for errorbar plot
+    plot_x = [plot_x CsFlatPrctile_data(i)];
+    plot_y = [plot_y CsEModHertz_mean(i)];
+    plot_err = [plot_err CsEModHertz_std(i)];
 end
+
+% Plot error bars only for included points
+errorbar(plot_x, plot_y, plot_err, 'o', 'Color', edgeColor, 'LineStyle', 'none');
 
 ylabel('Indentation modulus [kPa]');
 xlabel('Centrosome max. height [nm]');
@@ -360,7 +470,8 @@ h3 = scatter(nan, nan, 60, 'MarkerEdgeColor', edgeColor, 'MarkerFaceColor', high
 % Create legend
 legend([h1, h2, h3], '< 25% Compression', '25-35% Compression', '> 35% Compression', 'Location', 'best');
 
-% Color-code based on acquisition day
+
+%% Color-code based on acquisition day
 figure('name', 'Acquisition day/cantilever tip dependence'); 
 hold on; box on; 
 set(gca,'FontSize', 16, 'Linewidth', 1.5);
@@ -417,7 +528,7 @@ xlim([0 200]);ylim([0 600])
 
 figure(); hold on
 box on; set(gca,'FontSize', 18, 'Linewidth', 1.5);
-scatter( CsEffectiveRadius_mean, CsEModHertz_mean, 60, c, "filled");
+scatter(CsEffectiveRadius_mean, CsEModHertz_mean, 60, c, "filled");
 errorbar(CsEffectiveRadius_mean, CsEModHertz_mean, CsEModHertz_std, 'o', 'Color', c);
 ylabel('Indentation modulus [kPa]');
 xlabel('Effective radius [nm]');
