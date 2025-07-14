@@ -20,7 +20,7 @@ choice2 = menu(msg2,opts2);
 
 if choice2 == 1
     msg3 = "Which ForceMapAnalysisOptions do you want to apply?";
-    opts3 = ["01" "02" "03" "04" "05"];
+    opts3 = ["01" "02" "03" "04" "05" "06"];
     choice3 = menu(msg3,opts3);
 
     s1 = ' Fit Range';
@@ -55,6 +55,10 @@ if choice1 == 1
 else
     datavalues = [];
 end
+
+all_PredictiveR2 = cell(1, E.NumForceMaps);
+all_R2 = cell(1, E.NumForceMaps);
+all_EmodHertz = cell(1, E.NumForceMaps);
 
 for m = 1:E.NumForceMaps
     if ismember(m, datavalues) 
@@ -118,22 +122,30 @@ for m = 1:E.NumForceMaps
             disp('Mask is closed. No need for user input.');
         end
 
-        % Filter out bad R2 Hertz fits 
-        PredictiveR2Thr = 0.96; 
-        R2Thr = 0.99; 
-        ChannelPredictiveR2 = E.FM{m}.get_channel('Hertz Fit Predictive RSquare');
-        ChannelR2 = E.FM{m}.get_channel('Hertz Fit RSquare');
-        QPredictiveR2 = ChannelPredictiveR2.Image; 
-        QPredictiveR2(QPredictiveR2<PredictiveR2Thr) = 0; 
-        QR2 = ChannelR2.Image; 
-        QR2(QR2<R2Thr) = 0; QFits = QR2.*QPredictiveR2; QFits(QFits>0) = 1; 
+        % Filter out bad R2 Hertz fits
+        PredictiveR2Thr = 0.96;
+        R2Thr = 0.99;
+        ChannelPredictiveR2 = E.FM{m}.get_channel('Hertz Fit Predictive RSquare (02)');
+        ChannelR2 = E.FM{m}.get_channel('Hertz Fit RSquare (02)');
+
+        QPredictiveR2 = ChannelPredictiveR2.Image;
+        QR2 = ChannelR2.Image;
+
+        % Collect non-NaN values (linearized) before thresholding
+        all_PredictiveR2{m} = QPredictiveR2; % QPredictiveR2(~isnan(QPredictiveR2));
+        all_R2{m} = QR2; % QR2(~isnan(QR2));
+
+        QPredictiveR2(QPredictiveR2 < PredictiveR2Thr) = 0;
+        QR2(QR2 < R2Thr) = 0;
+        QFits = QR2 .* QPredictiveR2;
+        QFits(QFits > 0) = 1;
 
         % Get indentation depth average in centrosome region
         ChannelIndenDepth = E.FM{m}.get_channel('Indentation Depth Hertz');
         CsInden = ChannelIndenDepth.Image.*erodedBW2.*QFits;
         figure('name', 'Indentation depth','visible',show_fig); hold on
-        imagesc(CsInden.*1e9); axis image; c = colorbar; 
-        c.Location = 'northoutside'; c.Label.String = 'Indentation Depth [nm]'; 
+        imagesc(CsInden.*1e9); axis image; c = colorbar;
+        c.Location = 'northoutside'; c.Label.String = 'Indentation Depth [nm]';
         set(gca,'FontSize', 16, 'Linewidth', 1.5); axis off
         CsInden(CsInden==0) = NaN; CsIndenAvrg = mean(CsInden(:), 'omitnan'); 
 
@@ -209,8 +221,11 @@ for m = 1:E.NumForceMaps
 
         % Get indentation modulus Hertz data 
         ChannelEModHertz = E.FM{m}.get_channel(strcat('Indentation Modulus Hertz',s2));
+        QEmodHertz = ChannelEModHertz.Image;
+        all_EmodHertz{m} = QEmodHertz; % QEmodHertz(~isnan(QEmodHertz)); 
+        
         % From the centrosome's flat region
-        CsEModHertz = ChannelEModHertz.Image.*AngleCsBW.*QFits;
+        CsEModHertz = QEmodHertz.*AngleCsBW.*QFits;
         CsEModHertz(CsEModHertz==0)=NaN;
         figure('name', 'Indentation modulus Hertz', 'visible', show_fig); hold on
         imagesc(CsEModHertz*1e-3); axis image; c = colorbar; % kPa
@@ -251,3 +266,75 @@ for m = 1:E.NumForceMaps
         close all
     end
 end
+
+figure(); hold on
+
+% Create colormap (one distinct color per ForceMap)
+colors = lines(E.NumForceMaps); 
+
+% Plot each ForceMap's data
+for m = 1:E.NumForceMaps
+    scatter(all_R2{m}, all_EmodHertz{m}, 40, ...
+           'MarkerFaceColor', colors(m,:), ...
+           'MarkerEdgeColor', colors(m,:), ...
+           'MarkerFaceAlpha', 0.6, ...
+           'DisplayName', ['ForceMap ' num2str(m)]);
+end
+
+xlabel('Hertz Fit R² (02)');
+ylabel('Indentation Modulus (MPa)');
+grid on;
+set(gca, 'FontSize', 12, 'LineWidth', 1.2);
+
+% Optional: Add R² threshold line if needed
+% R2Thr = 0.99;  % Your threshold value
+xline(R2Thr, '--r', ['R² Threshold = ' num2str(R2Thr)], ...
+      'LineWidth', 1.5, 'LabelOrientation', 'horizontal');
+ylim([0 1.5e7])
+xlim([0.7 1])
+
+figure(); hold on
+
+for m = 1:E.NumForceMaps
+    scatter(all_PredictiveR2{m}, all_EmodHertz{m}, 40, ...
+           'MarkerFaceColor', colors(m,:), ...
+           'MarkerEdgeColor', colors(m,:), ...
+           'MarkerFaceAlpha', 0.6, ...
+           'DisplayName', ['ForceMap ' num2str(m)]);
+end
+
+xlabel('Hertz Fit Predictive R² (02)'); 
+ylabel('Indentation Modulus (MPa)'); 
+grid on;
+set(gca, 'FontSize', 12, 'LineWidth', 1.2);
+
+% Add Predictive R² threshold line 
+% PredictiveR2Thr = 0.96;  
+xline(PredictiveR2Thr, '--r', ['Predictive R² Threshold = ' num2str(PredictiveR2Thr)], ...
+      'LineWidth', 1.5, 'LabelOrientation', 'horizontal');
+
+ylim([0 1.5e7]);  % Modulus range
+xlim([0.7 1]);    % Predictive R² range
+
+figure(); hold on
+
+for m = 1:E.NumForceMaps
+    scatter(all_R2{m}, all_PredictiveR2{m}, 40, ...
+           'MarkerFaceColor', colors(m,:), ...
+           'MarkerEdgeColor', colors(m,:), ...
+           'MarkerFaceAlpha', 0.6, ...
+           'DisplayName', ['ForceMap ' num2str(m)]);
+end
+
+xlabel('Hertz Fit R² (02)');
+ylabel('Hertz Fit Predictive R² (02)'); 
+grid on;
+set(gca, 'FontSize', 12, 'LineWidth', 1.2);
+ylim([0.5 1]);  
+xlim([0.5 1]);   
+
+% Add Predictive R² threshold line 
+yline(PredictiveR2Thr, '--r', ['Predictive R² Threshold = ' num2str(PredictiveR2Thr)], ...
+      'LineWidth', 1.5, 'LabelOrientation', 'horizontal');
+xline(R2Thr, '--r', ['R² Threshold = ' num2str(R2Thr)], ...
+      'LineWidth', 1.5, 'LabelOrientation', 'horizontal');

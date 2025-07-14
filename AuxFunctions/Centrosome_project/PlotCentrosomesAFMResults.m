@@ -13,7 +13,7 @@ choice2 = menu(msg2,opts2);
 
 if choice2 == 1
     msg3 = "Which ForceMapAnalysisOptions do you want to apply?";
-    opts3 = ["01" "02" "03" "04" "05"];
+    opts3 = ["01" "02" "03" "04" "05" "06"];
     choice3 = menu(msg3,opts3);
     s2 = ' ('+opts3(choice3)+')';
 else
@@ -96,13 +96,15 @@ if isempty(choice3)
 elseif choice3 == 1
     c =  [152/255 78/255 163/255]; % Thin film (not bonded)
 elseif choice3 == 2
-    c = [55/255 126/255 184/255]; % Topography
+    c = [55/255 126/255 184/255]; % Topography 0.25
 elseif choice3 == 3
     c = [77/255 175/255 74/255]; % Thin film (not bonded) + topography
 elseif choice3 == 4
     c = [228/255 26/255 28/255]; % Thin film (bonded)
 elseif choice3 == 5
     c = [153/255 153/255 153/255]; % Thin film (bonded) + topography
+elseif choice3 == 6
+    c = [55/255 126/255 184/255]; % Topography 0.1 
 end
 
 figure('name', 'Centrosome volume dependence'); hold on
@@ -394,6 +396,7 @@ plot(EquivalentRadii_valid, fit_ci, 'r--', 'LineWidth', 1);  % Plot confidence i
 legend('Data points', ['Linear fit: y = ' num2str(slope, '%.2f') 'x + ' num2str(intercept, '%.2f')], ['R^2 = ', num2str(R_squared, '%.2f')]); legend boxoff
 hold off
 
+%% Compression
 figure('name', 'Compression Indentation modulus dependence'); hold on
 box on; set(gca,'FontSize', 16, 'Linewidth', 1.5);
 for i = 1:E.NumForceMaps
@@ -408,7 +411,7 @@ xlabel('Centrosome equivalent radius [nm]');
 ylabel('Compression [%]')
 xlim([0, 1500]); 
 
-%% Color-code based on compression - IMPROVED VERSION
+%% Color-code based on compression
 figure('name', 'Compression vs. height'); 
 hold on; 
 box on; 
