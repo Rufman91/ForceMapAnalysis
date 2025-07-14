@@ -49,8 +49,8 @@ for i = 1:E.NumForceMaps
         %         CsFlatMax_data(i) = CsFlatMax*1e9;
         CsInden_mean(i) = mean(CsFlatInden(:),'omitnan').*1e9;
         CsInden_std(i) = std(CsFlatInden(:),'omitnan').*1e9;
-        CsEffectiveRadius_mean(i) = mean(CsEffectiveRadius(:),'omitnan').*1e9;
-        CsEffectiveRadius_std(i) = std(CsEffectiveRadius(:),'omitnan').*1e9;
+%         CsEffectiveRadius_mean(i) = mean(CsEffectiveRadius(:),'omitnan').*1e9;
+%         CsEffectiveRadius_std(i) = std(CsEffectiveRadius(:),'omitnan').*1e9;
         %         CsRadiusXY_data(i) = CsRadiusXY;
         %         CsAspectRatio(i) = mean(CsFlatHeight(:),'omitnan')/(CsRadiusXY*2);
         %         CsFlatArea_data(i) = CsFlatArea;
@@ -73,8 +73,8 @@ CsFlatHeight_mean(CsFlatHeight_mean == 0) = NaN;
 CsFlatPrctile_data(CsFlatPrctile_data == 0) = NaN; 
 CsInden_mean(CsInden_mean == 0) = NaN; 
 CsInden_std(CsInden_std == 0) = NaN; 
-CsEffectiveRadius_mean(CsEffectiveRadius_mean == 0) = NaN; 
-CsEffectiveRadius_std(CsEffectiveRadius_std == 0) = NaN; 
+% CsEffectiveRadius_mean(CsEffectiveRadius_mean == 0) = NaN; 
+% CsEffectiveRadius_std(CsEffectiveRadius_std == 0) = NaN; 
 CsVolume_Otsu_data(CsVolume_Otsu_data == 0) = NaN;
 Volumes(Volumes == 0) = NaN; 
 
@@ -393,39 +393,41 @@ plot(EquivalentRadii_valid, fit_ci, 'r--', 'LineWidth', 1);  % Plot confidence i
 % Display correlation, R-squared, and linear equation in the legend
 legend('Data points', ['Linear fit: y = ' num2str(slope, '%.2f') 'x + ' num2str(intercept, '%.2f')], ['R^2 = ', num2str(R_squared, '%.2f')]); legend boxoff
 hold off
- 
+
 figure('name', 'Compression Indentation modulus dependence'); hold on
 box on; set(gca,'FontSize', 16, 'Linewidth', 1.5);
 for i = 1:E.NumForceMaps
-        Compression = (CsInden_mean(i)/CsFlatHeight_mean(i))*100; 
-        scatter(CsFlatPrctile_data(i), Compression, 60, c, "filled");  
+    % Skip indices 14-32 (Day 2)
+    if i >= 14 && i <= 32
+        continue;
+    end
+    Compression = (CsInden_mean(i)/CsFlatHeight_mean(i))*100;
+    scatter(EquivalentRadii_mnl(i), Compression, 60, c, "filled");
 end
-xlabel('Centrosome maximum height [nm]');
+xlabel('Centrosome equivalent radius [nm]');
 ylabel('Compression [%]')
-xlim([0, 1100]); ylim([0 70])
+xlim([0, 1500]); 
 
-
-%% Color-code based on compression 
+%% Color-code based on compression - IMPROVED VERSION
 figure('name', 'Compression vs. height'); 
-hold on; box on; 
-set(gca,'FontSize', 16, 'Linewidth', 1.5);
+hold on; 
+box on; 
+set(gca,'FontSize', 18, 'Linewidth', 1.5); % Increased font size to match previous plot
 
-lowCompIdx = [];
-midCompIdx = [];
-highCompIdx = [];
-edgeColor = [153/255 153/255 153/255];
-lowColor = [145/255 207/255 96/255];
-midColor = [255/255 255/255 191/255];
-highColor = [252/255 141/255 89/255];
+% Define colors (using more vibrant versions of your colors)
+lowColor  = [0.18, 0.55, 0.34]; 
+midColor  = [0.93, 0.69, 0.13]; 
+highColor = [0.80, 0.25, 0.15]; 
 
 % Create logical index of points to include (not between 14-32)
 includeIdx = true(1, E.NumForceMaps);
 includeIdx(14:32) = false;
 
-% Pre-allocate arrays for plotting
+% Initialize arrays for plotting
 plot_x = [];
 plot_y = [];
 plot_err = [];
+plot_colors = [];
 
 for i = 1:E.NumForceMaps
     % Skip indices 14-32 (Day 2)
@@ -437,39 +439,41 @@ for i = 1:E.NumForceMaps
 
     % Color code based on Compression value
     if Compression < 25
-        c = lowColor; % Green for Compression < 25%
-        lowCompIdx = [lowCompIdx i];
+        c = lowColor;
     elseif Compression >= 25 && Compression <= 35
-        c = midColor; % Yellow for Compression between 25-35%
-        midCompIdx = [midCompIdx i];
+        c = midColor;
     else
-        c = highColor; % Red for Compression > 35%
-        highCompIdx = [highCompIdx i];
+        c = highColor;
     end
-
-    % Plot the data point
-    scatter(CsFlatPrctile_data(i), CsEModHertz_mean(i), 60, 'MarkerEdgeColor', edgeColor, 'MarkerFaceColor', c);
     
-    % Store values for errorbar plot
-    plot_x = [plot_x CsFlatPrctile_data(i)];
+    % Store values for plotting
+    plot_x = [plot_x EquivalentRadii_mnl(i)];
     plot_y = [plot_y CsEModHertz_mean(i)];
     plot_err = [plot_err CsEModHertz_std(i)];
+    plot_colors = [plot_colors; c];
 end
 
-% Plot error bars only for included points
-errorbar(plot_x, plot_y, plot_err, 'o', 'Color', edgeColor, 'LineStyle', 'none');
+% Create scatter plot with filled markers (no edge)
+scatter(plot_x, plot_y, 60, plot_colors, "filled");
+
+% Add error bars with matching colors (no marker)
+for i = 1:length(plot_x)
+    errorbar(plot_x(i), plot_y(i), plot_err(i), 'o', ...
+             'Color', plot_colors(i,:), 'MarkerFaceColor', plot_colors(i,:));
+end
 
 ylabel('Indentation modulus [kPa]');
-xlabel('Centrosome max. height [nm]');
-ylim([-50 350]); xlim([0, 1100])
+xlabel('Centrosome equivalent radius [nm]'); % Changed to match previous plot
+ylim([0 350]); xlim([0 1500]); % Consistent limits with previous plot
 
-% Add dummy scatter plots for legend
-h1 = scatter(nan, nan, 60, 'MarkerEdgeColor', edgeColor, 'MarkerFaceColor', lowColor);
-h2 = scatter(nan, nan, 60, 'MarkerEdgeColor', edgeColor, 'MarkerFaceColor', midColor);
-h3 = scatter(nan, nan, 60, 'MarkerEdgeColor', edgeColor, 'MarkerFaceColor', highColor);
-% Create legend
-legend([h1, h2, h3], '< 25% Compression', '25-35% Compression', '> 35% Compression', 'Location', 'best');
-
+% Create legend with custom markers
+h = zeros(3,1);
+h(1) = plot(NaN,NaN,'o','MarkerEdgeColor',lowColor,'MarkerFaceColor',lowColor,'MarkerSize',8);
+h(2) = plot(NaN,NaN,'o','MarkerEdgeColor',midColor,'MarkerFaceColor',midColor,'MarkerSize',8);
+h(3) = plot(NaN,NaN,'o','MarkerEdgeColor',highColor,'MarkerFaceColor',highColor,'MarkerSize',8);
+legend(h, {'< 25% Compression', '25-35% Compression', '> 35% Compression'}, ...
+       'Location', 'best', 'FontSize', 16);
+legend box off;
 
 %% Color-code based on acquisition day
 figure('name', 'Acquisition day/cantilever tip dependence'); 
