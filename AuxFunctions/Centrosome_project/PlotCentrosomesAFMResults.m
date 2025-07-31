@@ -13,7 +13,7 @@ choice2 = menu(msg2,opts2);
 
 if choice2 == 1
     msg3 = "Which ForceMapAnalysisOptions do you want to apply?";
-    opts3 = ["01" "02" "03" "04" "05" "06"];
+    opts3 = ["01" "02" "03" "04" "05" "06" "07"];
     choice3 = menu(msg3,opts3);
     s2 = ' ('+opts3(choice3)+')';
 else
@@ -41,42 +41,58 @@ for i = 1:E.NumForceMaps
     else
         cd(E.ForceMapFolders{i,1})
         load(strcat('Processed',s2,'.mat'))
-        CsEModHertz_data{i} = CsEModHertz(:);
-        CsEModHertz_mean(i) = mean(CsEModHertz(:), 'omitnan').*1e-3;
-        CsEModHertz_std(i) = std(CsEModHertz(:), 'omitnan').*1e-3;
+
+        % Get all data points and filter out zeros and NaNs
+        all_data = CsEModHertz(:);
+        valid_data = all_data(all_data ~= 0 & ~isnan(all_data)); % Exclude zeros and NaNs
+
+        % Store filtered data
+        CsEModHertz_data{i} = valid_data;
+
+        % Calculate mean and std only if there's valid data
+        if ~isempty(valid_data)
+            CsEModHertz_mean(i) = mean(valid_data).*1e-3;
+            CsEModHertz_std(i) = std(valid_data).*1e-3;
+        else
+            CsEModHertz_mean(i) = NaN;
+            CsEModHertz_std(i) = NaN;
+        end
+
         CsFlatHeight_mean(i) = mean(CsFlatHeight(:),'omitnan').*1e9;
         CsFlatPrctile_data(i) = CsFlatPrctile*1e9;
-        %         CsFlatMax_data(i) = CsFlatMax*1e9;
+        CsFlatMax_data(i) = CsFlatMax*1e9;
+        FlatHeight_data{i} = CsFlatHeight*1e9;
         CsInden_mean(i) = mean(CsFlatInden(:),'omitnan').*1e9;
         CsInden_std(i) = std(CsFlatInden(:),'omitnan').*1e9;
-%         CsEffectiveRadius_mean(i) = mean(CsEffectiveRadius(:),'omitnan').*1e9;
-%         CsEffectiveRadius_std(i) = std(CsEffectiveRadius(:),'omitnan').*1e9;
+        CsEffectiveRadius_mean(i) = mean(CsEffectiveRadius(:),'omitnan').*1e9;
+        CsEffectiveRadius_std(i) = std(CsEffectiveRadius(:),'omitnan').*1e9;
+
         %         CsRadiusXY_data(i) = CsRadiusXY;
         %         CsAspectRatio(i) = mean(CsFlatHeight(:),'omitnan')/(CsRadiusXY*2);
         %         CsFlatArea_data(i) = CsFlatArea;
         CsVolume_Otsu_data(i) = CsVolume*1e+18; % From Otsu's segmentation
         %         CsVolumeSphereCap_data(i) = CsVolumeSphereCap*1e+18;
+        pxSize_data(i) = pxSize.*1e9; 
 
         % Calculate volume using manual segmentation
         Height{i} = E.FM{i}.get_segment_data_from_channel('Contact Height Smoothed', 'MatchString', 'Seg-02'); % Total centrosome height
         positiveHeight = max(Height{i}, 0); % Treat negative heights as zero
         Volume = sum(positiveHeight) * (E.FM{i}.ScanSizeX/E.FM{i}.NumPixelsX * E.FM{i}.ScanSizeY/E.FM{i}.NumPixelsY); % Total centrosome volume from Seg-02
         Volumes(i) = Volume*1e+18;
-        %         % Equivalent radius of a sphere of the same volume
-        %         EquivalentRadii_mnl(i) = ((3 * Volumes(i) / (4 * pi))^(1/3))*1000;
     end
 end
 
 CsEModHertz_mean(CsEModHertz_mean == 0) = NaN;
 CsEModHertz_std(CsEModHertz_std == 0) = NaN;
 CsFlatHeight_mean(CsFlatHeight_mean == 0) = NaN;
-CsFlatPrctile_data(CsFlatPrctile_data == 0) = NaN; 
-CsInden_mean(CsInden_mean == 0) = NaN; 
-CsInden_std(CsInden_std == 0) = NaN; 
-% CsEffectiveRadius_mean(CsEffectiveRadius_mean == 0) = NaN; 
-% CsEffectiveRadius_std(CsEffectiveRadius_std == 0) = NaN; 
+CsFlatPrctile_data(CsFlatPrctile_data == 0) = NaN;
+CsInden_mean(CsInden_mean == 0) = NaN;
+CsInden_std(CsInden_std == 0) = NaN;
+% CsEffectiveRadius_mean(CsEffectiveRadius_mean == 0) = NaN;
+% CsEffectiveRadius_std(CsEffectiveRadius_std == 0) = NaN;
 CsVolume_Otsu_data(CsVolume_Otsu_data == 0) = NaN;
 Volumes(Volumes == 0) = NaN; 
+pxSize_data(pxSize_data == 0) = NaN; 
 
 % Equivalent radius of a sphere of the same volume
 EquivalentRadii_mnl = (4.*Volumes./(3*pi)).^(1/3)*1000; 
@@ -107,13 +123,13 @@ elseif choice3 == 6
     c = [55/255 126/255 184/255]; % Topography 0.1 
 end
 
-figure('name', 'Centrosome volume dependence'); hold on
-box on; set(gca,'FontSize', 18, 'Linewidth', 1.5);
-scatter(EquivalentRadii_mnl, CsEModHertz_mean, 60, c, "filled");
-errorbar(EquivalentRadii_mnl, CsEModHertz_mean, CsEModHertz_std, 'o', 'Color', c);
-ylabel('Indentation modulus [kPa]');
-xlabel('Centrosome equivalent radius [nm]');
-xlim([0 1500]); ylim([0 400])
+% figure('name', 'Centrosome volume dependence'); hold on
+% box on; set(gca,'FontSize', 18, 'Linewidth', 1.5);
+% scatter(EquivalentRadii_mnl, CsEModHertz_mean, 60, c, "filled");
+% errorbar(EquivalentRadii_mnl, CsEModHertz_mean, CsEModHertz_std, 'o', 'Color', c);
+% ylabel('Indentation modulus [kPa]');
+% xlabel('Centrosome equivalent radius [nm]');
+% xlim([0 1500]); ylim([0 400])
 
 %%%% Color-code based on centrosome radius 
 figure('Name', 'Centrosome volume dependence'); 
@@ -164,12 +180,19 @@ scatter(filtered_radii, filtered_moduli, 60, filtered_colors, "filled");
 
 % Add error bars with matching colors
 for i = 1:length(filtered_radii)
+    current_std = filtered_stds(i);
+    current_mean = filtered_moduli(i);
+    
+    % Calculate upper and lower bounds, ensuring lower bound doesn't go below zero
+    upper_error = current_std;
+    lower_error = min(current_std, current_mean); % Won't go below zero
+    
     if filtered_radii(i) > 500
-        errorbar(filtered_radii(i), filtered_moduli(i), filtered_stds(i), ...
-                'o', 'Color', orange, 'MarkerFaceColor', orange);
+        errorbar(filtered_radii(i), current_mean, lower_error, upper_error, ...
+                'o', 'Color', orange, 'MarkerFaceColor', orange, 'CapSize', 10, 'LineWidth', 1.5);
     else
-        errorbar(filtered_radii(i), filtered_moduli(i), filtered_stds(i), ...
-                'o', 'Color', blue, 'MarkerFaceColor', blue);
+        errorbar(filtered_radii(i), current_mean, lower_error, upper_error, ...
+                'o', 'Color', blue, 'MarkerFaceColor', blue, 'CapSize', 10, 'LineWidth', 1.5);
     end
 end
 
@@ -177,7 +200,7 @@ end
 ylabel('Indentation modulus [kPa]');
 xlabel('Centrosome equivalent radius [nm]');
 xlim([0 1500]); 
-ylim([0 350]);
+% ylim([0 350]);
 
 % Add legend
 h = zeros(2,1);
@@ -462,7 +485,7 @@ scatter(plot_x, plot_y, 60, plot_colors, "filled");
 % Add error bars with matching colors (no marker)
 for i = 1:length(plot_x)
     errorbar(plot_x(i), plot_y(i), plot_err(i), 'o', ...
-             'Color', plot_colors(i,:), 'MarkerFaceColor', plot_colors(i,:));
+             'Color', plot_colors(i,:), 'MarkerFaceColor', plot_colors(i,:), 'CapSize', 10, 'LineWidth', 1.5);
 end
 
 ylabel('Indentation modulus [kPa]');
@@ -477,6 +500,72 @@ h(3) = plot(NaN,NaN,'o','MarkerEdgeColor',highColor,'MarkerFaceColor',highColor,
 legend(h, {'< 25% Compression', '25-35% Compression', '> 35% Compression'}, ...
        'Location', 'best', 'FontSize', 16);
 legend box off;
+
+figure('Name', 'Centrosome volume dependence (Color by Compression)'); 
+hold on;
+box on; 
+set(gca,'FontSize', 18, 'Linewidth', 1.5);
+
+% Preallocate arrays
+filtered_radii = [];
+filtered_moduli = [];
+filtered_stds = [];
+filtered_compression = [];
+
+% Set your desired compression range
+compression_min = 15;
+compression_max = 45;
+
+% Collect filtered data and compression values
+for i = 1:length(EquivalentRadii_mnl)
+    % Skip indices 14-32 (Day 2)
+    if i >= 14 && i <= 32
+        continue;
+    end
+    
+    current_compression = (CsInden_mean(i)/CsFlatHeight_mean(i))*100;
+    
+    % Store values
+    filtered_radii(end+1) = EquivalentRadii_mnl(i);
+    filtered_moduli(end+1) = CsEModHertz_mean(i);
+    filtered_stds(end+1) = CsEModHertz_std(i);
+    filtered_compression(end+1) = current_compression;
+end
+
+% Create colormap
+cmap = colormap('parula'); % or 'jet', 'viridis', etc.
+c = colorbar;
+ylabel(c, 'Compression (%)');
+
+% Normalize compression to [0,1] within your specified range
+norm_compression = (filtered_compression - compression_min) / (compression_max - compression_min);
+norm_compression = max(0, min(1, norm_compression)); % Clamp to [0,1]
+
+% Convert to colormap indices
+color_indices = round(norm_compression * (size(cmap,1)-1)) + 1;
+point_colors = cmap(color_indices,:);
+
+% Create scatter plot
+scatter(filtered_radii, filtered_moduli, 60, filtered_compression, 'filled');
+caxis([compression_min compression_max]); % Set color axis limits
+
+% Add error bars with matching colors
+for i = 1:length(filtered_radii)
+    current_std = filtered_stds(i);
+    current_mean = filtered_moduli(i);
+    
+    upper_error = current_std;
+    lower_error = min(current_std, current_mean);
+    
+    errorbar(filtered_radii(i), current_mean, lower_error, upper_error, ...
+            'o', 'Color', point_colors(i,:), 'MarkerFaceColor', point_colors(i,:), ...
+            'CapSize', 10, 'LineWidth', 1.5);
+end
+
+% Labels and limits
+ylabel('Indentation modulus [kPa]');
+xlabel('Centrosome equivalent radius [nm]');
+xlim([0 1500]);
 
 %% Color-code based on acquisition day
 figure('name', 'Acquisition day/cantilever tip dependence'); 

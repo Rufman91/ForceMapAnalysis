@@ -1,7 +1,7 @@
 % This script plots two AFM images with different pixel dimensions 
 % at their true physical scale with consistent 1 micron scale bars
 
-m1 = 13; % 44
+m1 = 44; % 44
 m2 = 43; % 43 47
 show_fig = 'on'; 
 
