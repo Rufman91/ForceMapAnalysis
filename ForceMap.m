@@ -5011,8 +5011,12 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             close all
         end
 
-        function fc_fine_figure_publication(obj,XMin,XMax,YMin,YMax,Fm,Fc,Linker,CArea)
-           % function fc_fine_figure(obj,XMin,XMax,YMin,YMax,ii)
+        function fc_fine_figure_publication(obj,XMin,XMax,YMin,YMax,Fm,Fc,Linker,CArea,Axis)
+           % WARNING: This function works perfectly for all Trials with TC
+           % attached if the analysis has been completed. For all other
+           % Trials (non-functionalized, amino, linker) two x two if
+           % conditions (starting with nnz(...))
+           % have to be commented
 
             if nargin < 2
                 XMin= -inf;
@@ -5049,8 +5053,9 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             CS8=[116 173 209]./255; % Steel blueish
             CS9=[69 117 180]./255; % Distant blueish
             CS10=[49 54 149]./255; % Pale ultramarineish
-            Res=[1 1 2560 1440]; % Define the figure resolution
-            FontName='Helvetica';
+          %  Res=[1 1 2560 1440]; % Define the figure resolution
+           % FontName='Helvetica';
+            FontName='Arial';
             FontSize=46;
             % Parse unit scale function
             [Xmultiplier,Xunit,~] = AFMImage.parse_unit_scale(1e+9,'nm',1);
@@ -5061,7 +5066,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             HoldingTimeConvert=num2str(round(obj.HoldingTime,2));
             FcNumConvert=num2str(Fc);
             % Classification criteria
-            figname=strcat(obj.Date,{'_'},obj.Time,{'_'},obj.ID,{'_'},'Fc',FcNumConvert,{'_'},obj.Substrate,{'_'},obj.EnvCond,{'_'},obj.Linker,{'_'},obj.Chipbox,{'_'},obj.ChipCant,{'_'},ExtendVelocityConvert,{'_'},RetractVelocityConvert,{'_'},HoldingTimeConvert);
+            figname=strcat(obj.Date,{'_'},obj.Time,{'_'},obj.ID,{'_'},'Fc',FcNumConvert,{'_'},obj.Substrate,{'_'},obj.EnvCond,{'_'},obj.Linker,{'_'},obj.Chipbox,{'_'},obj.ChipCant,{'_'},ExtendVelocityConvert,{'_'},RetractVelocityConvert,{'_'},HoldingTimeConvert,{'_'});
             figname=char(figname);
             %% Allocate data       
             xApp=(obj.THApp{Fc}-obj.CP_HardSurface(Fc))/-Xmultiplier; % Retraction x-data (m): Vertical tip height data corrected by the determined contact point using the hard surface method
@@ -5078,7 +5083,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             end
             LengthLong1=378;
             LengthLong2=522;
-            LengthShort1=333;
+            LengthShort1=308;
             LengthShort2=463;
             if strcmpi(Linker,'Long')
             xPolygon1=[XMin XMin LengthLong1 LengthLong1];
@@ -5096,13 +5101,14 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             %% Figure
             % h_fig=figure(ii);
             h_fig=figure(1);
+   %         set(h_fig,'Renderer','Painters');
             set(h_fig,'DefaultAxesFontName',FontName);
             set(h_fig,'DefaultTextFontName',FontName);
             set(h_fig,'DefaultAxesFontSize',FontSize);
             set(h_fig,'DefaultTextFontSize',FontSize);
             h_fig.Color='white'; % changes the background color of the figure
             h_fig.Units='normalized'; % Defines the units
-            h_fig.OuterPosition=[0 0 2 2];% changes the size of the to the whole screen
+            h_fig.OuterPosition=[0 0 2 2];% changes the size of the figure to the whole screen
             h_fig.Units='pixel'; % Defines the units
     %        h_fig.OuterPosition=Res;
             h_fig.PaperType='a5';
@@ -5110,7 +5116,7 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             h_fig.Name=figname;
             % Plot
             hold on
-             grid on
+             grid off
              if nnz(obj.PullingLengthIdx(Fc)) && strcmpi(CArea,'yes')
              area(xRet(1:obj.PullingLengthIdx(Fc)),yRetLim(1:obj.PullingLengthIdx(Fc)),'FaceColor',CS5)
              else 
@@ -5122,9 +5128,9 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             plot(xApp,yApp,'Color',RGB1,'LineWidth',6);
             plot(xRet,yRet,'Color',RGB2,'LineWidth',6);
             if strcmpi(Linker,'Short') || strcmpi(Linker,'Long')
-              Polygon1=plot(PolygonShape1);
-              Polygon1.FaceColor=HEXfdae61;
-              Polygon1.EdgeColor='none';       
+            %  Polygon1=plot(PolygonShape1);
+            %  Polygon1.FaceColor=HEXfdae61;
+            %  Polygon1.EdgeColor='none';       
                Polygon2=plot(PolygonShape2);
                Polygon2.FaceColor=HEX74add1;
                Polygon2.EdgeColor='none';  
@@ -5136,19 +5142,20 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             % le.EdgeColor='w';
             %le.Box = 'off';
             %%% Axes
-            ax = gca; % current axes                
-            %ax.Visible='off';
-        %    ax.TickLabelInterpreter='latex';
-        %    ax.FontSize = 46;
+            ax = gca; % current axes  
+            % ax.XAxisLocation='origin'; % x-axis goes through 0
+            %    ax.TickLabelInterpreter='latex';
+        %    ax.FontSize = 7;
             ax.LineWidth = 5;
             % ax.XTick=0:100:400;
             % ax.XTickLabel=[];
-            %    ax.YTick=-0.3:0.1:0.2;
+            % ax.YTick=-0.6:0.1:0.05;
             % ax.YTickLabel=[];
             ax.XLabel.String = 'Tip-surface separation distance (nm)';
-        %    ax.XLabel.Interpreter='latex';
-         %   ax.XLabel.FontSize = 46;
-       %     ax.XLabel.FontName = 'Helvetica';
+            ax.XLabel.Interpreter='tex';
+        %    ax.XLabel.Interpreter='none';
+        %    ax.XLabel.FontSize = 7;
+   %         ax.XLabel.FontName = 'Arial';
             ax.YLabel.String = 'Force (nN)';
        %     ax.YLabel.Interpreter='latex';
           %  ax.YLabel.FontSize = 46;
@@ -5156,8 +5163,18 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
             ax.YLimMode='manual';
             ax.XLim = [XMin XMax];
             ax.YLim = [YMin YMax];
-            ax.XTick=0:100:900;
+         %  ax.TickDir='both';
+         %   ax.XTick=0:100:900;
+            ax.XTick=0:10:100;
+
+            
           %  ax.Position=[0 0 1 1]; % Sets the Position to the same values as OuterPosition
+            if strcmpi(Axis,'No')
+            ax.Visible='off';
+            elseif strcmpi(Axis,'Yes')
+        
+            end 
+
             % Title
 %             ax.Title.String=sprintf('Force map %d Force-distance curve %d',Fm,Fc);
 %             ax.Subtitle.String=strcat(obj.Date,{' '},obj.Time,{' '},obj.ID);
@@ -5168,12 +5185,17 @@ classdef ForceMap < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
 %             ti.Position=[0.5,0.95]; % Position the subplot title within the subplot
             %% Save figures
             %%% Define the name for the figure title
-            partname=sprintf('-ForceCurve%d',Fc);
-            % fullname=sprintf('%s%s',figname,partname);
-            fullname=sprintf('%s%s',figname,partname);
+            if strcmpi(Axis,'No')
+            partname='AxisNo';
+            elseif strcmpi(Axis,'Yes')
+            partname='AxisYes';
+            end 
+            fullname=sprintf('%s%s%s',figname,partname);
             %%% Save the current figure in the current folder
-            print(gcf,fullname,'-dpng');
-            print(gcf,fullname,'-depsc');
+            print(gcf,'-r600',fullname,'-dpng');
+   %         print(gcf,'-vector','-dsvg','-r600',fullname);
+            print(gcf,'-vector','-dsvg',fullname);
+            exportgraphics(gcf,[fullname,'.pdf'],'ContentType','vector');
             % House keeping
             close all
         end

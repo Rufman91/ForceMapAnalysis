@@ -1,3 +1,4 @@
+
 classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
     
     properties
@@ -4665,52 +4666,34 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             if nargin<2
                 ResultsRow=1;
             end
-            % Define color bar
-            % For Row 6, from yLim(min) to
-            % yLim(min)+(yLim(max)-yLim(min))*0.01
+            % Define variables
+            yLimMaxFactor=0.22;
+            yLimMinFactor=0.25;
+            yAxisMinFactor=0.02;
+            yAxisMaxFactor=0.25;
+            NumColor=6;
+            NumLightness=6;
+            Res=[1 1 2560 1250]; % Define the figure resolution
+            MarkerStyle={'d' 's' 'v' 'o'};
+            MarkerSize=10;
+            BaseFontSize=32;
+            LabelScaling=1.2;
+            LegendScaling=1;
+            LineWidth=1.5;
+            % Define color bar positions
             xCBar1=[0 2 2 0];
             xCBar2=[2 21 21 2];
             xCBar3=[21 121 121 21];
             xCBar4=[121 222 222 121];
-            y1CBar1=[-1.979322472 -1.979322472 -1.954352622 -1.954352622]; % [Ymin Ymax] [-1.991807398	0.505177615]
-            y1CBar2=[-1.979322472 -1.979322472 -1.954352622 -1.954352622];
-            y1CBar3=[-1.979322472 -1.979322472 -1.954352622 -1.954352622];
-            y1CBar4=[-1.979322472 -1.979322472 -1.954352622 -1.954352622];
-            y2CBar1=[-0.039028962 -0.039028962 -0.023139958 -0.023139958]; % [Ymin Ymax] [-0.046973464	1.541926985]
-            y2CBar2=[-0.039028962 -0.039028962 -0.023139958 -0.023139958];
-            y2CBar3=[-0.039028962 -0.039028962 -0.023139958 -0.023139958];
-            y2CBar4=[-0.039028962 -0.039028962 -0.023139958 -0.023139958];
-            y3CBar1=[-0.062989563 -0.062989563 -0.047588172 -0.047588172]; % [Ymin Ymax] [-0.070690259	1.469448862]
-            y3CBar2=[-0.062989563 -0.062989563 -0.047588172 -0.047588172];
-            y3CBar3=[-0.062989563 -0.062989563 -0.047588172 -0.047588172];
-            y3CBar4=[-0.062989563 -0.062989563 -0.047588172 -0.047588172];
-            y4CBar1=[-17.38622888 -17.38622888 -17.20313493 -17.20313493]; % [Ymin Ymax] [-17.47777586	0.831619188]
-            y4CBar2=[-17.38622888 -17.38622888 -17.20313493 -17.20313493];
-            y4CBar3=[-17.38622888 -17.38622888 -17.20313493 -17.20313493];
-            y4CBar4=[-17.38622888 -17.38622888 -17.20313493 -17.20313493];
-            y5CBar1=[-9.124934364 -9.124934364 -6.665029153 -6.665029153]; % [Ymin Ymax] [-10.35488697	235.6356341]
-            y5CBar2=[-9.124934364 -9.124934364 -6.665029153 -6.665029153];
-            y5CBar3=[-9.124934364 -9.124934364 -6.665029153 -6.665029153];
-            y5CBar4=[-9.124934364 -9.124934364 -6.665029153 -6.665029153];
-            y6CBar1=[12.83501146 12.83501146 22.51149482 22.51149482]; % [Ymin Ymax] [7.996769787	975.645105]
-            y6CBar2=[12.83501146 12.83501146 22.51149482 22.51149482];
-            y6CBar3=[12.83501146 12.83501146 22.51149482 22.51149482];
-            y6CBar4=[12.83501146 12.83501146 22.51149482 22.51149482];
-            y7CBar1=[-44.07197408 -44.07197408 -33.17775238 -33.17775238]; % [Ymin Ymax] [-49.51908493	1039.903085]
-            y7CBar2=[-44.07197408 -44.07197408 -33.17775238 -33.17775238];
-            y7CBar3=[-44.07197408 -44.07197408 -33.17775238 -33.17775238];
-            y7CBar4=[-44.07197408 -44.07197408 -33.17775238 -33.17775238];
-            % Color maps
+            % Color and color maps
+            Ochreish=[253 174 97]./255;
+            SteelBlue=[116 173 209]./255;
             ColorBrewerMap1=[[253 174 97]./255; % Ochreish
                 [116 173 209]./255]; % Steel blueish
             ColorBarMap=[[54 163 0]./255; % Dark green HEX 8DB600
                 [206 22 32]./255; % Fire Engine Red HEX CE162
                 [0 24 204]./255; % Blue HEX 8DB600
                 [135 0 224]./255]; % Violet HEX 8F00FF
-            ColorMarkerMap=[[255 194 191]./255; % Light rose
-                [255 194 191]./255;
-                [209 217 161]./255;
-                [209 217 161]./255]; % Light green
             % Change into the Folder of Interest
             cd(obj.ExperimentFolder) % Move into the folder
             % Create folders for saving the produced figures
@@ -4725,8 +4708,8 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 LimitLengthRet2=[378 522];
                 LimitLengthApp=[50 120];
             elseif strcmpi(Linker,'Short')
-                LimitLengthRet1=[0 333];
-                LimitLengthRet2=[333 463];
+                LimitLengthRet1=[0 308];
+                LimitLengthRet2=[308 463];
                 LimitLengthApp=[50 120];
             end
             % xArg
@@ -4739,7 +4722,8 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 BoxplotWidth=0.8;
                 BoxplotDodge=2;
             elseif strcmpi(xArg,'Index')
-                LegendxAxis='Chronological force set index';
+               % LegendxAxis='Chronological force set index';
+                LegendxAxis='Number of cycles (x100)';
                 xData=obj.SMFSResults{ResultsRow}.Concatenate.FMNum;
                 xDataMin=min(xData);
                 xDataMax=max(xData);
@@ -4747,11 +4731,10 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 %xAxisCorr=(xDataMax-xDataMin)*0.02; % For BoxplotWidth=2 and BoxplotWidth=0.02
                 % BoxplotWidth=18;
                 % BoxplotWidth=10;
-                 BoxplotWidth=8;
-                % BoxplotWidth=0.02;
+                BoxplotWidth=2.5;
                 BoxplotDodge=1;
             end
-            % Var
+            % Variant
             if Var==1
                 ColorName='Medium';
                 LightnessName='Substrate';
@@ -4777,16 +4760,23 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 ColorData=obj.SMFSResults{ResultsRow}.Concatenate.FMHoldingTime(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx);
                 LightnessData=FMRetVeloData;
                 MarkerData=FMExtVeloData;
+            elseif Var==4
+                ColorName='Retraction speed ($\mu$m/s)';
+                LightnessName='Medium';
+                MarkerName='Substrate';
+                FMRetVeloData=obj.SMFSResults{ResultsRow}.Concatenate.FMRetVelocity(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*1e6;
+                ColorData=FMRetVeloData;
+                LightnessData=obj.SMFSResults{ResultsRow}.Concatenate.FMEnvCond(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx);
+                MarkerData=obj.SMFSResults{ResultsRow}.Concatenate.FMSubstrate(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx);
+             elseif Var==5
+                ColorName='Dwell Time (s)';
+                LightnessName='Medium';
+                MarkerName='Substrate';
+                ColorData=obj.SMFSResults{ResultsRow}.Concatenate.FMHoldingTime(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx);
+                LightnessData=obj.SMFSResults{ResultsRow}.Concatenate.FMEnvCond(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx);
+                MarkerData=obj.SMFSResults{ResultsRow}.Concatenate.FMSubstrate(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx);
+
             end
-            NumColor=6;
-            NumLightness=6;
-            Res=[1 1 2560 1250]; % Define the figure resolution
-            MarkerStyle={'d' 's' 'v' 'o'};
-            MarkerSize=10;
-            BaseFontSize=32;
-            LabelScaling=1.2;
-            LegendScaling=1;
-            LineWidth=1.5;
             %%
             if obj.SMFSResults{ResultsRow}.Parameters.ExtendVelocity==0
                 ExtVelocityValueStr='All';
@@ -4815,6 +4805,9 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             NameSuffix1='_MaxAdhesionForceApproach';
             % Allocate data
             yData1=obj.SMFSResults{ResultsRow}.Concatenate.AdhMaxApp(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*-1e9;
+            yData1Min=min(yData1);
+            yData1Max=max(yData1);
+            yData1diff=yData1Max-yData1Min;
             % Create a gramm object
             if strcmpi(MarkerArg,'Y')
                 g1=gramm('x',xData,'y',yData1,...
@@ -4827,17 +4820,19 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                     'lightness',LightnessData);
             end
             % Plot data
-            if strcmpi(CBar,'Y')
-                g1.geom_polygon('x',{xCBar1;xCBar2;xCBar3;xCBar4},'y',{y1CBar1;y1CBar2;y1CBar3;y1CBar4},'color',ColorBarMap,'alpha',1);
-            else
-            end
             g1.stat_boxplot('notch',true,...
                 'width',BoxplotWidth,...
                 'dodge',BoxplotDodge); % Plot data in boxplot
             % Set options
-            g1.axe_property('LineWidth',LineWidth,'xlim',[xDataMin-xAxisCorr xDataMax+xAxisCorr],'XTick',[0:10:220],'TickDir','out','TickLength',[0.005 0.005]);
+            g1.axe_property('LineWidth',LineWidth,'xlim',[xDataMin-xAxisCorr xDataMax+xAxisCorr],'ylim',[yData1Min-yData1diff*yAxisMinFactor yData1Max+yData1diff*yAxisMaxFactor],'XTick',[0:10:220],'TickDir','out','TickLength',[0.005 0.005]);
             if strcmpi(xArg,'DateTime')
                 g1.set_datetick('x',0,'keeplimits') % Format x-axis
+            end
+            % Color Bar
+            if strcmpi(CBar,'Y')
+            y1CBar=[yData1Max+yData1diff*yLimMinFactor yData1Max+yData1diff*yLimMinFactor yData1Max+yData1diff*yLimMaxFactor yData1Max+yData1diff*yLimMaxFactor];
+            g1.geom_polygon('x',{xCBar1;xCBar2;xCBar3;xCBar4},'y',{y1CBar;y1CBar;y1CBar;y1CBar},'color',ColorBarMap,'alpha',1);
+            else
             end
             g1.set_point_options('base_size',MarkerSize)
             %g1.set_title(Plottitle1) %Set figure title
@@ -4849,7 +4844,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             g1.set_color_options('n_color',NumColor,...
                 'n_lightness',NumLightness,...
                 'legend','separate_gray')
-            g1.set_text_options('font','Helvetica','base_size',BaseFontSize,'label_scaling',LabelScaling,'legend_scaling',LegendScaling)
+            g1.set_text_options('font','Arial','base_size',BaseFontSize,'label_scaling',LabelScaling,'legend_scaling',LegendScaling)
             if strcmpi(LegendArg,'Y')
                 g1.set_layout_options("legend",1) % Don't show legend
             elseif strcmpi(MarkerArg,'N')
@@ -4861,13 +4856,13 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             h_fig1.Units='pixel'; % Defines the units
             h_fig1.OuterPosition=Res;
             h_fig1.PaperOrientation='landscape';
-            h_fig1.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix1);
+            h_fig1.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,'_','Var',num2str(Var),NameSuffix1);
             % The actual plotting
             g1.draw()
             % Save the figure
-            FullName1=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix1);
+            FullName1=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,'_','Var',num2str(Var),NameSuffix1);
             print(h_fig1,FullName1,'-dpng');
-            print(h_fig1,FullName1,'-depsc');
+            exportgraphics(h_fig1,[FullName1,'.pdf'],'ContentType','vector');
 
             %% Gramm object 2
             % Define variables
@@ -4876,6 +4871,9 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             NameSuffix2='_MaxAdhesionForceRetract';
             % Allocate data
             yData2=obj.SMFSResults{ResultsRow}.Concatenate.AdhMaxRet(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*-1e9;
+            yData2Min=min(yData2);
+            yData2Max=max(yData2);
+            yData2diff=yData2Max-yData2Min;
             % Create a gramm object
             if strcmpi(MarkerArg,'Y')
                 g2=gramm('x',xData,'y',yData2,...
@@ -4886,19 +4884,21 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 g2=gramm('x',xData,'y',yData2,...
                     'color',ColorData,...
                     'lightness',LightnessData);
-            end
-            % Plot data
-            if strcmpi(CBar,'Y')
-                g2.geom_polygon('x',{xCBar1;xCBar2;xCBar3;xCBar4},'y',{y2CBar1;y2CBar2;y2CBar3;y2CBar4},'color',ColorBarMap,'alpha',1);
-            else
-            end
+            end           
+            % Plot data           
             g2.stat_boxplot('notch',true,...
                 'width',BoxplotWidth,...
                 'dodge',BoxplotDodge); % Plot data in boxplot
             % Set options
-            g2.axe_property('LineWidth',LineWidth,'xlim',[xDataMin-xAxisCorr xDataMax+xAxisCorr],'XTick',[0:10:220],'TickDir','out','TickLength',[0.005 0.005]);
+            g2.axe_property('LineWidth',LineWidth,'xlim',[xDataMin-xAxisCorr xDataMax+xAxisCorr],'ylim',[yData2Min-yData2diff*yAxisMinFactor yData2Max+yData2diff*yAxisMaxFactor],'XTick',[0:10:220],'TickDir','out','TickLength',[0.005 0.005]);
             if strcmpi(xArg,'DateTime')
                 g2.set_datetick('x',0,'keeplimits') % Format x-axis
+            end
+            % Color Bar
+            if strcmpi(CBar,'Y')
+            y2CBar=[yData2Max+yData2diff*yLimMinFactor yData2Max+yData2diff*yLimMinFactor yData2Max+yData2diff*yLimMaxFactor yData2Max+yData2diff*yLimMaxFactor];
+            g2.geom_polygon('x',{xCBar1;xCBar2;xCBar3;xCBar4},'y',{y2CBar;y2CBar;y2CBar;y2CBar},'color',ColorBarMap,'alpha',1);
+            else
             end
             g2.set_point_options('base_size',MarkerSize)
             %g2.set_title(Plottitle2) %Set figure title
@@ -4910,7 +4910,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             g2.set_color_options('n_color',NumColor,...
                 'n_lightness',NumLightness,...
                 'legend','separate_gray')
-            g2.set_text_options('font','Helvetica','base_size',BaseFontSize,'label_scaling',LabelScaling,'legend_scaling',LegendScaling)
+            g2.set_text_options('font','Arial','base_size',BaseFontSize,'label_scaling',LabelScaling,'legend_scaling',LegendScaling)
             if strcmpi(LegendArg,'Y')
                 g2.set_layout_options("legend",1) % Don't show legend
             elseif strcmpi(MarkerArg,'N')
@@ -4922,14 +4922,14 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             h_fig2.Units='pixel'; % Defines the units
             h_fig2.OuterPosition=Res;
             h_fig2.PaperOrientation='landscape';
-            h_fig2.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix2);
+            h_fig2.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,'_','Var',num2str(Var),NameSuffix2);
             % The actual plotting
             g2.draw()
             % Save the figure
-            FullName2=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix2);
+            FullName2=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,'_','Var',num2str(Var),NameSuffix2);
             print(h_fig2,FullName2,'-dpng');
-            print(h_fig2,FullName2,'-depsc');
-            % g2.export('file_name',FullName2,file_type='pdf',width=42,height=29.7,units='centimeters');
+            exportgraphics(h_fig2,[FullName2,'.pdf'],'ContentType','vector');
+
             %% Gramm object 3
             % Define variables
             Plottitle3=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ResultsRow,1}.Data(1).FMIndex),obj.SMFSResults{ResultsRow,1}.Data(1).SumNumFcAnalysedAdhUnbinding);
@@ -4937,6 +4937,9 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             NameSuffix3='_AdhForceUnbinding';
             % Allocate data
             yData3=obj.SMFSResults{ResultsRow}.Concatenate.AdhUnbinding(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*-1e9;
+            yData3Min=min(yData3);
+            yData3Max=max(yData3);
+            yData3diff=yData3Max-yData3Min;
             % Create a gramm object
             if strcmpi(MarkerArg,'Y')
                 g3=gramm('x',xData,'y',yData3,...
@@ -4949,17 +4952,19 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                     'lightness',LightnessData);
             end
             % Plot data
-            if strcmpi(CBar,'Y')
-            g3.geom_polygon('x',{xCBar1;xCBar2;xCBar3;xCBar4},'y',{y3CBar1;y3CBar2;y3CBar3;y3CBar4},'color',ColorBarMap,'alpha',1);
-            else
-            end
             g3.stat_boxplot('notch',true,...
                 'width',BoxplotWidth,...
                 'dodge',BoxplotDodge); % Plot data in boxplot
             % Set options
-            g3.axe_property('LineWidth',LineWidth,'xlim',[xDataMin-xAxisCorr xDataMax+xAxisCorr],'XTick',[0:10:220],'TickDir','out','TickLength',[0.005 0.005]);
+            g3.axe_property('LineWidth',LineWidth,'xlim',[xDataMin-xAxisCorr xDataMax+xAxisCorr],'ylim',[yData3Min-yData3diff*yAxisMinFactor yData3Max+yData3diff*yAxisMaxFactor],'XTick',[0:10:220],'TickDir','out','TickLength',[0.005 0.005]);
             if strcmpi(xArg,'DateTime')
                 g3.set_datetick('x',0,'keeplimits') % Format x-axis
+            end
+            % Color Bar
+            if strcmpi(CBar,'Y')
+            y3CBar=[yData3Max+yData3diff*yLimMinFactor yData3Max+yData3diff*yLimMinFactor yData3Max+yData3diff*yLimMaxFactor yData3Max+yData3diff*yLimMaxFactor];
+            g3.geom_polygon('x',{xCBar1;xCBar2;xCBar3;xCBar4},'y',{y3CBar;y3CBar;y3CBar;y3CBar},'color',ColorBarMap,'alpha',1);
+            else
             end
             g3.set_point_options('base_size',MarkerSize)
             %g3.set_title(Plottitle3) %Set figure title
@@ -4971,7 +4976,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             g3.set_color_options('n_color',NumColor,...
                 'n_lightness',NumLightness,...
                 'legend','separate_gray')
-            g3.set_text_options('font','Helvetica','base_size',BaseFontSize,'label_scaling',LabelScaling,'legend_scaling',LegendScaling)
+            g3.set_text_options('font','Arial','base_size',BaseFontSize,'label_scaling',LabelScaling,'legend_scaling',LegendScaling)
             if strcmpi(LegendArg,'Y')
                 g3.set_layout_options("legend",1) % Don't show legend
             elseif strcmpi(MarkerArg,'N')
@@ -4983,22 +4988,24 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             h_fig3.Units='pixel'; % Defines the units
             h_fig3.OuterPosition=Res;
             h_fig3.PaperOrientation='landscape';
-            h_fig3.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix3);
+            h_fig3.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,'_','Var',num2str(Var),NameSuffix3);
             % The actual plotting
             g3.draw()
             % Save the figure
-            FullName3=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix3);
+            FullName3=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,'_','Var',num2str(Var),NameSuffix3);
             print(h_fig3,FullName3,'-dpng');
-            print(h_fig3,FullName3,'-depsc');
-            %         g3.export('file_name',FullName2,file_type='pdf',width=42,height=29.7,units='centimeters');
+            exportgraphics(h_fig3,[FullName3,'.pdf'],'ContentType','vector');
 
             %% Gramm object 4
             % Define variables
             Plottitle4=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ResultsRow,1}.Data(1).FMIndex),obj.SMFSResults{ResultsRow,1}.Data(1).SumNumFcAnalysedAdhEneApp);
-            LegendyAxis4='Adhesion energry (aJ)';
+            LegendyAxis4='Work of adhesion (aJ)';
             NameSuffix4='_AdhEnergyApproach';
             % Allocate data
             yData4=obj.SMFSResults{ResultsRow}.Concatenate.AdhEneApp(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*-1e18;
+            yData4Min=min(yData4);
+            yData4Max=max(yData4);
+            yData4diff=yData4Max-yData4Min;
             % Create a gramm object
             if strcmpi(MarkerArg,'Y')
                 g4=gramm('x',xData,'y',yData4,...
@@ -5010,18 +5017,20 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                     'color',ColorData,...
                     'lightness',LightnessData);
             end
-            % Plot data
-            if strcmpi(CBar,'Y')
-                g4.geom_polygon('x',{xCBar1;xCBar2;xCBar3;xCBar4},'y',{y4CBar1;y4CBar2;y4CBar3;y4CBar4},'color',ColorBarMap,'alpha',1);
-            else
-            end
+            % Plot data            
             g4.stat_boxplot('notch',true,...
                 'width',BoxplotWidth,...
                 'dodge',BoxplotDodge); % Plot data in boxplot
             % Set options
-            g4.axe_property('LineWidth',LineWidth,'xlim',[xDataMin-xAxisCorr xDataMax+xAxisCorr],'XTick',[0:10:220],'TickDir','out','TickLength',[0.005 0.005]);
+            g4.axe_property('LineWidth',LineWidth,'xlim',[xDataMin-xAxisCorr xDataMax+xAxisCorr],'ylim',[yData4Min-yData4diff*yAxisMinFactor yData4Max+yData4diff*yAxisMaxFactor],'XTick',[0:10:220],'TickDir','out','TickLength',[0.005 0.005]);
             if strcmpi(xArg,'DateTime')
                 g4.set_datetick('x',0,'keeplimits') % Format x-axis
+            end
+            % Color Bar
+            if strcmpi(CBar,'Y')
+            y4CBar=[yData4Max+yData4diff*yLimMinFactor yData4Max+yData4diff*yLimMinFactor yData4Max+yData4diff*yLimMaxFactor yData4Max+yData4diff*yLimMaxFactor];
+            g4.geom_polygon('x',{xCBar1;xCBar2;xCBar3;xCBar4},'y',{y4CBar;y4CBar;y4CBar;y4CBar},'color',ColorBarMap,'alpha',1);
+            else
             end
             g4.set_point_options('base_size',MarkerSize)
             %g4.set_title(Plottitle4) %Set figure title
@@ -5033,7 +5042,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             g4.set_color_options('n_color',NumColor,...
                 'n_lightness',NumLightness,...
                 'legend','separate_gray')
-            g4.set_text_options('font','Helvetica','base_size',BaseFontSize,'label_scaling',LabelScaling,'legend_scaling',LegendScaling)
+            g4.set_text_options('font','Arial','base_size',BaseFontSize,'label_scaling',LabelScaling,'legend_scaling',LegendScaling)
             if strcmpi(LegendArg,'Y')
                 g4.set_layout_options("legend",1) % Don't show legend
             elseif strcmpi(MarkerArg,'N')
@@ -5045,22 +5054,24 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             h_fig4.Units='pixel'; % Defines the units
             h_fig4.OuterPosition=Res;
             h_fig4.PaperOrientation='landscape';
-            h_fig4.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix4);
+            h_fig4.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,'_','Var',num2str(Var),NameSuffix4);
             % The actual plotting
             g4.draw()
             % Save the figure
-            FullName4=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix4);
+            FullName4=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,'_','Var',num2str(Var),NameSuffix4);
             print(h_fig4,FullName4,'-dpng');
-            print(h_fig4,FullName4,'-depsc');
-            %   g4.export('file_name',FullName5,file_type='pdf',width=42,height=29.7,units='centimeters');
+            exportgraphics(h_fig4,[FullName4,'.pdf'],'ContentType','vector');
 
             %% Gramm object 5
             % Define variables
             Plottitle5=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ResultsRow,1}.Data(1).FMIndex),obj.SMFSResults{ResultsRow,1}.Data(1).SumNumFcAnalysedAdhEneRet);
-            LegendyAxis5='Adhesion energy (aJ)';
+            LegendyAxis5='Work of adhesion (aJ)';
             NameSuffix5='_AdhEnergyRetract';
             % Allocate data
             yData5=obj.SMFSResults{ResultsRow}.Concatenate.AdhEneRet(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*-1e18;
+            yData5Min=min(yData5);
+            yData5Max=max(yData5);
+            yData5diff=yData5Max-yData5Min;
             % Create a gramm object
             if strcmpi(MarkerArg,'Y')
                 g5=gramm('x',xData,'y',yData5,...
@@ -5073,17 +5084,19 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                     'lightness',LightnessData);
             end
             % Plot data
-            if strcmpi(CBar,'Y')
-                g5.geom_polygon('x',{xCBar1;xCBar2;xCBar3;xCBar4},'y',{y5CBar1;y5CBar2;y5CBar3;y5CBar4},'color',ColorBarMap,'alpha',1);
-            else
-            end
             g5.stat_boxplot('notch',true,...
                 'width',BoxplotWidth,...
                 'dodge',BoxplotDodge); % Plot data in boxplot
             % Set options
-            g5.axe_property('LineWidth',LineWidth,'xlim',[xDataMin-xAxisCorr xDataMax+xAxisCorr],'XTick',[0:10:220],'TickDir','out','TickLength',[0.005 0.005]);
+            g5.axe_property('LineWidth',LineWidth,'xlim',[xDataMin-xAxisCorr xDataMax+xAxisCorr],'ylim',[yData5Min-yData5diff*yAxisMinFactor yData5Max+yData5diff*yAxisMaxFactor],'XTick',[0:10:220],'TickDir','out','TickLength',[0.005 0.005]);
             if strcmpi(xArg,'DateTime')
                 g5.set_datetick('x',0,'keeplimits') % Format x-axis
+            end
+            % Color Bar
+            if strcmpi(CBar,'Y')
+            y5CBar=[yData5Max+yData5diff*yLimMinFactor yData5Max+yData5diff*yLimMinFactor yData5Max+yData5diff*yLimMaxFactor yData5Max+yData5diff*yLimMaxFactor];
+            g5.geom_polygon('x',{xCBar1;xCBar2;xCBar3;xCBar4},'y',{y5CBar;y5CBar;y5CBar;y5CBar},'color',ColorBarMap,'alpha',1);
+            else
             end
             g5.set_point_options('base_size',MarkerSize)
             %g5.set_title(Plottitle5) %Set figure title
@@ -5095,7 +5108,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             g5.set_color_options('n_color',NumColor,...
                 'n_lightness',NumLightness,...
                 'legend','separate_gray')
-            g5.set_text_options('font','Helvetica','base_size',BaseFontSize,'label_scaling',LabelScaling,'legend_scaling',LegendScaling)
+            g5.set_text_options('font','Arial','base_size',BaseFontSize,'label_scaling',LabelScaling,'legend_scaling',LegendScaling)
             if strcmpi(LegendArg,'Y')
                 g5.set_layout_options("legend",1) % Don't show legend
             elseif strcmpi(MarkerArg,'N')
@@ -5108,22 +5121,25 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             h_fig5.Units='pixel'; % Defines the units
             h_fig5.OuterPosition=Res;
             h_fig5.PaperOrientation='landscape';
-            h_fig5.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix5);
+            h_fig5.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,'_','Var',num2str(Var),NameSuffix5);
             % The actual plotting
             g5.draw()
             % Save the figure
-            FullName5=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix5);
+            FullName5=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,'_','Var',num2str(Var),NameSuffix5);
             print(h_fig5,FullName5,'-dpng');
-            print(h_fig5,FullName5,'-depsc');
-            %g5.export('file_name',FullName5,file_type='pdf',width=42,height=29.7,units='centimeters');
+            exportgraphics(h_fig5,[FullName5,'.pdf'],'ContentType','vector')
 
             %% Gramm object 6
             % Define variables
             Plottitle6=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ResultsRow,1}.Data(1).FMIndex),obj.SMFSResults{ResultsRow,1}.Data(1).SumNumFcAnalysedyPullingLength);
             LegendyAxis6='Pull-off length (nm)';
+           % LegendyAxis6='L_{Pull-off} (nm)';
             NameSuffix6='_Pullinglength';
             % Allocate data
             yData6=obj.SMFSResults{ResultsRow}.Concatenate.PullingLength(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*1e9;
+            yData6Min=min(yData6);
+            yData6Max=max(yData6);
+            yData6diff=yData6Max-yData6Min;
             % Create a gramm object
             if strcmpi(MarkerArg,'Y')
                 g6=gramm('x',xData,'y',yData6,...
@@ -5136,18 +5152,21 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                     'lightness',LightnessData);
             end
             % Plot data
-            g6.geom_polygon('y',{LimitLengthRet1;LimitLengthRet2},'color',ColorBrewerMap1);
-            if strcmpi(CBar,'Y')
-                g6.geom_polygon('x',{xCBar1;xCBar2;xCBar3;xCBar4},'y',{y6CBar1;y6CBar2;y6CBar3;y6CBar4},'color',ColorBarMap,'alpha',1);
-            else
-            end
             g6.stat_boxplot('notch',true,...
                 'width',BoxplotWidth,...
                 'dodge',BoxplotDodge); % Plot data in boxplot
             % Set options
-            g6.axe_property('LineWidth',LineWidth,'xlim',[xDataMin-xAxisCorr xDataMax+xAxisCorr],'XTick',[0:10:220],'TickDir','out','TickLength',[0.005 0.005]);
+            g6.axe_property('LineWidth',LineWidth,'xlim',[xDataMin-xAxisCorr xDataMax+xAxisCorr],'ylim',[yData6Min-yData6diff*yAxisMinFactor yData6Max+yData6diff*yAxisMaxFactor],'XTick',[0:10:220],'TickDir','out','TickLength',[0.005 0.005]);
+            % Reference length color box
+            g6.geom_polygon('y',{LimitLengthRet2},'color',SteelBlue);    
             if strcmpi(xArg,'DateTime')
                 g6.set_datetick('x',0,'keeplimits') % Format x-axis
+            end
+            % Color bar
+            if strcmpi(CBar,'Y')
+            y6CBar=[yData6Max+yData6diff*yLimMinFactor yData6Max+yData6diff*yLimMinFactor yData6Max+yData6diff*yLimMaxFactor yData6Max+yData6diff*yLimMaxFactor];
+            g6.geom_polygon('x',{xCBar1;xCBar2;xCBar3;xCBar4},'y',{y6CBar;y6CBar;y6CBar;y6CBar},'color',ColorBarMap,'alpha',1);
+            else
             end
             g6.set_point_options('base_size',MarkerSize)
             %g6.set_title(Plottitle6) %Set figure title
@@ -5159,7 +5178,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             g6.set_color_options('n_color',NumColor,...
                 'n_lightness',NumLightness,...
                 'legend','separate_gray')
-            g6.set_text_options('font','Helvetica','base_size',BaseFontSize,'label_scaling',LabelScaling,'legend_scaling',LegendScaling)
+            g6.set_text_options('font','Arial','base_size',BaseFontSize,'label_scaling',LabelScaling,'legend_scaling',LegendScaling)
             if strcmpi(LegendArg,'Y')
                 g6.set_layout_options("legend",1) % Don't show legend
             elseif strcmpi(MarkerArg,'N')
@@ -5171,14 +5190,13 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             h_fig6.Units='pixel'; % Defines the units
             h_fig6.OuterPosition=Res;
             h_fig6.PaperOrientation='landscape';
-            h_fig6.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix6);
+            h_fig6.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,'_','Var',num2str(Var),NameSuffix6);
             % The actual plotting
             g6.draw()
             % Save the figure
-            FullName6=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix6);
+            FullName6=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,'_','Var',num2str(Var),NameSuffix6);
             print(h_fig6,FullName6,'-dpng');
-            print(h_fig6,FullName6,'-depsc');
-            %g6.export('file_name',FullName6,file_type='pdf',width=42,height=29.7,units='centimeters');
+            exportgraphics(h_fig6,[FullName6,'.pdf'],'ContentType','vector')
             
             %% Gramm object 7
             % Define variables
@@ -5187,6 +5205,9 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             NameSuffix7='_SnapInLength';
             % Allocate data
             yData7=obj.SMFSResults{ResultsRow}.Concatenate.SnapInLength(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*1e9;
+            yData7Min=min(yData7);
+            yData7Max=max(yData7);
+            yData7diff=yData7Max-yData7Min;
             % Create a gramm object
             if strcmpi(MarkerArg,'Y')
                 g7=gramm('x',xData,'y',yData7,...
@@ -5199,18 +5220,19 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                     'lightness',LightnessData);
             end
             % Plot data
-            if strcmpi(CBar,'Y')
-                g7.geom_polygon('x',{xCBar1;xCBar2;xCBar3;xCBar4},'y',{y7CBar1;y7CBar2;y7CBar3;y7CBar4},'color',ColorBarMap,'alpha',1);
-            else
-            end
-            g7.geom_polygon('y',{LimitLengthApp},'color',ColorBrewerMap1);
             g7.stat_boxplot('notch',true,...
                 'width',BoxplotWidth,...
                 'dodge',BoxplotDodge); % Plot data in boxplot
             % Set options
-            g7.axe_property('LineWidth',LineWidth,'xlim',[xDataMin-xAxisCorr xDataMax+xAxisCorr],'XTick',[0:10:220],'TickDir','out','TickLength',[0.005 0.005]);
+            g7.axe_property('LineWidth',LineWidth,'xlim',[xDataMin-xAxisCorr xDataMax+xAxisCorr],'ylim',[yData7Min-yData7diff*yAxisMinFactor yData7Max+yData7diff*yAxisMaxFactor],'XTick',[0:10:220],'TickDir','out','TickLength',[0.005 0.005]);
+            g7.geom_polygon('y',{LimitLengthApp},'color',Ochreish);
             if strcmpi(xArg,'DateTime')
                 g7.set_datetick('x',0,'keeplimits') % Format x-axis
+            end
+            if strcmpi(CBar,'Y')
+            y7CBar=[yData7Max+yData7diff*yLimMinFactor yData7Max+yData7diff*yLimMinFactor yData7Max+yData7diff*yLimMaxFactor yData7Max+yData7diff*yLimMaxFactor];
+            g7.geom_polygon('x',{xCBar1;xCBar2;xCBar3;xCBar4},'y',{y7CBar;y7CBar;y7CBar;y7CBar},'color',ColorBarMap,'alpha',1);
+            else
             end
             g7.set_point_options('base_size',MarkerSize)
             %g7.set_title(Plottitle6) %Set figure title
@@ -5222,7 +5244,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             g7.set_color_options('n_color',NumColor,...
                 'n_lightness',NumLightness,...
                 'legend','separate_gray')
-            g7.set_text_options('font','Helvetica','base_size',BaseFontSize,'label_scaling',LabelScaling,'legend_scaling',LegendScaling)
+            g7.set_text_options('font','Arial','base_size',BaseFontSize,'label_scaling',LabelScaling,'legend_scaling',LegendScaling)
             if strcmpi(LegendArg,'Y')
                 g7.set_layout_options("legend",1) % Don't show legend
             elseif strcmpi(MarkerArg,'N')
@@ -5234,15 +5256,14 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             h_fig7.Units='pixel'; % Defines the units
             h_fig7.OuterPosition=Res;
             h_fig7.PaperOrientation='landscape';
-            h_fig7.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix7);
+            h_fig7.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,'_','Var',num2str(Var),NameSuffix7);
             % The actual plotting
             g7.draw()
             % Save the figure
-            FullName7=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix7);
+            FullName7=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,'_','Var',num2str(Var),NameSuffix7);
             print(h_fig7,FullName7,'-dpng');
-            print(h_fig7,FullName7,'-depsc');
-            %g7.export('file_name',FullName6,file_type='pdf',width=42,height=29.7,units='centimeters');
-             
+            exportgraphics(h_fig7,[FullName7,'.pdf'],'ContentType','vector')
+
             % House keeping
             close all
         end
@@ -6124,7 +6145,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
            %% Gramm object 6
            % Define variables
            Plottitle6=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ResultsRow,1}.Data(1).FMIndex),obj.SMFSResults{ResultsRow,1}.Data(1).SumNumFcAnalysedyPullingLength);
-           LegendyAxis6='Pulling length (nm)';
+           LegendyAxis6='Pull-off length (nm)';
            NameSuffix6='_Pullinglength';
            % Allocate data
            yData6=obj.SMFSResults{ResultsRow}.Data.yPullingLengthConcat(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*1e9;
@@ -6232,71 +6253,59 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
            close all
        end
 
-       function SM_results_gramm_plot2_publication(obj,ResultsRow,Linker,xArg,MarkerArg,LegendArg,CBar,Var)
+       function SM_results_gramm_plot2_publication(obj,ResultsRow,Linker,xArg,MarkerArg,LegendArg,CBar,Var,yDataArg)
            % Input variables:
            % ResultsRow: double ,e.g. 1
            % Linker: string , either 'long' or 'short'
            % xArg (x-axis argument): string, either 'Index' or 'DateTime'
            % MarkerArg (Marker argument): string, either 'Y' or 'N'
-           % LegendArg (Legend argumend): string, either 'Y' or 'N'
+           % LegendArg (Legend argument): string, either 'Y' or 'N'
            % CBar (Color Bar): string, either 'Y' or 'N'
            % Var (Variant): double, e.g. 2 (for Variant 2)
+           % yDataArg (y-data argument): string, either 'old' or 'new' (To be able to use the fct also for trials which are not completely analysable)
 
            % Input variable adaptation
            if nargin<2
                ResultsRow=1;
            end
+           % Define variables
+           yLimMaxFactor=0.25;
+           yLimMinFactor=0.2;
+           %yLimMaxFactor=0.3;
+           %yLimMinFactor=0.25;
+           yAxisMinFactor=0.09;
+           yAxisMaxFactor=0.25;
+           Res=[1 1 2560 1250]; % Define the figure resolution
+           %MarkerSize=10;
+           MarkerSize=20;
+           BaseFontSize=46;
+           LabelScaling=1.2;
+           LegendScaling=1;
+           LineWidth=1.5;
+           FontName='Arial';
             % Define color bar
-            % For Row 6, from yLim(min) to
-            % yLim(min)+(yLim(max)-yLim(min))*0.01
             xCBar1=[0 134 134 0]; % Native
             xCBar2=[134 2100 2100 134]; % Sliding
             xCBar3=[2200 12100 12100 2200]; % Unraveled
             xCBar4=[12100 22200 22200 12100]; % Dissociated
-            y1CBar1=[0.188271 0.188271 0.190413 0.190413]; % [Ymin Ymax] [0.1872	0.4014]
-            y1CBar2=[0.188271 0.188271 0.190413 0.190413];
-            y1CBar3=[0.188271 0.188271 0.190413 0.190413];
-            y1CBar4=[0.188271 0.188271 0.190413 0.190413];
-            y2CBar1=[0.3020075 0.3020075 0.3074225 0.3074225]; % [Ymin Ymax] [0.2993	0.8408]
-            y2CBar2=[0.3020075 0.3020075 0.3074225 0.3074225];
-            y2CBar3=[0.3020075 0.3020075 0.3074225 0.3074225];
-            y2CBar4=[0.3020075 0.3020075 0.3074225 0.3074225];
-            y3CBar1=[-0.0197125 -0.0197125 -0.0141375 -0.0141375]; % [Ymin Ymax] [-0.0225	0.535]
-            y3CBar2=[-0.0197125 -0.0197125 -0.0141375 -0.0141375];
-            y3CBar3=[-0.0197125 -0.0197125 -0.0141375 -0.0141375];
-            y3CBar4=[-0.0197125 -0.0197125 -0.0141375 -0.0141375];
-            y4CBar1=[-15.8481195 -15.8481195 -15.7365585 -15.7365585]; % [Ymin Ymax] [-15.9039	-4.7478]
-            y4CBar2=[-15.8481195 -15.8481195 -15.7365585 -15.7365585];
-            y4CBar3=[-15.8481195 -15.8481195 -15.7365585 -15.7365585];
-            y4CBar4=[-15.8481195 -15.8481195 -15.7365585 -15.7365585];
-            y5CBar1=[22.0705525 22.0705525 23.4648575 23.4648575]; % [Ymin Ymax] [21.3734	160.8039]
-            y5CBar2=[22.0705525 22.0705525 23.4648575 23.4648575];
-            y5CBar3=[22.0705525 22.0705525 23.4648575 23.4648575];
-            y5CBar4=[22.0705525 22.0705525 23.4648575 23.4648575];
-            y6CBar1=[142.7977155 142.7977155 148.9121465 148.9121465]; % [Ymin Ymax] [139.7405	751.1836]
-            y6CBar2=[142.7977155 142.7977155 148.9121465 148.9121465];
-            y6CBar3=[142.7977155 142.7977155 148.9121465 148.9121465];
-            y6CBar4=[142.7977155 142.7977155 148.9121465 148.9121465];
-            y7CBar1=[73.6637695 73.6637695 80.5285085 80.5285085]; % [Ymin Ymax] [70.2314	756.7053]
-            y7CBar2=[73.6637695 73.6637695 80.5285085 80.5285085];
-            y7CBar3=[73.6637695 73.6637695 80.5285085 80.5285085];
-            y7CBar4=[73.6637695 73.6637695 80.5285085 80.5285085];
-            % Color maps
+            % Color and Color maps
+            Ochreish=[253 174 97]./255;
+            SteelBlue=[116 173 209]./255;
            ColorBrewerMap1=[[253 174 97]./255; % Ochreish
                [116 173 209]./255]; % Steel blueish
            ColorBarMap=[[54 163 0]./255; % Dark green HEX 8DB600
                [206 22 32]./255; % Fire Engine Red HEX CE162
                [0 24 204]./255; % Blue HEX 8DB600
                [135 0 224]./255]; % Violet HEX 8F00FF
-            ColorMarkerMap=[[255 194 191]./255; % Light rose
-               [255 194 191]./255;  % Light rose
-               [209 217 161]./255;  % Light green
-               [209 217 161]./255; % Light green
-               [0 136 255]./255; % Light blue
-               [0 136 255]./255; % Light blue
-               [200 0 200]./255; % Pink
-               [200 0 200]./255]; % Pink
- %          ColorMarkerMap='parula'; 
+%             ColorMarkerMap=[[255 194 191]./255; % Light rose
+%                [255 194 191]./255;  % Light rose
+%                [209 217 161]./255;  % Light green
+%                [209 217 161]./255; % Light green
+%                [0 136 255]./255; % Light blue
+%                [0 136 255]./255; % Light blue
+%                [200 0 200]./255; % Pink
+%                [200 0 200]./255]; % Pink
+            ColorMarkerMap='parula'; 
            % Change into the Folder of Interest
            cd(obj.ExperimentFolder) % Move into the folder
            % Create folders for saving the produced figures
@@ -6304,15 +6313,15 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
            mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
            currpath=fullfile(obj.ExperimentFolder,foldername);
            cd(currpath);
-           % Input variables
+           %% Input variables
            % Linker
            if strcmpi(Linker,'Long')
                LimitLengthRet1=[0 378];
                LimitLengthRet2=[378 522];
                LimitLengthApp=[50 120];
            elseif strcmpi(Linker,'Short')
-               LimitLengthRet1=[0 333];
-               LimitLengthRet2=[333 463];
+               LimitLengthRet1=[0 308];
+               LimitLengthRet2=[308 463];
                LimitLengthApp=[50 120];
            end
            % xArg
@@ -6323,13 +6332,12 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                xDataMax=max(xData);
                xAxisCorr=(xDataMax-xDataMin)*0.05;
            elseif strcmpi(xArg,'Index')
-               LegendxAxis='Chronological force curve order';
+               LegendxAxis='Number of cycles';
                xData=obj.SMFSResults{ResultsRow}.Concatenate.FcNum;
                xDataMin=min(xData);
                xDataMax=max(xData);
                xAxisCorr=(xDataMax-xDataMin)*0.005;
            end
-           % TrialNum
            % Var
            if Var==1
                ColorName='Medium';
@@ -6363,14 +6371,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                 NumColor=2;
                 NumLightness=2;
            end
-           Res=[1 1 2560 1250]; % Define the figure resolution
-           MarkerSize=10;
-           BaseFontSize=46;
-           LabelScaling=1.2;
-           LegendScaling=1;
-           LineWidth=1.5;
-           FontName='Helvetica';
-           %%
+           % Define parameter term for the figure name 
            if obj.SMFSResults{ResultsRow}.Parameters.ExtendVelocity==0
                ExtVelocityValueStr='All';
            else
@@ -6397,7 +6398,14 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
            LegendyAxis1='Adhesion force (nN)';
            NameSuffix1='_MaxAdhesionForceApproach';
            % Allocate data
+           if strcmpi(yDataArg,'new')
            yData1=obj.SMFSResults{ResultsRow}.Concatenate.AdhMaxApp(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*-1e9;
+           elseif strcmpi(yDataArg,'old')
+           yData1=obj.SMFSResults{ResultsRow}.Data.AdhMaxAppConcat(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*-1;   
+           end
+           yData1Min=min(yData1);
+           yData1Max=max(yData1);
+           yData1diff=yData1Max-yData1Min;
            % Create a gramm object
            if strcmpi(MarkerArg,'Y')
                g1=gramm('x',xData,'y',yData1,...
@@ -6410,15 +6418,17 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                    'lightness',LightnessData);
            end
            % Plot data
-           if strcmpi(CBar,'Y')
-           g1.geom_polygon('x',{xCBar1;xCBar2;xCBar3;xCBar4},'y',{y1CBar1;y1CBar2;y1CBar3;y1CBar4},'color',ColorBarMap,'alpha',1);
-           else
-           end
            g1.geom_point();
            % Set options
-           g1.axe_property('LineWidth',LineWidth,'xlim',[xDataMin-3 xDataMax+3],'TickDir','out','TickLength',[0.005 0.005]) % Set x limit
+           g1.axe_property('LineWidth',LineWidth,'xlim',[xDataMin-xAxisCorr xDataMax+xAxisCorr],'ylim',[yData1Min-yData1diff*yAxisMinFactor yData1Max+yData1diff*yAxisMaxFactor],'TickDir','out','TickLength',[0.005 0.005]);
            if strcmpi(xArg,'DateTime')
                g1.set_datetick('x',0,'keeplimits') % Format x-axis
+           end
+           % Color Bar
+           if strcmpi(CBar,'Y')
+           y1CBar=[yData1Max+yData1diff*yLimMinFactor yData1Max+yData1diff*yLimMinFactor yData1Max+yData1diff*yLimMaxFactor yData1Max+yData1diff*yLimMaxFactor];
+           g1.geom_polygon('x',{xCBar1;xCBar2;xCBar3;xCBar4},'y',{y1CBar;y1CBar;y1CBar;y1CBar},'color',ColorBarMap,'alpha',1);
+           else
            end
            g1.set_point_options('base_size',MarkerSize)
            %g1.set_title(Plottitle1) %Set figure title
@@ -6443,13 +6453,13 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
            h_fig1.Units='pixel'; % Defines the units
            h_fig1.OuterPosition=Res;
            h_fig1.PaperOrientation='landscape';
-           h_fig1.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix1);
-           % The actual plotting
-           g1.draw()
-           % Save the figure
-           FullName1=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix1);
-           print(h_fig1,FullName1,'-dpng');
-           print(h_fig1,FullName1,'-depsc');
+            h_fig1.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,'_','Var',num2str(Var),NameSuffix1);
+            % The actual plotting
+            g1.draw()
+            % Save the figure
+            FullName1=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,'_','Var',num2str(Var),NameSuffix1);
+            print(h_fig1,FullName1,'-dpng');
+            exportgraphics(h_fig1,[FullName1,'.pdf'],'ContentType','vector')
 
            %% Gramm object 2
            % Define variables
@@ -6457,7 +6467,14 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
            LegendyAxis2='Adhesion force (nN)';
            NameSuffix2='_MaxAdhesionForceRetract';
            % Allocate data
+           if strcmpi(yDataArg,'new')
            yData2=obj.SMFSResults{ResultsRow}.Concatenate.AdhMaxRet(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*-1e9;
+           elseif strcmpi(yDataArg,'old')
+            yData2=obj.SMFSResults{ResultsRow}.Data.AdhMaxRetConcat(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*-1e9;   
+           end     
+           yData2Min=min(yData2);
+           yData2Max=max(yData2);
+           yData2diff=yData2Max-yData2Min;
            % Create a gramm object
            if strcmpi(MarkerArg,'Y')
                g2=gramm('x',xData,'y',yData2,...
@@ -6470,16 +6487,18 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                    'lightness',LightnessData);
            end
            % Plot data
-           if strcmpi(CBar,'Y')
-           g2.geom_polygon('x',{xCBar1;xCBar2;xCBar3;xCBar4},'y',{y2CBar1;y2CBar2;y2CBar3;y2CBar4},'color',ColorBarMap,'alpha',1);
-           else
-           end
            g2.geom_point();
            % Set options
-           g2.axe_property('LineWidth',LineWidth,'xlim',[xDataMin-3 xDataMax+3],'TickDir','out','TickLength',[0.005 0.005]) % Set x limit
-           if strcmpi(xArg,'DateTime')
-               g2.set_datetick('x',0,'keeplimits') % Format x-axis
-           end
+            g2.axe_property('LineWidth',LineWidth,'xlim',[xDataMin-xAxisCorr xDataMax+xAxisCorr],'ylim',[yData2Min-yData2diff*yAxisMinFactor yData2Max+yData2diff*yAxisMaxFactor],'TickDir','out','TickLength',[0.005 0.005]);
+            if strcmpi(xArg,'DateTime')
+                g2.set_datetick('x',0,'keeplimits') % Format x-axis
+            end
+            % Color Bar
+            if strcmpi(CBar,'Y')
+            y2CBar=[yData2Max+yData2diff*yLimMinFactor yData2Max+yData2diff*yLimMinFactor yData2Max+yData2diff*yLimMaxFactor yData2Max+yData2diff*yLimMaxFactor];
+            g2.geom_polygon('x',{xCBar1;xCBar2;xCBar3;xCBar4},'y',{y2CBar;y2CBar;y2CBar;y2CBar},'color',ColorBarMap,'alpha',1);
+            else
+            end
            g2.set_point_options('base_size',MarkerSize)
            %g2.set_title(Plottitle2) %Set figure title
            if strcmpi(MarkerArg,'Y')
@@ -6502,22 +6521,29 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
            h_fig2.Color='white'; % changes the background color of the figure
            h_fig2.Units='pixel'; % Defines the units
            h_fig2.OuterPosition=Res;
-           h_fig2.PaperOrientation='landscape';
-           h_fig2.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix2);
-           % The actual plotting
-           g2.draw()
-           % Save the figure
-           FullName2=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix2);
-           print(h_fig2,FullName2,'-dpng');
-           print(h_fig2,FullName2,'-depsc');
-           % g2.export('file_name',FullName2,file_type='pdf',width=42,height=29.7,units='centimeters');
+           h_fig2.PaperOrientation='landscape';          
+            h_fig2.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,'_','Var',num2str(Var),NameSuffix2);
+            % The actual plotting
+            g2.draw()
+            % Save the figure
+            FullName2=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,'_','Var',num2str(Var),NameSuffix2);
+            print(h_fig2,FullName2,'-dpng');
+            exportgraphics(h_fig2,[FullName2,'.pdf'],'ContentType','vector')
+
            %% Gramm object 3
            % Define variables
            Plottitle3=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ResultsRow,1}.Data(1).FMIndex),obj.SMFSResults{ResultsRow,1}.Data(1).SumNumFcAnalysedAdhUnbinding);
            LegendyAxis3='Adhesion force (nN)';
            NameSuffix3='_AdhForceUnbinding';
            % Allocate data
+           if strcmpi(yDataArg,'new')
            yData3=obj.SMFSResults{ResultsRow}.Concatenate.AdhUnbinding(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*-1e9;
+           elseif strcmpi(yDataArg,'old')
+           yData3=obj.SMFSResults{ResultsRow}.Data.AdhUnbindingConcat(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*-1e9;    
+           end     
+           yData3Min=min(yData3);
+           yData3Max=max(yData3);
+           yData3diff=yData3Max-yData3Min;
            % Create a gramm object
            if strcmpi(MarkerArg,'Y')
                g3=gramm('x',xData,'y',yData3,...
@@ -6530,16 +6556,18 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                    'lightness',LightnessData);
            end
            % Plot data
+           g3.geom_point()
+            % Set options
+            g3.axe_property('LineWidth',LineWidth,'xlim',[xDataMin-xAxisCorr xDataMax+xAxisCorr],'ylim',[yData3Min-yData3diff*yAxisMinFactor yData3Max+yData3diff*yAxisMaxFactor],'TickDir','out','TickLength',[0.005 0.005]);
+            if strcmpi(xArg,'DateTime')
+                g3.set_datetick('x',0,'keeplimits') % Format x-axis
+            end
+            % Color Bar
             if strcmpi(CBar,'Y')
-            g3.geom_polygon('x',{xCBar1;xCBar2;xCBar3;xCBar4},'y',{y3CBar1;y3CBar2;y3CBar3;y3CBar4},'color',ColorBarMap,'alpha',1);
+            y3CBar=[yData3Max+yData3diff*yLimMinFactor yData3Max+yData3diff*yLimMinFactor yData3Max+yData3diff*yLimMaxFactor yData3Max+yData3diff*yLimMaxFactor];
+            g3.geom_polygon('x',{xCBar1;xCBar2;xCBar3;xCBar4},'y',{y3CBar;y3CBar;y3CBar;y3CBar},'color',ColorBarMap,'alpha',1);
             else
             end
-           g3.geom_point()
-           % Set options
-           g3.axe_property('LineWidth',LineWidth,'xlim',[xDataMin-3 xDataMax+3],'TickDir','out','TickLength',[0.005 0.005]) % Set x limit
-           if strcmpi(xArg,'DateTime')
-               g3.set_datetick('x',0,'keeplimits') % Format x-axis
-           end
            g3.set_point_options('base_size',MarkerSize)
            %g3.set_title(Plottitle3) %Set figure title
            if strcmpi(MarkerArg,'Y')
@@ -6562,23 +6590,29 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
            h_fig3.Color='white'; % changes the background color of the figure
            h_fig3.Units='pixel'; % Defines the units
            h_fig3.OuterPosition=Res;
-           h_fig3.PaperOrientation='landscape';
-           h_fig3.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix3);
+           h_fig3.PaperOrientation='landscape';          
+           h_fig3.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,'_','Var',num2str(Var),NameSuffix3);
            % The actual plotting
            g3.draw()
            % Save the figure
-           FullName3=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix3);
+           FullName3=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,'_','Var',num2str(Var),NameSuffix3);
            print(h_fig3,FullName3,'-dpng');
-           print(h_fig3,FullName3,'-depsc');
-           %         g3.export('file_name',FullName2,file_type='pdf',width=42,height=29.7,units='centimeters');
+           exportgraphics(h_fig3,[FullName3,'.pdf'],'ContentType','vector')
 
            %% Gramm object 4
            % Define variables
            Plottitle4=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ResultsRow,1}.Data(1).FMIndex),obj.SMFSResults{ResultsRow,1}.Data(1).SumNumFcAnalysedAdhEneApp);
-           LegendyAxis4='Adhesion energy (aJ)';
+           LegendyAxis4='Work of adhesion (aJ)';
            NameSuffix4='_AdhEnergyApproach';
            % Allocate data
+           if strcmpi(yDataArg,'new')
            yData4=obj.SMFSResults{ResultsRow}.Concatenate.AdhEneApp(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*-1e18;
+           elseif strcmpi(yDataArg,'old')
+           yData4=obj.SMFSResults{ResultsRow}.Data.AdhEneAppConcat(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*-1e18;     
+           end     
+           yData4Min=min(yData4);
+           yData4Max=max(yData4);
+           yData4diff=yData4Max-yData4Min;
            % Create a gramm object
            if strcmpi(MarkerArg,'Y')
                g4=gramm('x',xData,'y',yData4,...
@@ -6591,16 +6625,18 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                    'lightness',LightnessData);
            end
            % Plot data
+           g4.geom_point()
+            % Set options
+            g4.axe_property('LineWidth',LineWidth,'xlim',[xDataMin-xAxisCorr xDataMax+xAxisCorr],'ylim',[yData4Min-yData4diff*yAxisMinFactor yData4Max+yData4diff*yAxisMaxFactor],'TickDir','out','TickLength',[0.005 0.005]);
+            if strcmpi(xArg,'DateTime')
+                g4.set_datetick('x',0,'keeplimits') % Format x-axis
+            end
+            % Color Bar
             if strcmpi(CBar,'Y')
-            g4.geom_polygon('x',{xCBar1;xCBar2;xCBar3;xCBar4},'y',{y4CBar1;y4CBar2;y4CBar3;y4CBar4},'color',ColorBarMap,'alpha',1);
+            y4CBar=[yData4Max+yData4diff*yLimMinFactor yData4Max+yData4diff*yLimMinFactor yData4Max+yData4diff*yLimMaxFactor yData4Max+yData4diff*yLimMaxFactor];
+            g4.geom_polygon('x',{xCBar1;xCBar2;xCBar3;xCBar4},'y',{y4CBar;y4CBar;y4CBar;y4CBar},'color',ColorBarMap,'alpha',1);
             else
             end
-           g4.geom_point()
-           % Set options
-           g4.axe_property('LineWidth',LineWidth,'xlim',[xDataMin-3 xDataMax+3],'TickDir','out','TickLength',[0.005 0.005]) % Set x limit
-           if strcmpi(xArg,'DateTime')
-               g4.set_datetick('x',0,'keeplimits') % Format x-axis
-           end
            g4.set_point_options('base_size',MarkerSize)
            %g4.set_title(Plottitle4) %Set figure title
            if strcmpi(MarkerArg,'Y')
@@ -6624,22 +6660,28 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
            h_fig4.Units='pixel'; % Defines the units
            h_fig4.OuterPosition=Res;
            h_fig4.PaperOrientation='landscape';
-           h_fig4.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix4);
-           % The actual plotting
-           g4.draw()
-           % Save the figure
-           FullName4=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix4);
-           print(h_fig4,FullName4,'-dpng');
-           print(h_fig4,FullName4,'-depsc');
-           %   g4.export('file_name',FullName5,file_type='pdf',width=42,height=29.7,units='centimeters');
+            h_fig4.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,'_','Var',num2str(Var),NameSuffix4);
+            % The actual plotting
+            g4.draw()
+            % Save the figure
+            FullName4=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,'_','Var',num2str(Var),NameSuffix4);
+            print(h_fig4,FullName4,'-dpng');
+            exportgraphics(h_fig4,[FullName4,'.pdf'],'ContentType','vector')
 
            %% Gramm object 5
            % Define variables
            Plottitle5=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ResultsRow,1}.Data(1).FMIndex),obj.SMFSResults{ResultsRow,1}.Data(1).SumNumFcAnalysedAdhEneRet);
-           LegendyAxis5='Adhesion energy (aJ)';
+           LegendyAxis5='Work of adhesion (aJ)';
            NameSuffix5='_AdhEnergyRetract';
            % Allocate data
+           if strcmpi(yDataArg,'new')
            yData5=obj.SMFSResults{ResultsRow}.Concatenate.AdhEneRet(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*-1e18;
+           elseif strcmpi(yDataArg,'old')
+           yData5=obj.SMFSResults{ResultsRow}.Data.AdhEneRetConcat(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*-1e18;     
+           end     
+           yData5Min=min(yData5);
+           yData5Max=max(yData5);
+           yData5diff=yData5Max-yData5Min;
            % Create a gramm object
            if strcmpi(MarkerArg,'Y')
                g5=gramm('x',xData,'y',yData5,...
@@ -6652,16 +6694,18 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                    'lightness',LightnessData);
            end
            % Plot data
-           if strcmpi(CBar,'Y')
-               g5.geom_polygon('x',{xCBar1;xCBar2;xCBar3;xCBar4},'y',{y5CBar1;y5CBar2;y5CBar3;y5CBar4},'color',ColorBarMap,'alpha',1);
-           else
-           end
            g5.geom_point()
-           % Set options
-           g5.axe_property('LineWidth',LineWidth,'xlim',[xDataMin-3 xDataMax+3],'TickDir','out','TickLength',[0.005 0.005]) % Set x limit
-           if strcmpi(xArg,'DateTime')
-               g5.set_datetick('x',0,'keeplimits') % Format x-axis
-           end
+            % Set options
+            g5.axe_property('LineWidth',LineWidth,'xlim',[xDataMin-xAxisCorr xDataMax+xAxisCorr],'ylim',[yData5Min-yData5diff*yAxisMinFactor yData5Max+yData5diff*yAxisMaxFactor],'TickDir','out','TickLength',[0.005 0.005]);
+            if strcmpi(xArg,'DateTime')
+                g5.set_datetick('x',0,'keeplimits') % Format x-axis
+            end
+            % Color Bar
+            if strcmpi(CBar,'Y')
+            y5CBar=[yData5Max+yData5diff*yLimMinFactor yData5Max+yData5diff*yLimMinFactor yData5Max+yData5diff*yLimMaxFactor yData5Max+yData5diff*yLimMaxFactor];
+            g5.geom_polygon('x',{xCBar1;xCBar2;xCBar3;xCBar4},'y',{y5CBar;y5CBar;y5CBar;y5CBar},'color',ColorBarMap,'alpha',1);
+            else
+            end
            g5.set_point_options('base_size',MarkerSize)
            %g5.set_title(Plottitle5) %Set figure title
            if strcmpi(MarkerArg,'Y')
@@ -6685,14 +6729,13 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
            h_fig5.Units='pixel'; % Defines the units
            h_fig5.OuterPosition=Res;
            h_fig5.PaperOrientation='landscape';
-           h_fig5.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix5);
-           % The actual plotting
-           g5.draw()
-           % Save the figure
-           FullName5=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix5);
-           print(h_fig5,FullName5,'-dpng');
-           print(h_fig5,FullName5,'-depsc');
-           %g5.export('file_name',FullName5,file_type='pdf',width=42,height=29.7,units='centimeters');
+            h_fig5.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,'_','Var',num2str(Var),NameSuffix5);
+            % The actual plotting
+            g5.draw()
+            % Save the figure
+            FullName5=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,'_','Var',num2str(Var),NameSuffix5);
+            print(h_fig5,FullName5,'-dpng');
+            exportgraphics(h_fig5,[FullName5,'.pdf'],'ContentType','vector')
 
            %% Gramm object 6
            % Define variables
@@ -6700,7 +6743,14 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
            LegendyAxis6='Pull-off length (nm)';
            NameSuffix6='_Pullinglength';
            % Allocate data
+           if strcmpi(yDataArg,'new')
            yData6=obj.SMFSResults{ResultsRow}.Concatenate.PullingLength(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*1e9;
+           elseif strcmpi(yDataArg,'old')
+           yData6=obj.SMFSResults{ResultsRow}.Data.yPullingLengthConcat(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*1e9;     
+           end           
+           yData6Min=min(yData6);
+           yData6Max=max(yData6);
+           yData6diff=yData6Max-yData6Min;
            % Create a gramm object
            if strcmpi(MarkerArg,'Y')
                g6=gramm('x',xData,'y',yData6,...
@@ -6713,17 +6763,20 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                    'lightness',LightnessData);
            end
            % Plot data
-           g6.geom_polygon('y',{LimitLengthRet1;LimitLengthRet2},'color',ColorBrewerMap1);
-           if strcmpi(CBar,'Y')
-               g6.geom_polygon('x',{xCBar1;xCBar2;xCBar3;xCBar4},'y',{y6CBar1;y6CBar2;y6CBar3;y6CBar4},'color',ColorBarMap,'alpha',1);
-           else
-           end
            g6.geom_point();
-           % Set options
-           g6.axe_property('LineWidth',LineWidth,'xlim',[xDataMin-3 xDataMax+3],'TickDir','out','TickLength',[0.005 0.005]) % Set x limit
-           if strcmpi(xArg,'DateTime')
-               g6.set_datetick('x',0,'keeplimits') % Format x-axis
-           end
+            % Set options
+            g6.axe_property('LineWidth',LineWidth,'xlim',[xDataMin-xAxisCorr xDataMax+xAxisCorr],'ylim',[yData6Min-yData6diff*yAxisMinFactor yData6Max+yData6diff*yAxisMaxFactor],'TickDir','out','TickLength',[0.005 0.005]);
+            % Reference length color box
+            g6.geom_polygon('y',{LimitLengthRet2},'color',SteelBlue);    
+            if strcmpi(xArg,'DateTime')
+                g6.set_datetick('x',0,'keeplimits') % Format x-axis
+            end
+            % Color bar
+            if strcmpi(CBar,'Y')
+            y6CBar=[yData6Max+yData6diff*yLimMinFactor yData6Max+yData6diff*yLimMinFactor yData6Max+yData6diff*yLimMaxFactor yData6Max+yData6diff*yLimMaxFactor];
+            g6.geom_polygon('x',{xCBar1;xCBar2;xCBar3;xCBar4},'y',{y6CBar;y6CBar;y6CBar;y6CBar},'color',ColorBarMap,'alpha',1);
+            else
+            end
            g6.set_point_options('base_size',MarkerSize)
            %g6.set_title(Plottitle6) %Set figure title
            if strcmpi(MarkerArg,'Y')
@@ -6748,22 +6801,25 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
            h_fig6.Units='pixel'; % Defines the units
            h_fig6.OuterPosition=Res;
            h_fig6.PaperOrientation='landscape';
-           h_fig6.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix6);
-           % The actual plotting
-           g6.draw()
-           % Save the figure
-           FullName6=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix6);
-           print(h_fig6,FullName6,'-dpng');
-           print(h_fig6,FullName6,'-depsc');
-           %g6.export('file_name',FullName6,file_type='pdf',width=42,height=29.7,units='centimeters');
+            h_fig6.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,'_','Var',num2str(Var),NameSuffix6);
+            % The actual plotting
+            g6.draw()
+            % Save the figure
+            FullName6=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,'_','Var',num2str(Var),NameSuffix6);
+            print(h_fig6,FullName6,'-dpng');
+            exportgraphics(h_fig6,[FullName6,'.pdf'],'ContentType','vector')
 
            %% Gramm object 7
            % Define variables
+           if strcmpi(yDataArg,'new')     
            Plottitle7=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ResultsRow,1}.Data(1).FMIndex),obj.SMFSResults{ResultsRow,1}.Data(1).SumNumFcAnalysedySnapInLength);
            LegendyAxis7='Snap-In length (nm)';
            NameSuffix7='_SnapInLength';
            % Allocate data
            yData7=obj.SMFSResults{ResultsRow}.Concatenate.SnapInLength(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*1e9;
+           yData7Min=min(yData7);
+           yData7Max=max(yData7);
+           yData7diff=yData7Max-yData7Min;
            % Create a gramm object
            if strcmpi(MarkerArg,'Y')
                g7=gramm('x',xData,'y',yData7,...
@@ -6776,18 +6832,19 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
                    'lightness',LightnessData);
            end
            % Plot data
+           g7.geom_polygon('y',{LimitLengthApp},'color',Ochreish);
+           g7.geom_point();
+            % Set options
+            g7.axe_property('LineWidth',LineWidth,'xlim',[xDataMin-xAxisCorr xDataMax+xAxisCorr],'ylim',[yData7Min-yData7diff*yAxisMinFactor yData7Max+yData7diff*yAxisMaxFactor],'TickDir','out','TickLength',[0.005 0.005]);
+            g7.geom_polygon('y',{LimitLengthApp},'color',Ochreish);
+            if strcmpi(xArg,'DateTime')
+                g7.set_datetick('x',0,'keeplimits') % Format x-axis
+            end
             if strcmpi(CBar,'Y')
-                g7.geom_polygon('x',{xCBar1;xCBar2;xCBar3;xCBar4},'y',{y7CBar1;y7CBar2;y7CBar3;y7CBar4},'color',ColorBarMap,'alpha',1);
+            y7CBar=[yData7Max+yData7diff*yLimMinFactor yData7Max+yData7diff*yLimMinFactor yData7Max+yData7diff*yLimMaxFactor yData7Max+yData7diff*yLimMaxFactor];
+            g7.geom_polygon('x',{xCBar1;xCBar2;xCBar3;xCBar4},'y',{y7CBar;y7CBar;y7CBar;y7CBar},'color',ColorBarMap,'alpha',1);
             else
             end
-           g7.geom_polygon('y',{LimitLengthApp},'color',ColorBrewerMap1);
-           g7.geom_point();
-           % Set options
-           g7.axe_property('LineWidth',LineWidth,'xlim',[xDataMin-3 xDataMax+3],'TickDir','out','TickLength',[0.005 0.005]) % Set x limit
-      %     g7.axe_property('LineWidth',LineWidth,'xlim',[xDataMin-xAxisCorr xDataMax+xAxisCorr]) % Set x limit
-           if strcmpi(xArg,'DateTime')
-               g7.set_datetick('x',0,'keeplimits') % Format x-axis
-           end
            g7.set_point_options('base_size',MarkerSize)
            %g7.set_title(Plottitle7) %Set figure title
            if strcmpi(MarkerArg,'Y')
@@ -6811,15 +6868,17 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
            h_fig7.Units='pixel'; % Defines the units
            h_fig7.OuterPosition=Res;
            h_fig7.PaperOrientation='landscape';
-           h_fig7.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix6);
-           % The actual plotting
-           g7.draw()
-           % Save the figure
-           FullName7=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix7);
-           print(h_fig7,FullName7,'-dpng');
-           print(h_fig7,FullName7,'-depsc');
-           %       g7.export('file_name',FullName6,file_type='pdf',width=42,height=29.7,units='centimeters');
-
+            h_fig7.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,'_','Var',num2str(Var),NameSuffix7);
+            % The actual plotting
+            g7.draw()
+            % Save the figure
+            FullName7=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,'_','Var',num2str(Var),NameSuffix7);
+            print(h_fig7,FullName7,'-dpng');
+            exportgraphics(h_fig7,[FullName7,'.pdf'],'ContentType','vector')
+          
+           elseif strcmpi(yDataArg,'old')
+          
+           end      
            % House keeping
            close all
        end
@@ -7071,9 +7130,21 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             end
         end
 
-        function SM_fine_figure_publication(obj,XMin,XMax,YMin,YMax,Fm,Fc,Linker,CArea)
+        function SM_fine_figure_publication(obj,XMin,XMax,YMin,YMax,Fm,Fc,Linker,CArea,Axis)
             %     function SM_fine_figure(obj,XMin,XMax,YMin,YMax,Fm,Fc)
             % Function to plot individual figures in publication quality
+            % Input variables:
+            % XMin ... Minimum x-axis value in nm
+            % XMax ... Maximum x-axis value in nm
+            % YMin ... Minimum y-axis value in nm
+            % YMax ... Maximum y-axis value in nm
+            % Fm ... Force map of interest
+            % Fc ... Force curve of interest
+            % Linker ... Short or long linker
+            % CArea ... Show theoretical Linker-TC complex range: 'yes' or
+            % 'no'
+            % Axis ... Show axis in graph: 'Yes' or 'No'
+
             if nargin < 3
                 XMin= -inf;
                 XMax= inf;
@@ -7093,7 +7164,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             currpath=fullfile(obj.ExperimentFolder,foldername);
             cd(currpath);
             % Run the chosen functions
-            obj.FM{Fm}.fc_fine_figure_publication(XMin,XMax,YMin,YMax,Fm,Fc,Linker,CArea)
+            obj.FM{Fm}.fc_fine_figure_publication(XMin,XMax,YMin,YMax,Fm,Fc,Linker,CArea,Axis)
         end
          
 
@@ -7297,9 +7368,9 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             obj.WLCFit{Row,1}.Data(1).xDataSelPctMean=xSelPctMean;
             obj.WLCFit{Row,1}.Data(1).yDataSelected=ySel;
         end
-
-        function SM_force_landscape(obj,Var)
-            % Function to quickly loop over all force maps for testing and
+       
+        function SM_force_landscape_app(obj,Var)
+            %
             % debugging
 
             if Var==1
@@ -7344,193 +7415,513 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
             currpath=fullfile(obj.ExperimentFolder,foldername);
             cd(currpath);
-            % Force Landscape variables
 
+           %% Figures
+           FigNamePt1=sprintf('SMFSResultRow%d_',ResultsRow);
+           FigNamePt2=sprintf('FM%d_to_FM%d_',FMIdxChrono1,FMIdxChrono2);
+           FigNamePt3='App';
+           FigNamePt4='ForceCurveLandscape';
+
+            % Define variables
             FcCount = 0; % Force curve count
             for ii=FMIdxArray'
                 FcCount = FcCount + obj.FM{ii}.NCurves;
             end
             ResY = FcCount; % y-axis resolution
-            ResX = 4096; % x-axis resolution
+            ResX = 512; % x-axis resolution
+            CritLength=200*1e-9; % Max. length on x-axis
             % Allocate data
-            MaxRange = 0;   
+            MaxRangeApp = 0;
             SkippedCurves = 0;
-            kk=1;
-            for FM=1:length(FMIdxArray)
-                for Fc=1:obj.FM{FMIdxArray(FM)}.NCurves
-                    if ~obj.FM{FMIdxArray(FM)}.SMFSFlag.Selected(Fc)
-                        SkippedCurves=SkippedCurves+1;
-                        continue
-                    else
+            k=1;
+            DwellTime = [];
+            Phase = [];
+            ExtSpeed = [];
+            RetSpeed = [];
+            AbsCycleIndex = [];
+            m = 0;
+            % Read out data
+            for j=obj.SMFSResults{ResultsRow}.Data.FMIndexChrono'
+                for i=1:obj.FM{j}.NCurves
+                    m=m+1;
+                     if ~obj.FM{j}.SMFSFlag.Selected(i)
+                         SkippedCurves = SkippedCurves + 1;
+                         continue
+                     end
+                    DwellTime(k,1) = obj.SMFSResults{ResultsRow}.Data.FMHoldingTime(j);
+                    AbsCycleIndex(k,1) = m;
+                    % Assigning the phase/state
+                    if any(j == [1:2])
+                        Phase(k,1) = 1;
+                    elseif any(j == [3:22])
+                        Phase(k,1) = 2;
+                    elseif any(j == [23:121])
+                        Phase(k,1) = 3;
+                    elseif any(j == [121:obj.NumForceMaps])
+                        Phase(k,1) = 4;
                     end
-                    % Allocate data
-            	    xApp=(obj.FM{FMIdxArray(FM)}.THApp{Fc}-obj.FM{FMIdxArray(FM)}.CP_HardSurface(Fc,1))*1e9; % Approach x-data
-                    xRet=(obj.FM{FMIdxArray(FM)}.THRet{Fc}-obj.FM{FMIdxArray(FM)}.CP_HardSurface(Fc,1))*1e9; % Retraction x-data
-                    yApp=obj.FM{FMIdxArray(FM)}.BasedApp{Fc}*1e9;
-                    yRet=obj.FM{FMIdxArray(FM)}.BasedRet{Fc}*1e9;
+                    % Allocating data
+                    vDefApp{k} = obj.FM{j}.BasedApp{i};
+                    THApp{k} = obj.FM{j}.THApp{i};
+                    THApp{k} = THApp{k} - max(THApp{k});
+                    THApp{k}=THApp{k}*-1;
+                    AppIdx=find(THApp{k}>CritLength,1,'last'); % Find all entries longer than the defined length
+                    THApp{k}(1:AppIdx)=[];
+                    vDefApp{k}(1:AppIdx)=[];
 
+                    MaxRangeApp = max(range(THApp{k}),MaxRangeApp);
 
-                    %% Concatenate arrays
-                    % FCs of each FM in seperate column
-
-                    xAppAll{kk}=xApp-max(xApp);
-                    xRetAll{kk}=xRet-max(xRet);
-
-                    yAppAll{kk}=yApp;
-                    yRetAll{kk}=yRet;
-
-                    % Define range of x-axis   
-                  %  MaxRange = max(range(xAppAll{kk}),MaxRange);
-                    MaxRange = max(range(xRetAll{kk}),MaxRange);
-
-                    kk=kk+1;
+                    k = k + 1;
                 end
+                    if j == FMIdxChrono2 % Leave loop when the entry FM is reached
+                        break
+                    end   
             end
-            
+
             % Define axes properties
-            XQ = linspace(0,-MaxRange,ResX); % Query points on x-axis
+            xmax=200*1e-9;
+            XQApp = linspace(0,xmax,ResX);
             ResY = ResY - SkippedCurves; % y-axis resolution
             % Preallocate
             FcMapApp = zeros(ResY, ResX);
-            FcMapRet = zeros(ResY, ResX);
-            % Interpolate data and fill Force curves maps
-            for ii=1:ResY
-                FcMapApp(ii,:) = interp1(xAppAll{ii},yAppAll{ii},XQ);
-                FcMapRet(ii,:) = interp1(xRetAll{ii},yRetAll{ii},XQ);
+            % Interp Data and fill FCMap
+            for i=1:ResY
+                FCMapApp(i,:) = interp1(THApp{i},vDefApp{i},XQApp);
             end
-            % Cut out the first few nm of the curves
-            FcMapApp(:,1:5)=[]; 
-            FcMapRet(:,1:15)=[];
-            % Reduce the resolution of the map
-            FcMapApp=imresize(FcMapApp,[1024,1024]);
-            FcMapRet1=imresize(FcMapRet,[1024,1024]);
-            FcMapRet2=imresize(FcMapRet,[4096,4096]);
+            ApproachForceCurveMap = FCMapApp;
 
-            %% Figures
-           FigNamePt1=sprintf('SMFSResultRow%d_',ResultsRow);
-           FigNamePt2=sprintf('FM%d_to_FM%d',FMIdxChrono1,FMIdxChrono1);
-           FigNamePt3App='App';
-           FigNamePt3Ret='Ret';
-           FigNamePt4='ForceLandscape';
+            % Font Sizes
+            FS = 18;
 
-          %  figure
-          %  mesh(FcMapApp)
-          %  figure
-          %  mesh(-FcMapRet)
-          %  figure
-          %  imshow(FcMapApp,[])
-          %  figure
-          %  imshow(-FcMapRet,[])
-            
-         % figure
-         % imshow(FcMapApp,[])
-           %% Figure 0
-%             fig=figure(10);
-%             fig.Color='white'; % changes the background color of the figure
-%             fig.Units='normalized'; % Defines the units
-%             fig.OuterPosition=[0 0 2 2];% changes the size of the to the whole screen
-%             fig.PaperOrientation='landscape';
-%             % Plot
-%             surf(FcMapRet)
-%             shading flat
-%             colormap turbo
-% %            % Axes
-%              ax = gca; % current axes
-%              ax.FontName='Helvetica';
-%              ax.FontSize = 40;
-%              ax.LineWidth = 5;
-%           %   ax.XTick=0:100:1000;
-%           %   ax.ZTick=-0.5:0.1:0.1;
-%              ax.XLabel.String = 'Tip-Surface separation distance (nm)';
-%              ax.XLabel.FontSize = 40;
-%              ax.ZLabel.String = 'Force (nN)';
-%              ax.ZLabel.FontSize = 40;
+            % Processed Image Preparation
+            ProcAppMap = ApproachForceCurveMap * 1e9;
+            YPixels = 512;
+            XPixels = 512;
+            %img = imresize(-ProcRetMap, [YPixels XPixels], 'bilinear');
+            img=-ProcAppMap;
+            img = imfilter(img,ones(round(size(-ProcAppMap,1)/YPixels),1)./round(size(ProcAppMap,1)/YPixels)); % Applying a rollling average filter for smearing out data
+            img = imresize(img, [YPixels XPixels], 'nearest'); % Downsampling
+            ProcDwellTime = imresize(DwellTime, [YPixels 1], 'nearest');
+            ProcPhase = imresize(Phase, [YPixels 1], 'nearest');
+            xmin = 0;
+            xmax = 200;
+            ymax = size(ApproachForceCurveMap, 1) / 1000;
+            MaxForce = 0.2;
+            MinForce = 0;
+            LineWidth = 1.5;
 
-            %% Figure 1
-            fig1=figure(1);
-            fig1.Color='white'; % changes the background color of the figure
-            fig1.Units='normalized'; % Defines the units
-            fig1.OuterPosition=[0 0 2 2];% changes the size of the to the whole screen
-            fig1.PaperOrientation='landscape';
-            % Plot
-            surf(FcMapApp)
-            shading flat
-            colormap turbo
-%            % Axes
-             ax1 = gca; % current axes
-             ax1.FontName='Helvetica';
-             ax1.FontSize = 40;
-             ax1.LineWidth = 5;
-             ax1.XTick=0:100:1000;
-             ax1.ZTick=-0.5:0.1:0.1;
-      %       ax1.XLabel.String = 'Tip-Surface separation distance (nm)';
-             ax1.XLabel.FontSize = 40;
-             ax1.ZLabel.String = 'Force (nN)';
-             ax1.ZLabel.FontSize = 40;
+            % Figure and Image Display
+            Fig = figure('Color', 'w');
+            imshow(img, [MinForce MaxForce]);
+            Fig.Units='normalized';
+            % Axis
+            ax = gca;  % Get the current axes handle
+            axis on;   % Turn on the axis visibility
+            xlabel('Tip-sample distance (nm)');
+            ylabel('Number of cycles (x100)');
+            xlim([0 XPixels]);  % Set X-axis limits
+            ylim([0 YPixels]);  % Set Y-axis limits
+            set(ax, 'XTick', [0:50:200] ./ xmax * XPixels);  % Custom X-axis ticks
+            YTickSpacing = [0:0.5:floor(ymax)] ./ ymax;
+            set(ax, 'YTick', YTickSpacing * YPixels);  % Custom Y-axis ticks
+            set(ax, 'XTickLabel', {string(xmin), string(50), string(100), string(150), string(200)});  % Custom X-axis tick labels
+            % Custom Y-axis tick labels
+            for i=1:length(YTickSpacing)
+                if i == 1
+                    YTickLabels{i} = '0';
+                    continue
+                end
+               YTickLabels{i} =string(round(AbsCycleIndex(YTickSpacing(i)*ymax*1000)/100,1));
+             %   YTickLabels{i} = string(round(AbsCycleIndex(YTickSpacing(i)*ymax*1000),1));
+            end
+            set(ax, 'YTickLabel',YTickLabels)              
+            set(ax, 'FontSize', FS);  % Set font size for axes
+            set(ax, 'FontName', 'Arial');  % Set font type for axes
+            % Display axes only on the left and bottom
+            ax.XAxisLocation = 'bottom';  % X-axis at the bottom
+            ax.YAxisLocation = 'left';    % Y-axis on the left
+            ax.Box = 'off';  % Turn off the box around the axes
+            ax.TickDir = 'out';  % Ticks pointing outwards
+            % Ensure the top and right axes are not shown
+            ax.XColor = 'k';  % X-axis color (bottom)
+            ax.YColor = 'k';  % Y-axis color (left)
+            ax.XRuler.Axle.Visible = 'off';  % Hide the top axis
+            ax.YRuler.Axle.Visible = 'off';  % Hide the right axis
+            ax.LineWidth = LineWidth;
+            % Adjust Axes Position to Make Space for Rectangles
+            ax.Position = [0.15 0.11 0.7 0.8];  % Adjust the axis position
+            LeftAxExpand = 0.07;
+
+            %% Adding Colored Rectangles
+            % Left-hand side rectangles for dwell time colored gray 
+            ScalingParam = 0.18*LeftAxExpand;
+            UpperPos = 0;
+            for i=1:YPixels
+                DwellSize = ProcDwellTime(i) + 0.4;
+                Thickness = ScalingParam * DwellSize * XPixels;
+                Height = 1;
+                rectangle('Position', [-Thickness, UpperPos,...
+                    Thickness, Height],...
+                    'FaceColor', 0.5.*[1 1 1], 'EdgeColor', 'none');
+                UpperPos = UpperPos + Height;
+            end
+
+            % Add Bar for cycle axis
+            rectangle('Position', [-LeftAxExpand * XPixels, 0,...
+                0.01 * XPixels, YPixels],...
+                'FaceColor', [0 0 0], 'EdgeColor', 'none');
+
+            ColorBarMap=[[54 163 0]./255; % Dark green HEX 8DB600
+                [206 22 32]./255; % Fire Engine Red HEX CE162
+                [0 24 204]./255; % Blue HEX 8DB600
+                [135 0 224]./255]; % Violet HEX 8F00FF
+
+            UpperPos = 0;
+            for i=1:YPixels
+                Color = ColorBarMap(ProcPhase(i),:);
+                Thickness = 0.05 * XPixels;
+                Height = 1;
+                rectangle('Position', [XPixels, UpperPos,...
+                    Thickness, Height],...
+                    'FaceColor', Color, 'EdgeColor', 'none');
+                UpperPos = UpperPos + Height;
+            end
+
+            % Adjust the axis limits to avoid cutting off the rectangles
+            xlim([-LeftAxExpand * XPixels XPixels * 1.05]);
+
+            % Adding and Customizing Colorbar
+            c = colorbar;
+            c.Location = 'northoutside';
+            c.Label.String = 'Attractive force (nN)';
+            c.Ticks = [MinForce, MaxForce/3, MaxForce*2/3, MaxForce];
+            c.FontSize = FS;
+            c.FontName = 'Arial';
+            c.Orientation = 'horizontal';
+            c.LineWidth = LineWidth;
+            colormap(turbo);
+
+            % Final Adjustments
+            c.Position = [0.1939    0.8650    0.6239    0.030];
+
             % Save figure
-            fullname=sprintf('%s%s%s%s',FigNamePt1,FigNamePt2,FigNamePt3App,FigNamePt4);
+            fullname=sprintf('%s%s%s%s',FigNamePt1,FigNamePt2,FigNamePt3,FigNamePt4);
             print(gcf,fullname,'-dpng');
-            print(gcf,fullname,'-depsc');
-           % figure
-           % imshow(-FcMapRet1,[])
-
-            %% Figure 2
-            fig2=figure(2);
-            fig2.Color='white'; % changes the background color of the figure
-            fig2.Units='normalized'; % Defines the units
-            fig2.OuterPosition=[0 0 2 2];% changes the size of the to the whole screen
-            fig2.PaperOrientation='landscape';
-            % Plot 
-            surf(-FcMapRet1)
-            shading flat
-            colormap turbo
-            % Axes
-            ax2 = gca; % current axes
-            ax2.FontName='Helvetica';
-             ax2.FontSize = 40;
-             ax2.LineWidth = 5;
-             ax2.XTick=0:100:1000;
-             ax2.ZTick=0.0:0.1:1.0;
-      %       ax2.XLabel.String = 'Tip-Surface separation distance (nm)';
-             ax2.XLabel.FontSize = 40;
-             ax2.ZLabel.String = 'Force (nN)';
-             ax2.ZLabel.FontSize = 40;
-            % Save figure
-            fullname=sprintf('%s%s%s%s',FigNamePt1,FigNamePt2,FigNamePt3Ret,FigNamePt4);
-            print(gcf,fullname,'-dpng');
-            print(gcf,fullname,'-depsc');
-
-           % figure
-           % imshow(-FcMapRet2,[])
-
-             %% Figure 3
-%             fig3=figure(3);
-%             fig3.Color='white'; % changes the background color of the figure
-%             fig3.Units='normalized'; % Defines the units
-%             fig3.OuterPosition=[0 0 2 2];% changes the size of the figure object to the whole screen          
-%             fig3.PaperOrientation='landscape';
-%             % Plot
-%             surf(-FcMapRet2)
-%             shading flat
-%             colormap turbo
-%             ax3 = gca; % current axes
-%             ax3.FontName='Helvetica';
-%              ax3.FontSize = 40;
-%              ax3.LineWidth = 5;
-%              ax3.XTick=0:100:1000;
-%              ax3.ZTick=0.0:0.1:1.0;
-%              ax3.XLabel.String = 'Tip-Surface separation distance (nm)';
-%              ax3.XLabel.FontSize = 40;
-%              ax3.ZLabel.String = 'Force (nN)';
-%              ax3.ZLabel.FontSize = 40;
-
+            exportgraphics(gcf,[fullname,'.pdf'],'ContentType','vector')
 
             %% House keeping
             close all
 
         end
 
-       
+  
+        function SM_force_landscape_ret(obj,Var)
+            %     function SM_force_landscape_ret(obj,Var)
+            % Author: Manuel Rufin, Andreas Rohatschek
+            % Based on "2024_11_14_AveragingCorrection.m" file in the "FCLandscape"-folder and slightly modified
+            % Function to plot a force landscape of the retraction part 
+            % Var ... Variant            
+
+            if Var==1
+                % Input dialog
+                prompt = {'Enter the force map number you do not want to have included in the "SMFSResults"-structure (For multiple selections just use the space key to separeat entries)'};
+                definput = {''};
+                opts.Interpreter = 'tex';
+                FMIdxArray=inputdlg(prompt,'Select all - except of ...',[1 150],definput,opts);
+                FMIdxArray=str2num(FMIdxArray{1}); % Convert the cell array to numerals
+            elseif Var==2
+                warning('This variation requires that a none parameter based selection row in the "SMFSResults"-structure exists (Typically row 1)')
+                dlgtitle='Enter the "SMFSResults"-structure row the chronologcial data will be taken from';
+                prompt = {'ResultsRow'};
+                definput={'1'};
+                dims=[1 150];
+                ResultsRow = inputdlg(prompt,dlgtitle,dims,definput);
+                ResultsRow=str2num(ResultsRow{1});
+                dlgtitle='Enter the chronological force map index of the first and last force map you want to have included in the "SMFSResults"-structure';
+                prompt = {'First','Last'};
+                dims=[1 150; 1 150];
+                FMIdxChrono = inputdlg(prompt,dlgtitle,dims);
+                FMIdxChrono1=str2num(FMIdxChrono{1});
+                FMIdxChrono2=str2num(FMIdxChrono{2});
+                % Allocate the force maps in chronological order as defined by
+                % the input dialog box
+                FMIdxArray=obj.SMFSResults{ResultsRow}.Data.FMDateTimeSortIdx(FMIdxChrono1:FMIdxChrono2);
+            end
+            % If condition to handle an empty index array
+            if isempty(FMIdxArray)
+                return
+            else
+            end
+
+            % Allocate the force maps in chronological order as defined by
+            % the input dialog box
+            FMIdxArray=obj.SMFSResults{ResultsRow}.Data.FMDateTimeSortIdx(FMIdxChrono1:FMIdxChrono2);
+
+            % Change into the Folder of Interest
+            cd(obj.ExperimentFolder) % Move into the folder
+            % Create folders for saving the produced figures
+            foldername='SM_force_landscape';    % Defines the folder name
+            mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
+            currpath=fullfile(obj.ExperimentFolder,foldername);
+            cd(currpath);
+ 
+           %% Figures
+           FigNamePt1=sprintf('SMFSResultRow%d_',ResultsRow);
+           FigNamePt2=sprintf('FM%d_to_FM%d_',FMIdxChrono1,FMIdxChrono2);
+           FigNamePt3='Ret';
+           FigNamePt4='ForceCurveLandscape';
+
+            % Force Landscape variables
+            FcCount = 0; % Force curve count
+            for ii=FMIdxArray'
+                FcCount = FcCount + obj.FM{ii}.NCurves;
+            end
+            ResY = FcCount; % y-axis resolution
+            ResX = 1024; % x-axis resolution
+            % Allocate data
+            MaxRangeRet = 0;
+            SkippedCurves = 0;
+            k=1;
+            DwellTime = [];
+            Phase = [];
+            ExtSpeed = [];
+            RetSpeed = [];
+            AbsCycleIndex = [];
+            m = 0;
+            % Read ou data
+            for j=obj.SMFSResults{ResultsRow}.Data.FMIndexChrono'
+                for i=1:obj.FM{j}.NCurves
+                    m=m+1;
+                    if ~obj.FM{j}.SMFSFlag.Selected(i)
+                        SkippedCurves = SkippedCurves + 1;
+                        continue
+                    end
+
+                    DwellTime(k,1) = obj.SMFSResults{ResultsRow}.Data.FMHoldingTime(j);
+                    ExtSpeed(k,1) = obj.SMFSResults{ResultsRow}.Data.FMExtVelocity(j);
+                    RetSpeed(k,1) = obj.SMFSResults{ResultsRow}.Data.FMRetVelocity(j);
+                    AbsCycleIndex(k,1) = m;
+
+                    if any(j == [1:2])
+                        Phase(k,1) = 1;
+                    elseif any(j == [3:22])
+                        Phase(k,1) = 2;
+                    elseif any(j == [23:121])
+                        Phase(k,1) = 3;
+                    elseif any(j == [121:obj.NumForceMaps])
+                        Phase(k,1) = 4;
+                    end
+
+                    vDefRet{k} = obj.FM{j}.BasedRet{i};
+                    THRet{k} = obj.FM{j}.THRet{i};
+                    THRet{k} = THRet{k} - max(THRet{k});
+                    MaxRangeRet = max(range(THRet{k}),MaxRangeRet);
+
+                    k = k + 1;
+                end
+            end
+
+            % Define axes properties
+            XQRet = linspace(0,-MaxRangeRet,ResX); % Query points on x-axis
+            ResY = ResY - SkippedCurves; % y-axis resolution
+            % Preallocate
+            FcMapRet = zeros(ResY, ResX);
+            % Interp Data and fill FCMap
+            for i=1:ResY
+                FCMapRet(i,:) = interp1(THRet{i},vDefRet{i},XQRet);
+            end
+            RetractForceCurveMap = FCMapRet;
+            RetractMaxRange = MaxRangeRet;
+
+            %% Plot: Dwell Time only            
+            % Font Sizes
+            %FS = 18;
+            FS = 7;
+           
+            % Processed Image Preparation
+            ProcRetMap = RetractForceCurveMap * 1e9;
+            YPixels = 2048;
+            XPixels = 1024;
+            img=-ProcRetMap;
+            img = imfilter(img,ones(round(size(-ProcRetMap,1)/YPixels),1)./round(size(ProcRetMap,1)/YPixels)); % Applying a rollling average filter for smearing out data
+            img = imresize(img, [YPixels XPixels], 'nearest'); % Downsampling
+            ProcDwellTime = imresize(DwellTime, [YPixels 1], 'nearest');
+            ProcPhase = imresize(Phase, [YPixels 1], 'nearest');
+            xmin = 0;
+            xmax = RetractMaxRange * 1e9;
+            ymax = size(RetractForceCurveMap, 1) / 1000;
+            MaxForce = 0.3;
+            MinForce = 0;         
+            LineWidth = 1.5;
+            
+            % Figure and Image Display
+            Fig = figure('Color', 'w');
+            imshow(img, [MinForce MaxForce]);
+            
+            ax = gca;  % Get the current axes handle
+            axis on;   % Turn on the axis visibility
+            xlabel('Tip-sample distance (nm)');
+            ylabel('Number of cycles (x100)');
+            xlim([0 XPixels]);  % Set X-axis limits
+            ylim([0 YPixels]);  % Set Y-axis limits         
+            set(ax, 'XTick', [0:200:1000] ./ xmax * XPixels);  % Custom X-axis ticks
+            YTickSpacing = [0:2:floor(ymax)] ./ ymax;
+            set(ax, 'YTick', YTickSpacing * YPixels);  % Custom Y-axis ticks
+            set(ax, 'XTickLabel', {string(xmin), string(200), string(400), string(600), string(800), string(1000)});  % Custom X-axis tick labels
+            % Custom Y-axis tick labels
+            for i=1:length(YTickSpacing)
+                if i == 1
+                    YTickLabels{i} = '0';
+                    continue
+                end
+               YTickLabels{i} =string(round(AbsCycleIndex(YTickSpacing(i)*ymax*1000)/100,1));
+             %   YTickLabels{i} = string(round(AbsCycleIndex(YTickSpacing(i)*ymax*1000),1));
+            end
+            set(ax, 'YTickLabel',YTickLabels)           
+            set(ax, 'FontSize', FS);  % Set font size for axes
+            set(ax, 'FontName', 'Arial');  % Set font type for axes
+            
+            % Display axes only on the left and bottom
+            ax.XAxisLocation = 'bottom';  % X-axis at the bottom
+            ax.YAxisLocation = 'left';    % Y-axis on the left
+            ax.Box = 'off';  % Turn off the box around the axes
+            ax.TickDir = 'out';  % Ticks pointing outwards
+            
+            % Ensure the top and right axes are not shown
+            ax.XColor = 'k';  % X-axis color (bottom)
+            ax.YColor = 'k';  % Y-axis color (left)
+            ax.XRuler.Axle.Visible = 'off';  % Hide the top axis
+            ax.YRuler.Axle.Visible = 'off';  % Hide the right axis
+            ax.LineWidth = LineWidth;
+            
+            % Adjust Axes Position to Make Space for Rectangles
+            ax.Position = [0.15 0.11 0.7 0.8];  % Adjust the axis position
+            
+            % Lines and boxes demarking critical lengths
+            LinesFlag = true;
+            if LinesFlag
+                XPos1 = 250;
+                LineX1 = ones(1,2)*XPos1 ./ xmax * XPixels;
+                LineY1 = [.735 1] * YPixels;
+                hold on
+                plot(LineX1,LineY1,'w--','LineWidth',LineWidth)
+                % text(LineX1(1) + 10,mean(LineY1),string(XPos1),'Color','w','FontName','Arial','FontSize',FS)
+            
+                % XPos2 = 430;
+                % LineX2 = ones(1,2)*XPos2 ./ xmax * XPixels;
+                % LineY2 = [.55 .68] * YPixels;
+                % plot(LineX2,LineY2,'w--','LineWidth',LineWidth)
+                % text(LineX2(1) + 10,mean(LineY2),string(XPos2),'Color','w','FontName','Arial','FontSize',FS)
+            
+                XPos3 = 670;
+                LineX3 = ones(1,2)*XPos3 ./ xmax * XPixels;
+                % LineY3 = [.29 .543] * YPixels;
+                % plot(LineX3,LineY3,'w--','LineWidth',LineWidth)
+                % text(LineX3(1) + 10,mean(LineY3),string(XPos3),'Color','w','FontName','Arial','FontSize',FS)
+                
+                XPos4 = 820;
+                LineX4 = ones(1,2)*XPos4 ./ xmax * XPixels;
+                % LineY4 = [.29 .543] * YPixels;
+                % plot(LineX4,LineY4,'w--','LineWidth',LineWidth)
+                % text(LineX4(1) + 10,mean(LineY4),string(XPos4),'Color','w','FontName','Arial','FontSize',FS)          
+            
+                Band1X1 = 670 ./ xmax * XPixels;
+                Band1X2 = 820 ./ xmax * XPixels;
+                Band1Pos = [Band1X1 .29*YPixels Band1X2-Band1X1 (.543 - .29)*YPixels];
+                Band1Rect =rectangle('Position', Band1Pos,...
+                    'FaceColor', 'none', 'EdgeColor', 'w','LineStyle','--','LineWidth',LineWidth);
+                       
+                Band2X1 = 250 ./ xmax * XPixels;
+                Band2X2 = 580 ./ xmax * XPixels;
+                Band2Pos = [Band2X1 .56*YPixels Band2X2-Band2X1 (.68 - .56)*YPixels];
+                Band2Rect =rectangle('Position', Band2Pos,...
+                    'FaceColor', 'none', 'EdgeColor', 'w','LineStyle','--','LineWidth',LineWidth);
+            
+                %     text(Band2X1(1) + 10,mean([.56 .68].*YPixels),string(250),'Color','w','FontName','Arial','FontSize',FS)
+                %     text(Band2X2(1) + 10,mean([.56 .68].*YPixels),string(580),'Color','w','FontName','Arial','FontSize',FS)
+            end
+            
+            % White band (demarking theoretical linker-molecule complex
+            % range)
+            BandFlag = true;
+            if BandFlag
+                BandX1 = 308 ./ xmax * XPixels;
+                BandX2 = 463 ./ xmax * XPixels;
+                BandPos = [BandX1 -2 BandX2-BandX1 YPixels];
+                BandRect =rectangle('Position', BandPos,...
+                    'FaceColor', [1 1 1 .3], 'EdgeColor', 'none');           
+            
+            end
+            LeftAxExpand = 0.07;
+            
+            % Adding Colored Rectangles
+            % Dwell time (Gray rectangles on the left-hand side with thicknesses according to the dwell times)            
+            DwellSizes = [0.2 1.2 2.2 3.2];
+            ScalingParam = 0.18*LeftAxExpand;
+            UpperPos = 0;
+            for i=1:YPixels
+                DwellSize = ProcDwellTime(i) + 0.2;
+                Thickness = ScalingParam * DwellSize * XPixels;
+                Height = 1;
+                rectangle('Position', [-Thickness, UpperPos,...
+                    Thickness, Height],...
+                    'FaceColor', 0.5.*[1 1 1], 'EdgeColor', 'none');
+                UpperPos = UpperPos + Height;
+            end
+            
+            % Add Bar for cycle axis
+            rectangle('Position', [-LeftAxExpand * XPixels, 0,...
+                0.01 * XPixels, YPixels],...
+                'FaceColor', [0 0 0], 'EdgeColor', 'none');
+            
+            % State/phase rectangles on the right-hand side         
+            ColorBarMap=[[54 163 0]./255; % Dark green HEX 8DB600
+                [206 22 32]./255; % Fire Engine Red HEX CE162
+                [0 24 204]./255; % Blue HEX 8DB600
+                [135 0 224]./255]; % Violet HEX 8F00FF
+            
+            UpperPos = 0;
+            for i=1:YPixels
+                Color = ColorBarMap(ProcPhase(i),:);
+                Thickness = 0.05 * XPixels;
+                Height = 1;
+                rectangle('Position', [XPixels, UpperPos,...
+                    Thickness, Height],...
+                    'FaceColor', Color, 'EdgeColor', 'none');
+                UpperPos = UpperPos + Height;
+            end
+            
+            % Adjust the axis limits to avoid cutting off the rectangles
+            xlim([-LeftAxExpand * XPixels XPixels * 1.05]);
+            
+            % Adding and Customizing Colorbar
+            c = colorbar;
+            c.Location = 'northoutside';
+            c.Label.String = 'Adhesive force (nN)';
+            c.Ticks = [MinForce, MaxForce/3, MaxForce*2/3, MaxForce];
+            c.FontSize = FS;
+            c.FontName = 'Arial';
+            c.Orientation = 'horizontal';
+            c.LineWidth = LineWidth;
+            colormap(turbo);
+            
+            % Final Adjustments            
+            Fig.Position = [1858 68 686 1277];
+            c.Position = [0.1939    0.8446    0.6239    0.0167];            
+            set(Fig, 'Renderer', 'Painters');
+            
+            % Save figure
+            fullname=sprintf('%s%s%s%s',FigNamePt1,FigNamePt2,FigNamePt3,FigNamePt4);
+            print(gcf,fullname,'-dpng');
+            exportgraphics(gcf,[fullname,'.pdf'],'ContentType','vector')
+
+            %% House keeping
+            close all
+
+        end
+
+
+  
   
         % Individual ForceMap function related
         
