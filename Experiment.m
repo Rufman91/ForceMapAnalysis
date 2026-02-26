@@ -1352,45 +1352,25 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
     methods  % method block concerning SM (single molecule) related data analysis 
         
         function SM_initialize_arrays(obj)
-            % Description: A function to initialize flags of the object which are used from various functions during an analysis.      
+            % Description: 
+            % A function to initialize an array showing parameters of analysis selections.      
             % Required input variables:
             % obj
             
             %% Function body
- %           TableSize=[1 13];
- %           VarTypes = {'double','string','string','string','string','double','double','double','string','string','string','string','string'};
- %           VarNames = {'FM row number','FM ID','Name','Date','Time','Extend velocity','Retraction velocity','Holding time','Linker','Substrate','Medium','Chip cantilever number','Chipbox number'};
- %           obj.SMFSFMParameters=table('Size',TableSize,'VariableTypes',VarTypes,'VariableNames',VarNames);
 
             TableSize=[1 9];
             VarTypes = {'double','string','string','string','string','string','double','double','double'};
             VarNames = {'SMFSResults Idx','Chipbox number','Chip cantilever number','Linker','Substrate','Medium','Extend velocity','Retraction velocity','Holding time'};
             obj.SMFSResultsParameters=table('Size',TableSize,'VariableTypes',VarTypes,'VariableNames',VarNames);
 
-            %             TableSize=[1 5];
-%             VarTypes = {'double','double','double','double','double'};
-%             VarNames = {'SMFSLillie Idx','SMFSResultsParameter Row Num1','Sum force-curves tested','Hypothesis','p-value'};
-%             obj.SMFSLillieAdhMaxApp=table('Size',TableSize,'VariableTypes',VarTypes,'VariableNames',VarNames);
-%             obj.SMFSLillieAdhMaxRet=table('Size',TableSize,'VariableTypes',VarTypes,'VariableNames',VarNames);
-%             obj.SMFSLillieAdhUnbinding=table('Size',TableSize,'VariableTypes',VarTypes,'VariableNames',VarNames);
-%             obj.SMFSLillieAdhEneApp=table('Size',TableSize,'VariableTypes',VarTypes,'VariableNames',VarNames);
-%             obj.SMFSLillieAdhEneRet=table('Size',TableSize,'VariableTypes',VarTypes,'VariableNames',VarNames);
-%             obj.SMFSLilliePullingLength=table('Size',TableSize,'VariableTypes',VarTypes,'VariableNames',VarNames);
-%             obj.SMFSLillieSnapInLength=table('Size',TableSize,'VariableTypes',VarTypes,'VariableNames',VarNames);
-% 
-%             TableSize=[1 7];
-%             VarTypes = {'double','double','double','double','double','double','double'};
-%             VarNames = {'SMFSWilcoxon Idx','SMFSResultsParameter Row Num1','Sum force-curves tested Row Num1','SMFSResultsParameter Row Num2','Sum force-curves tested Row Num2','Hypothesis','p-value'};
-%             obj.SMFSWilcoxonAdhMaxApp=table('Size',TableSize,'VariableTypes',VarTypes,'VariableNames',VarNames);
-%             obj.SMFSWilcoxonAdhMaxRet=table('Size',TableSize,'VariableTypes',VarTypes,'VariableNames',VarNames);
-%             obj.SMFSWilcoxonAdhUnbinding=table('Size',TableSize,'VariableTypes',VarTypes,'VariableNames',VarNames);
-%             obj.SMFSWilcoxonAdhEneApp=table('Size',TableSize,'VariableTypes',VarTypes,'VariableNames',VarNames);
-%             obj.SMFSWilcoxonAdhEneRet=table('Size',TableSize,'VariableTypes',VarTypes,'VariableNames',VarNames);
-%             obj.SMFSWilcoxonPullingLength=table('Size',TableSize,'VariableTypes',VarTypes,'VariableNames',VarNames);
-%             obj.SMFSWilcoxonSnapInLength=table('Size',TableSize,'VariableTypes',VarTypes,'VariableNames',VarNames);
         end
         
         function SM_initialize_flags(obj)
+            % Description: 
+            % A function to initialize flags relevant for SM analysis.
+            % Required input variables:
+            % obj
 
             obj.initialize_flags
             NFM = obj.NumForceMaps;
@@ -1465,11 +1445,11 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
         
         function SM_preprocessing(obj)
             % Description:       
-            % The function that applies various preprocessing steps to the data.
+            % The function applies various preprocessing steps to the data.
             % First, the general cantilever sensitivity measured before starting an AFM SM experiment with the cantilever is corrected with the individual cantilever sensitivity determined from each individual force curve. 
             % Typically, in AFM experiments it is not necessary to determine the individual sensitivity but in case of the force curves detected during AFM SM experiments it was necessary to ensure most accurate results possible. 
             % Second, to correct for artifacts which occurred in some force curves and the general tilt, the approach data is fitted. Two fits, a sinoidal fit and linear fit, are applied separately onto the same amount of data and the better fit is selected. 
-            % Additionally, a second, linear fit is applied to correct for the tilt in the data. 
+            % Additionally, a second linear fit is applied to correct for the tilt in the data. 
             % Third, to optimize the tilt correction for the retraction part, a linear fit of selected retraction data is applied. 
             % Fourth, the z-piezo height data is corrected with the cantilever deflection. 
             % Fifth, the contact point is estimated. 
@@ -1502,9 +1482,8 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             cd(currpath);           
             % force map loop
             
-            %for Fm=1:obj.NumForceMaps   
-            for Fm=263:obj.NumForceMaps  % debugging
-            %for Fm=272 % debugging
+            for Fm=1:obj.NumForceMaps   
+            %for Fm=263:obj.NumForceMaps  % debugging
                 if isequal(KeepFlagged,'Yes') && obj.SMFSFlag.Preprocessed(Fm) == 1
                     KeepFlagged = questdlg(sprintf('Some maps have been processed already.\nDo you want to skip them and keep old results?'),...
                     'Processing Options',...
@@ -1605,7 +1584,8 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             % XMax= 800;     
             % YMin= -1.5;     
             % YMax= 0.100;         
-            % NumFcMax = 25;    
+            % NumFcMax = 25;  
+
             %% Function body
             % Figure visibility
             % set(groot,'defaultFigureVisible','off')      
@@ -1719,8 +1699,9 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             % XMax ... Maximum limit of the X-axis in nanometers (nm)
             % YMin ... Minimum limit of the Y-axis in nanoNewtons (nN)
             % YMax ... Maximum limit of the Y-axis in nanoNewtons (nN)
-            % NumFcMax ... Maximum number of force curves per figure
-            % Typical input variables used for AFM SMAD of tropocollagen 
+            % NumFcMax ... Maximum number of force curves per figure (Only
+            % natural numbers are allowed)
+            % Typical input variables:
             % XMin= -inf;
             % XMax= 800;     
             % YMin= -1.5;     
@@ -1750,66 +1731,30 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
         end
       
         
-        function SM_print_analysed_fc(obj,XMin,XMax,YMin,YMax,NumFcMax)
-            %Furthermore, all analysed force curves are plotted and the determined
-            % criteria are plotted for visual inspection
-            % Input variable adaptation
-            % IMPORTANT: Input variable NumFcMax - Only natural numbers are allowed
-            % that result in natural numbers after square root extraction.
-            if nargin<2
-                XMin= -inf;     % Limit of the X-axis in meters (m)
-                XMax= 50e-9;      % Limit of the X-axis in meters (m)
-                YMin= -inf;     % Limit of the Y-axis in Newtons (N)
-                YMax= 100e-12;      % Limit of the Y-axis in Newtons (N)
-                NumFcMax = 25;   % Maximum number of force curves per figure
-            elseif nargin<3
-                XMin= -inf;     % Limit of the X-axis in meters (m)
-                XMax= inf;      % Limit of the X-axis in meters (m)
-                YMin= -inf;     % Limit of the Y-axis in Newtons (N)
-                YMax= inf;      % Limit of the Y-axis in Newtons (N)
-            end
-            % Output time and date for the dairy
-            datetime('now')
-            
-            % Figure visibility
-            set(groot,'defaultFigureVisible','off')
-        %    set(groot,'defaultFigureVisible','on')
-            cd(obj.ExperimentFolder) % Move into the folder
-            % Create folders for saving the produced figures
-            %foldername='FM_Test';    % for debugging
-            foldername='SM_print_analysed_fc';    % Defines the folder name
-            mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
-            currpath=fullfile(obj.ExperimentFolder,foldername);
-            cd(currpath);
-            %% loop
-            for Fm=1:obj.NumForceMaps
-            %for Fm=28 % Debugging
-            %sprintf('Force Map No. %d of %d',hh,obj.NumForceMaps) % Gives current Force Map Position   
-            if ~obj.SMFSFlag.Preprocessed(Fm)
-                    continue
-            end   
-            % Determine needed input variable
-               NumFcUncorrupt(Fm)=nnz(obj.FM{Fm}.SMFSFlag.Uncorrupt); % Determine the number of uncorrupted force curves     
-               obj.FM{Fm}.fc_print_analysed(XMin,XMax,YMin,YMax,NumFcMax)         
-            end
-            obj.NumFcUncorrupt=NumFcUncorrupt;
-        end
-                
+               
         function SM_print_raw(obj,XMin,XMax,YMin,YMax)
-            % SM_print: A function to simply plot all force curves of all
-            % force maps loaded and calssified based on the SMFS Flag
-            % Needed function: obj.presorting
-            
-            % Show time and date for the dairy
-            datetime('now')
-            
+            % Description: 
+            % In this function all force curves of all
+            % force maps are plotted in their raw form.                   
+            % Required input variables:
+            % XMin ... Minimum limit of the X-axis in meters (nm)
+            % XMax ... Maximum limit of the X-axis in meters (nm)
+            % YMin ... Minimum limit of the Y-axis in Newtons (nN)
+            % YMax ... Maximum limit of the Y-axis in Newtons (nN)
+            % Typical input variables:
+            % XMin= -10e-9;
+            % XMax= 500e-9;     
+            % YMin= -1e-9;     
+            % YMax= 100e-12;         
+
             if nargin<2
                 XMin= -inf;     % Limit of the X-axis in meters (m)  
                 XMax= inf;      % Limit of the X-axis in meters (m)
                 YMin= -inf;     % Limit of the Y-axis in Newtons (N)   
                 YMax= inf;      % Limit of the Y-axis in Newtons (N)
             else
-                
+            % Output time and date for the dairy
+            datetime('now')    
             end
        
             % Figure visibility
@@ -1826,7 +1771,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             
             % Loop over the imported force maps
             %for Fm=1:obj.NumForceMaps
-            for Fm=1 % Debugging
+            for Fm=1:50 % Debugging
                % Command window output
                sprintf('Force Map No. %d of %d',Fm,obj.NumForceMaps) % Gives current Force Map Position
                % Run the chosen functions
@@ -1835,10 +1780,28 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
         end
                          
         function SM_print_sort(obj,StartDate,EndDate,XMin,XMax,YMin,YMax,Flags)
-            % SM_print_sort: A function to plot all force curves of all
-            % force maps sorted by different properties 
-            % Comment: Date format is: 'YYYY.MM.DD'
-            
+            % Description: 
+            % In this function force maps ca be selected by date and time and plotted 
+            % Required input variables:
+            % StartDate ... Starting date of the selection (Input format:
+            % 'YYYY.MM.DD')
+            % EndDate ... Ending date of the selection (Input format:
+            % 'YYYY.MM.DD')
+            % XMin ... Minimum limit of the X-axis in nanometers (nm)
+            % XMax ... Maximum limit of the X-axis in nanometers (nm)
+            % YMin ... Minimum limit of the Y-axis in nanoNewtons (nN)
+            % YMax ... Maximum limit of the Y-axis in nanoNewtons (nN)
+            % Flags ... Flags that have been set already (select either
+            % 'presorted' or 'fit')
+            % Typical input variables:
+            % StartDate= '0000.00.00'
+            % EndDate= '2050.00.00'
+            % XMin= -500;
+            % XMax= 10;     
+            % YMin= -1.5;     
+            % YMax= 0.1;         
+            % Flags = 'fit';
+
             % Figure visibility
             set(groot,'defaultFigureVisible','off')      
             % set(groot,'defaultFigureVisible','on')  
@@ -1853,10 +1816,10 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             if nargin<2
                 StartDate='0000.00.00';
                 EndDate='2999.00.00';
-                XMin= -inf;     % Limit of the X-axis in meters (m)  
-                XMax= inf;      % Limit of the X-axis in meters (m)
-                YMin= -inf;     % Limit of the Y-axis in Newtons (N)   
-                YMax= inf;      % Limit of the Y-axis in Newtons (N)
+                XMin= -inf;     % Limit of the X-axis in nanometers (m)  
+                XMax= inf;      % Limit of the X-axis in nanometers (m)
+                YMin= -inf;     % Limit of the Y-axis in nanoNewtons (N)   
+                YMax= inf;      % Limit of the Y-axis in nanoNewtons (N)
             elseif nargin<6    
                 StartDate='0000.00.00';
                 EndDate='2999.00.00';
@@ -1867,7 +1830,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             
             % Loop over the imported force maps
              for Fm=1:obj.NumForceMaps
-             %for Fm=25:36
+             %for Fm=1
                  % Needed function               
                 %if ~obj.SMFSFlag(ii)     % Selects all flagged 1 force maps
                 %if obj.SMFSFlag(ii)     % Selects all flagged 0 force maps
@@ -1909,25 +1872,65 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             end            
         end
         
-        
-        function SM_analysis_flag_status(obj)
-                        
-            % Find not processed force maps
-            obj.SMFSFlagDown.SelectFM=find(~obj.SMFSFlag.SelectFM);
-            obj.SMFSFlagDown.PropertiesParameters=find(~obj.SMFSFlag.PropertiesParameters);
-            obj.SMFSFlagDown.Preprocessed=find(~obj.SMFSFlag.Preprocessed);
-            obj.SMFSFlagDown.Presorted=find(~obj.SMFSFlag.Presorted);
-            obj.SMFSFlagDown.NumForceCurves=find(~obj.SMFSFlag.NumForceCurves);            
-            obj.SMFSFlagDown.AnalysedPreSelected=find(~obj.SMFSFlag.AnalysedPreSelected);
-            obj.SMFSFlagDown.AnalysedPostSelected=find(~obj.SMFSFlag.AnalysedPostSelected);
-     %       obj.SMFSFlagDown.Analysed=find(~obj.SMFSFlag.Analysed);
-            for Fm=1:obj.NumForceMaps
-            %for Fm=122:133
-            obj.FM{Fm}.fc_flag_status          
+        function SM_print_analysed_fc(obj,XMin,XMax,YMin,YMax,NumFcMax)
+            % Description: 
+            % In this function all analysed force curves and the corresponding determined
+            % features are plotted
+            % Required input variables:
+            % XMin ... Minimum limit of the X-axis in nanometers (nm)
+            % XMax ... Maximum limit of the X-axis in nanometers (nm)
+            % YMin ... Minimum limit of the Y-axis in nanoNewtons (nN)
+            % YMax ... Maximum limit of the Y-axis in nanoNewtons (nN)
+            % NumFcMax ... Maximum number of force curves per figure (Only
+            % natural numbers are allowed)
+            % Typical input variables:
+            % XMin= -10;
+            % XMax= 500;     
+            % YMin= -1.0;     
+            % YMax= 0.1;
+            % NumFcMax=25
+
+            if nargin<2
+                XMin= -inf;     % Limit of the X-axis in meters (m)
+                XMax= 50e-9;      % Limit of the X-axis in meters (m)
+                YMin= -inf;     % Limit of the Y-axis in Newtons (N)
+                YMax= 100e-12;      % Limit of the Y-axis in Newtons (N)
+                NumFcMax = 25;   % Maximum number of force curves per figure
+            elseif nargin<3
+                XMin= -inf;     % Limit of the X-axis in meters (m)
+                XMax= inf;      % Limit of the X-axis in meters (m)
+                YMin= -inf;     % Limit of the Y-axis in Newtons (N)
+                YMax= inf;      % Limit of the Y-axis in Newtons (N)
             end
+
+            % Output time and date for the dairy
+            datetime('now')
+            
+            % Figure visibility
+            set(groot,'defaultFigureVisible','off')
+        %    set(groot,'defaultFigureVisible','on')
+            cd(obj.ExperimentFolder) % Move into the folder
+            % Create folders for saving the produced figures
+            %foldername='FM_Test';    % for debugging
+            foldername='SM_print_analysed_fc';    % Defines the folder name
+            mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
+            currpath=fullfile(obj.ExperimentFolder,foldername);
+            cd(currpath);
+            %% loop
+            for Fm=1:obj.NumForceMaps
+            %for Fm=7:10 % Debugging
+            %sprintf('Force Map No. %d of %d',hh,obj.NumForceMaps) % Gives current Force Map Position   
+            if ~obj.SMFSFlag.Preprocessed(Fm)
+                    continue
+            end   
+            % Determine needed input variable
+               NumFcUncorrupt(Fm)=nnz(obj.FM{Fm}.SMFSFlag.Uncorrupt); % Determine the number of uncorrupted force curves     
+               obj.FM{Fm}.fc_print_analysed(XMin,XMax,YMin,YMax,NumFcMax)         
+            end
+            obj.NumFcUncorrupt=NumFcUncorrupt;
         end
- 
         
+
         function SM_results_structure(obj,ChipboxValue,ChipCantValue,LinkerValue,SubstrateValue,EnvCondValue,ExtVelocityValue,RetVelocityValue,HoldingTimeValue)
 
             % If all velocities should be selected use input variable: 0
@@ -3129,7 +3132,7 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             % Debugging
             % jj=11
             % Allocate data
- obj.SMFSResults{jj,1}.Concatenate(1).FMID=FMIDArray;
+            obj.SMFSResults{jj,1}.Concatenate(1).FMID=FMIDArray;
             obj.SMFSResults{jj,1}.Concatenate(1).FMIndex=FMIndexArray;
             obj.SMFSResults{jj,1}.Concatenate(1).FMNum=FMNumArray;
             obj.SMFSResults{jj,1}.Concatenate(1).FMIndexChrono=FMIndexChronoArray;
@@ -3345,7 +3348,2001 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
         end
 
 
-        function SM_results_structure_add_phase(obj,ResultsRow,Phase1End,Phase2End,Phase3End)
+        function SM_fine_figure_publication(obj,XMin,XMax,YMin,YMax,FmoI,FcoI,Linker,CArea,Axis)
+            % Description: 
+            % In this function force curves can be plotted in publication quality
+            % Required input variables:
+            % XMin ... Minimum x-axis value in nm
+            % XMax ... Maximum x-axis value in nm
+            % YMin ... Minimum y-axis value in nN
+            % YMax ... Maximum y-axis value in nN
+            % FmoI ... Force map of interest
+            % FcoI ... Force curve of interest 
+            % Linker ... Short or long linker
+            % CArea ... Show theoretical Linker-TC complex range: 'yes' or
+            % 'no'
+            % Axis ... Show axis in graph: 'Yes' or 'No'
+
+            if nargin < 3
+                XMin= -inf;
+                XMax= inf;
+                YMin= -inf;
+                YMax= inf;
+            end
+            % Figure visibility
+            %set(groot,'defaultFigureVisible','off')
+            set(groot,'defaultFigureVisible','on')
+            % Set figure position
+            set(groot,'defaultFigurePaperPositionMode','auto')
+            % Change into the Folder of Interest
+            cd(obj.ExperimentFolder) % Move into the folder            
+            % Create folders for saving the produced figures
+            foldername='SM_fine_figure_publication';    % Defines the folder name
+            %foldername='SM_fine_figure_publication_sens';    % Defines the folder name
+            mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
+            currpath=fullfile(obj.ExperimentFolder,foldername);
+            cd(currpath);
+            % Run the chosen functions  
+            obj.FM{FmoI}.fc_fine_figure_publication(XMin,XMax,YMin,YMax,FmoI,FcoI,Linker,CArea,Axis)
+            
+        end
+              
+        
+       function SM_results_gramm_boxplot2_publication(obj,ResultsRow,Linker,xArg,MarkerArg,LegendArg,CBar,Var)
+            % Description:
+            % This function allows to plot the analysis results using the
+            % gramm toolbox
+            % (https://joss.theoj.org/papers/10.21105/joss.00568). The
+            % different features (snap-in length, pull-off length) determined are plotted as boxplots to
+            % the corresponding force map.
+            % Required input variables:
+            % ResultsRow: double ,e.g. 1
+            % Linker: string , either 'long' or 'short'
+            % xArg (x-axis argument): string, either 'Index' or 'DateTime'
+            % MarkerArg (Marker argument): string, either 'Y' or 'N'
+            % LegendArg (Legend argumend): string, either 'Y' or 'N'
+            % CBar (Color Bar): string, either 'Y' or 'N'
+            % Var (Variant): double, e.g. 2 (for Variant 2)
+
+            % Input variable adaptation
+            if nargin<2
+                ResultsRow=1;
+            end
+            % Define variables
+            yLimMaxFactor=0.22;
+            yLimMinFactor=0.25;
+            yAxisMinFactor=0.02;
+            yAxisMaxFactor=0.25;
+            NumColor=6;
+            NumLightness=6;
+            Res=[1 1 2560 1250]; % Define the figure resolution
+            MarkerStyle={'d' 's' 'v' 'o'};
+            MarkerSize=10;
+            BaseFontSize=32;
+            LabelScaling=1.2;
+            LegendScaling=1;
+            LineWidth=1.5;
+            % Define color bar positions
+            xCBar1=[0 2 2 0];
+            xCBar2=[2 21 21 2];
+            xCBar3=[21 121 121 21];
+            xCBar4=[121 222 222 121];
+            % Color and color maps
+            Ochreish=[253 174 97]./255;
+            SteelBlue=[116 173 209]./255;
+            ColorBrewerMap1=[[253 174 97]./255; % Ochreish
+                [116 173 209]./255]; % Steel blueish
+            ColorBarMap=[[54 163 0]./255; % Dark green HEX 8DB600
+                [206 22 32]./255; % Fire Engine Red HEX CE162
+                [0 24 204]./255; % Blue HEX 8DB600
+                [135 0 224]./255]; % Violet HEX 8F00FF
+            % Change into the Folder of Interest
+            cd(obj.ExperimentFolder) % Move into the folder
+            % Create folders for saving the produced figures
+            foldername='SM_results_gramm_boxplot2_publication';    % Defines the folder name
+            mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
+            currpath=fullfile(obj.ExperimentFolder,foldername);
+            cd(currpath);
+            % Input variables
+            % Linker
+            if strcmpi(Linker,'Long')
+                LimitLengthRet1=[0 378];
+                LimitLengthRet2=[378 522];
+                LimitLengthApp=[50 120];
+            elseif strcmpi(Linker,'Short')
+                LimitLengthRet1=[0 308];
+                LimitLengthRet2=[308 463];
+                LimitLengthApp=[50 120];
+            end
+            % xArg
+            if strcmpi(xArg,'DateTime')
+                LegendxAxis='Date and Time';
+                xData=obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSort;
+                xDataMin=min(xData);
+                xDataMax=max(xData);
+                xAxisCorr=(xDataMax-xDataMin)*0.005;
+                BoxplotWidth=0.8;
+                BoxplotDodge=2;
+            elseif strcmpi(xArg,'Index')
+               % LegendxAxis='Chronological force set index';
+                LegendxAxis='Number of cycles (x100)';
+                xData=obj.SMFSResults{ResultsRow}.Concatenate.FMNum;
+                xDataMin=min(xData);
+                xDataMax=max(xData);
+                xAxisCorr=(xDataMax-xDataMin)*0.005; % For BoxplotWidth=10
+                %xAxisCorr=(xDataMax-xDataMin)*0.02; % For BoxplotWidth=2 and BoxplotWidth=0.02
+                % BoxplotWidth=18;
+                % BoxplotWidth=10;
+                BoxplotWidth=2.5;
+                BoxplotDodge=1;
+            end
+            % Variant
+            if Var==1
+                ColorName='Medium';
+                LightnessName='Substrate';
+                MarkerName='ChipCantilever';
+                LightnessData=obj.SMFSResults{ResultsRow}.Concatenate.FMSubstrate(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx);
+                ColorData=obj.SMFSResults{ResultsRow}.Concatenate.FMEnvCond(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx);
+                MarkerData=obj.SMFSResults{ResultsRow}.Concatenate.FMChipCant(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx);
+            elseif Var==2
+                ColorName='Approach speed ($\mu$m/s)';
+                LightnessName='Retraction speed ($\mu$m/s)';
+                MarkerName='Dwell Time (s)';
+                FMExtVeloData=obj.SMFSResults{ResultsRow}.Concatenate.FMExtVelocity(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*1e6;
+                FMRetVeloData=obj.SMFSResults{ResultsRow}.Concatenate.FMRetVelocity(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*1e6;
+                ColorData=FMExtVeloData;
+                LightnessData=FMRetVeloData;
+                MarkerData=obj.SMFSResults{ResultsRow}.Concatenate.FMHoldingTime(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx);
+            elseif Var==3
+                ColorName='Dwell Time (s)';
+                LightnessName='Retraction speed ($\mu$m/s)';
+                MarkerName='Approach speed ($\mu$m/s)';
+                FMExtVeloData=obj.SMFSResults{ResultsRow}.Concatenate.FMExtVelocity(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*1e6;
+                FMRetVeloData=obj.SMFSResults{ResultsRow}.Concatenate.FMRetVelocity(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*1e6;
+                ColorData=obj.SMFSResults{ResultsRow}.Concatenate.FMHoldingTime(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx);
+                LightnessData=FMRetVeloData;
+                MarkerData=FMExtVeloData;
+            elseif Var==4
+                ColorName='Retraction speed ($\mu$m/s)';
+                LightnessName='Medium';
+                MarkerName='Substrate';
+                FMRetVeloData=obj.SMFSResults{ResultsRow}.Concatenate.FMRetVelocity(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*1e6;
+                ColorData=FMRetVeloData;
+                LightnessData=obj.SMFSResults{ResultsRow}.Concatenate.FMEnvCond(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx);
+                MarkerData=obj.SMFSResults{ResultsRow}.Concatenate.FMSubstrate(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx);
+             elseif Var==5
+                ColorName='Dwell Time (s)';
+                LightnessName='Medium';
+                MarkerName='Substrate';
+                ColorData=obj.SMFSResults{ResultsRow}.Concatenate.FMHoldingTime(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx);
+                LightnessData=obj.SMFSResults{ResultsRow}.Concatenate.FMEnvCond(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx);
+                MarkerData=obj.SMFSResults{ResultsRow}.Concatenate.FMSubstrate(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx);
+
+            end
+            %%
+            if obj.SMFSResults{ResultsRow}.Parameters.ExtendVelocity==0
+                ExtVelocityValueStr='All';
+            else
+                ExtVelocityValueStr=num2str(round(obj.SMFSResults{ResultsRow}.Parameters.ExtendVelocity*1e9));
+            end
+            if obj.SMFSResults{ResultsRow}.Parameters.RetractVelocity==0
+                RetVelocityValueStr='All';
+            else
+                RetVelocityValueStr=num2str(round(obj.SMFSResults{ResultsRow}.Parameters.RetractVelocity*1e9));
+            end
+            if obj.SMFSResults{ResultsRow}.Parameters.HoldingTime==-1
+                HoldingTimeValueStr='All';
+            else
+                HoldingTimeValueStr=num2str(obj.SMFSResults{ResultsRow}.Parameters.HoldingTime);
+            end
+            % General names
+            FigNamePt1=sprintf('SMFSResultRow%d_',ResultsRow);
+            FigNamePt2=strcat(ExtVelocityValueStr,{'_'},RetVelocityValueStr,{'_'},HoldingTimeValueStr,{'_'},obj.SMFSResults{ResultsRow}.Parameters.Substrate,{'_'},obj.SMFSResults{ResultsRow}.Parameters.Medium,{'_'},obj.SMFSResults{ResultsRow}.Parameters.ChipCantilever,{'_'},obj.SMFSResults{ResultsRow}.Parameters.Chipbox,{'_'},obj.SMFSResults{ResultsRow}.Parameters.Linker);
+            FigNamePt2=char(FigNamePt2);
+            FigNamePt3='_Boxplot2';
+            %% Gramm object 1
+            % Define variables
+            Plottitle1=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ResultsRow,1}.Data(1).FMIndex),obj.SMFSResults{ResultsRow,1}.Data(1).SumNumFcAnalysedAdhMaxApp);
+            LegendyAxis1='Adhesion force (nN)';
+            NameSuffix1='_MaxAdhesionForceApproach';
+            % Allocate data
+            yData1=obj.SMFSResults{ResultsRow}.Concatenate.AdhMaxApp(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*-1e9;
+            yData1Min=min(yData1);
+            yData1Max=max(yData1);
+            yData1diff=yData1Max-yData1Min;
+            % Create a gramm object
+            if strcmpi(MarkerArg,'Y')
+                g1=gramm('x',xData,'y',yData1,...
+                    'color',ColorData,...
+                    'lightness',LightnessData,...
+                    'marker',MarkerData);
+            elseif strcmpi(MarkerArg,'N')
+                g1=gramm('x',xData,'y',yData1,...
+                    'color',ColorData,...
+                    'lightness',LightnessData);
+            end
+            % Plot data
+            g1.stat_boxplot('notch',true,...
+                'width',BoxplotWidth,...
+                'dodge',BoxplotDodge); % Plot data in boxplot
+            % Set options
+            g1.axe_property('LineWidth',LineWidth,'xlim',[xDataMin-xAxisCorr xDataMax+xAxisCorr],'ylim',[yData1Min-yData1diff*yAxisMinFactor yData1Max+yData1diff*yAxisMaxFactor],'XTick',[0:10:220],'TickDir','out','TickLength',[0.005 0.005]);
+            if strcmpi(xArg,'DateTime')
+                g1.set_datetick('x',0,'keeplimits') % Format x-axis
+            end
+            % Color Bar
+            if strcmpi(CBar,'Y')
+            y1CBar=[yData1Max+yData1diff*yLimMinFactor yData1Max+yData1diff*yLimMinFactor yData1Max+yData1diff*yLimMaxFactor yData1Max+yData1diff*yLimMaxFactor];
+            g1.geom_polygon('x',{xCBar1;xCBar2;xCBar3;xCBar4},'y',{y1CBar;y1CBar;y1CBar;y1CBar},'color',ColorBarMap,'alpha',1);
+            else
+            end
+            g1.set_point_options('base_size',MarkerSize)
+            %g1.set_title(Plottitle1) %Set figure title
+            if strcmpi(MarkerArg,'Y')
+                g1.set_names('x',LegendxAxis,'y',LegendyAxis1,'color',ColorName,'lightness',LightnessName,'marker',MarkerName)
+            elseif strcmpi(MarkerArg,'N')
+                g1.set_names('x',LegendxAxis,'y',LegendyAxis1,'color',ColorName,'lightness',LightnessName)
+            end
+            g1.set_color_options('n_color',NumColor,...
+                'n_lightness',NumLightness,...
+                'legend','separate_gray')
+            g1.set_text_options('font','Arial','base_size',BaseFontSize,'label_scaling',LabelScaling,'legend_scaling',LegendScaling)
+            if strcmpi(LegendArg,'Y')
+                g1.set_layout_options("legend",1) % Don't show legend
+            elseif strcmpi(MarkerArg,'N')
+                g1.set_layout_options("legend",0) % Show legend
+            end
+            % Figure
+            h_fig1=figure(1);
+            h_fig1.Color='white'; % changes the background color of the figure
+            h_fig1.Units='pixel'; % Defines the units
+            h_fig1.OuterPosition=Res;
+            h_fig1.PaperOrientation='landscape';
+            h_fig1.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,'_','Var',num2str(Var),NameSuffix1);
+            % The actual plotting
+            g1.draw()
+            % Save the figure
+            FullName1=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,'_','Var',num2str(Var),NameSuffix1);
+            print(h_fig1,FullName1,'-dpng');
+            exportgraphics(h_fig1,[FullName1,'.pdf'],'ContentType','vector');
+
+            %% Gramm object 2
+            % Define variables
+            Plottitle2=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ResultsRow,1}.Data(1).FMIndex),obj.SMFSResults{ResultsRow,1}.Data(1).SumNumFcAnalysedAdhMaxRet);
+            LegendyAxis2='Adhesion force (nN)';
+            NameSuffix2='_MaxAdhesionForceRetract';
+            % Allocate data
+            yData2=obj.SMFSResults{ResultsRow}.Concatenate.AdhMaxRet(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*-1e9;
+            yData2Min=min(yData2);
+            yData2Max=max(yData2);
+            yData2diff=yData2Max-yData2Min;
+            % Create a gramm object
+            if strcmpi(MarkerArg,'Y')
+                g2=gramm('x',xData,'y',yData2,...
+                    'color',ColorData,...
+                    'lightness',LightnessData,...
+                    'marker',MarkerData);
+            elseif strcmpi(MarkerArg,'N')
+                g2=gramm('x',xData,'y',yData2,...
+                    'color',ColorData,...
+                    'lightness',LightnessData);
+            end           
+            % Plot data           
+            g2.stat_boxplot('notch',true,...
+                'width',BoxplotWidth,...
+                'dodge',BoxplotDodge); % Plot data in boxplot
+            % Set options
+            g2.axe_property('LineWidth',LineWidth,'xlim',[xDataMin-xAxisCorr xDataMax+xAxisCorr],'ylim',[yData2Min-yData2diff*yAxisMinFactor yData2Max+yData2diff*yAxisMaxFactor],'XTick',[0:10:220],'TickDir','out','TickLength',[0.005 0.005]);
+            if strcmpi(xArg,'DateTime')
+                g2.set_datetick('x',0,'keeplimits') % Format x-axis
+            end
+            % Color Bar
+            if strcmpi(CBar,'Y')
+            y2CBar=[yData2Max+yData2diff*yLimMinFactor yData2Max+yData2diff*yLimMinFactor yData2Max+yData2diff*yLimMaxFactor yData2Max+yData2diff*yLimMaxFactor];
+            g2.geom_polygon('x',{xCBar1;xCBar2;xCBar3;xCBar4},'y',{y2CBar;y2CBar;y2CBar;y2CBar},'color',ColorBarMap,'alpha',1);
+            else
+            end
+            g2.set_point_options('base_size',MarkerSize)
+            %g2.set_title(Plottitle2) %Set figure title
+            if strcmpi(MarkerArg,'Y')
+                g2.set_names('x',LegendxAxis,'y',LegendyAxis2,'color',ColorName,'lightness',LightnessName,'marker',MarkerName)
+            elseif strcmpi(MarkerArg,'N')
+                g2.set_names('x',LegendxAxis,'y',LegendyAxis2,'color',ColorName,'lightness',LightnessName)
+            end
+            g2.set_color_options('n_color',NumColor,...
+                'n_lightness',NumLightness,...
+                'legend','separate_gray')
+            g2.set_text_options('font','Arial','base_size',BaseFontSize,'label_scaling',LabelScaling,'legend_scaling',LegendScaling)
+            if strcmpi(LegendArg,'Y')
+                g2.set_layout_options("legend",1) % Don't show legend
+            elseif strcmpi(MarkerArg,'N')
+                g2.set_layout_options("legend",0) % Show legend
+            end
+            % Figure
+            h_fig2=figure(2);
+            h_fig2.Color='white'; % changes the background color of the figure
+            h_fig2.Units='pixel'; % Defines the units
+            h_fig2.OuterPosition=Res;
+            h_fig2.PaperOrientation='landscape';
+            h_fig2.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,'_','Var',num2str(Var),NameSuffix2);
+            % The actual plotting
+            g2.draw()
+            % Save the figure
+            FullName2=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,'_','Var',num2str(Var),NameSuffix2);
+            print(h_fig2,FullName2,'-dpng');
+            exportgraphics(h_fig2,[FullName2,'.pdf'],'ContentType','vector');
+
+            %% Gramm object 3
+            % Define variables
+            Plottitle3=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ResultsRow,1}.Data(1).FMIndex),obj.SMFSResults{ResultsRow,1}.Data(1).SumNumFcAnalysedAdhUnbinding);
+            LegendyAxis3='Adhesion force (nN)';
+            NameSuffix3='_AdhForceUnbinding';
+            % Allocate data
+            yData3=obj.SMFSResults{ResultsRow}.Concatenate.AdhUnbinding(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*-1e9;
+            yData3Min=min(yData3);
+            yData3Max=max(yData3);
+            yData3diff=yData3Max-yData3Min;
+            % Create a gramm object
+            if strcmpi(MarkerArg,'Y')
+                g3=gramm('x',xData,'y',yData3,...
+                    'color',ColorData,...
+                    'lightness',LightnessData,...
+                    'marker',MarkerData);
+            elseif strcmpi(MarkerArg,'N')
+                g3=gramm('x',xData,'y',yData3,...
+                    'color',ColorData,...
+                    'lightness',LightnessData);
+            end
+            % Plot data
+            g3.stat_boxplot('notch',true,...
+                'width',BoxplotWidth,...
+                'dodge',BoxplotDodge); % Plot data in boxplot
+            % Set options
+            g3.axe_property('LineWidth',LineWidth,'xlim',[xDataMin-xAxisCorr xDataMax+xAxisCorr],'ylim',[yData3Min-yData3diff*yAxisMinFactor yData3Max+yData3diff*yAxisMaxFactor],'XTick',[0:10:220],'TickDir','out','TickLength',[0.005 0.005]);
+            if strcmpi(xArg,'DateTime')
+                g3.set_datetick('x',0,'keeplimits') % Format x-axis
+            end
+            % Color Bar
+            if strcmpi(CBar,'Y')
+            y3CBar=[yData3Max+yData3diff*yLimMinFactor yData3Max+yData3diff*yLimMinFactor yData3Max+yData3diff*yLimMaxFactor yData3Max+yData3diff*yLimMaxFactor];
+            g3.geom_polygon('x',{xCBar1;xCBar2;xCBar3;xCBar4},'y',{y3CBar;y3CBar;y3CBar;y3CBar},'color',ColorBarMap,'alpha',1);
+            else
+            end
+            g3.set_point_options('base_size',MarkerSize)
+            %g3.set_title(Plottitle3) %Set figure title
+            if strcmpi(MarkerArg,'Y')
+                g3.set_names('x',LegendxAxis,'y',LegendyAxis3,'color',ColorName,'lightness',LightnessName,'marker',MarkerName)
+            elseif strcmpi(MarkerArg,'N')
+                g3.set_names('x',LegendxAxis,'y',LegendyAxis3,'color',ColorName,'lightness',LightnessName)
+            end
+            g3.set_color_options('n_color',NumColor,...
+                'n_lightness',NumLightness,...
+                'legend','separate_gray')
+            g3.set_text_options('font','Arial','base_size',BaseFontSize,'label_scaling',LabelScaling,'legend_scaling',LegendScaling)
+            if strcmpi(LegendArg,'Y')
+                g3.set_layout_options("legend",1) % Don't show legend
+            elseif strcmpi(MarkerArg,'N')
+                g3.set_layout_options("legend",0) % Show legend
+            end
+            % Figure
+            h_fig3=figure(3);
+            h_fig3.Color='white'; % changes the background color of the figure
+            h_fig3.Units='pixel'; % Defines the units
+            h_fig3.OuterPosition=Res;
+            h_fig3.PaperOrientation='landscape';
+            h_fig3.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,'_','Var',num2str(Var),NameSuffix3);
+            % The actual plotting
+            g3.draw()
+            % Save the figure
+            FullName3=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,'_','Var',num2str(Var),NameSuffix3);
+            print(h_fig3,FullName3,'-dpng');
+            exportgraphics(h_fig3,[FullName3,'.pdf'],'ContentType','vector');
+
+            %% Gramm object 4
+            % Define variables
+            Plottitle4=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ResultsRow,1}.Data(1).FMIndex),obj.SMFSResults{ResultsRow,1}.Data(1).SumNumFcAnalysedAdhEneApp);
+            LegendyAxis4='Work of adhesion (aJ)';
+            NameSuffix4='_AdhEnergyApproach';
+            % Allocate data
+            yData4=obj.SMFSResults{ResultsRow}.Concatenate.AdhEneApp(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*-1e18;
+            yData4Min=min(yData4);
+            yData4Max=max(yData4);
+            yData4diff=yData4Max-yData4Min;
+            % Create a gramm object
+            if strcmpi(MarkerArg,'Y')
+                g4=gramm('x',xData,'y',yData4,...
+                    'color',ColorData,...
+                    'lightness',LightnessData,...
+                    'marker',MarkerData);
+            elseif strcmpi(MarkerArg,'N')
+                g4=gramm('x',xData,'y',yData4,...
+                    'color',ColorData,...
+                    'lightness',LightnessData);
+            end
+            % Plot data            
+            g4.stat_boxplot('notch',true,...
+                'width',BoxplotWidth,...
+                'dodge',BoxplotDodge); % Plot data in boxplot
+            % Set options
+            g4.axe_property('LineWidth',LineWidth,'xlim',[xDataMin-xAxisCorr xDataMax+xAxisCorr],'ylim',[yData4Min-yData4diff*yAxisMinFactor yData4Max+yData4diff*yAxisMaxFactor],'XTick',[0:10:220],'TickDir','out','TickLength',[0.005 0.005]);
+            if strcmpi(xArg,'DateTime')
+                g4.set_datetick('x',0,'keeplimits') % Format x-axis
+            end
+            % Color Bar
+            if strcmpi(CBar,'Y')
+            y4CBar=[yData4Max+yData4diff*yLimMinFactor yData4Max+yData4diff*yLimMinFactor yData4Max+yData4diff*yLimMaxFactor yData4Max+yData4diff*yLimMaxFactor];
+            g4.geom_polygon('x',{xCBar1;xCBar2;xCBar3;xCBar4},'y',{y4CBar;y4CBar;y4CBar;y4CBar},'color',ColorBarMap,'alpha',1);
+            else
+            end
+            g4.set_point_options('base_size',MarkerSize)
+            %g4.set_title(Plottitle4) %Set figure title
+            if strcmpi(MarkerArg,'Y')
+                g4.set_names('x',LegendxAxis,'y',LegendyAxis4,'color',ColorName,'lightness',LightnessName,'marker',MarkerName)
+            elseif strcmpi(MarkerArg,'N')
+                g4.set_names('x',LegendxAxis,'y',LegendyAxis4,'color',ColorName,'lightness',LightnessName)
+            end
+            g4.set_color_options('n_color',NumColor,...
+                'n_lightness',NumLightness,...
+                'legend','separate_gray')
+            g4.set_text_options('font','Arial','base_size',BaseFontSize,'label_scaling',LabelScaling,'legend_scaling',LegendScaling)
+            if strcmpi(LegendArg,'Y')
+                g4.set_layout_options("legend",1) % Don't show legend
+            elseif strcmpi(MarkerArg,'N')
+                g4.set_layout_options("legend",0) % Show legend
+            end
+            % Figure
+            h_fig4=figure(4);
+            h_fig4.Color='white'; % changes the background color of the figure
+            h_fig4.Units='pixel'; % Defines the units
+            h_fig4.OuterPosition=Res;
+            h_fig4.PaperOrientation='landscape';
+            h_fig4.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,'_','Var',num2str(Var),NameSuffix4);
+            % The actual plotting
+            g4.draw()
+            % Save the figure
+            FullName4=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,'_','Var',num2str(Var),NameSuffix4);
+            print(h_fig4,FullName4,'-dpng');
+            exportgraphics(h_fig4,[FullName4,'.pdf'],'ContentType','vector');
+
+            %% Gramm object 5
+            % Define variables
+            Plottitle5=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ResultsRow,1}.Data(1).FMIndex),obj.SMFSResults{ResultsRow,1}.Data(1).SumNumFcAnalysedAdhEneRet);
+            LegendyAxis5='Work of adhesion (aJ)';
+            NameSuffix5='_AdhEnergyRetract';
+            % Allocate data
+            yData5=obj.SMFSResults{ResultsRow}.Concatenate.AdhEneRet(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*-1e18;
+            yData5Min=min(yData5);
+            yData5Max=max(yData5);
+            yData5diff=yData5Max-yData5Min;
+            % Create a gramm object
+            if strcmpi(MarkerArg,'Y')
+                g5=gramm('x',xData,'y',yData5,...
+                    'color',ColorData,...
+                    'lightness',LightnessData,...
+                    'marker',MarkerData);
+            elseif strcmpi(MarkerArg,'N')
+                g5=gramm('x',xData,'y',yData5,...
+                    'color',ColorData,...
+                    'lightness',LightnessData);
+            end
+            % Plot data
+            g5.stat_boxplot('notch',true,...
+                'width',BoxplotWidth,...
+                'dodge',BoxplotDodge); % Plot data in boxplot
+            % Set options
+            g5.axe_property('LineWidth',LineWidth,'xlim',[xDataMin-xAxisCorr xDataMax+xAxisCorr],'ylim',[yData5Min-yData5diff*yAxisMinFactor yData5Max+yData5diff*yAxisMaxFactor],'XTick',[0:10:220],'TickDir','out','TickLength',[0.005 0.005]);
+            if strcmpi(xArg,'DateTime')
+                g5.set_datetick('x',0,'keeplimits') % Format x-axis
+            end
+            % Color Bar
+            if strcmpi(CBar,'Y')
+            y5CBar=[yData5Max+yData5diff*yLimMinFactor yData5Max+yData5diff*yLimMinFactor yData5Max+yData5diff*yLimMaxFactor yData5Max+yData5diff*yLimMaxFactor];
+            g5.geom_polygon('x',{xCBar1;xCBar2;xCBar3;xCBar4},'y',{y5CBar;y5CBar;y5CBar;y5CBar},'color',ColorBarMap,'alpha',1);
+            else
+            end
+            g5.set_point_options('base_size',MarkerSize)
+            %g5.set_title(Plottitle5) %Set figure title
+            if strcmpi(MarkerArg,'Y')
+                g5.set_names('x',LegendxAxis,'y',LegendyAxis5,'color',ColorName,'lightness',LightnessName,'marker',MarkerName)
+            elseif strcmpi(MarkerArg,'N')
+                g5.set_names('x',LegendxAxis,'y',LegendyAxis5,'color',ColorName,'lightness',LightnessName)
+            end
+            g5.set_color_options('n_color',NumColor,...
+                'n_lightness',NumLightness,...
+                'legend','separate_gray')
+            g5.set_text_options('font','Arial','base_size',BaseFontSize,'label_scaling',LabelScaling,'legend_scaling',LegendScaling)
+            if strcmpi(LegendArg,'Y')
+                g5.set_layout_options("legend",1) % Don't show legend
+            elseif strcmpi(MarkerArg,'N')
+                g5.set_layout_options("legend",0) % Show legend
+            end
+            %g5.set_layout_options('legend_position',[0.75,0.4,0.35,0.6]) %[left bottom width height]
+            % Figure
+            h_fig5=figure(5);
+            h_fig5.Color='white'; % changes the background color of the figure
+            h_fig5.Units='pixel'; % Defines the units
+            h_fig5.OuterPosition=Res;
+            h_fig5.PaperOrientation='landscape';
+            h_fig5.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,'_','Var',num2str(Var),NameSuffix5);
+            % The actual plotting
+            g5.draw()
+            % Save the figure
+            FullName5=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,'_','Var',num2str(Var),NameSuffix5);
+            print(h_fig5,FullName5,'-dpng');
+            exportgraphics(h_fig5,[FullName5,'.pdf'],'ContentType','vector')
+
+            %% Gramm object 6
+            % Define variables
+            Plottitle6=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ResultsRow,1}.Data(1).FMIndex),obj.SMFSResults{ResultsRow,1}.Data(1).SumNumFcAnalysedyPullingLength);
+            LegendyAxis6='Pull-off length (nm)';
+           % LegendyAxis6='L_{Pull-off} (nm)';
+            NameSuffix6='_Pullinglength';
+            % Allocate data
+            yData6=obj.SMFSResults{ResultsRow}.Concatenate.PullingLength(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*1e9;
+            yData6Min=min(yData6);
+            yData6Max=max(yData6);
+            yData6diff=yData6Max-yData6Min;
+            % Create a gramm object
+            if strcmpi(MarkerArg,'Y')
+                g6=gramm('x',xData,'y',yData6,...
+                    'color',ColorData,...
+                    'lightness',LightnessData,...
+                    'marker',MarkerData);
+            elseif strcmpi(MarkerArg,'N')
+                g6=gramm('x',xData,'y',yData6,...
+                    'color',ColorData,...
+                    'lightness',LightnessData);
+            end
+            % Plot data
+            g6.stat_boxplot('notch',true,...
+                'width',BoxplotWidth,...
+                'dodge',BoxplotDodge); % Plot data in boxplot
+            % Set options
+            g6.axe_property('LineWidth',LineWidth,'xlim',[xDataMin-xAxisCorr xDataMax+xAxisCorr],'ylim',[yData6Min-yData6diff*yAxisMinFactor yData6Max+yData6diff*yAxisMaxFactor],'XTick',[0:10:220],'TickDir','out','TickLength',[0.005 0.005]);
+            % Reference length color box
+            g6.geom_polygon('y',{LimitLengthRet2},'color',SteelBlue);    
+            if strcmpi(xArg,'DateTime')
+                g6.set_datetick('x',0,'keeplimits') % Format x-axis
+            end
+            % Color bar
+            if strcmpi(CBar,'Y')
+            y6CBar=[yData6Max+yData6diff*yLimMinFactor yData6Max+yData6diff*yLimMinFactor yData6Max+yData6diff*yLimMaxFactor yData6Max+yData6diff*yLimMaxFactor];
+            g6.geom_polygon('x',{xCBar1;xCBar2;xCBar3;xCBar4},'y',{y6CBar;y6CBar;y6CBar;y6CBar},'color',ColorBarMap,'alpha',1);
+            else
+            end
+            g6.set_point_options('base_size',MarkerSize)
+            %g6.set_title(Plottitle6) %Set figure title
+            if strcmpi(MarkerArg,'Y')
+                g6.set_names('x',LegendxAxis,'y',LegendyAxis6,'color',ColorName,'lightness',LightnessName,'marker',MarkerName)
+            elseif strcmpi(MarkerArg,'N')
+                g6.set_names('x',LegendxAxis,'y',LegendyAxis6,'color',ColorName,'lightness',LightnessName)
+            end
+            g6.set_color_options('n_color',NumColor,...
+                'n_lightness',NumLightness,...
+                'legend','separate_gray')
+            g6.set_text_options('font','Arial','base_size',BaseFontSize,'label_scaling',LabelScaling,'legend_scaling',LegendScaling)
+            if strcmpi(LegendArg,'Y')
+                g6.set_layout_options("legend",1) % Don't show legend
+            elseif strcmpi(MarkerArg,'N')
+                g6.set_layout_options("legend",0) % Show legend
+            end
+            % Figure
+            h_fig6=figure(6);
+            h_fig6.Color='white'; % changes the background color of the figure
+            h_fig6.Units='pixel'; % Defines the units
+            h_fig6.OuterPosition=Res;
+            h_fig6.PaperOrientation='landscape';
+            h_fig6.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,'_','Var',num2str(Var),NameSuffix6);
+            % The actual plotting
+            g6.draw()
+            % Save the figure
+            FullName6=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,'_','Var',num2str(Var),NameSuffix6);
+            print(h_fig6,FullName6,'-dpng');
+            exportgraphics(h_fig6,[FullName6,'.pdf'],'ContentType','vector')
+            
+            %% Gramm object 7
+            % Define variables
+            Plottitle7=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ResultsRow,1}.Data(1).FMIndex),obj.SMFSResults{ResultsRow,1}.Data(1).SumNumFcAnalysedySnapInLength);
+            LegendyAxis7='Snap-In length (nm)';
+            NameSuffix7='_SnapInLength';
+            % Allocate data
+            yData7=obj.SMFSResults{ResultsRow}.Concatenate.SnapInLength(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*1e9;
+            yData7Min=min(yData7);
+            yData7Max=max(yData7);
+            yData7diff=yData7Max-yData7Min;
+            % Create a gramm object
+            if strcmpi(MarkerArg,'Y')
+                g7=gramm('x',xData,'y',yData7,...
+                    'color',ColorData,...
+                    'lightness',LightnessData,...
+                    'marker',MarkerData);
+            elseif strcmpi(MarkerArg,'N')
+                g7=gramm('x',xData,'y',yData7,...
+                    'color',ColorData,...
+                    'lightness',LightnessData);
+            end
+            % Plot data
+            g7.stat_boxplot('notch',true,...
+                'width',BoxplotWidth,...
+                'dodge',BoxplotDodge); % Plot data in boxplot
+            % Set options
+            g7.axe_property('LineWidth',LineWidth,'xlim',[xDataMin-xAxisCorr xDataMax+xAxisCorr],'ylim',[yData7Min-yData7diff*yAxisMinFactor yData7Max+yData7diff*yAxisMaxFactor],'XTick',[0:10:220],'TickDir','out','TickLength',[0.005 0.005]);
+            g7.geom_polygon('y',{LimitLengthApp},'color',Ochreish);
+            if strcmpi(xArg,'DateTime')
+                g7.set_datetick('x',0,'keeplimits') % Format x-axis
+            end
+            if strcmpi(CBar,'Y')
+            y7CBar=[yData7Max+yData7diff*yLimMinFactor yData7Max+yData7diff*yLimMinFactor yData7Max+yData7diff*yLimMaxFactor yData7Max+yData7diff*yLimMaxFactor];
+            g7.geom_polygon('x',{xCBar1;xCBar2;xCBar3;xCBar4},'y',{y7CBar;y7CBar;y7CBar;y7CBar},'color',ColorBarMap,'alpha',1);
+            else
+            end
+            g7.set_point_options('base_size',MarkerSize)
+            %g7.set_title(Plottitle6) %Set figure title
+            if strcmpi(MarkerArg,'Y')
+                g7.set_names('x',LegendxAxis,'y',LegendyAxis7,'color',ColorName,'lightness',LightnessName,'marker',MarkerName)
+            elseif strcmpi(MarkerArg,'N')
+                g7.set_names('x',LegendxAxis,'y',LegendyAxis7,'color',ColorName,'lightness',LightnessName)
+            end
+            g7.set_color_options('n_color',NumColor,...
+                'n_lightness',NumLightness,...
+                'legend','separate_gray')
+            g7.set_text_options('font','Arial','base_size',BaseFontSize,'label_scaling',LabelScaling,'legend_scaling',LegendScaling)
+            if strcmpi(LegendArg,'Y')
+                g7.set_layout_options("legend",1) % Don't show legend
+            elseif strcmpi(MarkerArg,'N')
+                g7.set_layout_options("legend",0) % Show legend
+            end
+            % Figure
+            h_fig7=figure(7);
+            h_fig7.Color='white'; % changes the background color of the figure
+            h_fig7.Units='pixel'; % Defines the units
+            h_fig7.OuterPosition=Res;
+            h_fig7.PaperOrientation='landscape';
+            h_fig7.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,'_','Var',num2str(Var),NameSuffix7);
+            % The actual plotting
+            g7.draw()
+            % Save the figure
+            FullName7=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,'_','Var',num2str(Var),NameSuffix7);
+            print(h_fig7,FullName7,'-dpng');
+            exportgraphics(h_fig7,[FullName7,'.pdf'],'ContentType','vector')
+
+            % House keeping
+            close all
+        end
+
+       function SM_results_gramm_plot2_publication(obj,ResultsRow,Linker,xArg,MarkerArg,LegendArg,CBar,Var,yDataArg)
+           % Description:
+           % This function allows to plot the analysis results using the
+           % gramm toolbox (https://joss.theoj.org/papers/10.21105/joss.00568). The
+           % different features (snap-in length, pull-off length) determined are plotted as data points to
+           % the corresponding force map.
+           % Required input variables:
+           % ResultsRow: double ,e.g. 1
+           % Linker: string , either 'long' or 'short'
+           % xArg (x-axis argument): string, either 'Index' or 'DateTime'
+           % MarkerArg (Marker argument): string, either 'Y' or 'N'
+           % LegendArg (Legend argument): string, either 'Y' or 'N'
+           % CBar (Color Bar): string, either 'Y' or 'N'
+           % Var (Variant): double, e.g. 2 (for Variant 2)
+           % yDataArg (y-data argument): string, either 'old' or 'new' (To be able to use the fct also for trials which are not completely analysable)
+
+           % Input variable adaptation
+           if nargin<2
+               ResultsRow=1;
+           end
+           % Define variables
+           yLimMaxFactor=0.25;
+           yLimMinFactor=0.2;
+           %yLimMaxFactor=0.3;
+           %yLimMinFactor=0.25;
+           yAxisMinFactor=0.09;
+           yAxisMaxFactor=0.25;
+           Res=[1 1 2560 1250]; % Define the figure resolution
+           %MarkerSize=10;
+           MarkerSize=20;
+           BaseFontSize=46;
+           LabelScaling=1.2;
+           LegendScaling=1;
+           LineWidth=1.5;
+           FontName='Arial';
+            % Define color bar
+            xCBar1=[0 134 134 0]; % Native
+            xCBar2=[134 2100 2100 134]; % Sliding
+            xCBar3=[2200 12100 12100 2200]; % Unraveled
+            xCBar4=[12100 22200 22200 12100]; % Dissociated
+            % Color and Color maps
+            Ochreish=[253 174 97]./255;
+            SteelBlue=[116 173 209]./255;
+           ColorBrewerMap1=[[253 174 97]./255; % Ochreish
+               [116 173 209]./255]; % Steel blueish
+           ColorBarMap=[[54 163 0]./255; % Dark green HEX 8DB600
+               [206 22 32]./255; % Fire Engine Red HEX CE162
+               [0 24 204]./255; % Blue HEX 8DB600
+               [135 0 224]./255]; % Violet HEX 8F00FF
+%             ColorMarkerMap=[[255 194 191]./255; % Light rose
+%                [255 194 191]./255;  % Light rose
+%                [209 217 161]./255;  % Light green
+%                [209 217 161]./255; % Light green
+%                [0 136 255]./255; % Light blue
+%                [0 136 255]./255; % Light blue
+%                [200 0 200]./255; % Pink
+%                [200 0 200]./255]; % Pink
+            ColorMarkerMap='parula'; 
+           % Change into the Folder of Interest
+           cd(obj.ExperimentFolder) % Move into the folder
+           % Create folders for saving the produced figures
+           foldername='SM_results_gramm_plot2_publication';    % Defines the folder name
+           mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
+           currpath=fullfile(obj.ExperimentFolder,foldername);
+           cd(currpath);
+           %% Input variables
+           % Linker
+           if strcmpi(Linker,'Long')
+               LimitLengthRet1=[0 378];
+               LimitLengthRet2=[378 522];
+               LimitLengthApp=[50 120];
+           elseif strcmpi(Linker,'Short')
+               LimitLengthRet1=[0 308];
+               LimitLengthRet2=[308 463];
+               LimitLengthApp=[50 120];
+           end
+           % xArg
+           if strcmpi(xArg,'DateTime')
+               LegendxAxis='Date and Time';
+               xData=obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSort;
+               xDataMin=min(xData);
+               xDataMax=max(xData);
+               xAxisCorr=(xDataMax-xDataMin)*0.05;
+           elseif strcmpi(xArg,'Index')
+               LegendxAxis='Number of cycles';
+               xData=obj.SMFSResults{ResultsRow}.Concatenate.FcNum;
+               xDataMin=min(xData);
+               xDataMax=max(xData);
+               xAxisCorr=(xDataMax-xDataMin)*0.005;
+           end
+           % Var
+           if Var==1
+               ColorName='Medium';
+               LightnessName='Substrate';
+               MarkerName='ChipCantilever';
+               LightnessData=obj.SMFSResults{ResultsRow}.Concatenate.FMSubstrate(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx);
+               ColorData=obj.SMFSResults{ResultsRow}.Concatenate.FMEnvCond(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx);
+               MarkerData=obj.SMFSResults{ResultsRow}.Concatenate.FMChipCant(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx);
+               NumColor=2;
+               NumLightness=2;
+           elseif Var==2
+               ColorName='Approach speed ($\mu$m/s)';
+               LightnessName='Retraction speed ($\mu$m/s)';
+               MarkerName='Dwell Time (s)';
+               FMExtVeloData=obj.SMFSResults{ResultsRow}.Concatenate.FMExtVelocity(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*1e6;
+               FMRetVeloData=obj.SMFSResults{ResultsRow}.Concatenate.FMRetVelocity(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*1e6;
+               ColorData=FMExtVeloData;
+               LightnessData=FMRetVeloData;
+               MarkerData=obj.SMFSResults{ResultsRow}.Concatenate.FMHoldingTime(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx);
+               NumColor=6;
+               NumLightness=6;
+           elseif Var==3
+                ColorName='Dwell Time (s)';
+                LightnessName='Retraction velocity ($\mu$m/s)';
+                MarkerName='Approach velocity ($\mu$m/s)';
+                FMExtVeloData=obj.SMFSResults{ResultsRow}.Concatenate.FMExtVelocity(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*1e6;
+                FMRetVeloData=obj.SMFSResults{ResultsRow}.Concatenate.FMRetVelocity(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*1e6;
+                ColorData=obj.SMFSResults{ResultsRow}.Concatenate.FMHoldingTime(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx);
+                LightnessData=FMRetVeloData;
+                MarkerData=FMExtVeloData;
+                NumColor=2;
+                NumLightness=2;
+           end
+           % Define parameter term for the figure name 
+           if obj.SMFSResults{ResultsRow}.Parameters.ExtendVelocity==0
+               ExtVelocityValueStr='All';
+           else
+               ExtVelocityValueStr=num2str(round(obj.SMFSResults{ResultsRow}.Parameters.ExtendVelocity*1e9));
+           end
+           if obj.SMFSResults{ResultsRow}.Parameters.RetractVelocity==0
+               RetVelocityValueStr='All';
+           else
+               RetVelocityValueStr=num2str(round(obj.SMFSResults{ResultsRow}.Parameters.RetractVelocity*1e9));
+           end
+           if obj.SMFSResults{ResultsRow}.Parameters.HoldingTime==-1
+               HoldingTimeValueStr='All';
+           else
+               HoldingTimeValueStr=num2str(obj.SMFSResults{ResultsRow}.Parameters.HoldingTime);
+           end
+           % General names
+           FigNamePt1=sprintf('SMFSResultRow%d_',ResultsRow);
+           FigNamePt2=strcat(ExtVelocityValueStr,{'_'},RetVelocityValueStr,{'_'},HoldingTimeValueStr,{'_'},obj.SMFSResults{ResultsRow}.Parameters.Substrate,{'_'},obj.SMFSResults{ResultsRow}.Parameters.Medium,{'_'},obj.SMFSResults{ResultsRow}.Parameters.ChipCantilever,{'_'},obj.SMFSResults{ResultsRow}.Parameters.Chipbox,{'_'},obj.SMFSResults{ResultsRow}.Parameters.Linker);
+           FigNamePt2=char(FigNamePt2);
+           FigNamePt3='_Plot2';
+           %% Gramm object 1
+           % Define variables
+           Plottitle1=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ResultsRow,1}.Data(1).FMIndex),obj.SMFSResults{ResultsRow,1}.Data(1).SumNumFcAnalysedAdhMaxApp);
+           LegendyAxis1='Adhesion force (nN)';
+           NameSuffix1='_MaxAdhesionForceApproach';
+           % Allocate data
+           if strcmpi(yDataArg,'new')
+           yData1=obj.SMFSResults{ResultsRow}.Concatenate.AdhMaxApp(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*-1e9;
+           elseif strcmpi(yDataArg,'old')
+           yData1=obj.SMFSResults{ResultsRow}.Data.AdhMaxAppConcat(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*-1;   
+           end
+           yData1Min=min(yData1);
+           yData1Max=max(yData1);
+           yData1diff=yData1Max-yData1Min;
+           % Create a gramm object
+           if strcmpi(MarkerArg,'Y')
+               g1=gramm('x',xData,'y',yData1,...
+                   'color',ColorData,...
+                   'lightness',LightnessData,...
+                   'marker',MarkerData);
+           elseif strcmpi(MarkerArg,'N')
+               g1=gramm('x',xData,'y',yData1,...
+                   'color',ColorData,...
+                   'lightness',LightnessData);
+           end
+           % Plot data
+           g1.geom_point();
+           % Set options
+           g1.axe_property('LineWidth',LineWidth,'xlim',[xDataMin-xAxisCorr xDataMax+xAxisCorr],'ylim',[yData1Min-yData1diff*yAxisMinFactor yData1Max+yData1diff*yAxisMaxFactor],'TickDir','out','TickLength',[0.005 0.005]);
+           if strcmpi(xArg,'DateTime')
+               g1.set_datetick('x',0,'keeplimits') % Format x-axis
+           end
+           % Color Bar
+           if strcmpi(CBar,'Y')
+           y1CBar=[yData1Max+yData1diff*yLimMinFactor yData1Max+yData1diff*yLimMinFactor yData1Max+yData1diff*yLimMaxFactor yData1Max+yData1diff*yLimMaxFactor];
+           g1.geom_polygon('x',{xCBar1;xCBar2;xCBar3;xCBar4},'y',{y1CBar;y1CBar;y1CBar;y1CBar},'color',ColorBarMap,'alpha',1);
+           else
+           end
+           g1.set_point_options('base_size',MarkerSize)
+           %g1.set_title(Plottitle1) %Set figure title
+           if strcmpi(MarkerArg,'Y')
+               g1.set_names('x',LegendxAxis,'y',LegendyAxis1,'color',ColorName,'lightness',LightnessName,'marker',MarkerName)
+           elseif strcmpi(MarkerArg,'N')
+               g1.set_names('x',LegendxAxis,'y',LegendyAxis1,'color',ColorName,'lightness',LightnessName)
+           end
+           g1.set_color_options('Map',ColorMarkerMap,...
+               'n_color',NumColor,...
+               'n_lightness',NumLightness,...
+               'legend','separate_gray')
+           g1.set_text_options('font',FontName,'base_size',BaseFontSize,'label_scaling',LabelScaling,'legend_scaling',LegendScaling)
+           if strcmpi(LegendArg,'Y')
+               g1.set_layout_options("legend",1) % Show legend
+           elseif strcmpi(LegendArg,'N')
+               g1.set_layout_options("legend",0) % Don't show legend
+           end
+           % Figure
+           h_fig1=figure(1);
+           h_fig1.Color='white'; % changes the background color of the figure
+           h_fig1.Units='pixel'; % Defines the units
+           h_fig1.OuterPosition=Res;
+           h_fig1.PaperOrientation='landscape';
+            h_fig1.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,'_','Var',num2str(Var),NameSuffix1);
+            % The actual plotting
+            g1.draw()
+            % Save the figure
+            FullName1=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,'_','Var',num2str(Var),NameSuffix1);
+            print(h_fig1,FullName1,'-dpng');
+            exportgraphics(h_fig1,[FullName1,'.pdf'],'ContentType','vector')
+
+           %% Gramm object 2
+           % Define variables
+           Plottitle2=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ResultsRow,1}.Data(1).FMIndex),obj.SMFSResults{ResultsRow,1}.Data(1).SumNumFcAnalysedAdhMaxRet);
+           LegendyAxis2='Adhesion force (nN)';
+           NameSuffix2='_MaxAdhesionForceRetract';
+           % Allocate data
+           if strcmpi(yDataArg,'new')
+           yData2=obj.SMFSResults{ResultsRow}.Concatenate.AdhMaxRet(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*-1e9;
+           elseif strcmpi(yDataArg,'old')
+            yData2=obj.SMFSResults{ResultsRow}.Data.AdhMaxRetConcat(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*-1e9;   
+           end     
+           yData2Min=min(yData2);
+           yData2Max=max(yData2);
+           yData2diff=yData2Max-yData2Min;
+           % Create a gramm object
+           if strcmpi(MarkerArg,'Y')
+               g2=gramm('x',xData,'y',yData2,...
+                   'color',ColorData,...
+                   'lightness',LightnessData,...
+                   'marker',MarkerData);
+           elseif strcmpi(MarkerArg,'N')
+               g2=gramm('x',xData,'y',yData2,...
+                   'color',ColorData,...
+                   'lightness',LightnessData);
+           end
+           % Plot data
+           g2.geom_point();
+           % Set options
+            g2.axe_property('LineWidth',LineWidth,'xlim',[xDataMin-xAxisCorr xDataMax+xAxisCorr],'ylim',[yData2Min-yData2diff*yAxisMinFactor yData2Max+yData2diff*yAxisMaxFactor],'TickDir','out','TickLength',[0.005 0.005]);
+            if strcmpi(xArg,'DateTime')
+                g2.set_datetick('x',0,'keeplimits') % Format x-axis
+            end
+            % Color Bar
+            if strcmpi(CBar,'Y')
+            y2CBar=[yData2Max+yData2diff*yLimMinFactor yData2Max+yData2diff*yLimMinFactor yData2Max+yData2diff*yLimMaxFactor yData2Max+yData2diff*yLimMaxFactor];
+            g2.geom_polygon('x',{xCBar1;xCBar2;xCBar3;xCBar4},'y',{y2CBar;y2CBar;y2CBar;y2CBar},'color',ColorBarMap,'alpha',1);
+            else
+            end
+           g2.set_point_options('base_size',MarkerSize)
+           %g2.set_title(Plottitle2) %Set figure title
+           if strcmpi(MarkerArg,'Y')
+               g2.set_names('x',LegendxAxis,'y',LegendyAxis2,'color',ColorName,'lightness',LightnessName,'marker',MarkerName)
+           elseif strcmpi(MarkerArg,'N')
+               g2.set_names('x',LegendxAxis,'y',LegendyAxis2,'color',ColorName,'lightness',LightnessName)
+           end
+           g2.set_color_options('Map',ColorMarkerMap,...
+               'n_color',NumColor,...
+               'n_lightness',NumLightness,...
+               'legend','separate_gray')
+           g2.set_text_options('font',FontName,'base_size',BaseFontSize,'label_scaling',LabelScaling,'legend_scaling',LegendScaling)
+           if strcmpi(LegendArg,'Y')
+               g2.set_layout_options("legend",1) % Show legend
+           elseif strcmpi(LegendArg,'N')
+               g2.set_layout_options("legend",0) % Don't show legend
+           end
+           % Figure
+           h_fig2=figure(2);
+           h_fig2.Color='white'; % changes the background color of the figure
+           h_fig2.Units='pixel'; % Defines the units
+           h_fig2.OuterPosition=Res;
+           h_fig2.PaperOrientation='landscape';          
+            h_fig2.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,'_','Var',num2str(Var),NameSuffix2);
+            % The actual plotting
+            g2.draw()
+            % Save the figure
+            FullName2=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,'_','Var',num2str(Var),NameSuffix2);
+            print(h_fig2,FullName2,'-dpng');
+            exportgraphics(h_fig2,[FullName2,'.pdf'],'ContentType','vector')
+
+           %% Gramm object 3
+           % Define variables
+           Plottitle3=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ResultsRow,1}.Data(1).FMIndex),obj.SMFSResults{ResultsRow,1}.Data(1).SumNumFcAnalysedAdhUnbinding);
+           LegendyAxis3='Adhesion force (nN)';
+           NameSuffix3='_AdhForceUnbinding';
+           % Allocate data
+           if strcmpi(yDataArg,'new')
+           yData3=obj.SMFSResults{ResultsRow}.Concatenate.AdhUnbinding(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*-1e9;
+           elseif strcmpi(yDataArg,'old')
+           yData3=obj.SMFSResults{ResultsRow}.Data.AdhUnbindingConcat(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*-1e9;    
+           end     
+           yData3Min=min(yData3);
+           yData3Max=max(yData3);
+           yData3diff=yData3Max-yData3Min;
+           % Create a gramm object
+           if strcmpi(MarkerArg,'Y')
+               g3=gramm('x',xData,'y',yData3,...
+                   'color',ColorData,...
+                   'lightness',LightnessData,...
+                   'marker',MarkerData);
+           elseif strcmpi(MarkerArg,'N')
+               g3=gramm('x',xData,'y',yData3,...
+                   'color',ColorData,...
+                   'lightness',LightnessData);
+           end
+           % Plot data
+           g3.geom_point()
+            % Set options
+            g3.axe_property('LineWidth',LineWidth,'xlim',[xDataMin-xAxisCorr xDataMax+xAxisCorr],'ylim',[yData3Min-yData3diff*yAxisMinFactor yData3Max+yData3diff*yAxisMaxFactor],'TickDir','out','TickLength',[0.005 0.005]);
+            if strcmpi(xArg,'DateTime')
+                g3.set_datetick('x',0,'keeplimits') % Format x-axis
+            end
+            % Color Bar
+            if strcmpi(CBar,'Y')
+            y3CBar=[yData3Max+yData3diff*yLimMinFactor yData3Max+yData3diff*yLimMinFactor yData3Max+yData3diff*yLimMaxFactor yData3Max+yData3diff*yLimMaxFactor];
+            g3.geom_polygon('x',{xCBar1;xCBar2;xCBar3;xCBar4},'y',{y3CBar;y3CBar;y3CBar;y3CBar},'color',ColorBarMap,'alpha',1);
+            else
+            end
+           g3.set_point_options('base_size',MarkerSize)
+           %g3.set_title(Plottitle3) %Set figure title
+           if strcmpi(MarkerArg,'Y')
+               g3.set_names('x',LegendxAxis,'y',LegendyAxis3,'color',ColorName,'lightness',LightnessName,'marker',MarkerName)
+           elseif strcmpi(MarkerArg,'N')
+               g3.set_names('x',LegendxAxis,'y',LegendyAxis3,'color',ColorName,'lightness',LightnessName)
+           end
+           g3.set_color_options('Map',ColorMarkerMap,...
+               'n_color',NumColor,...
+               'n_lightness',NumLightness,...
+               'legend','separate_gray')
+           g3.set_text_options('font',FontName,'base_size',BaseFontSize,'label_scaling',LabelScaling,'legend_scaling',LegendScaling)
+           if strcmpi(LegendArg,'Y')
+               g3.set_layout_options("legend",1) % Show legend
+           elseif strcmpi(LegendArg,'N')
+               g3.set_layout_options("legend",0) % Don't show legend
+           end
+           % Figure
+           h_fig3=figure(3);
+           h_fig3.Color='white'; % changes the background color of the figure
+           h_fig3.Units='pixel'; % Defines the units
+           h_fig3.OuterPosition=Res;
+           h_fig3.PaperOrientation='landscape';          
+           h_fig3.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,'_','Var',num2str(Var),NameSuffix3);
+           % The actual plotting
+           g3.draw()
+           % Save the figure
+           FullName3=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,'_','Var',num2str(Var),NameSuffix3);
+           print(h_fig3,FullName3,'-dpng');
+           exportgraphics(h_fig3,[FullName3,'.pdf'],'ContentType','vector')
+
+           %% Gramm object 4
+           % Define variables
+           Plottitle4=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ResultsRow,1}.Data(1).FMIndex),obj.SMFSResults{ResultsRow,1}.Data(1).SumNumFcAnalysedAdhEneApp);
+           LegendyAxis4='Work of adhesion (aJ)';
+           NameSuffix4='_AdhEnergyApproach';
+           % Allocate data
+           if strcmpi(yDataArg,'new')
+           yData4=obj.SMFSResults{ResultsRow}.Concatenate.AdhEneApp(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*-1e18;
+           elseif strcmpi(yDataArg,'old')
+           yData4=obj.SMFSResults{ResultsRow}.Data.AdhEneAppConcat(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*-1e18;     
+           end     
+           yData4Min=min(yData4);
+           yData4Max=max(yData4);
+           yData4diff=yData4Max-yData4Min;
+           % Create a gramm object
+           if strcmpi(MarkerArg,'Y')
+               g4=gramm('x',xData,'y',yData4,...
+                   'color',ColorData,...
+                   'lightness',LightnessData,...
+                   'marker',MarkerData);
+           elseif strcmpi(MarkerArg,'N')
+               g4=gramm('x',xData,'y',yData4,...
+                   'color',ColorData,...
+                   'lightness',LightnessData);
+           end
+           % Plot data
+           g4.geom_point()
+            % Set options
+            g4.axe_property('LineWidth',LineWidth,'xlim',[xDataMin-xAxisCorr xDataMax+xAxisCorr],'ylim',[yData4Min-yData4diff*yAxisMinFactor yData4Max+yData4diff*yAxisMaxFactor],'TickDir','out','TickLength',[0.005 0.005]);
+            if strcmpi(xArg,'DateTime')
+                g4.set_datetick('x',0,'keeplimits') % Format x-axis
+            end
+            % Color Bar
+            if strcmpi(CBar,'Y')
+            y4CBar=[yData4Max+yData4diff*yLimMinFactor yData4Max+yData4diff*yLimMinFactor yData4Max+yData4diff*yLimMaxFactor yData4Max+yData4diff*yLimMaxFactor];
+            g4.geom_polygon('x',{xCBar1;xCBar2;xCBar3;xCBar4},'y',{y4CBar;y4CBar;y4CBar;y4CBar},'color',ColorBarMap,'alpha',1);
+            else
+            end
+           g4.set_point_options('base_size',MarkerSize)
+           %g4.set_title(Plottitle4) %Set figure title
+           if strcmpi(MarkerArg,'Y')
+               g4.set_names('x',LegendxAxis,'y',LegendyAxis4,'color',ColorName,'lightness',LightnessName,'marker',MarkerName)
+           elseif strcmpi(MarkerArg,'N')
+               g4.set_names('x',LegendxAxis,'y',LegendyAxis4,'color',ColorName,'lightness',LightnessName)
+           end
+           g4.set_color_options('Map',ColorMarkerMap,...
+               'n_color',NumColor,...
+               'n_lightness',NumLightness,...
+               'legend','separate_gray')
+           g4.set_text_options('font',FontName,'base_size',BaseFontSize,'label_scaling',LabelScaling,'legend_scaling',LegendScaling)
+           if strcmpi(LegendArg,'Y')
+               g4.set_layout_options("legend",1) % Show legend
+           elseif strcmpi(LegendArg,'N')
+               g4.set_layout_options("legend",0) % Don't show legend
+           end
+           % Figure
+           h_fig4=figure(4);
+           h_fig4.Color='white'; % changes the background color of the figure
+           h_fig4.Units='pixel'; % Defines the units
+           h_fig4.OuterPosition=Res;
+           h_fig4.PaperOrientation='landscape';
+            h_fig4.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,'_','Var',num2str(Var),NameSuffix4);
+            % The actual plotting
+            g4.draw()
+            % Save the figure
+            FullName4=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,'_','Var',num2str(Var),NameSuffix4);
+            print(h_fig4,FullName4,'-dpng');
+            exportgraphics(h_fig4,[FullName4,'.pdf'],'ContentType','vector')
+
+           %% Gramm object 5
+           % Define variables
+           Plottitle5=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ResultsRow,1}.Data(1).FMIndex),obj.SMFSResults{ResultsRow,1}.Data(1).SumNumFcAnalysedAdhEneRet);
+           LegendyAxis5='Work of adhesion (aJ)';
+           NameSuffix5='_AdhEnergyRetract';
+           % Allocate data
+           if strcmpi(yDataArg,'new')
+           yData5=obj.SMFSResults{ResultsRow}.Concatenate.AdhEneRet(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*-1e18;
+           elseif strcmpi(yDataArg,'old')
+           yData5=obj.SMFSResults{ResultsRow}.Data.AdhEneRetConcat(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*-1e18;     
+           end     
+           yData5Min=min(yData5);
+           yData5Max=max(yData5);
+           yData5diff=yData5Max-yData5Min;
+           % Create a gramm object
+           if strcmpi(MarkerArg,'Y')
+               g5=gramm('x',xData,'y',yData5,...
+                   'color',ColorData,...
+                   'lightness',LightnessData,...
+                   'marker',MarkerData);
+           elseif strcmpi(MarkerArg,'N')
+               g5=gramm('x',xData,'y',yData5,...
+                   'color',ColorData,...
+                   'lightness',LightnessData);
+           end
+           % Plot data
+           g5.geom_point()
+            % Set options
+            g5.axe_property('LineWidth',LineWidth,'xlim',[xDataMin-xAxisCorr xDataMax+xAxisCorr],'ylim',[yData5Min-yData5diff*yAxisMinFactor yData5Max+yData5diff*yAxisMaxFactor],'TickDir','out','TickLength',[0.005 0.005]);
+            if strcmpi(xArg,'DateTime')
+                g5.set_datetick('x',0,'keeplimits') % Format x-axis
+            end
+            % Color Bar
+            if strcmpi(CBar,'Y')
+            y5CBar=[yData5Max+yData5diff*yLimMinFactor yData5Max+yData5diff*yLimMinFactor yData5Max+yData5diff*yLimMaxFactor yData5Max+yData5diff*yLimMaxFactor];
+            g5.geom_polygon('x',{xCBar1;xCBar2;xCBar3;xCBar4},'y',{y5CBar;y5CBar;y5CBar;y5CBar},'color',ColorBarMap,'alpha',1);
+            else
+            end
+           g5.set_point_options('base_size',MarkerSize)
+           %g5.set_title(Plottitle5) %Set figure title
+           if strcmpi(MarkerArg,'Y')
+               g5.set_names('x',LegendxAxis,'y',LegendyAxis5,'color',ColorName,'lightness',LightnessName,'marker',MarkerName)
+           elseif strcmpi(MarkerArg,'N')
+               g5.set_names('x',LegendxAxis,'y',LegendyAxis5,'color',ColorName,'lightness',LightnessName)
+           end
+           g5.set_color_options('Map',ColorMarkerMap,...
+               'n_color',NumColor,...
+               'n_lightness',NumLightness,...
+               'legend','separate_gray')
+           g5.set_text_options('font',FontName,'base_size',BaseFontSize,'label_scaling',LabelScaling,'legend_scaling',LegendScaling)
+           if strcmpi(LegendArg,'Y')
+               g5.set_layout_options("legend",1) % Show legend
+           elseif strcmpi(LegendArg,'N')
+               g5.set_layout_options("legend",0) % Don't show legend           
+           end
+           % Figure
+           h_fig5=figure(5);
+           h_fig5.Color='white'; % changes the background color of the figure
+           h_fig5.Units='pixel'; % Defines the units
+           h_fig5.OuterPosition=Res;
+           h_fig5.PaperOrientation='landscape';
+            h_fig5.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,'_','Var',num2str(Var),NameSuffix5);
+            % The actual plotting
+            g5.draw()
+            % Save the figure
+            FullName5=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,'_','Var',num2str(Var),NameSuffix5);
+            print(h_fig5,FullName5,'-dpng');
+            exportgraphics(h_fig5,[FullName5,'.pdf'],'ContentType','vector')
+
+           %% Gramm object 6
+           % Define variables
+           Plottitle6=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ResultsRow,1}.Data(1).FMIndex),obj.SMFSResults{ResultsRow,1}.Data(1).SumNumFcAnalysedyPullingLength);
+           LegendyAxis6='Pull-off length (nm)';
+           NameSuffix6='_Pullinglength';
+           % Allocate data
+           if strcmpi(yDataArg,'new')
+           yData6=obj.SMFSResults{ResultsRow}.Concatenate.PullingLength(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*1e9;
+           elseif strcmpi(yDataArg,'old')
+           yData6=obj.SMFSResults{ResultsRow}.Data.yPullingLengthConcat(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*1e9;     
+           end           
+           yData6Min=min(yData6);
+           yData6Max=max(yData6);
+           yData6diff=yData6Max-yData6Min;
+           % Create a gramm object
+           if strcmpi(MarkerArg,'Y')
+               g6=gramm('x',xData,'y',yData6,...
+                   'color',ColorData,...
+                   'lightness',LightnessData,...
+                   'marker',MarkerData);
+           elseif strcmpi(MarkerArg,'N')
+               g6=gramm('x',xData,'y',yData6,...
+                   'color',ColorData,...
+                   'lightness',LightnessData);
+           end
+           % Plot data
+           g6.geom_point();
+            % Set options
+            g6.axe_property('LineWidth',LineWidth,'xlim',[xDataMin-xAxisCorr xDataMax+xAxisCorr],'ylim',[yData6Min-yData6diff*yAxisMinFactor yData6Max+yData6diff*yAxisMaxFactor],'TickDir','out','TickLength',[0.005 0.005]);
+            % Reference length color box
+            g6.geom_polygon('y',{LimitLengthRet2},'color',SteelBlue);    
+            if strcmpi(xArg,'DateTime')
+                g6.set_datetick('x',0,'keeplimits') % Format x-axis
+            end
+            % Color bar
+            if strcmpi(CBar,'Y')
+            y6CBar=[yData6Max+yData6diff*yLimMinFactor yData6Max+yData6diff*yLimMinFactor yData6Max+yData6diff*yLimMaxFactor yData6Max+yData6diff*yLimMaxFactor];
+            g6.geom_polygon('x',{xCBar1;xCBar2;xCBar3;xCBar4},'y',{y6CBar;y6CBar;y6CBar;y6CBar},'color',ColorBarMap,'alpha',1);
+            else
+            end
+           g6.set_point_options('base_size',MarkerSize)
+           %g6.set_title(Plottitle6) %Set figure title
+           if strcmpi(MarkerArg,'Y')
+               g6.set_names('x',LegendxAxis,'y',LegendyAxis6,'color',ColorName,'lightness',LightnessName,'marker',MarkerName)
+           elseif strcmpi(MarkerArg,'N')
+               g6.set_names('x',LegendxAxis,'y',LegendyAxis6,'color',ColorName,'lightness',LightnessName)
+           end
+           g6.set_color_options('Map',ColorMarkerMap,...
+               'n_color',NumColor,...
+               'n_lightness',NumLightness,...
+               'legend','separate_gray')
+           g6.set_text_options('font',FontName,'base_size',BaseFontSize,'label_scaling',LabelScaling,'legend_scaling',LegendScaling)
+           if strcmpi(LegendArg,'Y')
+               g6.set_layout_options("legend",1) % Show legend
+           elseif strcmpi(LegendArg,'N')
+               g6.set_layout_options("legend",0) % Don't show legend
+           end
+           %g6.set_layout_options('legend_position',[0.75,0.4,0.35,0.6]) %[left bottom width height]
+           % Figure
+           h_fig6=figure(6);
+           h_fig6.Color='white'; % changes the background color of the figure
+           h_fig6.Units='pixel'; % Defines the units
+           h_fig6.OuterPosition=Res;
+           h_fig6.PaperOrientation='landscape';
+            h_fig6.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,'_','Var',num2str(Var),NameSuffix6);
+            % The actual plotting
+            g6.draw()
+            % Save the figure
+            FullName6=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,'_','Var',num2str(Var),NameSuffix6);
+            print(h_fig6,FullName6,'-dpng');
+            exportgraphics(h_fig6,[FullName6,'.pdf'],'ContentType','vector')
+
+           %% Gramm object 7
+           % Define variables
+           if strcmpi(yDataArg,'new')     
+           Plottitle7=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ResultsRow,1}.Data(1).FMIndex),obj.SMFSResults{ResultsRow,1}.Data(1).SumNumFcAnalysedySnapInLength);
+           LegendyAxis7='Snap-In length (nm)';
+           NameSuffix7='_SnapInLength';
+           % Allocate data
+           yData7=obj.SMFSResults{ResultsRow}.Concatenate.SnapInLength(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*1e9;
+           yData7Min=min(yData7);
+           yData7Max=max(yData7);
+           yData7diff=yData7Max-yData7Min;
+           % Create a gramm object
+           if strcmpi(MarkerArg,'Y')
+               g7=gramm('x',xData,'y',yData7,...
+                   'color',ColorData,...
+                   'lightness',LightnessData,...
+                   'marker',MarkerData);
+           elseif strcmpi(MarkerArg,'N')
+               g7=gramm('x',xData,'y',yData7,...
+                   'color',ColorData,...
+                   'lightness',LightnessData);
+           end
+           % Plot data
+           g7.geom_polygon('y',{LimitLengthApp},'color',Ochreish);
+           g7.geom_point();
+            % Set options
+            g7.axe_property('LineWidth',LineWidth,'xlim',[xDataMin-xAxisCorr xDataMax+xAxisCorr],'ylim',[yData7Min-yData7diff*yAxisMinFactor yData7Max+yData7diff*yAxisMaxFactor],'TickDir','out','TickLength',[0.005 0.005]);
+            g7.geom_polygon('y',{LimitLengthApp},'color',Ochreish);
+            if strcmpi(xArg,'DateTime')
+                g7.set_datetick('x',0,'keeplimits') % Format x-axis
+            end
+            if strcmpi(CBar,'Y')
+            y7CBar=[yData7Max+yData7diff*yLimMinFactor yData7Max+yData7diff*yLimMinFactor yData7Max+yData7diff*yLimMaxFactor yData7Max+yData7diff*yLimMaxFactor];
+            g7.geom_polygon('x',{xCBar1;xCBar2;xCBar3;xCBar4},'y',{y7CBar;y7CBar;y7CBar;y7CBar},'color',ColorBarMap,'alpha',1);
+            else
+            end
+           g7.set_point_options('base_size',MarkerSize)
+           %g7.set_title(Plottitle7) %Set figure title
+           if strcmpi(MarkerArg,'Y')
+               g7.set_names('x',LegendxAxis,'y',LegendyAxis7,'color',ColorName,'lightness',LightnessName,'marker',MarkerName)
+           elseif strcmpi(MarkerArg,'N')
+               g7.set_names('x',LegendxAxis,'y',LegendyAxis7,'color',ColorName,'lightness',LightnessName)
+           end
+           g7.set_color_options('Map',ColorMarkerMap,...
+               'n_color',NumColor,...
+               'n_lightness',NumLightness,...
+               'legend','separate_gray')
+           g7.set_text_options('font',FontName,'base_size',BaseFontSize,'label_scaling',LabelScaling,'legend_scaling',LegendScaling)
+           if strcmpi(LegendArg,'Y')
+               g7.set_layout_options("legend",1) % Show legend
+           elseif strcmpi(LegendArg,'N')
+               g7.set_layout_options("legend",0) % Don't show legend
+           end
+           % Figure
+           h_fig7=figure(7);
+           h_fig7.Color='white'; % changes the background color of the figure
+           h_fig7.Units='pixel'; % Defines the units
+           h_fig7.OuterPosition=Res;
+           h_fig7.PaperOrientation='landscape';
+            h_fig7.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,'_','Var',num2str(Var),NameSuffix7);
+            % The actual plotting
+            g7.draw()
+            % Save the figure
+            FullName7=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,'_','Var',num2str(Var),NameSuffix7);
+            print(h_fig7,FullName7,'-dpng');
+            exportgraphics(h_fig7,[FullName7,'.pdf'],'ContentType','vector')
+          
+           elseif strcmpi(yDataArg,'old')
+          
+           end      
+           % House keeping
+           close all
+       end
+
+
+    
+       function SM_force_landscape_app(obj,Var)
+            %
+            % debugging
+
+            if Var==1
+                % Input dialog
+                prompt = {'Enter the force map number you do not want to have included in the "SMFSResults"-structure (For multiple selections just use the space key to separeat entries)'};
+                definput = {''};
+                opts.Interpreter = 'tex';
+                FMIdxArray=inputdlg(prompt,'Select all - except of ...',[1 150],definput,opts);
+                FMIdxArray=str2num(FMIdxArray{1}); % Convert the cell array to numerals
+            elseif Var==2
+                warning('This variation requires that a none parameter based selection row in the "SMFSResults"-structure exists (Typically row 1)')
+                dlgtitle='Enter the "SMFSResults"-structure row the chronologcial data will be taken from';
+                prompt = {'ResultsRow'};
+                definput={'1'};
+                dims=[1 150];
+                ResultsRow = inputdlg(prompt,dlgtitle,dims,definput);
+                ResultsRow=str2num(ResultsRow{1});
+                dlgtitle='Enter the chronological force map index of the first and last force map you want to have included in the "SMFSResults"-structure';
+                prompt = {'First','Last'};
+                dims=[1 150; 1 150];
+                FMIdxChrono = inputdlg(prompt,dlgtitle,dims);
+                FMIdxChrono1=str2num(FMIdxChrono{1});
+                FMIdxChrono2=str2num(FMIdxChrono{2});
+                % Allocate the force maps in chronological order as defined by
+                % the input dialog box
+                FMIdxArray=obj.SMFSResults{ResultsRow}.Data.FMDateTimeSortIdx(FMIdxChrono1:FMIdxChrono2);
+            end
+            % If condition to handle an empty index array
+            if isempty(FMIdxArray)
+                return
+            else
+            end
+
+            % Allocate the force maps in chronological order as defined by
+            % the input dialog box
+            FMIdxArray=obj.SMFSResults{ResultsRow}.Data.FMDateTimeSortIdx(FMIdxChrono1:FMIdxChrono2);
+
+            % Change into the Folder of Interest
+            cd(obj.ExperimentFolder) % Move into the folder
+            % Create folders for saving the produced figures
+            foldername='SM_force_landscape';    % Defines the folder name
+            mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
+            currpath=fullfile(obj.ExperimentFolder,foldername);
+            cd(currpath);
+
+           %% Figures
+           FigNamePt1=sprintf('SMFSResultRow%d_',ResultsRow);
+           FigNamePt2=sprintf('FM%d_to_FM%d_',FMIdxChrono1,FMIdxChrono2);
+           FigNamePt3='App';
+           FigNamePt4='ForceCurveLandscape';
+
+            % Define variables
+            FcCount = 0; % Force curve count
+            for ii=FMIdxArray'
+                FcCount = FcCount + obj.FM{ii}.NCurves;
+            end
+            ResY = FcCount; % y-axis resolution
+            ResX = 512; % x-axis resolution
+            CritLength=200*1e-9; % Max. length on x-axis
+            % Allocate data
+            MaxRangeApp = 0;
+            SkippedCurves = 0;
+            k=1;
+            DwellTime = [];
+            Phase = [];
+            ExtSpeed = [];
+            RetSpeed = [];
+            AbsCycleIndex = [];
+            m = 0;
+            % Read out data
+            for j=obj.SMFSResults{ResultsRow}.Data.FMIndexChrono'
+                for i=1:obj.FM{j}.NCurves
+                    m=m+1;
+                     if ~obj.FM{j}.SMFSFlag.Selected(i)
+                         SkippedCurves = SkippedCurves + 1;
+                         continue
+                     end
+                    DwellTime(k,1) = obj.SMFSResults{ResultsRow}.Data.FMHoldingTime(j);
+                    AbsCycleIndex(k,1) = m;
+                    % Assigning the phase/state
+                    if any(j == [1:2])
+                        Phase(k,1) = 1;
+                    elseif any(j == [3:22])
+                        Phase(k,1) = 2;
+                    elseif any(j == [23:121])
+                        Phase(k,1) = 3;
+                    elseif any(j == [121:obj.NumForceMaps])
+                        Phase(k,1) = 4;
+                    end
+                    % Allocating data
+                    vDefApp{k} = obj.FM{j}.BasedApp{i};
+                    THApp{k} = obj.FM{j}.THApp{i};
+                    THApp{k} = THApp{k} - max(THApp{k});
+                    THApp{k}=THApp{k}*-1;
+                    AppIdx=find(THApp{k}>CritLength,1,'last'); % Find all entries longer than the defined length
+                    THApp{k}(1:AppIdx)=[];
+                    vDefApp{k}(1:AppIdx)=[];
+
+                    MaxRangeApp = max(range(THApp{k}),MaxRangeApp);
+
+                    k = k + 1;
+                end
+                    if j == FMIdxChrono2 % Leave loop when the entry FM is reached
+                        break
+                    end   
+            end
+
+            % Define axes properties
+            xmax=200*1e-9;
+            XQApp = linspace(0,xmax,ResX);
+            ResY = ResY - SkippedCurves; % y-axis resolution
+            % Preallocate
+            FcMapApp = zeros(ResY, ResX);
+            % Interp Data and fill FCMap
+            for i=1:ResY
+                FCMapApp(i,:) = interp1(THApp{i},vDefApp{i},XQApp);
+            end
+            ApproachForceCurveMap = FCMapApp;
+
+            % Font Sizes
+            FS = 18;
+
+            % Processed Image Preparation
+            ProcAppMap = ApproachForceCurveMap * 1e9;
+            YPixels = 512;
+            XPixels = 512;
+            %img = imresize(-ProcRetMap, [YPixels XPixels], 'bilinear');
+            img=-ProcAppMap;
+            img = imfilter(img,ones(round(size(-ProcAppMap,1)/YPixels),1)./round(size(ProcAppMap,1)/YPixels)); % Applying a rollling average filter for smearing out data
+            img = imresize(img, [YPixels XPixels], 'nearest'); % Downsampling
+            ProcDwellTime = imresize(DwellTime, [YPixels 1], 'nearest');
+            ProcPhase = imresize(Phase, [YPixels 1], 'nearest');
+            xmin = 0;
+            xmax = 200;
+            ymax = size(ApproachForceCurveMap, 1) / 1000;
+            MaxForce = 0.2;
+            MinForce = 0;
+            LineWidth = 1.5;
+
+            % Figure and Image Display
+            Fig = figure('Color', 'w');
+            imshow(img, [MinForce MaxForce]);
+            Fig.Units='normalized';
+            % Axis
+            ax = gca;  % Get the current axes handle
+            axis on;   % Turn on the axis visibility
+            xlabel('Tip-sample distance (nm)');
+            ylabel('Number of cycles (x100)');
+            xlim([0 XPixels]);  % Set X-axis limits
+            ylim([0 YPixels]);  % Set Y-axis limits
+            set(ax, 'XTick', [0:50:200] ./ xmax * XPixels);  % Custom X-axis ticks
+            YTickSpacing = [0:0.5:floor(ymax)] ./ ymax;
+            set(ax, 'YTick', YTickSpacing * YPixels);  % Custom Y-axis ticks
+            set(ax, 'XTickLabel', {string(xmin), string(50), string(100), string(150), string(200)});  % Custom X-axis tick labels
+            % Custom Y-axis tick labels
+            for i=1:length(YTickSpacing)
+                if i == 1
+                    YTickLabels{i} = '0';
+                    continue
+                end
+               YTickLabels{i} =string(round(AbsCycleIndex(YTickSpacing(i)*ymax*1000)/100,1));
+             %   YTickLabels{i} = string(round(AbsCycleIndex(YTickSpacing(i)*ymax*1000),1));
+            end
+            set(ax, 'YTickLabel',YTickLabels)              
+            set(ax, 'FontSize', FS);  % Set font size for axes
+            set(ax, 'FontName', 'Arial');  % Set font type for axes
+            % Display axes only on the left and bottom
+            ax.XAxisLocation = 'bottom';  % X-axis at the bottom
+            ax.YAxisLocation = 'left';    % Y-axis on the left
+            ax.Box = 'off';  % Turn off the box around the axes
+            ax.TickDir = 'out';  % Ticks pointing outwards
+            % Ensure the top and right axes are not shown
+            ax.XColor = 'k';  % X-axis color (bottom)
+            ax.YColor = 'k';  % Y-axis color (left)
+            ax.XRuler.Axle.Visible = 'off';  % Hide the top axis
+            ax.YRuler.Axle.Visible = 'off';  % Hide the right axis
+            ax.LineWidth = LineWidth;
+            % Adjust Axes Position to Make Space for Rectangles
+            ax.Position = [0.15 0.11 0.7 0.8];  % Adjust the axis position
+            LeftAxExpand = 0.07;
+
+            %% Adding Colored Rectangles
+            % Left-hand side rectangles for dwell time colored gray 
+            ScalingParam = 0.18*LeftAxExpand;
+            UpperPos = 0;
+            for i=1:YPixels
+                DwellSize = ProcDwellTime(i) + 0.4;
+                Thickness = ScalingParam * DwellSize * XPixels;
+                Height = 1;
+                rectangle('Position', [-Thickness, UpperPos,...
+                    Thickness, Height],...
+                    'FaceColor', 0.5.*[1 1 1], 'EdgeColor', 'none');
+                UpperPos = UpperPos + Height;
+            end
+
+            % Add Bar for cycle axis
+            rectangle('Position', [-LeftAxExpand * XPixels, 0,...
+                0.01 * XPixels, YPixels],...
+                'FaceColor', [0 0 0], 'EdgeColor', 'none');
+
+            ColorBarMap=[[54 163 0]./255; % Dark green HEX 8DB600
+                [206 22 32]./255; % Fire Engine Red HEX CE162
+                [0 24 204]./255; % Blue HEX 8DB600
+                [135 0 224]./255]; % Violet HEX 8F00FF
+
+            UpperPos = 0;
+            for i=1:YPixels
+                Color = ColorBarMap(ProcPhase(i),:);
+                Thickness = 0.05 * XPixels;
+                Height = 1;
+                rectangle('Position', [XPixels, UpperPos,...
+                    Thickness, Height],...
+                    'FaceColor', Color, 'EdgeColor', 'none');
+                UpperPos = UpperPos + Height;
+            end
+
+            % Adjust the axis limits to avoid cutting off the rectangles
+            xlim([-LeftAxExpand * XPixels XPixels * 1.05]);
+
+            % Adding and Customizing Colorbar
+            c = colorbar;
+            c.Location = 'northoutside';
+            c.Label.String = 'Attractive force (nN)';
+            c.Ticks = [MinForce, MaxForce/3, MaxForce*2/3, MaxForce];
+            c.FontSize = FS;
+            c.FontName = 'Arial';
+            c.Orientation = 'horizontal';
+            c.LineWidth = LineWidth;
+            colormap(turbo);
+
+            % Final Adjustments
+            c.Position = [0.1939    0.8650    0.6239    0.030];
+
+            % Save figure
+            fullname=sprintf('%s%s%s%s',FigNamePt1,FigNamePt2,FigNamePt3,FigNamePt4);
+            print(gcf,fullname,'-dpng');
+            exportgraphics(gcf,[fullname,'.pdf'],'ContentType','vector')
+
+            %% House keeping
+            close all
+
+        end
+
+       function SM_force_landscape_ret(obj,Var)
+            %     function SM_force_landscape_ret(obj,Var)
+            % Author: Manuel Rufin, Andreas Rohatschek
+            % Based on "2024_11_14_AveragingCorrection.m" file in the "FCLandscape"-folder and slightly modified
+            % Function to plot a force landscape of the retraction part 
+            % Var ... Variant            
+
+            if Var==1
+                % Input dialog
+                prompt = {'Enter the force map number you do not want to have included in the "SMFSResults"-structure (For multiple selections just use the space key to separeat entries)'};
+                definput = {''};
+                opts.Interpreter = 'tex';
+                FMIdxArray=inputdlg(prompt,'Select all - except of ...',[1 150],definput,opts);
+                FMIdxArray=str2num(FMIdxArray{1}); % Convert the cell array to numerals
+            elseif Var==2
+                warning('This variation requires that a none parameter based selection row in the "SMFSResults"-structure exists (Typically row 1)')
+                dlgtitle='Enter the "SMFSResults"-structure row the chronologcial data will be taken from';
+                prompt = {'ResultsRow'};
+                definput={'1'};
+                dims=[1 150];
+                ResultsRow = inputdlg(prompt,dlgtitle,dims,definput);
+                ResultsRow=str2num(ResultsRow{1});
+                dlgtitle='Enter the chronological force map index of the first and last force map you want to have included in the "SMFSResults"-structure';
+                prompt = {'First','Last'};
+                dims=[1 150; 1 150];
+                FMIdxChrono = inputdlg(prompt,dlgtitle,dims);
+                FMIdxChrono1=str2num(FMIdxChrono{1});
+                FMIdxChrono2=str2num(FMIdxChrono{2});
+                % Allocate the force maps in chronological order as defined by
+                % the input dialog box
+                FMIdxArray=obj.SMFSResults{ResultsRow}.Data.FMDateTimeSortIdx(FMIdxChrono1:FMIdxChrono2);
+            end
+            % If condition to handle an empty index array
+            if isempty(FMIdxArray)
+                return
+            else
+            end
+
+            % Allocate the force maps in chronological order as defined by
+            % the input dialog box
+            FMIdxArray=obj.SMFSResults{ResultsRow}.Data.FMDateTimeSortIdx(FMIdxChrono1:FMIdxChrono2);
+
+            % Change into the Folder of Interest
+            cd(obj.ExperimentFolder) % Move into the folder
+            % Create folders for saving the produced figures
+            foldername='SM_force_landscape';    % Defines the folder name
+            mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
+            currpath=fullfile(obj.ExperimentFolder,foldername);
+            cd(currpath);
+ 
+           %% Figures
+           FigNamePt1=sprintf('SMFSResultRow%d_',ResultsRow);
+           FigNamePt2=sprintf('FM%d_to_FM%d_',FMIdxChrono1,FMIdxChrono2);
+           FigNamePt3='Ret';
+           FigNamePt4='ForceCurveLandscape';
+
+            % Force Landscape variables
+            FcCount = 0; % Force curve count
+            for ii=FMIdxArray'
+                FcCount = FcCount + obj.FM{ii}.NCurves;
+            end
+            ResY = FcCount; % y-axis resolution
+            ResX = 1024; % x-axis resolution
+            % Allocate data
+            MaxRangeRet = 0;
+            SkippedCurves = 0;
+            k=1;
+            DwellTime = [];
+            Phase = [];
+            ExtSpeed = [];
+            RetSpeed = [];
+            AbsCycleIndex = [];
+            m = 0;
+            % Read ou data
+            for j=obj.SMFSResults{ResultsRow}.Data.FMIndexChrono'
+                for i=1:obj.FM{j}.NCurves
+                    m=m+1;
+                    if ~obj.FM{j}.SMFSFlag.Selected(i)
+                        SkippedCurves = SkippedCurves + 1;
+                        continue
+                    end
+
+                    DwellTime(k,1) = obj.SMFSResults{ResultsRow}.Data.FMHoldingTime(j);
+                    ExtSpeed(k,1) = obj.SMFSResults{ResultsRow}.Data.FMExtVelocity(j);
+                    RetSpeed(k,1) = obj.SMFSResults{ResultsRow}.Data.FMRetVelocity(j);
+                    AbsCycleIndex(k,1) = m;
+
+                    if any(j == [1:2])
+                        Phase(k,1) = 1;
+                    elseif any(j == [3:22])
+                        Phase(k,1) = 2;
+                    elseif any(j == [23:121])
+                        Phase(k,1) = 3;
+                    elseif any(j == [121:obj.NumForceMaps])
+                        Phase(k,1) = 4;
+                    end
+
+                    vDefRet{k} = obj.FM{j}.BasedRet{i};
+                    THRet{k} = obj.FM{j}.THRet{i};
+                    THRet{k} = THRet{k} - max(THRet{k});
+                    MaxRangeRet = max(range(THRet{k}),MaxRangeRet);
+
+                    k = k + 1;
+                end
+            end
+
+            % Define axes properties
+            XQRet = linspace(0,-MaxRangeRet,ResX); % Query points on x-axis
+            ResY = ResY - SkippedCurves; % y-axis resolution
+            % Preallocate
+            FcMapRet = zeros(ResY, ResX);
+            % Interp Data and fill FCMap
+            for i=1:ResY
+                FCMapRet(i,:) = interp1(THRet{i},vDefRet{i},XQRet);
+            end
+            RetractForceCurveMap = FCMapRet;
+            RetractMaxRange = MaxRangeRet;
+
+            %% Plot: Dwell Time only            
+            % Font Sizes
+            %FS = 18;
+            FS = 7;
+           
+            % Processed Image Preparation
+            ProcRetMap = RetractForceCurveMap * 1e9;
+            YPixels = 2048;
+            XPixels = 1024;
+            img=-ProcRetMap;
+            img = imfilter(img,ones(round(size(-ProcRetMap,1)/YPixels),1)./round(size(ProcRetMap,1)/YPixels)); % Applying a rollling average filter for smearing out data
+            img = imresize(img, [YPixels XPixels], 'nearest'); % Downsampling
+            ProcDwellTime = imresize(DwellTime, [YPixels 1], 'nearest');
+            ProcPhase = imresize(Phase, [YPixels 1], 'nearest');
+            xmin = 0;
+            xmax = RetractMaxRange * 1e9;
+            ymax = size(RetractForceCurveMap, 1) / 1000;
+            MaxForce = 0.3;
+            MinForce = 0;         
+            LineWidth = 1.5;
+            
+            % Figure and Image Display
+            Fig = figure('Color', 'w');
+            imshow(img, [MinForce MaxForce]);
+            
+            ax = gca;  % Get the current axes handle
+            axis on;   % Turn on the axis visibility
+            xlabel('Tip-sample distance (nm)');
+            ylabel('Number of cycles (x100)');
+            xlim([0 XPixels]);  % Set X-axis limits
+            ylim([0 YPixels]);  % Set Y-axis limits         
+            set(ax, 'XTick', [0:200:1000] ./ xmax * XPixels);  % Custom X-axis ticks
+            YTickSpacing = [0:2:floor(ymax)] ./ ymax;
+            set(ax, 'YTick', YTickSpacing * YPixels);  % Custom Y-axis ticks
+            set(ax, 'XTickLabel', {string(xmin), string(200), string(400), string(600), string(800), string(1000)});  % Custom X-axis tick labels
+            % Custom Y-axis tick labels
+            for i=1:length(YTickSpacing)
+                if i == 1
+                    YTickLabels{i} = '0';
+                    continue
+                end
+               YTickLabels{i} =string(round(AbsCycleIndex(YTickSpacing(i)*ymax*1000)/100,1));
+             %   YTickLabels{i} = string(round(AbsCycleIndex(YTickSpacing(i)*ymax*1000),1));
+            end
+            set(ax, 'YTickLabel',YTickLabels)           
+            set(ax, 'FontSize', FS);  % Set font size for axes
+            set(ax, 'FontName', 'Arial');  % Set font type for axes
+            
+            % Display axes only on the left and bottom
+            ax.XAxisLocation = 'bottom';  % X-axis at the bottom
+            ax.YAxisLocation = 'left';    % Y-axis on the left
+            ax.Box = 'off';  % Turn off the box around the axes
+            ax.TickDir = 'out';  % Ticks pointing outwards
+            
+            % Ensure the top and right axes are not shown
+            ax.XColor = 'k';  % X-axis color (bottom)
+            ax.YColor = 'k';  % Y-axis color (left)
+            ax.XRuler.Axle.Visible = 'off';  % Hide the top axis
+            ax.YRuler.Axle.Visible = 'off';  % Hide the right axis
+            ax.LineWidth = LineWidth;
+            
+            % Adjust Axes Position to Make Space for Rectangles
+            ax.Position = [0.15 0.11 0.7 0.8];  % Adjust the axis position
+            
+            % Lines and boxes demarking critical lengths
+            LinesFlag = true;
+            if LinesFlag
+                XPos1 = 250;
+                LineX1 = ones(1,2)*XPos1 ./ xmax * XPixels;
+                LineY1 = [.735 1] * YPixels;
+                hold on
+                plot(LineX1,LineY1,'w--','LineWidth',LineWidth)
+                % text(LineX1(1) + 10,mean(LineY1),string(XPos1),'Color','w','FontName','Arial','FontSize',FS)
+            
+                % XPos2 = 430;
+                % LineX2 = ones(1,2)*XPos2 ./ xmax * XPixels;
+                % LineY2 = [.55 .68] * YPixels;
+                % plot(LineX2,LineY2,'w--','LineWidth',LineWidth)
+                % text(LineX2(1) + 10,mean(LineY2),string(XPos2),'Color','w','FontName','Arial','FontSize',FS)
+            
+                XPos3 = 670;
+                LineX3 = ones(1,2)*XPos3 ./ xmax * XPixels;
+                % LineY3 = [.29 .543] * YPixels;
+                % plot(LineX3,LineY3,'w--','LineWidth',LineWidth)
+                % text(LineX3(1) + 10,mean(LineY3),string(XPos3),'Color','w','FontName','Arial','FontSize',FS)
+                
+                XPos4 = 820;
+                LineX4 = ones(1,2)*XPos4 ./ xmax * XPixels;
+                % LineY4 = [.29 .543] * YPixels;
+                % plot(LineX4,LineY4,'w--','LineWidth',LineWidth)
+                % text(LineX4(1) + 10,mean(LineY4),string(XPos4),'Color','w','FontName','Arial','FontSize',FS)          
+            
+                Band1X1 = 670 ./ xmax * XPixels;
+                Band1X2 = 820 ./ xmax * XPixels;
+                Band1Pos = [Band1X1 .29*YPixels Band1X2-Band1X1 (.543 - .29)*YPixels];
+                Band1Rect =rectangle('Position', Band1Pos,...
+                    'FaceColor', 'none', 'EdgeColor', 'w','LineStyle','--','LineWidth',LineWidth);
+                       
+                Band2X1 = 250 ./ xmax * XPixels;
+                Band2X2 = 580 ./ xmax * XPixels;
+                Band2Pos = [Band2X1 .56*YPixels Band2X2-Band2X1 (.68 - .56)*YPixels];
+                Band2Rect =rectangle('Position', Band2Pos,...
+                    'FaceColor', 'none', 'EdgeColor', 'w','LineStyle','--','LineWidth',LineWidth);
+            
+                %     text(Band2X1(1) + 10,mean([.56 .68].*YPixels),string(250),'Color','w','FontName','Arial','FontSize',FS)
+                %     text(Band2X2(1) + 10,mean([.56 .68].*YPixels),string(580),'Color','w','FontName','Arial','FontSize',FS)
+            end
+            
+            % White band (demarking theoretical linker-molecule complex
+            % range)
+            BandFlag = true;
+            if BandFlag
+                BandX1 = 308 ./ xmax * XPixels;
+                BandX2 = 463 ./ xmax * XPixels;
+                BandPos = [BandX1 -2 BandX2-BandX1 YPixels];
+                BandRect =rectangle('Position', BandPos,...
+                    'FaceColor', [1 1 1 .3], 'EdgeColor', 'none');           
+            
+            end
+            LeftAxExpand = 0.07;
+            
+            % Adding Colored Rectangles
+            % Dwell time (Gray rectangles on the left-hand side with thicknesses according to the dwell times)            
+            DwellSizes = [0.2 1.2 2.2 3.2];
+            ScalingParam = 0.18*LeftAxExpand;
+            UpperPos = 0;
+            for i=1:YPixels
+                DwellSize = ProcDwellTime(i) + 0.2;
+                Thickness = ScalingParam * DwellSize * XPixels;
+                Height = 1;
+                rectangle('Position', [-Thickness, UpperPos,...
+                    Thickness, Height],...
+                    'FaceColor', 0.5.*[1 1 1], 'EdgeColor', 'none');
+                UpperPos = UpperPos + Height;
+            end
+            
+            % Add Bar for cycle axis
+            rectangle('Position', [-LeftAxExpand * XPixels, 0,...
+                0.01 * XPixels, YPixels],...
+                'FaceColor', [0 0 0], 'EdgeColor', 'none');
+            
+            % State/phase rectangles on the right-hand side         
+            ColorBarMap=[[54 163 0]./255; % Dark green HEX 8DB600
+                [206 22 32]./255; % Fire Engine Red HEX CE162
+                [0 24 204]./255; % Blue HEX 8DB600
+                [135 0 224]./255]; % Violet HEX 8F00FF
+            
+            UpperPos = 0;
+            for i=1:YPixels
+                Color = ColorBarMap(ProcPhase(i),:);
+                Thickness = 0.05 * XPixels;
+                Height = 1;
+                rectangle('Position', [XPixels, UpperPos,...
+                    Thickness, Height],...
+                    'FaceColor', Color, 'EdgeColor', 'none');
+                UpperPos = UpperPos + Height;
+            end
+            
+            % Adjust the axis limits to avoid cutting off the rectangles
+            xlim([-LeftAxExpand * XPixels XPixels * 1.05]);
+            
+            % Adding and Customizing Colorbar
+            c = colorbar;
+            c.Location = 'northoutside';
+            c.Label.String = 'Adhesive force (nN)';
+            c.Ticks = [MinForce, MaxForce/3, MaxForce*2/3, MaxForce];
+            c.FontSize = FS;
+            c.FontName = 'Arial';
+            c.Orientation = 'horizontal';
+            c.LineWidth = LineWidth;
+            colormap(turbo);
+            
+            % Final Adjustments            
+            Fig.Position = [1858 68 686 1277];
+            c.Position = [0.1939    0.8446    0.6239    0.0167];            
+            set(Fig, 'Renderer', 'Painters');
+            
+            % Save figure
+            fullname=sprintf('%s%s%s%s',FigNamePt1,FigNamePt2,FigNamePt3,FigNamePt4);
+            print(gcf,fullname,'-dpng');
+            exportgraphics(gcf,[fullname,'.pdf'],'ContentType','vector')
+
+            %% House keeping
+            close all
+
+        end
+
+
+       function SM_analysis_flag_status(obj)
+                        
+            % Find not processed force maps
+            obj.SMFSFlagDown.SelectFM=find(~obj.SMFSFlag.SelectFM);
+            obj.SMFSFlagDown.PropertiesParameters=find(~obj.SMFSFlag.PropertiesParameters);
+            obj.SMFSFlagDown.Preprocessed=find(~obj.SMFSFlag.Preprocessed);
+            obj.SMFSFlagDown.Presorted=find(~obj.SMFSFlag.Presorted);
+            obj.SMFSFlagDown.NumForceCurves=find(~obj.SMFSFlag.NumForceCurves);            
+            obj.SMFSFlagDown.AnalysedPreSelected=find(~obj.SMFSFlag.AnalysedPreSelected);
+            obj.SMFSFlagDown.AnalysedPostSelected=find(~obj.SMFSFlag.AnalysedPostSelected);
+     %       obj.SMFSFlagDown.Analysed=find(~obj.SMFSFlag.Analysed);
+            for Fm=1:obj.NumForceMaps
+            %for Fm=122:133
+            obj.FM{Fm}.fc_flag_status          
+            end
+        end
+  
+        % Individual ForceMap function related
+        
+        function SM_print_pulllength(obj)
+            % SM_print: A function to simply plot all force curves of all
+            % force maps loaded and calssified based on the SMFS Flag
+            % Needed function: obj.presorting
+
+            
+            % Figure visibility
+            set(groot,'defaultFigureVisible','off')      
+            %set(groot,'defaultFigureVisible','on')           
+            % Change into the Folder of Interest
+            cd(obj.ExperimentFolder) % Move into the folder 
+            % Create folders for saving the produced figures
+            %foldername='FM_test';    % for debugging
+            foldername='FM_Pulllength_MAD';    % Defines the folder name
+            mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
+            currpath=fullfile(obj.ExperimentFolder,foldername);
+            cd(currpath); 
+            
+            % Loop over the imported force maps
+            %for ii=1:obj.NumForceMaps
+            for ii=2 % Debugging
+               % Command window output
+               sprintf('Force Map No. %d of %d',ii,obj.NumForceMaps) % Gives current Force Map Position
+               % Run the chosen functions
+               obj.FM{ii}.fc_pulling_length_MAD;     
+            end    
+           end
+               
+        function SM_snap_in_length_MAD(obj)            
+            
+            % Figure visibility
+            %set(groot,'defaultFigureVisible','off')      
+             set(groot,'defaultFigureVisible','on')           
+            % Change into the Folder of Interest
+            cd(obj.ExperimentFolder) % Move into the folder 
+            % Create folders for saving the produced figures
+            %foldername='FM_test';    % for debugging
+            foldername='FM_SnapIn_MAD';    % Defines the folder name
+            mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
+            currpath=fullfile(obj.ExperimentFolder,foldername);
+            cd(currpath); 
+            
+            % Loop over the imported force maps
+            %for ii=1:obj.NumForceMaps
+            for ii=2 % Debugging
+               % Command window output
+               sprintf('Force Map No. %d of %d',ii,obj.NumForceMaps) % Gives current Force Map Position
+               % Run the chosen functions
+               obj.FM{ii}.fc_snap_in_length_MAD;
+            end 
+        end
+    
+        function SM_adh_force_max(obj)            
+            
+            % Figure visibility
+            set(groot,'defaultFigureVisible','off')      
+            %set(groot,'defaultFigureVisible','on')           
+            % Change into the Folder of Interest
+            cd(obj.ExperimentFolder) % Move into the folder 
+            % Create folders for saving the produced figures
+            %foldername='FM_test';    % for debugging
+            foldername='FM_Adh_Force';    % Defines the folder name
+            mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
+            currpath=fullfile(obj.ExperimentFolder,foldername);
+            cd(currpath); 
+            
+            % Loop over the imported force maps
+            %for ii=1:obj.NumForceMaps
+            for ii=11:13 % Debugging
+               % Command window output
+               sprintf('Force Map No. %d of %d',ii,obj.NumForceMaps) % Gives current Force Map Position
+               % Run the chosen functions
+               obj.FM{ii}.fc_adh_force_max;
+            end 
+        end
+   
+        function SM_min_max(obj)
+            
+
+            for ii=1:obj.NumForceMaps
+                %    obj.FM{ii}.base_and_tilt('linear');
+                %obj.FM{ii}.fc_min_max_values;
+                
+                if ii==1
+                    ConcatArrayMax=obj.FM{ii}.FMPullingLengthMax;
+                 %   ConcatArrayAdhEnergy=obj.FM{ii}.obj.MinRet;
+                else               
+                    ConcatArrayMax=horzcat(ConcatArrayMax,obj.FM{ii}.FMPullingLengthMax);
+                  %  ConcatArrayAdhEnergy=horzcat(ConcatArrayMax,obj.FM{ii}.FMPullingLengthMax);
+                end                
+            end
+             ExpPullingLengthMax=max(ConcatArrayMax)
+        end
+        
+        function [m,n,NumFigures] = adjust_tiled_layout(obj,NumFcMax)
+            
+            if nargin < 2
+                NumFcMax=25; % The maximum of allowed plots per figure
+            end
+            
+            for ii=1:obj.NumForceMaps
+                %for ii=1:8 %for debugging
+                NumFcUncorrupt(ii)=nnz(obj.FM{ii}.SMFSFlag.Uncorrupt); % Determine the number of uncorrupted force curves
+                if ~any(NumFcUncorrupt(ii))    
+                    continue
+                end
+                NumFigures=ceil(NumFcUncorrupt(ii)./NumFcMax); % Determine the number of figures
+                Remainder=mod(NumFcUncorrupt(ii),NumFcMax); % Check for remainder
+                if Remainder ~= 0
+                    m(ii)=floor(sqrt(Remainder)); % Determine the number of rows in the figure
+                    n(ii)=ceil(sqrt(Remainder)); % Determine the number of columns in the figure
+                else
+                    m(ii)=sqrt(NumFcMax);
+                    n(ii)=m(ii);
+                end
+            end
+        end
+   
+       % Old functions
+
+       
+
+ 
+        
+
+       function SM_results_structure_add_phase(obj,ResultsRow,Phase1End,Phase2End,Phase3End)
             % A fct to assign all fc curves to one of the defined
             % deformation phases
             % 1 = native phase (Phase 1)
@@ -3378,8 +5375,176 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             obj.SMFSResults{ResultsRow,1}.DeformPhase(1).Fm=DeformPhaseFMArray;
         end
 
-        
-        function SM_results_gramm_boxplot(obj,ii)
+ 
+  
+        function SM_results_gramm_boxplot4(obj,ii)
+           % For results of Trial14
+           % x-axis: Index
+           % Column: Cantilver
+           % Color: Medium
+
+           % Input variable adaptation
+           if nargin<2
+               ii=1;
+           end
+           % Output time and date for the dairy
+           datetime('now')
+           % Change into the Folder of Interest
+           cd(obj.ExperimentFolder) % Move into the folder
+           % Create folders for saving the produced figures
+           foldername='SM_results_gramm_boxplot4';    % Defines the folder name
+           mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
+           currpath=fullfile(obj.ExperimentFolder,foldername);
+           cd(currpath);
+           %% General variables 1
+           ColorMap1=[[0 25 255]./255;  % Blue
+               [26 255 0]./255; % Green
+               [255 102 0]./255; % Orange
+               [255 0 26]./255]; % Red
+           LimitForce1=[0 14e-3]; % Regime I - Entropic
+           LimitForce2=[14e-3 5]; %Regime II - Unfolding
+           LimitForce3=[5 22]; % Regime III - Backbone stretching
+           LimitLength1=[0 317]; % Regime I - Entropic
+           LimitLength2=[317 390]; %Regime II - Unfolding
+           LimitLength3=[390 452.6]; % Regime III - Backbone stretching
+           Res=[1 1 2560 1250]; % Define the figure resolution
+           if obj.SMFSResults{ii}.Parameters.ExtendVelocity==0
+               ExtVelocityValueStr='All';
+           else
+               ExtVelocityValueStr=num2str(round(obj.SMFSResults{ii}.Parameters.ExtendVelocity*1e9));
+           end
+           if obj.SMFSResults{ii}.Parameters.RetractVelocity==0
+               RetVelocityValueStr='All';
+           else
+               RetVelocityValueStr=num2str(round(obj.SMFSResults{ii}.Parameters.RetractVelocity*1e9));
+           end
+           if obj.SMFSResults{ii}.Parameters.HoldingTime==-1
+               HoldingTimeValueStr='All';
+           else
+               HoldingTimeValueStr=num2str(obj.SMFSResults{ii}.Parameters.HoldingTime);
+           end
+           FigNamePt1=sprintf('SMFSResultRow%d_',ii);
+           FigNamePt2=strcat(ExtVelocityValueStr,{'_'},RetVelocityValueStr,{'_'},HoldingTimeValueStr,{'_'},obj.SMFSResults{ii}.Parameters.Substrate,{'_'},obj.SMFSResults{ii}.Parameters.Medium,{'_'},obj.SMFSResults{ii}.Parameters.ChipCantilever,{'_'},obj.SMFSResults{ii}.Parameters.Chipbox,{'_'},obj.SMFSResults{ii}.Parameters.Linker);
+           FigNamePt2=char(FigNamePt2);
+           FigNamePt3='_Boxplot';
+           LegendxAxis='Index';
+           LegendColor='Cantilever';
+           LegendLightness='Medium';
+           % Allocate general data
+           xData=obj.SMFSResults{ii}.Concatenate.FMIndex;
+           LightnessData=obj.SMFSResults{ii}.Concatenate.FMEnvCond;
+           ColorData=obj.SMFSResults{ii}.Concatenate.FMChipCant;
+           BoxplotWidth=0.5;
+
+           %% Gramm object 2
+           % Define variables
+           Plottitle=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ii,1}.Data(1).FMIndex),obj.SMFSResults{ii,1}.Data(1).SumNumFcAnalysedAdhMaxRet);
+           LegendyAxis2='Adhesion force (nN)';
+           NameSuffix2='_MaxAdhesionForceRetract';
+           % Allocate data
+           yData2=obj.SMFSResults{ii}.Data.AdhMaxRetConcat*-1e9;
+           % Create a gramm object
+           g2=gramm('x',xData,'y',yData2,...
+               'color',ColorData,'lightness',LightnessData);
+           % Plot data
+           g2.geom_polygon('y',{LimitForce1;LimitForce2;LimitForce3},'color',ColorMap1);
+           g2.geom_jitter('width',0.2,...
+               'dodge',2.4); % Plot raw data as jitter
+           g2.stat_boxplot('notch',true,...
+               'width',BoxplotWidth,...
+               'dodge',2.4); % Plot data in boxplot
+           g2.set_color_options('map','d3_20')
+           g2.set_title(Plottitle) %Set figure title
+           % Legend
+           g2.set_names('x',LegendxAxis,'y',LegendyAxis2,'color',LegendColor,'lightness',LegendLightness)
+           % Figure
+           h_fig2=figure(2);
+           h_fig2.Color='white'; % changes the background color of the figure
+           h_fig2.Units='pixel'; % Defines the units
+           h_fig2.OuterPosition=Res;
+           h_fig2.PaperOrientation='landscape';
+           h_fig2.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,NameSuffix2);
+           % The actual plotting
+           g2.draw()
+           % Save figure
+           FullName2=strcat(FigNamePt1,FigNamePt2,FigNamePt3,NameSuffix2);
+           %%% Save the current figure in the current folder
+           print(h_fig2,FullName2,'-dpng');
+
+           %% Gramm object 5
+           % Define variables
+           Plottitle=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ii,1}.Data(1).FMIndex),obj.SMFSResults{ii,1}.Data(1).SumNumFcAnalysedAdhEneRet);
+           LegendyAxis5='Adhesion energy (nJ)';
+           NameSuffix5='_AdhEnergyRetract';
+           % Allocate data
+           yData5=obj.SMFSResults{ii}.Data.AdhEneRetConcat*-1e9;
+           % Create a gramm object
+           g5=gramm('x',xData,'y',yData5,...
+               'color',ColorData,'lightness',LightnessData);
+           % Plot data
+           g5.geom_jitter('width',0.2,...
+               'dodge',2.4); % Plot raw data as jitter
+           g5.stat_boxplot('notch',true,...
+               'width',BoxplotWidth,...
+               'dodge',2.4); % Plot data in boxplot
+           g5.set_color_options('map','d3_20')
+           g5.set_title(Plottitle) %Set figure title
+           % Legend
+           g5.set_names('x',LegendxAxis,'y',LegendyAxis5,'color',LegendColor,'lightness',LegendLightness)
+           % Figure
+           h_fig5=figure(5);
+           h_fig5.Color='white'; % changes the background color of the figure
+           h_fig5.Units='pixel'; % Defines the units
+           h_fig5.OuterPosition=Res;
+           h_fig5.PaperOrientation='landscape';
+           h_fig5.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,NameSuffix5);
+           % The actual plotting
+           g5.draw()
+           % Save figure
+           FullName5=strcat(FigNamePt1,FigNamePt2,FigNamePt3,NameSuffix5);
+           %%% Save the current figure in the current folder
+           print(h_fig5,FullName5,'-dpng');
+
+           %% Gramm object 6
+           % Define variables
+           Plottitle=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ii,1}.Data(1).FMIndex),obj.SMFSResults{ii,1}.Data(1).SumNumFcAnalysedyPullingLength);
+           LegendyAxis6='Pulling length (nm)';
+           NameSuffix6='_Pullinglength';
+           % Allocate data
+           yData6=obj.SMFSResults{ii}.Data.yPullingLengthConcat*1e9;
+           % Create a gramm object
+           g6=gramm('x',xData,'y',yData6,...
+               'color',ColorData,'lightness',LightnessData);
+           % Plot data
+           g6.geom_polygon('y',{LimitLength1;LimitLength2;LimitLength3},'color',ColorMap1);
+           g6.geom_jitter('width',0.2,...
+               'dodge',2.4); % Plot raw data as jitter
+           g6.stat_boxplot('notch',true,...
+               'width',BoxplotWidth,...
+               'dodge',2.4); % Plot data in boxplot
+           g6.set_color_options('map','d3_20')
+           g6.set_title(Plottitle) %Set figure title
+           % Legend
+           g6.set_names('x',LegendxAxis,'y',LegendyAxis6,'color',LegendColor,'lightness',LegendLightness)
+           % Figure
+           h_fig6=figure(6);
+           h_fig6.Color='white'; % changes the background color of the figure
+           h_fig6.Units='pixel'; % Defines the units
+           h_fig6.OuterPosition=Res;
+           h_fig6.PaperOrientation='landscape';
+           h_fig6.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,NameSuffix6);
+           % The actual plotting
+           g6.draw()
+           % Save figure
+           FullName6=strcat(FigNamePt1,FigNamePt2,FigNamePt3,NameSuffix6);
+           %%% Save the current figure in the current folder
+           print(h_fig6,FullName6,'-dpng');
+
+           % House keeping
+           close all
+       end
+
+               function SM_results_gramm_boxplot(obj,ii)
             % x-axis: Holding Time
             % Column: Retraction velocity
             % Color: Approach velocity
@@ -3688,8 +5853,995 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             % House keeping
             close all
         end
-                         
-        function SM_results_gramm_boxplot2(obj,ResultsRow,Linker,xArg,Var)
+
+
+       function SM_results_gramm_plot_FM(obj,ResultsRow,MarkerArg,LegendArg,VarArg)
+           % Input variables: 
+           % ResultsRow: double ,e.g. 1
+           % Linker: string , either 'long' or 'short'
+           % xArg (x-axis argument): string, either 'Index' or 'DateTime'
+           % MarkerArg (Marker argument): string, either 'Y' or 'N'
+           % LegendArg (Legend argumend): string, either 'Y' or 'N'
+           % VarArg: double, e.g. 1 
+
+           % Input variable adaptation
+           if nargin<2
+               ResultsRow=1;
+           end
+           % Define color
+           ColorBarMap=[[54 163 0]./255; % Dark green HEX 8DB600
+                 [206 22 32]./255; % Fire Engine Red HEX CE162
+                 [0 24 204]./255; % Blue HEX 8DB600
+                 [135 0 224]./255]; % Violet HEX 8F00FF  
+           ColorMarkerMap=[[255 194 191]./255; % Light rose
+                 [255 194 191]./255;    
+                 [209 217 161]./255;
+                 [209 217 161]./255]; % Light green
+           % Change into the Folder of Interest
+           cd(obj.ExperimentFolder) % Move into the folder
+           % Create folders for saving the produced figures
+           foldername='SM_results_gramm_plot_FM';    % Defines the folder name
+           mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
+           currpath=fullfile(obj.ExperimentFolder,foldername);
+           cd(currpath);
+
+           % VarArg
+           if VarArg==1
+           NumColor=6;
+           NumLightness=6;
+           ColorName='Medium';
+           ColorData=obj.SMFSResults{ResultsRow}.Data.FMEnvCond(obj.SMFSResults{ResultsRow}.Data.FMDateTimeSortIdx);
+           LightnessName='Substrate';
+           LightnessData=obj.SMFSResults{ResultsRow}.Data.FMSubstrate(obj.SMFSResults{ResultsRow}.Data.FMDateTimeSortIdx);
+           MarkerName='FM Index';
+           MarkerData=obj.SMFSResults{ResultsRow}.Data.FMIndex(obj.SMFSResults{ResultsRow}.Data.FMDateTimeSortIdx);
+           elseif VarArg==2
+           FMExtVeloData=obj.SMFSResults{ResultsRow}.Data.FMExtVelocity(obj.SMFSResults{ResultsRow}.Data.FMDateTimeSortIdx);
+           FMRetVeloData=obj.SMFSResults{ResultsRow}.Data.FMRetVelocity(obj.SMFSResults{ResultsRow}.Data.FMDateTimeSortIdx);
+           ColorMap=ColorMarkerMap;
+           NumColor=2;
+           NumLightness=2;
+           ColorName='App. velo (m/s)';
+           ColorData=FMExtVeloData;
+           LightnessName='Ret. velo (m/s)';
+           LightnessData=FMRetVeloData;
+           MarkerName='Holding time';
+           MarkerData=obj.SMFSResults{ResultsRow}.Data.FMHoldingTime(obj.SMFSResults{ResultsRow}.Data.FMDateTimeSortIdx);
+           end
+                          LegendxAxis='Chronological force map order';
+               xData=1:length(obj.SMFSResults{ResultsRow}.Data.FMIndex);
+               xDataMin=min(xData);
+               xDataMax=max(xData);
+               xAxisCorr=(xDataMax-xDataMin)*0.015;
+           %Res=[1 1 2560 1250]; % Define the figure resolution
+           Res1=[1 1 70 50]; % Define the figure resolution
+           Res2a=[1 1 8 8]; % Define the figure resolution
+           Res2b=[1 1 8 4]; % Define the figure resolution
+           MarkerSize=9;
+           BaseFontSize=8;
+           BaseFontSizeMultiplier=2;
+          % BaseFontSizeMultiplier=4;
+           MarkerSizeMultiplier=2;
+          % MarkerSizeMultiplier=3;
+           %LegendOption='merge';
+           LegendOption='expand';
+           %%
+           if obj.SMFSResults{ResultsRow}.Parameters.ExtendVelocity==0
+               ExtVelocityValueStr='All';
+           else
+               ExtVelocityValueStr=num2str(round(obj.SMFSResults{ResultsRow}.Parameters.ExtendVelocity*1e9));
+           end
+           if obj.SMFSResults{ResultsRow}.Parameters.RetractVelocity==0
+               RetVelocityValueStr='All';
+           else
+               RetVelocityValueStr=num2str(round(obj.SMFSResults{ResultsRow}.Parameters.RetractVelocity*1e9));
+           end
+           if obj.SMFSResults{ResultsRow}.Parameters.HoldingTime==-1
+               HoldingTimeValueStr='All';
+           else
+               HoldingTimeValueStr=num2str(obj.SMFSResults{ResultsRow}.Parameters.HoldingTime);
+           end
+           % General names
+           FigNamePt1=sprintf('SMFSResultRow%d_',ResultsRow);
+           FigNamePt2=strcat(ExtVelocityValueStr,{'_'},RetVelocityValueStr,{'_'},HoldingTimeValueStr,{'_'},obj.SMFSResults{ResultsRow}.Parameters.Substrate,{'_'},obj.SMFSResults{ResultsRow}.Parameters.Medium,{'_'},obj.SMFSResults{ResultsRow}.Parameters.ChipCantilever,{'_'},obj.SMFSResults{ResultsRow}.Parameters.Chipbox,{'_'},obj.SMFSResults{ResultsRow}.Parameters.Linker);
+           FigNamePt2=char(FigNamePt2);
+           FigNamePt3='_FM_Timeline';
+            %% Gramm object 1
+            % Define variables
+            LegendyAxis1=[];
+            LegendxAxis='Chronological force map order';
+            % Allocate data
+            yData1=obj.SMFSResults{ResultsRow}.Data.FMDateTimeSortIdx;           
+            % Create a gramm object
+            if strcmpi(MarkerArg,'Y')
+            g1=gramm('x',xData,'y',yData1,...
+               'color',ColorData,...
+               'lightness',LightnessData,...
+               'marker',MarkerData);
+            elseif strcmpi(MarkerArg,'N')
+            g1=gramm('x',xData,...
+               'color',ColorData,...
+               'lightness',LightnessData);
+            end
+           % Plot data
+           %      g1.geom_polygon('y',{LimitForce1;LimitForce2;LimitForce3},'color',ColorBrewerMap1);
+           g1.geom_point();
+           %g1.geom_polygon();
+           % Set options
+           if strcmpi(LegendArg,'Y')
+           g1.axe_property('TickLabelInterpreter','Latex','xlim',[xDataMin-xAxisCorr xDataMax+xAxisCorr],'ylim',[0.98 1.2],'YTickLabel',[],'YColor','none','XTick',xDataMin:1:xDataMax) 
+           elseif strcmpi(LegendArg,'N')
+           g1.axe_property('TickLabelInterpreter','Latex','xlim',[xDataMin-xAxisCorr xDataMax+xAxisCorr],'ylim',[0.95 1.01],'YTickLabel',[],'YColor','none','XTick',xDataMin:1:xDataMax) 
+           end   
+           %g1.axe_property('TickLabelInterpreter','Latex','xlim',[xDataMin-xAxisCorr xDataMax+xAxisCorr],'ylim',[0.99 1.05],'YTickLabel',[],'YColor','none','XTick',xDataMin:1:xDataMax)
+           g1.set_limit_extra('x',[0 2])
+           if strcmpi(MarkerArg,'Y')
+
+           g1.set_names('x',LegendxAxis,'y',LegendyAxis1,'color',ColorName,'lightness',LightnessName,'marker',MarkerName)
+           elseif strcmpi(MarkerArg,'N')
+
+           g1.set_names('x',LegendxAxis,'y',LegendyAxis1,'color',ColorName,'lightness',LightnessName)
+           end
+           g1.set_color_options('n_color',NumColor,...
+               'n_lightness',NumLightness,...
+               'legend',LegendOption)       
+           if strcmpi(LegendArg,'Y')
+           g1.set_point_options('base_size',MarkerSize*MarkerSizeMultiplier)
+           g1.set_text_options('interpreter','latex','font','Helvetica','base_size',BaseFontSize*BaseFontSizeMultiplier,'label_scaling',1,'legend_scaling',1)
+       %   g1.set_layout_options("legend",1,'legend_position',[0.75 0.35 0.25 0.75])
+       %    g1.set_layout_options("legend",1,'legend_position',[0.35 0.35 0.25 0.75])
+           g1.set_layout_options("legend",1,'legend_position',[0.35 0.2 0.25 0.75])
+           elseif strcmpi(LegendArg,'N')
+           g1.set_point_options('base_size',MarkerSize)
+           g1.set_text_options('interpreter','latex','font','Helvetica','base_size',BaseFontSize,'label_scaling',1,'legend_scaling',1)
+           g1.set_layout_options("legend",0)
+           end          
+           % Figure
+           h_fig1=figure(1);
+           h_fig1.Color='white'; % changes the background color of the figure
+           h_fig1.Units='centimeters'; % Defines the units
+           if strcmpi(LegendArg,'Y')
+           h_fig1.OuterPosition=Res1;
+           elseif strcmpi(LegendArg,'N')
+           h_fig1.OuterPosition=Res2b;
+           end       
+           h_fig1.PaperOrientation='landscape';
+           h_fig1.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3);
+           % The actual plotting
+           g1.draw()
+           % Save the figure
+           FigNamePt4='_Legend';
+           FigNamePt5=sprintf('_Variant%d',VarArg);
+           if strcmpi(LegendArg,'Y')
+           FullName1=strcat(FigNamePt1,FigNamePt2,FigNamePt3,FigNamePt4,'Yes',FigNamePt5);
+           elseif strcmpi(LegendArg,'N')
+           FullName1=strcat(FigNamePt1,FigNamePt2,FigNamePt3,FigNamePt4,'No',FigNamePt5);
+           end       
+           print(h_fig1,FullName1,'-dpng');
+           print(h_fig1,FullName1,'-depsc');
+
+           % House keeping
+           close all
+       end
+ 
+
+
+           function SM_results_gramm_plot(obj,ResultsRow,Linker,IdxShift,ChronoFMIdx,FMColour)
+           % ResultsRow - row index in the SMFSResultsParameters table
+           % Linker: string , either 'long' or 'short'
+           % FMShift - force map shift
+           % FMoI - force map of interest (corresponds to the number in the
+           % FMID)
+           % FMColour: 2 possibilities
+           % 1. 'FM': Each FM is coloured differently
+           % 2. 'Phase': Each deformation phase is coloured differently
+
+           % Input variable adaptation
+           if nargin<5
+               ResultsRow=1;
+               IdxShift=3;
+               ChronoFMIdx=1;
+               FMColour='FM';
+           end
+           % Output time and date for the dairy
+           datetime('now')
+           % Change into the Folder of Interest
+           cd(obj.ExperimentFolder) % Move into the folder
+           % Create folders for saving the produced figures
+           foldername='SM_results_gramm_plot';    % Defines the folder name
+           mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
+           currpath=fullfile(obj.ExperimentFolder,foldername);
+           cd(currpath);
+           %% General variables 1
+           ColorBrewerMap1=[[253 174 97]./255; % Ochreish
+               [116 173 209]./255]; % Steel blueish
+
+           CS1=[165 0 38]./255; % Dark reddish
+           CS2=[215 48 39]./255; % Light reddish
+           CS3=[244 109 67]./255; % Orangish
+           CS4=[253 174 97]./255; % Ochreish
+           CS5=[254 224 144]./255; % Yellowish
+           CS6=[224 243 248]./255; % Pastel blueish
+           CS7=[171 217 233]./255; % Light blueish
+           CS8=[116 173 209]./255; % Steel blueish
+           CS9=[69 117 180]./255; % Distant blueish
+           CS10=[49 54 149]./255; % Pale ultramarineish
+           ColorMap1=[[0 25 255]./255;  % Blue
+               [26 255 0]./255; % Green
+               [255 102 0]./255; % Orange
+               [255 0 26]./255]; % Red
+           ColorMap2=[[0 136 55]./255;  % Green
+               [215 25 28]./255; % Red
+               [5 113 176]./255; % Blue
+               [123 50 148]./255]; % Violet
+           ColorMapViolet=[123 50 148]./255;  % Violet
+           ColorMapBlue=[5 113 176]./255; % Blue
+           %% General variables 1
+            if strcmpi(Linker,'Long')
+            LimitLengthRet1=[0 378]; 
+            LimitLengthRet2=[378 522];
+            LimitLengthApp=[50 120];
+            elseif strcmpi(Linker,'Short')
+            LimitLengthRet1=[0 333]; 
+            LimitLengthRet2=[333 463];
+            LimitLengthApp=[50 120];
+            end
+           Res=[1 1 2560 1250]; % Define the figure resolution
+           LabelSize=3;
+           MarkerSize=10;
+           %MarkerSize=5;
+           AxesFontSize=38;
+           LegendxAxis='Force-distance curve number';
+           LegendColor='Force Map ID';
+           %% Allocate data
+           FMIdxFcArray=obj.SMFSResults{ResultsRow}.Concatenate.FMIndexChrono;
+           FMEnvCond=obj.SMFSResults{ResultsRow}.Concatenate.FMEnvCond(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx);
+           FMIdxArray=obj.SMFSResults{ResultsRow}.Data.FMIndex(obj.SMFSResults{ResultsRow}.Data.FMDateTimeSortIdx);
+           % FM ID of the selected FM 
+           FMoIID=FMIdxArray(ChronoFMIdx);
+           % Determine neighboring force maps based 
+           FMBeforeIdx=ChronoFMIdx-IdxShift;
+           if FMBeforeIdx<=0 % Correct for potential negative force map values
+               FMBeforeIdx=ChronoFMIdx;
+           end
+           FMBefore=FMIdxArray(FMBeforeIdx);
+            FMBeforeFcIdx=find(FMBefore==FMIdxFcArray); % Find indices of the FM of interest
+           FMAfterIdx=ChronoFMIdx+IdxShift;
+           if FMAfterIdx> length(obj.SMFSResults{ResultsRow}.Data.FMIndex)
+               FMAfterIdx=length(obj.SMFSResults{ResultsRow}.Data.FMIndex);
+           end
+           FMAfter=FMIdxArray(FMAfterIdx);
+            FMAfterFcIdx=find(FMAfter==FMIdxFcArray); % Find indices of the FM of interest
+           % Fc number
+           NumFm=FMAfterIdx-FMBeforeIdx+1; % Number of fm selected
+           FcNum(1:NumFm*100,1)=FMBeforeIdx*100-99:FMAfterIdx*100; % Corresponding fc number to the selected fm
+           % General variables
+           xData=(1:length(FcNum))';
+           % Colour condition
+           if strcmpi(FMColour,'FM')
+ %ColorData=FMIdxFcArray(FMBeforeFcIdx(1):FMAfterFcIdx(end));
+               ColorData=FMEnvCond(FMBeforeFcIdx(1):FMAfterFcIdx(end));
+               ColorMap='d3_20c';
+
+           elseif strcmpi(FMColour,'Phase')
+               ColorData=obj.SMFSResults{ResultsRow,1}.DeformPhase(1).Fc(FMBeforeFcIdx(1):FMAfterFcIdx(end));
+               ColorMap=ColorMap2;
+           end
+           % Transform results parameters to string
+           if obj.SMFSResults{ResultsRow}.Parameters.ExtendVelocity==0
+               ExtVelocityValueStr='All';
+           else
+               ExtVelocityValueStr=num2str(round(obj.SMFSResults{ResultsRow}.Parameters.ExtendVelocity*1e9));
+           end
+           if obj.SMFSResults{ResultsRow}.Parameters.RetractVelocity==0
+               RetVelocityValueStr='All';
+           else
+               RetVelocityValueStr=num2str(round(obj.SMFSResults{ResultsRow}.Parameters.RetractVelocity*1e9));
+           end
+           if obj.SMFSResults{ResultsRow}.Parameters.HoldingTime==-1
+               HoldingTimeValueStr='All';
+           else
+               HoldingTimeValueStr=num2str(obj.SMFSResults{ResultsRow}.Parameters.HoldingTime);
+           end
+           FigNamePt1=sprintf('SMFSResultRow%d_',ResultsRow);
+           FigNamePt2=strcat(ExtVelocityValueStr,{'_'},RetVelocityValueStr,{'_'},HoldingTimeValueStr,{'_'},obj.SMFSResults{ResultsRow}.Parameters.Substrate,{'_'},obj.SMFSResults{ResultsRow}.Parameters.Medium,{'_'},obj.SMFSResults{ResultsRow}.Parameters.ChipCantilever,{'_'},obj.SMFSResults{ResultsRow}.Parameters.Chipbox,{'_'},obj.SMFSResults{ResultsRow}.Parameters.Linker);
+           FigNamePt2=char(FigNamePt2);
+           FigNamePt3='_Boxplot';
+           Plottitle=strcat(obj.ExperimentName,sprintf('-%d is the chosen input FM-ID with a chronoclogical shift of %d FM',FMoIID,IdxShift));
+           %% Gramm object 1
+            % Define variables
+            LegendyAxis1='Adhesion force (nN)';
+            NameSuffix1='_MaxAdhesionForceApproach';
+            % Allocate data
+            yArray1=obj.SMFSResults{ResultsRow}.Data.AdhMaxAppConcat(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*-1e9;
+            yData1=yArray1(FMBeforeFcIdx(1):FMAfterFcIdx(end)); 
+           % Create a gramm object
+           g1=gramm('x',xData,'y',yData1,...
+               'color',ColorData);
+           % Plot data
+           g1.geom_point(); % Plot raw data as points
+           % Set options
+           g1.set_title(Plottitle) %Set figure title
+           g1.set_names('x',LegendxAxis,'y',LegendyAxis1,'color',LegendColor)
+           g1.set_text_options('label_scaling',LabelSize)
+           g1.set_point_options('base_size',MarkerSize)
+           g1.set_color_options('map',ColorMap)
+           g1.axe_property('FontSize',AxesFontSize);
+           g1.set_layout_options("legend",0) % Show legend
+           % g1.set_layout_options("legend",1) % Show legend
+           % Figure
+           h_fig1=figure(1);
+           h_fig1.Color='white'; % changes the background color of the figure
+           h_fig1.Units='pixel'; % Defines the units
+           h_fig1.OuterPosition=Res;
+           h_fig1.PaperOrientation='landscape';
+           h_fig1.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_ChronoFMIdx_',sprintf('%d',ChronoFMIdx),'_',FMColour,NameSuffix1);
+           % The actual plotting
+           g1.draw()
+          % Save figure
+           FullName1=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_ChronoFMIdx_',sprintf('%d',ChronoFMIdx),'_',FMColour,NameSuffix1);
+           print(h_fig1,FullName1,'-dpng'); % Save the current figure in the current folder
+           %% Gramm object 2
+           % Define variables
+           LegendyAxis2='Adhesion force (nN)';
+           NameSuffix2='_MaxAdhesionForceRetract';
+           % Allocate data
+           yArray2=obj.SMFSResults{ResultsRow}.Data.AdhMaxRetConcat(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*-1e9;
+           yData2=yArray2(FMBeforeFcIdx(1):FMAfterFcIdx(end));
+           % Create a gramm object
+           g2=gramm('x',xData,'y',yData2,...
+               'color',ColorData);
+           % Plot data
+           %    g2.geom_polygon('y',{LimitForce1},'color',ColorBrewerMap1);
+           g2.geom_point(); % Plot raw data as points
+           % Set options
+           g2.set_title(Plottitle) %Set figure title
+           g2.set_names('x',LegendxAxis,'y',LegendyAxis2,'color',LegendColor)
+           g2.set_text_options('label_scaling',LabelSize)
+           g2.set_point_options('base_size',MarkerSize)
+           g2.set_color_options('map',ColorMap)
+           g2.axe_property('FontSize',AxesFontSize);
+           g2.set_layout_options("legend",0) % Show legend
+           % g2.set_layout_options("legend",1) % Show legend
+           % Figure
+           h_fig2=figure(2);
+           h_fig2.Color='white'; % changes the background color of the figure
+           h_fig2.Units='pixel'; % Defines the units
+           h_fig2.OuterPosition=Res;
+           h_fig2.PaperOrientation='landscape';
+           h_fig2.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_ChronoFMIdx_',sprintf('%d',ChronoFMIdx),'_',FMColour,NameSuffix2);
+           % The actual plotting
+           g2.draw()
+           % Save figure
+           FullName2=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_ChronoFMIdx_',sprintf('%d',ChronoFMIdx),'_',FMColour,NameSuffix2);
+           print(h_fig2,FullName2,'-dpng'); % Save the current figure in the current folder
+           %% Gramm object 3
+           % Define variables
+           LegendyAxis3='Adhesion force (nN)';
+           NameSuffix3='_AdhForceUnbinding';
+           % Allocate data
+           yArray3=obj.SMFSResults{ResultsRow}.Data.AdhUnbindingConcat(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*-1e9;
+           yData3=yArray3(FMBeforeFcIdx(1):FMAfterFcIdx(end));
+           % Create a gramm object
+           g3=gramm('x',xData,'y',yData3,...
+               'color',ColorData);
+           % Plot data
+           g3.geom_point(); % Plot raw data as points
+           % Set options
+           g3.set_title(Plottitle) %Set figure title
+           g3.set_names('x',LegendxAxis,'y',LegendyAxis3,'color',LegendColor)
+           g3.set_text_options('label_scaling',LabelSize)
+           g3.set_point_options('base_size',MarkerSize)
+           g3.set_color_options('map',ColorMap)
+           g3.axe_property('FontSize',AxesFontSize);
+           g3.set_layout_options("legend",0) % Hide legend
+           %g3.set_layout_options("legend",1) % Show legend
+           % Figure
+           h_fig3=figure(3);
+           h_fig3.Color='white'; % changes the background color of the figure
+           h_fig3.Units='pixel'; % Defines the units
+           h_fig3.OuterPosition=Res;
+           h_fig3.PaperOrientation='landscape';
+           h_fig3.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_ChronoFMIdx_',sprintf('%d',ChronoFMIdx),'_',FMColour,NameSuffix3);
+           % The actual plotting
+           g3.draw()
+           % Save figure
+           FullName3=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_ChronoFMIdx_',sprintf('%d',ChronoFMIdx),'_',FMColour,NameSuffix3);
+           print(h_fig3,FullName3,'-dpng'); % Save the current figure in the current folder
+            %% Gramm object 4
+            % Define variables
+            LegendyAxis4='Adhesion energry (aJ)';
+            NameSuffix4='_AdhEnergyApproach';
+            % Allocate data
+            yArray4=obj.SMFSResults{ResultsRow}.Data.AdhEneAppConcat(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*-1e18;
+            yData4=yArray4(FMBeforeFcIdx(1):FMAfterFcIdx(end));
+            % Create a gramm object
+           g4=gramm('x',xData,'y',yData4,...
+               'color',ColorData);
+           % Plot data
+           g4.geom_point(); % Plot raw data as points
+           % Set options
+           g4.set_title(Plottitle) %Set figure title
+           g4.set_names('x',LegendxAxis,'y',LegendyAxis4,'color',LegendColor)
+           g4.set_text_options('label_scaling',LabelSize)
+           g4.set_point_options('base_size',MarkerSize)
+           g4.set_color_options('map',ColorMap)
+           g4.axe_property('FontSize',AxesFontSize);
+           g4.set_layout_options("legend",0) % Hide legend
+           %g4.set_layout_options("legend",1) % Show legend
+           % Figure
+           h_fig4=figure(4);
+           h_fig4.Color='white'; % changes the background color of the figure
+           h_fig4.Units='pixel'; % Defines the units
+           h_fig4.OuterPosition=Res;
+           h_fig4.PaperOrientation='landscape';
+           h_fig4.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_ChronoFMIdx_',sprintf('%d',ChronoFMIdx),'_',FMColour,NameSuffix4);
+           % The actual plotting
+           g4.draw()
+           % Save figure
+           FullName4=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_ChronoFMIdx_',sprintf('%d',ChronoFMIdx),'_',FMColour,NameSuffix4);
+           print(h_fig4,FullName4,'-dpng'); % Save the current figure in the current folder
+           %% Gramm object 5
+           % Define variables
+           LegendyAxis5='Adhesion energy (aJ)';
+           NameSuffix5='_AdhEnergyRetract';
+           % Allocate data
+           yArray5=obj.SMFSResults{ResultsRow}.Data.AdhEneRetConcat(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*-1e18;
+           yData5=yArray5(FMBeforeFcIdx(1):FMAfterFcIdx(end));
+           % Create a gramm object
+           g5=gramm('x',xData,'y',yData5,...
+               'color',ColorData);
+           % Plot data
+           g5.geom_point(); % Plot raw data as points
+           % Set options
+           g5.set_title(Plottitle) %Set figure title
+           g5.set_names('x',LegendxAxis,'y',LegendyAxis5,'color',LegendColor)
+           g5.set_text_options('label_scaling',LabelSize)
+           g5.set_point_options('base_size',MarkerSize)
+           g5.set_color_options('map',ColorMap)
+           g5.axe_property('FontSize',AxesFontSize);
+           g5.set_layout_options("legend",0) % Hide legend
+           %g5.set_layout_options("legend",1) % Show legend
+           % Figure
+           h_fig5=figure(5);
+           h_fig5.Color='white'; % changes the background color of the figure
+           h_fig5.Units='pixel'; % Defines the units
+           h_fig5.OuterPosition=Res;
+           h_fig5.PaperOrientation='landscape';
+           h_fig5.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_ChronoFMIdx_',sprintf('%d',ChronoFMIdx),'_',FMColour,NameSuffix5);
+           % The actual plotting
+           g5.draw()
+           % Save figure
+           FullName5=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_ChronoFMIdx_',sprintf('%d',ChronoFMIdx),'_',FMColour,NameSuffix5);
+           print(h_fig5,FullName5,'-dpng'); % Save the current figure in the current folder
+           %% Gramm object 6
+           % Define variables
+           NameSuffix6='_Pullinglength';
+           LegendyAxis6='Pull-off length (nm)';
+           % Allocate data
+           yArray6=obj.SMFSResults{ResultsRow}.Data.yPullingLengthConcat(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*1e9;
+           yData6=yArray6(FMBeforeFcIdx(1):FMAfterFcIdx(end));
+           % Create a gramm object
+           g6=gramm('x',xData,'y',yData6,...
+               'color',ColorData);
+           % Plot data
+           g6.geom_polygon('y',{LimitLengthRet1;LimitLengthRet2},'color',ColorBrewerMap1);
+           g6.geom_point(); % Plot raw data as points
+           % Set options
+           %      g6.set_title(Plottitle) %Set figure title
+           g6.set_names('x',LegendxAxis,'y',LegendyAxis6,'color',LegendColor)
+           g6.set_color_options('n_color',6,...
+               'n_lightness',6,...
+               'legend','expand')
+           g6.set_text_options('label_scaling',LabelSize)
+           g6.set_point_options('base_size',MarkerSize)
+           g6.set_color_options('map',ColorMapBlue)
+           g6.axe_property('FontSize',AxesFontSize);
+           g6.axe_property('ylim',[0 850]);
+           g6.set_layout_options("legend",0) % Hide legend
+           %g6.set_layout_options("legend",1) % Show legend
+           % Figure
+           h_fig6=figure(6);
+           h_fig6.Color='white'; % changes the background color of the figure
+           h_fig6.Units='pixel'; % Defines the units
+           h_fig6.OuterPosition=Res;
+           h_fig6.PaperOrientation='landscape';
+           h_fig6.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_ChronoFMIdx_',sprintf('%d',ChronoFMIdx),'_',FMColour,NameSuffix6);
+           % The actual plotting
+           g6.draw()
+           % Save figure
+           FullName6=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_ChronoFMIdx_',sprintf('%d',ChronoFMIdx),'_',FMColour,NameSuffix6);
+           print(h_fig6,FullName6,'-dpng'); % Save the current figure in the current folder
+            %% Gramm object 7
+            % Define variables
+            LegendyAxis7='Snap-In length (nm)';
+            NameSuffix7='_SnapInLength';
+            % Allocate data
+            yArray7=obj.SMFSResults{ResultsRow}.Data.ySnapInLengthConcat(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*1e9;
+            yData7=yArray7(FMBeforeFcIdx(1):FMAfterFcIdx(end));
+            % Create a gramm object
+           g7=gramm('x',xData,'y',yData7,...
+               'color',ColorData);
+           % Plot data
+           g7.geom_polygon('y',{LimitLengthApp},'color',ColorBrewerMap1);
+           g7.geom_point(); % Plot raw data as points
+           % Set options
+           %      g6.set_title(Plottitle) %Set figure title
+           g7.set_names('x',LegendxAxis,'y',LegendyAxis7,'color',LegendColor)
+           g7.set_text_options('label_scaling',LabelSize)
+           g7.set_point_options('base_size',MarkerSize)
+           g7.set_color_options('map',ColorMapBlue)
+           g7.axe_property('FontSize',AxesFontSize);
+           g7.axe_property('ylim',[0 850]);
+           g7.set_layout_options("legend",0) % Hide legend
+           %g6.set_layout_options("legend",1) % Show legend
+           % Figure
+           h_fig7=figure(7);
+           h_fig7.Color='white'; % changes the background color of the figure
+           h_fig7.Units='pixel'; % Defines the units
+           h_fig7.OuterPosition=Res;
+           h_fig7.PaperOrientation='landscape';
+           h_fig7.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_ChronoFMIdx_',sprintf('%d',ChronoFMIdx),'_',FMColour,NameSuffix7);
+           % The actual plotting
+           g7.draw()
+           % Save figure
+           FullName7=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_ChronoFMIdx_',sprintf('%d',ChronoFMIdx),'_',FMColour,NameSuffix7);
+           print(h_fig7,FullName7,'-dpng'); % Save the current figure in the current folder
+           % House keeping
+           close all
+       end
+      
+        function SM_results_gramm_plot2(obj,ResultsRow,Linker,xArg,MarkerArg)
+           % Input variables: 
+           % ResultsRow: double ,e.g. 1
+           % Linker: string , either 'long' or 'short'
+           % xArg (x-axis argument): string, either 'Index' or 'DateTime'
+           % MarkerArg: sting, either 'Y' or 'N' 
+           % Y stands for Yes, show marker
+           % N stands for No, do not show marker
+
+           % Input variable adaptation
+           if nargin<2
+               ResultsRow=1;
+           end
+           ColorBrewerMap1=[[253 174 97]./255; % Ochreish
+               [116 173 209]./255]; % Steel blueish
+           % Change into the Folder of Interest
+           cd(obj.ExperimentFolder) % Move into the folder
+           % Create folders for saving the produced figures
+           foldername='SM_results_gramm_plot2';    % Defines the folder name
+           mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
+           currpath=fullfile(obj.ExperimentFolder,foldername);
+           cd(currpath);
+           %% General variables 1
+            if strcmpi(Linker,'Long')
+            LimitLengthRet1=[0 378]; 
+            LimitLengthRet2=[378 522];
+            LimitLengthApp=[50 120];
+            elseif strcmpi(Linker,'Short')
+            LimitLengthRet1=[0 333]; 
+            LimitLengthRet2=[333 463];
+            LimitLengthApp=[50 120];
+            end
+           if strcmpi(xArg,'DateTime')
+               LegendxAxis='Date and Time';
+               xData=obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSort;
+               MarkerData=obj.SMFSResults{ResultsRow}.Concatenate.FMIndex(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx);
+               MarkerName='FM Index';
+               xDataMin=min(xData);
+               xDataMax=max(xData);
+               xAxisCorr=(xDataMax-xDataMin)*0.05;
+           elseif strcmpi(xArg,'Index')
+               LegendxAxis='Force curves in chronological order';
+               xData=obj.SMFSResults{ResultsRow}.Concatenate.FcNum;
+               MarkerData=obj.SMFSResults{ResultsRow}.Concatenate.FMIndex(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx);
+               MarkerName='FM Index';
+               xDataMin=min(xData);
+               xDataMax=max(xData);
+               xAxisCorr=(xDataMax-xDataMin)*0.05;
+           end
+           Res=[1 1 2560 1250]; % Define the figure resolution
+           LegendColor='Medium';
+           LightnessName='Substrate';
+           LightnessData=obj.SMFSResults{ResultsRow}.Concatenate.FMSubstrate(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx);
+           ColorData=obj.SMFSResults{ResultsRow}.Concatenate.FMEnvCond(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx);
+           MarkerSize=10;
+           BaseFontSize=24;
+           if obj.SMFSResults{ResultsRow}.Parameters.ExtendVelocity==0
+               ExtVelocityValueStr='All';
+           else
+               ExtVelocityValueStr=num2str(round(obj.SMFSResults{ResultsRow}.Parameters.ExtendVelocity*1e9));
+           end
+           if obj.SMFSResults{ResultsRow}.Parameters.RetractVelocity==0
+               RetVelocityValueStr='All';
+           else
+               RetVelocityValueStr=num2str(round(obj.SMFSResults{ResultsRow}.Parameters.RetractVelocity*1e9));
+           end
+           if obj.SMFSResults{ResultsRow}.Parameters.HoldingTime==-1
+               HoldingTimeValueStr='All';
+           else
+               HoldingTimeValueStr=num2str(obj.SMFSResults{ResultsRow}.Parameters.HoldingTime);
+           end
+           % General names
+           FigNamePt1=sprintf('SMFSResultRow%d_',ResultsRow);
+           FigNamePt2=strcat(ExtVelocityValueStr,{'_'},RetVelocityValueStr,{'_'},HoldingTimeValueStr,{'_'},obj.SMFSResults{ResultsRow}.Parameters.Substrate,{'_'},obj.SMFSResults{ResultsRow}.Parameters.Medium,{'_'},obj.SMFSResults{ResultsRow}.Parameters.ChipCantilever,{'_'},obj.SMFSResults{ResultsRow}.Parameters.Chipbox,{'_'},obj.SMFSResults{ResultsRow}.Parameters.Linker);
+           FigNamePt2=char(FigNamePt2);
+           FigNamePt3='_Plot2';
+            %% Gramm object 1
+            % Define variables
+            Plottitle1=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ResultsRow,1}.Data(1).FMIndex),obj.SMFSResults{ResultsRow,1}.Data(1).SumNumFcAnalysedAdhMaxApp);
+            LegendyAxis1='Adhesion force (N)';
+            NameSuffix1='_MaxAdhesionForceApproach';
+            % Allocate data
+            yData1=obj.SMFSResults{ResultsRow}.Data.AdhMaxAppConcat(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*-1; 
+            % Create a gramm object
+            if strcmpi(MarkerArg,'Y')
+            g1=gramm('x',xData,'y',yData1,...
+               'color',ColorData,...
+               'lightness',LightnessData,...
+               'marker',MarkerData);
+            elseif strcmpi(MarkerArg,'N')
+            g1=gramm('x',xData,'y',yData1,...
+               'color',ColorData,...
+               'lightness',LightnessData);
+            end
+           % Plot data
+           %      g1.geom_polygon('y',{LimitForce1;LimitForce2;LimitForce3},'color',ColorBrewerMap1);
+           g1.geom_point();
+           % Set options
+           g1.axe_property('xlim',[xDataMin-xAxisCorr xDataMax+xAxisCorr]) % Set x limit
+           if strcmpi(xArg,'DateTime')
+               g1.set_datetick('x',0,'keeplimits') % Format x-axis
+           end
+           g1.set_point_options('base_size',MarkerSize)
+           g1.set_title(Plottitle1) %Set figure title
+           if strcmpi(MarkerArg,'Y')
+           g1.set_names('x',LegendxAxis,'y',LegendyAxis1,'color',LegendColor,'lightness',LightnessName,'marker',MarkerName)
+           elseif strcmpi(MarkerArg,'N')
+           g1.set_names('x',LegendxAxis,'y',LegendyAxis1,'color',LegendColor,'lightness',LightnessName)
+           end
+           g1.set_color_options('map','hcl',...
+               'n_color',6,...
+               'n_lightness',6,...
+               'legend','expand')
+           g1.set_text_options('font','Helvetica','base_size',BaseFontSize,'label_scaling',1.2,'legend_scaling',1)
+           %g1.set_layout_options("legend",0) % Don't show legend
+           g1.set_layout_options("legend",1) % Show legend
+           % Figure
+           h_fig1=figure(1);
+           h_fig1.Color='white'; % changes the background color of the figure
+           h_fig1.Units='pixel'; % Defines the units
+           h_fig1.OuterPosition=Res;
+           h_fig1.PaperOrientation='landscape';
+           h_fig1.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix1);
+           % The actual plotting
+           g1.draw()
+ 
+           %% Gramm object 2
+           % Define variables
+           Plottitle2=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ResultsRow,1}.Data(1).FMIndex),obj.SMFSResults{ResultsRow,1}.Data(1).SumNumFcAnalysedAdhMaxRet);
+           LegendyAxis2='Adhesion force (nN)';
+           NameSuffix2='_MaxAdhesionForceRetract';
+           % Allocate data
+           yData2=obj.SMFSResults{ResultsRow}.Data.AdhMaxRetConcat(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*-1e9;
+           % Create a gramm object
+            if strcmpi(MarkerArg,'Y')
+            g2=gramm('x',xData,'y',yData2,...
+               'color',ColorData,...
+               'lightness',LightnessData,...
+               'marker',MarkerData);
+            elseif strcmpi(MarkerArg,'N')
+            g2=gramm('x',xData,'y',yData2,...
+               'color',ColorData,...
+               'lightness',LightnessData);
+            end
+           % Plot data
+           %      g2.geom_polygon('y',{LimitForce1;LimitForce2;LimitForce3},'color',ColorBrewerMap1);
+           g2.geom_point();
+           % Set options
+           g2.axe_property('xlim',[xDataMin-xAxisCorr xDataMax+xAxisCorr]) % Set x limit
+           if strcmpi(xArg,'DateTime')
+               g2.set_datetick('x',0,'keeplimits') % Format x-axis
+           end
+           g2.set_point_options('base_size',MarkerSize)
+           g2.set_title(Plottitle2) %Set figure title
+           if strcmpi(MarkerArg,'Y')
+           g2.set_names('x',LegendxAxis,'y',LegendyAxis2,'color',LegendColor,'lightness',LightnessName,'marker',MarkerName)
+           elseif strcmpi(MarkerArg,'N')
+           g2.set_names('x',LegendxAxis,'y',LegendyAxis2,'color',LegendColor,'lightness',LightnessName)
+           end
+           g2.set_color_options('n_color',6,...
+               'n_lightness',6,...
+               'legend','expand')
+           g2.set_text_options('font','Helvetica','base_size',BaseFontSize,'label_scaling',1.2,'legend_scaling',1)
+           %g2.set_layout_options("legend",0) % Don't show legend
+           g2.set_layout_options("legend",1) % Show legend
+           % Figure
+           h_fig2=figure(2);
+           h_fig2.Color='white'; % changes the background color of the figure
+           h_fig2.Units='pixel'; % Defines the units
+           h_fig2.OuterPosition=Res;
+           h_fig2.PaperOrientation='landscape';
+           h_fig2.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix2);
+           % The actual plotting
+           g2.draw()
+           % Save figure
+           FullName2=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix2);
+           %%% Save the current figure in the current folder
+           print(h_fig2,FullName2,'-dpng');
+           % g2.export('file_name',FullName2,file_type='pdf',width=42,height=29.7,units='centimeters');
+% 
+           
+            %% Gramm object 3
+            % Define variables
+            Plottitle3=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ResultsRow,1}.Data(1).FMIndex),obj.SMFSResults{ResultsRow,1}.Data(1).SumNumFcAnalysedAdhUnbinding); 
+            LegendyAxis3='Adhesion force (nN)';
+            NameSuffix3='_AdhForceUnbinding';
+            % Allocate data
+            yData3=obj.SMFSResults{ResultsRow}.Data.AdhUnbindingConcat(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*-1e9;
+            % Create a gramm object
+            if strcmpi(MarkerArg,'Y')
+            g3=gramm('x',xData,'y',yData3,...
+               'color',ColorData,...
+               'lightness',LightnessData,...
+               'marker',MarkerData);
+            elseif strcmpi(MarkerArg,'N')
+            g3=gramm('x',xData,'y',yData3,...
+               'color',ColorData,...
+               'lightness',LightnessData);
+            end
+           % Plot data
+           g3.geom_point()
+           % Set options
+           g3.axe_property('xlim',[xDataMin-xAxisCorr xDataMax+xAxisCorr]) % Set x limit
+           if strcmpi(xArg,'DateTime')
+               g3.set_datetick('x',0,'keeplimits') % Format x-axis
+           end
+           g3.set_point_options('base_size',MarkerSize)
+           g3.set_title(Plottitle3) %Set figure title
+           if strcmpi(MarkerArg,'Y')
+           g3.set_names('x',LegendxAxis,'y',LegendyAxis3,'color',LegendColor,'lightness',LightnessName,'marker',MarkerName)
+           elseif strcmpi(MarkerArg,'N')
+           g3.set_names('x',LegendxAxis,'y',LegendyAxis3,'color',LegendColor,'lightness',LightnessName)
+           end
+           g3.set_color_options('n_color',6,...
+               'n_lightness',6,...
+               'legend','expand')
+           g3.set_text_options('font','Helvetica','base_size',BaseFontSize,'label_scaling',1.2,'legend_scaling',1)
+           %g3.set_layout_options("legend",0) % Don't show legend
+           g3.set_layout_options("legend",1) % Show legend
+           % Figure
+           h_fig3=figure(3);
+           h_fig3.Color='white'; % changes the background color of the figure
+           h_fig3.Units='pixel'; % Defines the units
+           h_fig3.OuterPosition=Res;
+           h_fig3.PaperOrientation='landscape';
+           h_fig3.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix3);
+           % The actual plotting
+           g3.draw()            
+            % Save figure            
+            FullName3=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix3);
+            print(h_fig3,FullName3,'-dpng'); % Save the current figure in the current folder
+   %         g3.export('file_name',FullName2,file_type='pdf',width=42,height=29.7,units='centimeters');
+
+            %% Gramm object 4
+            % Define variables
+            Plottitle4=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ResultsRow,1}.Data(1).FMIndex),obj.SMFSResults{ResultsRow,1}.Data(1).SumNumFcAnalysedAdhEneApp);
+            LegendyAxis4='Adhesion energry (J)';
+            NameSuffix4='_AdhEnergyApproach';
+            % Allocate data
+            yData4=obj.SMFSResults{ResultsRow}.Data.AdhEneAppConcat(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*-1e18;
+            % Create a gramm object
+            if strcmpi(MarkerArg,'Y')
+            g4=gramm('x',xData,'y',yData4,...
+               'color',ColorData,...
+               'lightness',LightnessData,...
+               'marker',MarkerData);
+            elseif strcmpi(MarkerArg,'N')
+            g4=gramm('x',xData,'y',yData4,...
+               'color',ColorData,...
+               'lightness',LightnessData);
+            end
+           % Plot data
+           g4.geom_point()
+           % Set options
+           g4.axe_property('xlim',[xDataMin-xAxisCorr xDataMax+xAxisCorr]) % Set x limit
+           if strcmpi(xArg,'DateTime')
+               g4.set_datetick('x',0,'keeplimits') % Format x-axis
+           end
+           g4.set_point_options('base_size',MarkerSize)
+           g4.set_title(Plottitle4) %Set figure title
+           if strcmpi(MarkerArg,'Y')
+           g4.set_names('x',LegendxAxis,'y',LegendyAxis4,'color',LegendColor,'lightness',LightnessName,'marker',MarkerName)
+           elseif strcmpi(MarkerArg,'N')
+           g4.set_names('x',LegendxAxis,'y',LegendyAxis4,'color',LegendColor,'lightness',LightnessName)
+           end
+           g4.set_color_options('n_color',6,...
+               'n_lightness',6,...
+               'legend','expand')
+           g4.set_text_options('font','Helvetica','base_size',BaseFontSize,'label_scaling',1.2,'legend_scaling',1)
+           %g4.set_layout_options("legend",0) % Don't show legend
+           g4.set_layout_options("legend",1) % Show legend
+           % Figure
+           h_fig4=figure(4);
+           h_fig4.Color='white'; % changes the background color of the figure
+           h_fig4.Units='pixel'; % Defines the units
+           h_fig4.OuterPosition=Res;
+           h_fig4.PaperOrientation='landscape';
+           h_fig4.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix4);
+           % The actual plotting
+           g4.draw()
+            % Save figure
+            FullName4=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix4);
+            print(h_fig4,FullName4,'-dpng'); % Save the current figure in the current folder
+         %   g4.export('file_name',FullName5,file_type='pdf',width=42,height=29.7,units='centimeters');
+
+           %% Gramm object 5
+           % Define variables
+           Plottitle5=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ResultsRow,1}.Data(1).FMIndex),obj.SMFSResults{ResultsRow,1}.Data(1).SumNumFcAnalysedAdhEneRet);            
+           LegendyAxis5='Adhesion energy (aJ)';
+           NameSuffix5='_AdhEnergyRetract';
+           % Allocate data
+           yData5=obj.SMFSResults{ResultsRow}.Data.AdhEneRetConcat(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*-1e18;
+           % Create a gramm object
+            if strcmpi(MarkerArg,'Y')
+            g5=gramm('x',xData,'y',yData5,...
+               'color',ColorData,...
+               'lightness',LightnessData,...
+               'marker',MarkerData);
+            elseif strcmpi(MarkerArg,'N')
+            g5=gramm('x',xData,'y',yData5,...
+               'color',ColorData,...
+               'lightness',LightnessData);
+            end
+           % Plot data
+           g5.geom_point()
+           % Set options
+           g5.axe_property('xlim',[xDataMin-xAxisCorr xDataMax+xAxisCorr]) % Set x limit
+           if strcmpi(xArg,'DateTime')
+               g5.set_datetick('x',0,'keeplimits') % Format x-axis
+           end
+           g5.set_point_options('base_size',MarkerSize)
+           g5.set_title(Plottitle5) %Set figure title
+           if strcmpi(MarkerArg,'Y')
+           g5.set_names('x',LegendxAxis,'y',LegendyAxis5,'color',LegendColor,'lightness',LightnessName,'marker',MarkerName)
+           elseif strcmpi(MarkerArg,'N')
+           g5.set_names('x',LegendxAxis,'y',LegendyAxis5,'color',LegendColor,'lightness',LightnessName)
+           end
+           g5.set_color_options('n_color',6,...
+               'n_lightness',6,...
+               'legend','expand')
+           g5.set_text_options('font','Helvetica','base_size',BaseFontSize,'label_scaling',1.2,'legend_scaling',1)
+           %g5.set_layout_options("legend",0) % Don't show legend
+           g5.set_layout_options("legend",1) % Show legend
+           % Figure
+           h_fig5=figure(5);
+           h_fig5.Color='white'; % changes the background color of the figure
+           h_fig5.Units='pixel'; % Defines the units
+           h_fig5.OuterPosition=Res;
+           h_fig5.PaperOrientation='landscape';
+           h_fig5.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix5);
+           % The actual plotting
+           g5.draw()
+           % Save figure
+           FullName5=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix5);
+           %%% Save the current figure in the current folder
+           print(h_fig5,FullName5,'-dpng');
+           %g5.export('file_name',FullName5,file_type='pdf',width=42,height=29.7,units='centimeters');
+
+           %% Gramm object 6
+           % Define variables
+           Plottitle6=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ResultsRow,1}.Data(1).FMIndex),obj.SMFSResults{ResultsRow,1}.Data(1).SumNumFcAnalysedyPullingLength);
+           LegendyAxis6='Pull-off length (nm)';
+           NameSuffix6='_Pullinglength';
+           % Allocate data
+           yData6=obj.SMFSResults{ResultsRow}.Data.yPullingLengthConcat(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*1e9;
+           % Create a gramm object
+            if strcmpi(MarkerArg,'Y')
+            g6=gramm('x',xData,'y',yData6,...
+               'color',ColorData,...
+               'lightness',LightnessData,...
+               'marker',MarkerData);
+            elseif strcmpi(MarkerArg,'N')
+            g6=gramm('x',xData,'y',yData6,...
+               'color',ColorData,...
+               'lightness',LightnessData);
+            end
+           % Plot data
+           g6.geom_polygon('y',{LimitLengthRet1;LimitLengthRet2},'color',ColorBrewerMap1);
+           g6.geom_point();
+           % Set options
+           g6.axe_property('xlim',[xDataMin-xAxisCorr xDataMax+xAxisCorr]) % Set x limit
+           if strcmpi(xArg,'DateTime')
+               g6.set_datetick('x',0,'keeplimits') % Format x-axis
+           end
+           g6.set_point_options('base_size',MarkerSize)
+           g6.set_title(Plottitle6) %Set figure title
+           if strcmpi(MarkerArg,'Y')
+           g6.set_names('x',LegendxAxis,'y',LegendyAxis6,'color',LegendColor,'lightness',LightnessName,'marker',MarkerName)
+           elseif strcmpi(MarkerArg,'N')
+           g6.set_names('x',LegendxAxis,'y',LegendyAxis6,'color',LegendColor,'lightness',LightnessName)
+           end
+           g6.set_color_options('n_color',6,...
+               'n_lightness',6,...
+               'legend','expand')
+           g6.set_text_options('font','Helvetica','base_size',BaseFontSize,'label_scaling',1.2,'legend_scaling',1)
+           %g6.set_layout_options("legend",0) % Don't show legend
+           g6.set_layout_options("legend",1) % Show legend
+           % Figure
+           h_fig6=figure(6);
+           h_fig6.Color='white'; % changes the background color of the figure
+           h_fig6.Units='pixel'; % Defines the units
+           h_fig6.OuterPosition=Res;
+           h_fig6.PaperOrientation='landscape';
+           h_fig6.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix6);
+           % The actual plotting
+           g6.draw()
+           % Save figure
+           FullName6=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix6);
+           %%% Save the current figure in the current folder
+           print(h_fig6,FullName6,'-r1200','-dpng');
+           %g6.export('file_name',FullName6,file_type='pdf',width=42,height=29.7,units='centimeters');
+
+            %% Gramm object 7
+            % Define variables
+            Plottitle7=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ResultsRow,1}.Data(1).FMIndex),obj.SMFSResults{ResultsRow,1}.Data(1).SumNumFcAnalysedySnapInLength);
+            LegendyAxis7='Snap-In length (nm)';
+            NameSuffix7='_SnapInLength';
+            % Allocate data
+            yData7=obj.SMFSResults{ResultsRow}.Data.ySnapInLengthConcat(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*1e9;
+            % Create a gramm object
+            if strcmpi(MarkerArg,'Y')
+            g7=gramm('x',xData,'y',yData7,...
+               'color',ColorData,...
+               'lightness',LightnessData,...
+               'marker',MarkerData);
+            elseif strcmpi(MarkerArg,'N')
+            g7=gramm('x',xData,'y',yData7,...
+               'color',ColorData,...
+               'lightness',LightnessData);
+            end
+           % Plot data
+           g7.geom_polygon('y',{LimitLengthApp},'color',ColorBrewerMap1);
+           g7.geom_point();
+           % Set options
+           g7.axe_property('xlim',[xDataMin-xAxisCorr xDataMax+xAxisCorr]) % Set x limit
+           if strcmpi(xArg,'DateTime')
+               g7.set_datetick('x',0,'keeplimits') % Format x-axis
+           end
+           g7.set_point_options('base_size',MarkerSize)
+           g7.set_title(Plottitle7) %Set figure title
+           if strcmpi(MarkerArg,'Y')
+           g7.set_names('x',LegendxAxis,'y',LegendyAxis7,'color',LegendColor,'lightness',LightnessName,'marker',MarkerName)
+           elseif strcmpi(MarkerArg,'N')
+           g7.set_names('x',LegendxAxis,'y',LegendyAxis7,'color',LegendColor,'lightness',LightnessName)
+           end
+           g7.set_color_options('n_color',6,...
+               'n_lightness',6,...
+               'legend','expand')
+           g7.set_text_options('font','Helvetica','base_size',BaseFontSize,'label_scaling',1.2,'legend_scaling',1)
+           %g7.set_layout_options("legend",0) % Don't show legend
+           g7.set_layout_options("legend",1) % Show legend
+           % Figure
+           h_fig7=figure(7);
+           h_fig7.Color='white'; % changes the background color of the figure
+           h_fig7.Units='pixel'; % Defines the units
+           h_fig7.OuterPosition=Res;
+           h_fig7.PaperOrientation='landscape';
+           h_fig7.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix6);
+           % The actual plotting
+           g7.draw()
+            % Save figure
+            FullName7=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix7);
+            print(h_fig7,FullName7,'-r1200','-dpng'); % Save the current figure in the current folder
+    %       g7.export('file_name',FullName6,file_type='pdf',width=42,height=29.7,units='centimeters');  
+
+           % House keeping
+           close all
+       end
+
+
+         function SM_results_gramm_boxplot2(obj,ResultsRow,Linker,xArg,Var)
            % Input variables: 
            % ResultsRow: double ,e.g. 1
            % Linker: string , either 'long' or 'short'
@@ -4652,2523 +7804,8 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             close all
         end
         
-        function SM_results_gramm_boxplot2_publication(obj,ResultsRow,Linker,xArg,MarkerArg,LegendArg,CBar,Var)
-            % Input variables:
-            % ResultsRow: double ,e.g. 1
-            % Linker: string , either 'long' or 'short'
-            % xArg (x-axis argument): string, either 'Index' or 'DateTime'
-            % MarkerArg (Marker argument): string, either 'Y' or 'N'
-            % LegendArg (Legend argumend): string, either 'Y' or 'N'
-            % CBar (Color Bar): string, either 'Y' or 'N'
-            % Var (Variant): double, e.g. 2 (for Variant 2)
 
-            % Input variable adaptation
-            if nargin<2
-                ResultsRow=1;
-            end
-            % Define variables
-            yLimMaxFactor=0.22;
-            yLimMinFactor=0.25;
-            yAxisMinFactor=0.02;
-            yAxisMaxFactor=0.25;
-            NumColor=6;
-            NumLightness=6;
-            Res=[1 1 2560 1250]; % Define the figure resolution
-            MarkerStyle={'d' 's' 'v' 'o'};
-            MarkerSize=10;
-            BaseFontSize=32;
-            LabelScaling=1.2;
-            LegendScaling=1;
-            LineWidth=1.5;
-            % Define color bar positions
-            xCBar1=[0 2 2 0];
-            xCBar2=[2 21 21 2];
-            xCBar3=[21 121 121 21];
-            xCBar4=[121 222 222 121];
-            % Color and color maps
-            Ochreish=[253 174 97]./255;
-            SteelBlue=[116 173 209]./255;
-            ColorBrewerMap1=[[253 174 97]./255; % Ochreish
-                [116 173 209]./255]; % Steel blueish
-            ColorBarMap=[[54 163 0]./255; % Dark green HEX 8DB600
-                [206 22 32]./255; % Fire Engine Red HEX CE162
-                [0 24 204]./255; % Blue HEX 8DB600
-                [135 0 224]./255]; % Violet HEX 8F00FF
-            % Change into the Folder of Interest
-            cd(obj.ExperimentFolder) % Move into the folder
-            % Create folders for saving the produced figures
-            foldername='SM_results_gramm_boxplot2_publication';    % Defines the folder name
-            mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
-            currpath=fullfile(obj.ExperimentFolder,foldername);
-            cd(currpath);
-            % Input variables
-            % Linker
-            if strcmpi(Linker,'Long')
-                LimitLengthRet1=[0 378];
-                LimitLengthRet2=[378 522];
-                LimitLengthApp=[50 120];
-            elseif strcmpi(Linker,'Short')
-                LimitLengthRet1=[0 308];
-                LimitLengthRet2=[308 463];
-                LimitLengthApp=[50 120];
-            end
-            % xArg
-            if strcmpi(xArg,'DateTime')
-                LegendxAxis='Date and Time';
-                xData=obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSort;
-                xDataMin=min(xData);
-                xDataMax=max(xData);
-                xAxisCorr=(xDataMax-xDataMin)*0.005;
-                BoxplotWidth=0.8;
-                BoxplotDodge=2;
-            elseif strcmpi(xArg,'Index')
-               % LegendxAxis='Chronological force set index';
-                LegendxAxis='Number of cycles (x100)';
-                xData=obj.SMFSResults{ResultsRow}.Concatenate.FMNum;
-                xDataMin=min(xData);
-                xDataMax=max(xData);
-                xAxisCorr=(xDataMax-xDataMin)*0.005; % For BoxplotWidth=10
-                %xAxisCorr=(xDataMax-xDataMin)*0.02; % For BoxplotWidth=2 and BoxplotWidth=0.02
-                % BoxplotWidth=18;
-                % BoxplotWidth=10;
-                BoxplotWidth=2.5;
-                BoxplotDodge=1;
-            end
-            % Variant
-            if Var==1
-                ColorName='Medium';
-                LightnessName='Substrate';
-                MarkerName='ChipCantilever';
-                LightnessData=obj.SMFSResults{ResultsRow}.Concatenate.FMSubstrate(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx);
-                ColorData=obj.SMFSResults{ResultsRow}.Concatenate.FMEnvCond(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx);
-                MarkerData=obj.SMFSResults{ResultsRow}.Concatenate.FMChipCant(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx);
-            elseif Var==2
-                ColorName='Approach speed ($\mu$m/s)';
-                LightnessName='Retraction speed ($\mu$m/s)';
-                MarkerName='Dwell Time (s)';
-                FMExtVeloData=obj.SMFSResults{ResultsRow}.Concatenate.FMExtVelocity(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*1e6;
-                FMRetVeloData=obj.SMFSResults{ResultsRow}.Concatenate.FMRetVelocity(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*1e6;
-                ColorData=FMExtVeloData;
-                LightnessData=FMRetVeloData;
-                MarkerData=obj.SMFSResults{ResultsRow}.Concatenate.FMHoldingTime(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx);
-            elseif Var==3
-                ColorName='Dwell Time (s)';
-                LightnessName='Retraction speed ($\mu$m/s)';
-                MarkerName='Approach speed ($\mu$m/s)';
-                FMExtVeloData=obj.SMFSResults{ResultsRow}.Concatenate.FMExtVelocity(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*1e6;
-                FMRetVeloData=obj.SMFSResults{ResultsRow}.Concatenate.FMRetVelocity(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*1e6;
-                ColorData=obj.SMFSResults{ResultsRow}.Concatenate.FMHoldingTime(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx);
-                LightnessData=FMRetVeloData;
-                MarkerData=FMExtVeloData;
-            elseif Var==4
-                ColorName='Retraction speed ($\mu$m/s)';
-                LightnessName='Medium';
-                MarkerName='Substrate';
-                FMRetVeloData=obj.SMFSResults{ResultsRow}.Concatenate.FMRetVelocity(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*1e6;
-                ColorData=FMRetVeloData;
-                LightnessData=obj.SMFSResults{ResultsRow}.Concatenate.FMEnvCond(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx);
-                MarkerData=obj.SMFSResults{ResultsRow}.Concatenate.FMSubstrate(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx);
-             elseif Var==5
-                ColorName='Dwell Time (s)';
-                LightnessName='Medium';
-                MarkerName='Substrate';
-                ColorData=obj.SMFSResults{ResultsRow}.Concatenate.FMHoldingTime(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx);
-                LightnessData=obj.SMFSResults{ResultsRow}.Concatenate.FMEnvCond(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx);
-                MarkerData=obj.SMFSResults{ResultsRow}.Concatenate.FMSubstrate(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx);
-
-            end
-            %%
-            if obj.SMFSResults{ResultsRow}.Parameters.ExtendVelocity==0
-                ExtVelocityValueStr='All';
-            else
-                ExtVelocityValueStr=num2str(round(obj.SMFSResults{ResultsRow}.Parameters.ExtendVelocity*1e9));
-            end
-            if obj.SMFSResults{ResultsRow}.Parameters.RetractVelocity==0
-                RetVelocityValueStr='All';
-            else
-                RetVelocityValueStr=num2str(round(obj.SMFSResults{ResultsRow}.Parameters.RetractVelocity*1e9));
-            end
-            if obj.SMFSResults{ResultsRow}.Parameters.HoldingTime==-1
-                HoldingTimeValueStr='All';
-            else
-                HoldingTimeValueStr=num2str(obj.SMFSResults{ResultsRow}.Parameters.HoldingTime);
-            end
-            % General names
-            FigNamePt1=sprintf('SMFSResultRow%d_',ResultsRow);
-            FigNamePt2=strcat(ExtVelocityValueStr,{'_'},RetVelocityValueStr,{'_'},HoldingTimeValueStr,{'_'},obj.SMFSResults{ResultsRow}.Parameters.Substrate,{'_'},obj.SMFSResults{ResultsRow}.Parameters.Medium,{'_'},obj.SMFSResults{ResultsRow}.Parameters.ChipCantilever,{'_'},obj.SMFSResults{ResultsRow}.Parameters.Chipbox,{'_'},obj.SMFSResults{ResultsRow}.Parameters.Linker);
-            FigNamePt2=char(FigNamePt2);
-            FigNamePt3='_Boxplot2';
-            %% Gramm object 1
-            % Define variables
-            Plottitle1=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ResultsRow,1}.Data(1).FMIndex),obj.SMFSResults{ResultsRow,1}.Data(1).SumNumFcAnalysedAdhMaxApp);
-            LegendyAxis1='Adhesion force (nN)';
-            NameSuffix1='_MaxAdhesionForceApproach';
-            % Allocate data
-            yData1=obj.SMFSResults{ResultsRow}.Concatenate.AdhMaxApp(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*-1e9;
-            yData1Min=min(yData1);
-            yData1Max=max(yData1);
-            yData1diff=yData1Max-yData1Min;
-            % Create a gramm object
-            if strcmpi(MarkerArg,'Y')
-                g1=gramm('x',xData,'y',yData1,...
-                    'color',ColorData,...
-                    'lightness',LightnessData,...
-                    'marker',MarkerData);
-            elseif strcmpi(MarkerArg,'N')
-                g1=gramm('x',xData,'y',yData1,...
-                    'color',ColorData,...
-                    'lightness',LightnessData);
-            end
-            % Plot data
-            g1.stat_boxplot('notch',true,...
-                'width',BoxplotWidth,...
-                'dodge',BoxplotDodge); % Plot data in boxplot
-            % Set options
-            g1.axe_property('LineWidth',LineWidth,'xlim',[xDataMin-xAxisCorr xDataMax+xAxisCorr],'ylim',[yData1Min-yData1diff*yAxisMinFactor yData1Max+yData1diff*yAxisMaxFactor],'XTick',[0:10:220],'TickDir','out','TickLength',[0.005 0.005]);
-            if strcmpi(xArg,'DateTime')
-                g1.set_datetick('x',0,'keeplimits') % Format x-axis
-            end
-            % Color Bar
-            if strcmpi(CBar,'Y')
-            y1CBar=[yData1Max+yData1diff*yLimMinFactor yData1Max+yData1diff*yLimMinFactor yData1Max+yData1diff*yLimMaxFactor yData1Max+yData1diff*yLimMaxFactor];
-            g1.geom_polygon('x',{xCBar1;xCBar2;xCBar3;xCBar4},'y',{y1CBar;y1CBar;y1CBar;y1CBar},'color',ColorBarMap,'alpha',1);
-            else
-            end
-            g1.set_point_options('base_size',MarkerSize)
-            %g1.set_title(Plottitle1) %Set figure title
-            if strcmpi(MarkerArg,'Y')
-                g1.set_names('x',LegendxAxis,'y',LegendyAxis1,'color',ColorName,'lightness',LightnessName,'marker',MarkerName)
-            elseif strcmpi(MarkerArg,'N')
-                g1.set_names('x',LegendxAxis,'y',LegendyAxis1,'color',ColorName,'lightness',LightnessName)
-            end
-            g1.set_color_options('n_color',NumColor,...
-                'n_lightness',NumLightness,...
-                'legend','separate_gray')
-            g1.set_text_options('font','Arial','base_size',BaseFontSize,'label_scaling',LabelScaling,'legend_scaling',LegendScaling)
-            if strcmpi(LegendArg,'Y')
-                g1.set_layout_options("legend",1) % Don't show legend
-            elseif strcmpi(MarkerArg,'N')
-                g1.set_layout_options("legend",0) % Show legend
-            end
-            % Figure
-            h_fig1=figure(1);
-            h_fig1.Color='white'; % changes the background color of the figure
-            h_fig1.Units='pixel'; % Defines the units
-            h_fig1.OuterPosition=Res;
-            h_fig1.PaperOrientation='landscape';
-            h_fig1.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,'_','Var',num2str(Var),NameSuffix1);
-            % The actual plotting
-            g1.draw()
-            % Save the figure
-            FullName1=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,'_','Var',num2str(Var),NameSuffix1);
-            print(h_fig1,FullName1,'-dpng');
-            exportgraphics(h_fig1,[FullName1,'.pdf'],'ContentType','vector');
-
-            %% Gramm object 2
-            % Define variables
-            Plottitle2=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ResultsRow,1}.Data(1).FMIndex),obj.SMFSResults{ResultsRow,1}.Data(1).SumNumFcAnalysedAdhMaxRet);
-            LegendyAxis2='Adhesion force (nN)';
-            NameSuffix2='_MaxAdhesionForceRetract';
-            % Allocate data
-            yData2=obj.SMFSResults{ResultsRow}.Concatenate.AdhMaxRet(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*-1e9;
-            yData2Min=min(yData2);
-            yData2Max=max(yData2);
-            yData2diff=yData2Max-yData2Min;
-            % Create a gramm object
-            if strcmpi(MarkerArg,'Y')
-                g2=gramm('x',xData,'y',yData2,...
-                    'color',ColorData,...
-                    'lightness',LightnessData,...
-                    'marker',MarkerData);
-            elseif strcmpi(MarkerArg,'N')
-                g2=gramm('x',xData,'y',yData2,...
-                    'color',ColorData,...
-                    'lightness',LightnessData);
-            end           
-            % Plot data           
-            g2.stat_boxplot('notch',true,...
-                'width',BoxplotWidth,...
-                'dodge',BoxplotDodge); % Plot data in boxplot
-            % Set options
-            g2.axe_property('LineWidth',LineWidth,'xlim',[xDataMin-xAxisCorr xDataMax+xAxisCorr],'ylim',[yData2Min-yData2diff*yAxisMinFactor yData2Max+yData2diff*yAxisMaxFactor],'XTick',[0:10:220],'TickDir','out','TickLength',[0.005 0.005]);
-            if strcmpi(xArg,'DateTime')
-                g2.set_datetick('x',0,'keeplimits') % Format x-axis
-            end
-            % Color Bar
-            if strcmpi(CBar,'Y')
-            y2CBar=[yData2Max+yData2diff*yLimMinFactor yData2Max+yData2diff*yLimMinFactor yData2Max+yData2diff*yLimMaxFactor yData2Max+yData2diff*yLimMaxFactor];
-            g2.geom_polygon('x',{xCBar1;xCBar2;xCBar3;xCBar4},'y',{y2CBar;y2CBar;y2CBar;y2CBar},'color',ColorBarMap,'alpha',1);
-            else
-            end
-            g2.set_point_options('base_size',MarkerSize)
-            %g2.set_title(Plottitle2) %Set figure title
-            if strcmpi(MarkerArg,'Y')
-                g2.set_names('x',LegendxAxis,'y',LegendyAxis2,'color',ColorName,'lightness',LightnessName,'marker',MarkerName)
-            elseif strcmpi(MarkerArg,'N')
-                g2.set_names('x',LegendxAxis,'y',LegendyAxis2,'color',ColorName,'lightness',LightnessName)
-            end
-            g2.set_color_options('n_color',NumColor,...
-                'n_lightness',NumLightness,...
-                'legend','separate_gray')
-            g2.set_text_options('font','Arial','base_size',BaseFontSize,'label_scaling',LabelScaling,'legend_scaling',LegendScaling)
-            if strcmpi(LegendArg,'Y')
-                g2.set_layout_options("legend",1) % Don't show legend
-            elseif strcmpi(MarkerArg,'N')
-                g2.set_layout_options("legend",0) % Show legend
-            end
-            % Figure
-            h_fig2=figure(2);
-            h_fig2.Color='white'; % changes the background color of the figure
-            h_fig2.Units='pixel'; % Defines the units
-            h_fig2.OuterPosition=Res;
-            h_fig2.PaperOrientation='landscape';
-            h_fig2.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,'_','Var',num2str(Var),NameSuffix2);
-            % The actual plotting
-            g2.draw()
-            % Save the figure
-            FullName2=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,'_','Var',num2str(Var),NameSuffix2);
-            print(h_fig2,FullName2,'-dpng');
-            exportgraphics(h_fig2,[FullName2,'.pdf'],'ContentType','vector');
-
-            %% Gramm object 3
-            % Define variables
-            Plottitle3=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ResultsRow,1}.Data(1).FMIndex),obj.SMFSResults{ResultsRow,1}.Data(1).SumNumFcAnalysedAdhUnbinding);
-            LegendyAxis3='Adhesion force (nN)';
-            NameSuffix3='_AdhForceUnbinding';
-            % Allocate data
-            yData3=obj.SMFSResults{ResultsRow}.Concatenate.AdhUnbinding(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*-1e9;
-            yData3Min=min(yData3);
-            yData3Max=max(yData3);
-            yData3diff=yData3Max-yData3Min;
-            % Create a gramm object
-            if strcmpi(MarkerArg,'Y')
-                g3=gramm('x',xData,'y',yData3,...
-                    'color',ColorData,...
-                    'lightness',LightnessData,...
-                    'marker',MarkerData);
-            elseif strcmpi(MarkerArg,'N')
-                g3=gramm('x',xData,'y',yData3,...
-                    'color',ColorData,...
-                    'lightness',LightnessData);
-            end
-            % Plot data
-            g3.stat_boxplot('notch',true,...
-                'width',BoxplotWidth,...
-                'dodge',BoxplotDodge); % Plot data in boxplot
-            % Set options
-            g3.axe_property('LineWidth',LineWidth,'xlim',[xDataMin-xAxisCorr xDataMax+xAxisCorr],'ylim',[yData3Min-yData3diff*yAxisMinFactor yData3Max+yData3diff*yAxisMaxFactor],'XTick',[0:10:220],'TickDir','out','TickLength',[0.005 0.005]);
-            if strcmpi(xArg,'DateTime')
-                g3.set_datetick('x',0,'keeplimits') % Format x-axis
-            end
-            % Color Bar
-            if strcmpi(CBar,'Y')
-            y3CBar=[yData3Max+yData3diff*yLimMinFactor yData3Max+yData3diff*yLimMinFactor yData3Max+yData3diff*yLimMaxFactor yData3Max+yData3diff*yLimMaxFactor];
-            g3.geom_polygon('x',{xCBar1;xCBar2;xCBar3;xCBar4},'y',{y3CBar;y3CBar;y3CBar;y3CBar},'color',ColorBarMap,'alpha',1);
-            else
-            end
-            g3.set_point_options('base_size',MarkerSize)
-            %g3.set_title(Plottitle3) %Set figure title
-            if strcmpi(MarkerArg,'Y')
-                g3.set_names('x',LegendxAxis,'y',LegendyAxis3,'color',ColorName,'lightness',LightnessName,'marker',MarkerName)
-            elseif strcmpi(MarkerArg,'N')
-                g3.set_names('x',LegendxAxis,'y',LegendyAxis3,'color',ColorName,'lightness',LightnessName)
-            end
-            g3.set_color_options('n_color',NumColor,...
-                'n_lightness',NumLightness,...
-                'legend','separate_gray')
-            g3.set_text_options('font','Arial','base_size',BaseFontSize,'label_scaling',LabelScaling,'legend_scaling',LegendScaling)
-            if strcmpi(LegendArg,'Y')
-                g3.set_layout_options("legend",1) % Don't show legend
-            elseif strcmpi(MarkerArg,'N')
-                g3.set_layout_options("legend",0) % Show legend
-            end
-            % Figure
-            h_fig3=figure(3);
-            h_fig3.Color='white'; % changes the background color of the figure
-            h_fig3.Units='pixel'; % Defines the units
-            h_fig3.OuterPosition=Res;
-            h_fig3.PaperOrientation='landscape';
-            h_fig3.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,'_','Var',num2str(Var),NameSuffix3);
-            % The actual plotting
-            g3.draw()
-            % Save the figure
-            FullName3=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,'_','Var',num2str(Var),NameSuffix3);
-            print(h_fig3,FullName3,'-dpng');
-            exportgraphics(h_fig3,[FullName3,'.pdf'],'ContentType','vector');
-
-            %% Gramm object 4
-            % Define variables
-            Plottitle4=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ResultsRow,1}.Data(1).FMIndex),obj.SMFSResults{ResultsRow,1}.Data(1).SumNumFcAnalysedAdhEneApp);
-            LegendyAxis4='Work of adhesion (aJ)';
-            NameSuffix4='_AdhEnergyApproach';
-            % Allocate data
-            yData4=obj.SMFSResults{ResultsRow}.Concatenate.AdhEneApp(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*-1e18;
-            yData4Min=min(yData4);
-            yData4Max=max(yData4);
-            yData4diff=yData4Max-yData4Min;
-            % Create a gramm object
-            if strcmpi(MarkerArg,'Y')
-                g4=gramm('x',xData,'y',yData4,...
-                    'color',ColorData,...
-                    'lightness',LightnessData,...
-                    'marker',MarkerData);
-            elseif strcmpi(MarkerArg,'N')
-                g4=gramm('x',xData,'y',yData4,...
-                    'color',ColorData,...
-                    'lightness',LightnessData);
-            end
-            % Plot data            
-            g4.stat_boxplot('notch',true,...
-                'width',BoxplotWidth,...
-                'dodge',BoxplotDodge); % Plot data in boxplot
-            % Set options
-            g4.axe_property('LineWidth',LineWidth,'xlim',[xDataMin-xAxisCorr xDataMax+xAxisCorr],'ylim',[yData4Min-yData4diff*yAxisMinFactor yData4Max+yData4diff*yAxisMaxFactor],'XTick',[0:10:220],'TickDir','out','TickLength',[0.005 0.005]);
-            if strcmpi(xArg,'DateTime')
-                g4.set_datetick('x',0,'keeplimits') % Format x-axis
-            end
-            % Color Bar
-            if strcmpi(CBar,'Y')
-            y4CBar=[yData4Max+yData4diff*yLimMinFactor yData4Max+yData4diff*yLimMinFactor yData4Max+yData4diff*yLimMaxFactor yData4Max+yData4diff*yLimMaxFactor];
-            g4.geom_polygon('x',{xCBar1;xCBar2;xCBar3;xCBar4},'y',{y4CBar;y4CBar;y4CBar;y4CBar},'color',ColorBarMap,'alpha',1);
-            else
-            end
-            g4.set_point_options('base_size',MarkerSize)
-            %g4.set_title(Plottitle4) %Set figure title
-            if strcmpi(MarkerArg,'Y')
-                g4.set_names('x',LegendxAxis,'y',LegendyAxis4,'color',ColorName,'lightness',LightnessName,'marker',MarkerName)
-            elseif strcmpi(MarkerArg,'N')
-                g4.set_names('x',LegendxAxis,'y',LegendyAxis4,'color',ColorName,'lightness',LightnessName)
-            end
-            g4.set_color_options('n_color',NumColor,...
-                'n_lightness',NumLightness,...
-                'legend','separate_gray')
-            g4.set_text_options('font','Arial','base_size',BaseFontSize,'label_scaling',LabelScaling,'legend_scaling',LegendScaling)
-            if strcmpi(LegendArg,'Y')
-                g4.set_layout_options("legend",1) % Don't show legend
-            elseif strcmpi(MarkerArg,'N')
-                g4.set_layout_options("legend",0) % Show legend
-            end
-            % Figure
-            h_fig4=figure(4);
-            h_fig4.Color='white'; % changes the background color of the figure
-            h_fig4.Units='pixel'; % Defines the units
-            h_fig4.OuterPosition=Res;
-            h_fig4.PaperOrientation='landscape';
-            h_fig4.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,'_','Var',num2str(Var),NameSuffix4);
-            % The actual plotting
-            g4.draw()
-            % Save the figure
-            FullName4=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,'_','Var',num2str(Var),NameSuffix4);
-            print(h_fig4,FullName4,'-dpng');
-            exportgraphics(h_fig4,[FullName4,'.pdf'],'ContentType','vector');
-
-            %% Gramm object 5
-            % Define variables
-            Plottitle5=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ResultsRow,1}.Data(1).FMIndex),obj.SMFSResults{ResultsRow,1}.Data(1).SumNumFcAnalysedAdhEneRet);
-            LegendyAxis5='Work of adhesion (aJ)';
-            NameSuffix5='_AdhEnergyRetract';
-            % Allocate data
-            yData5=obj.SMFSResults{ResultsRow}.Concatenate.AdhEneRet(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*-1e18;
-            yData5Min=min(yData5);
-            yData5Max=max(yData5);
-            yData5diff=yData5Max-yData5Min;
-            % Create a gramm object
-            if strcmpi(MarkerArg,'Y')
-                g5=gramm('x',xData,'y',yData5,...
-                    'color',ColorData,...
-                    'lightness',LightnessData,...
-                    'marker',MarkerData);
-            elseif strcmpi(MarkerArg,'N')
-                g5=gramm('x',xData,'y',yData5,...
-                    'color',ColorData,...
-                    'lightness',LightnessData);
-            end
-            % Plot data
-            g5.stat_boxplot('notch',true,...
-                'width',BoxplotWidth,...
-                'dodge',BoxplotDodge); % Plot data in boxplot
-            % Set options
-            g5.axe_property('LineWidth',LineWidth,'xlim',[xDataMin-xAxisCorr xDataMax+xAxisCorr],'ylim',[yData5Min-yData5diff*yAxisMinFactor yData5Max+yData5diff*yAxisMaxFactor],'XTick',[0:10:220],'TickDir','out','TickLength',[0.005 0.005]);
-            if strcmpi(xArg,'DateTime')
-                g5.set_datetick('x',0,'keeplimits') % Format x-axis
-            end
-            % Color Bar
-            if strcmpi(CBar,'Y')
-            y5CBar=[yData5Max+yData5diff*yLimMinFactor yData5Max+yData5diff*yLimMinFactor yData5Max+yData5diff*yLimMaxFactor yData5Max+yData5diff*yLimMaxFactor];
-            g5.geom_polygon('x',{xCBar1;xCBar2;xCBar3;xCBar4},'y',{y5CBar;y5CBar;y5CBar;y5CBar},'color',ColorBarMap,'alpha',1);
-            else
-            end
-            g5.set_point_options('base_size',MarkerSize)
-            %g5.set_title(Plottitle5) %Set figure title
-            if strcmpi(MarkerArg,'Y')
-                g5.set_names('x',LegendxAxis,'y',LegendyAxis5,'color',ColorName,'lightness',LightnessName,'marker',MarkerName)
-            elseif strcmpi(MarkerArg,'N')
-                g5.set_names('x',LegendxAxis,'y',LegendyAxis5,'color',ColorName,'lightness',LightnessName)
-            end
-            g5.set_color_options('n_color',NumColor,...
-                'n_lightness',NumLightness,...
-                'legend','separate_gray')
-            g5.set_text_options('font','Arial','base_size',BaseFontSize,'label_scaling',LabelScaling,'legend_scaling',LegendScaling)
-            if strcmpi(LegendArg,'Y')
-                g5.set_layout_options("legend",1) % Don't show legend
-            elseif strcmpi(MarkerArg,'N')
-                g5.set_layout_options("legend",0) % Show legend
-            end
-            %g5.set_layout_options('legend_position',[0.75,0.4,0.35,0.6]) %[left bottom width height]
-            % Figure
-            h_fig5=figure(5);
-            h_fig5.Color='white'; % changes the background color of the figure
-            h_fig5.Units='pixel'; % Defines the units
-            h_fig5.OuterPosition=Res;
-            h_fig5.PaperOrientation='landscape';
-            h_fig5.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,'_','Var',num2str(Var),NameSuffix5);
-            % The actual plotting
-            g5.draw()
-            % Save the figure
-            FullName5=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,'_','Var',num2str(Var),NameSuffix5);
-            print(h_fig5,FullName5,'-dpng');
-            exportgraphics(h_fig5,[FullName5,'.pdf'],'ContentType','vector')
-
-            %% Gramm object 6
-            % Define variables
-            Plottitle6=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ResultsRow,1}.Data(1).FMIndex),obj.SMFSResults{ResultsRow,1}.Data(1).SumNumFcAnalysedyPullingLength);
-            LegendyAxis6='Pull-off length (nm)';
-           % LegendyAxis6='L_{Pull-off} (nm)';
-            NameSuffix6='_Pullinglength';
-            % Allocate data
-            yData6=obj.SMFSResults{ResultsRow}.Concatenate.PullingLength(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*1e9;
-            yData6Min=min(yData6);
-            yData6Max=max(yData6);
-            yData6diff=yData6Max-yData6Min;
-            % Create a gramm object
-            if strcmpi(MarkerArg,'Y')
-                g6=gramm('x',xData,'y',yData6,...
-                    'color',ColorData,...
-                    'lightness',LightnessData,...
-                    'marker',MarkerData);
-            elseif strcmpi(MarkerArg,'N')
-                g6=gramm('x',xData,'y',yData6,...
-                    'color',ColorData,...
-                    'lightness',LightnessData);
-            end
-            % Plot data
-            g6.stat_boxplot('notch',true,...
-                'width',BoxplotWidth,...
-                'dodge',BoxplotDodge); % Plot data in boxplot
-            % Set options
-            g6.axe_property('LineWidth',LineWidth,'xlim',[xDataMin-xAxisCorr xDataMax+xAxisCorr],'ylim',[yData6Min-yData6diff*yAxisMinFactor yData6Max+yData6diff*yAxisMaxFactor],'XTick',[0:10:220],'TickDir','out','TickLength',[0.005 0.005]);
-            % Reference length color box
-            g6.geom_polygon('y',{LimitLengthRet2},'color',SteelBlue);    
-            if strcmpi(xArg,'DateTime')
-                g6.set_datetick('x',0,'keeplimits') % Format x-axis
-            end
-            % Color bar
-            if strcmpi(CBar,'Y')
-            y6CBar=[yData6Max+yData6diff*yLimMinFactor yData6Max+yData6diff*yLimMinFactor yData6Max+yData6diff*yLimMaxFactor yData6Max+yData6diff*yLimMaxFactor];
-            g6.geom_polygon('x',{xCBar1;xCBar2;xCBar3;xCBar4},'y',{y6CBar;y6CBar;y6CBar;y6CBar},'color',ColorBarMap,'alpha',1);
-            else
-            end
-            g6.set_point_options('base_size',MarkerSize)
-            %g6.set_title(Plottitle6) %Set figure title
-            if strcmpi(MarkerArg,'Y')
-                g6.set_names('x',LegendxAxis,'y',LegendyAxis6,'color',ColorName,'lightness',LightnessName,'marker',MarkerName)
-            elseif strcmpi(MarkerArg,'N')
-                g6.set_names('x',LegendxAxis,'y',LegendyAxis6,'color',ColorName,'lightness',LightnessName)
-            end
-            g6.set_color_options('n_color',NumColor,...
-                'n_lightness',NumLightness,...
-                'legend','separate_gray')
-            g6.set_text_options('font','Arial','base_size',BaseFontSize,'label_scaling',LabelScaling,'legend_scaling',LegendScaling)
-            if strcmpi(LegendArg,'Y')
-                g6.set_layout_options("legend",1) % Don't show legend
-            elseif strcmpi(MarkerArg,'N')
-                g6.set_layout_options("legend",0) % Show legend
-            end
-            % Figure
-            h_fig6=figure(6);
-            h_fig6.Color='white'; % changes the background color of the figure
-            h_fig6.Units='pixel'; % Defines the units
-            h_fig6.OuterPosition=Res;
-            h_fig6.PaperOrientation='landscape';
-            h_fig6.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,'_','Var',num2str(Var),NameSuffix6);
-            % The actual plotting
-            g6.draw()
-            % Save the figure
-            FullName6=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,'_','Var',num2str(Var),NameSuffix6);
-            print(h_fig6,FullName6,'-dpng');
-            exportgraphics(h_fig6,[FullName6,'.pdf'],'ContentType','vector')
-            
-            %% Gramm object 7
-            % Define variables
-            Plottitle7=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ResultsRow,1}.Data(1).FMIndex),obj.SMFSResults{ResultsRow,1}.Data(1).SumNumFcAnalysedySnapInLength);
-            LegendyAxis7='Snap-In length (nm)';
-            NameSuffix7='_SnapInLength';
-            % Allocate data
-            yData7=obj.SMFSResults{ResultsRow}.Concatenate.SnapInLength(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*1e9;
-            yData7Min=min(yData7);
-            yData7Max=max(yData7);
-            yData7diff=yData7Max-yData7Min;
-            % Create a gramm object
-            if strcmpi(MarkerArg,'Y')
-                g7=gramm('x',xData,'y',yData7,...
-                    'color',ColorData,...
-                    'lightness',LightnessData,...
-                    'marker',MarkerData);
-            elseif strcmpi(MarkerArg,'N')
-                g7=gramm('x',xData,'y',yData7,...
-                    'color',ColorData,...
-                    'lightness',LightnessData);
-            end
-            % Plot data
-            g7.stat_boxplot('notch',true,...
-                'width',BoxplotWidth,...
-                'dodge',BoxplotDodge); % Plot data in boxplot
-            % Set options
-            g7.axe_property('LineWidth',LineWidth,'xlim',[xDataMin-xAxisCorr xDataMax+xAxisCorr],'ylim',[yData7Min-yData7diff*yAxisMinFactor yData7Max+yData7diff*yAxisMaxFactor],'XTick',[0:10:220],'TickDir','out','TickLength',[0.005 0.005]);
-            g7.geom_polygon('y',{LimitLengthApp},'color',Ochreish);
-            if strcmpi(xArg,'DateTime')
-                g7.set_datetick('x',0,'keeplimits') % Format x-axis
-            end
-            if strcmpi(CBar,'Y')
-            y7CBar=[yData7Max+yData7diff*yLimMinFactor yData7Max+yData7diff*yLimMinFactor yData7Max+yData7diff*yLimMaxFactor yData7Max+yData7diff*yLimMaxFactor];
-            g7.geom_polygon('x',{xCBar1;xCBar2;xCBar3;xCBar4},'y',{y7CBar;y7CBar;y7CBar;y7CBar},'color',ColorBarMap,'alpha',1);
-            else
-            end
-            g7.set_point_options('base_size',MarkerSize)
-            %g7.set_title(Plottitle6) %Set figure title
-            if strcmpi(MarkerArg,'Y')
-                g7.set_names('x',LegendxAxis,'y',LegendyAxis7,'color',ColorName,'lightness',LightnessName,'marker',MarkerName)
-            elseif strcmpi(MarkerArg,'N')
-                g7.set_names('x',LegendxAxis,'y',LegendyAxis7,'color',ColorName,'lightness',LightnessName)
-            end
-            g7.set_color_options('n_color',NumColor,...
-                'n_lightness',NumLightness,...
-                'legend','separate_gray')
-            g7.set_text_options('font','Arial','base_size',BaseFontSize,'label_scaling',LabelScaling,'legend_scaling',LegendScaling)
-            if strcmpi(LegendArg,'Y')
-                g7.set_layout_options("legend",1) % Don't show legend
-            elseif strcmpi(MarkerArg,'N')
-                g7.set_layout_options("legend",0) % Show legend
-            end
-            % Figure
-            h_fig7=figure(7);
-            h_fig7.Color='white'; % changes the background color of the figure
-            h_fig7.Units='pixel'; % Defines the units
-            h_fig7.OuterPosition=Res;
-            h_fig7.PaperOrientation='landscape';
-            h_fig7.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,'_','Var',num2str(Var),NameSuffix7);
-            % The actual plotting
-            g7.draw()
-            % Save the figure
-            FullName7=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,'_','Var',num2str(Var),NameSuffix7);
-            print(h_fig7,FullName7,'-dpng');
-            exportgraphics(h_fig7,[FullName7,'.pdf'],'ContentType','vector')
-
-            % House keeping
-            close all
-        end
-
-
-
-  
-        function SM_results_gramm_boxplot4(obj,ii)
-           % For results of Trial14
-           % x-axis: Index
-           % Column: Cantilver
-           % Color: Medium
-
-           % Input variable adaptation
-           if nargin<2
-               ii=1;
-           end
-           % Output time and date for the dairy
-           datetime('now')
-           % Change into the Folder of Interest
-           cd(obj.ExperimentFolder) % Move into the folder
-           % Create folders for saving the produced figures
-           foldername='SM_results_gramm_boxplot4';    % Defines the folder name
-           mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
-           currpath=fullfile(obj.ExperimentFolder,foldername);
-           cd(currpath);
-           %% General variables 1
-           ColorMap1=[[0 25 255]./255;  % Blue
-               [26 255 0]./255; % Green
-               [255 102 0]./255; % Orange
-               [255 0 26]./255]; % Red
-           LimitForce1=[0 14e-3]; % Regime I - Entropic
-           LimitForce2=[14e-3 5]; %Regime II - Unfolding
-           LimitForce3=[5 22]; % Regime III - Backbone stretching
-           LimitLength1=[0 317]; % Regime I - Entropic
-           LimitLength2=[317 390]; %Regime II - Unfolding
-           LimitLength3=[390 452.6]; % Regime III - Backbone stretching
-           Res=[1 1 2560 1250]; % Define the figure resolution
-           if obj.SMFSResults{ii}.Parameters.ExtendVelocity==0
-               ExtVelocityValueStr='All';
-           else
-               ExtVelocityValueStr=num2str(round(obj.SMFSResults{ii}.Parameters.ExtendVelocity*1e9));
-           end
-           if obj.SMFSResults{ii}.Parameters.RetractVelocity==0
-               RetVelocityValueStr='All';
-           else
-               RetVelocityValueStr=num2str(round(obj.SMFSResults{ii}.Parameters.RetractVelocity*1e9));
-           end
-           if obj.SMFSResults{ii}.Parameters.HoldingTime==-1
-               HoldingTimeValueStr='All';
-           else
-               HoldingTimeValueStr=num2str(obj.SMFSResults{ii}.Parameters.HoldingTime);
-           end
-           FigNamePt1=sprintf('SMFSResultRow%d_',ii);
-           FigNamePt2=strcat(ExtVelocityValueStr,{'_'},RetVelocityValueStr,{'_'},HoldingTimeValueStr,{'_'},obj.SMFSResults{ii}.Parameters.Substrate,{'_'},obj.SMFSResults{ii}.Parameters.Medium,{'_'},obj.SMFSResults{ii}.Parameters.ChipCantilever,{'_'},obj.SMFSResults{ii}.Parameters.Chipbox,{'_'},obj.SMFSResults{ii}.Parameters.Linker);
-           FigNamePt2=char(FigNamePt2);
-           FigNamePt3='_Boxplot';
-           LegendxAxis='Index';
-           LegendColor='Cantilever';
-           LegendLightness='Medium';
-           % Allocate general data
-           xData=obj.SMFSResults{ii}.Concatenate.FMIndex;
-           LightnessData=obj.SMFSResults{ii}.Concatenate.FMEnvCond;
-           ColorData=obj.SMFSResults{ii}.Concatenate.FMChipCant;
-           BoxplotWidth=0.5;
-
-           %% Gramm object 2
-           % Define variables
-           Plottitle=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ii,1}.Data(1).FMIndex),obj.SMFSResults{ii,1}.Data(1).SumNumFcAnalysedAdhMaxRet);
-           LegendyAxis2='Adhesion force (nN)';
-           NameSuffix2='_MaxAdhesionForceRetract';
-           % Allocate data
-           yData2=obj.SMFSResults{ii}.Data.AdhMaxRetConcat*-1e9;
-           % Create a gramm object
-           g2=gramm('x',xData,'y',yData2,...
-               'color',ColorData,'lightness',LightnessData);
-           % Plot data
-           g2.geom_polygon('y',{LimitForce1;LimitForce2;LimitForce3},'color',ColorMap1);
-           g2.geom_jitter('width',0.2,...
-               'dodge',2.4); % Plot raw data as jitter
-           g2.stat_boxplot('notch',true,...
-               'width',BoxplotWidth,...
-               'dodge',2.4); % Plot data in boxplot
-           g2.set_color_options('map','d3_20')
-           g2.set_title(Plottitle) %Set figure title
-           % Legend
-           g2.set_names('x',LegendxAxis,'y',LegendyAxis2,'color',LegendColor,'lightness',LegendLightness)
-           % Figure
-           h_fig2=figure(2);
-           h_fig2.Color='white'; % changes the background color of the figure
-           h_fig2.Units='pixel'; % Defines the units
-           h_fig2.OuterPosition=Res;
-           h_fig2.PaperOrientation='landscape';
-           h_fig2.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,NameSuffix2);
-           % The actual plotting
-           g2.draw()
-           % Save figure
-           FullName2=strcat(FigNamePt1,FigNamePt2,FigNamePt3,NameSuffix2);
-           %%% Save the current figure in the current folder
-           print(h_fig2,FullName2,'-dpng');
-
-           %% Gramm object 5
-           % Define variables
-           Plottitle=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ii,1}.Data(1).FMIndex),obj.SMFSResults{ii,1}.Data(1).SumNumFcAnalysedAdhEneRet);
-           LegendyAxis5='Adhesion energy (nJ)';
-           NameSuffix5='_AdhEnergyRetract';
-           % Allocate data
-           yData5=obj.SMFSResults{ii}.Data.AdhEneRetConcat*-1e9;
-           % Create a gramm object
-           g5=gramm('x',xData,'y',yData5,...
-               'color',ColorData,'lightness',LightnessData);
-           % Plot data
-           g5.geom_jitter('width',0.2,...
-               'dodge',2.4); % Plot raw data as jitter
-           g5.stat_boxplot('notch',true,...
-               'width',BoxplotWidth,...
-               'dodge',2.4); % Plot data in boxplot
-           g5.set_color_options('map','d3_20')
-           g5.set_title(Plottitle) %Set figure title
-           % Legend
-           g5.set_names('x',LegendxAxis,'y',LegendyAxis5,'color',LegendColor,'lightness',LegendLightness)
-           % Figure
-           h_fig5=figure(5);
-           h_fig5.Color='white'; % changes the background color of the figure
-           h_fig5.Units='pixel'; % Defines the units
-           h_fig5.OuterPosition=Res;
-           h_fig5.PaperOrientation='landscape';
-           h_fig5.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,NameSuffix5);
-           % The actual plotting
-           g5.draw()
-           % Save figure
-           FullName5=strcat(FigNamePt1,FigNamePt2,FigNamePt3,NameSuffix5);
-           %%% Save the current figure in the current folder
-           print(h_fig5,FullName5,'-dpng');
-
-           %% Gramm object 6
-           % Define variables
-           Plottitle=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ii,1}.Data(1).FMIndex),obj.SMFSResults{ii,1}.Data(1).SumNumFcAnalysedyPullingLength);
-           LegendyAxis6='Pulling length (nm)';
-           NameSuffix6='_Pullinglength';
-           % Allocate data
-           yData6=obj.SMFSResults{ii}.Data.yPullingLengthConcat*1e9;
-           % Create a gramm object
-           g6=gramm('x',xData,'y',yData6,...
-               'color',ColorData,'lightness',LightnessData);
-           % Plot data
-           g6.geom_polygon('y',{LimitLength1;LimitLength2;LimitLength3},'color',ColorMap1);
-           g6.geom_jitter('width',0.2,...
-               'dodge',2.4); % Plot raw data as jitter
-           g6.stat_boxplot('notch',true,...
-               'width',BoxplotWidth,...
-               'dodge',2.4); % Plot data in boxplot
-           g6.set_color_options('map','d3_20')
-           g6.set_title(Plottitle) %Set figure title
-           % Legend
-           g6.set_names('x',LegendxAxis,'y',LegendyAxis6,'color',LegendColor,'lightness',LegendLightness)
-           % Figure
-           h_fig6=figure(6);
-           h_fig6.Color='white'; % changes the background color of the figure
-           h_fig6.Units='pixel'; % Defines the units
-           h_fig6.OuterPosition=Res;
-           h_fig6.PaperOrientation='landscape';
-           h_fig6.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,NameSuffix6);
-           % The actual plotting
-           g6.draw()
-           % Save figure
-           FullName6=strcat(FigNamePt1,FigNamePt2,FigNamePt3,NameSuffix6);
-           %%% Save the current figure in the current folder
-           print(h_fig6,FullName6,'-dpng');
-
-           % House keeping
-           close all
-       end
-
-       
-       function SM_results_gramm_plot(obj,ResultsRow,Linker,IdxShift,ChronoFMIdx,FMColour)
-           % ResultsRow - row index in the SMFSResultsParameters table
-           % Linker: string , either 'long' or 'short'
-           % FMShift - force map shift
-           % FMoI - force map of interest (corresponds to the number in the
-           % FMID)
-           % FMColour: 2 possibilities
-           % 1. 'FM': Each FM is coloured differently
-           % 2. 'Phase': Each deformation phase is coloured differently
-
-           % Input variable adaptation
-           if nargin<5
-               ResultsRow=1;
-               IdxShift=3;
-               ChronoFMIdx=1;
-               FMColour='FM';
-           end
-           % Output time and date for the dairy
-           datetime('now')
-           % Change into the Folder of Interest
-           cd(obj.ExperimentFolder) % Move into the folder
-           % Create folders for saving the produced figures
-           foldername='SM_results_gramm_plot';    % Defines the folder name
-           mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
-           currpath=fullfile(obj.ExperimentFolder,foldername);
-           cd(currpath);
-           %% General variables 1
-           ColorBrewerMap1=[[253 174 97]./255; % Ochreish
-               [116 173 209]./255]; % Steel blueish
-
-           CS1=[165 0 38]./255; % Dark reddish
-           CS2=[215 48 39]./255; % Light reddish
-           CS3=[244 109 67]./255; % Orangish
-           CS4=[253 174 97]./255; % Ochreish
-           CS5=[254 224 144]./255; % Yellowish
-           CS6=[224 243 248]./255; % Pastel blueish
-           CS7=[171 217 233]./255; % Light blueish
-           CS8=[116 173 209]./255; % Steel blueish
-           CS9=[69 117 180]./255; % Distant blueish
-           CS10=[49 54 149]./255; % Pale ultramarineish
-           ColorMap1=[[0 25 255]./255;  % Blue
-               [26 255 0]./255; % Green
-               [255 102 0]./255; % Orange
-               [255 0 26]./255]; % Red
-           ColorMap2=[[0 136 55]./255;  % Green
-               [215 25 28]./255; % Red
-               [5 113 176]./255; % Blue
-               [123 50 148]./255]; % Violet
-           ColorMapViolet=[123 50 148]./255;  % Violet
-           ColorMapBlue=[5 113 176]./255; % Blue
-           %% General variables 1
-            if strcmpi(Linker,'Long')
-            LimitLengthRet1=[0 378]; 
-            LimitLengthRet2=[378 522];
-            LimitLengthApp=[50 120];
-            elseif strcmpi(Linker,'Short')
-            LimitLengthRet1=[0 333]; 
-            LimitLengthRet2=[333 463];
-            LimitLengthApp=[50 120];
-            end
-           Res=[1 1 2560 1250]; % Define the figure resolution
-           LabelSize=3;
-           MarkerSize=10;
-           %MarkerSize=5;
-           AxesFontSize=38;
-           LegendxAxis='Force-distance curve number';
-           LegendColor='Force Map ID';
-           %% Allocate data
-           FMIdxFcArray=obj.SMFSResults{ResultsRow}.Concatenate.FMIndexChrono;
-           FMEnvCond=obj.SMFSResults{ResultsRow}.Concatenate.FMEnvCond(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx);
-           FMIdxArray=obj.SMFSResults{ResultsRow}.Data.FMIndex(obj.SMFSResults{ResultsRow}.Data.FMDateTimeSortIdx);
-           % FM ID of the selected FM 
-           FMoIID=FMIdxArray(ChronoFMIdx);
-           % Determine neighboring force maps based 
-           FMBeforeIdx=ChronoFMIdx-IdxShift;
-           if FMBeforeIdx<=0 % Correct for potential negative force map values
-               FMBeforeIdx=ChronoFMIdx;
-           end
-           FMBefore=FMIdxArray(FMBeforeIdx);
-            FMBeforeFcIdx=find(FMBefore==FMIdxFcArray); % Find indices of the FM of interest
-           FMAfterIdx=ChronoFMIdx+IdxShift;
-           if FMAfterIdx> length(obj.SMFSResults{ResultsRow}.Data.FMIndex)
-               FMAfterIdx=length(obj.SMFSResults{ResultsRow}.Data.FMIndex);
-           end
-           FMAfter=FMIdxArray(FMAfterIdx);
-            FMAfterFcIdx=find(FMAfter==FMIdxFcArray); % Find indices of the FM of interest
-           % Fc number
-           NumFm=FMAfterIdx-FMBeforeIdx+1; % Number of fm selected
-           FcNum(1:NumFm*100,1)=FMBeforeIdx*100-99:FMAfterIdx*100; % Corresponding fc number to the selected fm
-           % General variables
-           xData=(1:length(FcNum))';
-           % Colour condition
-           if strcmpi(FMColour,'FM')
- %ColorData=FMIdxFcArray(FMBeforeFcIdx(1):FMAfterFcIdx(end));
-               ColorData=FMEnvCond(FMBeforeFcIdx(1):FMAfterFcIdx(end));
-               ColorMap='d3_20c';
-
-           elseif strcmpi(FMColour,'Phase')
-               ColorData=obj.SMFSResults{ResultsRow,1}.DeformPhase(1).Fc(FMBeforeFcIdx(1):FMAfterFcIdx(end));
-               ColorMap=ColorMap2;
-           end
-           % Transform results parameters to string
-           if obj.SMFSResults{ResultsRow}.Parameters.ExtendVelocity==0
-               ExtVelocityValueStr='All';
-           else
-               ExtVelocityValueStr=num2str(round(obj.SMFSResults{ResultsRow}.Parameters.ExtendVelocity*1e9));
-           end
-           if obj.SMFSResults{ResultsRow}.Parameters.RetractVelocity==0
-               RetVelocityValueStr='All';
-           else
-               RetVelocityValueStr=num2str(round(obj.SMFSResults{ResultsRow}.Parameters.RetractVelocity*1e9));
-           end
-           if obj.SMFSResults{ResultsRow}.Parameters.HoldingTime==-1
-               HoldingTimeValueStr='All';
-           else
-               HoldingTimeValueStr=num2str(obj.SMFSResults{ResultsRow}.Parameters.HoldingTime);
-           end
-           FigNamePt1=sprintf('SMFSResultRow%d_',ResultsRow);
-           FigNamePt2=strcat(ExtVelocityValueStr,{'_'},RetVelocityValueStr,{'_'},HoldingTimeValueStr,{'_'},obj.SMFSResults{ResultsRow}.Parameters.Substrate,{'_'},obj.SMFSResults{ResultsRow}.Parameters.Medium,{'_'},obj.SMFSResults{ResultsRow}.Parameters.ChipCantilever,{'_'},obj.SMFSResults{ResultsRow}.Parameters.Chipbox,{'_'},obj.SMFSResults{ResultsRow}.Parameters.Linker);
-           FigNamePt2=char(FigNamePt2);
-           FigNamePt3='_Boxplot';
-           Plottitle=strcat(obj.ExperimentName,sprintf('-%d is the chosen input FM-ID with a chronoclogical shift of %d FM',FMoIID,IdxShift));
-           %% Gramm object 1
-            % Define variables
-            LegendyAxis1='Adhesion force (nN)';
-            NameSuffix1='_MaxAdhesionForceApproach';
-            % Allocate data
-            yArray1=obj.SMFSResults{ResultsRow}.Data.AdhMaxAppConcat(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*-1e9;
-            yData1=yArray1(FMBeforeFcIdx(1):FMAfterFcIdx(end)); 
-           % Create a gramm object
-           g1=gramm('x',xData,'y',yData1,...
-               'color',ColorData);
-           % Plot data
-           g1.geom_point(); % Plot raw data as points
-           % Set options
-           g1.set_title(Plottitle) %Set figure title
-           g1.set_names('x',LegendxAxis,'y',LegendyAxis1,'color',LegendColor)
-           g1.set_text_options('label_scaling',LabelSize)
-           g1.set_point_options('base_size',MarkerSize)
-           g1.set_color_options('map',ColorMap)
-           g1.axe_property('FontSize',AxesFontSize);
-           g1.set_layout_options("legend",0) % Show legend
-           % g1.set_layout_options("legend",1) % Show legend
-           % Figure
-           h_fig1=figure(1);
-           h_fig1.Color='white'; % changes the background color of the figure
-           h_fig1.Units='pixel'; % Defines the units
-           h_fig1.OuterPosition=Res;
-           h_fig1.PaperOrientation='landscape';
-           h_fig1.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_ChronoFMIdx_',sprintf('%d',ChronoFMIdx),'_',FMColour,NameSuffix1);
-           % The actual plotting
-           g1.draw()
-          % Save figure
-           FullName1=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_ChronoFMIdx_',sprintf('%d',ChronoFMIdx),'_',FMColour,NameSuffix1);
-           print(h_fig1,FullName1,'-dpng'); % Save the current figure in the current folder
-           %% Gramm object 2
-           % Define variables
-           LegendyAxis2='Adhesion force (nN)';
-           NameSuffix2='_MaxAdhesionForceRetract';
-           % Allocate data
-           yArray2=obj.SMFSResults{ResultsRow}.Data.AdhMaxRetConcat(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*-1e9;
-           yData2=yArray2(FMBeforeFcIdx(1):FMAfterFcIdx(end));
-           % Create a gramm object
-           g2=gramm('x',xData,'y',yData2,...
-               'color',ColorData);
-           % Plot data
-           %    g2.geom_polygon('y',{LimitForce1},'color',ColorBrewerMap1);
-           g2.geom_point(); % Plot raw data as points
-           % Set options
-           g2.set_title(Plottitle) %Set figure title
-           g2.set_names('x',LegendxAxis,'y',LegendyAxis2,'color',LegendColor)
-           g2.set_text_options('label_scaling',LabelSize)
-           g2.set_point_options('base_size',MarkerSize)
-           g2.set_color_options('map',ColorMap)
-           g2.axe_property('FontSize',AxesFontSize);
-           g2.set_layout_options("legend",0) % Show legend
-           % g2.set_layout_options("legend",1) % Show legend
-           % Figure
-           h_fig2=figure(2);
-           h_fig2.Color='white'; % changes the background color of the figure
-           h_fig2.Units='pixel'; % Defines the units
-           h_fig2.OuterPosition=Res;
-           h_fig2.PaperOrientation='landscape';
-           h_fig2.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_ChronoFMIdx_',sprintf('%d',ChronoFMIdx),'_',FMColour,NameSuffix2);
-           % The actual plotting
-           g2.draw()
-           % Save figure
-           FullName2=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_ChronoFMIdx_',sprintf('%d',ChronoFMIdx),'_',FMColour,NameSuffix2);
-           print(h_fig2,FullName2,'-dpng'); % Save the current figure in the current folder
-           %% Gramm object 3
-           % Define variables
-           LegendyAxis3='Adhesion force (nN)';
-           NameSuffix3='_AdhForceUnbinding';
-           % Allocate data
-           yArray3=obj.SMFSResults{ResultsRow}.Data.AdhUnbindingConcat(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*-1e9;
-           yData3=yArray3(FMBeforeFcIdx(1):FMAfterFcIdx(end));
-           % Create a gramm object
-           g3=gramm('x',xData,'y',yData3,...
-               'color',ColorData);
-           % Plot data
-           g3.geom_point(); % Plot raw data as points
-           % Set options
-           g3.set_title(Plottitle) %Set figure title
-           g3.set_names('x',LegendxAxis,'y',LegendyAxis3,'color',LegendColor)
-           g3.set_text_options('label_scaling',LabelSize)
-           g3.set_point_options('base_size',MarkerSize)
-           g3.set_color_options('map',ColorMap)
-           g3.axe_property('FontSize',AxesFontSize);
-           g3.set_layout_options("legend",0) % Hide legend
-           %g3.set_layout_options("legend",1) % Show legend
-           % Figure
-           h_fig3=figure(3);
-           h_fig3.Color='white'; % changes the background color of the figure
-           h_fig3.Units='pixel'; % Defines the units
-           h_fig3.OuterPosition=Res;
-           h_fig3.PaperOrientation='landscape';
-           h_fig3.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_ChronoFMIdx_',sprintf('%d',ChronoFMIdx),'_',FMColour,NameSuffix3);
-           % The actual plotting
-           g3.draw()
-           % Save figure
-           FullName3=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_ChronoFMIdx_',sprintf('%d',ChronoFMIdx),'_',FMColour,NameSuffix3);
-           print(h_fig3,FullName3,'-dpng'); % Save the current figure in the current folder
-            %% Gramm object 4
-            % Define variables
-            LegendyAxis4='Adhesion energry (aJ)';
-            NameSuffix4='_AdhEnergyApproach';
-            % Allocate data
-            yArray4=obj.SMFSResults{ResultsRow}.Data.AdhEneAppConcat(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*-1e18;
-            yData4=yArray4(FMBeforeFcIdx(1):FMAfterFcIdx(end));
-            % Create a gramm object
-           g4=gramm('x',xData,'y',yData4,...
-               'color',ColorData);
-           % Plot data
-           g4.geom_point(); % Plot raw data as points
-           % Set options
-           g4.set_title(Plottitle) %Set figure title
-           g4.set_names('x',LegendxAxis,'y',LegendyAxis4,'color',LegendColor)
-           g4.set_text_options('label_scaling',LabelSize)
-           g4.set_point_options('base_size',MarkerSize)
-           g4.set_color_options('map',ColorMap)
-           g4.axe_property('FontSize',AxesFontSize);
-           g4.set_layout_options("legend",0) % Hide legend
-           %g4.set_layout_options("legend",1) % Show legend
-           % Figure
-           h_fig4=figure(4);
-           h_fig4.Color='white'; % changes the background color of the figure
-           h_fig4.Units='pixel'; % Defines the units
-           h_fig4.OuterPosition=Res;
-           h_fig4.PaperOrientation='landscape';
-           h_fig4.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_ChronoFMIdx_',sprintf('%d',ChronoFMIdx),'_',FMColour,NameSuffix4);
-           % The actual plotting
-           g4.draw()
-           % Save figure
-           FullName4=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_ChronoFMIdx_',sprintf('%d',ChronoFMIdx),'_',FMColour,NameSuffix4);
-           print(h_fig4,FullName4,'-dpng'); % Save the current figure in the current folder
-           %% Gramm object 5
-           % Define variables
-           LegendyAxis5='Adhesion energy (aJ)';
-           NameSuffix5='_AdhEnergyRetract';
-           % Allocate data
-           yArray5=obj.SMFSResults{ResultsRow}.Data.AdhEneRetConcat(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*-1e18;
-           yData5=yArray5(FMBeforeFcIdx(1):FMAfterFcIdx(end));
-           % Create a gramm object
-           g5=gramm('x',xData,'y',yData5,...
-               'color',ColorData);
-           % Plot data
-           g5.geom_point(); % Plot raw data as points
-           % Set options
-           g5.set_title(Plottitle) %Set figure title
-           g5.set_names('x',LegendxAxis,'y',LegendyAxis5,'color',LegendColor)
-           g5.set_text_options('label_scaling',LabelSize)
-           g5.set_point_options('base_size',MarkerSize)
-           g5.set_color_options('map',ColorMap)
-           g5.axe_property('FontSize',AxesFontSize);
-           g5.set_layout_options("legend",0) % Hide legend
-           %g5.set_layout_options("legend",1) % Show legend
-           % Figure
-           h_fig5=figure(5);
-           h_fig5.Color='white'; % changes the background color of the figure
-           h_fig5.Units='pixel'; % Defines the units
-           h_fig5.OuterPosition=Res;
-           h_fig5.PaperOrientation='landscape';
-           h_fig5.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_ChronoFMIdx_',sprintf('%d',ChronoFMIdx),'_',FMColour,NameSuffix5);
-           % The actual plotting
-           g5.draw()
-           % Save figure
-           FullName5=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_ChronoFMIdx_',sprintf('%d',ChronoFMIdx),'_',FMColour,NameSuffix5);
-           print(h_fig5,FullName5,'-dpng'); % Save the current figure in the current folder
-           %% Gramm object 6
-           % Define variables
-           NameSuffix6='_Pullinglength';
-           LegendyAxis6='Pull-off length (nm)';
-           % Allocate data
-           yArray6=obj.SMFSResults{ResultsRow}.Data.yPullingLengthConcat(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*1e9;
-           yData6=yArray6(FMBeforeFcIdx(1):FMAfterFcIdx(end));
-           % Create a gramm object
-           g6=gramm('x',xData,'y',yData6,...
-               'color',ColorData);
-           % Plot data
-           g6.geom_polygon('y',{LimitLengthRet1;LimitLengthRet2},'color',ColorBrewerMap1);
-           g6.geom_point(); % Plot raw data as points
-           % Set options
-           %      g6.set_title(Plottitle) %Set figure title
-           g6.set_names('x',LegendxAxis,'y',LegendyAxis6,'color',LegendColor)
-           g6.set_color_options('n_color',6,...
-               'n_lightness',6,...
-               'legend','expand')
-           g6.set_text_options('label_scaling',LabelSize)
-           g6.set_point_options('base_size',MarkerSize)
-           g6.set_color_options('map',ColorMapBlue)
-           g6.axe_property('FontSize',AxesFontSize);
-           g6.axe_property('ylim',[0 850]);
-           g6.set_layout_options("legend",0) % Hide legend
-           %g6.set_layout_options("legend",1) % Show legend
-           % Figure
-           h_fig6=figure(6);
-           h_fig6.Color='white'; % changes the background color of the figure
-           h_fig6.Units='pixel'; % Defines the units
-           h_fig6.OuterPosition=Res;
-           h_fig6.PaperOrientation='landscape';
-           h_fig6.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_ChronoFMIdx_',sprintf('%d',ChronoFMIdx),'_',FMColour,NameSuffix6);
-           % The actual plotting
-           g6.draw()
-           % Save figure
-           FullName6=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_ChronoFMIdx_',sprintf('%d',ChronoFMIdx),'_',FMColour,NameSuffix6);
-           print(h_fig6,FullName6,'-dpng'); % Save the current figure in the current folder
-            %% Gramm object 7
-            % Define variables
-            LegendyAxis7='Snap-In length (nm)';
-            NameSuffix7='_SnapInLength';
-            % Allocate data
-            yArray7=obj.SMFSResults{ResultsRow}.Data.ySnapInLengthConcat(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*1e9;
-            yData7=yArray7(FMBeforeFcIdx(1):FMAfterFcIdx(end));
-            % Create a gramm object
-           g7=gramm('x',xData,'y',yData7,...
-               'color',ColorData);
-           % Plot data
-           g7.geom_polygon('y',{LimitLengthApp},'color',ColorBrewerMap1);
-           g7.geom_point(); % Plot raw data as points
-           % Set options
-           %      g6.set_title(Plottitle) %Set figure title
-           g7.set_names('x',LegendxAxis,'y',LegendyAxis7,'color',LegendColor)
-           g7.set_text_options('label_scaling',LabelSize)
-           g7.set_point_options('base_size',MarkerSize)
-           g7.set_color_options('map',ColorMapBlue)
-           g7.axe_property('FontSize',AxesFontSize);
-           g7.axe_property('ylim',[0 850]);
-           g7.set_layout_options("legend",0) % Hide legend
-           %g6.set_layout_options("legend",1) % Show legend
-           % Figure
-           h_fig7=figure(7);
-           h_fig7.Color='white'; % changes the background color of the figure
-           h_fig7.Units='pixel'; % Defines the units
-           h_fig7.OuterPosition=Res;
-           h_fig7.PaperOrientation='landscape';
-           h_fig7.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_ChronoFMIdx_',sprintf('%d',ChronoFMIdx),'_',FMColour,NameSuffix7);
-           % The actual plotting
-           g7.draw()
-           % Save figure
-           FullName7=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_ChronoFMIdx_',sprintf('%d',ChronoFMIdx),'_',FMColour,NameSuffix7);
-           print(h_fig7,FullName7,'-dpng'); % Save the current figure in the current folder
-           % House keeping
-           close all
-       end
-      
-        function SM_results_gramm_plot2(obj,ResultsRow,Linker,xArg,MarkerArg)
-           % Input variables: 
-           % ResultsRow: double ,e.g. 1
-           % Linker: string , either 'long' or 'short'
-           % xArg (x-axis argument): string, either 'Index' or 'DateTime'
-           % MarkerArg: sting, either 'Y' or 'N' 
-           % Y stands for Yes, show marker
-           % N stands for No, do not show marker
-
-           % Input variable adaptation
-           if nargin<2
-               ResultsRow=1;
-           end
-           ColorBrewerMap1=[[253 174 97]./255; % Ochreish
-               [116 173 209]./255]; % Steel blueish
-           % Change into the Folder of Interest
-           cd(obj.ExperimentFolder) % Move into the folder
-           % Create folders for saving the produced figures
-           foldername='SM_results_gramm_plot2';    % Defines the folder name
-           mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
-           currpath=fullfile(obj.ExperimentFolder,foldername);
-           cd(currpath);
-           %% General variables 1
-            if strcmpi(Linker,'Long')
-            LimitLengthRet1=[0 378]; 
-            LimitLengthRet2=[378 522];
-            LimitLengthApp=[50 120];
-            elseif strcmpi(Linker,'Short')
-            LimitLengthRet1=[0 333]; 
-            LimitLengthRet2=[333 463];
-            LimitLengthApp=[50 120];
-            end
-           if strcmpi(xArg,'DateTime')
-               LegendxAxis='Date and Time';
-               xData=obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSort;
-               MarkerData=obj.SMFSResults{ResultsRow}.Concatenate.FMIndex(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx);
-               MarkerName='FM Index';
-               xDataMin=min(xData);
-               xDataMax=max(xData);
-               xAxisCorr=(xDataMax-xDataMin)*0.05;
-           elseif strcmpi(xArg,'Index')
-               LegendxAxis='Force curves in chronological order';
-               xData=obj.SMFSResults{ResultsRow}.Concatenate.FcNum;
-               MarkerData=obj.SMFSResults{ResultsRow}.Concatenate.FMIndex(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx);
-               MarkerName='FM Index';
-               xDataMin=min(xData);
-               xDataMax=max(xData);
-               xAxisCorr=(xDataMax-xDataMin)*0.05;
-           end
-           Res=[1 1 2560 1250]; % Define the figure resolution
-           LegendColor='Medium';
-           LightnessName='Substrate';
-           LightnessData=obj.SMFSResults{ResultsRow}.Concatenate.FMSubstrate(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx);
-           ColorData=obj.SMFSResults{ResultsRow}.Concatenate.FMEnvCond(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx);
-           MarkerSize=10;
-           BaseFontSize=24;
-           if obj.SMFSResults{ResultsRow}.Parameters.ExtendVelocity==0
-               ExtVelocityValueStr='All';
-           else
-               ExtVelocityValueStr=num2str(round(obj.SMFSResults{ResultsRow}.Parameters.ExtendVelocity*1e9));
-           end
-           if obj.SMFSResults{ResultsRow}.Parameters.RetractVelocity==0
-               RetVelocityValueStr='All';
-           else
-               RetVelocityValueStr=num2str(round(obj.SMFSResults{ResultsRow}.Parameters.RetractVelocity*1e9));
-           end
-           if obj.SMFSResults{ResultsRow}.Parameters.HoldingTime==-1
-               HoldingTimeValueStr='All';
-           else
-               HoldingTimeValueStr=num2str(obj.SMFSResults{ResultsRow}.Parameters.HoldingTime);
-           end
-           % General names
-           FigNamePt1=sprintf('SMFSResultRow%d_',ResultsRow);
-           FigNamePt2=strcat(ExtVelocityValueStr,{'_'},RetVelocityValueStr,{'_'},HoldingTimeValueStr,{'_'},obj.SMFSResults{ResultsRow}.Parameters.Substrate,{'_'},obj.SMFSResults{ResultsRow}.Parameters.Medium,{'_'},obj.SMFSResults{ResultsRow}.Parameters.ChipCantilever,{'_'},obj.SMFSResults{ResultsRow}.Parameters.Chipbox,{'_'},obj.SMFSResults{ResultsRow}.Parameters.Linker);
-           FigNamePt2=char(FigNamePt2);
-           FigNamePt3='_Plot2';
-            %% Gramm object 1
-            % Define variables
-            Plottitle1=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ResultsRow,1}.Data(1).FMIndex),obj.SMFSResults{ResultsRow,1}.Data(1).SumNumFcAnalysedAdhMaxApp);
-            LegendyAxis1='Adhesion force (N)';
-            NameSuffix1='_MaxAdhesionForceApproach';
-            % Allocate data
-            yData1=obj.SMFSResults{ResultsRow}.Data.AdhMaxAppConcat(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*-1; 
-            % Create a gramm object
-            if strcmpi(MarkerArg,'Y')
-            g1=gramm('x',xData,'y',yData1,...
-               'color',ColorData,...
-               'lightness',LightnessData,...
-               'marker',MarkerData);
-            elseif strcmpi(MarkerArg,'N')
-            g1=gramm('x',xData,'y',yData1,...
-               'color',ColorData,...
-               'lightness',LightnessData);
-            end
-           % Plot data
-           %      g1.geom_polygon('y',{LimitForce1;LimitForce2;LimitForce3},'color',ColorBrewerMap1);
-           g1.geom_point();
-           % Set options
-           g1.axe_property('xlim',[xDataMin-xAxisCorr xDataMax+xAxisCorr]) % Set x limit
-           if strcmpi(xArg,'DateTime')
-               g1.set_datetick('x',0,'keeplimits') % Format x-axis
-           end
-           g1.set_point_options('base_size',MarkerSize)
-           g1.set_title(Plottitle1) %Set figure title
-           if strcmpi(MarkerArg,'Y')
-           g1.set_names('x',LegendxAxis,'y',LegendyAxis1,'color',LegendColor,'lightness',LightnessName,'marker',MarkerName)
-           elseif strcmpi(MarkerArg,'N')
-           g1.set_names('x',LegendxAxis,'y',LegendyAxis1,'color',LegendColor,'lightness',LightnessName)
-           end
-           g1.set_color_options('map','hcl',...
-               'n_color',6,...
-               'n_lightness',6,...
-               'legend','expand')
-           g1.set_text_options('font','Helvetica','base_size',BaseFontSize,'label_scaling',1.2,'legend_scaling',1)
-           %g1.set_layout_options("legend",0) % Don't show legend
-           g1.set_layout_options("legend",1) % Show legend
-           % Figure
-           h_fig1=figure(1);
-           h_fig1.Color='white'; % changes the background color of the figure
-           h_fig1.Units='pixel'; % Defines the units
-           h_fig1.OuterPosition=Res;
-           h_fig1.PaperOrientation='landscape';
-           h_fig1.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix1);
-           % The actual plotting
-           g1.draw()
- 
-           %% Gramm object 2
-           % Define variables
-           Plottitle2=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ResultsRow,1}.Data(1).FMIndex),obj.SMFSResults{ResultsRow,1}.Data(1).SumNumFcAnalysedAdhMaxRet);
-           LegendyAxis2='Adhesion force (nN)';
-           NameSuffix2='_MaxAdhesionForceRetract';
-           % Allocate data
-           yData2=obj.SMFSResults{ResultsRow}.Data.AdhMaxRetConcat(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*-1e9;
-           % Create a gramm object
-            if strcmpi(MarkerArg,'Y')
-            g2=gramm('x',xData,'y',yData2,...
-               'color',ColorData,...
-               'lightness',LightnessData,...
-               'marker',MarkerData);
-            elseif strcmpi(MarkerArg,'N')
-            g2=gramm('x',xData,'y',yData2,...
-               'color',ColorData,...
-               'lightness',LightnessData);
-            end
-           % Plot data
-           %      g2.geom_polygon('y',{LimitForce1;LimitForce2;LimitForce3},'color',ColorBrewerMap1);
-           g2.geom_point();
-           % Set options
-           g2.axe_property('xlim',[xDataMin-xAxisCorr xDataMax+xAxisCorr]) % Set x limit
-           if strcmpi(xArg,'DateTime')
-               g2.set_datetick('x',0,'keeplimits') % Format x-axis
-           end
-           g2.set_point_options('base_size',MarkerSize)
-           g2.set_title(Plottitle2) %Set figure title
-           if strcmpi(MarkerArg,'Y')
-           g2.set_names('x',LegendxAxis,'y',LegendyAxis2,'color',LegendColor,'lightness',LightnessName,'marker',MarkerName)
-           elseif strcmpi(MarkerArg,'N')
-           g2.set_names('x',LegendxAxis,'y',LegendyAxis2,'color',LegendColor,'lightness',LightnessName)
-           end
-           g2.set_color_options('n_color',6,...
-               'n_lightness',6,...
-               'legend','expand')
-           g2.set_text_options('font','Helvetica','base_size',BaseFontSize,'label_scaling',1.2,'legend_scaling',1)
-           %g2.set_layout_options("legend",0) % Don't show legend
-           g2.set_layout_options("legend",1) % Show legend
-           % Figure
-           h_fig2=figure(2);
-           h_fig2.Color='white'; % changes the background color of the figure
-           h_fig2.Units='pixel'; % Defines the units
-           h_fig2.OuterPosition=Res;
-           h_fig2.PaperOrientation='landscape';
-           h_fig2.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix2);
-           % The actual plotting
-           g2.draw()
-           % Save figure
-           FullName2=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix2);
-           %%% Save the current figure in the current folder
-           print(h_fig2,FullName2,'-dpng');
-           % g2.export('file_name',FullName2,file_type='pdf',width=42,height=29.7,units='centimeters');
-% 
-           
-            %% Gramm object 3
-            % Define variables
-            Plottitle3=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ResultsRow,1}.Data(1).FMIndex),obj.SMFSResults{ResultsRow,1}.Data(1).SumNumFcAnalysedAdhUnbinding); 
-            LegendyAxis3='Adhesion force (nN)';
-            NameSuffix3='_AdhForceUnbinding';
-            % Allocate data
-            yData3=obj.SMFSResults{ResultsRow}.Data.AdhUnbindingConcat(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*-1e9;
-            % Create a gramm object
-            if strcmpi(MarkerArg,'Y')
-            g3=gramm('x',xData,'y',yData3,...
-               'color',ColorData,...
-               'lightness',LightnessData,...
-               'marker',MarkerData);
-            elseif strcmpi(MarkerArg,'N')
-            g3=gramm('x',xData,'y',yData3,...
-               'color',ColorData,...
-               'lightness',LightnessData);
-            end
-           % Plot data
-           g3.geom_point()
-           % Set options
-           g3.axe_property('xlim',[xDataMin-xAxisCorr xDataMax+xAxisCorr]) % Set x limit
-           if strcmpi(xArg,'DateTime')
-               g3.set_datetick('x',0,'keeplimits') % Format x-axis
-           end
-           g3.set_point_options('base_size',MarkerSize)
-           g3.set_title(Plottitle3) %Set figure title
-           if strcmpi(MarkerArg,'Y')
-           g3.set_names('x',LegendxAxis,'y',LegendyAxis3,'color',LegendColor,'lightness',LightnessName,'marker',MarkerName)
-           elseif strcmpi(MarkerArg,'N')
-           g3.set_names('x',LegendxAxis,'y',LegendyAxis3,'color',LegendColor,'lightness',LightnessName)
-           end
-           g3.set_color_options('n_color',6,...
-               'n_lightness',6,...
-               'legend','expand')
-           g3.set_text_options('font','Helvetica','base_size',BaseFontSize,'label_scaling',1.2,'legend_scaling',1)
-           %g3.set_layout_options("legend",0) % Don't show legend
-           g3.set_layout_options("legend",1) % Show legend
-           % Figure
-           h_fig3=figure(3);
-           h_fig3.Color='white'; % changes the background color of the figure
-           h_fig3.Units='pixel'; % Defines the units
-           h_fig3.OuterPosition=Res;
-           h_fig3.PaperOrientation='landscape';
-           h_fig3.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix3);
-           % The actual plotting
-           g3.draw()            
-            % Save figure            
-            FullName3=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix3);
-            print(h_fig3,FullName3,'-dpng'); % Save the current figure in the current folder
-   %         g3.export('file_name',FullName2,file_type='pdf',width=42,height=29.7,units='centimeters');
-
-            %% Gramm object 4
-            % Define variables
-            Plottitle4=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ResultsRow,1}.Data(1).FMIndex),obj.SMFSResults{ResultsRow,1}.Data(1).SumNumFcAnalysedAdhEneApp);
-            LegendyAxis4='Adhesion energry (J)';
-            NameSuffix4='_AdhEnergyApproach';
-            % Allocate data
-            yData4=obj.SMFSResults{ResultsRow}.Data.AdhEneAppConcat(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*-1e18;
-            % Create a gramm object
-            if strcmpi(MarkerArg,'Y')
-            g4=gramm('x',xData,'y',yData4,...
-               'color',ColorData,...
-               'lightness',LightnessData,...
-               'marker',MarkerData);
-            elseif strcmpi(MarkerArg,'N')
-            g4=gramm('x',xData,'y',yData4,...
-               'color',ColorData,...
-               'lightness',LightnessData);
-            end
-           % Plot data
-           g4.geom_point()
-           % Set options
-           g4.axe_property('xlim',[xDataMin-xAxisCorr xDataMax+xAxisCorr]) % Set x limit
-           if strcmpi(xArg,'DateTime')
-               g4.set_datetick('x',0,'keeplimits') % Format x-axis
-           end
-           g4.set_point_options('base_size',MarkerSize)
-           g4.set_title(Plottitle4) %Set figure title
-           if strcmpi(MarkerArg,'Y')
-           g4.set_names('x',LegendxAxis,'y',LegendyAxis4,'color',LegendColor,'lightness',LightnessName,'marker',MarkerName)
-           elseif strcmpi(MarkerArg,'N')
-           g4.set_names('x',LegendxAxis,'y',LegendyAxis4,'color',LegendColor,'lightness',LightnessName)
-           end
-           g4.set_color_options('n_color',6,...
-               'n_lightness',6,...
-               'legend','expand')
-           g4.set_text_options('font','Helvetica','base_size',BaseFontSize,'label_scaling',1.2,'legend_scaling',1)
-           %g4.set_layout_options("legend",0) % Don't show legend
-           g4.set_layout_options("legend",1) % Show legend
-           % Figure
-           h_fig4=figure(4);
-           h_fig4.Color='white'; % changes the background color of the figure
-           h_fig4.Units='pixel'; % Defines the units
-           h_fig4.OuterPosition=Res;
-           h_fig4.PaperOrientation='landscape';
-           h_fig4.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix4);
-           % The actual plotting
-           g4.draw()
-            % Save figure
-            FullName4=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix4);
-            print(h_fig4,FullName4,'-dpng'); % Save the current figure in the current folder
-         %   g4.export('file_name',FullName5,file_type='pdf',width=42,height=29.7,units='centimeters');
-
-           %% Gramm object 5
-           % Define variables
-           Plottitle5=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ResultsRow,1}.Data(1).FMIndex),obj.SMFSResults{ResultsRow,1}.Data(1).SumNumFcAnalysedAdhEneRet);            
-           LegendyAxis5='Adhesion energy (aJ)';
-           NameSuffix5='_AdhEnergyRetract';
-           % Allocate data
-           yData5=obj.SMFSResults{ResultsRow}.Data.AdhEneRetConcat(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*-1e18;
-           % Create a gramm object
-            if strcmpi(MarkerArg,'Y')
-            g5=gramm('x',xData,'y',yData5,...
-               'color',ColorData,...
-               'lightness',LightnessData,...
-               'marker',MarkerData);
-            elseif strcmpi(MarkerArg,'N')
-            g5=gramm('x',xData,'y',yData5,...
-               'color',ColorData,...
-               'lightness',LightnessData);
-            end
-           % Plot data
-           g5.geom_point()
-           % Set options
-           g5.axe_property('xlim',[xDataMin-xAxisCorr xDataMax+xAxisCorr]) % Set x limit
-           if strcmpi(xArg,'DateTime')
-               g5.set_datetick('x',0,'keeplimits') % Format x-axis
-           end
-           g5.set_point_options('base_size',MarkerSize)
-           g5.set_title(Plottitle5) %Set figure title
-           if strcmpi(MarkerArg,'Y')
-           g5.set_names('x',LegendxAxis,'y',LegendyAxis5,'color',LegendColor,'lightness',LightnessName,'marker',MarkerName)
-           elseif strcmpi(MarkerArg,'N')
-           g5.set_names('x',LegendxAxis,'y',LegendyAxis5,'color',LegendColor,'lightness',LightnessName)
-           end
-           g5.set_color_options('n_color',6,...
-               'n_lightness',6,...
-               'legend','expand')
-           g5.set_text_options('font','Helvetica','base_size',BaseFontSize,'label_scaling',1.2,'legend_scaling',1)
-           %g5.set_layout_options("legend",0) % Don't show legend
-           g5.set_layout_options("legend",1) % Show legend
-           % Figure
-           h_fig5=figure(5);
-           h_fig5.Color='white'; % changes the background color of the figure
-           h_fig5.Units='pixel'; % Defines the units
-           h_fig5.OuterPosition=Res;
-           h_fig5.PaperOrientation='landscape';
-           h_fig5.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix5);
-           % The actual plotting
-           g5.draw()
-           % Save figure
-           FullName5=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix5);
-           %%% Save the current figure in the current folder
-           print(h_fig5,FullName5,'-dpng');
-           %g5.export('file_name',FullName5,file_type='pdf',width=42,height=29.7,units='centimeters');
-
-           %% Gramm object 6
-           % Define variables
-           Plottitle6=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ResultsRow,1}.Data(1).FMIndex),obj.SMFSResults{ResultsRow,1}.Data(1).SumNumFcAnalysedyPullingLength);
-           LegendyAxis6='Pull-off length (nm)';
-           NameSuffix6='_Pullinglength';
-           % Allocate data
-           yData6=obj.SMFSResults{ResultsRow}.Data.yPullingLengthConcat(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*1e9;
-           % Create a gramm object
-            if strcmpi(MarkerArg,'Y')
-            g6=gramm('x',xData,'y',yData6,...
-               'color',ColorData,...
-               'lightness',LightnessData,...
-               'marker',MarkerData);
-            elseif strcmpi(MarkerArg,'N')
-            g6=gramm('x',xData,'y',yData6,...
-               'color',ColorData,...
-               'lightness',LightnessData);
-            end
-           % Plot data
-           g6.geom_polygon('y',{LimitLengthRet1;LimitLengthRet2},'color',ColorBrewerMap1);
-           g6.geom_point();
-           % Set options
-           g6.axe_property('xlim',[xDataMin-xAxisCorr xDataMax+xAxisCorr]) % Set x limit
-           if strcmpi(xArg,'DateTime')
-               g6.set_datetick('x',0,'keeplimits') % Format x-axis
-           end
-           g6.set_point_options('base_size',MarkerSize)
-           g6.set_title(Plottitle6) %Set figure title
-           if strcmpi(MarkerArg,'Y')
-           g6.set_names('x',LegendxAxis,'y',LegendyAxis6,'color',LegendColor,'lightness',LightnessName,'marker',MarkerName)
-           elseif strcmpi(MarkerArg,'N')
-           g6.set_names('x',LegendxAxis,'y',LegendyAxis6,'color',LegendColor,'lightness',LightnessName)
-           end
-           g6.set_color_options('n_color',6,...
-               'n_lightness',6,...
-               'legend','expand')
-           g6.set_text_options('font','Helvetica','base_size',BaseFontSize,'label_scaling',1.2,'legend_scaling',1)
-           %g6.set_layout_options("legend",0) % Don't show legend
-           g6.set_layout_options("legend",1) % Show legend
-           % Figure
-           h_fig6=figure(6);
-           h_fig6.Color='white'; % changes the background color of the figure
-           h_fig6.Units='pixel'; % Defines the units
-           h_fig6.OuterPosition=Res;
-           h_fig6.PaperOrientation='landscape';
-           h_fig6.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix6);
-           % The actual plotting
-           g6.draw()
-           % Save figure
-           FullName6=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix6);
-           %%% Save the current figure in the current folder
-           print(h_fig6,FullName6,'-r1200','-dpng');
-           %g6.export('file_name',FullName6,file_type='pdf',width=42,height=29.7,units='centimeters');
-
-            %% Gramm object 7
-            % Define variables
-            Plottitle7=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ResultsRow,1}.Data(1).FMIndex),obj.SMFSResults{ResultsRow,1}.Data(1).SumNumFcAnalysedySnapInLength);
-            LegendyAxis7='Snap-In length (nm)';
-            NameSuffix7='_SnapInLength';
-            % Allocate data
-            yData7=obj.SMFSResults{ResultsRow}.Data.ySnapInLengthConcat(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*1e9;
-            % Create a gramm object
-            if strcmpi(MarkerArg,'Y')
-            g7=gramm('x',xData,'y',yData7,...
-               'color',ColorData,...
-               'lightness',LightnessData,...
-               'marker',MarkerData);
-            elseif strcmpi(MarkerArg,'N')
-            g7=gramm('x',xData,'y',yData7,...
-               'color',ColorData,...
-               'lightness',LightnessData);
-            end
-           % Plot data
-           g7.geom_polygon('y',{LimitLengthApp},'color',ColorBrewerMap1);
-           g7.geom_point();
-           % Set options
-           g7.axe_property('xlim',[xDataMin-xAxisCorr xDataMax+xAxisCorr]) % Set x limit
-           if strcmpi(xArg,'DateTime')
-               g7.set_datetick('x',0,'keeplimits') % Format x-axis
-           end
-           g7.set_point_options('base_size',MarkerSize)
-           g7.set_title(Plottitle7) %Set figure title
-           if strcmpi(MarkerArg,'Y')
-           g7.set_names('x',LegendxAxis,'y',LegendyAxis7,'color',LegendColor,'lightness',LightnessName,'marker',MarkerName)
-           elseif strcmpi(MarkerArg,'N')
-           g7.set_names('x',LegendxAxis,'y',LegendyAxis7,'color',LegendColor,'lightness',LightnessName)
-           end
-           g7.set_color_options('n_color',6,...
-               'n_lightness',6,...
-               'legend','expand')
-           g7.set_text_options('font','Helvetica','base_size',BaseFontSize,'label_scaling',1.2,'legend_scaling',1)
-           %g7.set_layout_options("legend",0) % Don't show legend
-           g7.set_layout_options("legend",1) % Show legend
-           % Figure
-           h_fig7=figure(7);
-           h_fig7.Color='white'; % changes the background color of the figure
-           h_fig7.Units='pixel'; % Defines the units
-           h_fig7.OuterPosition=Res;
-           h_fig7.PaperOrientation='landscape';
-           h_fig7.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix6);
-           % The actual plotting
-           g7.draw()
-            % Save figure
-            FullName7=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,NameSuffix7);
-            print(h_fig7,FullName7,'-r1200','-dpng'); % Save the current figure in the current folder
-    %       g7.export('file_name',FullName6,file_type='pdf',width=42,height=29.7,units='centimeters');  
-
-           % House keeping
-           close all
-       end
-
-       function SM_results_gramm_plot2_publication(obj,ResultsRow,Linker,xArg,MarkerArg,LegendArg,CBar,Var,yDataArg)
-           % Input variables:
-           % ResultsRow: double ,e.g. 1
-           % Linker: string , either 'long' or 'short'
-           % xArg (x-axis argument): string, either 'Index' or 'DateTime'
-           % MarkerArg (Marker argument): string, either 'Y' or 'N'
-           % LegendArg (Legend argument): string, either 'Y' or 'N'
-           % CBar (Color Bar): string, either 'Y' or 'N'
-           % Var (Variant): double, e.g. 2 (for Variant 2)
-           % yDataArg (y-data argument): string, either 'old' or 'new' (To be able to use the fct also for trials which are not completely analysable)
-
-           % Input variable adaptation
-           if nargin<2
-               ResultsRow=1;
-           end
-           % Define variables
-           yLimMaxFactor=0.25;
-           yLimMinFactor=0.2;
-           %yLimMaxFactor=0.3;
-           %yLimMinFactor=0.25;
-           yAxisMinFactor=0.09;
-           yAxisMaxFactor=0.25;
-           Res=[1 1 2560 1250]; % Define the figure resolution
-           %MarkerSize=10;
-           MarkerSize=20;
-           BaseFontSize=46;
-           LabelScaling=1.2;
-           LegendScaling=1;
-           LineWidth=1.5;
-           FontName='Arial';
-            % Define color bar
-            xCBar1=[0 134 134 0]; % Native
-            xCBar2=[134 2100 2100 134]; % Sliding
-            xCBar3=[2200 12100 12100 2200]; % Unraveled
-            xCBar4=[12100 22200 22200 12100]; % Dissociated
-            % Color and Color maps
-            Ochreish=[253 174 97]./255;
-            SteelBlue=[116 173 209]./255;
-           ColorBrewerMap1=[[253 174 97]./255; % Ochreish
-               [116 173 209]./255]; % Steel blueish
-           ColorBarMap=[[54 163 0]./255; % Dark green HEX 8DB600
-               [206 22 32]./255; % Fire Engine Red HEX CE162
-               [0 24 204]./255; % Blue HEX 8DB600
-               [135 0 224]./255]; % Violet HEX 8F00FF
-%             ColorMarkerMap=[[255 194 191]./255; % Light rose
-%                [255 194 191]./255;  % Light rose
-%                [209 217 161]./255;  % Light green
-%                [209 217 161]./255; % Light green
-%                [0 136 255]./255; % Light blue
-%                [0 136 255]./255; % Light blue
-%                [200 0 200]./255; % Pink
-%                [200 0 200]./255]; % Pink
-            ColorMarkerMap='parula'; 
-           % Change into the Folder of Interest
-           cd(obj.ExperimentFolder) % Move into the folder
-           % Create folders for saving the produced figures
-           foldername='SM_results_gramm_plot2_publication';    % Defines the folder name
-           mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
-           currpath=fullfile(obj.ExperimentFolder,foldername);
-           cd(currpath);
-           %% Input variables
-           % Linker
-           if strcmpi(Linker,'Long')
-               LimitLengthRet1=[0 378];
-               LimitLengthRet2=[378 522];
-               LimitLengthApp=[50 120];
-           elseif strcmpi(Linker,'Short')
-               LimitLengthRet1=[0 308];
-               LimitLengthRet2=[308 463];
-               LimitLengthApp=[50 120];
-           end
-           % xArg
-           if strcmpi(xArg,'DateTime')
-               LegendxAxis='Date and Time';
-               xData=obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSort;
-               xDataMin=min(xData);
-               xDataMax=max(xData);
-               xAxisCorr=(xDataMax-xDataMin)*0.05;
-           elseif strcmpi(xArg,'Index')
-               LegendxAxis='Number of cycles';
-               xData=obj.SMFSResults{ResultsRow}.Concatenate.FcNum;
-               xDataMin=min(xData);
-               xDataMax=max(xData);
-               xAxisCorr=(xDataMax-xDataMin)*0.005;
-           end
-           % Var
-           if Var==1
-               ColorName='Medium';
-               LightnessName='Substrate';
-               MarkerName='ChipCantilever';
-               LightnessData=obj.SMFSResults{ResultsRow}.Concatenate.FMSubstrate(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx);
-               ColorData=obj.SMFSResults{ResultsRow}.Concatenate.FMEnvCond(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx);
-               MarkerData=obj.SMFSResults{ResultsRow}.Concatenate.FMChipCant(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx);
-               NumColor=2;
-               NumLightness=2;
-           elseif Var==2
-               ColorName='Approach speed ($\mu$m/s)';
-               LightnessName='Retraction speed ($\mu$m/s)';
-               MarkerName='Dwell Time (s)';
-               FMExtVeloData=obj.SMFSResults{ResultsRow}.Concatenate.FMExtVelocity(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*1e6;
-               FMRetVeloData=obj.SMFSResults{ResultsRow}.Concatenate.FMRetVelocity(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*1e6;
-               ColorData=FMExtVeloData;
-               LightnessData=FMRetVeloData;
-               MarkerData=obj.SMFSResults{ResultsRow}.Concatenate.FMHoldingTime(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx);
-               NumColor=6;
-               NumLightness=6;
-           elseif Var==3
-                ColorName='Dwell Time (s)';
-                LightnessName='Retraction velocity ($\mu$m/s)';
-                MarkerName='Approach velocity ($\mu$m/s)';
-                FMExtVeloData=obj.SMFSResults{ResultsRow}.Concatenate.FMExtVelocity(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*1e6;
-                FMRetVeloData=obj.SMFSResults{ResultsRow}.Concatenate.FMRetVelocity(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*1e6;
-                ColorData=obj.SMFSResults{ResultsRow}.Concatenate.FMHoldingTime(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx);
-                LightnessData=FMRetVeloData;
-                MarkerData=FMExtVeloData;
-                NumColor=2;
-                NumLightness=2;
-           end
-           % Define parameter term for the figure name 
-           if obj.SMFSResults{ResultsRow}.Parameters.ExtendVelocity==0
-               ExtVelocityValueStr='All';
-           else
-               ExtVelocityValueStr=num2str(round(obj.SMFSResults{ResultsRow}.Parameters.ExtendVelocity*1e9));
-           end
-           if obj.SMFSResults{ResultsRow}.Parameters.RetractVelocity==0
-               RetVelocityValueStr='All';
-           else
-               RetVelocityValueStr=num2str(round(obj.SMFSResults{ResultsRow}.Parameters.RetractVelocity*1e9));
-           end
-           if obj.SMFSResults{ResultsRow}.Parameters.HoldingTime==-1
-               HoldingTimeValueStr='All';
-           else
-               HoldingTimeValueStr=num2str(obj.SMFSResults{ResultsRow}.Parameters.HoldingTime);
-           end
-           % General names
-           FigNamePt1=sprintf('SMFSResultRow%d_',ResultsRow);
-           FigNamePt2=strcat(ExtVelocityValueStr,{'_'},RetVelocityValueStr,{'_'},HoldingTimeValueStr,{'_'},obj.SMFSResults{ResultsRow}.Parameters.Substrate,{'_'},obj.SMFSResults{ResultsRow}.Parameters.Medium,{'_'},obj.SMFSResults{ResultsRow}.Parameters.ChipCantilever,{'_'},obj.SMFSResults{ResultsRow}.Parameters.Chipbox,{'_'},obj.SMFSResults{ResultsRow}.Parameters.Linker);
-           FigNamePt2=char(FigNamePt2);
-           FigNamePt3='_Plot2';
-           %% Gramm object 1
-           % Define variables
-           Plottitle1=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ResultsRow,1}.Data(1).FMIndex),obj.SMFSResults{ResultsRow,1}.Data(1).SumNumFcAnalysedAdhMaxApp);
-           LegendyAxis1='Adhesion force (nN)';
-           NameSuffix1='_MaxAdhesionForceApproach';
-           % Allocate data
-           if strcmpi(yDataArg,'new')
-           yData1=obj.SMFSResults{ResultsRow}.Concatenate.AdhMaxApp(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*-1e9;
-           elseif strcmpi(yDataArg,'old')
-           yData1=obj.SMFSResults{ResultsRow}.Data.AdhMaxAppConcat(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*-1;   
-           end
-           yData1Min=min(yData1);
-           yData1Max=max(yData1);
-           yData1diff=yData1Max-yData1Min;
-           % Create a gramm object
-           if strcmpi(MarkerArg,'Y')
-               g1=gramm('x',xData,'y',yData1,...
-                   'color',ColorData,...
-                   'lightness',LightnessData,...
-                   'marker',MarkerData);
-           elseif strcmpi(MarkerArg,'N')
-               g1=gramm('x',xData,'y',yData1,...
-                   'color',ColorData,...
-                   'lightness',LightnessData);
-           end
-           % Plot data
-           g1.geom_point();
-           % Set options
-           g1.axe_property('LineWidth',LineWidth,'xlim',[xDataMin-xAxisCorr xDataMax+xAxisCorr],'ylim',[yData1Min-yData1diff*yAxisMinFactor yData1Max+yData1diff*yAxisMaxFactor],'TickDir','out','TickLength',[0.005 0.005]);
-           if strcmpi(xArg,'DateTime')
-               g1.set_datetick('x',0,'keeplimits') % Format x-axis
-           end
-           % Color Bar
-           if strcmpi(CBar,'Y')
-           y1CBar=[yData1Max+yData1diff*yLimMinFactor yData1Max+yData1diff*yLimMinFactor yData1Max+yData1diff*yLimMaxFactor yData1Max+yData1diff*yLimMaxFactor];
-           g1.geom_polygon('x',{xCBar1;xCBar2;xCBar3;xCBar4},'y',{y1CBar;y1CBar;y1CBar;y1CBar},'color',ColorBarMap,'alpha',1);
-           else
-           end
-           g1.set_point_options('base_size',MarkerSize)
-           %g1.set_title(Plottitle1) %Set figure title
-           if strcmpi(MarkerArg,'Y')
-               g1.set_names('x',LegendxAxis,'y',LegendyAxis1,'color',ColorName,'lightness',LightnessName,'marker',MarkerName)
-           elseif strcmpi(MarkerArg,'N')
-               g1.set_names('x',LegendxAxis,'y',LegendyAxis1,'color',ColorName,'lightness',LightnessName)
-           end
-           g1.set_color_options('Map',ColorMarkerMap,...
-               'n_color',NumColor,...
-               'n_lightness',NumLightness,...
-               'legend','separate_gray')
-           g1.set_text_options('font',FontName,'base_size',BaseFontSize,'label_scaling',LabelScaling,'legend_scaling',LegendScaling)
-           if strcmpi(LegendArg,'Y')
-               g1.set_layout_options("legend",1) % Show legend
-           elseif strcmpi(LegendArg,'N')
-               g1.set_layout_options("legend",0) % Don't show legend
-           end
-           % Figure
-           h_fig1=figure(1);
-           h_fig1.Color='white'; % changes the background color of the figure
-           h_fig1.Units='pixel'; % Defines the units
-           h_fig1.OuterPosition=Res;
-           h_fig1.PaperOrientation='landscape';
-            h_fig1.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,'_','Var',num2str(Var),NameSuffix1);
-            % The actual plotting
-            g1.draw()
-            % Save the figure
-            FullName1=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,'_','Var',num2str(Var),NameSuffix1);
-            print(h_fig1,FullName1,'-dpng');
-            exportgraphics(h_fig1,[FullName1,'.pdf'],'ContentType','vector')
-
-           %% Gramm object 2
-           % Define variables
-           Plottitle2=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ResultsRow,1}.Data(1).FMIndex),obj.SMFSResults{ResultsRow,1}.Data(1).SumNumFcAnalysedAdhMaxRet);
-           LegendyAxis2='Adhesion force (nN)';
-           NameSuffix2='_MaxAdhesionForceRetract';
-           % Allocate data
-           if strcmpi(yDataArg,'new')
-           yData2=obj.SMFSResults{ResultsRow}.Concatenate.AdhMaxRet(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*-1e9;
-           elseif strcmpi(yDataArg,'old')
-            yData2=obj.SMFSResults{ResultsRow}.Data.AdhMaxRetConcat(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*-1e9;   
-           end     
-           yData2Min=min(yData2);
-           yData2Max=max(yData2);
-           yData2diff=yData2Max-yData2Min;
-           % Create a gramm object
-           if strcmpi(MarkerArg,'Y')
-               g2=gramm('x',xData,'y',yData2,...
-                   'color',ColorData,...
-                   'lightness',LightnessData,...
-                   'marker',MarkerData);
-           elseif strcmpi(MarkerArg,'N')
-               g2=gramm('x',xData,'y',yData2,...
-                   'color',ColorData,...
-                   'lightness',LightnessData);
-           end
-           % Plot data
-           g2.geom_point();
-           % Set options
-            g2.axe_property('LineWidth',LineWidth,'xlim',[xDataMin-xAxisCorr xDataMax+xAxisCorr],'ylim',[yData2Min-yData2diff*yAxisMinFactor yData2Max+yData2diff*yAxisMaxFactor],'TickDir','out','TickLength',[0.005 0.005]);
-            if strcmpi(xArg,'DateTime')
-                g2.set_datetick('x',0,'keeplimits') % Format x-axis
-            end
-            % Color Bar
-            if strcmpi(CBar,'Y')
-            y2CBar=[yData2Max+yData2diff*yLimMinFactor yData2Max+yData2diff*yLimMinFactor yData2Max+yData2diff*yLimMaxFactor yData2Max+yData2diff*yLimMaxFactor];
-            g2.geom_polygon('x',{xCBar1;xCBar2;xCBar3;xCBar4},'y',{y2CBar;y2CBar;y2CBar;y2CBar},'color',ColorBarMap,'alpha',1);
-            else
-            end
-           g2.set_point_options('base_size',MarkerSize)
-           %g2.set_title(Plottitle2) %Set figure title
-           if strcmpi(MarkerArg,'Y')
-               g2.set_names('x',LegendxAxis,'y',LegendyAxis2,'color',ColorName,'lightness',LightnessName,'marker',MarkerName)
-           elseif strcmpi(MarkerArg,'N')
-               g2.set_names('x',LegendxAxis,'y',LegendyAxis2,'color',ColorName,'lightness',LightnessName)
-           end
-           g2.set_color_options('Map',ColorMarkerMap,...
-               'n_color',NumColor,...
-               'n_lightness',NumLightness,...
-               'legend','separate_gray')
-           g2.set_text_options('font',FontName,'base_size',BaseFontSize,'label_scaling',LabelScaling,'legend_scaling',LegendScaling)
-           if strcmpi(LegendArg,'Y')
-               g2.set_layout_options("legend",1) % Show legend
-           elseif strcmpi(LegendArg,'N')
-               g2.set_layout_options("legend",0) % Don't show legend
-           end
-           % Figure
-           h_fig2=figure(2);
-           h_fig2.Color='white'; % changes the background color of the figure
-           h_fig2.Units='pixel'; % Defines the units
-           h_fig2.OuterPosition=Res;
-           h_fig2.PaperOrientation='landscape';          
-            h_fig2.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,'_','Var',num2str(Var),NameSuffix2);
-            % The actual plotting
-            g2.draw()
-            % Save the figure
-            FullName2=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,'_','Var',num2str(Var),NameSuffix2);
-            print(h_fig2,FullName2,'-dpng');
-            exportgraphics(h_fig2,[FullName2,'.pdf'],'ContentType','vector')
-
-           %% Gramm object 3
-           % Define variables
-           Plottitle3=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ResultsRow,1}.Data(1).FMIndex),obj.SMFSResults{ResultsRow,1}.Data(1).SumNumFcAnalysedAdhUnbinding);
-           LegendyAxis3='Adhesion force (nN)';
-           NameSuffix3='_AdhForceUnbinding';
-           % Allocate data
-           if strcmpi(yDataArg,'new')
-           yData3=obj.SMFSResults{ResultsRow}.Concatenate.AdhUnbinding(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*-1e9;
-           elseif strcmpi(yDataArg,'old')
-           yData3=obj.SMFSResults{ResultsRow}.Data.AdhUnbindingConcat(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*-1e9;    
-           end     
-           yData3Min=min(yData3);
-           yData3Max=max(yData3);
-           yData3diff=yData3Max-yData3Min;
-           % Create a gramm object
-           if strcmpi(MarkerArg,'Y')
-               g3=gramm('x',xData,'y',yData3,...
-                   'color',ColorData,...
-                   'lightness',LightnessData,...
-                   'marker',MarkerData);
-           elseif strcmpi(MarkerArg,'N')
-               g3=gramm('x',xData,'y',yData3,...
-                   'color',ColorData,...
-                   'lightness',LightnessData);
-           end
-           % Plot data
-           g3.geom_point()
-            % Set options
-            g3.axe_property('LineWidth',LineWidth,'xlim',[xDataMin-xAxisCorr xDataMax+xAxisCorr],'ylim',[yData3Min-yData3diff*yAxisMinFactor yData3Max+yData3diff*yAxisMaxFactor],'TickDir','out','TickLength',[0.005 0.005]);
-            if strcmpi(xArg,'DateTime')
-                g3.set_datetick('x',0,'keeplimits') % Format x-axis
-            end
-            % Color Bar
-            if strcmpi(CBar,'Y')
-            y3CBar=[yData3Max+yData3diff*yLimMinFactor yData3Max+yData3diff*yLimMinFactor yData3Max+yData3diff*yLimMaxFactor yData3Max+yData3diff*yLimMaxFactor];
-            g3.geom_polygon('x',{xCBar1;xCBar2;xCBar3;xCBar4},'y',{y3CBar;y3CBar;y3CBar;y3CBar},'color',ColorBarMap,'alpha',1);
-            else
-            end
-           g3.set_point_options('base_size',MarkerSize)
-           %g3.set_title(Plottitle3) %Set figure title
-           if strcmpi(MarkerArg,'Y')
-               g3.set_names('x',LegendxAxis,'y',LegendyAxis3,'color',ColorName,'lightness',LightnessName,'marker',MarkerName)
-           elseif strcmpi(MarkerArg,'N')
-               g3.set_names('x',LegendxAxis,'y',LegendyAxis3,'color',ColorName,'lightness',LightnessName)
-           end
-           g3.set_color_options('Map',ColorMarkerMap,...
-               'n_color',NumColor,...
-               'n_lightness',NumLightness,...
-               'legend','separate_gray')
-           g3.set_text_options('font',FontName,'base_size',BaseFontSize,'label_scaling',LabelScaling,'legend_scaling',LegendScaling)
-           if strcmpi(LegendArg,'Y')
-               g3.set_layout_options("legend",1) % Show legend
-           elseif strcmpi(LegendArg,'N')
-               g3.set_layout_options("legend",0) % Don't show legend
-           end
-           % Figure
-           h_fig3=figure(3);
-           h_fig3.Color='white'; % changes the background color of the figure
-           h_fig3.Units='pixel'; % Defines the units
-           h_fig3.OuterPosition=Res;
-           h_fig3.PaperOrientation='landscape';          
-           h_fig3.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,'_','Var',num2str(Var),NameSuffix3);
-           % The actual plotting
-           g3.draw()
-           % Save the figure
-           FullName3=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,'_','Var',num2str(Var),NameSuffix3);
-           print(h_fig3,FullName3,'-dpng');
-           exportgraphics(h_fig3,[FullName3,'.pdf'],'ContentType','vector')
-
-           %% Gramm object 4
-           % Define variables
-           Plottitle4=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ResultsRow,1}.Data(1).FMIndex),obj.SMFSResults{ResultsRow,1}.Data(1).SumNumFcAnalysedAdhEneApp);
-           LegendyAxis4='Work of adhesion (aJ)';
-           NameSuffix4='_AdhEnergyApproach';
-           % Allocate data
-           if strcmpi(yDataArg,'new')
-           yData4=obj.SMFSResults{ResultsRow}.Concatenate.AdhEneApp(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*-1e18;
-           elseif strcmpi(yDataArg,'old')
-           yData4=obj.SMFSResults{ResultsRow}.Data.AdhEneAppConcat(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*-1e18;     
-           end     
-           yData4Min=min(yData4);
-           yData4Max=max(yData4);
-           yData4diff=yData4Max-yData4Min;
-           % Create a gramm object
-           if strcmpi(MarkerArg,'Y')
-               g4=gramm('x',xData,'y',yData4,...
-                   'color',ColorData,...
-                   'lightness',LightnessData,...
-                   'marker',MarkerData);
-           elseif strcmpi(MarkerArg,'N')
-               g4=gramm('x',xData,'y',yData4,...
-                   'color',ColorData,...
-                   'lightness',LightnessData);
-           end
-           % Plot data
-           g4.geom_point()
-            % Set options
-            g4.axe_property('LineWidth',LineWidth,'xlim',[xDataMin-xAxisCorr xDataMax+xAxisCorr],'ylim',[yData4Min-yData4diff*yAxisMinFactor yData4Max+yData4diff*yAxisMaxFactor],'TickDir','out','TickLength',[0.005 0.005]);
-            if strcmpi(xArg,'DateTime')
-                g4.set_datetick('x',0,'keeplimits') % Format x-axis
-            end
-            % Color Bar
-            if strcmpi(CBar,'Y')
-            y4CBar=[yData4Max+yData4diff*yLimMinFactor yData4Max+yData4diff*yLimMinFactor yData4Max+yData4diff*yLimMaxFactor yData4Max+yData4diff*yLimMaxFactor];
-            g4.geom_polygon('x',{xCBar1;xCBar2;xCBar3;xCBar4},'y',{y4CBar;y4CBar;y4CBar;y4CBar},'color',ColorBarMap,'alpha',1);
-            else
-            end
-           g4.set_point_options('base_size',MarkerSize)
-           %g4.set_title(Plottitle4) %Set figure title
-           if strcmpi(MarkerArg,'Y')
-               g4.set_names('x',LegendxAxis,'y',LegendyAxis4,'color',ColorName,'lightness',LightnessName,'marker',MarkerName)
-           elseif strcmpi(MarkerArg,'N')
-               g4.set_names('x',LegendxAxis,'y',LegendyAxis4,'color',ColorName,'lightness',LightnessName)
-           end
-           g4.set_color_options('Map',ColorMarkerMap,...
-               'n_color',NumColor,...
-               'n_lightness',NumLightness,...
-               'legend','separate_gray')
-           g4.set_text_options('font',FontName,'base_size',BaseFontSize,'label_scaling',LabelScaling,'legend_scaling',LegendScaling)
-           if strcmpi(LegendArg,'Y')
-               g4.set_layout_options("legend",1) % Show legend
-           elseif strcmpi(LegendArg,'N')
-               g4.set_layout_options("legend",0) % Don't show legend
-           end
-           % Figure
-           h_fig4=figure(4);
-           h_fig4.Color='white'; % changes the background color of the figure
-           h_fig4.Units='pixel'; % Defines the units
-           h_fig4.OuterPosition=Res;
-           h_fig4.PaperOrientation='landscape';
-            h_fig4.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,'_','Var',num2str(Var),NameSuffix4);
-            % The actual plotting
-            g4.draw()
-            % Save the figure
-            FullName4=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,'_','Var',num2str(Var),NameSuffix4);
-            print(h_fig4,FullName4,'-dpng');
-            exportgraphics(h_fig4,[FullName4,'.pdf'],'ContentType','vector')
-
-           %% Gramm object 5
-           % Define variables
-           Plottitle5=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ResultsRow,1}.Data(1).FMIndex),obj.SMFSResults{ResultsRow,1}.Data(1).SumNumFcAnalysedAdhEneRet);
-           LegendyAxis5='Work of adhesion (aJ)';
-           NameSuffix5='_AdhEnergyRetract';
-           % Allocate data
-           if strcmpi(yDataArg,'new')
-           yData5=obj.SMFSResults{ResultsRow}.Concatenate.AdhEneRet(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*-1e18;
-           elseif strcmpi(yDataArg,'old')
-           yData5=obj.SMFSResults{ResultsRow}.Data.AdhEneRetConcat(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*-1e18;     
-           end     
-           yData5Min=min(yData5);
-           yData5Max=max(yData5);
-           yData5diff=yData5Max-yData5Min;
-           % Create a gramm object
-           if strcmpi(MarkerArg,'Y')
-               g5=gramm('x',xData,'y',yData5,...
-                   'color',ColorData,...
-                   'lightness',LightnessData,...
-                   'marker',MarkerData);
-           elseif strcmpi(MarkerArg,'N')
-               g5=gramm('x',xData,'y',yData5,...
-                   'color',ColorData,...
-                   'lightness',LightnessData);
-           end
-           % Plot data
-           g5.geom_point()
-            % Set options
-            g5.axe_property('LineWidth',LineWidth,'xlim',[xDataMin-xAxisCorr xDataMax+xAxisCorr],'ylim',[yData5Min-yData5diff*yAxisMinFactor yData5Max+yData5diff*yAxisMaxFactor],'TickDir','out','TickLength',[0.005 0.005]);
-            if strcmpi(xArg,'DateTime')
-                g5.set_datetick('x',0,'keeplimits') % Format x-axis
-            end
-            % Color Bar
-            if strcmpi(CBar,'Y')
-            y5CBar=[yData5Max+yData5diff*yLimMinFactor yData5Max+yData5diff*yLimMinFactor yData5Max+yData5diff*yLimMaxFactor yData5Max+yData5diff*yLimMaxFactor];
-            g5.geom_polygon('x',{xCBar1;xCBar2;xCBar3;xCBar4},'y',{y5CBar;y5CBar;y5CBar;y5CBar},'color',ColorBarMap,'alpha',1);
-            else
-            end
-           g5.set_point_options('base_size',MarkerSize)
-           %g5.set_title(Plottitle5) %Set figure title
-           if strcmpi(MarkerArg,'Y')
-               g5.set_names('x',LegendxAxis,'y',LegendyAxis5,'color',ColorName,'lightness',LightnessName,'marker',MarkerName)
-           elseif strcmpi(MarkerArg,'N')
-               g5.set_names('x',LegendxAxis,'y',LegendyAxis5,'color',ColorName,'lightness',LightnessName)
-           end
-           g5.set_color_options('Map',ColorMarkerMap,...
-               'n_color',NumColor,...
-               'n_lightness',NumLightness,...
-               'legend','separate_gray')
-           g5.set_text_options('font',FontName,'base_size',BaseFontSize,'label_scaling',LabelScaling,'legend_scaling',LegendScaling)
-           if strcmpi(LegendArg,'Y')
-               g5.set_layout_options("legend",1) % Show legend
-           elseif strcmpi(LegendArg,'N')
-               g5.set_layout_options("legend",0) % Don't show legend           
-           end
-           % Figure
-           h_fig5=figure(5);
-           h_fig5.Color='white'; % changes the background color of the figure
-           h_fig5.Units='pixel'; % Defines the units
-           h_fig5.OuterPosition=Res;
-           h_fig5.PaperOrientation='landscape';
-            h_fig5.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,'_','Var',num2str(Var),NameSuffix5);
-            % The actual plotting
-            g5.draw()
-            % Save the figure
-            FullName5=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,'_','Var',num2str(Var),NameSuffix5);
-            print(h_fig5,FullName5,'-dpng');
-            exportgraphics(h_fig5,[FullName5,'.pdf'],'ContentType','vector')
-
-           %% Gramm object 6
-           % Define variables
-           Plottitle6=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ResultsRow,1}.Data(1).FMIndex),obj.SMFSResults{ResultsRow,1}.Data(1).SumNumFcAnalysedyPullingLength);
-           LegendyAxis6='Pull-off length (nm)';
-           NameSuffix6='_Pullinglength';
-           % Allocate data
-           if strcmpi(yDataArg,'new')
-           yData6=obj.SMFSResults{ResultsRow}.Concatenate.PullingLength(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*1e9;
-           elseif strcmpi(yDataArg,'old')
-           yData6=obj.SMFSResults{ResultsRow}.Data.yPullingLengthConcat(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*1e9;     
-           end           
-           yData6Min=min(yData6);
-           yData6Max=max(yData6);
-           yData6diff=yData6Max-yData6Min;
-           % Create a gramm object
-           if strcmpi(MarkerArg,'Y')
-               g6=gramm('x',xData,'y',yData6,...
-                   'color',ColorData,...
-                   'lightness',LightnessData,...
-                   'marker',MarkerData);
-           elseif strcmpi(MarkerArg,'N')
-               g6=gramm('x',xData,'y',yData6,...
-                   'color',ColorData,...
-                   'lightness',LightnessData);
-           end
-           % Plot data
-           g6.geom_point();
-            % Set options
-            g6.axe_property('LineWidth',LineWidth,'xlim',[xDataMin-xAxisCorr xDataMax+xAxisCorr],'ylim',[yData6Min-yData6diff*yAxisMinFactor yData6Max+yData6diff*yAxisMaxFactor],'TickDir','out','TickLength',[0.005 0.005]);
-            % Reference length color box
-            g6.geom_polygon('y',{LimitLengthRet2},'color',SteelBlue);    
-            if strcmpi(xArg,'DateTime')
-                g6.set_datetick('x',0,'keeplimits') % Format x-axis
-            end
-            % Color bar
-            if strcmpi(CBar,'Y')
-            y6CBar=[yData6Max+yData6diff*yLimMinFactor yData6Max+yData6diff*yLimMinFactor yData6Max+yData6diff*yLimMaxFactor yData6Max+yData6diff*yLimMaxFactor];
-            g6.geom_polygon('x',{xCBar1;xCBar2;xCBar3;xCBar4},'y',{y6CBar;y6CBar;y6CBar;y6CBar},'color',ColorBarMap,'alpha',1);
-            else
-            end
-           g6.set_point_options('base_size',MarkerSize)
-           %g6.set_title(Plottitle6) %Set figure title
-           if strcmpi(MarkerArg,'Y')
-               g6.set_names('x',LegendxAxis,'y',LegendyAxis6,'color',ColorName,'lightness',LightnessName,'marker',MarkerName)
-           elseif strcmpi(MarkerArg,'N')
-               g6.set_names('x',LegendxAxis,'y',LegendyAxis6,'color',ColorName,'lightness',LightnessName)
-           end
-           g6.set_color_options('Map',ColorMarkerMap,...
-               'n_color',NumColor,...
-               'n_lightness',NumLightness,...
-               'legend','separate_gray')
-           g6.set_text_options('font',FontName,'base_size',BaseFontSize,'label_scaling',LabelScaling,'legend_scaling',LegendScaling)
-           if strcmpi(LegendArg,'Y')
-               g6.set_layout_options("legend",1) % Show legend
-           elseif strcmpi(LegendArg,'N')
-               g6.set_layout_options("legend",0) % Don't show legend
-           end
-           %g6.set_layout_options('legend_position',[0.75,0.4,0.35,0.6]) %[left bottom width height]
-           % Figure
-           h_fig6=figure(6);
-           h_fig6.Color='white'; % changes the background color of the figure
-           h_fig6.Units='pixel'; % Defines the units
-           h_fig6.OuterPosition=Res;
-           h_fig6.PaperOrientation='landscape';
-            h_fig6.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,'_','Var',num2str(Var),NameSuffix6);
-            % The actual plotting
-            g6.draw()
-            % Save the figure
-            FullName6=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,'_','Var',num2str(Var),NameSuffix6);
-            print(h_fig6,FullName6,'-dpng');
-            exportgraphics(h_fig6,[FullName6,'.pdf'],'ContentType','vector')
-
-           %% Gramm object 7
-           % Define variables
-           if strcmpi(yDataArg,'new')     
-           Plottitle7=sprintf('%d Force Maps containing %d Force Curves selected',length(obj.SMFSResults{ResultsRow,1}.Data(1).FMIndex),obj.SMFSResults{ResultsRow,1}.Data(1).SumNumFcAnalysedySnapInLength);
-           LegendyAxis7='Snap-In length (nm)';
-           NameSuffix7='_SnapInLength';
-           % Allocate data
-           yData7=obj.SMFSResults{ResultsRow}.Concatenate.SnapInLength(obj.SMFSResults{ResultsRow}.Concatenate.FMDateTimeNumberSortIdx)*1e9;
-           yData7Min=min(yData7);
-           yData7Max=max(yData7);
-           yData7diff=yData7Max-yData7Min;
-           % Create a gramm object
-           if strcmpi(MarkerArg,'Y')
-               g7=gramm('x',xData,'y',yData7,...
-                   'color',ColorData,...
-                   'lightness',LightnessData,...
-                   'marker',MarkerData);
-           elseif strcmpi(MarkerArg,'N')
-               g7=gramm('x',xData,'y',yData7,...
-                   'color',ColorData,...
-                   'lightness',LightnessData);
-           end
-           % Plot data
-           g7.geom_polygon('y',{LimitLengthApp},'color',Ochreish);
-           g7.geom_point();
-            % Set options
-            g7.axe_property('LineWidth',LineWidth,'xlim',[xDataMin-xAxisCorr xDataMax+xAxisCorr],'ylim',[yData7Min-yData7diff*yAxisMinFactor yData7Max+yData7diff*yAxisMaxFactor],'TickDir','out','TickLength',[0.005 0.005]);
-            g7.geom_polygon('y',{LimitLengthApp},'color',Ochreish);
-            if strcmpi(xArg,'DateTime')
-                g7.set_datetick('x',0,'keeplimits') % Format x-axis
-            end
-            if strcmpi(CBar,'Y')
-            y7CBar=[yData7Max+yData7diff*yLimMinFactor yData7Max+yData7diff*yLimMinFactor yData7Max+yData7diff*yLimMaxFactor yData7Max+yData7diff*yLimMaxFactor];
-            g7.geom_polygon('x',{xCBar1;xCBar2;xCBar3;xCBar4},'y',{y7CBar;y7CBar;y7CBar;y7CBar},'color',ColorBarMap,'alpha',1);
-            else
-            end
-           g7.set_point_options('base_size',MarkerSize)
-           %g7.set_title(Plottitle7) %Set figure title
-           if strcmpi(MarkerArg,'Y')
-               g7.set_names('x',LegendxAxis,'y',LegendyAxis7,'color',ColorName,'lightness',LightnessName,'marker',MarkerName)
-           elseif strcmpi(MarkerArg,'N')
-               g7.set_names('x',LegendxAxis,'y',LegendyAxis7,'color',ColorName,'lightness',LightnessName)
-           end
-           g7.set_color_options('Map',ColorMarkerMap,...
-               'n_color',NumColor,...
-               'n_lightness',NumLightness,...
-               'legend','separate_gray')
-           g7.set_text_options('font',FontName,'base_size',BaseFontSize,'label_scaling',LabelScaling,'legend_scaling',LegendScaling)
-           if strcmpi(LegendArg,'Y')
-               g7.set_layout_options("legend",1) % Show legend
-           elseif strcmpi(LegendArg,'N')
-               g7.set_layout_options("legend",0) % Don't show legend
-           end
-           % Figure
-           h_fig7=figure(7);
-           h_fig7.Color='white'; % changes the background color of the figure
-           h_fig7.Units='pixel'; % Defines the units
-           h_fig7.OuterPosition=Res;
-           h_fig7.PaperOrientation='landscape';
-            h_fig7.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,'_','Var',num2str(Var),NameSuffix7);
-            % The actual plotting
-            g7.draw()
-            % Save the figure
-            FullName7=strcat(FigNamePt1,FigNamePt2,FigNamePt3,'_',xArg,'_','Var',num2str(Var),NameSuffix7);
-            print(h_fig7,FullName7,'-dpng');
-            exportgraphics(h_fig7,[FullName7,'.pdf'],'ContentType','vector')
-          
-           elseif strcmpi(yDataArg,'old')
-          
-           end      
-           % House keeping
-           close all
-       end
-
-
-          function SM_results_gramm_plot_FM(obj,ResultsRow,MarkerArg,LegendArg,VarArg)
-           % Input variables: 
-           % ResultsRow: double ,e.g. 1
-           % Linker: string , either 'long' or 'short'
-           % xArg (x-axis argument): string, either 'Index' or 'DateTime'
-           % MarkerArg (Marker argument): string, either 'Y' or 'N'
-           % LegendArg (Legend argumend): string, either 'Y' or 'N'
-           % VarArg: double, e.g. 1 
-
-           % Input variable adaptation
-           if nargin<2
-               ResultsRow=1;
-           end
-           % Define color
-           ColorBarMap=[[54 163 0]./255; % Dark green HEX 8DB600
-                 [206 22 32]./255; % Fire Engine Red HEX CE162
-                 [0 24 204]./255; % Blue HEX 8DB600
-                 [135 0 224]./255]; % Violet HEX 8F00FF  
-           ColorMarkerMap=[[255 194 191]./255; % Light rose
-                 [255 194 191]./255;    
-                 [209 217 161]./255;
-                 [209 217 161]./255]; % Light green
-           % Change into the Folder of Interest
-           cd(obj.ExperimentFolder) % Move into the folder
-           % Create folders for saving the produced figures
-           foldername='SM_results_gramm_plot_FM';    % Defines the folder name
-           mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
-           currpath=fullfile(obj.ExperimentFolder,foldername);
-           cd(currpath);
-
-           % VarArg
-           if VarArg==1
-           NumColor=6;
-           NumLightness=6;
-           ColorName='Medium';
-           ColorData=obj.SMFSResults{ResultsRow}.Data.FMEnvCond(obj.SMFSResults{ResultsRow}.Data.FMDateTimeSortIdx);
-           LightnessName='Substrate';
-           LightnessData=obj.SMFSResults{ResultsRow}.Data.FMSubstrate(obj.SMFSResults{ResultsRow}.Data.FMDateTimeSortIdx);
-           MarkerName='FM Index';
-           MarkerData=obj.SMFSResults{ResultsRow}.Data.FMIndex(obj.SMFSResults{ResultsRow}.Data.FMDateTimeSortIdx);
-           elseif VarArg==2
-           FMExtVeloData=obj.SMFSResults{ResultsRow}.Data.FMExtVelocity(obj.SMFSResults{ResultsRow}.Data.FMDateTimeSortIdx);
-           FMRetVeloData=obj.SMFSResults{ResultsRow}.Data.FMRetVelocity(obj.SMFSResults{ResultsRow}.Data.FMDateTimeSortIdx);
-           ColorMap=ColorMarkerMap;
-           NumColor=2;
-           NumLightness=2;
-           ColorName='App. velo (m/s)';
-           ColorData=FMExtVeloData;
-           LightnessName='Ret. velo (m/s)';
-           LightnessData=FMRetVeloData;
-           MarkerName='Holding time';
-           MarkerData=obj.SMFSResults{ResultsRow}.Data.FMHoldingTime(obj.SMFSResults{ResultsRow}.Data.FMDateTimeSortIdx);
-           end
-                          LegendxAxis='Chronological force map order';
-               xData=1:length(obj.SMFSResults{ResultsRow}.Data.FMIndex);
-               xDataMin=min(xData);
-               xDataMax=max(xData);
-               xAxisCorr=(xDataMax-xDataMin)*0.015;
-           %Res=[1 1 2560 1250]; % Define the figure resolution
-           Res1=[1 1 70 50]; % Define the figure resolution
-           Res2a=[1 1 8 8]; % Define the figure resolution
-           Res2b=[1 1 8 4]; % Define the figure resolution
-           MarkerSize=9;
-           BaseFontSize=8;
-           BaseFontSizeMultiplier=2;
-          % BaseFontSizeMultiplier=4;
-           MarkerSizeMultiplier=2;
-          % MarkerSizeMultiplier=3;
-           %LegendOption='merge';
-           LegendOption='expand';
-           %%
-           if obj.SMFSResults{ResultsRow}.Parameters.ExtendVelocity==0
-               ExtVelocityValueStr='All';
-           else
-               ExtVelocityValueStr=num2str(round(obj.SMFSResults{ResultsRow}.Parameters.ExtendVelocity*1e9));
-           end
-           if obj.SMFSResults{ResultsRow}.Parameters.RetractVelocity==0
-               RetVelocityValueStr='All';
-           else
-               RetVelocityValueStr=num2str(round(obj.SMFSResults{ResultsRow}.Parameters.RetractVelocity*1e9));
-           end
-           if obj.SMFSResults{ResultsRow}.Parameters.HoldingTime==-1
-               HoldingTimeValueStr='All';
-           else
-               HoldingTimeValueStr=num2str(obj.SMFSResults{ResultsRow}.Parameters.HoldingTime);
-           end
-           % General names
-           FigNamePt1=sprintf('SMFSResultRow%d_',ResultsRow);
-           FigNamePt2=strcat(ExtVelocityValueStr,{'_'},RetVelocityValueStr,{'_'},HoldingTimeValueStr,{'_'},obj.SMFSResults{ResultsRow}.Parameters.Substrate,{'_'},obj.SMFSResults{ResultsRow}.Parameters.Medium,{'_'},obj.SMFSResults{ResultsRow}.Parameters.ChipCantilever,{'_'},obj.SMFSResults{ResultsRow}.Parameters.Chipbox,{'_'},obj.SMFSResults{ResultsRow}.Parameters.Linker);
-           FigNamePt2=char(FigNamePt2);
-           FigNamePt3='_FM_Timeline';
-            %% Gramm object 1
-            % Define variables
-            LegendyAxis1=[];
-            LegendxAxis='Chronological force map order';
-            % Allocate data
-            yData1=obj.SMFSResults{ResultsRow}.Data.FMDateTimeSortIdx;           
-            % Create a gramm object
-            if strcmpi(MarkerArg,'Y')
-            g1=gramm('x',xData,'y',yData1,...
-               'color',ColorData,...
-               'lightness',LightnessData,...
-               'marker',MarkerData);
-            elseif strcmpi(MarkerArg,'N')
-            g1=gramm('x',xData,...
-               'color',ColorData,...
-               'lightness',LightnessData);
-            end
-           % Plot data
-           %      g1.geom_polygon('y',{LimitForce1;LimitForce2;LimitForce3},'color',ColorBrewerMap1);
-           g1.geom_point();
-           %g1.geom_polygon();
-           % Set options
-           if strcmpi(LegendArg,'Y')
-           g1.axe_property('TickLabelInterpreter','Latex','xlim',[xDataMin-xAxisCorr xDataMax+xAxisCorr],'ylim',[0.98 1.2],'YTickLabel',[],'YColor','none','XTick',xDataMin:1:xDataMax) 
-           elseif strcmpi(LegendArg,'N')
-           g1.axe_property('TickLabelInterpreter','Latex','xlim',[xDataMin-xAxisCorr xDataMax+xAxisCorr],'ylim',[0.95 1.01],'YTickLabel',[],'YColor','none','XTick',xDataMin:1:xDataMax) 
-           end   
-           %g1.axe_property('TickLabelInterpreter','Latex','xlim',[xDataMin-xAxisCorr xDataMax+xAxisCorr],'ylim',[0.99 1.05],'YTickLabel',[],'YColor','none','XTick',xDataMin:1:xDataMax)
-           g1.set_limit_extra('x',[0 2])
-           if strcmpi(MarkerArg,'Y')
-
-           g1.set_names('x',LegendxAxis,'y',LegendyAxis1,'color',ColorName,'lightness',LightnessName,'marker',MarkerName)
-           elseif strcmpi(MarkerArg,'N')
-
-           g1.set_names('x',LegendxAxis,'y',LegendyAxis1,'color',ColorName,'lightness',LightnessName)
-           end
-           g1.set_color_options('n_color',NumColor,...
-               'n_lightness',NumLightness,...
-               'legend',LegendOption)       
-           if strcmpi(LegendArg,'Y')
-           g1.set_point_options('base_size',MarkerSize*MarkerSizeMultiplier)
-           g1.set_text_options('interpreter','latex','font','Helvetica','base_size',BaseFontSize*BaseFontSizeMultiplier,'label_scaling',1,'legend_scaling',1)
-       %   g1.set_layout_options("legend",1,'legend_position',[0.75 0.35 0.25 0.75])
-       %    g1.set_layout_options("legend",1,'legend_position',[0.35 0.35 0.25 0.75])
-           g1.set_layout_options("legend",1,'legend_position',[0.35 0.2 0.25 0.75])
-           elseif strcmpi(LegendArg,'N')
-           g1.set_point_options('base_size',MarkerSize)
-           g1.set_text_options('interpreter','latex','font','Helvetica','base_size',BaseFontSize,'label_scaling',1,'legend_scaling',1)
-           g1.set_layout_options("legend",0)
-           end          
-           % Figure
-           h_fig1=figure(1);
-           h_fig1.Color='white'; % changes the background color of the figure
-           h_fig1.Units='centimeters'; % Defines the units
-           if strcmpi(LegendArg,'Y')
-           h_fig1.OuterPosition=Res1;
-           elseif strcmpi(LegendArg,'N')
-           h_fig1.OuterPosition=Res2b;
-           end       
-           h_fig1.PaperOrientation='landscape';
-           h_fig1.Name=strcat(FigNamePt1,FigNamePt2,FigNamePt3);
-           % The actual plotting
-           g1.draw()
-           % Save the figure
-           FigNamePt4='_Legend';
-           FigNamePt5=sprintf('_Variant%d',VarArg);
-           if strcmpi(LegendArg,'Y')
-           FullName1=strcat(FigNamePt1,FigNamePt2,FigNamePt3,FigNamePt4,'Yes',FigNamePt5);
-           elseif strcmpi(LegendArg,'N')
-           FullName1=strcat(FigNamePt1,FigNamePt2,FigNamePt3,FigNamePt4,'No',FigNamePt5);
-           end       
-           print(h_fig1,FullName1,'-dpng');
-           print(h_fig1,FullName1,'-depsc');
-
-           % House keeping
-           close all
-       end
- 
-       
-
-       function SM_fine_figure(obj,XMin,XMax,YMin,YMax,FmoI,FcoI,Linker)
-            %     function SM_fine_figure(obj,XMin,XMax,YMin,YMax,Fm,Fc)
-            % Function to plot individual fine figures for publication
-            % FmoI ... Force map of Interest
-            % FcoI ... Force curve of Interest
-            % FmoI = 0 => Select all several Force Maps
-            % FcoI = 0 => Select from 1:100
-            % Linker ... Long, short or none
-            if nargin < 3
-                XMin= -inf;
-                XMax= inf;
-                YMin= -inf;
-                YMax= inf;
-            end
-            % Figure visibility
-            set(groot,'defaultFigureVisible','off')
-            %set(groot,'defaultFigureVisible','on')
-            % Set figure position
-            set(groot,'defaultFigurePaperPositionMode','auto')
-            % Change into the Folder of Interest
-            cd(obj.ExperimentFolder) % Move into the folder            
-            % Run based on condition
-            if FmoI==0 && strcmp(Linker,'none')
-            % Create folders for saving the produced figures
-            foldername='SM_fine_figure';    % Defines the folder name
-            mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
-            currpath=fullfile(obj.ExperimentFolder,foldername);
-            cd(currpath);
-                for Fm=1:obj.NumForceMaps
-                %for Fm=1:26
-                    if ~obj.SMFSFlag.Preprocessed(Fm)
-                        continue
-                    end
-                    for Fc=1:100
-                        obj.FM{Fm}.fc_fine_figure(XMin,XMax,YMin,YMax,Fm,Fc,Linker)
-                    end
-                end
-            elseif FmoI==0
-            % Create folders for saving the produced figures
-            foldername='SM_fine_figure';    % Defines the folder name
-            mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
-            currpath=fullfile(obj.ExperimentFolder,foldername);
-            cd(currpath);
-                for Fm=1:obj.NumForceMaps
-                %for Fm=1
-                    if ~obj.SMFSFlag.Preprocessed(Fm)
-                        continue
-                    end
-                    for Fc=1:100
-%                         if ~obj.FM{Fm}.SMFSFlag.Uncorrupt(Fc) || ~obj.FM{Fm}.SMFSFlag.Selected(Fc) || ~obj.FM{Fm}.SMFSFlag.RetMinCrit(Fc) || ~obj.FM{Fm}.SMFSFlag.LengthRequisite(Fc)     % Condition if FM Flag Selected has been set: Exclude corrupted force curves or force curves showing no snap-in from the analysis
-%                        continue
-%                        end
-                        obj.FM{Fm}.fc_fine_figure(XMin,XMax,YMin,YMax,Fm,Fc,Linker)
-                    end
-                end
-            else
-            % Create folders for saving the produced figures
-            foldername='SM_fine_figure';    % Defines the folder name
-            mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
-            currpath=fullfile(obj.ExperimentFolder,foldername);
-            cd(currpath);
-                for Fm=FmoI  % debugging
-                    %                 if ~obj.SMFSFlag.Preprocessed(Fm)
-                    %                     continue
-                    %                 end
-                    for Fc=FcoI
-                        %                     if ~obj.FM{Fm}.SMFSFlag.Uncorrupt(Fc) || ~obj.FM{Fm}.SMFSFlag.Selected(Fc) || ~obj.FM{Fm}.SMFSFlag.RetMinCrit(Fc) || ~obj.FM{Fm}.SMFSFlag.LengthRequisite(Fc)     % Condition if FM Flag Selected has been set: Exclude corrupted force curves or force curves showing no snap-in from the analysis
-                        %                     continue
-                        %                     end
-                        obj.FM{Fm}.fc_fine_figure(XMin,XMax,YMin,YMax,Fm,Fc,Linker)
-                    end
-                end
-            end
-        end
-
-        function SM_fine_figure_publication(obj,XMin,XMax,YMin,YMax,Fm,Fc,Linker,CArea,Axis)
-            %     function SM_fine_figure(obj,XMin,XMax,YMin,YMax,Fm,Fc)
-            % Function to plot individual figures in publication quality
-            % Input variables:
-            % XMin ... Minimum x-axis value in nm
-            % XMax ... Maximum x-axis value in nm
-            % YMin ... Minimum y-axis value in nm
-            % YMax ... Maximum y-axis value in nm
-            % Fm ... Force map of interest
-            % Fc ... Force curve of interest
-            % Linker ... Short or long linker
-            % CArea ... Show theoretical Linker-TC complex range: 'yes' or
-            % 'no'
-            % Axis ... Show axis in graph: 'Yes' or 'No'
-
-            if nargin < 3
-                XMin= -inf;
-                XMax= inf;
-                YMin= -inf;
-                YMax= inf;
-            end
-            % Figure visibility
-            %set(groot,'defaultFigureVisible','off')
-            set(groot,'defaultFigureVisible','on')
-            % Set figure position
-            set(groot,'defaultFigurePaperPositionMode','auto')
-            % Change into the Folder of Interest
-            cd(obj.ExperimentFolder) % Move into the folder            
-            % Create folders for saving the produced figures
-            foldername='SM_fine_figure_publication';    % Defines the folder name
-            mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
-            currpath=fullfile(obj.ExperimentFolder,foldername);
-            cd(currpath);
-            % Run the chosen functions
-            obj.FM{Fm}.fc_fine_figure_publication(XMin,XMax,YMin,YMax,Fm,Fc,Linker,CArea,Axis)
-        end
-         
-
-        function SM_fine_figure2(obj,Fm1,Fm2,Fm3,Fc1,Fc2,Fc3)
+         function SM_fine_figure2(obj,Fm1,Fm2,Fm3,Fc1,Fc2,Fc3)
             % Function to plot individual fine figures for publication
             if nargin < 2
             Fm1=1;
@@ -7267,8 +7904,21 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             close all
         end
 
-        function [xSel,ySel]=SM_WLC_fitting(obj,Fm,Fc)
 
+        function SM_fine_figure(obj,XMin,XMax,YMin,YMax,FmoI,FcoI,Linker)
+            %     function SM_fine_figure(obj,XMin,XMax,YMin,YMax,Fm,Fc)
+            % Function to plot individual fine figures for publication
+            % FmoI ... Force map of Interest
+            % FcoI ... Force curve of Interest
+            % FmoI = 0 => Select all several Force Maps
+            % FcoI = 0 => Select from 1:100
+            % Linker ... Long, short or none
+            if nargin < 3
+                XMin= -inf;
+                XMax= inf;
+                YMin= -inf;
+                YMax= inf;
+            end
             % Figure visibility
             set(groot,'defaultFigureVisible','off')
             %set(groot,'defaultFigureVisible','on')
@@ -7277,773 +7927,58 @@ classdef Experiment < matlab.mixin.Copyable & matlab.mixin.SetGet
             % Change into the Folder of Interest
             cd(obj.ExperimentFolder) % Move into the folder            
             % Run based on condition
+            if FmoI==0 && strcmp(Linker,'none')
             % Create folders for saving the produced figures
-             foldername='SM_WLC_fitting';    % Defines the folder name
-             mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
-             currpath=fullfile(obj.ExperimentFolder,foldername);
-             cd(currpath);
-            % Define Colors
-            RGB2=[255 119 0]./255; % Orange
-            RGB8=[80 200 204]./255; % Turquoise
-            % Parse unit scale function
-            [Xmultiplier,Xunit,~] = AFMImage.parse_unit_scale(1e+9,'nm',1);
-            [Ymultiplier,Yunit,~] = AFMImage.parse_unit_scale(1e+9,'nN',1);
-            % Define variables for the figure name         
-            FcNumConvert=num2str(Fc);
-            %
-            Pct=0.05
-            % Define limits
-            XMin=-10;
-            XMax=500;            
-            YMin=-0.5;
-            YMax=0.1;
-              figname=strcat(obj.FM{Fm}.Date,{'_'},obj.FM{Fm}.Time,{'_'},obj.FM{Fm}.ID,{'_'},'Fc',FcNumConvert);
-              figname=char(figname);
-            %% Allocate data       
-            xRet=(obj.FM{Fm}.THRet{Fc}-obj.FM{Fm}.CP_HardSurface(Fc))/-Xmultiplier; % Retraction x-data (m): Vertical tip height data corrected by the determined contact point using the hard surface method
-            yRet=obj.FM{Fm}.BasedRet{Fc}/Ymultiplier;
-
-            %% Figure
-            % h_fig=figure(ii);
-            h_fig=figure(1);
-            h_fig.Color='white'; % changes the background color of the figure
-            h_fig.Units='normalized'; % Defines the units
-            h_fig.OuterPosition=[0 0 1 1];% changes the size of the to the whole screen
-            %h_fig.Units='pixel'; % Defines the units
-            %h_fig.OuterPosition=res;
-            h_fig.PaperOrientation='landscape';
-            h_fig.Name=figname;
-            % Plot
-            hold on
-            grid on
-            plot(xRet,yRet,'Color',RGB2,'LineWidth',6);
-            % Axes
-            ax = gca; % current axes
-            ax.FontSize = 46;
-            ax.LineWidth = 5;
-            ax.XLabel.String = 'Tip-Substrate separation (nm)';
-            ax.XLabel.FontSize = 46;
-            ax.YLabel.String = 'Force (nN)';
-            ax.YLabel.FontSize = 46;
-            ax.XLim = [XMin XMax];
-            ax.YLim = [YMin YMax];
-            % Draw points
-            roi1 = drawpoint(ax); % Draw point in the figure
-            xPos1=roi1.Position(1); % Read out the x-value of the drawn point
-            roi2 = drawpoint(ax); % Draw point in the figure
-            xPos2=roi2.Position(1); % Read out the x-value of the drawn point
-            % Determine the lower and higher x-value
-            if xPos1<xPos2
-                xPtLow=xPos1;
-                xPtHigh=xPos2;
-            elseif xPos1>xPos2
-                xPtLow=xPos2;
-                xPtHigh=xPos1;
-            end
-            % Find indices
-            [~,PtLowIdx] = min(abs(xRet-xPtLow));
-            [~,PtHighIdx] = min(abs(xRet-xPtHigh));
-            % Select Data within the two indices
-            xSel=xRet(PtLowIdx:PtHighIdx);
-            ySel=yRet(PtLowIdx:PtHighIdx);
-            xSelPct=ceil(xSel(1:length(xSel)*Pct));
-            xSelPctMean=mean(xSelPct);
-            % Plot the selected data points
-            plot(xSel,ySel,'Color',RGB8,'LineWidth',6)
-            % Save figure
-            print(gcf,figname,'-dpng');
-            % Close figure
-            close all
-                %             
-            if ~isempty(obj.WLCFit)
-                Row=length(obj.WLCFit)+1;
-            else
-                Row=1;
-            end
-
-            % Allocate data
-            obj.WLCFit{Row,1}.ForceMap=Fm;
-            obj.WLCFit{Row,1}.ForceCurve=Fc;
-            obj.WLCFit{Row,1}.Data(1).xDataSelected=xSel;
-            obj.WLCFit{Row,1}.Data(1).xDataSelPctMean=xSelPctMean;
-            obj.WLCFit{Row,1}.Data(1).yDataSelected=ySel;
-        end
-       
-        function SM_force_landscape_app(obj,Var)
-            %
-            % debugging
-
-            if Var==1
-                % Input dialog
-                prompt = {'Enter the force map number you do not want to have included in the "SMFSResults"-structure (For multiple selections just use the space key to separeat entries)'};
-                definput = {''};
-                opts.Interpreter = 'tex';
-                FMIdxArray=inputdlg(prompt,'Select all - except of ...',[1 150],definput,opts);
-                FMIdxArray=str2num(FMIdxArray{1}); % Convert the cell array to numerals
-            elseif Var==2
-                warning('This variation requires that a none parameter based selection row in the "SMFSResults"-structure exists (Typically row 1)')
-                dlgtitle='Enter the "SMFSResults"-structure row the chronologcial data will be taken from';
-                prompt = {'ResultsRow'};
-                definput={'1'};
-                dims=[1 150];
-                ResultsRow = inputdlg(prompt,dlgtitle,dims,definput);
-                ResultsRow=str2num(ResultsRow{1});
-                dlgtitle='Enter the chronological force map index of the first and last force map you want to have included in the "SMFSResults"-structure';
-                prompt = {'First','Last'};
-                dims=[1 150; 1 150];
-                FMIdxChrono = inputdlg(prompt,dlgtitle,dims);
-                FMIdxChrono1=str2num(FMIdxChrono{1});
-                FMIdxChrono2=str2num(FMIdxChrono{2});
-                % Allocate the force maps in chronological order as defined by
-                % the input dialog box
-                FMIdxArray=obj.SMFSResults{ResultsRow}.Data.FMDateTimeSortIdx(FMIdxChrono1:FMIdxChrono2);
-            end
-            % If condition to handle an empty index array
-            if isempty(FMIdxArray)
-                return
-            else
-            end
-
-            % Allocate the force maps in chronological order as defined by
-            % the input dialog box
-            FMIdxArray=obj.SMFSResults{ResultsRow}.Data.FMDateTimeSortIdx(FMIdxChrono1:FMIdxChrono2);
-
-            % Change into the Folder of Interest
-            cd(obj.ExperimentFolder) % Move into the folder
-            % Create folders for saving the produced figures
-            foldername='SM_force_landscape';    % Defines the folder name
+            %foldername='SM_fine_figure';    % Defines the folder name
             mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
             currpath=fullfile(obj.ExperimentFolder,foldername);
             cd(currpath);
-
-           %% Figures
-           FigNamePt1=sprintf('SMFSResultRow%d_',ResultsRow);
-           FigNamePt2=sprintf('FM%d_to_FM%d_',FMIdxChrono1,FMIdxChrono2);
-           FigNamePt3='App';
-           FigNamePt4='ForceCurveLandscape';
-
-            % Define variables
-            FcCount = 0; % Force curve count
-            for ii=FMIdxArray'
-                FcCount = FcCount + obj.FM{ii}.NCurves;
-            end
-            ResY = FcCount; % y-axis resolution
-            ResX = 512; % x-axis resolution
-            CritLength=200*1e-9; % Max. length on x-axis
-            % Allocate data
-            MaxRangeApp = 0;
-            SkippedCurves = 0;
-            k=1;
-            DwellTime = [];
-            Phase = [];
-            ExtSpeed = [];
-            RetSpeed = [];
-            AbsCycleIndex = [];
-            m = 0;
-            % Read out data
-            for j=obj.SMFSResults{ResultsRow}.Data.FMIndexChrono'
-                for i=1:obj.FM{j}.NCurves
-                    m=m+1;
-                     if ~obj.FM{j}.SMFSFlag.Selected(i)
-                         SkippedCurves = SkippedCurves + 1;
-                         continue
-                     end
-                    DwellTime(k,1) = obj.SMFSResults{ResultsRow}.Data.FMHoldingTime(j);
-                    AbsCycleIndex(k,1) = m;
-                    % Assigning the phase/state
-                    if any(j == [1:2])
-                        Phase(k,1) = 1;
-                    elseif any(j == [3:22])
-                        Phase(k,1) = 2;
-                    elseif any(j == [23:121])
-                        Phase(k,1) = 3;
-                    elseif any(j == [121:obj.NumForceMaps])
-                        Phase(k,1) = 4;
-                    end
-                    % Allocating data
-                    vDefApp{k} = obj.FM{j}.BasedApp{i};
-                    THApp{k} = obj.FM{j}.THApp{i};
-                    THApp{k} = THApp{k} - max(THApp{k});
-                    THApp{k}=THApp{k}*-1;
-                    AppIdx=find(THApp{k}>CritLength,1,'last'); % Find all entries longer than the defined length
-                    THApp{k}(1:AppIdx)=[];
-                    vDefApp{k}(1:AppIdx)=[];
-
-                    MaxRangeApp = max(range(THApp{k}),MaxRangeApp);
-
-                    k = k + 1;
-                end
-                    if j == FMIdxChrono2 % Leave loop when the entry FM is reached
-                        break
-                    end   
-            end
-
-            % Define axes properties
-            xmax=200*1e-9;
-            XQApp = linspace(0,xmax,ResX);
-            ResY = ResY - SkippedCurves; % y-axis resolution
-            % Preallocate
-            FcMapApp = zeros(ResY, ResX);
-            % Interp Data and fill FCMap
-            for i=1:ResY
-                FCMapApp(i,:) = interp1(THApp{i},vDefApp{i},XQApp);
-            end
-            ApproachForceCurveMap = FCMapApp;
-
-            % Font Sizes
-            FS = 18;
-
-            % Processed Image Preparation
-            ProcAppMap = ApproachForceCurveMap * 1e9;
-            YPixels = 512;
-            XPixels = 512;
-            %img = imresize(-ProcRetMap, [YPixels XPixels], 'bilinear');
-            img=-ProcAppMap;
-            img = imfilter(img,ones(round(size(-ProcAppMap,1)/YPixels),1)./round(size(ProcAppMap,1)/YPixels)); % Applying a rollling average filter for smearing out data
-            img = imresize(img, [YPixels XPixels], 'nearest'); % Downsampling
-            ProcDwellTime = imresize(DwellTime, [YPixels 1], 'nearest');
-            ProcPhase = imresize(Phase, [YPixels 1], 'nearest');
-            xmin = 0;
-            xmax = 200;
-            ymax = size(ApproachForceCurveMap, 1) / 1000;
-            MaxForce = 0.2;
-            MinForce = 0;
-            LineWidth = 1.5;
-
-            % Figure and Image Display
-            Fig = figure('Color', 'w');
-            imshow(img, [MinForce MaxForce]);
-            Fig.Units='normalized';
-            % Axis
-            ax = gca;  % Get the current axes handle
-            axis on;   % Turn on the axis visibility
-            xlabel('Tip-sample distance (nm)');
-            ylabel('Number of cycles (x100)');
-            xlim([0 XPixels]);  % Set X-axis limits
-            ylim([0 YPixels]);  % Set Y-axis limits
-            set(ax, 'XTick', [0:50:200] ./ xmax * XPixels);  % Custom X-axis ticks
-            YTickSpacing = [0:0.5:floor(ymax)] ./ ymax;
-            set(ax, 'YTick', YTickSpacing * YPixels);  % Custom Y-axis ticks
-            set(ax, 'XTickLabel', {string(xmin), string(50), string(100), string(150), string(200)});  % Custom X-axis tick labels
-            % Custom Y-axis tick labels
-            for i=1:length(YTickSpacing)
-                if i == 1
-                    YTickLabels{i} = '0';
-                    continue
-                end
-               YTickLabels{i} =string(round(AbsCycleIndex(YTickSpacing(i)*ymax*1000)/100,1));
-             %   YTickLabels{i} = string(round(AbsCycleIndex(YTickSpacing(i)*ymax*1000),1));
-            end
-            set(ax, 'YTickLabel',YTickLabels)              
-            set(ax, 'FontSize', FS);  % Set font size for axes
-            set(ax, 'FontName', 'Arial');  % Set font type for axes
-            % Display axes only on the left and bottom
-            ax.XAxisLocation = 'bottom';  % X-axis at the bottom
-            ax.YAxisLocation = 'left';    % Y-axis on the left
-            ax.Box = 'off';  % Turn off the box around the axes
-            ax.TickDir = 'out';  % Ticks pointing outwards
-            % Ensure the top and right axes are not shown
-            ax.XColor = 'k';  % X-axis color (bottom)
-            ax.YColor = 'k';  % Y-axis color (left)
-            ax.XRuler.Axle.Visible = 'off';  % Hide the top axis
-            ax.YRuler.Axle.Visible = 'off';  % Hide the right axis
-            ax.LineWidth = LineWidth;
-            % Adjust Axes Position to Make Space for Rectangles
-            ax.Position = [0.15 0.11 0.7 0.8];  % Adjust the axis position
-            LeftAxExpand = 0.07;
-
-            %% Adding Colored Rectangles
-            % Left-hand side rectangles for dwell time colored gray 
-            ScalingParam = 0.18*LeftAxExpand;
-            UpperPos = 0;
-            for i=1:YPixels
-                DwellSize = ProcDwellTime(i) + 0.4;
-                Thickness = ScalingParam * DwellSize * XPixels;
-                Height = 1;
-                rectangle('Position', [-Thickness, UpperPos,...
-                    Thickness, Height],...
-                    'FaceColor', 0.5.*[1 1 1], 'EdgeColor', 'none');
-                UpperPos = UpperPos + Height;
-            end
-
-            % Add Bar for cycle axis
-            rectangle('Position', [-LeftAxExpand * XPixels, 0,...
-                0.01 * XPixels, YPixels],...
-                'FaceColor', [0 0 0], 'EdgeColor', 'none');
-
-            ColorBarMap=[[54 163 0]./255; % Dark green HEX 8DB600
-                [206 22 32]./255; % Fire Engine Red HEX CE162
-                [0 24 204]./255; % Blue HEX 8DB600
-                [135 0 224]./255]; % Violet HEX 8F00FF
-
-            UpperPos = 0;
-            for i=1:YPixels
-                Color = ColorBarMap(ProcPhase(i),:);
-                Thickness = 0.05 * XPixels;
-                Height = 1;
-                rectangle('Position', [XPixels, UpperPos,...
-                    Thickness, Height],...
-                    'FaceColor', Color, 'EdgeColor', 'none');
-                UpperPos = UpperPos + Height;
-            end
-
-            % Adjust the axis limits to avoid cutting off the rectangles
-            xlim([-LeftAxExpand * XPixels XPixels * 1.05]);
-
-            % Adding and Customizing Colorbar
-            c = colorbar;
-            c.Location = 'northoutside';
-            c.Label.String = 'Attractive force (nN)';
-            c.Ticks = [MinForce, MaxForce/3, MaxForce*2/3, MaxForce];
-            c.FontSize = FS;
-            c.FontName = 'Arial';
-            c.Orientation = 'horizontal';
-            c.LineWidth = LineWidth;
-            colormap(turbo);
-
-            % Final Adjustments
-            c.Position = [0.1939    0.8650    0.6239    0.030];
-
-            % Save figure
-            fullname=sprintf('%s%s%s%s',FigNamePt1,FigNamePt2,FigNamePt3,FigNamePt4);
-            print(gcf,fullname,'-dpng');
-            exportgraphics(gcf,[fullname,'.pdf'],'ContentType','vector')
-
-            %% House keeping
-            close all
-
-        end
-
-  
-        function SM_force_landscape_ret(obj,Var)
-            %     function SM_force_landscape_ret(obj,Var)
-            % Author: Manuel Rufin, Andreas Rohatschek
-            % Based on "2024_11_14_AveragingCorrection.m" file in the "FCLandscape"-folder and slightly modified
-            % Function to plot a force landscape of the retraction part 
-            % Var ... Variant            
-
-            if Var==1
-                % Input dialog
-                prompt = {'Enter the force map number you do not want to have included in the "SMFSResults"-structure (For multiple selections just use the space key to separeat entries)'};
-                definput = {''};
-                opts.Interpreter = 'tex';
-                FMIdxArray=inputdlg(prompt,'Select all - except of ...',[1 150],definput,opts);
-                FMIdxArray=str2num(FMIdxArray{1}); % Convert the cell array to numerals
-            elseif Var==2
-                warning('This variation requires that a none parameter based selection row in the "SMFSResults"-structure exists (Typically row 1)')
-                dlgtitle='Enter the "SMFSResults"-structure row the chronologcial data will be taken from';
-                prompt = {'ResultsRow'};
-                definput={'1'};
-                dims=[1 150];
-                ResultsRow = inputdlg(prompt,dlgtitle,dims,definput);
-                ResultsRow=str2num(ResultsRow{1});
-                dlgtitle='Enter the chronological force map index of the first and last force map you want to have included in the "SMFSResults"-structure';
-                prompt = {'First','Last'};
-                dims=[1 150; 1 150];
-                FMIdxChrono = inputdlg(prompt,dlgtitle,dims);
-                FMIdxChrono1=str2num(FMIdxChrono{1});
-                FMIdxChrono2=str2num(FMIdxChrono{2});
-                % Allocate the force maps in chronological order as defined by
-                % the input dialog box
-                FMIdxArray=obj.SMFSResults{ResultsRow}.Data.FMDateTimeSortIdx(FMIdxChrono1:FMIdxChrono2);
-            end
-            % If condition to handle an empty index array
-            if isempty(FMIdxArray)
-                return
-            else
-            end
-
-            % Allocate the force maps in chronological order as defined by
-            % the input dialog box
-            FMIdxArray=obj.SMFSResults{ResultsRow}.Data.FMDateTimeSortIdx(FMIdxChrono1:FMIdxChrono2);
-
-            % Change into the Folder of Interest
-            cd(obj.ExperimentFolder) % Move into the folder
-            % Create folders for saving the produced figures
-            foldername='SM_force_landscape';    % Defines the folder name
-            mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
-            currpath=fullfile(obj.ExperimentFolder,foldername);
-            cd(currpath);
- 
-           %% Figures
-           FigNamePt1=sprintf('SMFSResultRow%d_',ResultsRow);
-           FigNamePt2=sprintf('FM%d_to_FM%d_',FMIdxChrono1,FMIdxChrono2);
-           FigNamePt3='Ret';
-           FigNamePt4='ForceCurveLandscape';
-
-            % Force Landscape variables
-            FcCount = 0; % Force curve count
-            for ii=FMIdxArray'
-                FcCount = FcCount + obj.FM{ii}.NCurves;
-            end
-            ResY = FcCount; % y-axis resolution
-            ResX = 1024; % x-axis resolution
-            % Allocate data
-            MaxRangeRet = 0;
-            SkippedCurves = 0;
-            k=1;
-            DwellTime = [];
-            Phase = [];
-            ExtSpeed = [];
-            RetSpeed = [];
-            AbsCycleIndex = [];
-            m = 0;
-            % Read ou data
-            for j=obj.SMFSResults{ResultsRow}.Data.FMIndexChrono'
-                for i=1:obj.FM{j}.NCurves
-                    m=m+1;
-                    if ~obj.FM{j}.SMFSFlag.Selected(i)
-                        SkippedCurves = SkippedCurves + 1;
+                for Fm=1:obj.NumForceMaps
+                %for Fm=1:26
+                    if ~obj.SMFSFlag.Preprocessed(Fm)
                         continue
                     end
-
-                    DwellTime(k,1) = obj.SMFSResults{ResultsRow}.Data.FMHoldingTime(j);
-                    ExtSpeed(k,1) = obj.SMFSResults{ResultsRow}.Data.FMExtVelocity(j);
-                    RetSpeed(k,1) = obj.SMFSResults{ResultsRow}.Data.FMRetVelocity(j);
-                    AbsCycleIndex(k,1) = m;
-
-                    if any(j == [1:2])
-                        Phase(k,1) = 1;
-                    elseif any(j == [3:22])
-                        Phase(k,1) = 2;
-                    elseif any(j == [23:121])
-                        Phase(k,1) = 3;
-                    elseif any(j == [121:obj.NumForceMaps])
-                        Phase(k,1) = 4;
+                    for Fc=1:100
+                        obj.FM{Fm}.fc_fine_figure(XMin,XMax,YMin,YMax,Fm,Fc,Linker)
                     end
-
-                    vDefRet{k} = obj.FM{j}.BasedRet{i};
-                    THRet{k} = obj.FM{j}.THRet{i};
-                    THRet{k} = THRet{k} - max(THRet{k});
-                    MaxRangeRet = max(range(THRet{k}),MaxRangeRet);
-
-                    k = k + 1;
                 end
-            end
-
-            % Define axes properties
-            XQRet = linspace(0,-MaxRangeRet,ResX); % Query points on x-axis
-            ResY = ResY - SkippedCurves; % y-axis resolution
-            % Preallocate
-            FcMapRet = zeros(ResY, ResX);
-            % Interp Data and fill FCMap
-            for i=1:ResY
-                FCMapRet(i,:) = interp1(THRet{i},vDefRet{i},XQRet);
-            end
-            RetractForceCurveMap = FCMapRet;
-            RetractMaxRange = MaxRangeRet;
-
-            %% Plot: Dwell Time only            
-            % Font Sizes
-            %FS = 18;
-            FS = 7;
-           
-            % Processed Image Preparation
-            ProcRetMap = RetractForceCurveMap * 1e9;
-            YPixels = 2048;
-            XPixels = 1024;
-            img=-ProcRetMap;
-            img = imfilter(img,ones(round(size(-ProcRetMap,1)/YPixels),1)./round(size(ProcRetMap,1)/YPixels)); % Applying a rollling average filter for smearing out data
-            img = imresize(img, [YPixels XPixels], 'nearest'); % Downsampling
-            ProcDwellTime = imresize(DwellTime, [YPixels 1], 'nearest');
-            ProcPhase = imresize(Phase, [YPixels 1], 'nearest');
-            xmin = 0;
-            xmax = RetractMaxRange * 1e9;
-            ymax = size(RetractForceCurveMap, 1) / 1000;
-            MaxForce = 0.3;
-            MinForce = 0;         
-            LineWidth = 1.5;
-            
-            % Figure and Image Display
-            Fig = figure('Color', 'w');
-            imshow(img, [MinForce MaxForce]);
-            
-            ax = gca;  % Get the current axes handle
-            axis on;   % Turn on the axis visibility
-            xlabel('Tip-sample distance (nm)');
-            ylabel('Number of cycles (x100)');
-            xlim([0 XPixels]);  % Set X-axis limits
-            ylim([0 YPixels]);  % Set Y-axis limits         
-            set(ax, 'XTick', [0:200:1000] ./ xmax * XPixels);  % Custom X-axis ticks
-            YTickSpacing = [0:2:floor(ymax)] ./ ymax;
-            set(ax, 'YTick', YTickSpacing * YPixels);  % Custom Y-axis ticks
-            set(ax, 'XTickLabel', {string(xmin), string(200), string(400), string(600), string(800), string(1000)});  % Custom X-axis tick labels
-            % Custom Y-axis tick labels
-            for i=1:length(YTickSpacing)
-                if i == 1
-                    YTickLabels{i} = '0';
-                    continue
-                end
-               YTickLabels{i} =string(round(AbsCycleIndex(YTickSpacing(i)*ymax*1000)/100,1));
-             %   YTickLabels{i} = string(round(AbsCycleIndex(YTickSpacing(i)*ymax*1000),1));
-            end
-            set(ax, 'YTickLabel',YTickLabels)           
-            set(ax, 'FontSize', FS);  % Set font size for axes
-            set(ax, 'FontName', 'Arial');  % Set font type for axes
-            
-            % Display axes only on the left and bottom
-            ax.XAxisLocation = 'bottom';  % X-axis at the bottom
-            ax.YAxisLocation = 'left';    % Y-axis on the left
-            ax.Box = 'off';  % Turn off the box around the axes
-            ax.TickDir = 'out';  % Ticks pointing outwards
-            
-            % Ensure the top and right axes are not shown
-            ax.XColor = 'k';  % X-axis color (bottom)
-            ax.YColor = 'k';  % Y-axis color (left)
-            ax.XRuler.Axle.Visible = 'off';  % Hide the top axis
-            ax.YRuler.Axle.Visible = 'off';  % Hide the right axis
-            ax.LineWidth = LineWidth;
-            
-            % Adjust Axes Position to Make Space for Rectangles
-            ax.Position = [0.15 0.11 0.7 0.8];  % Adjust the axis position
-            
-            % Lines and boxes demarking critical lengths
-            LinesFlag = true;
-            if LinesFlag
-                XPos1 = 250;
-                LineX1 = ones(1,2)*XPos1 ./ xmax * XPixels;
-                LineY1 = [.735 1] * YPixels;
-                hold on
-                plot(LineX1,LineY1,'w--','LineWidth',LineWidth)
-                % text(LineX1(1) + 10,mean(LineY1),string(XPos1),'Color','w','FontName','Arial','FontSize',FS)
-            
-                % XPos2 = 430;
-                % LineX2 = ones(1,2)*XPos2 ./ xmax * XPixels;
-                % LineY2 = [.55 .68] * YPixels;
-                % plot(LineX2,LineY2,'w--','LineWidth',LineWidth)
-                % text(LineX2(1) + 10,mean(LineY2),string(XPos2),'Color','w','FontName','Arial','FontSize',FS)
-            
-                XPos3 = 670;
-                LineX3 = ones(1,2)*XPos3 ./ xmax * XPixels;
-                % LineY3 = [.29 .543] * YPixels;
-                % plot(LineX3,LineY3,'w--','LineWidth',LineWidth)
-                % text(LineX3(1) + 10,mean(LineY3),string(XPos3),'Color','w','FontName','Arial','FontSize',FS)
-                
-                XPos4 = 820;
-                LineX4 = ones(1,2)*XPos4 ./ xmax * XPixels;
-                % LineY4 = [.29 .543] * YPixels;
-                % plot(LineX4,LineY4,'w--','LineWidth',LineWidth)
-                % text(LineX4(1) + 10,mean(LineY4),string(XPos4),'Color','w','FontName','Arial','FontSize',FS)          
-            
-                Band1X1 = 670 ./ xmax * XPixels;
-                Band1X2 = 820 ./ xmax * XPixels;
-                Band1Pos = [Band1X1 .29*YPixels Band1X2-Band1X1 (.543 - .29)*YPixels];
-                Band1Rect =rectangle('Position', Band1Pos,...
-                    'FaceColor', 'none', 'EdgeColor', 'w','LineStyle','--','LineWidth',LineWidth);
-                       
-                Band2X1 = 250 ./ xmax * XPixels;
-                Band2X2 = 580 ./ xmax * XPixels;
-                Band2Pos = [Band2X1 .56*YPixels Band2X2-Band2X1 (.68 - .56)*YPixels];
-                Band2Rect =rectangle('Position', Band2Pos,...
-                    'FaceColor', 'none', 'EdgeColor', 'w','LineStyle','--','LineWidth',LineWidth);
-            
-                %     text(Band2X1(1) + 10,mean([.56 .68].*YPixels),string(250),'Color','w','FontName','Arial','FontSize',FS)
-                %     text(Band2X2(1) + 10,mean([.56 .68].*YPixels),string(580),'Color','w','FontName','Arial','FontSize',FS)
-            end
-            
-            % White band (demarking theoretical linker-molecule complex
-            % range)
-            BandFlag = true;
-            if BandFlag
-                BandX1 = 308 ./ xmax * XPixels;
-                BandX2 = 463 ./ xmax * XPixels;
-                BandPos = [BandX1 -2 BandX2-BandX1 YPixels];
-                BandRect =rectangle('Position', BandPos,...
-                    'FaceColor', [1 1 1 .3], 'EdgeColor', 'none');           
-            
-            end
-            LeftAxExpand = 0.07;
-            
-            % Adding Colored Rectangles
-            % Dwell time (Gray rectangles on the left-hand side with thicknesses according to the dwell times)            
-            DwellSizes = [0.2 1.2 2.2 3.2];
-            ScalingParam = 0.18*LeftAxExpand;
-            UpperPos = 0;
-            for i=1:YPixels
-                DwellSize = ProcDwellTime(i) + 0.2;
-                Thickness = ScalingParam * DwellSize * XPixels;
-                Height = 1;
-                rectangle('Position', [-Thickness, UpperPos,...
-                    Thickness, Height],...
-                    'FaceColor', 0.5.*[1 1 1], 'EdgeColor', 'none');
-                UpperPos = UpperPos + Height;
-            end
-            
-            % Add Bar for cycle axis
-            rectangle('Position', [-LeftAxExpand * XPixels, 0,...
-                0.01 * XPixels, YPixels],...
-                'FaceColor', [0 0 0], 'EdgeColor', 'none');
-            
-            % State/phase rectangles on the right-hand side         
-            ColorBarMap=[[54 163 0]./255; % Dark green HEX 8DB600
-                [206 22 32]./255; % Fire Engine Red HEX CE162
-                [0 24 204]./255; % Blue HEX 8DB600
-                [135 0 224]./255]; % Violet HEX 8F00FF
-            
-            UpperPos = 0;
-            for i=1:YPixels
-                Color = ColorBarMap(ProcPhase(i),:);
-                Thickness = 0.05 * XPixels;
-                Height = 1;
-                rectangle('Position', [XPixels, UpperPos,...
-                    Thickness, Height],...
-                    'FaceColor', Color, 'EdgeColor', 'none');
-                UpperPos = UpperPos + Height;
-            end
-            
-            % Adjust the axis limits to avoid cutting off the rectangles
-            xlim([-LeftAxExpand * XPixels XPixels * 1.05]);
-            
-            % Adding and Customizing Colorbar
-            c = colorbar;
-            c.Location = 'northoutside';
-            c.Label.String = 'Adhesive force (nN)';
-            c.Ticks = [MinForce, MaxForce/3, MaxForce*2/3, MaxForce];
-            c.FontSize = FS;
-            c.FontName = 'Arial';
-            c.Orientation = 'horizontal';
-            c.LineWidth = LineWidth;
-            colormap(turbo);
-            
-            % Final Adjustments            
-            Fig.Position = [1858 68 686 1277];
-            c.Position = [0.1939    0.8446    0.6239    0.0167];            
-            set(Fig, 'Renderer', 'Painters');
-            
-            % Save figure
-            fullname=sprintf('%s%s%s%s',FigNamePt1,FigNamePt2,FigNamePt3,FigNamePt4);
-            print(gcf,fullname,'-dpng');
-            exportgraphics(gcf,[fullname,'.pdf'],'ContentType','vector')
-
-            %% House keeping
-            close all
-
-        end
-
-
-  
-  
-        % Individual ForceMap function related
-        
-        function SM_print_pulllength(obj)
-            % SM_print: A function to simply plot all force curves of all
-            % force maps loaded and calssified based on the SMFS Flag
-            % Needed function: obj.presorting
-
-            
-            % Figure visibility
-            set(groot,'defaultFigureVisible','off')      
-            %set(groot,'defaultFigureVisible','on')           
-            % Change into the Folder of Interest
-            cd(obj.ExperimentFolder) % Move into the folder 
+            elseif FmoI==0
             % Create folders for saving the produced figures
-            %foldername='FM_test';    % for debugging
-            foldername='FM_Pulllength_MAD';    % Defines the folder name
+            foldername='SM_fine_figure';    % Defines the folder name
             mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
             currpath=fullfile(obj.ExperimentFolder,foldername);
-            cd(currpath); 
-            
-            % Loop over the imported force maps
-            %for ii=1:obj.NumForceMaps
-            for ii=2 % Debugging
-               % Command window output
-               sprintf('Force Map No. %d of %d',ii,obj.NumForceMaps) % Gives current Force Map Position
-               % Run the chosen functions
-               obj.FM{ii}.fc_pulling_length_MAD;     
-            end    
-           end
-               
-        function SM_snap_in_length_MAD(obj)            
-            
-            % Figure visibility
-            %set(groot,'defaultFigureVisible','off')      
-             set(groot,'defaultFigureVisible','on')           
-            % Change into the Folder of Interest
-            cd(obj.ExperimentFolder) % Move into the folder 
-            % Create folders for saving the produced figures
-            %foldername='FM_test';    % for debugging
-            foldername='FM_SnapIn_MAD';    % Defines the folder name
-            mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
-            currpath=fullfile(obj.ExperimentFolder,foldername);
-            cd(currpath); 
-            
-            % Loop over the imported force maps
-            %for ii=1:obj.NumForceMaps
-            for ii=2 % Debugging
-               % Command window output
-               sprintf('Force Map No. %d of %d',ii,obj.NumForceMaps) % Gives current Force Map Position
-               % Run the chosen functions
-               obj.FM{ii}.fc_snap_in_length_MAD;
-            end 
-        end
-    
-        function SM_adh_force_max(obj)            
-            
-            % Figure visibility
-            set(groot,'defaultFigureVisible','off')      
-            %set(groot,'defaultFigureVisible','on')           
-            % Change into the Folder of Interest
-            cd(obj.ExperimentFolder) % Move into the folder 
-            % Create folders for saving the produced figures
-            %foldername='FM_test';    % for debugging
-            foldername='FM_Adh_Force';    % Defines the folder name
-            mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
-            currpath=fullfile(obj.ExperimentFolder,foldername);
-            cd(currpath); 
-            
-            % Loop over the imported force maps
-            %for ii=1:obj.NumForceMaps
-            for ii=11:13 % Debugging
-               % Command window output
-               sprintf('Force Map No. %d of %d',ii,obj.NumForceMaps) % Gives current Force Map Position
-               % Run the chosen functions
-               obj.FM{ii}.fc_adh_force_max;
-            end 
-        end
-   
-        function SM_min_max(obj)
-            
-
-            for ii=1:obj.NumForceMaps
-                %    obj.FM{ii}.base_and_tilt('linear');
-                %obj.FM{ii}.fc_min_max_values;
-                
-                if ii==1
-                    ConcatArrayMax=obj.FM{ii}.FMPullingLengthMax;
-                 %   ConcatArrayAdhEnergy=obj.FM{ii}.obj.MinRet;
-                else               
-                    ConcatArrayMax=horzcat(ConcatArrayMax,obj.FM{ii}.FMPullingLengthMax);
-                  %  ConcatArrayAdhEnergy=horzcat(ConcatArrayMax,obj.FM{ii}.FMPullingLengthMax);
-                end                
-            end
-             ExpPullingLengthMax=max(ConcatArrayMax)
-        end
-        
-        function [m,n,NumFigures] = adjust_tiled_layout(obj,NumFcMax)
-            
-            if nargin < 2
-                NumFcMax=25; % The maximum of allowed plots per figure
-            end
-            
-            for ii=1:obj.NumForceMaps
-                %for ii=1:8 %for debugging
-                NumFcUncorrupt(ii)=nnz(obj.FM{ii}.SMFSFlag.Uncorrupt); % Determine the number of uncorrupted force curves
-                if ~any(NumFcUncorrupt(ii))    
-                    continue
+            cd(currpath);
+                for Fm=1:obj.NumForceMaps
+                %for Fm=1
+                    if ~obj.SMFSFlag.Preprocessed(Fm)
+                        continue
+                    end
+                    for Fc=1:100
+%                         if ~obj.FM{Fm}.SMFSFlag.Uncorrupt(Fc) || ~obj.FM{Fm}.SMFSFlag.Selected(Fc) || ~obj.FM{Fm}.SMFSFlag.RetMinCrit(Fc) || ~obj.FM{Fm}.SMFSFlag.LengthRequisite(Fc)     % Condition if FM Flag Selected has been set: Exclude corrupted force curves or force curves showing no snap-in from the analysis
+%                        continue
+%                        end
+                        obj.FM{Fm}.fc_fine_figure(XMin,XMax,YMin,YMax,Fm,Fc,Linker)
+                    end
                 end
-                NumFigures=ceil(NumFcUncorrupt(ii)./NumFcMax); % Determine the number of figures
-                Remainder=mod(NumFcUncorrupt(ii),NumFcMax); % Check for remainder
-                if Remainder ~= 0
-                    m(ii)=floor(sqrt(Remainder)); % Determine the number of rows in the figure
-                    n(ii)=ceil(sqrt(Remainder)); % Determine the number of columns in the figure
-                else
-                    m(ii)=sqrt(NumFcMax);
-                    n(ii)=m(ii);
+            else
+            % Create folders for saving the produced figures
+            foldername='SM_fine_figure';    % Defines the folder name
+            mkdir(obj.ExperimentFolder,foldername);  % Creates for each force map a folder where the corresponding figures are stored in
+            currpath=fullfile(obj.ExperimentFolder,foldername);
+            cd(currpath);
+                for Fm=FmoI  % debugging
+                    %                 if ~obj.SMFSFlag.Preprocessed(Fm)
+                    %                     continue
+                    %                 end
+                    for Fc=FcoI
+                        %                     if ~obj.FM{Fm}.SMFSFlag.Uncorrupt(Fc) || ~obj.FM{Fm}.SMFSFlag.Selected(Fc) || ~obj.FM{Fm}.SMFSFlag.RetMinCrit(Fc) || ~obj.FM{Fm}.SMFSFlag.LengthRequisite(Fc)     % Condition if FM Flag Selected has been set: Exclude corrupted force curves or force curves showing no snap-in from the analysis
+                        %                     continue
+                        %                     end
+                        obj.FM{Fm}.fc_fine_figure(XMin,XMax,YMin,YMax,Fm,Fc,Linker)
+                    end
                 end
             end
         end
-   
-       % Old functions
 
         function SM_statistics(obj)
            
