@@ -102,6 +102,11 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle
         end
         
         function construct_list_to_map_relations(obj)
+            % Author: Manuel Rufin
+            % Description: This function relates the force map indices to a
+            % list.
+
+            %% Function body
             k = 1;
             obj.List2Map = zeros(obj.NumPixelsX*obj.NumPixelsY,2);
             if isequal(obj.FileType,'quantitative-imaging-map')
@@ -169,10 +174,13 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle
         end
         
         function [Channel,Index,FoundRequested] = get_unprocessed_height_channel(obj,ChannelName)
+            % Author: Manuel Rufin
+            % Description:
             % Goes over all possible variations of height channels in a
             % certain order and spits out an alternative one should the
             % specified one not exist
             
+            %% Function body
             HeightChannelList = {'Height (measured) (Trace)',...
                                     'Height (Trace)',...
                                     'Height (measured)',...
@@ -220,7 +228,12 @@ classdef AFMBaseClass < matlab.mixin.Copyable & matlab.mixin.SetGet & handle
         end
         
         function OutChannel = create_standard_channel(obj,Image,Name,Unit)
-            
+            % Author: Manuel Rufin
+            % Description: This function creates a standard channel by
+            % allocating the input arguments and already available
+            % properties
+
+            %% Function body
             OutChannel.Image = Image;
             OutChannel.Name = Name;
             OutChannel.Unit = Unit;

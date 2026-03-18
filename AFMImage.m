@@ -67,9 +67,12 @@ classdef AFMImage < matlab.mixin.Copyable & matlab.mixin.SetGet & handle & AFMBa
         % Main methods of the class
         
         function obj = AFMImage(ImageFullFile,DataFolder,TempID)
+            % Author: Manuel Rufin
+            % Description:
             % Constructor of the class. Extracts Header properties as well
-            % as all available channel-data
+            % as all available channel-data.
             
+            %% Function body
             if nargin == 0
                 [File, Path] = uigetfile('*.jpk','Choose a jpk image file');
                 ImageFullFile = fullfile(Path, File);
